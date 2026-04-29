@@ -1,0 +1,32 @@
+[package]
+name = "velvet-ballistics-fuzz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+fuzz = []
+
+[lib]
+name = "fuzz_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "workflow_parse"
+path = "src/bin/workflow_parse.rs"
+
+[[bin]]
+name = "workflow_compile"
+path = "src/bin/workflow_compile.rs"
+
+[[bin]]
+name = "slot_value_roundtrip"
+path = "src/bin/slot_value_roundtrip.rs"
+
+[[bin]]
+name = "binary_ipc_frame"
+path = "src/bin/binary_ipc_frame.rs"
+
+[[bin]]
+name = "fjall_journal_append"
+path = "src/bin/fjall_journal_append.rs"

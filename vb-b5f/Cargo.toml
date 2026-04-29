@@ -1,0 +1,92 @@
+[workspace]
+members = [
+    "crates/vb-compiler",
+    "crates/vb-core",
+    "crates/vb-ipc",
+    "crates/vb-storage",
+    "crates/velvet-ballastics",
+    "fuzz",
+]
+resolver = "3"
+
+# Root package for workspace-level integration tests
+[package]
+name = "velvet-ballistics-workspace"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+version = "0.1.0"
+publish = false
+
+[dev-dependencies]
+toml = "0.8"
+serde_yaml = "0.9"
+criterion = "0.5"
+
+[profile.bench]
+inherits = "release"
+debug = true
+lto = "thin"
+codegen-units = 1
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+version = "0.1.0"
+
+[workspace.dependencies]
+arrayvec = "0.7.6"
+blake3 = "1.8.2"
+bytes = { version = "1.10.1", features = ["serde"] }
+crossbeam-channel = "0.5.15"
+fjall = { version = "3.1.4", default-features = false, features = ["lz4"] }
+postcard = { version = "1.1.1", features = ["alloc"] }
+saphyr = { version = "0.0.6", default-features = false }
+saphyr-parser = "0.0.6"
+serde = { version = "1.0.228", features = ["derive"] }
+serde-saphyr = { version = "0.0.25", default-features = false, features = ["deserialize"] }
+thiserror = "2.0.17"
+tempfile = "3.23.0"
+
+[workspace.lints.rust]
+rust_2018_idioms = { level = "deny", priority = -1 }
+unsafe_code = "forbid"
+unreachable_pub = "deny"
+unused_must_use = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+get_unwrap = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+let_underscore_must_use = "deny"
+await_holding_lock = "deny"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+result_large_err = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+debug = false
