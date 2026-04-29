@@ -3,8 +3,10 @@
 //! YAML enters the system only through this crate. The hot engine consumes only
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
+pub mod strict_yaml;
+
 use saphyr::{LoadableYamlNode, Yaml};
-use saphyr_parser::{Event, Parser, StrInput};
+use saphyr_parser::{Event, Parser, Span, StrInput};
 use std::collections::HashSet;
 use std::str;
 use thiserror::Error;
@@ -57,6 +59,49 @@ pub struct YamlCompiler {
     limits: YamlLimits,
 }
 
+/// Source location exposed by `saphyr-parser`.
+///
+/// `index` is the parser-provided byte offset into the UTF-8 source. `line` and
+/// `column` are one-indexed parser marks. Tree-only validation paths use
+/// [`SourceMark::unavailable`] because `saphyr::Yaml` nodes do not retain marks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SourceMark {
+    /// Parser-provided byte offset.
+    pub index: usize,
+    /// Parser-provided exclusive byte offset where the event span ends.
+    pub end_index: usize,
+    /// One-indexed source line.
+    pub line: usize,
+    /// One-indexed source column.
+    pub column: usize,
+    /// Whether this mark came from `saphyr-parser` event data.
+    pub available: bool,
+}
+
+impl SourceMark {
+    #[must_use]
+    pub(crate) fn from_parser_span(span: Span) -> Self {
+        Self {
+            index: span.start.index(),
+            end_index: span.end.index(),
+            line: span.start.line(),
+            column: span.start.col(),
+            available: true,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn unavailable() -> Self {
+        Self {
+            index: 0,
+            end_index: 0,
+            line: 0,
+            column: 0,
+            available: false,
+        }
+    }
+}
+
 impl YamlCompiler {
     /// Creates a compiler with explicit strict-profile limits.
     #[must_use]
@@ -67,7 +112,7 @@ impl YamlCompiler {
     /// Parses and validates YAML, then emits compiled workflow IR.
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileError> {
         let text = checked_utf8(source, self.limits)?;
-        reject_yaml_indirection_markers(text)?;
+        strict_yaml::reject_unsupported_profile_events(text)?;
         reject_duplicate_mapping_keys(text)?;
         let docs = Yaml::load_from_str(text)?;
         let doc = single_document(&docs)?;
@@ -79,6 +124,12 @@ impl YamlCompiler {
 impl Default for YamlCompiler {
     fn default() -> Self {
         Self::new(YamlLimits::default())
+    }
+}
+
+fn non_string_key_error() -> CompileError {
+    CompileError::NonStringKey {
+        mark: SourceMark::unavailable(),
     }
 }
 
@@ -96,6 +147,9 @@ pub enum CompileError {
     /// Source was not UTF-8.
     #[error("YAML source must be UTF-8: {0}")]
     Utf8(#[from] str::Utf8Error),
+    /// Source did not contain a YAML document.
+    #[error("YAML source must contain exactly one non-empty document")]
+    EmptySource,
     /// Native YAML parser rejected the document.
     #[error("YAML parse failed: {0}")]
     Parse(#[from] saphyr::ScanError),
@@ -109,20 +163,43 @@ pub enum CompileError {
     #[error("top-level YAML document must be a mapping")]
     TopLevelNotMapping,
     /// Mapping keys must be strings.
-    #[error("mapping key must be a string")]
-    NonStringKey,
+    #[error("mapping key must be a string at {mark:?}")]
+    NonStringKey {
+        /// Best available source mark.
+        mark: SourceMark,
+    },
     /// YAML mappings must not contain duplicate keys.
-    #[error("duplicate YAML mapping key: {key}")]
+    #[error("duplicate YAML mapping key: {key} at {mark:?}")]
     DuplicateKey {
         /// Duplicated key.
         key: Box<str>,
+        /// Best available source mark.
+        mark: SourceMark,
     },
     /// YAML anchors/aliases are forbidden.
-    #[error("YAML aliases are forbidden")]
-    AliasForbidden,
+    #[error("YAML aliases are forbidden at {mark:?}")]
+    AliasForbidden {
+        /// Parser mark for the alias event.
+        mark: SourceMark,
+    },
+    /// YAML anchors are forbidden.
+    #[error("YAML anchors are forbidden at {mark:?}")]
+    AnchorForbidden {
+        /// Parser mark for the anchored node.
+        mark: SourceMark,
+    },
+    /// YAML merge keys are forbidden.
+    #[error("YAML merge keys are forbidden at {mark:?}")]
+    MergeKeyForbidden {
+        /// Best available source mark.
+        mark: SourceMark,
+    },
     /// YAML tags are forbidden.
-    #[error("YAML tags are forbidden")]
-    TagForbidden,
+    #[error("YAML tags are forbidden at {mark:?}")]
+    TagForbidden {
+        /// Parser mark for the tagged node.
+        mark: SourceMark,
+    },
     /// Saphyr produced a bad scalar value.
     #[error("YAML scalar value is invalid")]
     BadValue,
@@ -396,7 +473,12 @@ fn checked_utf8(source: &[u8], limits: YamlLimits) -> Result<&str, CompileError>
             limit: limits.max_source_bytes,
         });
     }
-    Ok(str::from_utf8(source)?)
+    let text = str::from_utf8(source)?;
+    if text.trim().is_empty() {
+        Err(CompileError::EmptySource)
+    } else {
+        Ok(text)
+    }
 }
 
 fn single_document<'a>(docs: &'a [Yaml<'a>]) -> Result<&'a Yaml<'a>, CompileError> {
@@ -406,38 +488,11 @@ fn single_document<'a>(docs: &'a [Yaml<'a>]) -> Result<&'a Yaml<'a>, CompileErro
     }
 }
 
-fn reject_yaml_indirection_markers(text: &str) -> Result<(), CompileError> {
-    for line in text.lines() {
-        let mut single_quoted = false;
-        let mut double_quoted = false;
-        let mut escaped = false;
-
-        for ch in line.chars() {
-            if escaped {
-                escaped = false;
-            } else if double_quoted && ch == '\\' {
-                escaped = true;
-            } else if !double_quoted && ch == '\'' {
-                single_quoted = !single_quoted;
-            } else if !single_quoted && ch == '"' {
-                double_quoted = !double_quoted;
-            } else if !single_quoted && !double_quoted && ch == '#' {
-                break;
-            } else if !single_quoted && !double_quoted && matches!(ch, '&' | '*') {
-                return Err(CompileError::AliasForbidden);
-            } else if !single_quoted && !double_quoted && ch == '!' {
-                return Err(CompileError::TagForbidden);
-            }
-        }
-    }
-    Ok(())
-}
-
 fn reject_duplicate_mapping_keys(text: &str) -> Result<(), CompileError> {
     let mut parser = Parser::new_from_str(text);
 
-    while let Some((event, _)) = parser.next_event().transpose()? {
-        validate_duplicate_keys_in_started_node(event, &mut parser)?;
+    while let Some((event, mark)) = parser.next_event().transpose()? {
+        validate_duplicate_keys_in_started_node(event, mark, &mut parser)?;
     }
 
     Ok(())
@@ -445,12 +500,15 @@ fn reject_duplicate_mapping_keys(text: &str) -> Result<(), CompileError> {
 
 fn validate_duplicate_keys_in_started_node<'input>(
     event: Event<'input>,
+    mark: Span,
     parser: &mut Parser<'input, StrInput<'input>>,
 ) -> Result<(), CompileError> {
     match event {
         Event::MappingStart(_, _) => validate_duplicate_keys_in_mapping(parser),
         Event::SequenceStart(_, _) => validate_duplicate_keys_in_sequence(parser),
-        Event::Alias(_) => Err(CompileError::AliasForbidden),
+        Event::Alias(_) => Err(CompileError::AliasForbidden {
+            mark: SourceMark::from_parser_span(mark),
+        }),
         _ => Ok(()),
     }
 }
@@ -461,22 +519,25 @@ fn validate_duplicate_keys_in_mapping<'input>(
     let mut seen = HashSet::new();
 
     loop {
-        let Some((key_event, _)) = parser.next_event().transpose()? else {
+        let Some((key_event, key_mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
         if key_event == Event::MappingEnd {
             return Ok(());
         }
-        let key = mapping_key_text(key_event)?;
+        let key = mapping_key_text(key_event, key_mark)?;
         let duplicate = key.clone();
         if !seen.insert(key) {
-            return Err(CompileError::DuplicateKey { key: duplicate });
+            return Err(CompileError::DuplicateKey {
+                key: duplicate,
+                mark: SourceMark::from_parser_span(key_mark),
+            });
         }
 
-        let Some((value_event, _)) = parser.next_event().transpose()? else {
+        let Some((value_event, value_mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
-        validate_duplicate_keys_in_started_node(value_event, parser)?;
+        validate_duplicate_keys_in_started_node(value_event, value_mark, parser)?;
     }
 }
 
@@ -484,26 +545,29 @@ fn validate_duplicate_keys_in_sequence<'input>(
     parser: &mut Parser<'input, StrInput<'input>>,
 ) -> Result<(), CompileError> {
     loop {
-        let Some((event, _)) = parser.next_event().transpose()? else {
+        let Some((event, mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
         if event == Event::SequenceEnd {
             return Ok(());
         }
-        validate_duplicate_keys_in_started_node(event, parser)?;
+        validate_duplicate_keys_in_started_node(event, mark, parser)?;
     }
 }
 
-fn mapping_key_text(event: Event<'_>) -> Result<Box<str>, CompileError> {
+fn mapping_key_text(event: Event<'_>, mark: Span) -> Result<Box<str>, CompileError> {
+    let source_mark = SourceMark::from_parser_span(mark);
     match event {
         Event::Scalar(value, style, _, tag) => {
             let key = Yaml::value_from_cow_and_metadata(value, style, tag.as_ref());
-            key.as_str()
-                .map(Box::<str>::from)
-                .ok_or(CompileError::NonStringKey)
+            match key.as_str() {
+                Some("<<") => Err(CompileError::MergeKeyForbidden { mark: source_mark }),
+                Some(value) => Ok(Box::<str>::from(value)),
+                None => Err(CompileError::NonStringKey { mark: source_mark }),
+            }
         }
-        Event::Alias(_) => Err(CompileError::AliasForbidden),
-        _ => Err(CompileError::NonStringKey),
+        Event::Alias(_) => Err(CompileError::AliasForbidden { mark: source_mark }),
+        _ => Err(CompileError::NonStringKey { mark: source_mark }),
     }
 }
 
@@ -516,24 +580,36 @@ fn validate_strict_profile(root: &Yaml<'_>, limits: YamlLimits) -> Result<(), Co
     let mut visited = 0_u32;
 
     while let Some((node, depth)) = stack.pop() {
-        visited = visited.checked_add(1).ok_or(CompileError::NodeLimit {
-            limit: limits.max_nodes,
-        })?;
-        if visited > limits.max_nodes {
-            return Err(CompileError::NodeLimit {
-                limit: limits.max_nodes,
-            });
-        }
-        if depth > limits.max_depth {
-            return Err(CompileError::DepthLimit {
-                depth,
-                limit: limits.max_depth,
-            });
-        }
+        visited = next_visited_count(visited, limits)?;
+        validate_depth(depth, limits)?;
         validate_one_node(node, depth, limits, &mut stack)?;
     }
 
     Ok(())
+}
+
+fn next_visited_count(visited: u32, limits: YamlLimits) -> Result<u32, CompileError> {
+    let next = visited.checked_add(1).ok_or(CompileError::NodeLimit {
+        limit: limits.max_nodes,
+    })?;
+    if next > limits.max_nodes {
+        Err(CompileError::NodeLimit {
+            limit: limits.max_nodes,
+        })
+    } else {
+        Ok(next)
+    }
+}
+
+fn validate_depth(depth: u16, limits: YamlLimits) -> Result<(), CompileError> {
+    if depth > limits.max_depth {
+        Err(CompileError::DepthLimit {
+            depth,
+            limit: limits.max_depth,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 fn validate_one_node<'a>(
@@ -545,13 +621,19 @@ fn validate_one_node<'a>(
     match node {
         Yaml::Mapping(mapping) => push_mapping(mapping, depth, limits, stack),
         Yaml::Sequence(sequence) => push_sequence(sequence, depth, limits, stack),
-        Yaml::Tagged(_, _) => Err(CompileError::TagForbidden),
-        Yaml::Alias(_) => Err(CompileError::AliasForbidden),
+        Yaml::Tagged(_, _) => Err(CompileError::TagForbidden {
+            mark: SourceMark::unavailable(),
+        }),
+        Yaml::Alias(_) => Err(CompileError::AliasForbidden {
+            mark: SourceMark::unavailable(),
+        }),
         Yaml::BadValue => Err(CompileError::BadValue),
         Yaml::Value(value) => validate_scalar(value, limits),
         Yaml::Representation(value, _, tag) => {
             if tag.is_some() {
-                return Err(CompileError::TagForbidden);
+                return Err(CompileError::TagForbidden {
+                    mark: SourceMark::unavailable(),
+                });
             }
             validate_scalar_len(value.as_ref(), limits)
         }
@@ -564,12 +646,7 @@ fn push_mapping<'a>(
     limits: YamlLimits,
     stack: &mut Vec<(&'a Yaml<'a>, u16)>,
 ) -> Result<(), CompileError> {
-    if mapping.len() > limits.max_mapping_entries {
-        return Err(CompileError::MappingLimit {
-            actual: mapping.len(),
-            limit: limits.max_mapping_entries,
-        });
-    }
+    validate_mapping_len(mapping, limits)?;
     let next_depth = depth.checked_add(1).ok_or(CompileError::DepthLimit {
         depth,
         limit: limits.max_depth,
@@ -580,11 +657,26 @@ fn push_mapping<'a>(
         if !seen.insert(key) {
             return Err(CompileError::DuplicateKey {
                 key: Box::<str>::from(key),
+                mark: SourceMark::unavailable(),
             });
         }
         stack.push((value, next_depth));
     }
     Ok(())
+}
+
+fn validate_mapping_len(
+    mapping: &saphyr::Mapping<'_>,
+    limits: YamlLimits,
+) -> Result<(), CompileError> {
+    if mapping.len() > limits.max_mapping_entries {
+        Err(CompileError::MappingLimit {
+            actual: mapping.len(),
+            limit: limits.max_mapping_entries,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 fn push_sequence<'a>(
@@ -616,9 +708,17 @@ fn validate_mapping_key<'a>(
     match key.as_str() {
         Some(value) => {
             validate_scalar_len(value, limits)?;
-            Ok(value)
+            if value == "<<" {
+                Err(CompileError::MergeKeyForbidden {
+                    mark: SourceMark::unavailable(),
+                })
+            } else {
+                Ok(value)
+            }
         }
-        None => Err(CompileError::NonStringKey),
+        None => Err(CompileError::NonStringKey {
+            mark: SourceMark::unavailable(),
+        }),
     }
 }
 
@@ -710,7 +810,7 @@ fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
     })?;
     for (key, value) in mapping {
         let Some(name) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         validate_public_name("inputs", name)?;
         validate_input_schema(value, SchemaScope::Input)?;
@@ -824,7 +924,7 @@ fn reject_unknown_schema_fields(
 ) -> Result<(), CompileError> {
     for (key, _) in mapping {
         let Some(field) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         if !is_allowed_schema_field(field, scope) {
             return Err(CompileError::UnknownInputSchemaField {
@@ -962,7 +1062,7 @@ fn validate_schema_fields(
     };
     for (key, field_schema) in fields {
         let Some(field) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         validate_public_name("inputs.fields", field)?;
         validate_input_schema(field_schema, SchemaScope::ObjectField)?;
@@ -1174,7 +1274,7 @@ fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
     })?;
     for (key, value) in mapping {
         let Some(name) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         validate_public_name("vars", name)?;
         let _ = slot_value(value, 0)?;
@@ -1192,7 +1292,7 @@ fn optional_secret_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
     })?;
     for (key, value) in mapping {
         let Some(name) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         validate_public_name("secrets", name)?;
         if value.as_str().is_none() {
@@ -1332,7 +1432,7 @@ fn validate_top_level_keys(doc: &Yaml<'_>) -> Result<(), CompileError> {
     };
     for (key, _) in mapping {
         let Some(field) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         if !is_top_level_field(field) {
             return Err(CompileError::UnknownTopLevelField {
@@ -1380,7 +1480,7 @@ fn validate_workflow_trigger(doc: &Yaml<'_>) -> Result<(), CompileError> {
         return Err(CompileError::InvalidTriggerCount { count: 0 });
     };
     let Some(trigger) = key.as_str() else {
-        return Err(CompileError::NonStringKey);
+        return Err(non_string_key_error());
     };
     match trigger {
         "manual" => validate_manual_trigger(value),
@@ -1457,7 +1557,7 @@ fn reject_unknown_trigger_fields(
 ) -> Result<(), CompileError> {
     for (key, _) in mapping {
         let Some(field) = key.as_str() else {
-            return Err(CompileError::NonStringKey);
+            return Err(non_string_key_error());
         };
         if !allowed.contains(&field) {
             return Err(CompileError::UnknownTriggerField {
@@ -1757,7 +1857,7 @@ fn save_slot_value(body: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileErr
     }
     match mapping.iter().next() {
         Some((key, value)) if key.as_str() == Some("value") => slot_value(value, step),
-        Some((key, _)) if key.as_str().is_none() => Err(CompileError::NonStringKey),
+        Some((key, _)) if key.as_str().is_none() => Err(non_string_key_error()),
         Some(_) | None => Err(CompileError::UnsupportedConstantValue { step }),
     }
 }
@@ -2704,7 +2804,30 @@ steps:
         let result =
             YamlCompiler::default().compile(b"version: velvet/v1\nname: &n fast\ncopy: *n\n");
 
-        assert!(matches!(result, Err(CompileError::AliasForbidden)));
+        assert!(matches!(
+            result,
+            Err(CompileError::AnchorForbidden { mark }) if mark.available
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_custom_tags_with_mark() {
+        let result = YamlCompiler::default().compile(b"version: !custom velvet/v1\n");
+
+        assert!(matches!(
+            result,
+            Err(CompileError::TagForbidden { mark }) if mark.available
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_non_string_object_keys_with_mark() {
+        let result = YamlCompiler::default().compile(b"? [bad]\n: value\n");
+
+        assert!(matches!(
+            result,
+            Err(CompileError::NonStringKey { mark }) if mark.available
+        ));
     }
 
     #[test]
@@ -2797,5 +2920,45 @@ steps:
         let result = YamlCompiler::new(limits).compile(b"name: too_large\n");
 
         assert!(matches!(result, Err(CompileError::SourceTooLarge { .. })));
+    }
+
+    #[test]
+    fn compiler_accepts_minimal_strict_workflow() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet/v1\nname: strict_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "strict_minimal"));
+    }
+
+    #[test]
+    fn compiler_rejects_empty_yaml_source() {
+        let result = YamlCompiler::default().compile(b"   \n\t  ");
+
+        assert!(matches!(result, Err(CompileError::EmptySource)));
+    }
+
+    #[test]
+    fn compiler_rejects_multiple_yaml_documents() {
+        let result = YamlCompiler::default().compile(
+            b"---\nversion: velvet/v1\nname: first\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n---\nversion: velvet/v1\nname: second\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        );
+
+        assert!(matches!(
+            result,
+            Err(CompileError::DocumentCount { count: 2 })
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_yaml_merge_keys() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet/v1\nname: merge_key\nwhen:\n  manual: {}\n<<:\n  steps: []\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        );
+
+        assert!(matches!(
+            result,
+            Err(CompileError::MergeKeyForbidden { .. })
+        ));
     }
 }
