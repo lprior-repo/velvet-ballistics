@@ -1,0 +1,7 @@
+target/
+.memsearch/
+.env
+.env.*
+*.profraw
+*.profdata
+perf.data*

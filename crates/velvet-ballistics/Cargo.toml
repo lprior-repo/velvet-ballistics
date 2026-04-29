@@ -1,0 +1,14 @@
+[package]
+name = "velvet-ballistics"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+vb-core = { path = "../vb-core" }
+vb-ipc = { path = "../vb-ipc" }
+vb-storage = { path = "../vb-storage" }
+
+[lints]
+workspace = true
