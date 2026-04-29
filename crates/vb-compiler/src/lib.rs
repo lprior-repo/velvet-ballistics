@@ -3,6 +3,7 @@
 //! YAML enters the system only through this crate. The hot engine consumes only
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
+pub mod ast;
 pub mod strict_yaml;
 
 use saphyr::{LoadableYamlNode, Yaml};
@@ -118,6 +119,18 @@ impl YamlCompiler {
         let doc = single_document(&docs)?;
         validate_strict_profile(doc, self.limits)?;
         compile_validated_document(text, doc)
+    }
+
+    /// Parses strict YAML into the cold typed AST without emitting runtime IR.
+    pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileError> {
+        let text = checked_utf8(source, self.limits)?;
+        strict_yaml::reject_unsupported_profile_events(text)?;
+        reject_duplicate_mapping_keys(text)?;
+        let docs = Yaml::load_from_str(text)?;
+        let doc = single_document(&docs)?;
+        validate_strict_profile(doc, self.limits)?;
+        let _ = compile_validated_document(text, doc)?;
+        ast::parse_workflow_ast(text, doc)
     }
 }
 
@@ -766,7 +779,6 @@ fn compile_validated_document(
         let node = compile_step(step, index, last_step, &mut builder)?;
         builder.nodes.push(node);
     }
-
     let parts = WorkflowParts {
         name: Box::<str>::from(name),
         digest,
