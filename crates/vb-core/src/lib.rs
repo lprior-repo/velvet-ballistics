@@ -12,6 +12,7 @@ pub mod ids;
 pub mod limits;
 pub mod span;
 pub mod value;
+pub mod value_store;
 pub mod workflow;
 
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
@@ -23,6 +24,7 @@ pub use ids::{
 };
 pub use span::{Located, SourceMap, Span, Spanned};
 pub use value::{FiniteF64, SlotValue, Taint};
+pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowError, WorkflowParts,
 };

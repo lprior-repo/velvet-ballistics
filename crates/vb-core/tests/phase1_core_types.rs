@@ -14,6 +14,7 @@ use vb_core::limits::{
 };
 use vb_core::span::{Located, SourceMap, Span, Spanned};
 use vb_core::value::{FiniteF64, SlotValue};
+use vb_core::value_store::{ObjectField, ValueStore};
 
 #[test]
 fn numeric_ids_construct_access_parse_and_serialize() {
@@ -213,6 +214,131 @@ fn slot_value_is_copy_compatible() {
     assert_copy::<ObjectId>();
     assert_copy::<BlobId>();
     assert_copy::<FiniteF64>();
+}
+
+#[test]
+fn value_store_roundtrips_symbol_list_object_and_blob_payloads() {
+    let mut store = ValueStore::new();
+
+    let name = store.insert_symbol(Box::<str>::from("name"));
+    assert_eq!(name, Ok(SymbolId::new(0)));
+    let Ok(name) = name else {
+        return;
+    };
+
+    let alice = store.insert_symbol(Box::<str>::from("alice"));
+    assert_eq!(alice, Ok(SymbolId::new(1)));
+    let Ok(alice) = alice else {
+        return;
+    };
+
+    let list = store.insert_list(Box::<[SlotValue]>::from([
+        SlotValue::Symbol(alice),
+        SlotValue::I64(7),
+    ]));
+    assert_eq!(list, Ok(ListId::new(0)));
+    let Ok(list) = list else {
+        return;
+    };
+
+    let object = store.insert_object(Box::<[ObjectField]>::from([ObjectField {
+        key: name,
+        value: SlotValue::List(list),
+    }]));
+    assert_eq!(object, Ok(ObjectId::new(0)));
+    let Ok(object) = object else {
+        return;
+    };
+
+    let blob = store.insert_blob(bytes::Bytes::from_static(b"payload"));
+    assert_eq!(blob, Ok(BlobId::new(0)));
+    let Ok(blob) = blob else {
+        return;
+    };
+
+    assert_eq!(store.symbol(name), Ok("name"));
+    assert_eq!(store.symbol(alice), Ok("alice"));
+    assert_eq!(
+        store.list(list),
+        Ok([SlotValue::Symbol(alice), SlotValue::I64(7)].as_slice())
+    );
+    assert_eq!(
+        store.object(object),
+        Ok([ObjectField {
+            key: name,
+            value: SlotValue::List(list)
+        }]
+        .as_slice())
+    );
+    assert_eq!(store.blob(blob), Ok(b"payload".as_slice()));
+}
+
+#[test]
+fn value_store_assigns_deterministic_insertion_order_ids() {
+    let mut store = ValueStore::new();
+
+    assert_eq!(
+        store.insert_symbol(Box::<str>::from("a")),
+        Ok(SymbolId::new(0))
+    );
+    assert_eq!(
+        store.insert_symbol(Box::<str>::from("b")),
+        Ok(SymbolId::new(1))
+    );
+    assert_eq!(
+        store.insert_list(Box::<[SlotValue]>::from([])),
+        Ok(ListId::new(0))
+    );
+    assert_eq!(
+        store.insert_list(Box::<[SlotValue]>::from([SlotValue::Null])),
+        Ok(ListId::new(1))
+    );
+    assert_eq!(
+        store.insert_object(Box::<[ObjectField]>::from([])),
+        Ok(ObjectId::new(0))
+    );
+    assert_eq!(
+        store.insert_object(Box::<[ObjectField]>::from([])),
+        Ok(ObjectId::new(1))
+    );
+    assert_eq!(
+        store.insert_blob(bytes::Bytes::from_static(b"a")),
+        Ok(BlobId::new(0))
+    );
+    assert_eq!(
+        store.insert_blob(bytes::Bytes::from_static(b"b")),
+        Ok(BlobId::new(1))
+    );
+}
+
+#[test]
+fn value_store_rejects_invalid_handles_without_panicking() {
+    let store = ValueStore::new();
+
+    assert_eq!(
+        store.symbol(SymbolId::new(7)),
+        Err(CoreError::SymbolOutOfBounds {
+            symbol: SymbolId::new(7)
+        })
+    );
+    assert_eq!(
+        store.list(ListId::new(8)),
+        Err(CoreError::ListOutOfBounds {
+            list: ListId::new(8)
+        })
+    );
+    assert_eq!(
+        store.object(ObjectId::new(9)),
+        Err(CoreError::ObjectOutOfBounds {
+            object: ObjectId::new(9)
+        })
+    );
+    assert_eq!(
+        store.blob(BlobId::new(10)),
+        Err(CoreError::BlobOutOfBounds {
+            blob: BlobId::new(10)
+        })
+    );
 }
 
 fn roundtrip_id(value: StepIdx) -> StepIdx {

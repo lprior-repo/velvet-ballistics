@@ -3,7 +3,7 @@
 //! Typed core failures with stable diagnostic codes.
 
 use crate::diagnostic::DiagnosticCode;
-use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
+use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -86,6 +86,30 @@ pub enum CoreError {
     /// Allocation failed at a fallible allocation boundary.
     #[error("allocation failed")]
     AllocationFailed,
+    /// A symbol handle did not resolve in the cold value store.
+    #[error("symbol id out of bounds: {symbol:?}")]
+    SymbolOutOfBounds {
+        /// Invalid symbol handle.
+        symbol: SymbolId,
+    },
+    /// A list handle did not resolve in the cold value store.
+    #[error("list id out of bounds: {list:?}")]
+    ListOutOfBounds {
+        /// Invalid list handle.
+        list: ListId,
+    },
+    /// An object handle did not resolve in the cold value store.
+    #[error("object id out of bounds: {object:?}")]
+    ObjectOutOfBounds {
+        /// Invalid object handle.
+        object: ObjectId,
+    },
+    /// A blob handle did not resolve in the cold value store.
+    #[error("blob id out of bounds: {blob:?}")]
+    BlobOutOfBounds {
+        /// Invalid blob handle.
+        blob: BlobId,
+    },
 }
 
 impl CoreError {
@@ -119,6 +143,8 @@ impl CoreError {
     pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x0402);
     /// Allocation failed diagnostic code.
     pub const ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0403);
+    /// Value arena handle out-of-bounds diagnostic code.
+    pub const VALUE_HANDLE_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0411);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -138,6 +164,10 @@ impl CoreError {
             Self::QueueFull => Self::QUEUE_FULL_CODE,
             Self::ResourceLimitExceeded { .. } => Self::RESOURCE_LIMIT_EXCEEDED_CODE,
             Self::AllocationFailed => Self::ALLOCATION_FAILED_CODE,
+            Self::SymbolOutOfBounds { .. }
+            | Self::ListOutOfBounds { .. }
+            | Self::ObjectOutOfBounds { .. }
+            | Self::BlobOutOfBounds { .. } => Self::VALUE_HANDLE_OUT_OF_BOUNDS_CODE,
         }
     }
 }
