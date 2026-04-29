@@ -4,6 +4,7 @@
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
 pub mod ast;
+mod schema;
 pub mod strict_yaml;
 
 use saphyr::{LoadableYamlNode, Yaml};
@@ -118,7 +119,9 @@ impl YamlCompiler {
         let docs = Yaml::load_from_str(text)?;
         let doc = single_document(&docs)?;
         validate_strict_profile(doc, self.limits)?;
-        compile_validated_document(text, doc)
+        let workflow = compile_validated_document(text, doc)?;
+        schema::validate_input_schemas(doc)?;
+        Ok(workflow)
     }
 
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
@@ -130,6 +133,7 @@ impl YamlCompiler {
         let doc = single_document(&docs)?;
         validate_strict_profile(doc, self.limits)?;
         let _ = compile_validated_document(text, doc)?;
+        schema::validate_input_schemas(doc)?;
         ast::parse_workflow_ast(text, doc)
     }
 }
@@ -820,460 +824,13 @@ fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
         field: "inputs",
         expected: "a mapping",
     })?;
-    for (key, value) in mapping {
+    for (key, _) in mapping {
         let Some(name) = key.as_str() else {
             return Err(non_string_key_error());
         };
         validate_public_name("inputs", name)?;
-        validate_input_schema(value, SchemaScope::Input)?;
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SchemaScope {
-    Input,
-    ObjectField,
-}
-
-impl SchemaScope {
-    const fn allows_from(self) -> bool {
-        matches!(self, Self::Input)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SchemaKind {
-    Text,
-    Number,
-    Boolean,
-    Object,
-    List,
-    Any,
-}
-
-impl SchemaKind {
-    fn from_long_form(value: &str) -> Option<Self> {
-        match value {
-            "text" => Some(Self::Text),
-            "number" => Some(Self::Number),
-            "boolean" => Some(Self::Boolean),
-            "object" => Some(Self::Object),
-            "list" => Some(Self::List),
-            "any" => Some(Self::Any),
-            _ => None,
-        }
-    }
-
-    fn from_list_element(value: &str) -> Option<Self> {
-        match value {
-            "any" => Some(Self::Any),
-            "text" => Some(Self::Text),
-            "number" => Some(Self::Number),
-            "boolean" => Some(Self::Boolean),
-            "object" => Some(Self::Object),
-            _ => None,
-        }
-    }
-}
-
-fn validate_input_schema(schema: &Yaml<'_>, scope: SchemaScope) -> Result<(), CompileError> {
-    if let Some(value) = schema.as_str() {
-        validate_schema_shorthand(value)
-    } else if let Some(mapping) = schema.as_mapping() {
-        validate_schema_mapping(mapping, scope)
-    } else {
-        Err(CompileError::FieldShape {
-            field: "inputs",
-            expected: "a mapping of input names to schema strings or schema mappings",
-        })
-    }
-}
-
-fn validate_schema_shorthand(value: &str) -> Result<(), CompileError> {
-    if is_schema_shorthand(value) {
-        Ok(())
-    } else {
-        Err(CompileError::InvalidInputSchema {
-            field: "inputs",
-            expected: "an allowed schema shorthand",
-        })
-    }
-}
-
-fn is_schema_shorthand(value: &str) -> bool {
-    matches!(
-        value,
-        "text"
-            | "number"
-            | "boolean"
-            | "object"
-            | "any"
-            | "list<any>"
-            | "list<text>"
-            | "list<number>"
-            | "list<boolean>"
-    )
-}
-
-fn validate_schema_mapping(
-    mapping: &saphyr::Mapping<'_>,
-    scope: SchemaScope,
-) -> Result<(), CompileError> {
-    reject_unknown_schema_fields(mapping, scope)?;
-    reject_schema_pattern(mapping)?;
-    validate_schema_from(mapping, scope)?;
-    let kind = schema_kind(mapping)?;
-    validate_schema_children(mapping, kind)?;
-    validate_schema_flags(mapping)?;
-    validate_schema_default(mapping, kind)?;
-    validate_schema_bounds(mapping, kind)
-}
-
-fn reject_unknown_schema_fields(
-    mapping: &saphyr::Mapping<'_>,
-    scope: SchemaScope,
-) -> Result<(), CompileError> {
-    for (key, _) in mapping {
-        let Some(field) = key.as_str() else {
-            return Err(non_string_key_error());
-        };
-        if !is_allowed_schema_field(field, scope) {
-            return Err(CompileError::UnknownInputSchemaField {
-                field: Box::<str>::from(field),
-            });
-        }
-    }
-    Ok(())
-}
-
-fn is_allowed_schema_field(field: &str, scope: SchemaScope) -> bool {
-    matches!(
-        field,
-        "is" | "of"
-            | "fields"
-            | "extra"
-            | "optional"
-            | "nullable"
-            | "default"
-            | "min"
-            | "max"
-            | "min_length"
-            | "max_length"
-            | "pattern"
-            | "secret"
-    ) || (field == "from" && scope.allows_from())
-}
-
-fn reject_schema_pattern(mapping: &saphyr::Mapping<'_>) -> Result<(), CompileError> {
-    if mapping_get(mapping, "pattern").is_some() {
-        Err(CompileError::InvalidInputSchema {
-            field: "inputs.pattern",
-            expected: "unsupported until a bounded regex engine exists",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_schema_from(
-    mapping: &saphyr::Mapping<'_>,
-    scope: SchemaScope,
-) -> Result<(), CompileError> {
-    let Some(value) = mapping_get(mapping, "from") else {
-        return Ok(());
-    };
-    if !scope.allows_from() {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.from",
-            expected: "top-level input schemas only",
-        });
-    }
-    match value.as_str() {
-        Some(text) if !text.is_empty() => Ok(()),
-        _ => Err(CompileError::InvalidInputSchema {
-            field: "inputs.from",
-            expected: "a non-empty string",
-        }),
-    }
-}
-
-fn schema_kind(mapping: &saphyr::Mapping<'_>) -> Result<SchemaKind, CompileError> {
-    let Some(value) = mapping_get(mapping, "is") else {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.is",
-            expected: "one of text, number, boolean, object, list, any",
-        });
-    };
-    let Some(kind) = value.as_str().and_then(SchemaKind::from_long_form) else {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.is",
-            expected: "one of text, number, boolean, object, list, any",
-        });
-    };
-    Ok(kind)
-}
-
-fn validate_schema_children(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    validate_schema_of(mapping, kind)?;
-    validate_schema_fields(mapping, kind)?;
-    validate_schema_extra(mapping, kind)
-}
-
-fn validate_schema_of(mapping: &saphyr::Mapping<'_>, kind: SchemaKind) -> Result<(), CompileError> {
-    let Some(value) = mapping_get(mapping, "of") else {
-        return require_list_element_schema(kind);
-    };
-    if kind != SchemaKind::List {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.of",
-            expected: "present only when is is list",
-        });
-    }
-    let Some(_) = value.as_str().and_then(SchemaKind::from_list_element) else {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.of",
-            expected: "one of any, text, number, boolean, object",
-        });
-    };
-    Ok(())
-}
-
-fn require_list_element_schema(kind: SchemaKind) -> Result<(), CompileError> {
-    if kind == SchemaKind::List {
-        Err(CompileError::InvalidInputSchema {
-            field: "inputs.of",
-            expected: "required when is is list",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_schema_fields(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    let Some(value) = mapping_get(mapping, "fields") else {
-        return Ok(());
-    };
-    if kind != SchemaKind::Object {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.fields",
-            expected: "present only when is is object",
-        });
-    }
-    let Some(fields) = value.as_mapping() else {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.fields",
-            expected: "a mapping of field names to schemas",
-        });
-    };
-    for (key, field_schema) in fields {
-        let Some(field) = key.as_str() else {
-            return Err(non_string_key_error());
-        };
-        validate_public_name("inputs.fields", field)?;
-        validate_input_schema(field_schema, SchemaScope::ObjectField)?;
-    }
-    Ok(())
-}
-
-fn validate_schema_extra(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    let Some(value) = mapping_get(mapping, "extra") else {
-        return Ok(());
-    };
-    if kind != SchemaKind::Object {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.extra",
-            expected: "present only when is is object",
-        });
-    }
-    match value.as_str() {
-        Some("allow" | "reject") => Ok(()),
-        _ => Err(CompileError::InvalidInputSchema {
-            field: "inputs.extra",
-            expected: "allow or reject",
-        }),
-    }
-}
-
-fn validate_schema_flags(mapping: &saphyr::Mapping<'_>) -> Result<(), CompileError> {
-    ["optional", "nullable", "secret"]
-        .into_iter()
-        .try_for_each(|field| validate_schema_bool_field(mapping, field))
-}
-
-fn validate_schema_bool_field(
-    mapping: &saphyr::Mapping<'_>,
-    field: &'static str,
-) -> Result<(), CompileError> {
-    match mapping_get(mapping, field) {
-        Some(value) if yaml_bool(value).is_none() => Err(CompileError::InvalidInputSchema {
-            field: "inputs boolean flag",
-            expected: "a boolean",
-        }),
-        _ => Ok(()),
-    }
-}
-
-fn validate_schema_default(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    let Some(value) = mapping_get(mapping, "default") else {
-        return Ok(());
-    };
-    let nullable = schema_bool(mapping, "nullable")?;
-    if matches!(value, Yaml::Value(saphyr::Scalar::Null)) {
-        return validate_null_default(kind, nullable);
-    }
-    if default_matches_kind(value, kind) {
-        Ok(())
-    } else {
-        Err(CompileError::InvalidInputSchema {
-            field: "inputs.default",
-            expected: "a value matching the declared schema type",
-        })
-    }
-}
-
-fn validate_null_default(kind: SchemaKind, nullable: bool) -> Result<(), CompileError> {
-    if nullable || kind == SchemaKind::Any {
-        Ok(())
-    } else {
-        Err(CompileError::InvalidInputSchema {
-            field: "inputs.default",
-            expected: "null only when nullable is true or is is any",
-        })
-    }
-}
-
-fn default_matches_kind(value: &Yaml<'_>, kind: SchemaKind) -> bool {
-    match kind {
-        SchemaKind::Text => value.as_str().is_some(),
-        SchemaKind::Number => value.as_integer().is_some(),
-        SchemaKind::Boolean => yaml_bool(value).is_some(),
-        SchemaKind::Object => value.is_mapping(),
-        SchemaKind::List => value.as_sequence().is_some(),
-        SchemaKind::Any => true,
-    }
-}
-
-fn validate_schema_bounds(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    validate_min_max_bounds(mapping, kind)?;
-    validate_text_length_bounds(mapping, kind)
-}
-
-fn validate_min_max_bounds(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    let min = optional_integer_schema_field(mapping, "min")?;
-    let max = optional_integer_schema_field(mapping, "max")?;
-    if min.is_none() && max.is_none() {
-        return Ok(());
-    }
-    if !matches!(kind, SchemaKind::Number | SchemaKind::List) {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.min/max",
-            expected: "present only for number or list schemas",
-        });
-    }
-    if kind == SchemaKind::List && [min, max].into_iter().flatten().any(|value| value < 0) {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.min/max",
-            expected: "non-negative list length bounds",
-        });
-    }
-    validate_ordered_bounds(min, max, "inputs.min/max")
-}
-
-fn validate_text_length_bounds(
-    mapping: &saphyr::Mapping<'_>,
-    kind: SchemaKind,
-) -> Result<(), CompileError> {
-    let min = optional_integer_schema_field(mapping, "min_length")?;
-    let max = optional_integer_schema_field(mapping, "max_length")?;
-    if min.is_none() && max.is_none() {
-        return Ok(());
-    }
-    if kind != SchemaKind::Text {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.min_length/max_length",
-            expected: "present only for text schemas",
-        });
-    }
-    if [min, max].into_iter().flatten().any(|value| value < 0) {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.min_length/max_length",
-            expected: "non-negative text length bounds",
-        });
-    }
-    validate_ordered_bounds(min, max, "inputs.min_length/max_length")
-}
-
-fn validate_ordered_bounds(
-    min: Option<i64>,
-    max: Option<i64>,
-    field: &'static str,
-) -> Result<(), CompileError> {
-    match (min, max) {
-        (Some(min), Some(max)) if min > max => Err(CompileError::InvalidInputSchema {
-            field,
-            expected: "min less than or equal to max",
-        }),
-        _ => Ok(()),
-    }
-}
-
-fn optional_integer_schema_field(
-    mapping: &saphyr::Mapping<'_>,
-    field: &'static str,
-) -> Result<Option<i64>, CompileError> {
-    match mapping_get(mapping, field) {
-        Some(value) => value
-            .as_integer()
-            .map(Some)
-            .ok_or(CompileError::InvalidInputSchema {
-                field,
-                expected: "an integer",
-            }),
-        None => Ok(None),
-    }
-}
-
-fn schema_bool(mapping: &saphyr::Mapping<'_>, field: &str) -> Result<bool, CompileError> {
-    match mapping_get(mapping, field) {
-        Some(value) => yaml_bool(value).ok_or(CompileError::InvalidInputSchema {
-            field: "inputs boolean flag",
-            expected: "a boolean",
-        }),
-        None => Ok(false),
-    }
-}
-
-fn yaml_bool(node: &Yaml<'_>) -> Option<bool> {
-    match node {
-        Yaml::Value(saphyr::Scalar::Boolean(value)) => Some(*value),
-        _ => None,
-    }
-}
-
-fn mapping_get<'a>(mapping: &'a saphyr::Mapping<'a>, field: &str) -> Option<&'a Yaml<'a>> {
-    mapping.iter().find_map(|(key, value)| match key.as_str() {
-        Some(name) if name == field => Some(value),
-        _ => None,
-    })
 }
 
 fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -1378,7 +935,7 @@ fn required_step_id<'a>(step: &'a Yaml<'a>, index: usize) -> Result<&'a str, Com
     })
 }
 
-fn validate_public_name(field: &'static str, value: &str) -> Result<(), CompileError> {
+pub(crate) fn validate_public_name(field: &'static str, value: &str) -> Result<(), CompileError> {
     if is_public_name(value) {
         Ok(())
     } else {
@@ -2062,6 +1619,24 @@ mod tests {
         YamlCompiler::default().compile(source.as_bytes())
     }
 
+    fn compile_error_text(source: &[u8]) -> String {
+        match YamlCompiler::default().compile(source) {
+            Ok(_) => "compile unexpectedly succeeded".to_owned(),
+            Err(error) => error.to_string(),
+        }
+    }
+
+    fn parse_ast_error_text(source: &[u8]) -> String {
+        match YamlCompiler::default().parse_ast(source) {
+            Ok(_) => "parse_ast unexpectedly succeeded".to_owned(),
+            Err(error) => error.to_string(),
+        }
+    }
+
+    fn assert_compile_parse_first_error(source: &[u8]) {
+        assert_eq!(compile_error_text(source), parse_ast_error_text(source));
+    }
+
     #[test]
     fn compiler_rejects_save_object_until_handle_arenas_exist() {
         let source = br#"
@@ -2239,6 +1814,54 @@ steps:
                 "schema shorthand {shorthand} should be rejected"
             );
         }
+    }
+
+    #[test]
+    fn compiler_and_ast_report_same_schema_diagnostics() {
+        for inputs in [
+            "  value: integer\n",
+            "  value:\n    is: text\n    kind: text\n",
+            "  value:\n    is: text\n    default: 1\n",
+        ] {
+            let source = format!(
+                "version: velvet/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
+            );
+
+            assert_compile_parse_first_error(source.as_bytes());
+        }
+    }
+
+    #[test]
+    fn schema_validation_does_not_preempt_yaml_profile_errors() {
+        assert_compile_parse_first_error(
+            b"version: velvet/v1\nname: &n schema_case\ninputs:\n  value: integer\ncopy: *n\n",
+        );
+    }
+
+    #[test]
+    fn schema_validation_does_not_preempt_duplicate_key_errors() {
+        assert_compile_parse_first_error(
+            b"version: velvet/v1\nversion: velvet/v1\nname: schema_case\ninputs:\n  value: integer\n",
+        );
+    }
+
+    #[test]
+    fn schema_validation_does_not_preempt_lowering_errors() {
+        let source = b"version: velvet/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: route\n    choose: true\n";
+
+        assert_eq!(
+            compile_error_text(source),
+            CompileError::LastStepMustFinish.to_string()
+        );
+        assert_compile_parse_first_error(source);
+    }
+
+    #[test]
+    fn schema_validation_does_not_preempt_finish_position_errors() {
+        let source = b"version: velvet/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: early\n    finish:\n      result: 0\n      status: success\n  - id: done\n    finish:\n      result: 0\n";
+
+        assert!(compile_error_text(source).contains("field finish"));
+        assert_compile_parse_first_error(source);
     }
 
     #[test]
