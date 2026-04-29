@@ -1,4 +1,4 @@
-# Test and Benchmark Plan: Velvet Ballistics
+# Test and Benchmark Plan: Velvet Ballastics
 
 ## Summary
 - Scope: compiled IR hot loop, numeric slots, bounded `MemoryIngress`, Fjall append-only journal, replay/durability, and proof that HTTP is not on the hot path.
@@ -178,7 +178,7 @@
   - Then: forbidden tokens `async fn`, `.await`, `tokio::spawn`, `std::fs`, `serde_json`, `serde_yaml`, and `HashMap<String` are absent.
 - Test: `fn cli_help_declares_no_http_hot_path()`
   - Given: installed/debug binary.
-  - When: running `velvet-ballistics help`.
+  - When: running `velvet-ballastics help`.
   - Then: stdout contains `compiled IR`, `bounded IPC`, `Fjall journal`, and `no HTTP hot path`.
 
 ## 4. Proptest Invariants
@@ -282,9 +282,9 @@ Threshold: `cargo mutants --workspace` must kill >= 90% of mutations. `vb-core::
 | numeric slot min | `SlotIdx::new(0)` in bounds | exact `SlotValue`/`Taint` | unit |
 | numeric slot max valid | `slot_count - 1` | exact `SlotValue`/`Taint` | unit/property |
 | numeric slot first invalid | `slot_count` | `Err(EngineError::SlotOutOfBounds { slot })` | unit/property |
-| set const happy | valid constant/output | `EngineSignal::Continue`; exact slot value | unit/integration |
-| set const missing output | impossible IR shape | compile-time/type-level rejection | unit/compile-fail |
-| set const missing constant | invalid `ConstIdx` | `Err(EngineError::ConstOutOfBounds { constant })` | unit |
+| save const happy | valid constant/output | `EngineSignal::Continue`; exact slot value | unit/integration |
+| save const missing output | impossible IR shape | compile-time/type-level rejection | unit/compile-fail |
+| save const missing constant | invalid `ConstIdx` | `Err(EngineError::ConstOutOfBounds { constant })` | unit |
 | copy happy | valid source/output | exact copied value and taint | unit/integration |
 | choose true | `SlotValue::Bool(true)` | current step equals `on_true` | unit |
 | choose false | `SlotValue::Bool(false)` | current step equals `on_false` | unit |
@@ -304,9 +304,9 @@ Threshold: `cargo mutants --workspace` must kill >= 90% of mutations. `vb-core::
 Use Criterion for micro/throughput benchmarks and Iai-Callgrind or `perf stat` for instruction/cache regression checks. Benchmarks must run with default `bench` profile and max-performance profile; record CPU model, governor, rustc nightly, and `RUSTFLAGS`.
 
 ### Engine hot loop benchmarks
-- `bench_engine_step_once_set_const_single_transition`: one `SetConst` node, assert throughput in transitions/sec and ns/transition.
-- `bench_engine_run_set_chain_10_steps`: 10 deterministic `SetConst`/`Copy` steps ending in `Finish`.
-- `bench_engine_run_set_chain_1000_steps`: 1,000 deterministic steps; reports ns/step and branch miss rate with `perf`.
+- `bench_engine_step_once_save_const_single_transition`: one `SetConst` node compiled from public `save`, assert throughput in transitions/sec and ns/transition.
+- `bench_engine_run_save_chain_10_steps`: 10 deterministic `SetConst`/`Copy` IR steps ending in `Finish`.
+- `bench_engine_run_save_chain_1000_steps`: 1,000 deterministic steps; reports ns/step and branch miss rate with `perf`.
 - `bench_engine_choose_true_branch`: boolean true branch with hot condition slot.
 - `bench_engine_choose_false_branch`: boolean false branch with hot condition slot.
 - `bench_engine_finish_no_observability`: minimal run to finish with no journal/observability calls.
@@ -349,8 +349,8 @@ cargo +nightly test --workspace --all-targets
 cargo +nightly test -p vb-core --lib
 cargo +nightly test -p vb-ipc --lib
 cargo +nightly test -p vb-storage --lib
-cargo +nightly run -p velvet-ballistics -- help
-cargo +nightly run -p velvet-ballistics -- version
+cargo +nightly run -p velvet-ballastics -- help
+cargo +nightly run -p velvet-ballastics -- version
 cargo tree -p vb-core
 cargo tree -p vb-ipc
 cargo tree -p vb-storage

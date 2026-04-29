@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballistics"
+name = "velvet-ballastics"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

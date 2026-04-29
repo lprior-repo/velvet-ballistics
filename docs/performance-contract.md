@@ -1,6 +1,6 @@
 # Performance Contract
 
-Velvet Ballistics optimizes latency and throughput by refusing to put authoring concerns on the execution path.
+Velvet Ballastics optimizes latency and throughput by refusing to put authoring concerns on the execution path.
 
 ## Non-Negotiable Contract
 
@@ -8,7 +8,7 @@ Velvet Ballistics optimizes latency and throughput by refusing to put authoring 
 2. A run binds to an immutable compiled workflow digest.
 3. Runtime references are numeric slot accesses.
 4. Runtime steps are numeric state transitions.
-5. Expressions are compiled programs, not strings.
+  5. Expression support must compile to programs, not runtime strings; Phase 0 uses direct IR node behavior.
 6. The engine does not spawn one task per step.
 7. Deterministic runs execute in a tight synchronous loop.
 8. Side-effect boundaries are explicit and durable according to policy.

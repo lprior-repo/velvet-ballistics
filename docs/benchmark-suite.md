@@ -2,9 +2,9 @@
 
 Benchmarks are part of the product contract. The first benchmark targets are:
 
-- `set_const` single-step transition.
-- `set` chain with 10 steps.
-- `set` chain with 1,000 steps.
+- `save_const` single-step transition.
+- `save` chain with 10 steps.
+- `save` chain with 1,000 steps.
 - `choose` with true and false branches.
 - full no-op run with observability off.
 - memory ingress submit/receive throughput.

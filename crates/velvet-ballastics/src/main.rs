@@ -1,9 +1,9 @@
-//! Velvet Ballistics binary entrypoint.
+//! Velvet Ballastics binary entrypoint.
 
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-const HELP: &str = "velvet-ballistics\n\ncommands:\n  help       print this message\n  version    print version\n\narchitecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
+const HELP: &str = "velvet-ballastics\n\ncommands:\n  help       print this message\n  version    print version\n\narchitecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 
 fn main() -> ExitCode {
     match command_from_args(std::env::args_os().nth(1)) {
@@ -12,7 +12,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Version => {
-            println!("velvet-ballistics {}", env!("CARGO_PKG_VERSION"));
+            println!("velvet-ballastics {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
         }
         Command::Invalid => {

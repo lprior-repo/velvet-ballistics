@@ -28,6 +28,10 @@ pub enum SlotValue {
     Text(Box<str>),
     /// Shared byte buffer for IPC/action boundaries.
     Bytes(Bytes),
+    /// Deterministic object value with compile-time ordered fields.
+    Object(Box<[(Box<str>, SlotValue)]>),
+    /// Ordered list value.
+    List(Box<[SlotValue]>),
 }
 
 impl SlotValue {

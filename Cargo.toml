@@ -4,14 +4,35 @@ members = [
     "crates/vb-core",
     "crates/vb-ipc",
     "crates/vb-storage",
-    "crates/velvet-ballistics",
+    "crates/velvet-ballastics",
+    "fuzz",
 ]
 resolver = "3"
+
+# Root package for workspace-level integration tests
+[package]
+name = "velvet-ballistics-workspace"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+version = "0.1.0"
+publish = false
+
+[dev-dependencies]
+toml = "0.8"
+serde_yaml = "0.9"
+criterion = "0.5"
+
+[profile.bench]
+inherits = "release"
+debug = true
+lto = "thin"
+codegen-units = 1
 
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.90"
+rust-version = "1.91"
 version = "0.1.0"
 
 [workspace.dependencies]
@@ -22,6 +43,7 @@ crossbeam-channel = "0.5.15"
 fjall = { version = "3.1.4", default-features = false, features = ["lz4"] }
 postcard = { version = "1.1.1", features = ["alloc"] }
 saphyr = { version = "0.0.6", default-features = false }
+saphyr-parser = "0.0.6"
 serde = { version = "1.0.228", features = ["derive"] }
 serde-saphyr = { version = "0.0.25", default-features = false, features = ["deserialize"] }
 thiserror = "2.0.17"
@@ -68,9 +90,3 @@ inherits = "release"
 lto = "fat"
 codegen-units = 1
 debug = false
-
-[profile.bench]
-inherits = "release"
-debug = true
-lto = "thin"
-codegen-units = 1

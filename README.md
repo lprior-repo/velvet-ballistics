@@ -1,8 +1,8 @@
-# Velvet Ballistics
+# Velvet Ballastics
 
-Velvet Ballistics is a nightly-Rust, single-binary orchestration engine scaffold optimized for low-latency in-memory execution with Fjall as the append-only durability log.
+Velvet Ballastics is a nightly-Rust, single-binary orchestration engine scaffold optimized for low-latency in-memory execution with Fjall as the append-only durability log.
 
-The product constraint is explicit: no HTTP control plane in the hot path. YAML is an authoring format only. Runtime execution uses compiled numeric workflow state, bounded queues, preallocated run frames, and binary journal records.
+The product constraint is explicit: no HTTP control plane in the hot path. YAML is an authoring format only. Runtime execution uses compiled numeric workflow state, bounded queues, bounded run frames, and binary journal records.
 
 ## Architecture Spine
 
@@ -24,7 +24,7 @@ crates/vb-core              hot in-memory engine, compiled IR, slot values
 crates/vb-compiler          native Rust YAML cold compiler boundary
 crates/vb-ipc               bounded memory ingress primitives, no HTTP
 crates/vb-storage           Fjall append-only journal boundary
-crates/velvet-ballistics    binary entrypoint
+crates/velvet-ballastics    binary entrypoint
 docs/                       runtime and performance contracts
 benches/                    benchmark placeholders
 ```

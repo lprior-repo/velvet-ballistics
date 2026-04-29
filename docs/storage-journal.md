@@ -34,8 +34,8 @@ Default policy target:
 - `RunAccepted` is durable before acknowledgement.
 - `StepStarted` for side-effecting actions is durable before the external effect.
 - `StepSucceeded` for side-effecting actions is durable before downstream side effects.
-- Pure `set`/`choose` chains may group-commit when replay semantics remain valid.
+- Pure `save`/`choose` chains may group-commit when replay semantics remain valid.
 
 ## Recovery
 
-Replay hydrates `RunFrame` state from `RunAccepted` plus ordered step events. Snapshots can be added after the event log is stable; they must never replace immutable event history.
+Current replay returns ordered per-run events. Future recovery will hydrate `RunFrame` state from `RunAccepted` plus ordered step events. Snapshots can be added after the event log is stable; they must never replace immutable event history.

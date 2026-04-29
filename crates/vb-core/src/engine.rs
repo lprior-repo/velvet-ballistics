@@ -243,6 +243,30 @@ mod tests {
     }
 
     #[test]
+    fn set_chain_finishes_with_object_slot_value() {
+        let value = SlotValue::Object(Box::new([
+            (
+                Box::<str>::from("text"),
+                SlotValue::Text(Box::<str>::from("Hello")),
+            ),
+            (
+                Box::<str>::from("tags"),
+                SlotValue::List(Box::new([SlotValue::Text(Box::<str>::from("demo"))])),
+            ),
+        ]));
+        let workflow = tiny_workflow(value.clone());
+        assert!(workflow.is_ok());
+        let Ok(workflow) = workflow else {
+            return;
+        };
+        let mut run = RunFrame::new(RunId::new(8), &workflow);
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX);
+
+        assert_eq!(result, Ok(EngineSignal::Finished(value)));
+    }
+
+    #[test]
     fn zero_budget_is_rejected() {
         let budget = StepBudget::new(0);
 

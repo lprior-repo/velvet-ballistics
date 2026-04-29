@@ -1,4 +1,4 @@
-//! Bounded memory ingress for Velvet Ballistics.
+//! Bounded memory ingress for Velvet Ballastics.
 //!
 //! This crate deliberately exposes memory/IPC-shaped primitives only. HTTP is
 //! not part of the hot control plane.

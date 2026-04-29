@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-Velvet Ballistics is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
+Velvet Ballastics is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
 
 ## Pipeline
 
@@ -20,7 +20,7 @@ workflow.yaml
 
 1. Runtime state transitions use `StepIdx`, not YAML nodes.
 2. Runtime data uses `SlotIdx`, not `HashMap<String, Value>`.
-3. Expressions compile to bytecode before a run is accepted.
+3. Future expressions compile to bytecode before a run is accepted; Phase 0 encodes public `save` plus internal `SetConst`/`Copy`/`Choose`/`Finish` IR nodes.
 4. Actions resolve to numeric `ActionId` values before execution.
 5. Deterministic steps execute synchronously until finish or an async boundary.
 6. Engine shards do not spawn one task per step.
@@ -39,7 +39,7 @@ workflow.yaml
 
 `vb-storage` owns the Fjall durability boundary. It writes append-only binary journal events and exposes explicit persistence barriers.
 
-`velvet-ballistics` wires the binary surface. The binary may expose operator commands, but the runtime control plane remains memory/IPC-first.
+`velvet-ballastics` wires the binary surface. The binary may expose operator commands, but the runtime control plane remains memory/IPC-first.
 
 ## Nightly Rust Policy
 

@@ -1,6 +1,6 @@
 # IPC And Memory Boundary
 
-Velvet Ballistics does not use HTTP as the runtime control plane. The primary ingress shape is a bounded memory queue carrying binary frames.
+Velvet Ballastics does not use HTTP as the runtime control plane. The primary ingress shape is a bounded memory queue carrying binary frames.
 
 ## Initial Boundary
 
