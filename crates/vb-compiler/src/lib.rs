@@ -4,6 +4,7 @@
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
 pub mod ast;
+mod references;
 mod schema;
 pub mod strict_yaml;
 
@@ -121,6 +122,8 @@ impl YamlCompiler {
         validate_strict_profile(doc, self.limits)?;
         let workflow = compile_validated_document(text, doc)?;
         schema::validate_input_schemas(doc)?;
+        let ast = ast::parse_workflow_ast(text, doc)?;
+        references::validate_workflow_ast(&ast)?;
         Ok(workflow)
     }
 
@@ -134,7 +137,9 @@ impl YamlCompiler {
         validate_strict_profile(doc, self.limits)?;
         let _ = compile_validated_document(text, doc)?;
         schema::validate_input_schemas(doc)?;
-        ast::parse_workflow_ast(text, doc)
+        let ast = ast::parse_workflow_ast(text, doc)?;
+        references::validate_workflow_ast(&ast)?;
+        Ok(ast)
     }
 }
 
@@ -480,6 +485,30 @@ pub enum CompileError {
     UnsupportedConstantValue {
         /// Step index.
         step: usize,
+    },
+    /// Reference root is not part of the bounded Velvet v1 reference surface.
+    #[error("unknown reference root in {reference}: {root}")]
+    UnknownReferenceRoot {
+        /// Full source reference string.
+        reference: Box<str>,
+        /// Unknown root segment without the leading `$`.
+        root: Box<str>,
+    },
+    /// Reference root is known but forbidden in deterministic compiled IR.
+    #[error("illegal reference in deterministic workflow: {reference}")]
+    IllegalReference {
+        /// Full source reference string.
+        reference: Box<str>,
+    },
+    /// Reference points at an undeclared input, variable, secret, or step.
+    #[error("unknown {kind} reference in {reference}: {name}")]
+    UnknownReferenceName {
+        /// Declaration table that was searched.
+        kind: &'static str,
+        /// Full source reference string.
+        reference: Box<str>,
+        /// Missing declaration name.
+        name: Box<str>,
     },
 }
 
