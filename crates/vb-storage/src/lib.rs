@@ -216,7 +216,7 @@ pub enum JournalError {
 
 fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
     let mut key = ArrayVec::<u8, JOURNAL_KEY_BYTES>::new();
-    key.try_extend_from_slice(&run.as_u128().to_be_bytes())
+    key.try_extend_from_slice(&u128::from(run.as_u64()).to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&seq.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -224,7 +224,7 @@ fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], Jou
 }
 
 fn run_prefix(run: RunId) -> [u8; 16] {
-    run.as_u128().to_be_bytes()
+    u128::from(run.as_u64()).to_be_bytes()
 }
 
 fn validate_replayed_event(

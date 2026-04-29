@@ -1,6 +1,6 @@
 //! Synchronous in-memory state-machine loop.
 
-use crate::error::EngineError;
+use crate::errors::EngineError;
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{CompiledNodeKind, CompiledWorkflow};

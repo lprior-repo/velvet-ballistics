@@ -1303,6 +1303,7 @@ name = "vb-core"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "postcard",
  "serde",
  "thiserror",
 ]

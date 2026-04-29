@@ -1,12 +1,46 @@
+# Rust build output
 target/
+
+# Local agent/search state
 .memsearch/
+
+# Environment and secrets
 .env
 .env.*
+!.env.example
+!.env.sample
+
+# Beads / Dolt local state
+.dolt/
+.beads/dolt/
+.beads/backup/
+.beads/embeddeddolt/
+.beads-credential-key
+
+# Runtime lock/log/socket state
+*.lock
+*.log
+*.pid
+*.sock
+*.socket
+run/
+runtime/
+tmp/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Coverage and performance artifacts
 *.profraw
 *.profdata
+*.gcda
+*.gcno
+*.lcov
+coverage/
+criterion/
 perf.data*
-
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
+flamegraph.svg
+heaptrack.*
+callgrind.out.*

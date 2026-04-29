@@ -35,6 +35,20 @@ pub enum SlotValue {
 }
 
 impl SlotValue {
+    /// Returns the stable runtime type name for diagnostics.
+    #[must_use]
+    pub const fn type_name(&self) -> &'static str {
+        match self {
+            Self::Null => "null",
+            Self::Bool(_) => "boolean",
+            Self::I64(_) => "number",
+            Self::Text(_) => "text",
+            Self::Bytes(_) => "bytes",
+            Self::Object(_) => "object",
+            Self::List(_) => "list",
+        }
+    }
+
     /// Returns true only for `Bool(true)`.
     #[must_use]
     pub const fn is_true(&self) -> bool {

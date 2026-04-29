@@ -1,0 +1,202 @@
+fileGroups:
+  sources:
+    - 'Cargo.toml'
+    - 'Cargo.lock'
+    - 'rust-toolchain.toml'
+    - 'src/**/*'
+    - 'crates/**/*'
+    - 'benches/**/*'
+    - 'examples/**/*'
+    - 'build.rs'
+  tests:
+    - 'tests/**/*'
+    - 'fuzz/**/*'
+  configs:
+    - '.cargo/**/*'
+    - '.github/**/*'
+    - '.moon/**/*'
+    - '.config/**/*'
+    - 'deny.toml'
+    - 'vet.toml'
+    - 'justfile'
+  docs:
+    - 'README.md'
+    - 'docs/**/*'
+
+tasks:
+  fmt:
+    command: 'cargo +nightly-2026-04-28 fmt --all --check'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  lint-src:
+    command: 'cargo +nightly-2026-04-28 clippy --workspace --lib --bins --examples --all-features -- -D warnings -W clippy::all -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::print_stdout -D clippy::print_stderr'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  check:
+    command: 'cargo +nightly-2026-04-28 check --workspace --all-targets --all-features'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  test:
+    command: 'cargo +nightly-2026-04-28 nextest run --workspace --all-features'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/nextest/**'
+    options:
+      runInCI: true
+
+  doc:
+    command: 'cargo +nightly-2026-04-28 doc --workspace --all-features --no-deps'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+      - '@globs(docs)'
+    outputs:
+      - 'target/doc/**'
+    options:
+      runInCI: true
+
+  supply-chain:
+    script: |
+      cargo +nightly-2026-04-28 audit
+      cargo +nightly-2026-04-28 deny check
+      cargo +nightly-2026-04-28 vet --locked
+      cargo +nightly-2026-04-28 geiger --all-features --output-format GitHubMarkdown
+      cargo +nightly-2026-04-28 machete
+    toolchains:
+      - rust
+    inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deny.toml'
+      - 'vet.toml'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  feature-powerset:
+    command: 'cargo +nightly-2026-04-28 hack check --workspace --feature-powerset --no-dev-deps'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  miri:
+    command: 'cargo +nightly-2026-04-28 miri test --workspace --all-features'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  coverage:
+    command: 'cargo +nightly-2026-04-28 llvm-cov nextest --workspace --all-features --lcov --output-path target/llvm-cov/lcov.info'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/llvm-cov/**'
+    options:
+      runInCI: true
+
+  mutants-smoke:
+    command: 'cargo +nightly-2026-04-28 mutants --workspace --no-shuffle --timeout 60 --jobs 2 --in-place --minimum-test-timeout 10'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  fuzz-smoke:
+    command: 'cargo +nightly-2026-04-28 fuzz build'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  bench-build:
+    command: 'cargo +nightly-2026-04-28 bench --workspace --all-features --no-run'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/release/deps/**'
+    options:
+      runInCI: true
+
+  maxperf:
+    command: 'cargo +nightly-2026-04-28 build --workspace --all-features --release'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/release/**'
+    options:
+      runInCI: true
+
+  maxperf-native:
+    command: 'cargo +nightly-2026-04-28 rustc --workspace --all-features --release -- -C target-cpu=native'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/release/**'
+    options:
+      runInCI: true
+
+  quick:
+    script: |
+      moon run :fmt
+      moon run :lint-src
+      moon run :check
+    options:
+      runInCI: false
