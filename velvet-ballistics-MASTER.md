@@ -686,7 +686,7 @@ pub enum CompiledNodeKind {
     BuildObject { fields: Box<[(SymbolId, SlotIdx)]> },
     BuildList { items: Box<[SlotIdx]> },
     Do { action: ActionId, input: SlotIdx },
-    ChooseExpr { branches: Box<[ExprBranch]>, otherwise: Option<StepIdx> },
+    Choose { branches: Box<[ExprBranch]>, otherwise: Option<StepIdx> },
     ChooseSlot { branches: Box<[SlotBranch]>, otherwise: Option<StepIdx> },
     ForEachStart { input: SlotIdx, item_slot: SlotIdx, limit: u32, body: StepIdx, done: StepIdx },
     ForEachNext { iterator_slot: SlotIdx, body: StepIdx, done: StepIdx },
@@ -716,11 +716,11 @@ pub enum CompiledNodeKind {
 }
 ```
 
-The final `CompiledNodeKind` includes all primitives: `Nop`, `SetConst`, `Copy`, `EvalExpr`, `BuildObject`, `BuildList`, `Do`, `ChooseExpr`, `ChooseSlot`, `ForEachStart`, `ForEachNext`, `ForEachJoin`, `TogetherStart`, `TogetherBranch`, `TogetherJoin`, `CollectStart`, `CollectPage`, `CollectNext`, `CollectFinish`, `ReduceStart`, `ReduceNext`, `ReduceFinish`, `RepeatStart`, `RepeatAttempt`, `RepeatCheck`, `RepeatFinish`, `WaitUntil`, `WaitEvent`, `Ask`, `AskResume`, `RetryCheck`, `ErrorHandler`, `Jump`, and `Finish`.
+The final `CompiledNodeKind` includes all primitives: `Nop`, `SetConst`, `Copy`, `EvalExpr`, `BuildObject`, `BuildList`, `Do`, `Choose`, `ChooseSlot`, `ForEachStart`, `ForEachNext`, `ForEachJoin`, `TogetherStart`, `TogetherBranch`, `TogetherJoin`, `CollectStart`, `CollectPage`, `CollectNext`, `CollectFinish`, `ReduceStart`, `ReduceNext`, `ReduceFinish`, `RepeatStart`, `RepeatAttempt`, `RepeatCheck`, `RepeatFinish`, `WaitUntil`, `WaitEvent`, `Ask`, `AskResume`, `RetryCheck`, `ErrorHandler`, `Jump`, and `Finish`.
 
-Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only. Generated Rust may skip IR dispatch but must preserve identical semantics. Final choose IR has exactly two forms: `ChooseExpr` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and an ambiguous generic choose node are forbidden in final IR.
+Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only. Generated Rust may skip IR dispatch but must preserve identical semantics. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
-Legacy names such as `CopySlot`, `DoAction`, `Choose`, `TryAgain`, and `OnError` are migration notes only and must not be the final public IR. The deprecated migration-only `Choose` name may appear only in import adapters or migration tests that immediately normalize to `ChooseExpr` or `ChooseSlot` before validation succeeds.
+Legacy names such as `CopySlot`, `DoAction`, `TryAgain`, and `OnError` are migration notes only and must not be the final public IR. Deprecated untyped choose examples may appear only in import adapters or migration tests that immediately normalize to `Choose` or `ChooseSlot` before validation succeeds.
 
 ```rust
 pub enum DeprecatedCompiledNodeKindExampleOnly {
@@ -792,7 +792,7 @@ impl ConstValue {
 }
 ```
 
-`choose` lowering rule: conditions must be `ExprIdx` in `ChooseExpr`, or must be materialized by `EvalExpr -> SlotIdx` followed by `ChooseSlot`. Runtime must not evaluate raw YAML condition strings. `ChooseSlot` accepts only slots whose validated static type is boolean; non-boolean slot values return `CoreError::TypeMismatch { expected: "boolean", found }`.
+`choose` lowering rule: conditions must be `ExprIdx` in `Choose`, or must be materialized by `EvalExpr -> SlotIdx` followed by `ChooseSlot`. Runtime must not evaluate raw YAML condition strings. `ChooseSlot` accepts only slots whose validated static type is boolean; non-boolean slot values return `CoreError::TypeMismatch { expected: "boolean", found }`.
 
 ### `frame.rs`
 
@@ -1046,7 +1046,7 @@ EvalExpr
 BuildObject
 BuildList
 Do
-ChooseExpr
+Choose
 ChooseSlot
 ForEachStart
 ForEachNext
@@ -1077,7 +1077,7 @@ Finish
 
 Generated Rust execution may lower these into direct `match` arms or straight-line functions. It must keep the same step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode.
 
-Final choose contract: `ChooseExpr { branches, otherwise }` evaluates `ExprBranch { condition: ExprIdx, target }` in order and jumps to the first true expression; `ChooseSlot { branches, otherwise }` reads `SlotBranch { condition: SlotIdx, target }` in order after those slots have been materialized by prior IR. `ChooseSlot` condition slots must be validated as boolean slots. If no branch matches, `otherwise` is taken; missing `otherwise` with no match is `CoreError::MissingNextStep { step: current }`. The generic name `Choose` is migration-only and is not part of final IR.
+Final choose contract: `Choose { branches, otherwise }` evaluates `ExprBranch { condition: ExprIdx, target }` in order and jumps to the first true expression; `ChooseSlot { branches, otherwise }` reads `SlotBranch { condition: SlotIdx, target }` in order after those slots have been materialized by prior IR. `ChooseSlot` condition slots must be validated as boolean slots. If no branch matches, `otherwise` is taken; missing `otherwise` with no match is `CoreError::MissingNextStep { step: current }`. Untyped or string-condition choose nodes are migration-only and are not part of final IR.
 
 ---
 
@@ -1932,7 +1932,7 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 10 | Expression bytecode | `ExprProgram`, fixed stack, overflow/underflow tests. |
 | 11 | Slot compiler | Slot layout, accessors, constants, symbol interning, digests. |
 | 12 | Core IR | Final `CompiledNodeKind`, IR validator, resource contracts. |
-| 13 | Minimal deterministic engine | `SetConst`, `Copy`, `ChooseExpr`, `ChooseSlot`, `Finish`, `StepBudget`, invariant tests. |
+| 13 | Minimal deterministic engine | `SetConst`, `Copy`, `Choose`, `ChooseSlot`, `Finish`, `StepBudget`, invariant tests. |
 | 14 | Direct API | Submit, cancel, inspect, list events, answer ask, complete/fail action. |
 | 15 | Fjall base storage | Keyspaces, keys, workflow source, compiled IR, run headers, blobs. |
 | 16 | Binary journal | Postcard record envelope, event records, schema versions, writer queue. |

@@ -42,7 +42,7 @@ bd dolt push         # Push beads data to remote
 - `moon ci` is canonical. Prefer `moon ci` over ad-hoc Cargo gates.
 - Source lint is zero tolerance.
 - Tests must compile and run, but test clippy is not strict.
-- Use Moon v2 configuration once scaffolded.
+- Moon v2 configuration is scaffolded in `.moon/`; `moon ci` remains the canonical gate.
 
 ## Engineering Rules
 

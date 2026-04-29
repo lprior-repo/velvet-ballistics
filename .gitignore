@@ -4,6 +4,9 @@ target/
 # Local agent/search state
 .memsearch/
 
+# Moon local cache
+.moon/cache/
+
 # Environment and secrets
 .env
 .env.*

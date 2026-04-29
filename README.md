@@ -17,14 +17,17 @@
 
 ```text
 YAML source
-  -> strict parser and validator
+  -> strict compile-time parser
+  -> validated AST
+  -> typed expression bytecode
+  -> numeric slot compiler
+  -> compact IR
   -> generated Rust maxperf mode
-  -> compiled workflow IR
-  -> numeric-slot RunFrame
-  -> synchronous in-memory engine loop
-  -> bounded memory/IPC ingress
-  -> Fjall append-only journal
-  -> cold observability projection
+  -> shard-owned in-memory runtime
+  -> native ActionId dispatch
+  -> Fjall binary persistence
+  -> binary IPC
+  -> binary trace/counters
 ```
 
 Runtime core excludes YAML, JSON, and HTTP. Every runtime transition must be bounded, numeric, and benchmarkable.
@@ -58,7 +61,7 @@ Use beads for all task tracking: create or claim beads before implementation, cl
 
 - `moon ci` is canonical. Prefer it over ad-hoc Cargo gates.
 - Source lint is zero tolerance; tests compile and run without strict test clippy.
-- Use Moon v2 configuration once scaffolded.
+- Moon v2 configuration is scaffolded in `.moon/`; `moon ci` remains the canonical gate.
 - Active beads Dolt remote: `https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics`, branch `main`.
 - Do not commit `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`, locks, or runtime database state.
 - Embedded beads mode may require serial `bd` commands because only one writer can hold the lock.
