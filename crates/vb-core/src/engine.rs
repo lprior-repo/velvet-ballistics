@@ -144,7 +144,7 @@ pub fn step_once(plan: &CompiledWorkflow, run: &mut RunFrame) -> Result<EngineSi
             source,
             next,
         } => copy_slot(run, output, source, next),
-        CompiledNodeKind::Choose {
+        CompiledNodeKind::ChooseSlot {
             condition,
             on_true,
             on_false,
@@ -194,7 +194,7 @@ fn copy_slot(
     source: SlotIdx,
     next: StepIdx,
 ) -> Result<EngineSignal, EngineError> {
-    let value = run.slot(source)?.clone();
+    let value = *run.slot(source)?;
     let taint = run.taint(source)?;
     run.write_slot(output, value, taint)?;
     run.jump_to(next)?;
@@ -217,13 +217,13 @@ fn choose_branch(
 }
 
 fn finish_run(run: &RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineError> {
-    Ok(EngineSignal::Finished(run.slot(result)?.clone()))
+    Ok(EngineSignal::Finished(*run.slot(result)?))
 }
 
 #[cfg(test)]
 mod tests {
     use super::{EngineSignal, RunFrame, StepBudget, run_until_blocked};
-    use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::ids::{ConstIdx, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::SlotValue;
     use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
@@ -244,17 +244,8 @@ mod tests {
 
     #[test]
     fn set_chain_finishes_with_object_slot_value() {
-        let value = SlotValue::Object(Box::new([
-            (
-                Box::<str>::from("text"),
-                SlotValue::Text(Box::<str>::from("Hello")),
-            ),
-            (
-                Box::<str>::from("tags"),
-                SlotValue::List(Box::new([SlotValue::Text(Box::<str>::from("demo"))])),
-            ),
-        ]));
-        let workflow = tiny_workflow(value.clone());
+        let value = SlotValue::Object(ObjectId::new(2));
+        let workflow = tiny_workflow(value);
         assert!(workflow.is_ok());
         let Ok(workflow) = workflow else {
             return;

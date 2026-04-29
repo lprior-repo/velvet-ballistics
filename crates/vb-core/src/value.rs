@@ -1,7 +1,8 @@
 //! Runtime slot value model.
 
-use bytes::Bytes;
-use serde::{Deserialize, Serialize};
+use crate::errors::{CoreError, CoreResult};
+use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Secret propagation marker attached to each runtime slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,8 +16,52 @@ pub enum Taint {
     DerivedFromSecret = 2,
 }
 
-/// Compact runtime value stored in numeric slots.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Finite floating-point scalar accepted by the runtime value model.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct FiniteF64(f64);
+
+impl Eq for FiniteF64 {}
+
+impl FiniteF64 {
+    /// Creates a finite floating-point value, rejecting NaN and infinities.
+    pub fn new(value: f64) -> CoreResult<Self> {
+        if value.is_finite() {
+            Ok(Self(value))
+        } else {
+            Err(CoreError::NonFiniteNumber)
+        }
+    }
+
+    /// Returns the raw finite floating-point value.
+    #[must_use]
+    pub const fn get(self) -> f64 {
+        self.0
+    }
+}
+
+impl Serialize for FiniteF64 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_f64(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for FiniteF64 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        f64::deserialize(deserializer).and_then(|value| {
+            Self::new(value).map_err(|err| serde::de::Error::custom(err.to_string()))
+        })
+    }
+}
+
+/// Compact handle-based runtime value stored in numeric slots.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SlotValue {
     /// Explicit null value.
     Null,
@@ -24,15 +69,19 @@ pub enum SlotValue {
     Bool(bool),
     /// Signed integer scalar for deterministic arithmetic scaffolding.
     I64(i64),
-    /// UTF-8 text value.
-    Text(Box<str>),
-    /// Shared byte buffer for IPC/action boundaries.
-    Bytes(Bytes),
-    /// Deterministic object value with compile-time ordered fields.
-    Object(Box<[(Box<str>, SlotValue)]>),
-    /// Ordered list value.
-    List(Box<[SlotValue]>),
+    /// Finite floating-point scalar.
+    F64(FiniteF64),
+    /// Interned symbol handle.
+    Symbol(SymbolId),
+    /// Runtime list arena handle.
+    List(ListId),
+    /// Runtime object arena handle.
+    Object(ObjectId),
+    /// Runtime blob arena/storage handle.
+    Blob(BlobId),
 }
+
+impl Eq for SlotValue {}
 
 impl SlotValue {
     /// Returns the stable runtime type name for diagnostics.
@@ -41,11 +90,11 @@ impl SlotValue {
         match self {
             Self::Null => "null",
             Self::Bool(_) => "boolean",
-            Self::I64(_) => "number",
-            Self::Text(_) => "text",
-            Self::Bytes(_) => "bytes",
-            Self::Object(_) => "object",
+            Self::I64(_) | Self::F64(_) => "number",
+            Self::Symbol(_) => "symbol",
             Self::List(_) => "list",
+            Self::Object(_) => "object",
+            Self::Blob(_) => "blob",
         }
     }
 

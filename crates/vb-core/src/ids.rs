@@ -72,6 +72,10 @@ numeric_id!(ExprIdx, u16, get);
 numeric_id!(ActionId, u16, get);
 numeric_id!(AccessorIdx, u16, get);
 numeric_id!(ConstIdx, u16, get);
+numeric_id!(SymbolId, u32, get);
+numeric_id!(ListId, u32, get);
+numeric_id!(ObjectId, u32, get);
+numeric_id!(BlobId, u64, as_u64);
 numeric_id!(RunId, u64, as_u64);
 numeric_id!(SeqNo, u64, as_u64);
 

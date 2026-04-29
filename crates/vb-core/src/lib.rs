@@ -18,11 +18,11 @@ pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Sever
 pub use engine::{EngineSignal, RunFrame, StepBudget, step_once};
 pub use errors::{CoreError, CoreResult, EngineError};
 pub use ids::{
-    AccessorIdx, ActionId, CheckedIndex, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx,
-    WorkflowDigest, WorkflowId,
+    AccessorIdx, ActionId, BlobId, CheckedIndex, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo,
+    SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use span::{Located, SourceMap, Span, Spanned};
-pub use value::{SlotValue, Taint};
+pub use value::{FiniteF64, SlotValue, Taint};
 pub use workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowError, WorkflowParts,
 };

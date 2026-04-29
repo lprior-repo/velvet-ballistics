@@ -143,8 +143,8 @@ pub enum CompiledNodeKind {
         /// Fallthrough step.
         next: StepIdx,
     },
-    /// Branch using a boolean condition slot.
-    Choose {
+    /// Branch using a pre-materialized boolean condition slot.
+    ChooseSlot {
         /// Condition slot.
         condition: SlotIdx,
         /// Target when condition is true.
@@ -186,7 +186,7 @@ fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), Workf
             source,
             next,
         } => validate_copy(output, source, next, parts),
-        CompiledNodeKind::Choose {
+        CompiledNodeKind::ChooseSlot {
             condition,
             on_true,
             on_false,

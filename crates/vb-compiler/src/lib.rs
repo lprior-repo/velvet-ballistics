@@ -1023,7 +1023,6 @@ fn validate_schema_default(
         return validate_null_default(kind, nullable);
     }
     if default_matches_kind(value, kind) {
-        let _ = slot_value(value, 0)?;
         Ok(())
     } else {
         Err(CompileError::InvalidInputSchema {
@@ -1733,7 +1732,7 @@ fn compile_save(
         });
     }
     let output = slot_idx_for_step(index)?;
-    let constant = slot_value(body, index)?;
+    let constant = save_slot_value(body, index)?;
     let constant = builder.push_constant(constant)?;
     builder.record_slot(output);
     Ok(CompiledNode {
@@ -1743,6 +1742,24 @@ fn compile_save(
             next: next_step(index)?,
         },
     })
+}
+
+fn save_slot_value(body: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
+    let Some(mapping) = body.as_mapping() else {
+        return Err(CompileError::StepFieldShape {
+            step,
+            field: "save",
+            expected: "an object",
+        });
+    };
+    if mapping.len() != 1 {
+        return Err(CompileError::UnsupportedConstantValue { step });
+    }
+    match mapping.iter().next() {
+        Some((key, value)) if key.as_str() == Some("value") => slot_value(value, step),
+        Some((key, _)) if key.as_str().is_none() => Err(CompileError::NonStringKey),
+        Some(_) | None => Err(CompileError::UnsupportedConstantValue { step }),
+    }
 }
 
 fn compile_choose(
@@ -1760,7 +1777,7 @@ fn compile_choose(
     reject_backward_branch(index, on_false)?;
     builder.record_slot(condition);
     Ok(CompiledNode {
-        kind: CompiledNodeKind::Choose {
+        kind: CompiledNodeKind::ChooseSlot {
             condition,
             on_true,
             on_false,
@@ -1903,48 +1920,28 @@ fn slot_value(node: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
     }
 }
 
-fn text_slot_value(value: &str, step: usize) -> Result<SlotValue, CompileError> {
-    if value.contains('$') {
-        Err(CompileError::UnsupportedConstantValue { step })
-    } else {
-        Ok(SlotValue::Text(Box::<str>::from(value)))
-    }
+fn text_slot_value(_value: &str, step: usize) -> Result<SlotValue, CompileError> {
+    Err(CompileError::UnsupportedConstantValue { step })
 }
 
 fn list_slot_value(
-    sequence: &saphyr::Sequence<'_>,
+    _sequence: &saphyr::Sequence<'_>,
     step: usize,
 ) -> Result<SlotValue, CompileError> {
-    let values = sequence
-        .iter()
-        .map(|value| slot_value(value, step))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(SlotValue::List(values.into_boxed_slice()))
+    Err(CompileError::UnsupportedConstantValue { step })
 }
 
 fn object_slot_value(
-    mapping: &saphyr::Mapping<'_>,
+    _mapping: &saphyr::Mapping<'_>,
     step: usize,
 ) -> Result<SlotValue, CompileError> {
-    let fields = mapping
-        .iter()
-        .map(|(key, value)| {
-            let Some(field) = key.as_str() else {
-                return Err(CompileError::NonStringKey);
-            };
-            Ok((Box::<str>::from(field), slot_value(value, step)?))
-        })
-        .collect::<Result<Vec<_>, CompileError>>()?;
-    Ok(SlotValue::Object(fields.into_boxed_slice()))
+    Err(CompileError::UnsupportedConstantValue { step })
 }
 
 #[cfg(test)]
 mod tests {
     use super::{CompileError, YamlCompiler, YamlLimits};
-    use vb_core::{
-        CompiledWorkflow, EngineSignal, RunFrame, RunId, SlotValue, StepBudget,
-        engine::run_until_blocked,
-    };
+    use vb_core::CompiledWorkflow;
 
     fn compile_with_inputs(inputs: &str) -> Result<CompiledWorkflow, CompileError> {
         let source = format!(
@@ -1954,7 +1951,7 @@ mod tests {
     }
 
     #[test]
-    fn compiler_executes_compiled_save_and_finish_steps() {
+    fn compiler_rejects_save_object_until_handle_arenas_exist() {
         let source = br#"
 version: velvet/v1
 name: fast_path
@@ -1970,30 +1967,14 @@ steps:
 "#;
         let result = YamlCompiler::default().compile(source);
 
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"),
-            "compiler should build executable workflow"
-        );
-        let Ok(workflow) = result else {
-            return;
-        };
-        let mut run = RunFrame::new(RunId::new(9), &workflow);
-        let signal = run_until_blocked(&workflow, &mut run, StepBudget::MAX);
-
-        assert_eq!(
-            signal,
-            Ok(EngineSignal::Finished(SlotValue::Object(
-                vec![(
-                    Box::<str>::from("text"),
-                    SlotValue::Text(Box::<str>::from("done"))
-                )]
-                .into_boxed_slice()
-            )))
-        );
+        assert!(matches!(
+            result,
+            Err(CompileError::UnsupportedConstantValue { step: 0 })
+        ));
     }
 
     #[test]
-    fn compiler_executes_public_save_object_with_nested_values() {
+    fn compiler_rejects_nested_save_values_until_handle_arenas_exist() {
         let source = br#"
 version: velvet/v1
 name: nested_save
@@ -2016,46 +1997,10 @@ steps:
 "#;
         let result = YamlCompiler::default().compile(source);
 
-        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "nested_save"));
-        let Ok(workflow) = result else {
-            return;
-        };
-        let mut run = RunFrame::new(RunId::new(10), &workflow);
-        let signal = run_until_blocked(&workflow, &mut run, StepBudget::MAX);
-
-        assert_eq!(
-            signal,
-            Ok(EngineSignal::Finished(SlotValue::Object(
-                vec![
-                    (
-                        Box::<str>::from("text"),
-                        SlotValue::Text(Box::<str>::from("done"))
-                    ),
-                    (
-                        Box::<str>::from("tags"),
-                        SlotValue::List(
-                            vec![
-                                SlotValue::Text(Box::<str>::from("demo")),
-                                SlotValue::Text(Box::<str>::from("fast")),
-                            ]
-                            .into_boxed_slice()
-                        )
-                    ),
-                    (
-                        Box::<str>::from("metadata"),
-                        SlotValue::Object(
-                            vec![
-                                (Box::<str>::from("attempts"), SlotValue::I64(1)),
-                                (Box::<str>::from("active"), SlotValue::Bool(true)),
-                                (Box::<str>::from("note"), SlotValue::Null),
-                            ]
-                            .into_boxed_slice()
-                        )
-                    ),
-                ]
-                .into_boxed_slice()
-            )))
-        );
+        assert!(matches!(
+            result,
+            Err(CompileError::UnsupportedConstantValue { step: 0 })
+        ));
     }
 
     #[test]
@@ -2129,18 +2074,18 @@ when:
 inputs:
   value: text
 vars:
-  label: test
+  label: 1
 secrets:
   api_key: API_KEY
 result: {}
 examples:
   - name: fixture
     input:
-      value: done
+      value: 1
 steps:
   - id: build_result
     save:
-      value: done
+      value: 1
   - id: done
     finish:
       result: 0
@@ -2429,7 +2374,7 @@ steps:
     #[test]
     fn compiler_rejects_non_empty_top_level_result_until_result_ir_exists() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nresult:\n  value: $build_result.value\nsteps:\n  - id: build_result\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nresult:\n  value: $build_result.value\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2471,7 +2416,7 @@ steps:
     #[test]
     fn compiler_rejects_missing_step_ids() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::MissingStepId { .. })));
@@ -2481,7 +2426,7 @@ steps:
     fn compiler_rejects_invalid_step_ids() {
         for id in ["", "BuildResult", "build-result", "finish"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2501,7 +2446,7 @@ steps:
     #[test]
     fn compiler_rejects_duplicate_step_ids() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: done\n  - id: duplicate\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::DuplicateStepId { .. })));
@@ -2510,7 +2455,7 @@ steps:
     #[test]
     fn compiler_accepts_step_display_name_metadata() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: Build Result\n    save:\n      value: done\n  - id: done\n    name: Done\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: Build Result\n    save:\n      value: 1\n  - id: done\n    name: Done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
@@ -2519,7 +2464,7 @@ steps:
     #[test]
     fn compiler_rejects_non_string_step_display_name() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: 42\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: 42\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2532,7 +2477,7 @@ steps:
     fn compiler_rejects_unsupported_phase_zero_step_control_fields() {
         for control in ["if", "with", "try_again", "on_error", "then"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2607,7 +2552,7 @@ steps:
             "  event:\n    name: customer.created\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - id: build_result\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2727,7 +2672,7 @@ steps:
     #[test]
     fn compiler_rejects_extra_phase_zero_finish_fields() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: done\n  - id: done\n    finish:\n      result: 0\n      status: success\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n      status: success\n",
         );
 
         assert!(matches!(
@@ -2784,7 +2729,7 @@ steps:
     fn compiler_rejects_legacy_step_aliases() {
         for alias in ["do", "set", "collect", "reduce", "copy"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: done\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2810,7 +2755,7 @@ steps:
     #[test]
     fn compiler_rejects_multiple_step_primitives() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      slot: 0\n      value: done\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      slot: 0\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
