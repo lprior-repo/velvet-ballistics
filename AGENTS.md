@@ -40,6 +40,7 @@ bd dolt push         # Push beads data to remote
 ## Build And CI
 
 - `moon ci` is canonical. Prefer `moon ci` over ad-hoc Cargo gates.
+- Rust governance is defined in `docs/rust-governance.md`; future agents must preserve the pinned nightly and feature whitelist there.
 - Source lint is zero tolerance.
 - Tests must compile and run, but test clippy is not strict.
 - Moon v2 configuration is scaffolded in `.moon/`; `moon ci` remains the canonical gate.
@@ -50,7 +51,8 @@ bd dolt push         # Push beads data to remote
 - No unchecked indexing, slicing, casts, or arithmetic.
 - No YAML, JSON, or HTTP in the runtime core.
 - Generated Rust mode is mandatory for maxperf execution.
-- Every speed claim requires benchmark evidence.
+- Every speed claim requires real baseline/result benchmark evidence; compileable Criterion scaffold placeholders are not performance evidence.
+- Do not add unstable Rust features outside normal `try_blocks`/`portable_simd` use and perf-only `allocator_api`/`generic_const_exprs`. Perf-only features may appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or marker-approved files if `scripts/check-nightly-features.sh` implements `velvet-allow-perf-nightly-feature`. Use `moon run :nightly-feature-gate` or `just nightly-feature-gate` for first-party feature-scope checking. Use `just nightly-feature-cargo-probe` where transitive dependencies do not require extra nightly internals.
 
 ## Non-Interactive Shell Commands
 

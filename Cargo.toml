@@ -11,17 +11,23 @@ resolver = "3"
 
 # Root package for workspace-level integration tests
 [package]
-name = "velvet-ballistics-workspace"
+name = "velvet-ballastics-workspace"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.91"
 version = "0.1.0"
 publish = false
+
+[lints]
+workspace = true
 
 [dev-dependencies]
 toml = "0.8"
 serde_yaml = "0.9"
 criterion = "0.5"
+
+[[bench]]
+name = "velvet_ballastics"
+harness = false
 
 [profile.bench]
 inherits = "release"
@@ -32,7 +38,6 @@ codegen-units = 1
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.91"
 version = "0.1.0"
 
 [workspace.dependencies]
@@ -84,6 +89,13 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 strip = "symbols"
+
+[profile.hardened]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
+strip = false
 
 [profile.maxperf]
 inherits = "release"

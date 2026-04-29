@@ -3,16 +3,20 @@
 //! Phase 0 creates the scaffold. Each fuzzer body is a stub that will
 //! be implemented in subsequent phases.
 
-use std::slice;
-
 /// Corpus type for fuzzing — byte array representing valid input
 type Corpus = Vec<u8>;
 
 /// Generate corpus by mutating the input data.
 /// This is a placeholder that will be expanded in later phases.
-fn fuzzer_mutate(corpus: &Corpus, _seed: u32) -> Corpus {
-    let _ = _seed;
+fn fuzzer_mutate(corpus: &Corpus, seed: u32) -> Corpus {
+    let _ = seed;
     corpus.clone()
+}
+
+fn run_stub(seed: u32) -> i32 {
+    let corpus = Corpus::new();
+    let _ = fuzzer_mutate(&corpus, seed);
+    0
 }
 
 /// Fuzz target: workflow_parse
@@ -25,9 +29,8 @@ fn fuzzer_mutate(corpus: &Corpus, _seed: u32) -> Corpus {
 /// Fail: Panics or returns non-zero (handled by libfuzzer)
 #[no_mangle]
 extern "C" fn fuzz_workflow_parse(data: *const u8, size: usize) -> i32 {
-    let corpus = unsafe { slice::from_raw_parts(data, size).to_vec() };
-    let _ = fuzzer_mutate(&corpus, 0);
-    0
+    let _ = (data, size);
+    run_stub(0)
 }
 
 /// Fuzz target: workflow_compile
@@ -40,9 +43,8 @@ extern "C" fn fuzz_workflow_parse(data: *const u8, size: usize) -> i32 {
 /// Fail: Compile error or validation failure
 #[no_mangle]
 extern "C" fn fuzz_workflow_compile(data: *const u8, size: usize) -> i32 {
-    let corpus = unsafe { slice::from_raw_parts(data, size).to_vec() };
-    let _ = fuzzer_mutate(&corpus, 1);
-    0
+    let _ = (data, size);
+    run_stub(1)
 }
 
 /// Fuzz target: slot_value_roundtrip
@@ -55,9 +57,8 @@ extern "C" fn fuzz_workflow_compile(data: *const u8, size: usize) -> i32 {
 /// Fail: Decode error or value mismatch
 #[no_mangle]
 extern "C" fn fuzz_slot_value_roundtrip(data: *const u8, size: usize) -> i32 {
-    let corpus = unsafe { slice::from_raw_parts(data, size).to_vec() };
-    let _ = fuzzer_mutate(&corpus, 2);
-    0
+    let _ = (data, size);
+    run_stub(2)
 }
 
 /// Fuzz target: binary_ipc_frame
@@ -70,9 +71,8 @@ extern "C" fn fuzz_slot_value_roundtrip(data: *const u8, size: usize) -> i32 {
 /// Fail: Decode error or frame validation failure
 #[no_mangle]
 extern "C" fn fuzz_binary_ipc_frame(data: *const u8, size: usize) -> i32 {
-    let corpus = unsafe { slice::from_raw_parts(data, size).to_vec() };
-    let _ = fuzzer_mutate(&corpus, 3);
-    0
+    let _ = (data, size);
+    run_stub(3)
 }
 
 /// Fuzz target: fjall_journal_append
@@ -85,7 +85,6 @@ extern "C" fn fuzz_binary_ipc_frame(data: *const u8, size: usize) -> i32 {
 /// Fail: Corruption detection or replay failure
 #[no_mangle]
 extern "C" fn fuzz_fjall_journal_append(data: *const u8, size: usize) -> i32 {
-    let corpus = unsafe { slice::from_raw_parts(data, size).to_vec() };
-    let _ = fuzzer_mutate(&corpus, 4);
-    0
+    let _ = (data, size);
+    run_stub(4)
 }

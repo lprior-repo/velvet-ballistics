@@ -1,197 +1,212 @@
-//! Benchmark stubs for Velvet Ballistics
+//! Benchmark stubs for Velvet Ballastics
 //!
 //! Phase 0 creates the scaffold. Each benchmark body is a deterministic
 //! non-panicking placeholder until real measurements are added in later phases.
 
-#![feature(test)]
+#![allow(missing_docs)]
 
-extern crate test;
+use criterion::{Criterion, criterion_group, criterion_main};
 
 /// Workflow compilation benchmark stub.
-/// Measures: parsing YAML → compiling to internal IR → validation
-#[bench]
-fn workflow_compile_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: parsing YAML -> compiling to internal IR -> validation
+fn workflow_compile_bench(c: &mut Criterion) {
+    c.bench_function("workflow_compile", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Workflow validation benchmark stub.
 /// Measures: schema validation, constraint checking, semantic analysis
-#[bench]
-fn workflow_validate_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn workflow_validate_bench(c: &mut Criterion) {
+    c.bench_function("workflow_validate", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Slot value serialization benchmark stub.
-/// Measures: SlotValue → bytes (postcard encoding)
-#[bench]
-fn slot_value_serialize_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: SlotValue -> bytes (postcard encoding)
+fn slot_value_serialize_bench(c: &mut Criterion) {
+    c.bench_function("slot_value_serialize", |b| {
+        b.iter(|| criterion::black_box(()))
+    });
 }
 
 /// Slot value deserialization benchmark stub.
-/// Measures: bytes → SlotValue (postcard decoding)
-#[bench]
-fn slot_value_deserialize_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: bytes -> SlotValue (postcard decoding)
+fn slot_value_deserialize_bench(c: &mut Criterion) {
+    c.bench_function("slot_value_deserialize", |b| {
+        b.iter(|| criterion::black_box(()))
+    });
 }
 
 /// Expression evaluation benchmark stub.
 /// Measures: expression tree traversal, function resolution, value computation
-#[bench]
-fn expression_evaluate_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn expression_evaluate_bench(c: &mut Criterion) {
+    c.bench_function("expression_evaluate", |b| {
+        b.iter(|| criterion::black_box(()))
+    });
 }
 
 /// Step execution benchmark stub.
 /// Measures: single step execution including input resolution and output mapping
-#[bench]
-fn step_execute_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn step_execute_bench(c: &mut Criterion) {
+    c.bench_function("step_execute", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Run frame drive benchmark stub.
 /// Measures: full workflow execution cycle (engine tick, frame advance)
-#[bench]
-fn run_frame_drive_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn run_frame_drive_bench(c: &mut Criterion) {
+    c.bench_function("run_frame_drive", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Binary IPC frame encoding benchmark stub.
-/// Measures: Frame → wire format (postcard + header)
-#[bench]
-fn binary_frame_encode_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: Frame -> wire format (postcard + header)
+fn binary_frame_encode_bench(c: &mut Criterion) {
+    c.bench_function("binary_frame_encode", |b| {
+        b.iter(|| criterion::black_box(()))
+    });
 }
 
 /// Binary IPC frame decoding benchmark stub.
-/// Measures: wire format → Frame (header parsing + postcard decode)
-#[bench]
-fn binary_frame_decode_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: wire format -> Frame (header parsing + postcard decode)
+fn binary_frame_decode_bench(c: &mut Criterion) {
+    c.bench_function("binary_frame_decode", |b| {
+        b.iter(|| criterion::black_box(()))
+    });
 }
 
 /// Journal append benchmark stub.
 /// Measures: appending an entry to the Fjall-backed append-only log
-#[bench]
-fn journal_append_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn journal_append_bench(c: &mut Criterion) {
+    c.bench_function("journal_append", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Journal replay benchmark stub.
 /// Measures: reading and reconstructing state from journal log
-#[bench]
-fn journal_replay_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn journal_replay_bench(c: &mut Criterion) {
+    c.bench_function("journal_replay", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Source map lookup benchmark stub.
-/// Measures: mapping compiled artifact offset → source location
-#[bench]
-fn source_map_lookup_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: mapping compiled artifact offset -> source location
+fn source_map_lookup_bench(c: &mut Criterion) {
+    c.bench_function("source_map_lookup", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Diagnostic rendering benchmark stub.
-/// Measures: converting internal diagnostics → user-facing text
-#[bench]
-fn diagnostic_render_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: converting internal diagnostics -> user-facing text
+fn diagnostic_render_bench(c: &mut Criterion) {
+    c.bench_function("diagnostic_render", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// ID compression benchmark stub.
 /// Measures: compressing workflow/step IDs to compact form
-#[bench]
-fn id_compress_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn id_compress_bench(c: &mut Criterion) {
+    c.bench_function("id_compress", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// ID decompression benchmark stub.
 /// Measures: expanding compressed IDs back to full form
-#[bench]
-fn id_decompress_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn id_decompress_bench(c: &mut Criterion) {
+    c.bench_function("id_decompress", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Value clone benchmark stub.
 /// Measures: cloning a SlotValue (deep copy of arbitrary data)
-#[bench]
-fn value_clone_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn value_clone_bench(c: &mut Criterion) {
+    c.bench_function("value_clone", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Value serialization benchmark stub.
-/// Measures: SlotValue → JSON/serde bytes
-#[bench]
-fn value_serialize_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: SlotValue -> serde bytes
+fn value_serialize_bench(c: &mut Criterion) {
+    c.bench_function("value_serialize", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Value deserialization benchmark stub.
-/// Measures: JSON/serde bytes → SlotValue
-#[bench]
-fn value_deserialize_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: serde bytes -> SlotValue
+fn value_deserialize_bench(c: &mut Criterion) {
+    c.bench_function("value_deserialize", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Engine step benchmark stub.
 /// Measures: single engine step (advance state machine by one tick)
-#[bench]
-fn engine_step_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn engine_step_bench(c: &mut Criterion) {
+    c.bench_function("engine_step", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Engine run benchmark stub.
 /// Measures: running engine to completion (all steps finished)
-#[bench]
-fn engine_run_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn engine_run_bench(c: &mut Criterion) {
+    c.bench_function("engine_run", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Shard routing benchmark stub.
 /// Measures: determining which shard handles a given workflow/ID
-#[bench]
-fn shard_route_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn shard_route_bench(c: &mut Criterion) {
+    c.bench_function("shard_route", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Ingress enqueue benchmark stub.
 /// Measures: enqueueing a frame into the ingress queue
-#[bench]
-fn ingress_enqueue_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn ingress_enqueue_bench(c: &mut Criterion) {
+    c.bench_function("ingress_enqueue", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Egress dequeue benchmark stub.
 /// Measures: dequeuing and processing a frame from the egress queue
-#[bench]
-fn egress_dequeue_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn egress_dequeue_bench(c: &mut Criterion) {
+    c.bench_function("egress_dequeue", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Workflow digest benchmark stub.
 /// Measures: computing deterministic content-addressed digest of a workflow
-#[bench]
-fn workflow_digest_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn workflow_digest_bench(c: &mut Criterion) {
+    c.bench_function("workflow_digest", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Wasm translation benchmark stub.
-/// Measures: translating workflow IR → wasm bytecode
-#[bench]
-fn wasm_translate_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+/// Measures: translating workflow IR -> wasm bytecode
+fn wasm_translate_bench(c: &mut Criterion) {
+    c.bench_function("wasm_translate", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Codegen emit benchmark stub.
 /// Measures: emitting native code from workflow IR
-#[bench]
-fn codegen_emit_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn codegen_emit_bench(c: &mut Criterion) {
+    c.bench_function("codegen_emit", |b| b.iter(|| criterion::black_box(())));
 }
 
 /// Performance profile benchmark stub.
 /// Measures: capturing and serializing execution profile data
-#[bench]
-fn pg_profile_bench(b: &mut test::Bencher) {
-    b.iter(|| criterion::black_box(()));
+fn pg_profile_bench(c: &mut Criterion) {
+    c.bench_function("pg_profile", |b| b.iter(|| criterion::black_box(())));
 }
+
+criterion_group!(
+    benches,
+    workflow_compile_bench,
+    workflow_validate_bench,
+    slot_value_serialize_bench,
+    slot_value_deserialize_bench,
+    expression_evaluate_bench,
+    step_execute_bench,
+    run_frame_drive_bench,
+    binary_frame_encode_bench,
+    binary_frame_decode_bench,
+    journal_append_bench,
+    journal_replay_bench,
+    source_map_lookup_bench,
+    diagnostic_render_bench,
+    id_compress_bench,
+    id_decompress_bench,
+    value_clone_bench,
+    value_serialize_bench,
+    value_deserialize_bench,
+    engine_step_bench,
+    engine_run_bench,
+    shard_route_bench,
+    ingress_enqueue_bench,
+    egress_dequeue_bench,
+    workflow_digest_bench,
+    wasm_translate_bench,
+    codegen_emit_bench,
+    pg_profile_bench
+);
+criterion_main!(benches);

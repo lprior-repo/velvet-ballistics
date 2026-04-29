@@ -1341,11 +1341,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballistics-fuzz"
+name = "velvet-ballastics-fuzz"
 version = "0.1.0"
 
 [[package]]
-name = "velvet-ballistics-workspace"
+name = "velvet-ballastics-workspace"
 version = "0.1.0"
 dependencies = [
  "criterion",

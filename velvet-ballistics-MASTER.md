@@ -39,7 +39,7 @@ The final product must provide all of the following. None are optional:
 13. Generated Rust execution mode required for `maxperf` builds.
 14. Typed validation, compile, runtime, IPC, and storage failures.
 15. Benchmarked optimizations only; no speed claim without measured before/after data.
-16. Mechanical gates accept AI changes only after formatting, linting, tests, fuzzing, recovery, benchmarks, dependency audit, supply-chain review, unsafe scan, and CI reproducibility pass.
+16. AI changes are accepted only with actual evidence that the relevant formatting, linting, tests, fuzzing, recovery, benchmark, dependency audit, supply-chain review, unsafe scan, and CI reproducibility gates ran and passed; merely adding or naming a task is not acceptance evidence.
 
 HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. Any future adapter must be a separate cold-path adapter crate and must not enter `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
 
@@ -170,9 +170,10 @@ Strict nightly governance:
 - Nightly is mandatory.
 - Unstable features are allowlisted; arbitrary `#![feature]` is rejected.
 - `RUSTC_BOOTSTRAP` is rejected in developer shells, CI, scripts, and docs.
-- CI must include a check equivalent to `RUSTFLAGS="-Zallow-features=portable_simd,likely_unlikely,allocator_api,generic_const_exprs"` for crates using unstable features.
-- Source-allowed features: `portable_simd`, `likely_unlikely`.
-- Performance-crate-only features: `allocator_api`, `generic_const_exprs`.
+- CI must include a first-party source check equivalent to `moon run :nightly-feature-gate`; a strict Cargo `-Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs` probe is required where transitive dependency feature attributes permit it. A represented task or probe is not proof that all governance policies passed; reports must state the actual command outcome.
+- Normal source-allowed features: `try_blocks`, `portable_simd`.
+- Perf-only features: `allocator_api`, `generic_const_exprs`, restricted to `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or a file carrying `velvet-allow-perf-nightly-feature` if the feature-gate script implements that marker exception.
+- Detailed operational policy lives in `docs/rust-governance.md` and is subordinate to this master contract.
 
 ---
 
@@ -2197,7 +2198,7 @@ IPC latency
 generated-vs-IR ratio
 ```
 
-Acceptance rule: no speed claim without benchmark numbers. No optimization PR without before/after benchmark output and correctness evidence.
+Acceptance rule: no speed claim without benchmark numbers. No optimization PR without before/after benchmark output and correctness evidence. Compileable Criterion scaffold benchmarks are placeholders only; no-op scaffolds such as `black_box(())` prove the harness builds, not that the implementation is faster, lower allocation, lower latency, or production ready.
 
 ---
 
@@ -2391,7 +2392,7 @@ HashMap<String, Value> runtime state
 generated Rust omitted from maxperf
 one task per step
 no tests for new code
-speed claim without benchmark
+speed claim without real benchmark baseline/result evidence
 new velvet-ballistics spelling outside the exact allowlist
 ```
 
@@ -2422,9 +2423,9 @@ new velvet-ballistics spelling outside the exact allowlist
 19. Validation, compile, runtime, storage, IPC, action, and replay failures are typed and graceful.
 20. Forbidden constructs are absent: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
 21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party and generated code.
-22. Every speed claim is backed by benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata.
+22. Every speed claim is backed by real benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata; compileable scaffold placeholders do not count.
 23. Full gates pass: fmt, clippy hard denies, tests, nextest, trybuild, Miri, coverage, fuzz smoke, mutants smoke, supply chain, geiger, feature powerset, docs, and benchmark build.
 24. Maxperf, PGO, and `target-cpu=native` workflows are documented, executable, and measured.
 25. Sanitizer nightly jobs pass for binary decoders, IPC, storage, runtime, and generated workflows.
 26. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead is closed with evidence.
-27. Mechanical gates can accept AI changes without human guesswork because this document is implemented as executable checks, tests, benchmarks, and bead evidence.
+27. Mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed; represented tasks/probes alone are not acceptance evidence.

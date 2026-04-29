@@ -9,7 +9,8 @@
 "vb-ipc" = { audit-as-crates-io = true }
 "vb-storage" = { audit-as-crates-io = true }
 "velvet-ballastics" = { audit-as-crates-io = true }
-"velvet-ballistics-workspace" = { audit-as-crates-io = true }
+"velvet-ballastics-workspace" = { audit-as-crates-io = true }
+"velvet-ballastics-fuzz" = { audit-as-crates-io = true }
 
 # Default for all other crates
 [policy.default]

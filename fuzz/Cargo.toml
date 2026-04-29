@@ -1,11 +1,14 @@
 [package]
-name = "velvet-ballistics-fuzz"
+name = "velvet-ballastics-fuzz"
 version = "0.1.0"
 edition = "2024"
 publish = false
 
 [features]
 fuzz = []
+
+[lints]
+workspace = true
 
 [lib]
 name = "fuzz_lib"

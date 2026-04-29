@@ -17,8 +17,9 @@ fileGroups:
     - '.moon/**/*'
     - '.config/**/*'
     - 'deny.toml'
-    - 'vet.toml'
+    - 'cargo-vet.toml'
     - 'justfile'
+    - 'scripts/**/*'
   docs:
     - 'README.md'
     - 'docs/**/*'
@@ -53,6 +54,51 @@ tasks:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
+    options:
+      runInCI: true
+
+  nightly-feature-gate:
+    command: 'bash scripts/check-nightly-features.sh'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  nightly-feature-cargo-probe:
+    command: 'rustup run nightly-2026-04-28 cargo -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs check --workspace --all-targets --all-features'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: false
+
+  source-length:
+    command: 'bash scripts/check-source-length.sh'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  hardened-build:
+    command: 'rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile hardened'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/hardened/**'
     options:
       runInCI: true
 
@@ -95,7 +141,7 @@ tasks:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'deny.toml'
-      - 'vet.toml'
+      - 'cargo-vet.toml'
       - '@globs(configs)'
     options:
       runInCI: true
@@ -156,6 +202,17 @@ tasks:
     options:
       runInCI: true
 
+  sanitizer-address-check:
+    script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-features --no-run'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    options:
+      runInCI: false
+
   bench-build:
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features --no-run'
     toolchains:
@@ -168,6 +225,45 @@ tasks:
       - 'target/release/deps/**'
     options:
       runInCI: true
+
+  benchmark-proof:
+    command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features -- --save-baseline vb-current'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/criterion/**'
+    options:
+      runInCI: false
+
+  pgo-instrument-build:
+    script: 'RUSTFLAGS="-Cprofile-generate=target/pgo/profiles" rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile maxperf'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    outputs:
+      - 'target/maxperf/**'
+      - 'target/pgo/profiles/**'
+    options:
+      runInCI: false
+
+  pgo-optimized-build:
+    script: 'RUSTFLAGS="-Cprofile-use=target/pgo/merged.profdata" rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile maxperf'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+      - 'target/pgo/merged.profdata'
+    outputs:
+      - 'target/maxperf/**'
+    options:
+      runInCI: false
 
   maxperf:
     command: 'rustup run nightly-2026-04-28 cargo build --workspace --all-features --release'
@@ -198,5 +294,6 @@ tasks:
       moon run :fmt
       moon run :lint-src
       moon run :check
+      moon run :nightly-feature-gate
     options:
       runInCI: false
