@@ -157,10 +157,25 @@ mod tests {
         step_ids: &[&str],
     ) -> RefTables {
         RefTables {
-            inputs: string_set(&inputs.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
+            inputs: string_set(
+                &inputs
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            ),
             vars: string_set(&vars.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
-            secrets: string_set(&secrets.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
-            step_ids: string_set(&step_ids.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
+            secrets: string_set(
+                &secrets
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            ),
+            step_ids: string_set(
+                &step_ids
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            ),
         }
     }
 
@@ -268,10 +283,7 @@ mod tests {
             vars: vec![],
             secrets: vec![],
             step_ids: vec!["done".to_owned()],
-            references: vec![
-                "$input.user".to_owned(),
-                "$input.missing".to_owned(),
-            ],
+            references: vec!["$input.user".to_owned(), "$input.missing".to_owned()],
         };
         assert!(matches!(
             validate_references(&workflow),

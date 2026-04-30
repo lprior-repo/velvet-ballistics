@@ -45,9 +45,44 @@ impl TraceRing {
 
     /// Drains all pending trace events into a vector.
     pub fn drain(&mut self) -> Vec<TraceEvent> {
-        let mut events = Vec::new();
-        while let Ok(event) = self.consumer.pop() {
+        let mut events = Vec::with_capacity(self.capacity);
+        self.drain_into(self.capacity, &mut events);
+        events
+    }
+
+    /// Drains at most `limit` events into `events`.
+    pub fn drain_into(&mut self, limit: usize, events: &mut Vec<TraceEvent>) {
+        let mut drained = 0usize;
+        while drained < limit {
+            let event = match self.consumer.pop() {
+                Ok(event) => event,
+                Err(_) => return,
+            };
             events.push(event);
+            drained = match drained.checked_add(1) {
+                Some(next) => next,
+                None => return,
+            };
+        }
+    }
+
+    /// Drains at most `limit` events for one run into a vector.
+    pub fn drain_for_run(&mut self, target: RunId, limit: usize) -> Vec<TraceEvent> {
+        let bounded_limit = limit.min(self.capacity);
+        let mut events = Vec::with_capacity(bounded_limit);
+        let mut inspected = 0usize;
+        while inspected < bounded_limit {
+            let event = match self.consumer.pop() {
+                Ok(event) => event,
+                Err(_) => return events,
+            };
+            if event.run_id() == target {
+                events.push(event);
+            }
+            inspected = match inspected.checked_add(1) {
+                Some(next) => next,
+                None => return events,
+            };
         }
         events
     }
@@ -112,4 +147,21 @@ pub enum TraceEvent {
         /// Run identifier.
         run: RunId,
     },
+}
+
+impl TraceEvent {
+    /// Returns the run associated with this trace event.
+    #[must_use]
+    pub const fn run_id(&self) -> RunId {
+        match self {
+            Self::StepStarted { run, .. }
+            | Self::StepEnded { run, .. }
+            | Self::SlotWritten { run, .. }
+            | Self::ActionScheduled { run, .. }
+            | Self::ActionCompleted { run, .. }
+            | Self::RunSubmitted { run }
+            | Self::RunFinished { run }
+            | Self::RunFailed { run } => *run,
+        }
+    }
 }

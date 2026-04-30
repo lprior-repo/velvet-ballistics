@@ -3,8 +3,8 @@
 //! This module provides [`SourceMap`] which maps YAML node indices to
 //! (line, column) spans extracted from the parser event stream.
 
-use crate::events::{EventSpan, YamlEvent};
 use crate::YamlResult;
+use crate::events::{EventSpan, YamlEvent};
 
 /// A (line, column) span in the source text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,7 +75,10 @@ impl SourceMap {
         self.spans
             .iter()
             .enumerate()
-            .map(|(i, span)| (u32::try_from(i).unwrap_or(u32::MAX), *span))
+            .filter_map(|(i, span)| match u32::try_from(i) {
+                Ok(index) => Some((index, *span)),
+                Err(_) => None,
+            })
     }
 }
 
@@ -119,6 +122,18 @@ fn event_span_to_source_span(span: EventSpan) -> SourceSpan {
 mod tests {
     use super::*;
 
+    macro_rules! build_ok {
+        ($yaml:expr) => {
+            match build_source_map($yaml) {
+                Ok(value) => value,
+                Err(error) => {
+                    assert!(false, "source map failed: {error}");
+                    return;
+                }
+            }
+        };
+    }
+
     #[test]
     fn empty_source_map() {
         let map = SourceMap::new();
@@ -130,14 +145,14 @@ mod tests {
     #[test]
     fn build_from_simple_yaml() {
         let yaml = "key: value\n";
-        let map = build_source_map(yaml).unwrap();
+        let map = build_ok!(yaml);
         assert!(!map.is_empty());
     }
 
     #[test]
     fn node_indices_are_sequential() {
         let yaml = "a: 1\nb: 2\n";
-        let map = build_source_map(yaml).unwrap();
+        let map = build_ok!(yaml);
         let count = map.len();
         assert!(count >= 2);
 
@@ -147,7 +162,11 @@ mod tests {
         }
         // Indices should be 0, 1, 2, ...
         for (i, idx) in found.iter().enumerate() {
-            assert_eq!(*idx, u32::try_from(i).unwrap_or(u32::MAX));
+            let Ok(expected) = u32::try_from(i) else {
+                assert!(false, "index does not fit u32");
+                return;
+            };
+            assert_eq!(*idx, expected);
         }
     }
 

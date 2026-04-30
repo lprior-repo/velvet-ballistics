@@ -215,7 +215,10 @@ pub(crate) fn collect_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
 }
 
 /// Convert a saphyr-parser event into our owned YamlEvent.
-pub(crate) fn convert_event(event: saphyr_parser::Event<'_>, span: saphyr_parser::Span) -> YamlEvent {
+pub(crate) fn convert_event(
+    event: saphyr_parser::Event<'_>,
+    span: saphyr_parser::Span,
+) -> YamlEvent {
     let span = EventSpan::from_parser_span(span);
     match event {
         saphyr_parser::Event::StreamStart => YamlEvent::StreamStart { span },
@@ -257,17 +260,29 @@ fn format_tag(tag: &saphyr_parser::Tag) -> Box<str> {
 mod tests {
     use super::*;
 
+    macro_rules! collect_ok {
+        ($yaml:expr) => {
+            match collect_events($yaml) {
+                Ok(value) => value,
+                Err(error) => {
+                    assert!(false, "event collection failed: {error}");
+                    return;
+                }
+            }
+        };
+    }
+
     #[test]
     fn collect_events_empty_mapping() {
         let yaml = "key: value\n";
-        let events = collect_events(yaml).unwrap();
+        let events = collect_ok!(yaml);
         assert!(events.len() >= 6);
     }
 
     #[test]
     fn scalar_event_carries_value() {
         let yaml = "hello\n";
-        let events = collect_events(yaml).unwrap();
+        let events = collect_ok!(yaml);
         let scalar = events.iter().find_map(|e| match e {
             YamlEvent::Scalar { value, .. } => Some(value.clone()),
             _ => None,
@@ -278,7 +293,7 @@ mod tests {
     #[test]
     fn document_start_is_explicit() {
         let yaml = "---\nkey: value\n";
-        let events = collect_events(yaml).unwrap();
+        let events = collect_ok!(yaml);
         let doc_start = events.iter().find(|e| e.is_document_start());
         assert!(matches!(
             doc_start,
@@ -289,7 +304,7 @@ mod tests {
     #[test]
     fn anchor_id_is_zero_by_default() {
         let yaml = "a: b\n";
-        let events = collect_events(yaml).unwrap();
+        let events = collect_ok!(yaml);
         for event in &events {
             assert_eq!(event.anchor_id(), 0);
         }
@@ -298,9 +313,12 @@ mod tests {
     #[test]
     fn span_has_nonzero_line_for_content() {
         let yaml = "a: b\n";
-        let events = collect_events(yaml).unwrap();
+        let events = collect_ok!(yaml);
         let scalar = events.iter().find(|e| e.as_scalar() == Some("a"));
-        assert!(scalar.is_some());
-        assert!(scalar.unwrap().span().line > 0);
+        let Some(scalar) = scalar else {
+            assert!(false, "missing scalar");
+            return;
+        };
+        assert!(scalar.span().line > 0);
     }
 }

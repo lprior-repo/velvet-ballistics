@@ -8,6 +8,7 @@
 pub mod recovery;
 
 use arrayvec::ArrayVec;
+use recovery::RunSnapshot;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -83,6 +84,19 @@ const RUN_EVENT_PREFIX_BYTES: usize = 9;
 pub const DIGEST_BYTES: usize = 32;
 const RECORD_HEADER_BYTES: usize = 60;
 const CRC_OFFSET: usize = 56;
+/// Maximum journal event payload accepted by the default journal APIs.
+pub const MAX_JOURNAL_EVENT_PAYLOAD_BYTES: u32 = 1_048_576;
+/// Maximum source bytes accepted by the default workflow source APIs.
+pub const MAX_WORKFLOW_SOURCE_BYTES: u32 = 1_048_576;
+/// Maximum compiled IR bytes accepted by the default compiled artifact APIs.
+pub const MAX_COMPILED_IR_BYTES: u32 = 16_777_216;
+/// Maximum run header payload bytes accepted by the default header APIs.
+pub const MAX_RUN_HEADER_BYTES: u32 = 65_536;
+/// Maximum snapshot payload bytes accepted by the default snapshot APIs.
+pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
+/// Maximum blob payload bytes accepted by the default blob APIs.
+pub const MAX_BLOB_BYTES: u32 = 67_108_864;
+const PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;
 
 /// Monotonic per-run event sequence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -391,6 +405,48 @@ pub struct RecordEnvelope {
     pub sequence: u64,
 }
 
+/// Immutable workflow source bytes bound to their digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkflowSourceRecord {
+    /// Source digest key.
+    pub digest: WorkflowDigest,
+    /// Original strict YAML authoring bytes.
+    pub source: Vec<u8>,
+}
+
+/// Compiled IR artifact bytes bound to their digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompiledIrRecord {
+    /// Compiled IR digest key.
+    pub digest: WorkflowDigest,
+    /// Postcard-compatible compiled artifact bytes.
+    pub ir: Vec<u8>,
+}
+
+/// Minimal run metadata record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunHeaderRecord {
+    /// Run identifier.
+    pub run: RunId,
+    /// Workflow identifier.
+    pub workflow_id: WorkflowId,
+    /// Compiled workflow digest bound at run acceptance.
+    pub compiled_digest: WorkflowDigest,
+    /// Status byte owned by the runtime status model.
+    pub status: u8,
+    /// Admission timestamp in milliseconds supplied by the caller.
+    pub accepted_at_ms: u64,
+}
+
+/// Large payload blob record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlobRecord {
+    /// Blob digest key.
+    pub digest: [u8; DIGEST_BYTES],
+    /// Bounded blob payload.
+    pub bytes: Vec<u8>,
+}
+
 /// Encodes a postcard payload behind the 60-byte storage envelope.
 pub fn encode_record<T: Serialize>(
     magic: u32,
@@ -504,7 +560,15 @@ pub fn index_action_key(
 /// Fjall-backed append journal.
 pub struct FjallJournal {
     database: fjall::Database,
+    workflow_source: fjall::Keyspace,
+    compiled_ir: fjall::Keyspace,
+    run_header: fjall::Keyspace,
     events: fjall::Keyspace,
+    run_snapshot: fjall::Keyspace,
+    blob: fjall::Keyspace,
+    index_status: fjall::Keyspace,
+    index_workflow: fjall::Keyspace,
+    index_action: fjall::Keyspace,
     write_lock: Mutex<()>,
 }
 
@@ -512,13 +576,227 @@ impl FjallJournal {
     /// Opens or creates the journal at `path`.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, JournalError> {
         let database = fjall::Database::builder(path).open()?;
+        let workflow_source = database.keyspace(
+            KEYSPACE_WORKFLOW_SOURCE,
+            fjall::KeyspaceCreateOptions::default,
+        )?;
+        let compiled_ir =
+            database.keyspace(KEYSPACE_COMPILED_IR, fjall::KeyspaceCreateOptions::default)?;
+        let run_header =
+            database.keyspace(KEYSPACE_RUN_HEADER, fjall::KeyspaceCreateOptions::default)?;
         let events =
             database.keyspace(KEYSPACE_RUN_EVENT, fjall::KeyspaceCreateOptions::default)?;
+        let run_snapshot =
+            database.keyspace(KEYSPACE_RUN_SNAPSHOT, fjall::KeyspaceCreateOptions::default)?;
+        let blob = database.keyspace(KEYSPACE_BLOB, fjall::KeyspaceCreateOptions::default)?;
+        let index_status =
+            database.keyspace(KEYSPACE_INDEX_STATUS, fjall::KeyspaceCreateOptions::default)?;
+        let index_workflow = database.keyspace(
+            KEYSPACE_INDEX_WORKFLOW,
+            fjall::KeyspaceCreateOptions::default,
+        )?;
+        let index_action =
+            database.keyspace(KEYSPACE_INDEX_ACTION, fjall::KeyspaceCreateOptions::default)?;
         Ok(Self {
             database,
+            workflow_source,
+            compiled_ir,
+            run_header,
             events,
+            run_snapshot,
+            blob,
+            index_status,
+            index_workflow,
+            index_action,
             write_lock: Mutex::new(()),
         })
+    }
+
+    /// Returns all declared keyspace names after a successful open.
+    #[must_use]
+    pub const fn declared_keyspaces() -> [&'static str; 9] {
+        [
+            KEYSPACE_WORKFLOW_SOURCE,
+            KEYSPACE_COMPILED_IR,
+            KEYSPACE_RUN_HEADER,
+            KEYSPACE_RUN_EVENT,
+            KEYSPACE_RUN_SNAPSHOT,
+            KEYSPACE_BLOB,
+            KEYSPACE_INDEX_STATUS,
+            KEYSPACE_INDEX_WORKFLOW,
+            KEYSPACE_INDEX_ACTION,
+        ]
+    }
+
+    /// Stores immutable workflow source bytes by digest.
+    pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let key = workflow_source_key(record.digest.as_bytes())?;
+        let value = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            record,
+            MAX_WORKFLOW_SOURCE_BYTES,
+        )?;
+        self.workflow_source.insert(key.to_vec(), value)?;
+        Ok(())
+    }
+
+    /// Loads workflow source bytes by digest.
+    pub fn workflow_source(
+        &self,
+        digest: WorkflowDigest,
+    ) -> Result<Option<WorkflowSourceRecord>, JournalError> {
+        let key = workflow_source_key(digest.as_bytes())?;
+        self.decode_optional(
+            &self.workflow_source,
+            key.as_slice(),
+            MAGIC_WORKFLOW_SOURCE,
+            MAX_WORKFLOW_SOURCE_BYTES,
+        )
+    }
+
+    /// Stores compiled IR bytes by digest.
+    pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let key = compiled_ir_key(record.digest.as_bytes())?;
+        let value = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            record,
+            MAX_COMPILED_IR_BYTES,
+        )?;
+        self.compiled_ir.insert(key.to_vec(), value)?;
+        Ok(())
+    }
+
+    /// Loads compiled IR bytes by digest.
+    pub fn compiled_ir(
+        &self,
+        digest: WorkflowDigest,
+    ) -> Result<Option<CompiledIrRecord>, JournalError> {
+        let key = compiled_ir_key(digest.as_bytes())?;
+        self.decode_optional(
+            &self.compiled_ir,
+            key.as_slice(),
+            MAGIC_COMPILED_ARTIFACT,
+            MAX_COMPILED_IR_BYTES,
+        )
+    }
+
+    /// Stores run metadata by run id.
+    pub fn put_run_header(&self, record: &RunHeaderRecord) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let key = run_header_key(record.run)?;
+        let value = encode_record(
+            MAGIC_INDEX_RECORD,
+            RecordKind::RunHeader,
+            record.run.as_u64(),
+            record,
+            MAX_RUN_HEADER_BYTES,
+        )?;
+        self.run_header.insert(key.to_vec(), value)?;
+        Ok(())
+    }
+
+    /// Loads run metadata by run id.
+    pub fn run_header(&self, run: RunId) -> Result<Option<RunHeaderRecord>, JournalError> {
+        let key = run_header_key(run)?;
+        self.decode_optional(
+            &self.run_header,
+            key.as_slice(),
+            MAGIC_INDEX_RECORD,
+            MAX_RUN_HEADER_BYTES,
+        )
+    }
+
+    /// Stores a compact run snapshot.
+    pub fn put_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let key = run_snapshot_key(snapshot.run, snapshot.seq)?;
+        let value = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Snapshot,
+            snapshot.seq.get(),
+            snapshot,
+            MAX_SNAPSHOT_BYTES,
+        )?;
+        self.run_snapshot.insert(key.to_vec(), value)?;
+        Ok(())
+    }
+
+    /// Loads a compact run snapshot.
+    pub fn snapshot(&self, run: RunId, seq: EventSeq) -> Result<Option<RunSnapshot>, JournalError> {
+        let key = run_snapshot_key(run, seq)?;
+        self.decode_optional(
+            &self.run_snapshot,
+            key.as_slice(),
+            MAGIC_SNAPSHOT,
+            MAX_SNAPSHOT_BYTES,
+        )
+    }
+
+    /// Stores a bounded blob by digest.
+    pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let key = blob_key(record.digest)?;
+        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        self.blob.insert(key.to_vec(), value)?;
+        Ok(())
+    }
+
+    /// Loads a bounded blob by digest.
+    pub fn blob(&self, digest: [u8; DIGEST_BYTES]) -> Result<Option<BlobRecord>, JournalError> {
+        let key = blob_key(digest)?;
+        self.decode_optional(&self.blob, key.as_slice(), MAGIC_BLOB, MAX_BLOB_BYTES)
+    }
+
+    /// Inserts minimal status index marker bytes.
+    pub fn put_status_index(
+        &self,
+        state: u8,
+        timestamp: u64,
+        run: RunId,
+    ) -> Result<(), JournalError> {
+        let key = index_status_key(state, timestamp, run)?;
+        self.index_status.insert(key.to_vec(), Vec::<u8>::new())?;
+        Ok(())
+    }
+
+    /// Inserts minimal workflow index marker bytes.
+    pub fn put_workflow_index(&self, workflow: WorkflowId, run: RunId) -> Result<(), JournalError> {
+        let key = index_workflow_key(workflow, run)?;
+        self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
+        Ok(())
+    }
+
+    /// Inserts minimal pending action index marker bytes.
+    pub fn put_action_index(
+        &self,
+        action: ActionId,
+        run: RunId,
+        step: StepIdx,
+    ) -> Result<(), JournalError> {
+        let key = index_action_key(action, run, step)?;
+        self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
+        Ok(())
     }
 
     /// Appends one event without forcing a durability barrier.
@@ -553,7 +831,7 @@ impl FjallJournal {
             event.record_kind(),
             event.seq().get(),
             event,
-            u32::MAX,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
         self.events.insert(key.to_vec(), value)?;
         Ok(())
@@ -572,13 +850,31 @@ impl FjallJournal {
 
         for item in self.events.prefix(run_prefix(run)?) {
             let value = item.value()?;
-            let (_, event) = decode_record(value.as_ref(), MAGIC_JOURNAL_EVENT, u32::MAX)?;
+            let (_, event) = decode_record(
+                value.as_ref(),
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
             validate_replayed_event(run, expected, &event)?;
             expected = next_seq(expected)?;
             replay.push(event);
         }
 
         Ok(replay)
+    }
+
+    fn decode_optional<T: DeserializeOwned>(
+        &self,
+        keyspace: &fjall::Keyspace,
+        key: &[u8],
+        magic: u32,
+        max_payload_len: u32,
+    ) -> Result<Option<T>, JournalError> {
+        let Some(value) = keyspace.get(key)? else {
+            return Ok(None);
+        };
+        let (_, record) = decode_record(value.as_ref(), magic, max_payload_len)?;
+        Ok(Some(record))
     }
 }
 
@@ -731,8 +1027,10 @@ fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], Jour
 }
 
 fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError> {
-    let payload_len =
-        u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge { len: u32::MAX, max })?;
+    let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
+        len: PAYLOAD_LEN_CONVERSION_MAX,
+        max,
+    })?;
     if payload_len > max {
         return Err(JournalError::PayloadTooLarge {
             len: payload_len,
@@ -754,7 +1052,7 @@ fn encode_record_payload(
             .checked_add(payload.len())
             .ok_or(JournalError::PayloadTooLarge {
                 len: payload_len,
-                max: u32::MAX,
+                max: PAYLOAD_LEN_CONVERSION_MAX,
             })?;
     let mut header = [0_u8; RECORD_HEADER_BYTES];
     write_u32(&mut header, 0, magic)?;
@@ -857,7 +1155,7 @@ fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
         MAGIC_JOURNAL_EVENT => matches!(kind, 10..=23),
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
-        MAGIC_INDEX_RECORD => kind == RecordKind::IndexUpdate.id(),
+        MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),
         MAGIC_IPC_FRAME => true,
         _ => false,
     };
@@ -965,11 +1263,14 @@ fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        EventSeq, FjallJournal, JournalError, JournalEvent, MAGIC_JOURNAL_EVENT, RecordKind,
+        BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
+        MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
         blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
         index_status_key, index_workflow_key, journal_key, run_event_key, run_header_key,
         run_snapshot_key, workflow_source_key,
     };
+    use crate::recovery::RunSnapshot;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     #[test]
@@ -1116,6 +1417,161 @@ mod tests {
         let decoded = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 1);
 
         assert!(matches!(decoded, Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn decode_rejects_bad_magic_and_unknown_kind() {
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        let Ok(mut bad_magic) = encoded else {
+            return;
+        };
+        if let Some(byte) = bad_magic.get_mut(0) {
+            *byte ^= 1;
+        }
+
+        let decoded = decode_record::<JournalEvent>(
+            &bad_magic,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        assert!(matches!(decoded, Err(JournalError::BadMagic { .. })));
+
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        let Ok(mut unknown_kind) = encoded else {
+            return;
+        };
+        if let Some(byte) = unknown_kind.get_mut(6) {
+            *byte = 200;
+        }
+        if let Some(byte) = unknown_kind.get_mut(56) {
+            *byte ^= 1;
+        }
+
+        let decoded = decode_record::<JournalEvent>(
+            &unknown_kind,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        assert!(matches!(
+            decoded,
+            Err(JournalError::UnknownRecordKind { .. })
+        ));
+    }
+
+    #[test]
+    fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok(), "tempdir should be created");
+        let Ok(temp_dir) = temp_dir else {
+            return;
+        };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok(), "journal should open");
+        let Ok(journal) = journal else {
+            return;
+        };
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
+
+        let workflow_digest = WorkflowDigest::from_bytes([1; 32]);
+        let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
+        let source = WorkflowSourceRecord {
+            digest: workflow_digest,
+            source: vec![b'n', b'a', b'm', b'e'],
+        };
+        let ir = CompiledIrRecord {
+            digest: compiled_digest,
+            ir: vec![1, 2, 3],
+        };
+        let header = RunHeaderRecord {
+            run: RunId::new(3),
+            workflow_id: WorkflowId::new(4),
+            compiled_digest,
+            status: 5,
+            accepted_at_ms: 6,
+        };
+        let snapshot = RunSnapshot {
+            run: RunId::new(3),
+            seq: EventSeq::new(7),
+            workflow: compiled_digest,
+            slots: vec![8, 9],
+        };
+        let blob = BlobRecord {
+            digest: [9; 32],
+            bytes: vec![10, 11],
+        };
+
+        assert!(journal.put_workflow_source(&source).is_ok());
+        assert!(journal.put_compiled_ir(&ir).is_ok());
+        assert!(journal.put_run_header(&header).is_ok());
+        assert!(journal.put_snapshot(&snapshot).is_ok());
+        assert!(journal.put_blob(&blob).is_ok());
+        assert!(journal.put_status_index(1, 2, RunId::new(3)).is_ok());
+        assert!(
+            journal
+                .put_workflow_index(WorkflowId::new(4), RunId::new(3))
+                .is_ok()
+        );
+        assert!(
+            journal
+                .put_action_index(ActionId::new(5), RunId::new(3), StepIdx::new(6))
+                .is_ok()
+        );
+
+        assert!(
+            matches!(journal.workflow_source(workflow_digest), Ok(Some(record)) if record == source)
+        );
+        assert!(matches!(journal.compiled_ir(compiled_digest), Ok(Some(record)) if record == ir));
+        assert!(matches!(journal.run_header(RunId::new(3)), Ok(Some(record)) if record == header));
+        assert!(
+            matches!(journal.snapshot(RunId::new(3), EventSeq::new(7)), Ok(Some(record)) if record == snapshot)
+        );
+        assert!(matches!(journal.blob([9; 32]), Ok(Some(record)) if record == blob));
+    }
+
+    #[test]
+    fn non_journal_families_reject_wrong_record_kind() {
+        let source = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            source: vec![1],
+        };
+
+        let encoded = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            &source,
+            128,
+        );
+        assert!(encoded.is_ok());
+        let wrong_family = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::WorkflowSource,
+            0,
+            &source,
+            128,
+        );
+
+        assert!(matches!(
+            wrong_family,
+            Err(JournalError::RecordKindFamilyMismatch { .. })
+        ));
     }
 
     #[test]

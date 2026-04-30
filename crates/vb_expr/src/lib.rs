@@ -14,6 +14,12 @@ pub mod lexer;
 pub mod parser;
 pub mod typecheck;
 
+pub use bytecode::{
+    ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
+    compile_expr_with_pool, compile_expr_with_resolver,
+};
+pub use eval::{eval_binary_op, eval_expr_program, eval_helper, eval_unary_op};
+
 use thiserror::Error;
 
 /// Expression error type.
@@ -76,6 +82,9 @@ pub enum ExprError {
 
     #[error("constant pool overflow")]
     ConstantPoolOverflow,
+
+    #[error("unsupported literal: {literal}")]
+    UnsupportedLiteral { literal: String },
 }
 
 pub type ExprResult<T> = Result<T, ExprError>;

@@ -30,11 +30,22 @@ pub enum RuntimeError {
     #[error("run not found")]
     RunNotFound,
 
-    /// Action identifier not recognized.
-    #[error("action unknown: {action}")]
-    ActionUnknown {
-        /// Action name.
-        action: String,
+    /// Active run capacity for a shard has been exhausted.
+    #[error("active run capacity exceeded: {capacity}")]
+    ActiveRunCapacityExceeded {
+        /// Configured active-run capacity.
+        capacity: usize,
+    },
+
+    /// Run identifier is already active on the shard.
+    #[error("run already exists")]
+    RunAlreadyExists,
+
+    /// Runtime API exists, but the durable path is not implemented yet.
+    #[error("unsupported runtime operation: {operation}")]
+    UnsupportedOperation {
+        /// Static operation code.
+        operation: &'static str,
     },
 
     /// Shutdown is in progress.

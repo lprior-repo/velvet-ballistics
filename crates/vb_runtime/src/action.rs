@@ -3,7 +3,8 @@
 //! Action registry for compile-time contract resolution and runtime dispatch.
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionInput, ActionOutcome, ActionResult, ActionTicket, Idempotency,
+    ActionContract, ActionError, ActionInput, ActionOutcome, ActionResult, ActionTicket,
+    Idempotency,
 };
 use vb_core::ids::ActionId;
 
@@ -52,16 +53,15 @@ impl ActionRegistry {
         }
         // Extend to fill up to the target slot.
         let needed = slot.checked_add(1).ok_or(ActionError::DispatchFailed)?;
-        self.contracts
-            .resize_with(needed, || ActionContract {
-                id: ActionId::new(0),
-                input_slot_count: 0,
-                output_slot_count: 0,
-                max_input_bytes: 0,
-                max_output_bytes: 0,
-                timeout_ms: 0,
-                idempotency: Idempotency::DeterministicPure,
-            });
+        self.contracts.resize_with(needed, || ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+        });
         *self
             .contracts
             .get_mut(slot)
@@ -81,7 +81,11 @@ impl ActionRegistry {
     /// Dispatches an action input through the registry and produces an outcome.
     /// In generated mode, this becomes a match on ActionId. Here we provide the
     /// generic table-driven dispatch.
-    pub fn dispatch(&self, input: &ActionInput, contract: &ActionContract) -> ActionResult<ActionOutcome> {
+    pub fn dispatch(
+        &self,
+        input: &ActionInput,
+        contract: &ActionContract,
+    ) -> ActionResult<ActionOutcome> {
         let resolved = self.resolve_compile_time(input.action)?;
         if resolved.id != contract.id {
             return Err(ActionError::UnknownAction {
@@ -199,7 +203,10 @@ mod tests {
         let contract = test_contract(5);
         registry.register(contract).ok();
         let input = test_input(5);
-        let contract = registry.resolve_compile_time(ActionId::new(5)).cloned().ok();
+        let contract = registry
+            .resolve_compile_time(ActionId::new(5))
+            .cloned()
+            .ok();
         let Some(ref contract) = contract else { return };
         let result = registry.dispatch(&input, contract);
         match result {

@@ -3,7 +3,7 @@
 use crate::lexer::{BinaryOp, UnaryOp};
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral};
 use crate::{ExprError, ExprResult};
-use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram};
+use vb_core::{ConstIdx, ConstValue, CoreError, ExprOp, ExprProgram, SlotIdx};
 
 /// Maximum bytecode operations per expression.
 const MAX_OPS: usize = 256;
@@ -17,7 +17,8 @@ const MAX_CONSTANTS: usize = 65_535;
 pub fn compile_expr_to_bytecode(ast: &ExprAst) -> ExprResult<ExprProgram> {
     let mut ops = Vec::new();
     let mut constants = Vec::new();
-    lower_expr(ast, &mut constants, &mut ops)?;
+    let resolver = RejectingResolver;
+    lower_expr(ast, &mut constants, &mut ops, &resolver)?;
     let op_count = ops.len();
     validate_op_count(&ops)?;
     ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
@@ -34,7 +35,62 @@ pub fn compile_expr_with_pool(
     constants: &mut Vec<ConstValue>,
 ) -> ExprResult<ExprProgram> {
     let mut ops = Vec::new();
-    lower_expr(ast, constants, &mut ops)?;
+    let resolver = RejectingResolver;
+    lower_expr(ast, constants, &mut ops, &resolver)?;
+    let op_count = ops.len();
+    validate_op_count(&ops)?;
+    ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
+        len: op_count,
+        max: MAX_OPS,
+    })
+}
+
+/// Resolves a source reference into a numeric runtime slot.
+pub trait ReferenceResolver {
+    /// Returns the slot for `reference`, or `None` when the reference is unknown.
+    fn resolve_reference(&self, reference: &str) -> Option<SlotIdx>;
+}
+
+impl<F> ReferenceResolver for F
+where
+    F: Fn(&str) -> Option<SlotIdx>,
+{
+    fn resolve_reference(&self, reference: &str) -> Option<SlotIdx> {
+        self(reference)
+    }
+}
+
+struct RejectingResolver;
+
+impl ReferenceResolver for RejectingResolver {
+    fn resolve_reference(&self, _reference: &str) -> Option<SlotIdx> {
+        None
+    }
+}
+
+/// Lexes, parses, and compiles source using resolver-driven reference lowering.
+pub fn compile_expr<R>(source: &str, resolver: &R) -> ExprResult<(ExprProgram, Vec<ConstValue>)>
+where
+    R: ReferenceResolver,
+{
+    let tokens = crate::lexer::lex_expr(source)?;
+    let ast = crate::parser::parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_resolver(&ast, &mut constants, resolver)?;
+    Ok((program, constants))
+}
+
+/// Compiles an AST into bytecode using an external constant pool and resolver.
+pub fn compile_expr_with_resolver<R>(
+    ast: &ExprAst,
+    constants: &mut Vec<ConstValue>,
+    resolver: &R,
+) -> ExprResult<ExprProgram>
+where
+    R: ReferenceResolver,
+{
+    let mut ops = Vec::new();
+    lower_expr(ast, constants, &mut ops, resolver)?;
     let op_count = ops.len();
     validate_op_count(&ops)?;
     ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
@@ -70,13 +126,16 @@ fn lower_expr(
     expr: &ExprAst,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
     match expr {
         ExprAst::Literal(lit) => lower_literal(lit, constants, ops),
-        ExprAst::Reference(_) => lower_reference(ops),
-        ExprAst::Unary { op, expr: inner } => lower_unary(*op, inner, constants, ops),
-        ExprAst::Binary { op, left, right } => lower_binary(*op, left, right, constants, ops),
-        ExprAst::Helper { name, args } => lower_helper(*name, args, constants, ops),
+        ExprAst::Reference(reference) => lower_reference(reference, ops, resolver),
+        ExprAst::Unary { op, expr: inner } => lower_unary(*op, inner, constants, ops, resolver),
+        ExprAst::Binary { op, left, right } => {
+            lower_binary(*op, left, right, constants, ops, resolver)
+        }
+        ExprAst::Helper { name, args } => lower_helper(*name, args, constants, ops, resolver),
     }
 }
 
@@ -85,24 +144,36 @@ fn lower_literal(
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
 ) -> ExprResult<()> {
-    let value = literal_to_const(lit);
+    let value = literal_to_const(lit)?;
     let idx = push_constant(value, constants)?;
     ops.push(ExprOp::LoadConst(idx));
     Ok(())
 }
 
-fn literal_to_const(lit: &ExprLiteral) -> ConstValue {
+fn literal_to_const(lit: &ExprLiteral) -> ExprResult<ConstValue> {
     match lit {
-        ExprLiteral::Null => ConstValue::Null,
-        ExprLiteral::Bool(v) => ConstValue::Bool(*v),
-        ExprLiteral::I64(v) => ConstValue::I64(*v),
-        ExprLiteral::Text(_) => ConstValue::Null,
+        ExprLiteral::Null => Ok(ConstValue::Null),
+        ExprLiteral::Bool(v) => Ok(ConstValue::Bool(*v)),
+        ExprLiteral::I64(v) => Ok(ConstValue::I64(*v)),
+        ExprLiteral::Text(_) => Err(ExprError::UnsupportedLiteral {
+            literal: "text".into(),
+        }),
     }
 }
 
-fn lower_reference(ops: &mut Vec<ExprOp>) -> ExprResult<()> {
-    ops.push(ExprOp::LoadSlot(vb_core::SlotIdx::new(0)));
-    Ok(())
+fn lower_reference(
+    reference: &str,
+    ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
+) -> ExprResult<()> {
+    if let Some(slot) = resolver.resolve_reference(reference) {
+        ops.push(ExprOp::LoadSlot(slot));
+        Ok(())
+    } else {
+        Err(ExprError::InvalidReference {
+            reference: reference.into(),
+        })
+    }
 }
 
 fn lower_unary(
@@ -110,14 +181,15 @@ fn lower_unary(
     inner: &ExprAst,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
     match op {
         UnaryOp::Not => {
-            lower_expr(inner, constants, ops)?;
+            lower_expr(inner, constants, ops, resolver)?;
             ops.push(ExprOp::Not);
             Ok(())
         }
-        UnaryOp::Neg => lower_negation(inner, constants, ops),
+        UnaryOp::Neg => lower_negation(inner, constants, ops, resolver),
     }
 }
 
@@ -125,10 +197,11 @@ fn lower_negation(
     inner: &ExprAst,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
     let zero = push_constant(ConstValue::I64(0), constants)?;
     ops.push(ExprOp::LoadConst(zero));
-    lower_expr(inner, constants, ops)?;
+    lower_expr(inner, constants, ops, resolver)?;
     ops.push(ExprOp::Sub);
     Ok(())
 }
@@ -139,9 +212,10 @@ fn lower_binary(
     right: &ExprAst,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
-    lower_expr(left, constants, ops)?;
-    lower_expr(right, constants, ops)?;
+    lower_expr(left, constants, ops, resolver)?;
+    lower_expr(right, constants, ops, resolver)?;
     ops.push(binary_op(op));
     Ok(())
 }
@@ -151,9 +225,10 @@ fn lower_helper(
     args: &[ExprAst],
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
     for arg in args {
-        lower_expr(arg, constants, ops)?;
+        lower_expr(arg, constants, ops, resolver)?;
     }
     ops.push(helper_op(name));
     Ok(())
@@ -202,6 +277,24 @@ fn validate_op_count(ops: &[ExprOp]) -> ExprResult<()> {
         })
     } else {
         Ok(())
+    }
+}
+
+/// Validates bytecode stack usage against the expression stack limit.
+pub fn check_expr_stack_bound(ops: &[ExprOp]) -> ExprResult<u8> {
+    vb_core::check_expr_stack_bound(ops, vb_core::limits::MAX_EXPRESSION_STACK)
+        .map_err(core_to_expr)
+}
+
+fn core_to_expr(error: CoreError) -> ExprError {
+    match error {
+        CoreError::ExpressionStackUnderflow => ExprError::StackUnderflow,
+        CoreError::ExpressionStackOverflow { max } => ExprError::StackOverflow { max },
+        CoreError::ResourceLimitExceeded { resource: _ } => ExprError::BytecodeTooLong {
+            len: MAX_OPS.saturating_add(1),
+            max: MAX_OPS,
+        },
+        _ => ExprError::UnexpectedEof,
     }
 }
 
@@ -266,11 +359,7 @@ fn fold_i64_div(lv: ConstValue, rv: ConstValue) -> Option<ConstValue> {
     }
 }
 
-fn fold_i64_cmp(
-    lv: ConstValue,
-    rv: ConstValue,
-    op: fn(&i64, &i64) -> bool,
-) -> Option<ConstValue> {
+fn fold_i64_cmp(lv: ConstValue, rv: ConstValue, op: fn(&i64, &i64) -> bool) -> Option<ConstValue> {
     match (lv, rv) {
         (ConstValue::I64(a), ConstValue::I64(b)) => Some(ConstValue::Bool(op(&a, &b))),
         _ => None,
@@ -304,6 +393,16 @@ mod tests {
         let mut constants = Vec::new();
         let program = compile_expr_with_pool(&ast, &mut constants)?;
         Ok((program, constants))
+    }
+
+    fn resolve_test_reference(reference: &str) -> Option<SlotIdx> {
+        match reference {
+            "$a" => Some(SlotIdx::new(0)),
+            "$b" => Some(SlotIdx::new(1)),
+            "$c" => Some(SlotIdx::new(2)),
+            "$x" => Some(SlotIdx::new(3)),
+            _ => None,
+        }
     }
 
     #[test]
@@ -354,27 +453,30 @@ mod tests {
     }
 
     #[test]
-    fn constant_folds_addition() {
-        let tokens = crate::lexer::lex_expr("1 + 2").unwrap();
-        let ast = crate::parser::parse_expr(&tokens).unwrap();
+    fn constant_folds_addition() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("1 + 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
         let folded = const_fold_expr(&ast);
         assert_eq!(folded, Some(ConstValue::I64(3)));
+        Ok(())
     }
 
     #[test]
-    fn constant_folds_boolean_logic() {
-        let tokens = crate::lexer::lex_expr("true and false").unwrap();
-        let ast = crate::parser::parse_expr(&tokens).unwrap();
+    fn constant_folds_boolean_logic() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("true and false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
         let folded = const_fold_expr(&ast);
         assert_eq!(folded, Some(ConstValue::Bool(false)));
+        Ok(())
     }
 
     #[test]
-    fn does_not_fold_references() {
-        let tokens = crate::lexer::lex_expr("$x + 1").unwrap();
-        let ast = crate::parser::parse_expr(&tokens).unwrap();
+    fn does_not_fold_references() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("$x + 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
         let folded = const_fold_expr(&ast);
         assert_eq!(folded, None);
+        Ok(())
     }
 
     #[test]
@@ -399,19 +501,51 @@ mod tests {
 
     #[test]
     fn compiles_all_helpers() -> ExprResult<()> {
-        compile("contains($a, $b)")?;
-        compile("starts_with($a, $b)")?;
-        compile("ends_with($a, $b)")?;
-        compile("has($a, $b)")?;
-        compile("exists($a)")?;
-        compile("length($a)")?;
-        compile("empty($a)")?;
-        compile("append($a, $b)")?;
-        compile("append_if($a, $b, $c)")?;
-        compile("merge($a, $b)")?;
-        compile("sum($a)")?;
-        compile("count($a)")?;
-        compile("unique($a)")?;
+        super::compile_expr("contains($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("starts_with($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("ends_with($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("has($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("exists($a)", &resolve_test_reference)?;
+        super::compile_expr("length($a)", &resolve_test_reference)?;
+        super::compile_expr("empty($a)", &resolve_test_reference)?;
+        super::compile_expr("append($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("append_if($a, $b, $c)", &resolve_test_reference)?;
+        super::compile_expr("merge($a, $b)", &resolve_test_reference)?;
+        super::compile_expr("sum($a)", &resolve_test_reference)?;
+        super::compile_expr("count($a)", &resolve_test_reference)?;
+        super::compile_expr("unique($a)", &resolve_test_reference)?;
         Ok(())
+    }
+
+    #[test]
+    fn unresolved_reference_is_typed_error() -> ExprResult<()> {
+        let result = super::compile_expr("$missing + 1", &resolve_test_reference);
+        assert!(matches!(
+            result,
+            Err(ExprError::InvalidReference { reference }) if reference == "$missing"
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn resolver_drives_reference_lowering() -> ExprResult<()> {
+        let (program, constants) = super::compile_expr("$a + 1", &resolve_test_reference)?;
+        let expected_ops = vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::Add,
+        ];
+        assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+        assert_eq!(constants, vec![ConstValue::I64(1)]);
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_text_literals_explicitly() {
+        let result = compile_with_pool("\"hello\"");
+        assert!(matches!(
+            result,
+            Err(ExprError::UnsupportedLiteral { literal }) if literal == "text"
+        ));
     }
 }

@@ -7,12 +7,13 @@ use std::io::{Read, Write};
 use std::path::Path;
 use vb_runtime::runtime::Runtime;
 
-use crate::frame::{read_frame_header, write_frame};
-use crate::{IpcCommand, IpcFrameHeader, IPC_HEADER_LEN};
+use crate::frame::write_frame;
+use crate::{IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
 
 const SERVER_TOKEN: Token = Token(0);
 const FIRST_CLIENT_TOKEN: usize = 1;
 const MAX_CLIENTS: usize = 256;
+const READ_CHUNK_BYTES: usize = 4096;
 
 /// IPC server serving commands over a Unix domain socket.
 pub struct IpcServer {
@@ -60,6 +61,22 @@ pub enum IpcResponse {
     },
     /// Payload decode failed.
     BadRequest,
+    /// The request payload variant did not match the frame command.
+    CommandPayloadMismatch,
+    /// The IPC layer needs a workflow resolver before it can submit the run.
+    WorkflowResolutionRequired,
+    /// A runtime count exceeded the response field width.
+    CountOutOfRange {
+        /// Actual count that could not fit in the response.
+        actual: usize,
+        /// Maximum representable response count.
+        limit: u32,
+    },
+    /// Frame decode failed before command dispatch.
+    FrameError {
+        /// Typed frame error text.
+        message: String,
+    },
     /// Runtime rejected the command.
     RuntimeError {
         /// Error description.
@@ -81,11 +98,7 @@ impl IpcServer {
         let poll = Poll::new().map_err(|source| IpcServerError::PollFailed { source })?;
 
         poll.registry()
-            .register(
-                &mut listener,
-                SERVER_TOKEN,
-                Interest::READABLE,
-            )
+            .register(&mut listener, SERVER_TOKEN, Interest::READABLE)
             .map_err(|source| IpcServerError::PollFailed { source })?;
 
         let events = Events::with_capacity(MAX_CLIENTS);
@@ -109,7 +122,9 @@ impl IpcServer {
             .poll(&mut self.events, timeout)
             .map_err(|source| IpcServerError::PollFailed { source })?;
 
-        let pending: Vec<(Token, bool)> = self.events.iter()
+        let pending: Vec<(Token, bool)> = self
+            .events
+            .iter()
             .map(|e| (e.token(), e.is_readable()))
             .collect();
         for (token, readable) in pending {
@@ -167,7 +182,7 @@ impl IpcServer {
             return Ok(true);
         };
 
-        let mut temp_buf = [0u8; 4096];
+        let mut temp_buf = [0u8; READ_CHUNK_BYTES];
         let bytes_read = match client.stream.read(&mut temp_buf) {
             Ok(0) => return Ok(true),
             Ok(n) => n,
@@ -175,50 +190,42 @@ impl IpcServer {
             Err(_) => return Ok(true),
         };
 
-        // bytes_read is bounded by temp_buf len (4096) and the read result.
-        let read_slice = temp_buf.get(..bytes_read).unwrap_or(&[]);
-        client.read_buffer.extend_from_slice(read_slice);
+        append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
 
         while client.read_buffer.len() >= IPC_HEADER_LEN {
-            let header_slice = client.read_buffer.get(..IPC_HEADER_LEN).unwrap_or(&[]);
-            let header_bytes: [u8; IPC_HEADER_LEN] =
-                match <[u8; IPC_HEADER_LEN]>::try_from(header_slice) {
-                    Ok(bytes) => bytes,
-                    Err(_) => return Ok(false),
-                };
-
-            let header = match read_frame_header(&mut &header_bytes[..]) {
+            let header_bytes = read_buffer_header(&client.read_buffer)?;
+            let header = match IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT) {
                 Ok(h) => h,
-                Err(_) => return Ok(true),
+                Err(error) => {
+                    let response = frame_error_response(error);
+                    let fallback_header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);
+                    drop(send_response(
+                        &mut client.stream,
+                        &mut client.write_buffer,
+                        &fallback_header,
+                        &response,
+                    ));
+                    return Ok(true);
+                }
             };
 
-            let payload_len = match usize::try_from(header.payload_len) {
-                Ok(len) => len,
-                Err(_) => return Ok(true),
-            };
-
-            let total_len = match IPC_HEADER_LEN.checked_add(payload_len) {
-                Some(len) => len,
-                None => return Ok(true),
-            };
-
+            let total_len = frame_total_len(&header)?;
             if client.read_buffer.len() < total_len {
                 return Ok(false);
             }
 
-            let payload_start = IPC_HEADER_LEN;
-            let payload_end = total_len;
-            let payload_bytes = client
-                .read_buffer
-                .get(payload_start..payload_end)
-                .map(|s| s.to_vec())
-                .unwrap_or_default();
+            let payload_bytes = extract_payload(&client.read_buffer, total_len)?;
             client.read_buffer.drain(..total_len);
 
             let response = dispatch_command(&header, &payload_bytes, runtime);
             // Response write failures are logged by dropping the error; the
             // server continues serving other clients.
-            drop(send_response(&mut client.stream, &mut client.write_buffer, &header, &response));
+            drop(send_response(
+                &mut client.stream,
+                &mut client.write_buffer,
+                &header,
+                &response,
+            ));
         }
 
         Ok(false)
@@ -231,16 +238,12 @@ impl IpcServer {
     }
 }
 
-fn dispatch_command(
-    header: &IpcFrameHeader,
-    payload: &[u8],
-    runtime: &mut Runtime,
-) -> IpcResponse {
+fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     match header.command {
         IpcCommand::Health => handle_health(),
         IpcCommand::Shutdown => handle_shutdown(runtime),
         IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
-            handle_submit_run(payload, runtime)
+            handle_submit_run(header, payload, runtime)
         }
         IpcCommand::CancelRun => handle_cancel_run(payload, runtime),
         IpcCommand::InspectRun => handle_inspect_run(payload, runtime),
@@ -265,21 +268,24 @@ fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_submit_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+fn handle_submit_run(
+    header: &IpcFrameHeader,
+    payload: &[u8],
+    _runtime: &mut Runtime,
+) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::SubmitRun(submit)) = decoded else {
+    let Ok(decoded) = decoded else {
         return IpcResponse::BadRequest;
     };
 
-    let run_id = submit.run_id;
-
-    // The IPC layer carries a WorkflowDigest and raw input bytes. The runtime
-    // requires a CompiledWorkflow for execution. The workflow resolution is a
-    // higher-layer concern; the IPC server acknowledges the submission and
-    // the runtime will be driven by the resolved workflow via submit_direct.
-    drop((submit.workflow, submit.input, runtime));
-    IpcResponse::AcceptedRun {
-        run_id: run_id.as_u64(),
+    match (header.command, decoded) {
+        (IpcCommand::SubmitRun, crate::IpcPayload::SubmitRun(submit))
+        | (IpcCommand::SubmitRunInline, crate::IpcPayload::SubmitRunInline(submit)) => {
+            let _workflow_digest = submit.workflow;
+            let _input = submit.input;
+            IpcResponse::WorkflowResolutionRequired
+        }
+        _ => IpcResponse::CommandPayloadMismatch,
     }
 }
 
@@ -321,9 +327,12 @@ fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         return IpcResponse::BadRequest;
     };
 
-    let events = runtime.list_events(run_id);
-    let count = u32::try_from(events.len()).unwrap_or(u32::MAX);
-    IpcResponse::EventCount { count }
+    match runtime.list_events(run_id) {
+        Ok(events) => count_response(events.len(), IpcResponseKind::Event),
+        Err(e) => IpcResponse::RuntimeError {
+            message: e.to_string(),
+        },
+    }
 }
 
 fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
@@ -344,12 +353,7 @@ fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
 fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::CompleteAction {
-        run_id,
-        ticket,
-        ..
-    }) = decoded
-    else {
+    let Ok(crate::IpcPayload::CompleteAction { run_id, ticket, .. }) = decoded else {
         return IpcResponse::BadRequest;
     };
 
@@ -385,8 +389,88 @@ fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
 fn handle_drain_trace(runtime: &mut Runtime) -> IpcResponse {
     let events = runtime.drain_trace();
-    let count = u32::try_from(events.len()).unwrap_or(u32::MAX);
-    IpcResponse::TraceCount { count }
+    count_response(events.len(), IpcResponseKind::Trace)
+}
+
+enum IpcResponseKind {
+    Event,
+    Trace,
+}
+
+fn count_response(count: usize, kind: IpcResponseKind) -> IpcResponse {
+    match u32::try_from(count) {
+        Ok(value) => match kind {
+            IpcResponseKind::Event => IpcResponse::EventCount { count: value },
+            IpcResponseKind::Trace => IpcResponse::TraceCount { count: value },
+        },
+        Err(_) => IpcResponse::CountOutOfRange {
+            actual: count,
+            limit: u32::MAX,
+        },
+    }
+}
+
+fn append_read_bytes(
+    read_buffer: &mut Vec<u8>,
+    temp_buf: &[u8; READ_CHUNK_BYTES],
+    bytes_read: usize,
+) -> Result<(), IpcServerError> {
+    let read_slice = temp_buf
+        .get(..bytes_read)
+        .ok_or(IpcServerError::FrameInvalid {
+            source: IpcError::PayloadLengthMismatch {
+                header: READ_CHUNK_BYTES,
+                actual: bytes_read,
+            },
+        })?;
+    let next_len = read_buffer
+        .len()
+        .checked_add(read_slice.len())
+        .ok_or(IpcServerError::ReadBufferTooLarge)?;
+    let max_buffer = IPC_HEADER_LEN
+        .checked_add(MaxPayloadBytes::DEFAULT.get())
+        .ok_or(IpcServerError::ReadBufferTooLarge)?;
+    if next_len > max_buffer {
+        return Err(IpcServerError::ReadBufferTooLarge);
+    }
+    read_buffer.extend_from_slice(read_slice);
+    Ok(())
+}
+
+fn read_buffer_header(read_buffer: &[u8]) -> Result<[u8; IPC_HEADER_LEN], IpcServerError> {
+    let header_slice = read_buffer
+        .get(..IPC_HEADER_LEN)
+        .ok_or(IpcServerError::IncompleteFrame)?;
+    <[u8; IPC_HEADER_LEN]>::try_from(header_slice).map_err(|_| IpcServerError::IncompleteFrame)
+}
+
+fn frame_total_len(header: &IpcFrameHeader) -> Result<usize, IpcServerError> {
+    let payload_len =
+        usize::try_from(header.payload_len).map_err(|_| IpcServerError::FrameInvalid {
+            source: IpcError::PayloadLengthOutOfRange {
+                actual: header.payload_len,
+            },
+        })?;
+    let total_len = IPC_HEADER_LEN
+        .checked_add(payload_len)
+        .ok_or(IpcServerError::ReadBufferTooLarge)?;
+    Ok(total_len)
+}
+
+fn extract_payload(read_buffer: &[u8], total_len: usize) -> Result<Vec<u8>, IpcServerError> {
+    if read_buffer.len() < total_len {
+        return Err(IpcServerError::IncompleteFrame);
+    }
+    let payload = read_buffer
+        .get(IPC_HEADER_LEN..total_len)
+        .ok_or(IpcServerError::IncompleteFrame)?;
+    Ok(payload.to_vec())
+}
+
+fn frame_error_response(error: IpcError) -> IpcResponse {
+    IpcResponse::FrameError {
+        message: error.to_string(),
+    }
 }
 
 fn send_response(
@@ -395,8 +479,8 @@ fn send_response(
     request_header: &IpcFrameHeader,
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
-    let payload_bytes = postcard::to_allocvec(response)
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let payload_bytes =
+        postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     write_buffer.clear();
     write_frame(
@@ -452,4 +536,141 @@ pub enum IpcServerError {
         /// Underlying IO error.
         source: std::io::Error,
     },
+    /// Client frame did not contain enough bytes for the declared frame.
+    #[error("incomplete IPC frame")]
+    IncompleteFrame,
+    /// Client read buffer exceeded the configured single-frame bound.
+    #[error("IPC read buffer exceeded configured frame bound")]
+    ReadBufferTooLarge,
+    /// Client frame failed typed validation.
+    #[error("invalid IPC frame: {source}")]
+    FrameInvalid {
+        /// Typed IPC frame error.
+        source: IpcError,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        IpcResponse, IpcResponseKind, READ_CHUNK_BYTES, append_read_bytes, count_response,
+        dispatch_command, extract_payload, frame_total_len, read_buffer_header,
+    };
+    use crate::{IPC_HEADER_LEN, IpcCommand, IpcFrameHeader, IpcPayload, SubmitRunPayload};
+    use std::num::NonZeroUsize;
+    use vb_core::{RunId, WorkflowDigest};
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
+
+    #[test]
+    fn extracts_payload_without_lossy_empty_fallback() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 7, 3);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header encodes");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+
+        let mut frame = Vec::new();
+        frame.extend_from_slice(&encoded);
+        frame.extend_from_slice(b"abc");
+        let total_len = frame_total_len(&header);
+        assert!(total_len.is_ok(), "total len is checked");
+        let Ok(total_len) = total_len else {
+            return;
+        };
+
+        let payload = extract_payload(&frame, total_len);
+        assert!(payload.is_ok(), "payload extracts");
+        let Ok(payload) = payload else {
+            return;
+        };
+        assert_eq!(payload, Vec::from(b"abc".as_ref()));
+        assert!(extract_payload(&frame, total_len.saturating_add(1)).is_err());
+    }
+
+    #[test]
+    fn read_buffer_header_requires_full_header() {
+        let Some(short_len) = IPC_HEADER_LEN.checked_sub(1) else {
+            return;
+        };
+        let short = vec![0u8; short_len];
+        assert!(read_buffer_header(&short).is_err());
+    }
+
+    #[test]
+    fn append_read_bytes_rejects_impossible_read_count() {
+        let mut read_buffer = Vec::new();
+        let temp = [0u8; READ_CHUNK_BYTES];
+        let Some(impossible_count) = READ_CHUNK_BYTES.checked_add(1) else {
+            return;
+        };
+        assert!(append_read_bytes(&mut read_buffer, &temp, impossible_count).is_err());
+    }
+
+    #[test]
+    fn count_conversion_returns_typed_overflow_response() {
+        let count = usize::try_from(u32::MAX).map(|value| value.saturating_add(1));
+        let Ok(count) = count else {
+            return;
+        };
+        assert!(matches!(
+            count_response(count, IpcResponseKind::Event),
+            IpcResponse::CountOutOfRange { .. }
+        ));
+    }
+
+    #[test]
+    fn submit_run_requires_workflow_resolution_instead_of_accepting() {
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id: RunId::new(9),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+            input: Vec::from(b"input".as_ref()),
+        });
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload encodes");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let payload_len = u32::try_from(encoded.len());
+        assert!(payload_len.is_ok(), "payload len fits test header");
+        let Ok(payload_len) = payload_len else {
+            return;
+        };
+
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 11, payload_len);
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+
+        assert_eq!(
+            dispatch_command(&header, &encoded, &mut runtime),
+            IpcResponse::WorkflowResolutionRequired
+        );
+    }
+
+    #[test]
+    fn submit_run_rejects_mismatched_payload_variant() {
+        let payload = IpcPayload::SubmitRunInline(SubmitRunPayload {
+            run_id: RunId::new(10),
+            workflow: WorkflowDigest::from_bytes([8; 32]),
+            input: Vec::from(b"input".as_ref()),
+        });
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload encodes");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let payload_len = u32::try_from(encoded.len());
+        assert!(payload_len.is_ok(), "payload len fits test header");
+        let Ok(payload_len) = payload_len else {
+            return;
+        };
+
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 12, payload_len);
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+
+        assert_eq!(
+            dispatch_command(&header, &encoded, &mut runtime),
+            IpcResponse::CommandPayloadMismatch
+        );
+    }
 }

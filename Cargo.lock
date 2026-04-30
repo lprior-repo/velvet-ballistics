@@ -1439,6 +1439,16 @@ dependencies = [
 [[package]]
 name = "velvet-ballastics-fuzz"
 version = "0.1.0"
+dependencies = [
+ "bytes",
+ "postcard",
+ "vb_compile",
+ "vb_core",
+ "vb_expr",
+ "vb_ipc",
+ "vb_storage",
+ "vb_yaml",
+]
 
 [[package]]
 name = "velvet-ballastics-workspace"

@@ -3,8 +3,8 @@
 //! Enhanced engine with full iteration/compound primitive dispatch.
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome,
-    ActionTicket, propagate_action_taint,
+    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
+    propagate_action_taint,
 };
 use vb_core::engine::{EngineSignal, StepBudget, step_once};
 use vb_core::errors::EngineError;
@@ -113,7 +113,14 @@ pub fn execute_node_full(
             body,
             done,
         } => primitives::for_each::for_each_start(
-            run, store, *input, *item_slot, *limit, *body, *done, node.output,
+            run,
+            store,
+            *input,
+            *item_slot,
+            *limit,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
@@ -123,7 +130,12 @@ pub fn execute_node_full(
             body,
             done,
         } => primitives::for_each::for_each_next(
-            run, store, *iterator_slot, *body, *done, node.output,
+            run,
+            store,
+            *iterator_slot,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
@@ -137,11 +149,9 @@ pub fn execute_node_full(
         }
 
         CompiledNodeKind::TogetherStart { branches, join } => {
-            primitives::together::together_start(
-                run, store, branches, *join, node.output,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
+            primitives::together::together_start(run, store, branches, *join, node.output)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
         }
 
         CompiledNodeKind::TogetherBranch {
@@ -150,15 +160,30 @@ pub fn execute_node_full(
             join,
             accumulator,
         } => primitives::together::together_branch(
-            run, store, *branch, *entry, *join, *accumulator, node.output,
+            run,
+            store,
+            *branch,
+            *entry,
+            *join,
+            *accumulator,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
 
-        CompiledNodeKind::TogetherJoin { branch_count, accumulator } => {
+        CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        } => {
             let step = node.id;
             match primitives::together::together_join(
-                run, store, *branch_count, *accumulator, node.output, node.next, step,
+                run,
+                store,
+                *branch_count,
+                *accumulator,
+                node.output,
+                node.next,
+                step,
             ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
@@ -172,7 +197,14 @@ pub fn execute_node_full(
             body,
             done,
         } => primitives::collect::collect_start(
-            run, store, *source, *limit, *page_size, *body, *done, node.output,
+            run,
+            store,
+            *source,
+            *limit,
+            *page_size,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
@@ -181,11 +213,9 @@ pub fn execute_node_full(
             collector_slot,
             body,
             done,
-        } => primitives::collect::collect_page(
-            run, store, *collector_slot, *body, *done,
-        )
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core),
+        } => primitives::collect::collect_page(run, store, *collector_slot, *body, *done)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
 
         CompiledNodeKind::CollectNext {
             collector_slot,
@@ -196,7 +226,14 @@ pub fn execute_node_full(
             let limit = 0;
             let page_size = 100;
             primitives::collect::collect_next(
-                run, store, source, limit, page_size, *collector_slot, *body, *done,
+                run,
+                store,
+                source,
+                limit,
+                page_size,
+                *collector_slot,
+                *body,
+                *done,
             )
             .map_err(RuntimeEngineError::Core)
             .map(runtime_from_core)
@@ -205,7 +242,11 @@ pub fn execute_node_full(
         CompiledNodeKind::CollectFinish { collector_slot } => {
             let step = node.id;
             match primitives::collect::collect_finish(
-                run, *collector_slot, node.output, node.next, step,
+                run,
+                *collector_slot,
+                node.output,
+                node.next,
+                step,
             ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
@@ -219,7 +260,15 @@ pub fn execute_node_full(
             body,
             done,
         } => primitives::reduce::reduce_start(
-            plan, run, store, *input, *accumulator, *initial, *body, *done, node.output,
+            plan,
+            run,
+            store,
+            *input,
+            *accumulator,
+            *initial,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
@@ -230,16 +279,21 @@ pub fn execute_node_full(
             body,
             done,
         } => primitives::reduce::reduce_next(
-            run, store, *iterator_slot, *accumulator, *body, *done, node.output,
+            run,
+            store,
+            *iterator_slot,
+            *accumulator,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
 
         CompiledNodeKind::ReduceFinish { accumulator } => {
             let step = node.id;
-            match primitives::reduce::reduce_finish(
-                run, *accumulator, node.output, node.next, step,
-            ) {
+            match primitives::reduce::reduce_finish(run, *accumulator, node.output, node.next, step)
+            {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }
@@ -249,37 +303,28 @@ pub fn execute_node_full(
             max_attempts,
             body,
             done,
-        } => primitives::repeat::repeat_start(
-            run, *max_attempts, *body, *done, node.output,
-        )
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core),
+        } => primitives::repeat::repeat_start(run, *max_attempts, *body, *done, node.output)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
 
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,
             done,
-        } => primitives::repeat::repeat_attempt(
-            run, *attempt_slot, *body, *done,
-        )
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core),
+        } => primitives::repeat::repeat_attempt(run, *attempt_slot, *body, *done)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
 
-        CompiledNodeKind::RepeatCheck {
-            attempt_slot,
-            done,
-        } => primitives::repeat::repeat_check(
-            run, *attempt_slot, *done, node.next, node.id,
-        )
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core),
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            primitives::repeat::repeat_check(run, *attempt_slot, *done, node.next, node.id)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
+        }
 
         CompiledNodeKind::RepeatFinish { result } => {
-            primitives::repeat::repeat_finish(
-                run, *result, node.output, node.next, node.id,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
+            primitives::repeat::repeat_finish(run, *result, node.output, node.next, node.id)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
         }
 
         CompiledNodeKind::WaitUntil { deadline_slot } => {
@@ -303,17 +348,22 @@ pub fn execute_node_full(
             .map(runtime_from_core),
 
         CompiledNodeKind::AskResume { answer } => {
-            primitives::wait_ask::ask_resume(
-                run, *answer, node.output, node.next, node.id,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
+            primitives::wait_ask::ask_resume(run, *answer, node.output, node.next, node.id)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
         }
 
         CompiledNodeKind::Do { action, input } => {
             let seq = SeqNo::new(run.executed());
-            execute_do(run, node.id, *action, *input, seq,
-                       resolve_contract(*action, contracts)?, contracts)
+            execute_do(
+                run,
+                node.id,
+                *action,
+                *input,
+                seq,
+                resolve_contract(*action, contracts)?,
+                contracts,
+            )
         }
 
         CompiledNodeKind::RetryCheck {
@@ -365,9 +415,7 @@ pub fn drive_deterministic_full(
 
         run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
 
-        let signal = match execute_node_full(
-            plan, run, store, node, contracts, retry_policy,
-        ) {
+        let signal = match execute_node_full(plan, run, store, node, contracts, retry_policy) {
             Ok(signal) => signal,
             Err(error) => {
                 run.mark_failed(pc).map_err(RuntimeEngineError::Core)?;
@@ -449,11 +497,7 @@ pub fn execute_retry_check(
 }
 
 /// Backward-compatible execute_error_handler.
-pub fn execute_error_handler(
-    failure: &ActionFailure,
-    handler: StepIdx,
-    body: StepIdx,
-) -> StepIdx {
+pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: StepIdx) -> StepIdx {
     if failure.retryable || failure.code != ActionFailureCode::Unknown {
         handler
     } else {
@@ -485,9 +529,11 @@ pub fn resume_action_outcome(
                     idempotency_key: 0,
                 }))
             } else {
-                Err(RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
-                    primitive: "action_failed_non_retryable",
-                }))
+                Err(RuntimeEngineError::Core(
+                    EngineError::UnsupportedPrimitive {
+                        primitive: "action_failed_non_retryable",
+                    },
+                ))
             }
         }
     }

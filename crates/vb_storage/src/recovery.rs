@@ -48,7 +48,9 @@ pub enum RecoveryError {
         step: StepIdx,
     },
     /// A non-idempotent action was encountered during recovery and cannot be re-executed.
-    #[error("non-idempotent action {action:?} at step {step:?} cannot be re-executed during recovery")]
+    #[error(
+        "non-idempotent action {action:?} at step {step:?} cannot be re-executed during recovery"
+    )]
     NonIdempotentActionBlocked {
         /// Action identifier.
         action: ActionId,
@@ -160,9 +162,10 @@ pub enum DigestCheck {
 /// Verifies that the workflow source digest matches the stored record.
 pub fn check_workflow_source_digest(
     journal: &FjallJournal,
+    run: RunId,
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    let events = journal.events_for_run(RunId::ZERO)?;
+    let events = journal.events_for_run(run)?;
     for event in &events {
         if let JournalEvent::RunAccepted { workflow, .. } = event {
             if *workflow != expected {
@@ -192,13 +195,17 @@ pub fn check_compiled_ir_digest(
 /// Verifies all digests at the requested check level.
 pub fn verify_digests(
     journal: &FjallJournal,
+    run: RunId,
     workflow_digest: WorkflowDigest,
     ir_digest: WorkflowDigest,
     found_ir_digest: WorkflowDigest,
     level: DigestCheck,
 ) -> RecoveryResult<()> {
-    if matches!(level, DigestCheck::WorkflowSourceOnly | DigestCheck::WorkflowAndIr | DigestCheck::Full) {
-        check_workflow_source_digest(journal, workflow_digest)?;
+    if matches!(
+        level,
+        DigestCheck::WorkflowSourceOnly | DigestCheck::WorkflowAndIr | DigestCheck::Full
+    ) {
+        check_workflow_source_digest(journal, run, workflow_digest)?;
     }
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
@@ -347,9 +354,9 @@ pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ActionReplayTracker, RecoveryError, RunSnapshot,
-        check_compiled_ir_digest, extract_terminal, is_terminal_event, recover_full_journal,
-        recover_snapshot_plus_tail, replay_events,
+        ActionReplayTracker, RecoveryError, RunSnapshot, check_compiled_ir_digest,
+        extract_terminal, is_terminal_event, recover_full_journal, recover_snapshot_plus_tail,
+        replay_events,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -367,18 +374,19 @@ mod tests {
         tracker.mark_completed(action, step);
         assert!(tracker.is_resolved(action, step));
 
-        let events = vec![
-            JournalEvent::ActionScheduled {
-                run: RunId::new(1),
-                seq: EventSeq::new(0),
-                step,
-                action,
-            },
-        ];
+        let events = vec![JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            step,
+            action,
+        }];
 
         let result = replay_events(&events, &mut tracker);
         assert!(
-            matches!(result, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+            matches!(
+                result,
+                Err(RecoveryError::NonIdempotentActionBlocked { .. })
+            ),
             "should block re-execution of completed action"
         );
     }
@@ -418,18 +426,19 @@ mod tests {
         tracker.mark_failed(action, step);
         assert!(tracker.is_resolved(action, step));
 
-        let events = vec![
-            JournalEvent::ActionScheduled {
-                run: RunId::new(1),
-                seq: EventSeq::new(0),
-                step,
-                action,
-            },
-        ];
+        let events = vec![JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            step,
+            action,
+        }];
 
         let result = replay_events(&events, &mut tracker);
         assert!(
-            matches!(result, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+            matches!(
+                result,
+                Err(RecoveryError::NonIdempotentActionBlocked { .. })
+            ),
             "should block re-execution of failed action"
         );
     }
@@ -585,9 +594,7 @@ mod tests {
         let mut tracker = ActionReplayTracker::new();
         let result = recover_full_journal(&journal, run, &mut tracker);
 
-        assert!(result.is_ok(), "full journal recovery should succeed");
-        let events = result.unwrap_or_default();
-        assert_eq!(events.len(), 3);
+        assert!(matches!(result, Ok(events) if events.len() == 3));
     }
 
     #[test]
@@ -657,8 +664,7 @@ mod tests {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker);
 
-        assert!(result.is_ok(), "all event kinds should replay successfully");
-        assert_eq!(result.unwrap_or_default().len(), 11);
+        assert!(matches!(result, Ok(events) if events.len() == 11));
         assert!(tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
     }
 }

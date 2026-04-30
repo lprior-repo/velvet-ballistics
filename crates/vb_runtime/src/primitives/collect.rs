@@ -22,14 +22,12 @@ pub fn collect_start(
     let list_id = expect_list(*run.read_slot(source)?)?;
     let items: Vec<SlotValue> = store.list(list_id)?.to_vec();
     validate_item_limit(items.len(), limit)?;
-    let collector = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let collector = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     if items.is_empty() {
-        run.write_slot(collector, SlotValue::List(
-            store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?,
-        ))?;
+        run.write_slot(
+            collector,
+            SlotValue::List(store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?),
+        )?;
         return jump_to(run, done);
     }
     let ps = page_size_from(page_size)?;
@@ -87,15 +85,13 @@ pub fn collect_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let final_value = *run.read_slot(collector_slot)?;
-    let out = output
-        .ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
     run.write_slot(out, final_value)?;
     jump_to_next(run, next, step)
 }
 
 fn validate_item_limit(count: usize, limit: u32) -> Result<(), EngineError> {
-    let max = usize::try_from(limit)
-        .map_err(|_| EngineError::CollectItemLimitExceeded)?;
+    let max = usize::try_from(limit).map_err(|_| EngineError::CollectItemLimitExceeded)?;
     if count > max {
         Err(EngineError::CollectItemLimitExceeded)
     } else {
@@ -146,10 +142,7 @@ fn take_items(items: &[SlotValue], max: usize) -> Result<Box<[SlotValue]>, Engin
         .into_boxed_slice())
 }
 
-fn jump_to(
-    run: &mut RunFrame,
-    target: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
     run.set_pc(target);
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)

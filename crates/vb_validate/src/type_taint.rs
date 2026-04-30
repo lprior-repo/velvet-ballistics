@@ -277,21 +277,34 @@ impl Facts {
             return ValueFact::clean(ValueType::Any);
         };
         let name = reference_name(tail);
-        match root {
+        let fact = match root {
             "input" => self.inputs.get(name).copied(),
             "var" | "vars" => self.vars.get(name).copied(),
             "secrets" => self.secrets.get(name).copied(),
             _ => None,
+        };
+        match fact {
+            Some(value) => value,
+            None => ValueFact::clean(ValueType::Any),
         }
-        .unwrap_or(ValueFact::clean(ValueType::Any))
     }
 }
 
 fn input_facts(inputs: &[InputDecl]) -> HashMap<String, ValueFact> {
     let mut facts = HashMap::with_capacity(inputs.len());
     for input in inputs {
-        let taint = if input.is_secret { Taint::Secret } else { Taint::Clean };
-        let _ = facts.insert(input.name.clone(), ValueFact { value_type: input.schema_type, taint });
+        let taint = if input.is_secret {
+            Taint::Secret
+        } else {
+            Taint::Clean
+        };
+        let _ = facts.insert(
+            input.name.clone(),
+            ValueFact {
+                value_type: input.schema_type,
+                taint,
+            },
+        );
     }
     facts
 }
@@ -376,18 +389,14 @@ fn write_slot(slots: &mut [Option<ValueFact>], index: usize, fact: ValueFact) {
     }
 }
 
-fn resolve_value(
-    value: &TypedValue,
-    facts: &Facts,
-    slots: &[Option<ValueFact>],
-) -> ValueFact {
+fn resolve_value(value: &TypedValue, facts: &Facts, slots: &[Option<ValueFact>]) -> ValueFact {
     match value {
         TypedValue::Literal(vt) => ValueFact::clean(*vt),
         TypedValue::Reference(name) => facts.resolve_reference(name),
-        TypedValue::Slot(index) => slots
-            .get(*index)
-            .and_then(|s| *s)
-            .unwrap_or(ValueFact::clean(ValueType::Any)),
+        TypedValue::Slot(index) => match slots.get(*index).and_then(|s| *s) {
+            Some(value) => value,
+            None => ValueFact::clean(ValueType::Any),
+        },
         TypedValue::Composite(values) => resolve_composite(values, facts, slots),
     }
 }
@@ -438,30 +447,46 @@ mod tests {
     }
 
     fn save_step(id: &str, value: TypedValue) -> StepTypes {
-        StepTypes { id: id.to_owned(), kind: StepKind::Save { value } }
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Save { value },
+        }
     }
 
     fn choose_step(id: &str, condition: TypedValue) -> StepTypes {
-        StepTypes { id: id.to_owned(), kind: StepKind::Choose { condition } }
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Choose { condition },
+        }
     }
 
     fn finish_step(id: &str, result: TypedValue) -> StepTypes {
-        StepTypes { id: id.to_owned(), kind: StepKind::Finish { result } }
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Finish { result },
+        }
     }
 
     #[test]
     fn accepts_clean_finish() {
-        let wf = make_workflow(vec![finish_step("done", TypedValue::Literal(ValueType::Number))]);
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
         assert!(validate_taint(&wf).is_ok());
     }
 
     #[test]
     fn rejects_secret_finish_direct() {
-        let mut wf = make_workflow(vec![
-            finish_step("done", TypedValue::Reference("$secrets.token".into())),
-        ]);
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$secrets.token".into()),
+        )]);
         wf.secrets.push("token".to_owned());
-        assert!(matches!(validate_taint(&wf), Err(ValidationError::SecretResultLeak)));
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
     }
 
     #[test]
@@ -471,7 +496,10 @@ mod tests {
             finish_step("done", TypedValue::Slot(0)),
         ]);
         wf.secrets.push("token".to_owned());
-        assert!(matches!(validate_taint(&wf), Err(ValidationError::SecretResultLeak)));
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
     }
 
     #[test]
@@ -489,30 +517,39 @@ mod tests {
             save_step("flag", TypedValue::Literal(ValueType::Number)),
             choose_step("route", TypedValue::Slot(0)),
         ]);
-        assert!(matches!(validate_types(&wf), Err(ValidationError::TypeMismatch { .. })));
+        assert!(matches!(
+            validate_types(&wf),
+            Err(ValidationError::TypeMismatch { .. })
+        ));
     }
 
     #[test]
     fn accepts_literal_boolean_choose() {
-        let wf = make_workflow(vec![
-            choose_step("route", TypedValue::Literal(ValueType::Boolean)),
-        ]);
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Boolean),
+        )]);
         assert!(validate_types(&wf).is_ok());
     }
 
     #[test]
     fn rejects_literal_text_choose() {
-        let wf = make_workflow(vec![
-            choose_step("route", TypedValue::Literal(ValueType::Text)),
-        ]);
-        assert!(matches!(validate_types(&wf), Err(ValidationError::TypeMismatch { .. })));
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Text),
+        )]);
+        assert!(matches!(
+            validate_types(&wf),
+            Err(ValidationError::TypeMismatch { .. })
+        ));
     }
 
     #[test]
     fn accepts_clean_input_finish() {
-        let mut wf = make_workflow(vec![
-            finish_step("done", TypedValue::Reference("$input.user".into())),
-        ]);
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.user".into()),
+        )]);
         wf.inputs.push(InputDecl {
             name: "user".to_owned(),
             schema_type: ValueType::Text,
@@ -523,27 +560,37 @@ mod tests {
 
     #[test]
     fn rejects_secret_input_finish() {
-        let mut wf = make_workflow(vec![
-            finish_step("done", TypedValue::Reference("$input.key".into())),
-        ]);
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.key".into()),
+        )]);
         wf.inputs.push(InputDecl {
             name: "key".to_owned(),
             schema_type: ValueType::Text,
             is_secret: true,
         });
-        assert!(matches!(validate_taint(&wf), Err(ValidationError::SecretResultLeak)));
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
     }
 
     #[test]
     fn resource_limits_accept_within_bounds() {
-        let wf = make_workflow(vec![finish_step("done", TypedValue::Literal(ValueType::Number))]);
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
         let hard = ResourceLimits::default();
         assert!(validate_resource_limits(&wf, &hard).is_ok());
     }
 
     #[test]
     fn resource_limits_reject_exceeded_steps() {
-        let wf = make_workflow(vec![finish_step("done", TypedValue::Literal(ValueType::Number))]);
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
         let mut hard = ResourceLimits::default();
         hard.max_steps = 0;
         assert!(matches!(
@@ -555,13 +602,17 @@ mod tests {
     #[test]
     fn rejects_nested_secret_composite() {
         let mut wf = make_workflow(vec![
-            save_step("cap", TypedValue::Composite(vec![
-                TypedValue::Reference("$secrets.token".into()),
-            ])),
+            save_step(
+                "cap",
+                TypedValue::Composite(vec![TypedValue::Reference("$secrets.token".into())]),
+            ),
             finish_step("done", TypedValue::Slot(0)),
         ]);
         wf.secrets.push("token".to_owned());
-        assert!(matches!(validate_taint(&wf), Err(ValidationError::SecretResultLeak)));
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
     }
 
     #[test]
@@ -579,14 +630,18 @@ mod tests {
             save_step("val", TypedValue::Literal(ValueType::Null)),
             choose_step("route", TypedValue::Slot(0)),
         ]);
-        assert!(matches!(validate_types(&wf), Err(ValidationError::TypeMismatch { .. })));
+        assert!(matches!(
+            validate_types(&wf),
+            Err(ValidationError::TypeMismatch { .. })
+        ));
     }
 
     #[test]
     fn accepts_clean_var_finish() {
-        let mut wf = make_workflow(vec![
-            finish_step("done", TypedValue::Reference("$vars.label".into())),
-        ]);
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$vars.label".into()),
+        )]);
         wf.vars.push(("label".to_owned(), ValueType::Boolean));
         assert!(validate_taint(&wf).is_ok());
     }

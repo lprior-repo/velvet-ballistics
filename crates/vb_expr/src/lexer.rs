@@ -322,63 +322,77 @@ mod tests {
     #[test]
     fn lexes_boolean_and_null_literals() -> ExprResult<()> {
         let tokens = lex_expr("true false null")?;
-        assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0], Token::Literal(LiteralToken::Bool(true)));
-        assert_eq!(tokens[1], Token::Literal(LiteralToken::Bool(false)));
-        assert_eq!(tokens[2], Token::Literal(LiteralToken::Null));
+        let expected = vec![
+            Token::Literal(LiteralToken::Bool(true)),
+            Token::Literal(LiteralToken::Bool(false)),
+            Token::Literal(LiteralToken::Null),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
     #[test]
     fn lexes_string_literal() -> ExprResult<()> {
         let tokens = lex_expr("\"hello\"")?;
-        assert_eq!(
-            tokens[0],
-            Token::Literal(LiteralToken::Text(Box::from("hello")))
-        );
+        let expected = vec![
+            Token::Literal(LiteralToken::Text(Box::from("hello"))),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
     #[test]
     fn lexes_reference() -> ExprResult<()> {
         let tokens = lex_expr("$input.value")?;
-        assert_eq!(
-            tokens[0],
-            Token::Reference(Box::from("$input.value"))
-        );
+        let expected = vec![Token::Reference(Box::from("$input.value")), Token::End];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
     #[test]
     fn lexes_operators() -> ExprResult<()> {
         let tokens = lex_expr("+ - * / == != < <= > >=")?;
-        assert_eq!(tokens[0], Token::Operator(BinaryOp::Add));
-        assert_eq!(tokens[1], Token::Operator(BinaryOp::Sub));
-        assert_eq!(tokens[2], Token::Operator(BinaryOp::Mul));
-        assert_eq!(tokens[3], Token::Operator(BinaryOp::Div));
-        assert_eq!(tokens[4], Token::Operator(BinaryOp::Eq));
-        assert_eq!(tokens[5], Token::Operator(BinaryOp::NotEq));
-        assert_eq!(tokens[6], Token::Operator(BinaryOp::Lt));
-        assert_eq!(tokens[7], Token::Operator(BinaryOp::Lte));
-        assert_eq!(tokens[8], Token::Operator(BinaryOp::Gt));
-        assert_eq!(tokens[9], Token::Operator(BinaryOp::Gte));
+        let expected = vec![
+            Token::Operator(BinaryOp::Add),
+            Token::Operator(BinaryOp::Sub),
+            Token::Operator(BinaryOp::Mul),
+            Token::Operator(BinaryOp::Div),
+            Token::Operator(BinaryOp::Eq),
+            Token::Operator(BinaryOp::NotEq),
+            Token::Operator(BinaryOp::Lt),
+            Token::Operator(BinaryOp::Lte),
+            Token::Operator(BinaryOp::Gt),
+            Token::Operator(BinaryOp::Gte),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
     #[test]
     fn lexes_keywords() -> ExprResult<()> {
         let tokens = lex_expr("and or not")?;
-        assert_eq!(tokens[0], Token::Operator(BinaryOp::And));
-        assert_eq!(tokens[1], Token::Operator(BinaryOp::Or));
-        assert_eq!(tokens[2], Token::Unary(UnaryOp::Not));
+        let expected = vec![
+            Token::Operator(BinaryOp::And),
+            Token::Operator(BinaryOp::Or),
+            Token::Unary(UnaryOp::Not),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
     #[test]
     fn lexes_helper_identifiers() -> ExprResult<()> {
         let tokens = lex_expr("contains starts_with")?;
-        assert_eq!(tokens[0], Token::Identifier(Box::from("contains")));
-        assert_eq!(tokens[1], Token::Identifier(Box::from("starts_with")));
+        let expected = vec![
+            Token::Identifier(Box::from("contains")),
+            Token::Identifier(Box::from("starts_with")),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 
@@ -405,7 +419,8 @@ mod tests {
     #[test]
     fn lone_dollar_produces_dollar_token() -> ExprResult<()> {
         let tokens = lex_expr("$")?;
-        assert_eq!(tokens[0], Token::Dollar);
+        let expected = vec![Token::Dollar, Token::End];
+        assert_eq!(tokens, expected);
         Ok(())
     }
 

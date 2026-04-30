@@ -10,64 +10,22 @@ const CANONICAL_VERSION: &str = "velvet-ballastics/v1";
 const REQUIRED_TOP_LEVEL_FIELDS: &[&str] = &["version", "name", "when", "steps"];
 
 const ALLOWED_TOP_LEVEL_FIELDS: &[&str] = &[
-    "version",
-    "name",
-    "when",
-    "inputs",
-    "vars",
-    "secrets",
-    "result",
-    "examples",
-    "steps",
+    "version", "name", "when", "inputs", "vars", "secrets", "result", "examples", "steps",
 ];
 
 const ALLOWED_STEP_FIELDS: &[&str] = &[
-    "id",
-    "name",
-    "then",
-    "save",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
-    "finish",
-    "do",
-    "on_error",
-    "retry",
+    "id", "name", "then", "save", "choose", "for_each", "together", "collect", "reduce", "repeat",
+    "wait", "ask", "finish", "do", "on_error", "retry",
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "save",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
-    "finish",
-    "do",
+    "save", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+    "finish", "do",
 ];
 
 const RESERVED_IDS: &[&str] = &[
-    "now",
-    "random",
-    "runtime",
-    "null",
-    "true",
-    "false",
-    "input",
-    "vars",
-    "secrets",
-    "steps",
-    "error",
-    "attempt",
-    "total",
+    "now", "random", "runtime", "null", "true", "false", "input", "vars", "secrets", "steps",
+    "error", "attempt", "total",
 ];
 
 /// Validates a workflow document against the v1 schema.
@@ -99,11 +57,11 @@ pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
 
 /// Validates the trigger (when) block accepts manual/ipc and rejects HTTP.
 pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
-    let trigger = doc.get_mapping("when").ok_or_else(|| {
-        ValidationError::MissingRequiredField {
+    let trigger = doc
+        .get_mapping("when")
+        .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-        }
-    })?;
+        })?;
     if trigger.is_empty() {
         return Err(ValidationError::MissingRequiredField {
             field: "when".to_owned(),
@@ -114,11 +72,11 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
             trigger: "multiple triggers".to_owned(),
         });
     }
-    let (kind, _body) = trigger.first().ok_or_else(|| {
-        ValidationError::MissingRequiredField {
+    let (kind, _body) = trigger
+        .first()
+        .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-        }
-    })?;
+        })?;
     match kind.as_str() {
         "manual" | "ipc" => Ok(()),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
@@ -130,17 +88,17 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
 
 /// Validates all step and top-level IDs against grammar, reserved words, and duplicates.
 pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
-    let name = doc.get_string("name").ok_or_else(|| {
-        ValidationError::MissingRequiredField {
+    let name = doc
+        .get_string("name")
+        .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "name".to_owned(),
-        }
-    })?;
+        })?;
     validate_id("name", name)?;
-    let steps = doc.get_sequence("steps").ok_or_else(|| {
-        ValidationError::MissingRequiredField {
+    let steps = doc
+        .get_sequence("steps")
+        .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
-        }
-    })?;
+        })?;
     if steps.is_empty() {
         return Err(ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
@@ -148,11 +106,11 @@ pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
     }
     let mut seen: Vec<&str> = Vec::with_capacity(steps.len());
     for step in steps {
-        let id = step.get_string("id").ok_or_else(|| {
-            ValidationError::MissingRequiredField {
+        let id = step
+            .get_string("id")
+            .ok_or_else(|| ValidationError::MissingRequiredField {
                 field: "step id".to_owned(),
-            }
-        })?;
+            })?;
         validate_single_id(id, &seen)?;
         seen.push(id);
     }
@@ -161,11 +119,11 @@ pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
 
 /// Validates step field shapes and the single-primitive constraint.
 pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
-    let steps = doc.get_sequence("steps").ok_or_else(|| {
-        ValidationError::MissingRequiredField {
+    let steps = doc
+        .get_sequence("steps")
+        .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
-        }
-    })?;
+        })?;
     for step in steps {
         validate_step_unknown_fields(step)?;
         validate_single_primitive(step)?;
@@ -234,19 +192,13 @@ fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
 
 fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     if !is_valid_id(id) {
-        return Err(ValidationError::InvalidId {
-            id: id.to_owned(),
-        });
+        return Err(ValidationError::InvalidId { id: id.to_owned() });
     }
     if is_reserved_id(id) {
-        return Err(ValidationError::ReservedId {
-            id: id.to_owned(),
-        });
+        return Err(ValidationError::ReservedId { id: id.to_owned() });
     }
     if seen.contains(&id) {
-        return Err(ValidationError::DuplicateId {
-            id: id.to_owned(),
-        });
+        return Err(ValidationError::DuplicateId { id: id.to_owned() });
     }
     Ok(())
 }
@@ -398,34 +350,31 @@ mod tests {
     use super::*;
 
     fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
-        WorkflowDoc::from_pairs(
-            fields
-                .into_iter()
-                .map(|(k, v)| (k.to_owned(), v))
-                .collect(),
-        )
+        WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
     }
 
     fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
-        StepDoc::from_pairs(
-            fields
-                .into_iter()
-                .map(|(k, v)| (k.to_owned(), v))
-                .collect(),
-        )
+        StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
     }
 
     fn valid_workflow_doc() -> WorkflowDoc {
         make_workflow(vec![
-            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            (
+                "version",
+                FieldValue::String("velvet-ballastics/v1".to_owned()),
+            ),
             ("name", FieldValue::String("test".to_owned())),
-            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
-            ("steps", FieldValue::Sequence(vec![
-                make_step(vec![
+            (
+                "when",
+                FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
                     ("id", FieldValue::String("step1".to_owned())),
                     ("finish", FieldValue::Empty),
-                ]),
-            ])),
+                ])]),
+            ),
         ])
     }
 
@@ -439,10 +388,17 @@ mod tests {
     fn rejects_missing_version() {
         let doc = make_workflow(vec![
             ("name", FieldValue::String("test".to_owned())),
-            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
-            ("steps", FieldValue::Sequence(vec![
-                make_step(vec![("id", FieldValue::String("s1".to_owned())), ("finish", FieldValue::Empty)]),
-            ])),
+            (
+                "when",
+                FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
+                    ("id", FieldValue::String("s1".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ])]),
+            ),
         ]);
         assert!(matches!(
             validate_workflow_schema(&doc),
@@ -452,8 +408,24 @@ mod tests {
 
     #[test]
     fn rejects_wrong_version() {
-        let mut doc = valid_workflow_doc();
-        doc.fields[0].1 = FieldValue::String("velvet-ballistics/v1".to_owned());
+        let doc = make_workflow(vec![
+            (
+                "version",
+                FieldValue::String("other-language/v1".to_owned()),
+            ),
+            ("name", FieldValue::String("test".to_owned())),
+            (
+                "when",
+                FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
+                    ("id", FieldValue::String("s1".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ])]),
+            ),
+        ]);
         assert!(matches!(
             validate_version(&doc),
             Err(ValidationError::InvalidVersion { .. })
@@ -463,12 +435,22 @@ mod tests {
     #[test]
     fn rejects_http_trigger() {
         let doc = make_workflow(vec![
-            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            (
+                "version",
+                FieldValue::String("velvet-ballastics/v1".to_owned()),
+            ),
             ("name", FieldValue::String("test".to_owned())),
-            ("when", FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)])),
-            ("steps", FieldValue::Sequence(vec![
-                make_step(vec![("id", FieldValue::String("s1".to_owned())), ("finish", FieldValue::Empty)]),
-            ])),
+            (
+                "when",
+                FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
+                    ("id", FieldValue::String("s1".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ])]),
+            ),
         ]);
         assert!(matches!(
             validate_trigger(&doc),

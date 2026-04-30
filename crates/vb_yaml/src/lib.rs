@@ -69,7 +69,10 @@ pub enum YamlError {
     MissingField { field: &'static str },
 
     #[error("field shape error: {field} expected {expected}")]
-    FieldShape { field: &'static str, expected: &'static str },
+    FieldShape {
+        field: &'static str,
+        expected: &'static str,
+    },
 
     #[error("parse error at line {line}: {reason}")]
     ParseError { line: usize, reason: Box<str> },
@@ -204,7 +207,10 @@ mod tests {
     #[test]
     fn parse_events_returns_typed_events() {
         let yaml = "a: 1\n";
-        let events = parse_yaml_events(yaml).unwrap();
+        let Ok(events) = parse_yaml_events(yaml) else {
+            assert!(false, "parse events failed");
+            return;
+        };
         assert!(!events.is_empty());
     }
 

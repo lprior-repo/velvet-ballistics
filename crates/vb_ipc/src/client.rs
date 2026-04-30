@@ -26,8 +26,7 @@ impl IpcClient {
         correlation: u64,
         payload: &IpcPayload,
     ) -> Result<(), IpcClientError> {
-        let encoded =
-            postcard::to_allocvec(payload).map_err(|_| IpcClientError::EncodeFailed)?;
+        let encoded = postcard::to_allocvec(payload).map_err(|_| IpcClientError::EncodeFailed)?;
         write_frame(&mut self.stream, command, 0, correlation, &encoded)
             .map_err(|source| IpcClientError::FrameError { source })?;
         self.stream
@@ -53,8 +52,7 @@ impl IpcClient {
 
     /// Receives a response frame header.
     pub fn recv_response_header(&mut self) -> Result<crate::IpcFrameHeader, IpcClientError> {
-        read_frame_header(&mut self.stream)
-            .map_err(|source| IpcClientError::FrameError { source })
+        read_frame_header(&mut self.stream).map_err(|source| IpcClientError::FrameError { source })
     }
 
     /// Receives a response payload after the header has been read.

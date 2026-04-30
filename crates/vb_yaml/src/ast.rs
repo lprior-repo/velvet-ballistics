@@ -362,13 +362,14 @@ fn opt_u32(node: &saphyr::Yaml<'_>, field: &str) -> Option<u32> {
 fn require_u16(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<u16> {
     match lookup(node, field) {
         None => Err(YamlError::MissingField { field }),
-        Some(v) => v
-            .as_integer()
-            .and_then(|i| u16::try_from(i).ok())
-            .ok_or(YamlError::FieldShape {
-                field,
-                expected: "u16 integer",
-            }),
+        Some(v) => {
+            v.as_integer()
+                .and_then(|i| u16::try_from(i).ok())
+                .ok_or(YamlError::FieldShape {
+                    field,
+                    expected: "u16 integer",
+                })
+        }
     }
 }
 
@@ -377,27 +378,36 @@ fn require_u16(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<u16> 
 // ---------------------------------------------------------------------------
 
 fn parse_trigger(node: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
-    let Some(trigger_val) = lookup(node, "trigger") else {
-        return Ok(TriggerAst::Manual);
-    };
+    if let Some(when_val) = lookup(node, "when") {
+        return parse_when_trigger(when_val);
+    }
+    Err(YamlError::MissingField { field: "when" })
+}
 
-    if trigger_val.as_str() == Some("manual") {
-        return Ok(TriggerAst::Manual);
+fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    if let Some(manual_val) = lookup(when_val, "manual") {
+        if manual_val.is_mapping() {
+            return Ok(TriggerAst::Manual);
+        }
+        return Err(YamlError::FieldShape {
+            field: "when.manual",
+            expected: "mapping",
+        });
     }
 
-    if let Some(ipc_val) = lookup(trigger_val, "ipc") {
-        let name = ipc_val
-            .as_str()
-            .ok_or(YamlError::FieldShape {
-                field: "trigger.ipc",
-                expected: "string",
-            })?
-            .to_string();
+    if let Some(ipc_val) = lookup(when_val, "ipc") {
+        let name = require_str_in(ipc_val, "name", "when.ipc.name")?;
         return Ok(TriggerAst::Ipc { name });
     }
 
+    if lookup(when_val, "http").is_some() {
+        return Err(YamlError::UnsupportedFeature {
+            feature: "http trigger",
+        });
+    }
+
     Err(YamlError::FieldShape {
-        field: "trigger",
+        field: "when",
         expected: "manual or ipc mapping",
     })
 }
@@ -815,26 +825,52 @@ fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleAst>> {
 mod tests {
     use super::*;
 
+    macro_rules! parse_ok {
+        ($yaml:expr) => {
+            match parse_workflow_ast($yaml) {
+                Ok(value) => value,
+                Err(error) => {
+                    assert!(false, "parse failed: {error}");
+                    return;
+                }
+            }
+        };
+    }
+
+    macro_rules! first_item {
+        ($values:expr, $label:expr) => {
+            match $values.first() {
+                Some(value) => value,
+                None => {
+                    assert!(false, "missing {}", $label);
+                    return;
+                }
+            }
+        };
+    }
+
     #[test]
     fn parse_minimal_workflow() {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: minimal
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: s1
                 set:
                   output: x
                   value: \"42\"
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
+        let wf = parse_ok!(yaml);
         assert_eq!(wf.version, "velvet-ballastics/v1");
         assert_eq!(wf.name, "minimal");
         assert_eq!(wf.trigger, TriggerAst::Manual);
         assert_eq!(wf.steps.len(), 1);
-        assert_eq!(wf.steps[0].id, "s1");
+        let first_step = first_item!(wf.steps, "step");
+        assert_eq!(first_step.id, "s1");
         assert!(matches!(
-            &wf.steps[0].primitive,
+            &first_step.primitive,
             StepPrimitive::Set { output, value } if output == "x" && value == "42"
         ));
     }
@@ -844,11 +880,12 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: ipc-test
-            trigger:
-              ipc: my-channel
+            when:
+              ipc:
+                name: my-channel
             steps: []
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
+        let wf = parse_ok!(yaml);
         assert_eq!(
             wf.trigger,
             TriggerAst::Ipc {
@@ -858,11 +895,66 @@ mod tests {
     }
 
     #[test]
+    fn parse_canonical_when_manual_trigger() {
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: manual-test
+            when:
+              manual: {}
+            steps: []
+        "};
+        let result = parse_workflow_ast(yaml);
+        assert!(matches!(
+            result,
+            Ok(WorkflowSource {
+                trigger: TriggerAst::Manual,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn parse_canonical_when_ipc_trigger() {
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: ipc-test
+            when:
+              ipc:
+                name: issue_triage
+            steps: []
+        "};
+        let result = parse_workflow_ast(yaml);
+        assert!(matches!(
+            result,
+            Ok(WorkflowSource {
+                trigger: TriggerAst::Ipc { name },
+                ..
+            }) if name == "issue_triage"
+        ));
+    }
+
+    #[test]
+    fn canonical_when_http_trigger_is_rejected() {
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: http-test
+            when:
+              http: {}
+            steps: []
+        "};
+        let result = parse_workflow_ast(yaml);
+        assert!(
+            matches!(result, Err(YamlError::UnsupportedFeature { feature }) if feature == "http trigger")
+        );
+    }
+
+    #[test]
     fn parse_inputs_vars_secrets() {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: full
-            trigger: manual
+            when:
+              manual: {}
             inputs:
               - name: count
                 type: u32
@@ -875,18 +967,21 @@ mod tests {
                 key: vault/api_key
             steps: []
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
+        let wf = parse_ok!(yaml);
         assert_eq!(wf.inputs.len(), 1);
-        assert_eq!(wf.inputs[0].name, "count");
-        assert_eq!(wf.inputs[0].field_type.as_deref(), Some("u32"));
-        assert_eq!(wf.inputs[0].default.as_deref(), Some("10"));
+        let first_input = first_item!(wf.inputs, "input");
+        assert_eq!(first_input.name, "count");
+        assert_eq!(first_input.field_type.as_deref(), Some("u32"));
+        assert_eq!(first_input.default.as_deref(), Some("10"));
 
         assert_eq!(wf.vars.len(), 1);
-        assert_eq!(wf.vars[0].name, "acc");
+        let first_var = first_item!(wf.vars, "var");
+        assert_eq!(first_var.name, "acc");
 
         assert_eq!(wf.secrets.len(), 1);
-        assert_eq!(wf.secrets[0].name, "api_key");
-        assert_eq!(wf.secrets[0].key.as_deref(), Some("vault/api_key"));
+        let first_secret = first_item!(wf.secrets, "secret");
+        assert_eq!(first_secret.name, "api_key");
+        assert_eq!(first_secret.key.as_deref(), Some("vault/api_key"));
     }
 
     #[test]
@@ -894,16 +989,18 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: do-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: do1
                 do:
                   action: http.get
                   input: '\"https://example.com\"'
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
         assert!(matches!(
-            &wf.steps[0].primitive,
+            &first_step.primitive,
             StepPrimitive::Do { action, input }
             if action == "http.get" && input == "\"https://example.com\""
         ));
@@ -914,7 +1011,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: choose-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: c1
                 choose:
@@ -927,18 +1025,20 @@ mod tests {
                             value: \"1\"
                   otherwise: handle_zero
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Choose {
                 branches,
                 otherwise,
             } => {
                 assert_eq!(branches.len(), 1);
-                assert_eq!(branches[0].when, "x > 0");
-                assert_eq!(branches[0].steps.len(), 1);
+                let first_branch = first_item!(branches, "branch");
+                assert_eq!(first_branch.when, "x > 0");
+                assert_eq!(first_branch.steps.len(), 1);
                 assert_eq!(otherwise.as_deref(), Some("handle_zero"));
             }
-            other => panic!("expected Choose, got {other:?}"),
+            other => assert!(false, "expected Choose, got {other:?}"),
         }
     }
 
@@ -947,7 +1047,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: foreach-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: fe1
                 foreach:
@@ -960,8 +1061,9 @@ mod tests {
                         output: out
                         value: item
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::ForEach {
                 variable,
                 input,
@@ -973,7 +1075,7 @@ mod tests {
                 assert_eq!(*at_once, Some(5));
                 assert_eq!(body.len(), 1);
             }
-            other => panic!("expected ForEach, got {other:?}"),
+            other => assert!(false, "expected ForEach, got {other:?}"),
         }
     }
 
@@ -982,7 +1084,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: together-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: t1
                 together:
@@ -996,15 +1099,21 @@ mod tests {
                     - label: b
                       steps: []
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Together { branches } => {
                 assert_eq!(branches.len(), 2);
-                assert_eq!(branches[0].label, "a");
-                assert_eq!(branches[0].steps.len(), 1);
-                assert_eq!(branches[1].label, "b");
+                let first_branch = first_item!(branches, "branch");
+                assert_eq!(first_branch.label, "a");
+                assert_eq!(first_branch.steps.len(), 1);
+                let Some(second_branch) = branches.get(1) else {
+                    assert!(false, "missing second branch");
+                    return;
+                };
+                assert_eq!(second_branch.label, "b");
             }
-            other => panic!("expected Together, got {other:?}"),
+            other => assert!(false, "expected Together, got {other:?}"),
         }
     }
 
@@ -1013,7 +1122,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: collect-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: col1
                 collect:
@@ -1027,8 +1137,9 @@ mod tests {
                         output: buf
                         value: page
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Collect {
                 variable,
                 source,
@@ -1042,7 +1153,7 @@ mod tests {
                 assert_eq!(*items, Some(50));
                 assert_eq!(body.len(), 1);
             }
-            other => panic!("expected Collect, got {other:?}"),
+            other => assert!(false, "expected Collect, got {other:?}"),
         }
     }
 
@@ -1051,7 +1162,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: reduce-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: r1
                 reduce:
@@ -1060,8 +1172,9 @@ mod tests {
                   initial: \"0\"
                   steps: []
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Reduce {
                 variable,
                 input,
@@ -1073,7 +1186,7 @@ mod tests {
                 assert_eq!(initial, "0");
                 assert!(body.is_empty());
             }
-            other => panic!("expected Reduce, got {other:?}"),
+            other => assert!(false, "expected Reduce, got {other:?}"),
         }
     }
 
@@ -1082,7 +1195,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: repeat-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: rp1
                 repeat:
@@ -1093,16 +1207,14 @@ mod tests {
                         action: http.post
                         input: body
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
-            StepPrimitive::Repeat {
-                max_attempts,
-                body,
-            } => {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Repeat { max_attempts, body } => {
                 assert_eq!(*max_attempts, 3);
                 assert_eq!(body.len(), 1);
             }
-            other => panic!("expected Repeat, got {other:?}"),
+            other => assert!(false, "expected Repeat, got {other:?}"),
         }
     }
 
@@ -1111,20 +1223,22 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: wait-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: w1
                 wait:
                   event: approval
                   timeout: 30s
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Wait { event, timeout } => {
                 assert_eq!(event.as_deref(), Some("approval"));
                 assert_eq!(timeout.as_deref(), Some("30s"));
             }
-            other => panic!("expected Wait, got {other:?}"),
+            other => assert!(false, "expected Wait, got {other:?}"),
         }
     }
 
@@ -1133,20 +1247,22 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: ask-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: a1
                 ask:
                   prompt: Continue?
                   timeout: 60s
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Ask { prompt, timeout } => {
                 assert_eq!(prompt, "Continue?");
                 assert_eq!(timeout.as_deref(), Some("60s"));
             }
-            other => panic!("expected Ask, got {other:?}"),
+            other => assert!(false, "expected Ask, got {other:?}"),
         }
     }
 
@@ -1155,18 +1271,20 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: finish-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: f1
                 finish:
                   result: output
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        match &wf.steps[0].primitive {
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
             StepPrimitive::Finish { result } => {
                 assert_eq!(result, "output");
             }
-            other => panic!("expected Finish, got {other:?}"),
+            other => assert!(false, "expected Finish, got {other:?}"),
         }
     }
 
@@ -1175,7 +1293,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: meta-test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: s1
                 name: My Step
@@ -1191,18 +1310,24 @@ mod tests {
                   output: y
                   value: \"hello\"
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        let step = &wf.steps[0];
+        let wf = parse_ok!(yaml);
+        let step = first_item!(wf.steps, "step");
         assert_eq!(step.name.as_deref(), Some("My Step"));
         assert_eq!(step.condition.as_deref(), Some("x > 0"));
         assert_eq!(step.with.as_deref(), Some("http_connector"));
         assert_eq!(step.then.as_deref(), Some("next_step"));
 
-        let retry = step.retry.as_ref().unwrap();
+        let Some(retry) = step.retry.as_ref() else {
+            assert!(false, "missing retry");
+            return;
+        };
         assert_eq!(retry.max_attempts, 3);
         assert_eq!(retry.delay.as_deref(), Some("1s"));
 
-        let on_error = step.on_error.as_ref().unwrap();
+        let Some(on_error) = step.on_error.as_ref() else {
+            assert!(false, "missing on_error");
+            return;
+        };
         assert_eq!(on_error.handler, "fallback");
     }
 
@@ -1211,7 +1336,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: result-test
-            trigger: manual
+            when:
+              manual: {}
             steps: []
             result:
               value: final_output
@@ -1220,19 +1346,23 @@ mod tests {
                 input: '{\"x\": 1}'
                 expected: \"2\"
         "};
-        let wf = parse_workflow_ast(yaml).unwrap();
-        let result = wf.result.as_ref().unwrap();
+        let wf = parse_ok!(yaml);
+        let Some(result) = wf.result.as_ref() else {
+            assert!(false, "missing result");
+            return;
+        };
         assert_eq!(result.value, "final_output");
 
         assert_eq!(wf.examples.len(), 1);
-        assert_eq!(wf.examples[0].description.as_deref(), Some("basic test"));
-        assert_eq!(wf.examples[0].input.as_deref(), Some("{\"x\": 1}"));
-        assert_eq!(wf.examples[0].expected.as_deref(), Some("2"));
+        let first_example = first_item!(wf.examples, "example");
+        assert_eq!(first_example.description.as_deref(), Some("basic test"));
+        assert_eq!(first_example.input.as_deref(), Some("{\"x\": 1}"));
+        assert_eq!(first_example.expected.as_deref(), Some("2"));
     }
 
     #[test]
     fn missing_version_is_error() {
-        let yaml = "name: test\ntrigger: manual\nsteps: []\n";
+        let yaml = "name: test\nwhen:\n  manual: {}\nsteps: []\n";
         let result = parse_workflow_ast(yaml);
         assert!(result.is_err());
     }
@@ -1242,7 +1372,8 @@ mod tests {
         let yaml = indoc::indoc! {"
             version: velvet-ballastics/v1
             name: test
-            trigger: manual
+            when:
+              manual: {}
             steps:
               - id: s1
         "};

@@ -9,6 +9,18 @@ use std::time::Instant;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        write_stdout_line(format_args!($($arg)*));
+    }};
+}
+
+macro_rules! errln {
+    ($($arg:tt)*) => {{
+        write_stderr_line(format_args!($($arg)*));
+    }};
+}
+
 const HELP: &str = "\
 velvet-ballastics - compiled workflow runtime
 
@@ -36,7 +48,11 @@ fn main() -> ExitCode {
         Ok(Command::Help) => exit_from_io(write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::Validate { workflow }) => cmd_validate(&workflow),
-        Ok(Command::Compile { workflow, emit, out }) => cmd_compile(&workflow, &emit, &out),
+        Ok(Command::Compile {
+            workflow,
+            emit,
+            out,
+        }) => cmd_compile(&workflow, &emit, &out),
         Ok(Command::Run {
             workflow,
             input_bin,
@@ -171,8 +187,10 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    let input_bin = named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
-    let durability_raw = named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
+    let input_bin =
+        named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
+    let durability_raw =
+        named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     Ok(Command::Run {
         workflow,
@@ -183,8 +201,10 @@ fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.vbir")?;
-    let input_bin = named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
-    let durability_raw = named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
+    let input_bin =
+        named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
+    let durability_raw =
+        named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     Ok(Command::RunCompiled {
         workflow,
@@ -257,7 +277,11 @@ fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<Pat
         .ok_or(ParseError::MissingArgument(name))
 }
 
-fn positional_str(args: &[OsString], index: usize, name: &'static str) -> Result<String, ParseError> {
+fn positional_str(
+    args: &[OsString],
+    index: usize,
+    name: &'static str,
+) -> Result<String, ParseError> {
     args.get(index)
         .and_then(|s| s.to_str())
         .map(String::from)
@@ -267,7 +291,10 @@ fn positional_str(args: &[OsString], index: usize, name: &'static str) -> Result
 fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
     for (i, arg) in args.iter().enumerate() {
         if arg == flag {
-            return args.get(i.checked_add(1)?).and_then(|v| v.to_str()).map(String::from);
+            return args
+                .get(i.checked_add(1)?)
+                .and_then(|v| v.to_str())
+                .map(String::from);
         }
     }
     None
@@ -279,7 +306,7 @@ fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            eprintln!("error reading {}: {e}", path.display());
+            errln!("error reading {}: {e}", path.display());
             Err(ExitCode::FAILURE)
         }
     }
@@ -289,7 +316,7 @@ fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
         Ok(id) => Ok(vb_core::RunId::new(id)),
         Err(e) => {
-            eprintln!("invalid run_id '{raw}': {e}");
+            errln!("invalid run_id '{raw}': {e}");
             Err(ExitCode::FAILURE)
         }
     }
@@ -306,7 +333,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("file is not valid UTF-8: {e}");
+            errln!("file is not valid UTF-8: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -315,7 +342,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     match vb_yaml::parse_workflow_source(text) {
         Ok(_ast) => {}
         Err(e) => {
-            eprintln!("YAML parse error: {e}");
+            errln!("YAML parse error: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -325,13 +352,13 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
         Ok(_compiled) => {}
         Err(errors) => {
             for err in &errors.0 {
-                eprintln!("compile error: {err}");
+                errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
     }
 
-    println!("valid");
+    outln!("valid");
     ExitCode::SUCCESS
 }
 
@@ -345,7 +372,7 @@ fn cmd_compile(workflow: &std::path::Path, emit: &EmitTarget, out: &std::path::P
         Ok(c) => c,
         Err(errors) => {
             for err in &errors.0 {
-                eprintln!("compile error: {err}");
+                errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
@@ -359,29 +386,29 @@ fn cmd_compile(workflow: &std::path::Path, emit: &EmitTarget, out: &std::path::P
             let encoded = match postcard::to_allocvec(&parts) {
                 Ok(data) => data,
                 Err(e) => {
-                    eprintln!("IR serialization error: {e}");
+                    errln!("IR serialization error: {e}");
                     return ExitCode::FAILURE;
                 }
             };
             if let Err(e) = std::fs::write(out, &encoded) {
-                eprintln!("error writing {}: {e}", out.display());
+                errln!("error writing {}: {e}", out.display());
                 return ExitCode::FAILURE;
             }
-            println!("compiled IR written to {}", out.display());
+            outln!("compiled IR written to {}", out.display());
         }
         EmitTarget::Rust => {
             let source = match vb_codegen::emit_rust_workflow(&compiled) {
                 Ok(s) => s,
                 Err(e) => {
-                    eprintln!("codegen error: {e}");
+                    errln!("codegen error: {e}");
                     return ExitCode::FAILURE;
                 }
             };
             if let Err(e) = std::fs::write(out, &source) {
-                eprintln!("error writing {}: {e}", out.display());
+                errln!("error writing {}: {e}", out.display());
                 return ExitCode::FAILURE;
             }
-            println!("generated Rust written to {}", out.display());
+            outln!("generated Rust written to {}", out.display());
         }
     }
 
@@ -407,13 +434,25 @@ fn cmd_run(
         Ok(c) => c,
         Err(errors) => {
             for err in &errors.0 {
-                eprintln!("compile error: {err}");
+                errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
     };
 
-    let _ = durability; // durability mode affects journal write strategy
+    if *durability != DurabilityMode::None {
+        errln!(
+            "unsupported durability mode for direct run: {durability:?}; use --durability none until journaled run execution is wired"
+        );
+        return ExitCode::FAILURE;
+    }
+
+    if !input_data.is_empty() {
+        errln!(
+            "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
+        );
+        return ExitCode::FAILURE;
+    }
 
     run_compiled_workflow(&compiled, &input_data)
 }
@@ -433,35 +472,45 @@ fn cmd_run_compiled(
         Err(code) => return code,
     };
 
-    let compiled: vb_core::CompiledWorkflow = match postcard::from_bytes::<vb_core::WorkflowParts>(&ir_bytes) {
-        Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
-            Ok(c) => c,
+    let compiled: vb_core::CompiledWorkflow =
+        match postcard::from_bytes::<vb_core::WorkflowParts>(&ir_bytes) {
+            Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
+                Ok(c) => c,
+                Err(e) => {
+                    errln!("compiled IR validation error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            },
             Err(e) => {
-                eprintln!("compiled IR validation error: {e}");
+                errln!("error deserializing compiled IR: {e}");
                 return ExitCode::FAILURE;
             }
-        },
-        Err(e) => {
-            eprintln!("error deserializing compiled IR: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+        };
 
-    let _ = durability; // durability mode affects journal write strategy
+    if *durability != DurabilityMode::None {
+        errln!(
+            "unsupported durability mode for compiled run: {durability:?}; use --durability none until journaled run execution is wired"
+        );
+        return ExitCode::FAILURE;
+    }
+
+    if !input_data.is_empty() {
+        errln!(
+            "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
+        );
+        return ExitCode::FAILURE;
+    }
 
     run_compiled_workflow(&compiled, &input_data)
 }
 
-fn run_compiled_workflow(
-    compiled: &vb_core::CompiledWorkflow,
-    _input_data: &[u8],
-) -> ExitCode {
+fn run_compiled_workflow(compiled: &vb_core::CompiledWorkflow, _input_data: &[u8]) -> ExitCode {
     let run_id = vb_core::RunId::new(1);
     let budget = vb_core::engine::StepBudget::new(10_000);
     let mut frame = match vb_core::engine::new_run_frame(run_id, compiled) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("frame init error: {e}");
+            errln!("frame init error: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -469,26 +518,26 @@ fn run_compiled_workflow(
 
     match vb_core::engine::run_until_blocked(compiled, &mut frame, budget, &mut store) {
         Ok(vb_core::engine::EngineSignal::Finished(_)) => {
-            println!("run completed");
+            outln!("run completed");
         }
         Ok(vb_core::engine::EngineSignal::AwaitingAction) => {
-            println!("run blocked (awaiting action)");
+            outln!("run blocked (awaiting action)");
         }
         Ok(vb_core::engine::EngineSignal::AwaitingWait) => {
-            println!("run blocked (awaiting wait)");
+            outln!("run blocked (awaiting wait)");
         }
         Ok(vb_core::engine::EngineSignal::AwaitingAsk) => {
-            println!("run blocked (awaiting ask)");
+            outln!("run blocked (awaiting ask)");
         }
         Ok(vb_core::engine::EngineSignal::StepBudgetExhausted) => {
-            eprintln!("run exhausted step budget");
+            errln!("run exhausted step budget");
             return ExitCode::FAILURE;
         }
         Ok(vb_core::engine::EngineSignal::Continue) => {
-            println!("run returned continue");
+            outln!("run returned continue");
         }
         Err(e) => {
-            eprintln!("engine error: {e}");
+            errln!("engine error: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -501,7 +550,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("error opening journal at {}: {e}", db.display());
+            errln!("error opening journal at {}: {e}", db.display());
             return ExitCode::FAILURE;
         }
     };
@@ -510,7 +559,10 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     drop(journal);
 
     // Create runtime
-    let shard_count = NonZeroUsize::new(1).unwrap_or(NonZeroUsize::MIN);
+    let shard_count = match NonZeroUsize::new(1) {
+        Some(count) => count,
+        None => NonZeroUsize::MIN,
+    };
     let config = vb_runtime::shard::ShardConfig::default();
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
 
@@ -518,23 +570,23 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error binding IPC socket at {}: {e}", socket.display());
+            errln!("error binding IPC socket at {}: {e}", socket.display());
             return ExitCode::FAILURE;
         }
     };
 
-    println!("ipc server listening on {}", socket.display());
+    outln!("ipc server listening on {}", socket.display());
 
     // Event loop
     loop {
         match server.poll_once(&mut runtime, Some(std::time::Duration::from_millis(100))) {
             Ok(true) => {}
             Ok(false) => {
-                println!("shutdown requested");
+                outln!("shutdown requested");
                 break;
             }
             Err(e) => {
-                eprintln!("ipc server error: {e}");
+                errln!("ipc server error: {e}");
                 return ExitCode::FAILURE;
             }
         }
@@ -543,11 +595,11 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
         match runtime.tick_all() {
             Ok(true) => {}
             Ok(false) => {
-                println!("runtime shut down");
+                outln!("runtime shut down");
                 break;
             }
             Err(e) => {
-                eprintln!("runtime tick error: {e}");
+                errln!("runtime tick error: {e}");
                 return ExitCode::FAILURE;
             }
         }
@@ -565,7 +617,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("error opening journal at {}: {e}", db.display());
+            errln!("error opening journal at {}: {e}", db.display());
             return ExitCode::FAILURE;
         }
     };
@@ -573,7 +625,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
     match journal.events_for_run(rid) {
         Ok(events) => {
             if events.is_empty() {
-                println!("run {run_id}: no events found");
+                outln!("run {run_id}: no events found");
             } else {
                 let terminal = events.last();
                 let status = match terminal {
@@ -582,11 +634,11 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
                     Some(vb_storage::JournalEvent::RunCancelled { .. }) => "cancelled",
                     _ => "running",
                 };
-                println!("run {run_id}: status={status}, events={}", events.len());
+                outln!("run {run_id}: status={status}, events={}", events.len());
             }
         }
         Err(e) => {
-            eprintln!("error reading run {run_id}: {e}");
+            errln!("error reading run {run_id}: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -603,7 +655,7 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("error opening journal at {}: {e}", db.display());
+            errln!("error opening journal at {}: {e}", db.display());
             return ExitCode::FAILURE;
         }
     };
@@ -611,16 +663,16 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
     match journal.events_for_run(rid) {
         Ok(events) => {
             if events.is_empty() {
-                println!("no events found for run {run_id}");
+                outln!("no events found for run {run_id}");
             } else {
                 for event in &events {
                     print_event(event);
                 }
-                println!("{} event(s) total", events.len());
+                outln!("{} event(s) total", events.len());
             }
         }
         Err(e) => {
-            eprintln!("error reading events for run {run_id}: {e}");
+            errln!("error reading events for run {run_id}: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -631,37 +683,45 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
 fn print_event(event: &vb_storage::JournalEvent) {
     match event {
         vb_storage::JournalEvent::RunAccepted { seq, .. } => {
-            println!("  seq={}: RunAccepted", seq.get());
+            outln!("  seq={}: RunAccepted", seq.get());
         }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
-            println!("  seq={}: StepStarted step={}", seq.get(), step.get());
+            outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
         }
-        vb_storage::JournalEvent::StepSucceeded { seq, step, output, .. } => {
-            println!(
+        vb_storage::JournalEvent::StepSucceeded {
+            seq, step, output, ..
+        } => {
+            outln!(
                 "  seq={}: StepSucceeded step={} output={}",
                 seq.get(),
                 step.get(),
                 output.get()
             );
         }
-        vb_storage::JournalEvent::ActionScheduled { seq, step, action, .. } => {
-            println!(
+        vb_storage::JournalEvent::ActionScheduled {
+            seq, step, action, ..
+        } => {
+            outln!(
                 "  seq={}: ActionScheduled step={} action={}",
                 seq.get(),
                 step.get(),
                 action.get()
             );
         }
-        vb_storage::JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
-            println!(
+        vb_storage::JournalEvent::ActionCompletedEvent {
+            seq, step, action, ..
+        } => {
+            outln!(
                 "  seq={}: ActionCompleted step={} action={}",
                 seq.get(),
                 step.get(),
                 action.get()
             );
         }
-        vb_storage::JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
-            println!(
+        vb_storage::JournalEvent::ActionFailedEvent {
+            seq, step, action, ..
+        } => {
+            outln!(
                 "  seq={}: ActionFailed step={} action={}",
                 seq.get(),
                 step.get(),
@@ -669,32 +729,28 @@ fn print_event(event: &vb_storage::JournalEvent) {
             );
         }
         vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            println!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
+            outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
         }
         vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            println!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
+            outln!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            println!("  seq={}: AskScheduled step={}", seq.get(), step.get());
+            outln!("  seq={}: AskScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            println!("  seq={}: AskAnswered step={}", seq.get(), step.get());
+            outln!("  seq={}: AskAnswered step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            println!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
+            outln!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::RunCancelled { seq, .. } => {
-            println!("  seq={}: RunCancelled", seq.get());
+            outln!("  seq={}: RunCancelled", seq.get());
         }
         vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
-            println!(
-                "  seq={}: RunFinished result={}",
-                seq.get(),
-                result.get()
-            );
+            outln!("  seq={}: RunFinished result={}", seq.get(), result.get());
         }
         vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
-            println!("  seq={}: RunFailed", seq.get());
+            outln!("  seq={}: RunFailed", seq.get());
         }
     }
 }
@@ -708,7 +764,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("error opening journal at {}: {e}", db.display());
+            errln!("error opening journal at {}: {e}", db.display());
             return ExitCode::FAILURE;
         }
     };
@@ -717,25 +773,18 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
     match journal.events_for_run(rid) {
         Ok(events) => {
             if events.is_empty() {
-                eprintln!("no recovery data found for run {run_id}");
+                errln!("no recovery data found for run {run_id}");
                 return ExitCode::FAILURE;
             }
-            println!("recovered {} event(s) for run {run_id}", events.len());
+            outln!("recovered {} event(s) for run {run_id}", events.len());
             for event in &events {
                 print_event(event);
             }
 
-            // Run recovery digest checks
-            if let Err(e) =
-                vb_storage::recovery::check_workflow_source_digest(&journal, vb_core::WorkflowDigest::from_bytes([0; 32]))
-            {
-                // Digest check with a placeholder digest may fail for valid reasons;
-                // report the result but do not fail the command.
-                eprintln!("digest check note: {e}");
-            }
+            outln!("digest verification: not performed (no expected digest supplied by CLI)");
         }
         Err(e) => {
-            eprintln!("error replaying run {run_id}: {e}");
+            errln!("error replaying run {run_id}: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -754,7 +803,7 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
         Ok(c) => c,
         Err(errors) => {
             for err in &errors.0 {
-                eprintln!("compile error: {err}");
+                errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
@@ -767,7 +816,7 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     let mut frame = match vb_core::engine::new_run_frame(run_id, &compiled) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("frame init error: {e}");
+            errln!("frame init error: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -776,22 +825,18 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     match vb_core::engine::run_until_blocked(&compiled, &mut frame, budget, &mut store) {
         Ok(signal) => {
             let run_elapsed = run_start.elapsed();
-            println!(
-                "compile: {}us",
-                compile_elapsed.as_micros()
-            );
-            println!(
-                "execute: {}us",
-                run_elapsed.as_micros()
-            );
-            println!(
+            outln!("compile: {}us", compile_elapsed.as_micros());
+            outln!("execute: {}us", run_elapsed.as_micros());
+            outln!(
                 "total:   {}us",
-                compile_elapsed.as_micros().saturating_add(run_elapsed.as_micros())
+                compile_elapsed
+                    .as_micros()
+                    .saturating_add(run_elapsed.as_micros())
             );
-            println!("signal:  {signal:?}");
+            outln!("signal:  {signal:?}");
         }
         Err(e) => {
-            eprintln!("engine error: {e}");
+            errln!("engine error: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -804,17 +849,17 @@ fn cmd_doctor(db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("FAIL: cannot open journal at {}: {e}", db.display());
+            errln!("FAIL: cannot open journal at {}: {e}", db.display());
             return ExitCode::FAILURE;
         }
     };
-    println!("OK: journal opened at {}", db.display());
+    outln!("OK: journal opened at {}", db.display());
 
     // Check 2: can we persist?
     match journal.persist_strict() {
-        Ok(()) => println!("OK: strict persist succeeded"),
+        Ok(()) => outln!("OK: strict persist succeeded"),
         Err(e) => {
-            eprintln!("FAIL: strict persist failed: {e}");
+            errln!("FAIL: strict persist failed: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -828,26 +873,26 @@ fn cmd_doctor(db: &std::path::Path) -> ExitCode {
     };
 
     if let Err(e) = journal.append_journaled(&test_event) {
-        eprintln!("FAIL: cannot append test event: {e}");
+        errln!("FAIL: cannot append test event: {e}");
         return ExitCode::FAILURE;
     }
-    println!("OK: journal append succeeded");
+    outln!("OK: journal append succeeded");
 
     match journal.events_for_run(test_run) {
         Ok(events) => {
             if events.is_empty() {
-                eprintln!("FAIL: test event not found after append");
+                errln!("FAIL: test event not found after append");
                 return ExitCode::FAILURE;
             }
-            println!("OK: journal read-back returned {} event(s)", events.len());
+            outln!("OK: journal read-back returned {} event(s)", events.len());
         }
         Err(e) => {
-            eprintln!("FAIL: cannot read test run events: {e}");
+            errln!("FAIL: cannot read test run events: {e}");
             return ExitCode::FAILURE;
         }
     }
 
-    println!("doctor: all checks passed");
+    outln!("doctor: all checks passed");
     ExitCode::SUCCESS
 }
 
@@ -880,10 +925,16 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             writeln!(handle, "missing argument: {name}\n\n{HELP}")
         }
         ParseError::UnknownEmitTarget(target) => {
-            writeln!(handle, "unknown emit target: {target} (expected: ir, rust)\n\n{HELP}")
+            writeln!(
+                handle,
+                "unknown emit target: {target} (expected: ir, rust)\n\n{HELP}"
+            )
         }
         ParseError::UnknownDurability(mode) => {
-            writeln!(handle, "unknown durability mode: {mode} (expected: strict, journaled, none)\n\n{HELP}")
+            writeln!(
+                handle,
+                "unknown durability mode: {mode} (expected: strict, journaled, none)\n\n{HELP}"
+            )
         }
         ParseError::UnknownCommand(cmd) => {
             writeln!(handle, "unknown command: {cmd}\n\n{HELP}")
@@ -891,5 +942,27 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
         }
+    }
+}
+
+fn write_stdout_line(args: std::fmt::Arguments<'_>) {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    match handle.write_fmt(args) {
+        Ok(()) | Err(_) => {}
+    }
+    match handle.write_all(b"\n") {
+        Ok(()) | Err(_) => {}
+    }
+}
+
+fn write_stderr_line(args: std::fmt::Arguments<'_>) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match handle.write_fmt(args) {
+        Ok(()) | Err(_) => {}
+    }
+    match handle.write_all(b"\n") {
+        Ok(()) | Err(_) => {}
     }
 }

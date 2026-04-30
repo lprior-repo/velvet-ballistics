@@ -82,7 +82,11 @@ fn infer_literal(lit: &ExprLiteral) -> ExprType {
     }
 }
 
-fn typecheck_unary(op: crate::lexer::UnaryOp, inner: &ExprAst, ctx: &TypeContext) -> ExprResult<ExprType> {
+fn typecheck_unary(
+    op: crate::lexer::UnaryOp,
+    inner: &ExprAst,
+    ctx: &TypeContext,
+) -> ExprResult<ExprType> {
     let inner_ty = typecheck_expr(inner, ctx)?;
     match op {
         crate::lexer::UnaryOp::Not => {
@@ -149,9 +153,7 @@ fn typecheck_helper(
         .map(|a| typecheck_expr(a, ctx))
         .collect::<ExprResult<Vec<_>>>()?;
     match helper {
-        ExprHelper::Contains | ExprHelper::StartsWith | ExprHelper::EndsWith => {
-            Ok(ExprType::Bool)
-        }
+        ExprHelper::Contains | ExprHelper::StartsWith | ExprHelper::EndsWith => Ok(ExprType::Bool),
         ExprHelper::Has => Ok(ExprType::Bool),
         ExprHelper::Exists => Ok(ExprType::Bool),
         ExprHelper::Length => Ok(ExprType::I64),

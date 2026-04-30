@@ -5,7 +5,7 @@ use vb_core::ids::{RunId, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::CounterSnapshot;
-use crate::shard::{Shard, ShardCommand, ShardConfig};
+use crate::shard::{InspectResponse, Shard, ShardCommand, ShardConfig};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -27,21 +27,13 @@ impl Runtime {
     }
 
     /// Submits a run using a compiled workflow.
-    pub fn submit_direct(
-        &self,
-        run: RunId,
-        workflow: CompiledWorkflow,
-    ) -> RuntimeResult<()> {
+    pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
         shard.enqueue(ShardCommand::Submit { run, workflow })
     }
 
     /// Submits a run with inline workflow (same as submit_direct for now).
-    pub fn submit_compiled(
-        &self,
-        run: RunId,
-        workflow: CompiledWorkflow,
-    ) -> RuntimeResult<()> {
+    pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         self.submit_direct(run, workflow)
     }
 
@@ -74,32 +66,48 @@ impl Runtime {
         shard.enqueue(ShardCommand::ActionCompleted { run, step })
     }
 
-    /// Fails an action (treated as a cancellation).
+    /// Fails an action. Durable failure routing is not implemented yet.
     pub fn fail_action(&self, run: RunId) -> RuntimeResult<()> {
-        self.cancel_run(run)
+        let _shard = self.shard_for(run)?;
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "durable_action_failure",
+        })
     }
 
-    /// Lists events for a run by draining the shard's trace ring.
-    pub fn list_events(&mut self, run: RunId) -> Vec<TraceEvent> {
+    /// Lists trace events for a run by bounded-draining the shard trace ring.
+    pub fn list_events(&mut self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
         let shard_index = self.shard_index(run);
         let Some(shard) = self.shards.get_mut(shard_index) else {
-            return Vec::new();
+            return Err(RuntimeError::RunNotFound);
         };
-        let all = shard.trace_ring_mut().drain();
-        filter_run_events(all, run)
+        let limit = shard.trace_ring_mut().capacity();
+        Ok(shard.trace_ring_mut().drain_for_run(run, limit))
     }
 
-    /// Answers an ask by resuming the run.
+    /// Answers an ask. Durable answer injection is not implemented yet.
     pub fn answer_ask(&self, run: RunId) -> RuntimeResult<()> {
-        let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Resume { run })
+        let _shard = self.shard_for(run)?;
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "durable_ask_answer",
+        })
+    }
+
+    /// Takes the latest inspect response from the run's shard.
+    pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<InspectResponse>> {
+        let shard_index = self.shard_index(run);
+        let shard = self
+            .shards
+            .get_mut(shard_index)
+            .ok_or(RuntimeError::RunNotFound)?;
+        Ok(shard.take_inspect_response())
     }
 
     /// Drains all trace events from all shards.
     pub fn drain_trace(&mut self) -> Vec<TraceEvent> {
         let mut events = Vec::new();
         for shard in &mut self.shards {
-            events.extend(shard.trace_ring_mut().drain());
+            let capacity = shard.trace_ring_mut().capacity();
+            shard.trace_ring_mut().drain_into(capacity, &mut events);
         }
         events
     }
@@ -130,12 +138,19 @@ impl Runtime {
         Ok(())
     }
 
-    #[allow(clippy::arithmetic_side_effects)]
     fn shard_index(&self, run: RunId) -> usize {
         let hash = run.as_u64();
-        let count = u64::try_from(self.shard_count).unwrap_or(1);
-        let remainder = hash % count;
-        usize::try_from(remainder).unwrap_or(0)
+        let count = match u64::try_from(self.shard_count) {
+            Ok(value) => value,
+            Err(_) => return 0,
+        };
+        let Some(remainder) = hash.checked_rem(count) else {
+            return 0;
+        };
+        let Ok(index) = usize::try_from(remainder) else {
+            return 0;
+        };
+        index
     }
 
     fn shard_for(&self, run: RunId) -> Result<&Shard, RuntimeError> {
@@ -144,18 +159,37 @@ impl Runtime {
     }
 }
 
-fn filter_run_events(events: Vec<TraceEvent>, target: RunId) -> Vec<TraceEvent> {
-    events
-        .into_iter()
-        .filter(|event| match event {
-            TraceEvent::RunSubmitted { run }
-            | TraceEvent::RunFinished { run }
-            | TraceEvent::RunFailed { run }
-            | TraceEvent::StepStarted { run, .. }
-            | TraceEvent::StepEnded { run, .. }
-            | TraceEvent::SlotWritten { run, .. }
-            | TraceEvent::ActionScheduled { run, .. }
-            | TraceEvent::ActionCompleted { run, .. } => *run == target,
-        })
-        .collect()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ask_answer_reports_unsupported_durable_path() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let runtime = Runtime::new(shard_count, ShardConfig::default());
+        let result = runtime.answer_ask(RunId::new(1));
+        assert_eq!(
+            result,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "durable_ask_answer",
+            })
+        );
+    }
+
+    #[test]
+    fn fail_action_reports_unsupported_durable_path() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let runtime = Runtime::new(shard_count, ShardConfig::default());
+        let result = runtime.fail_action(RunId::new(1));
+        assert_eq!(
+            result,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "durable_action_failure",
+            })
+        );
+    }
 }

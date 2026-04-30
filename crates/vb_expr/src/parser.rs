@@ -1,8 +1,6 @@
 //! Expression parser producing a typed AST from token streams.
 
-use crate::lexer::{
-    BinaryOp, LiteralToken, Token, UnaryOp, infix_binding_power,
-};
+use crate::lexer::{BinaryOp, LiteralToken, Token, UnaryOp, infix_binding_power};
 use crate::{ExprError, ExprResult};
 
 /// Maximum nesting depth for the parser.
@@ -187,10 +185,7 @@ impl<'a> Parser<'a> {
         self.advance();
         let args = self.parse_helper_args(depth)?;
         validate_helper_arity(helper, args.len())?;
-        Ok(ExprAst::Helper {
-            name: helper,
-            args,
-        })
+        Ok(ExprAst::Helper { name: helper, args })
     }
 
     fn parse_helper_args(&mut self, depth: u8) -> ExprResult<Box<[ExprAst]>> {
@@ -235,7 +230,9 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> &Token {
-        self.tokens.get(self.index.saturating_add(1)).unwrap_or(&Token::End)
+        self.tokens
+            .get(self.index.saturating_add(1))
+            .unwrap_or(&Token::End)
     }
 
     fn advance(&mut self) {

@@ -113,7 +113,9 @@ mod tests {
     #[test]
     fn take_allocates_when_empty() {
         let mut pool = FramePool::new(2, 1, 4).ok();
-        let frame = pool.as_mut().and_then(|p| p.take(RunId::new(1), StepIdx::new(0)).ok());
+        let frame = pool
+            .as_mut()
+            .and_then(|p| p.take(RunId::new(1), StepIdx::new(0)).ok());
         let _ = frame;
     }
 

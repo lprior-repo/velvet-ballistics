@@ -750,7 +750,10 @@ fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), Workf
             validate_two_steps(*entry, *join, parts)?;
             validate_slot(*accumulator, parts.slot_count)
         }
-        CompiledNodeKind::TogetherJoin { branch_count, accumulator } => {
+        CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        } => {
             validate_nonzero_u16(*branch_count, "branch_count")?;
             validate_slot(*accumulator, parts.slot_count)
         }

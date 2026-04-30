@@ -190,9 +190,7 @@ pub enum ActionOutcome {
 #[must_use]
 pub const fn propagate_action_taint(idempotency: Idempotency, input_taint: Taint) -> Taint {
     match idempotency {
-        Idempotency::DeterministicPure | Idempotency::IdempotentExternal => {
-            join_taint(input_taint)
-        }
+        Idempotency::DeterministicPure | Idempotency::IdempotentExternal => join_taint(input_taint),
         Idempotency::AtLeastOnceExternal => match input_taint {
             Taint::Clean => Taint::Clean,
             Taint::Secret | Taint::DerivedFromSecret => Taint::DerivedFromSecret,
@@ -225,7 +223,8 @@ mod tests {
 
     #[test]
     fn deterministic_derived_stays_derived() {
-        let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::DerivedFromSecret);
+        let result =
+            propagate_action_taint(Idempotency::DeterministicPure, Taint::DerivedFromSecret);
         assert_eq!(result, Taint::DerivedFromSecret);
     }
 
@@ -243,7 +242,8 @@ mod tests {
 
     #[test]
     fn at_least_once_derived_stays_derived() {
-        let result = propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::DerivedFromSecret);
+        let result =
+            propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::DerivedFromSecret);
         assert_eq!(result, Taint::DerivedFromSecret);
     }
 

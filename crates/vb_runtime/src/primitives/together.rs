@@ -19,28 +19,23 @@ pub fn together_start(
     _join: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let count = u16::try_from(branches.len()).map_err(|_| {
-        EngineError::TogetherBranchLimitExceeded {
-            max: u16::MAX,
-        }
-    })?;
+    let count = u16::try_from(branches.len())
+        .map_err(|_| EngineError::TogetherBranchLimitExceeded { max: u16::MAX })?;
     if count == 0 {
         return Err(EngineError::InvalidCompiledWorkflow {
             reason: "together_start requires at least one branch",
         });
     }
-    let iter_output = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
     run.write_slot(iter_output, SlotValue::List(state))?;
-    let first_branch = branches
-        .first()
-        .copied()
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "together branches checked nonzero",
-        })?;
+    let first_branch =
+        branches
+            .first()
+            .copied()
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "together branches checked nonzero",
+            })?;
     jump_to(run, first_branch)
 }
 
@@ -65,9 +60,7 @@ pub fn together_branch(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     if branch > 0 {
-        let branch_output = output.ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+        let branch_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
         let previous_result = *run.read_slot(branch_output)?;
         append_to_accumulator(run, store, accumulator, previous_result)?;
     }
@@ -148,10 +141,7 @@ fn expect_list(value: SlotValue) -> Result<ListId, EngineError> {
     }
 }
 
-fn jump_to(
-    run: &mut RunFrame,
-    target: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
     run.set_pc(target);
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)

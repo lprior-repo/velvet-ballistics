@@ -326,7 +326,7 @@ impl QueueCapacity {
         Self(value)
     }
 
-    fn get(self) -> usize {
+    pub(crate) fn get(self) -> usize {
         self.0.get()
     }
 }
@@ -348,7 +348,7 @@ impl MaxPayloadBytes {
         Self(value)
     }
 
-    fn get(self) -> usize {
+    pub(crate) fn get(self) -> usize {
         self.0.get()
     }
 }

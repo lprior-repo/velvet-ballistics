@@ -124,6 +124,18 @@ pub enum CoreError {
         /// Runtime type being traversed.
         found: &'static str,
     },
+    /// An object accessor field was not present in the object arena payload.
+    #[error("object field not found: {field:?}")]
+    ObjectFieldNotFound {
+        /// Missing interned field name.
+        field: SymbolId,
+    },
+    /// A list accessor index was outside the list arena payload.
+    #[error("list index out of bounds: {index}")]
+    ListIndexOutOfBounds {
+        /// Missing list index.
+        index: u32,
+    },
     /// Internal invariant violation.
     #[error("internal invariant violation: {reason}")]
     InternalInvariantViolation {
@@ -225,6 +237,10 @@ impl CoreError {
     pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x0409);
     /// Unsupported accessor traversal diagnostic code.
     pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = DiagnosticCode::new(0x040A);
+    /// Object accessor field not found diagnostic code.
+    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x040C);
+    /// List accessor index out-of-bounds diagnostic code.
+    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x040D);
     /// Expression stack underflow diagnostic code.
     pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x040B);
     /// Symbol handle out-of-bounds diagnostic code.
@@ -271,6 +287,8 @@ impl CoreError {
             Self::InvalidCompiledWorkflow { .. } => Self::INVALID_COMPILED_WORKFLOW_CODE,
             Self::UnsupportedPrimitive { .. } => Self::UNSUPPORTED_PRIMITIVE_CODE,
             Self::UnsupportedAccessorTraversal { .. } => Self::UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE,
+            Self::ObjectFieldNotFound { .. } => Self::OBJECT_FIELD_NOT_FOUND_CODE,
+            Self::ListIndexOutOfBounds { .. } => Self::LIST_INDEX_OUT_OF_BOUNDS_CODE,
             Self::InternalInvariantViolation { .. } => Self::INTERNAL_INVARIANT_CODE,
             Self::SymbolOutOfBounds { .. } => Self::SYMBOL_OUT_OF_BOUNDS_CODE,
             Self::ListOutOfBounds { .. } => Self::LIST_OUT_OF_BOUNDS_CODE,

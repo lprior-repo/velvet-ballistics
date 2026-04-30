@@ -4,11 +4,16 @@
 # Default policy: treat all crates as audit-as-crates-io unless explicitly trusted
 [policy]
 # Only first-party crates (in the workspace) get audit-as-crates-io
-"vb-compiler" = { audit-as-crates-io = true }
-"vb-core" = { audit-as-crates-io = true }
-"vb-ipc" = { audit-as-crates-io = true }
-"vb-storage" = { audit-as-crates-io = true }
-"velvet-ballastics" = { audit-as-crates-io = true }
+"vb_codegen" = { audit-as-crates-io = true }
+"vb_compile" = { audit-as-crates-io = true }
+"vb_core" = { audit-as-crates-io = true }
+"vb_expr" = { audit-as-crates-io = true }
+"vb_ipc" = { audit-as-crates-io = true }
+"vb_runtime" = { audit-as-crates-io = true }
+"vb_storage" = { audit-as-crates-io = true }
+"vb_validate" = { audit-as-crates-io = true }
+"vb_yaml" = { audit-as-crates-io = true }
+"velvet_ballastics" = { audit-as-crates-io = true }
 "velvet-ballastics-workspace" = { audit-as-crates-io = true }
 "velvet-ballastics-fuzz" = { audit-as-crates-io = true }
 

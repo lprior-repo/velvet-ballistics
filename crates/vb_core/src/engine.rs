@@ -105,11 +105,9 @@ fn execute_node(
         CompiledNodeKind::Nop => jump_to_next(run, node.next, node.id),
         CompiledNodeKind::SetConst { value } => set_const(plan, run, node, *value),
         CompiledNodeKind::Copy { source } => copy_slot(run, node, *source),
-        CompiledNodeKind::EvalExpr { expr } => eval_expr_node(plan, run, node, *expr),
-        CompiledNodeKind::BuildObject { fields } => {
-            build_object_node(plan, run, node, fields, store)
-        }
-        CompiledNodeKind::BuildList { items } => build_list_node(plan, run, node, items, store),
+        CompiledNodeKind::EvalExpr { expr } => eval_expr_node(plan, run, node, store, *expr),
+        CompiledNodeKind::BuildObject { fields } => build_object_node(run, node, fields, store),
+        CompiledNodeKind::BuildList { items } => build_list_node(run, node, items, store),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -117,7 +115,7 @@ fn execute_node(
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => choose_expr_branch(plan, run, branches, *otherwise),
+        } => choose_expr_branch(plan, run, store, branches, *otherwise),
         other => execute_boundary_node(run, other),
     }
 }
@@ -158,16 +156,18 @@ fn mark_step_after_signal(
 fn choose_expr_branch(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
+    store: &ValueStore,
     branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
 ) -> Result<EngineSignal, EngineError> {
-    let next = choose_expr_target(plan, run, branches, otherwise)?;
+    let next = choose_expr_target(plan, run, store, branches, otherwise)?;
     jump_to(run, next)
 }
 
 fn choose_expr_target(
     plan: &CompiledWorkflow,
     run: &RunFrame,
+    store: &ValueStore,
     branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
 ) -> Result<StepIdx, EngineError> {
@@ -178,7 +178,7 @@ fn choose_expr_target(
             .ok_or(EngineError::InternalInvariantViolation {
                 reason: "choose expr branch index checked by loop bound",
             })?;
-        if let Some(target) = choose_expr_branch_target(plan, run, branch)? {
+        if let Some(target) = choose_expr_branch_target(plan, run, store, branch)? {
             return Ok(target);
         }
         index = index.checked_add(1).ok_or({
@@ -194,9 +194,10 @@ fn choose_expr_target(
 fn choose_expr_branch_target(
     plan: &CompiledWorkflow,
     run: &RunFrame,
+    store: &ValueStore,
     branch: &ExprBranch,
 ) -> Result<Option<StepIdx>, EngineError> {
-    match eval_expr(plan, run, branch.condition)? {
+    match eval_expr_with_store(plan, run, store, branch.condition)? {
         SlotValue::Bool(true) => Ok(Some(branch.target)),
         SlotValue::Bool(false) => Ok(None),
         value => Err(EngineError::TypeMismatch {
@@ -247,10 +248,7 @@ pub fn build_object(
                 reason: "build_object field index checked by loop bound",
             })?;
         let value = *run.read_slot(*slot)?;
-        entries.push(ObjectField {
-            key: *key,
-            value,
-        });
+        entries.push(ObjectField { key: *key, value });
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
@@ -351,10 +349,16 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
                 return Err(WorkflowError::StepOutOfBounds { step: *target });
             }
             CompiledNodeKind::Jump { .. } => {}
-            CompiledNodeKind::Choose { branches, otherwise } => {
+            CompiledNodeKind::Choose {
+                branches,
+                otherwise,
+            } => {
                 validate_branch_targets(branches, *otherwise, node_count)?;
             }
-            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            CompiledNodeKind::ChooseSlot {
+                branches,
+                otherwise,
+            } => {
                 validate_slot_branch_targets(branches, *otherwise, node_count)?;
             }
             CompiledNodeKind::ForEachStart { body, done, .. } => {
@@ -401,7 +405,9 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
                 return Err(WorkflowError::StepOutOfBounds { step: *done });
             }
             CompiledNodeKind::RepeatCheck { .. } => {}
-            CompiledNodeKind::RetryCheck { body, exhausted, .. } => {
+            CompiledNodeKind::RetryCheck {
+                body, exhausted, ..
+            } => {
                 validate_two_step_targets(*body, *exhausted, node_count)?;
             }
             CompiledNodeKind::ErrorHandler { body, handler } => {
@@ -573,6 +579,25 @@ pub fn eval_expr(
     run: &RunFrame,
     expr: ExprIdx,
 ) -> Result<SlotValue, EngineError> {
+    eval_expr_inner(plan, run, None, expr)
+}
+
+/// Evaluates one expression program with cold arena access for accessor traversal.
+pub fn eval_expr_with_store(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    store: &ValueStore,
+    expr: ExprIdx,
+) -> Result<SlotValue, EngineError> {
+    eval_expr_inner(plan, run, Some(store), expr)
+}
+
+fn eval_expr_inner(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    store: Option<&ValueStore>,
+    expr: ExprIdx,
+) -> Result<SlotValue, EngineError> {
     let program = plan
         .expression(expr)
         .ok_or(EngineError::ExprOutOfBounds { expr })?;
@@ -580,7 +605,7 @@ pub fn eval_expr(
     let mut index = 0usize;
     while index < program.ops.len() {
         let op = expression_op(program.ops.as_ref(), index)?;
-        eval_expr_op(plan, run, op, &mut stack)?;
+        eval_expr_op(plan, run, store, op, &mut stack)?;
         index = next_expr_index(index)?;
     }
     finish_expr_stack(&mut stack)
@@ -617,9 +642,10 @@ fn eval_expr_node(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     node: &crate::workflow::CompiledNode,
+    store: &ValueStore,
     expr: ExprIdx,
 ) -> Result<EngineSignal, EngineError> {
-    let value = eval_expr(plan, run, expr)?;
+    let value = eval_expr_with_store(plan, run, store, expr)?;
     let output = node
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
@@ -629,7 +655,6 @@ fn eval_expr_node(
 
 #[inline]
 fn build_object_node(
-    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     node: &crate::workflow::CompiledNode,
     fields: &[(SymbolId, SlotIdx)],
@@ -640,13 +665,11 @@ fn build_object_node(
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
     run.write_slot(output, SlotValue::Object(handle))?;
-    let _ = plan;
     jump_to_next(run, node.next, node.id)
 }
 
 #[inline]
 fn build_list_node(
-    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     node: &crate::workflow::CompiledNode,
     items: &[SlotIdx],
@@ -657,20 +680,20 @@ fn build_list_node(
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
     run.write_slot(output, SlotValue::List(handle))?;
-    let _ = plan;
     jump_to_next(run, node.next, node.id)
 }
 
 fn eval_expr_op(
     plan: &CompiledWorkflow,
     run: &RunFrame,
+    store: Option<&ValueStore>,
     op: ExprOp,
     stack: &mut ExprStack,
 ) -> Result<(), EngineError> {
     match op {
         ExprOp::LoadSlot(slot) => eval_load_slot(run, stack, slot),
         ExprOp::LoadConst(constant) => eval_load_const(plan, stack, constant),
-        ExprOp::LoadAccessor(accessor) => eval_load_accessor(plan, run, stack, accessor),
+        ExprOp::LoadAccessor(accessor) => eval_load_accessor(plan, run, store, stack, accessor),
         other => eval_expr_operator(other, stack),
     }
 }
@@ -695,10 +718,11 @@ fn eval_load_const(
 fn eval_load_accessor(
     plan: &CompiledWorkflow,
     run: &RunFrame,
+    store: Option<&ValueStore>,
     stack: &mut ExprStack,
     accessor: crate::ids::AccessorIdx,
 ) -> Result<(), EngineError> {
-    push_value(stack, eval_accessor(plan, run, accessor)?)
+    push_value(stack, eval_accessor_inner(plan, run, store, accessor)?)
 }
 
 fn eval_expr_operator(op: ExprOp, stack: &mut ExprStack) -> Result<(), EngineError> {
@@ -728,34 +752,124 @@ pub fn eval_accessor(
     run: &RunFrame,
     accessor: crate::ids::AccessorIdx,
 ) -> Result<SlotValue, EngineError> {
+    eval_accessor_inner(plan, run, None, accessor)
+}
+
+/// Evaluates one accessor program with cold arena access.
+pub fn eval_accessor_with_store(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    store: &ValueStore,
+    accessor: crate::ids::AccessorIdx,
+) -> Result<SlotValue, EngineError> {
+    eval_accessor_inner(plan, run, Some(store), accessor)
+}
+
+fn eval_accessor_inner(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    store: Option<&ValueStore>,
+    accessor: crate::ids::AccessorIdx,
+) -> Result<SlotValue, EngineError> {
     let program = plan
         .accessor(accessor)
         .ok_or(EngineError::InvalidCompiledWorkflow {
             reason: "accessor index out of bounds",
         })?;
-    eval_accessor_program(run, program)
+    eval_accessor_program(run, store, program)
 }
 
 fn eval_accessor_program(
     run: &RunFrame,
+    store: Option<&ValueStore>,
     program: &AccessorProgram,
 ) -> Result<SlotValue, EngineError> {
-    let root = *run.read_slot(program.root)?;
+    let mut current = *run.read_slot(program.root)?;
     if program.path.is_empty() {
-        return Ok(root);
+        return Ok(current);
     }
 
-    let segment = program
-        .path
-        .first()
-        .copied()
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "accessor path checked non-empty",
+    let store = match store {
+        Some(store) => store,
+        None => {
+            let segment = program.path.first().copied().ok_or({
+                EngineError::InternalInvariantViolation {
+                    reason: "accessor path checked non-empty",
+                }
+            })?;
+            return Err(EngineError::UnsupportedAccessorTraversal {
+                segment: path_segment_name(segment),
+                found: current.type_name(),
+            });
+        }
+    };
+    let mut index = 0usize;
+    while index < program.path.len() {
+        let segment = program.path.get(index).copied().ok_or({
+            EngineError::InternalInvariantViolation {
+                reason: "accessor path index checked by loop bound",
+            }
         })?;
-    Err(EngineError::UnsupportedAccessorTraversal {
-        segment: path_segment_name(segment),
-        found: root.type_name(),
-    })
+        current = traverse_accessor_segment(store, current, segment)?;
+        index = index
+            .checked_add(1)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "accessor path index overflow",
+            })?;
+    }
+    Ok(current)
+}
+
+fn traverse_accessor_segment(
+    store: &ValueStore,
+    current: SlotValue,
+    segment: PathSegment,
+) -> Result<SlotValue, EngineError> {
+    match (current, segment) {
+        (SlotValue::Object(object), PathSegment::Field(field)) => {
+            object_field(store, object, field)
+        }
+        (SlotValue::List(list), PathSegment::Index(index)) => list_item(store, list, index),
+        (value, segment) => Err(EngineError::UnsupportedAccessorTraversal {
+            segment: path_segment_name(segment),
+            found: value.type_name(),
+        }),
+    }
+}
+
+fn object_field(
+    store: &ValueStore,
+    object: ObjectId,
+    field: SymbolId,
+) -> Result<SlotValue, EngineError> {
+    let fields = store.object(object)?;
+    let mut index = 0usize;
+    while index < fields.len() {
+        let entry = fields
+            .get(index)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "object field index checked by loop bound",
+            })?;
+        if entry.key == field {
+            return Ok(entry.value);
+        }
+        index = index
+            .checked_add(1)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "object field index overflow",
+            })?;
+    }
+    Err(EngineError::ObjectFieldNotFound { field })
+}
+
+fn list_item(store: &ValueStore, list: ListId, index: u32) -> Result<SlotValue, EngineError> {
+    let items = store.list(list)?;
+    let item_index =
+        usize::try_from(index).map_err(|_| EngineError::ListIndexOutOfBounds { index })?;
+    items
+        .get(item_index)
+        .copied()
+        .ok_or(EngineError::ListIndexOutOfBounds { index })
 }
 
 const fn path_segment_name(segment: PathSegment) -> &'static str {
@@ -907,15 +1021,15 @@ fn finish_run(run: &RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineErr
 #[cfg(test)]
 mod tests {
     use super::{
-        EngineError, EngineSignal, RunFrame, StepBudget, eval_accessor, eval_expr, new_run_frame,
-        run_until_blocked, step_once,
+        EngineError, EngineSignal, RunFrame, StepBudget, eval_accessor, eval_accessor_with_store,
+        eval_expr, new_run_frame, run_until_blocked, step_once,
     };
     use crate::frame::StepState;
     use crate::ids::{
         AccessorIdx, ConstIdx, ExprIdx, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
     };
     use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::value_store::ValueStore;
+    use crate::value_store::{ObjectField, ValueStore};
     use crate::workflow::{
         AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
         ExprProgram, PathSegment, SlotBranch, WorkflowParts,
@@ -1033,7 +1147,8 @@ mod tests {
         .map_err(|error| error.to_string())?;
 
         let mut store = test_store();
-        let signal = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+        let signal =
+            step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
         ensure_equal(signal, EngineSignal::Continue)?;
         ensure_equal(run.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(77)))?;
@@ -1329,7 +1444,7 @@ mod tests {
     }
 
     #[test]
-    fn load_accessor_reports_typed_error_for_object_field_without_store() -> Result<(), String> {
+    fn public_eval_accessor_reports_typed_error_without_store() -> Result<(), String> {
         let workflow =
             accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())
                 .map_err(|error| error.to_string())?;
@@ -1340,13 +1455,94 @@ mod tests {
             Taint::Clean,
         )
         .map_err(|error| error.to_string())?;
-        let mut store = test_store();
 
-        match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
+        match eval_accessor(&workflow, &run, AccessorIdx::new(0)) {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "field",
                 found: "object",
             }) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn load_accessor_reads_object_field_through_store() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(28), &workflow)?;
+        let mut store = test_store();
+        let object = store
+            .insert_object(
+                vec![ObjectField {
+                    key: SymbolId::new(7),
+                    value: SlotValue::I64(123),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(object), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|error| error.to_string())?;
+
+        ensure_equal(result, EngineSignal::Finished(SlotValue::I64(123)))?;
+        Ok(())
+    }
+
+    #[test]
+    fn eval_accessor_reads_list_item_through_store() -> Result<(), String> {
+        let workflow = accessor_workflow(vec![PathSegment::Index(1)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(29), &workflow)?;
+        let mut store = test_store();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        let value = eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0))
+            .map_err(|error| error.to_string())?;
+
+        ensure_equal(value, SlotValue::I64(2))?;
+        Ok(())
+    }
+
+    #[test]
+    fn eval_accessor_reports_missing_field_precisely() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(9))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(30), &workflow)?;
+        let mut store = test_store();
+        let object = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(object), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+            Err(EngineError::ObjectFieldNotFound { field }) if field == SymbolId::new(9) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn eval_accessor_reports_list_index_precisely() -> Result<(), String> {
+        let workflow = accessor_workflow(vec![PathSegment::Index(4)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(31), &workflow)?;
+        let mut store = test_store();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+            Err(EngineError::ListIndexOutOfBounds { index }) if index == 4 => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
     }

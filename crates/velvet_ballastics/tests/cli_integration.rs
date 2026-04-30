@@ -3,13 +3,9 @@
 //! These tests encode the exact scenarios from the manual truth-serum audit
 //! so they run on every `cargo test` invocation.
 
-use std::io::Write;
-
 use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,6 +25,13 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     }
 }
 
+fn resolve_test_reference(reference: &str) -> Option<vb_core::ids::SlotIdx> {
+    match reference {
+        "$x" => Some(vb_core::ids::SlotIdx::new(0)),
+        _ => None,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1: YAML parsing — vb_yaml
 // ---------------------------------------------------------------------------
@@ -41,8 +44,13 @@ fn yaml_parse_empty_source_returns_error() {
 
 #[test]
 fn yaml_parse_binary_bytes_returns_error() {
-    let binary: &[u8] = &[0xff, 0xfe, 0x00, 0x01, 0x80];
-    let text = std::str::from_utf8(binary);
+    let mut binary = [0u8; 5];
+    binary[0] = 0xff;
+    binary[1] = 0xfe;
+    binary[2] = std::hint::black_box(0x00);
+    binary[3] = 0x01;
+    binary[4] = 0x80;
+    let text = std::str::from_utf8(&binary);
     assert!(text.is_err(), "binary is not valid UTF-8");
 }
 
@@ -50,12 +58,18 @@ fn yaml_parse_binary_bytes_returns_error() {
 fn yaml_parse_missing_version_returns_error() {
     let yaml = "\
 name: test
-trigger: manual
+when:
+  manual: {}
 steps: []
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = match result {
+        Ok(_) => {
+            assert!(false, "missing version should fail");
+            return;
+        }
+        Err(err) => err.to_string(),
+    };
     assert!(
         err.contains("version"),
         "error should mention missing version: {err}"
@@ -66,12 +80,18 @@ steps: []
 fn yaml_parse_missing_name_returns_error() {
     let yaml = "\
 version: \"velvet-ballastics/v1\"
-trigger: manual
+when:
+  manual: {}
 steps: []
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = match result {
+        Ok(_) => {
+            assert!(false, "missing name should fail");
+            return;
+        }
+        Err(err) => err.to_string(),
+    };
     assert!(
         err.contains("name"),
         "error should mention missing name: {err}"
@@ -83,7 +103,8 @@ fn yaml_parse_valid_minimal_workflow() {
     let yaml = "\
 version: \"velvet-ballastics/v1\"
 name: test-workflow
-trigger: manual
+when:
+  manual: {}
 steps:
   - id: start
     set:
@@ -95,10 +116,13 @@ steps:
       result: \"done\"
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_ok(), "should parse valid workflow: {result:?}");
-    let wf = result.unwrap();
-    assert_eq!(wf.name, "test-workflow");
-    assert_eq!(wf.steps.len(), 2);
+    match result {
+        Ok(wf) => {
+            assert_eq!(wf.name, "test-workflow");
+            assert_eq!(wf.steps.len(), 2);
+        }
+        Err(err) => assert!(false, "should parse valid workflow: {err:?}"),
+    }
 }
 
 #[test]
@@ -110,7 +134,8 @@ fn yaml_parse_broken_yaml_returns_error() {
 
 #[test]
 fn yaml_profile_rejects_anchors() {
-    let yaml = "version: &velvet \"velvet-ballastics/v1\"\nname: test\ntrigger: manual\nsteps: []\n";
+    let yaml =
+        "version: &velvet \"velvet-ballastics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let result = vb_yaml::validate_yaml_profile(yaml);
     assert!(result.is_err(), "anchors should be rejected");
 }
@@ -120,15 +145,21 @@ fn yaml_parse_step_missing_do_action_returns_error() {
     let yaml = "\
 version: \"velvet-ballastics/v1\"
 name: test
-trigger: manual
+when:
+  manual: {}
 steps:
   - id: start
     do:
       expr: \"1 + 2\"
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = match result {
+        Ok(_) => {
+            assert!(false, "missing do.action should fail");
+            return;
+        }
+        Err(err) => err.to_string(),
+    };
     assert!(
         err.contains("do.action"),
         "error should mention missing do.action: {err}"
@@ -140,15 +171,21 @@ fn yaml_parse_set_missing_output_returns_error() {
     let yaml = "\
 version: \"velvet-ballastics/v1\"
 name: test
-trigger: manual
+when:
+  manual: {}
 steps:
   - id: start
     set:
       value: \"hello\"
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = match result {
+        Ok(_) => {
+            assert!(false, "missing set.output should fail");
+            return;
+        }
+        Err(err) => err.to_string(),
+    };
     assert!(
         err.contains("set.output"),
         "error should mention missing set.output: {err}"
@@ -173,10 +210,7 @@ fn validate_schema_rejects_bad_version() {
         ("steps".into(), FieldValue::Sequence(vec![])),
     ]);
     let result = vb_validate::schema::validate_version(&doc);
-    assert!(
-        result.is_err(),
-        "bad version string should fail validation"
-    );
+    assert!(result.is_err(), "bad version string should fail validation");
 }
 
 // ---------------------------------------------------------------------------
@@ -185,28 +219,70 @@ fn validate_schema_rejects_bad_version() {
 
 #[test]
 fn expr_lex_and_parse_simple_addition() {
-    let tokens = vb_expr::lexer::lex_expr("1 + 2").expect("lex");
-    let ast = vb_expr::parser::parse_expr(&tokens).expect("parse");
-    assert!(matches!(ast, vb_expr::parser::ExprAst::Binary { .. }));
+    match vb_expr::lexer::lex_expr("1 + 2") {
+        Ok(tokens) => match vb_expr::parser::parse_expr(&tokens) {
+            Ok(ast) => assert!(matches!(ast, vb_expr::parser::ExprAst::Binary { .. })),
+            Err(err) => assert!(false, "parse failed: {err:?}"),
+        },
+        Err(err) => assert!(false, "lex failed: {err:?}"),
+    }
 }
 
 #[test]
 fn expr_bytecode_compile_and_eval() {
-    let tokens = vb_expr::lexer::lex_expr("1 + 2").expect("lex");
-    let ast = vb_expr::parser::parse_expr(&tokens).expect("parse");
+    let tokens = match vb_expr::lexer::lex_expr("1 + 2") {
+        Ok(tokens) => tokens,
+        Err(err) => {
+            assert!(false, "lex failed: {err:?}");
+            return;
+        }
+    };
+    let ast = match vb_expr::parser::parse_expr(&tokens) {
+        Ok(ast) => ast,
+        Err(err) => {
+            assert!(false, "parse failed: {err:?}");
+            return;
+        }
+    };
     let mut constants = Vec::new();
-    let program = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants).expect("bytecode");
+    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+        Ok(program) => program,
+        Err(err) => {
+            assert!(false, "bytecode failed: {err:?}");
+            return;
+        }
+    };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &const_vals).expect("eval");
-    assert_eq!(result, SlotValue::I64(3));
+    match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
+        Ok(result) => assert_eq!(result, SlotValue::I64(3)),
+        Err(err) => assert!(false, "eval failed: {err:?}"),
+    }
 }
 
 #[test]
 fn expr_rejects_division_by_zero() {
-    let tokens = vb_expr::lexer::lex_expr("1 / 0").expect("lex");
-    let ast = vb_expr::parser::parse_expr(&tokens).expect("parse");
+    let tokens = match vb_expr::lexer::lex_expr("1 / 0") {
+        Ok(tokens) => tokens,
+        Err(err) => {
+            assert!(false, "lex failed: {err:?}");
+            return;
+        }
+    };
+    let ast = match vb_expr::parser::parse_expr(&tokens) {
+        Ok(ast) => ast,
+        Err(err) => {
+            assert!(false, "parse failed: {err:?}");
+            return;
+        }
+    };
     let mut constants = Vec::new();
-    let program = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants).expect("bytecode");
+    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+        Ok(program) => program,
+        Err(err) => {
+            assert!(false, "bytecode failed: {err:?}");
+            return;
+        }
+    };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     let result = vb_expr::eval::eval_expr_program(&program, &[], &const_vals);
     assert!(result.is_err(), "division by zero should fail");
@@ -214,25 +290,51 @@ fn expr_rejects_division_by_zero() {
 
 #[test]
 fn expr_boolean_logic() {
-    let tokens = vb_expr::lexer::lex_expr("true and false").expect("lex");
-    let ast = vb_expr::parser::parse_expr(&tokens).expect("parse");
+    let tokens = match vb_expr::lexer::lex_expr("true and false") {
+        Ok(tokens) => tokens,
+        Err(err) => {
+            assert!(false, "lex failed: {err:?}");
+            return;
+        }
+    };
+    let ast = match vb_expr::parser::parse_expr(&tokens) {
+        Ok(ast) => ast,
+        Err(err) => {
+            assert!(false, "parse failed: {err:?}");
+            return;
+        }
+    };
     let mut constants = Vec::new();
-    let program = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants).expect("bytecode");
+    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+        Ok(program) => program,
+        Err(err) => {
+            assert!(false, "bytecode failed: {err:?}");
+            return;
+        }
+    };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &const_vals).expect("eval");
-    assert_eq!(result, SlotValue::Bool(false));
+    match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
+        Ok(result) => assert_eq!(result, SlotValue::Bool(false)),
+        Err(err) => assert!(false, "eval failed: {err:?}"),
+    }
 }
 
 #[test]
 fn expr_variable_reference() {
-    let tokens = vb_expr::lexer::lex_expr("$x + 1").expect("lex");
-    let ast = vb_expr::parser::parse_expr(&tokens).expect("parse");
-    let mut constants = Vec::new();
-    let program = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants).expect("bytecode");
+    let compiled = match vb_expr::bytecode::compile_expr("$x + 1", &resolve_test_reference) {
+        Ok(compiled) => compiled,
+        Err(err) => {
+            assert!(false, "compile failed: {err:?}");
+            return;
+        }
+    };
+    let (program, constants) = compiled;
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     let slots: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
-    let result = vb_expr::eval::eval_expr_program(&program, &slots, &const_vals).expect("eval");
-    assert_eq!(result, SlotValue::I64(42));
+    match vb_expr::eval::eval_expr_program(&program, &slots, &const_vals) {
+        Ok(result) => assert_eq!(result, SlotValue::I64(42)),
+        Err(err) => assert!(false, "eval failed: {err:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -296,20 +398,31 @@ fn compile_rejects_invalid_yaml() {
 
 #[test]
 fn ipc_frame_roundtrip() {
-    let header = vb_ipc::IpcFrameHeader::new(
-        vb_ipc::IpcCommand::Health,
-        0,
-        0x1234_5678_9ABC_DEF0u64,
-        0,
-    );
-    let encoded = header.encode().expect("encode");
-    let max_payload = vb_ipc::MaxPayloadBytes::new(
-        std::num::NonZeroUsize::new(4096).expect("nonzero"),
-    );
-    let decoded = vb_ipc::IpcFrameHeader::decode(&encoded, max_payload).expect("decode");
-    assert_eq!(decoded.correlation, header.correlation);
-    assert_eq!(decoded.command, vb_ipc::IpcCommand::Health);
-    assert_eq!(decoded.payload_len, 0);
+    let header =
+        vb_ipc::IpcFrameHeader::new(vb_ipc::IpcCommand::Health, 0, 0x1234_5678_9ABC_DEF0u64, 0);
+    let encoded = match header.encode() {
+        Ok(encoded) => encoded,
+        Err(err) => {
+            assert!(false, "encode failed: {err:?}");
+            return;
+        }
+    };
+    let nonzero = match std::num::NonZeroUsize::new(4096) {
+        Some(nonzero) => nonzero,
+        None => {
+            assert!(false, "nonzero payload limit should be valid");
+            return;
+        }
+    };
+    let max_payload = vb_ipc::MaxPayloadBytes::new(nonzero);
+    match vb_ipc::IpcFrameHeader::decode(&encoded, max_payload) {
+        Ok(decoded) => {
+            assert_eq!(decoded.correlation, header.correlation);
+            assert_eq!(decoded.command, vb_ipc::IpcCommand::Health);
+            assert_eq!(decoded.payload_len, 0);
+        }
+        Err(err) => assert!(false, "decode failed: {err:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -331,19 +444,27 @@ fn storage_encode_decode_roundtrip() {
         label: "test".into(),
     };
     const MAGIC: u32 = 0x5642_4C54;
-    let encoded = vb_storage::encode_record(
+    let encoded = match vb_storage::encode_record(
         MAGIC,
         vb_storage::RecordKind::StepStarted,
         1,
         &payload,
         4096,
-    )
-    .expect("encode");
+    ) {
+        Ok(encoded) => encoded,
+        Err(err) => {
+            assert!(false, "encode failed: {err:?}");
+            return;
+        }
+    };
     assert!(encoded.len() > 10, "encoded record should have header");
 
-    let (_envelope, decoded): (vb_storage::RecordEnvelope, TestPayload) =
-        vb_storage::decode_record(&encoded, MAGIC, 4096).expect("decode");
-    assert_eq!(decoded, payload);
+    let decoded: Result<(vb_storage::RecordEnvelope, TestPayload), _> =
+        vb_storage::decode_record(&encoded, MAGIC, 4096);
+    match decoded {
+        Ok((_envelope, decoded)) => assert_eq!(decoded, payload),
+        Err(err) => assert!(false, "decode failed: {err:?}"),
+    }
 }
 
 #[test]
@@ -357,14 +478,19 @@ fn storage_corrupt_record_fails_decode() {
 
     let payload = TestPayload { value: 42 };
     const MAGIC: u32 = 0x5642_4C54;
-    let mut encoded = vb_storage::encode_record(
+    let mut encoded = match vb_storage::encode_record(
         MAGIC,
         vb_storage::RecordKind::StepStarted,
         1,
         &payload,
         4096,
-    )
-    .expect("encode");
+    ) {
+        Ok(encoded) => encoded,
+        Err(err) => {
+            assert!(false, "encode failed: {err:?}");
+            return;
+        }
+    };
 
     // Corrupt last byte
     if let Some(last) = encoded.last_mut() {
@@ -406,16 +532,21 @@ fn codegen_emit_rust_produces_output() {
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([node]));
-    let compiled =
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("compile workflow");
+    let compiled = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+        Ok(compiled) => compiled,
+        Err(err) => {
+            assert!(false, "compile workflow failed: {err:?}");
+            return;
+        }
+    };
     let result = vb_codegen::emit_rust_workflow(&compiled);
-    assert!(result.is_ok(), "codegen should succeed: {result:?}");
-    let output = result.unwrap();
-    assert!(!output.is_empty(), "codegen output should not be empty");
-    assert!(
-        output.contains("fn drive"),
-        "should contain drive function"
-    );
+    match result {
+        Ok(output) => {
+            assert!(!output.is_empty(), "codegen output should not be empty");
+            assert!(output.contains("fn drive"), "should contain drive function");
+        }
+        Err(err) => assert!(false, "codegen should succeed: {err:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -424,7 +555,7 @@ fn codegen_emit_rust_produces_output() {
 
 #[test]
 fn taint_secret_propagates_through_deterministic_action() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Secret);
@@ -433,7 +564,7 @@ fn taint_secret_propagates_through_deterministic_action() {
 
 #[test]
 fn taint_clean_stays_clean_for_pure_actions() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Clean);
@@ -442,7 +573,7 @@ fn taint_clean_stays_clean_for_pure_actions() {
 
 #[test]
 fn taint_derived_propagates() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::IdempotentExternal, Taint::DerivedFromSecret);

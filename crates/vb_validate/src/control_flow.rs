@@ -72,17 +72,19 @@ fn validate_forward_target(
     Ok(())
 }
 
-fn mark_reachable(
-    flow: &WorkflowFlow,
-    reachable: &mut [bool],
-) -> ValidationResult<()> {
+fn mark_reachable(flow: &WorkflowFlow, reachable: &mut [bool]) -> ValidationResult<()> {
     let mut stack = Vec::with_capacity(flow.steps.len());
     stack.push(0_usize);
     while let Some(index) = stack.pop() {
-        if *reachable.get(index).ok_or(ValidationError::InvalidThenTarget)? {
+        if *reachable
+            .get(index)
+            .ok_or(ValidationError::InvalidThenTarget)?
+        {
             continue;
         }
-        *reachable.get_mut(index).ok_or(ValidationError::InvalidThenTarget)? = true;
+        *reachable
+            .get_mut(index)
+            .ok_or(ValidationError::InvalidThenTarget)? = true;
         push_successors(flow, index, &mut stack);
     }
     Ok(())
@@ -107,17 +109,13 @@ fn push_successors(flow: &WorkflowFlow, index: usize, stack: &mut Vec<usize>) {
     }
 }
 
-fn reject_unreachable(
-    flow: &WorkflowFlow,
-    reachable: &[bool],
-) -> ValidationResult<()> {
+fn reject_unreachable(flow: &WorkflowFlow, reachable: &[bool]) -> ValidationResult<()> {
     for (index, is_reachable) in reachable.iter().enumerate() {
         if !is_reachable {
-            let id = flow
-                .steps
-                .get(index)
-                .and_then(|step| step.id.clone())
-                .unwrap_or_else(|| format!("step_{index}"));
+            let id = match flow.steps.get(index).and_then(|step| step.id.clone()) {
+                Some(step_id) => step_id,
+                None => format!("step_{index}"),
+            };
             return Err(ValidationError::UnreachableStep { step: id });
         }
     }
@@ -294,13 +292,11 @@ mod tests {
     #[test]
     fn rejects_target_out_of_bounds() {
         let flow = WorkflowFlow {
-            steps: vec![
-                StepFlow {
-                    id: Some("start".to_owned()),
-                    branch_targets: vec![5],
-                    then_target: None,
-                },
-            ],
+            steps: vec![StepFlow {
+                id: Some("start".to_owned()),
+                branch_targets: vec![5],
+                then_target: None,
+            }],
         };
         assert!(matches!(
             validate_control_flow(&flow),

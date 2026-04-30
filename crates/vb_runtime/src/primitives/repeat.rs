@@ -40,9 +40,7 @@ pub fn repeat_start(
     _done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let attempt_output = output.ok_or(EngineError::MissingOutputSlot {
-        step: run.pc(),
-    })?;
+    let attempt_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     let state = encode_repeat_state(max_attempts, 0);
     run.write_slot(attempt_output, SlotValue::I64(state))?;
     jump_to(run, body)
@@ -115,10 +113,7 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
     }
 }
 
-fn jump_to(
-    run: &mut RunFrame,
-    target: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
     run.set_pc(target);
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)

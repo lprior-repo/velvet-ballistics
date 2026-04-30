@@ -33,10 +33,7 @@ pub fn reduce_start(
     if items.is_empty() {
         return jump_to(run, done);
     }
-    let iter_output = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     let first = items
         .first()
         .copied()
@@ -66,10 +63,7 @@ pub fn reduce_next(
     if remaining.is_empty() {
         return jump_to(run, done);
     }
-    let item_output = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let item_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     let first = remaining
         .first()
         .copied()
@@ -92,8 +86,7 @@ pub fn reduce_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let value = *run.read_slot(accumulator)?;
-    let out = output
-        .ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
     run.write_slot(out, value)?;
     jump_to_next(run, next, step)
 }
@@ -121,10 +114,7 @@ fn tail_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
         .into_boxed_slice())
 }
 
-fn jump_to(
-    run: &mut RunFrame,
-    target: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
     run.set_pc(target);
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)

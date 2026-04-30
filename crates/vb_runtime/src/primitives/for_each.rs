@@ -3,7 +3,7 @@
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::{SlotValue};
+use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
 /// Executes ForEachStart: validates input list, binds first item, sets up
@@ -22,23 +22,20 @@ pub fn for_each_start(
     let list_id = expect_list(*run.read_slot(input)?)?;
     let items = store.list(list_id)?;
     let item_count = items.len();
-    let limit_count = usize::try_from(limit)
-        .map_err(|_| EngineError::IterationLimitExceeded {
-            resource: "for_each_limit",
-        })?;
+    let limit_count = usize::try_from(limit).map_err(|_| EngineError::IterationLimitExceeded {
+        resource: "for_each_limit",
+    })?;
     if item_count > limit_count {
         return Err(EngineError::IterationLimitExceeded {
             resource: "for_each_limit",
         });
     }
-    let iter_output = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     if item_count == 0 {
-        run.write_slot(iter_output, SlotValue::List(
-            store.insert_list(empty_list())?,
-        ))?;
+        run.write_slot(
+            iter_output,
+            SlotValue::List(store.insert_list(empty_list())?),
+        )?;
         return jump_to(run, done);
     }
     let first = items
@@ -68,10 +65,7 @@ pub fn for_each_next(
     if items.is_empty() {
         return jump_to(run, done);
     }
-    let item_output = output
-        .ok_or(EngineError::MissingOutputSlot {
-            step: run.pc(),
-        })?;
+    let item_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
     let first = items
         .first()
         .copied()
@@ -92,8 +86,7 @@ pub fn for_each_join(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let output_slot = output
-        .ok_or(EngineError::MissingOutputSlot { step })?;
+    let output_slot = output.ok_or(EngineError::MissingOutputSlot { step })?;
     let value = *run.read_slot(output_slot)?;
     let join_output = output_slot;
     let _ = (join_output, value);
@@ -128,10 +121,7 @@ fn empty_list() -> Box<[SlotValue]> {
     Vec::<SlotValue>::new().into_boxed_slice()
 }
 
-fn jump_to(
-    run: &mut RunFrame,
-    target: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
     run.set_pc(target);
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)

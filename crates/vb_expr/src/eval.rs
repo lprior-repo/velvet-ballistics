@@ -4,6 +4,8 @@ use arrayvec::ArrayVec;
 use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
 use vb_core::{ConstValue, ExprOp, ExprProgram, SlotValue};
 
+use crate::lexer::{BinaryOp, UnaryOp};
+use crate::parser::ExprHelper;
 use crate::{ExprError, ExprResult};
 
 /// Evaluates a compiled expression program against slot and constant pools.
@@ -58,17 +60,17 @@ fn eval_expr_op(
         ExprOp::LoadConst(idx) => eval_load_const(stack, constants, idx),
         ExprOp::Eq => eval_eq(stack, true),
         ExprOp::NotEq => eval_eq(stack, false),
-        ExprOp::And => eval_bool_pair(stack, bool_ops::and),
-        ExprOp::Or => eval_bool_pair(stack, bool_ops::or),
-        ExprOp::Not => eval_not(stack),
-        ExprOp::Add => eval_i64_pair(stack, i64::checked_add),
-        ExprOp::Sub => eval_i64_pair(stack, i64::checked_sub),
-        ExprOp::Mul => eval_i64_pair(stack, i64::checked_mul),
-        ExprOp::Div => eval_div(stack),
-        ExprOp::Gt => eval_i64_cmp(stack, i64::gt),
-        ExprOp::Gte => eval_i64_cmp(stack, i64::ge),
-        ExprOp::Lt => eval_i64_cmp(stack, i64::lt),
-        ExprOp::Lte => eval_i64_cmp(stack, i64::le),
+        ExprOp::And => eval_binary_stack(stack, BinaryOp::And),
+        ExprOp::Or => eval_binary_stack(stack, BinaryOp::Or),
+        ExprOp::Not => eval_unary_stack(stack, UnaryOp::Not),
+        ExprOp::Add => eval_binary_stack(stack, BinaryOp::Add),
+        ExprOp::Sub => eval_binary_stack(stack, BinaryOp::Sub),
+        ExprOp::Mul => eval_binary_stack(stack, BinaryOp::Mul),
+        ExprOp::Div => eval_binary_stack(stack, BinaryOp::Div),
+        ExprOp::Gt => eval_binary_stack(stack, BinaryOp::Gt),
+        ExprOp::Gte => eval_binary_stack(stack, BinaryOp::Gte),
+        ExprOp::Lt => eval_binary_stack(stack, BinaryOp::Lt),
+        ExprOp::Lte => eval_binary_stack(stack, BinaryOp::Lte),
         _ => eval_helper_op(op, stack),
     }
 }
@@ -93,7 +95,9 @@ fn eval_load_const(
     let constant = constants
         .get(idx.as_usize())
         .ok_or(ExprError::UnexpectedEof)?;
-    let value = constant.to_slot_value().map_err(|_| ExprError::UnexpectedEof)?;
+    let value = constant
+        .to_slot_value()
+        .map_err(|_| ExprError::UnexpectedEof)?;
     push_value(stack, value)
 }
 
@@ -105,40 +109,80 @@ fn eval_eq(
     push_value(stack, SlotValue::Bool((left == right) == positive))
 }
 
-fn eval_not(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
-    let value = expect_bool(pop_value(stack)?)?;
-    push_value(stack, SlotValue::Bool(!value))
-}
-
-fn eval_bool_pair(
+fn eval_binary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    op: fn(bool, bool) -> bool,
+    op: BinaryOp,
 ) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
-    push_value(stack, SlotValue::Bool(op(expect_bool(left)?, expect_bool(right)?)))
+    let value = eval_binary_op(op, left, right)?;
+    push_value(stack, value)
 }
 
-fn eval_i64_pair(
+fn eval_unary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    op: UnaryOp,
+) -> ExprResult<()> {
+    let value = pop_value(stack)?;
+    let result = eval_unary_op(op, value)?;
+    push_value(stack, result)
+}
+
+/// Evaluates one binary operation over two already-popped values.
+pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match op {
+        BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
+        BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
+        BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
+        BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
+        BinaryOp::Add => eval_i64_values(left, right, i64::checked_add),
+        BinaryOp::Sub => eval_i64_values(left, right, i64::checked_sub),
+        BinaryOp::Mul => eval_i64_values(left, right, i64::checked_mul),
+        BinaryOp::Div => eval_div_values(left, right),
+        BinaryOp::Gt => eval_i64_cmp_values(left, right, i64::gt),
+        BinaryOp::Gte => eval_i64_cmp_values(left, right, i64::ge),
+        BinaryOp::Lt => eval_i64_cmp_values(left, right, i64::lt),
+        BinaryOp::Lte => eval_i64_cmp_values(left, right, i64::le),
+    }
+}
+
+/// Evaluates one unary operation over an already-popped value.
+pub fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
+    match op {
+        UnaryOp::Not => Ok(SlotValue::Bool(!expect_bool(value)?)),
+        UnaryOp::Neg => {
+            let number = expect_i64(value)?;
+            let negated = number.checked_neg().ok_or(ExprError::UnexpectedEof)?;
+            Ok(SlotValue::I64(negated))
+        }
+    }
+}
+
+fn eval_i64_values(
+    left: SlotValue,
+    right: SlotValue,
     op: fn(i64, i64) -> Option<i64>,
-) -> ExprResult<()> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let value = op(left, right).ok_or(ExprError::UnexpectedEof)?;
-    push_value(stack, SlotValue::I64(value))
+) -> ExprResult<SlotValue> {
+    let value = op(expect_i64(left)?, expect_i64(right)?).ok_or(ExprError::UnexpectedEof)?;
+    Ok(SlotValue::I64(value))
 }
 
-fn eval_div(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let value = left.checked_div(right).ok_or(ExprError::DivisionByZero)?;
-    push_value(stack, SlotValue::I64(value))
+fn eval_div_values(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    let left_i64 = expect_i64(left)?;
+    let right_i64 = expect_i64(right)?;
+    let value = left_i64
+        .checked_div(right_i64)
+        .ok_or(ExprError::DivisionByZero)?;
+    Ok(SlotValue::I64(value))
 }
 
-fn eval_i64_cmp(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+fn eval_i64_cmp_values(
+    left: SlotValue,
+    right: SlotValue,
     op: fn(&i64, &i64) -> bool,
-) -> ExprResult<()> {
-    let (left, right) = pop_i64_pair(stack)?;
-    push_value(stack, SlotValue::Bool(op(&left, &right)))
+) -> ExprResult<SlotValue> {
+    let left_i64 = expect_i64(left)?;
+    let right_i64 = expect_i64(right)?;
+    Ok(SlotValue::Bool(op(&left_i64, &right_i64)))
 }
 
 fn eval_helper_op(
@@ -146,45 +190,89 @@ fn eval_helper_op(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
 ) -> ExprResult<()> {
     match op {
-        ExprOp::Exists => eval_exists(stack),
-        ExprOp::Length => eval_length(stack),
-        ExprOp::Empty => eval_empty(stack),
+        ExprOp::Exists => eval_helper_stack(stack, ExprHelper::Exists),
+        ExprOp::Length => eval_helper_stack(stack, ExprHelper::Length),
+        ExprOp::Empty => eval_helper_stack(stack, ExprHelper::Empty),
+        ExprOp::Count => eval_helper_stack(stack, ExprHelper::Count),
+        ExprOp::Unique => eval_helper_stack(stack, ExprHelper::Unique),
         _ => Err(ExprError::UnknownOperator {
             op: format!("{op:?}"),
         }),
     }
 }
 
-fn eval_exists(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
+fn eval_helper_stack(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    helper: ExprHelper,
+) -> ExprResult<()> {
     let value = pop_value(stack)?;
-    let result = !matches!(value, SlotValue::Null);
-    push_value(stack, SlotValue::Bool(result))
+    let args = [value];
+    let result = eval_helper(helper, &args)?;
+    push_value(stack, result)
 }
 
-fn eval_length(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
-    let value = pop_value(stack)?;
+/// Evaluates helper behavior that is local to scalar/handle values.
+pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotValue> {
+    match helper {
+        ExprHelper::Exists => eval_helper_exists(args),
+        ExprHelper::Length | ExprHelper::Count => eval_helper_length(args),
+        ExprHelper::Empty => eval_helper_empty(args),
+        ExprHelper::Unique => eval_helper_unique(args),
+        _ => Err(ExprError::UnknownHelper {
+            helper: crate::parser::helper_name(helper).into(),
+        }),
+    }
+}
+
+fn one_arg(args: &[SlotValue], helper: ExprHelper) -> ExprResult<&SlotValue> {
+    if args.len() != 1 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 1,
+            actual: args.len(),
+        });
+    }
+    args.first().ok_or(ExprError::StackUnderflow)
+}
+
+fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Exists)?;
+    Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
+}
+
+fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Length)?;
     let len = match value {
         SlotValue::List(id) => id.get(),
         _ => 0u32,
     };
-    push_value(stack, SlotValue::I64(i64::from(len)))
+    Ok(SlotValue::I64(i64::from(len)))
 }
 
-fn eval_empty(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
-    let value = pop_value(stack)?;
-    let result = matches!(value, SlotValue::Null | SlotValue::List(_));
-    push_value(stack, SlotValue::Bool(result))
+fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Empty)?;
+    let result = matches!(*value, SlotValue::Null | SlotValue::List(_));
+    Ok(SlotValue::Bool(result))
+}
+
+fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Unique)?;
+    match *value {
+        SlotValue::List(_) => Ok(*value),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
 }
 
 fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     value: SlotValue,
 ) -> ExprResult<()> {
-    stack
-        .try_push(value)
-        .map_err(|_| ExprError::StackOverflow {
-            max: MAX_EXPRESSION_STACK,
-        })
+    stack.try_push(value).map_err(|_| ExprError::StackOverflow {
+        max: MAX_EXPRESSION_STACK,
+    })
 }
 
 fn pop_value(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<SlotValue> {
@@ -197,13 +285,6 @@ fn pop_pair(
     let right = pop_value(stack)?;
     let left = pop_value(stack)?;
     Ok((left, right))
-}
-
-fn pop_i64_pair(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-) -> ExprResult<(i64, i64)> {
-    let (left, right) = pop_pair(stack)?;
-    Ok((expect_i64(left)?, expect_i64(right)?))
 }
 
 fn expect_bool(value: SlotValue) -> ExprResult<bool> {
@@ -223,15 +304,6 @@ fn expect_i64(value: SlotValue) -> ExprResult<i64> {
             expected: "number".into(),
             found: other.type_name().into(),
         }),
-    }
-}
-
-mod bool_ops {
-    pub(super) const fn and(a: bool, b: bool) -> bool {
-        a && b
-    }
-    pub(super) const fn or(a: bool, b: bool) -> bool {
-        a || b
     }
 }
 
@@ -357,10 +429,7 @@ mod tests {
 
     #[test]
     fn evaluates_boolean_not() -> ExprResult<()> {
-        let program = make_program(vec![
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::Not,
-        ])?;
+        let program = make_program(vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not])?;
         let result = eval_with_const(&program, vec![ConstValue::Bool(true)])?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
@@ -373,7 +442,10 @@ mod tests {
             ExprOp::LoadConst(ConstIdx::new(1)),
             ExprOp::And,
         ])?;
-        let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::Bool(false)])?;
+        let result = eval_with_const(
+            &program,
+            vec![ConstValue::Bool(true), ConstValue::Bool(false)],
+        )?;
         assert_eq!(result, SlotValue::Bool(false));
 
         let program = make_program(vec![
@@ -381,7 +453,10 @@ mod tests {
             ExprOp::LoadConst(ConstIdx::new(1)),
             ExprOp::Or,
         ])?;
-        let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::Bool(false)])?;
+        let result = eval_with_const(
+            &program,
+            vec![ConstValue::Bool(true), ConstValue::Bool(false)],
+        )?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -404,6 +479,27 @@ mod tests {
         ])?;
         let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::I64(1)]);
         assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+        Ok(())
+    }
+
+    #[test]
+    fn public_binary_eval_matches_stack_arithmetic() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(20), SlotValue::I64(22))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn public_unary_eval_rejects_wrong_type() {
+        let result = eval_unary_op(UnaryOp::Not, SlotValue::I64(1));
+        assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    }
+
+    #[test]
+    fn public_helper_eval_supports_scalar_exists() -> ExprResult<()> {
+        let args = [SlotValue::Null];
+        let result = eval_helper(ExprHelper::Exists, &args)?;
+        assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 

@@ -2,10 +2,7 @@
 
 use std::io::{Cursor, Read, Write};
 
-use crate::{
-    IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN,
-    IPC_MAGIC,
-};
+use crate::{IPC_HEADER_LEN, IPC_MAGIC, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
 
 /// Encodes a complete IPC frame (header + payload) into a byte vector.
 pub fn encode_frame(
@@ -14,12 +11,7 @@ pub fn encode_frame(
     correlation: u64,
     payload: &[u8],
 ) -> Result<Vec<u8>, IpcError> {
-    let header = IpcFrameHeader::new(
-        command,
-        flags,
-        correlation,
-        payload_len_u32(payload.len())?,
-    );
+    let header = IpcFrameHeader::new(command, flags, correlation, payload_len_u32(payload.len())?);
     let header_bytes = header.encode()?;
     let mut frame = Vec::with_capacity(IPC_HEADER_LEN.checked_add(payload.len()).ok_or(
         IpcError::PayloadTooLarge {
@@ -47,7 +39,7 @@ pub fn decode_frame_payload(
         Err(_) => {
             return Err(IpcError::PayloadLengthOutOfRange {
                 actual: header.payload_len,
-            })
+            });
         }
     };
     if payload.len() != expected_len {
@@ -77,13 +69,16 @@ pub fn validate_frame_magic(bytes: &[u8]) -> Result<(), IpcError> {
 }
 
 /// Validates that the payload length does not exceed the maximum before reading.
-pub fn validate_frame_bounds(header: &IpcFrameHeader, max_payload: MaxPayloadBytes) -> Result<(), IpcError> {
+pub fn validate_frame_bounds(
+    header: &IpcFrameHeader,
+    max_payload: MaxPayloadBytes,
+) -> Result<(), IpcError> {
     let payload_len = match usize::try_from(header.payload_len) {
         Ok(len) => len,
         Err(_) => {
             return Err(IpcError::PayloadLengthOutOfRange {
                 actual: header.payload_len,
-            })
+            });
         }
     };
     if payload_len > max_payload.get() {
@@ -114,7 +109,7 @@ pub fn read_frame_payload<R: Read>(
         Err(_) => {
             return Err(IpcError::PayloadLengthOutOfRange {
                 actual: header.payload_len,
-            })
+            });
         }
     };
     let mut payload = vec![0u8; payload_len];

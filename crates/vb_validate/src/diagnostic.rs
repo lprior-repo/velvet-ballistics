@@ -21,6 +21,8 @@ const CODE_INVALID_VERSION: u16 = 0x0106;
 const CODE_INVALID_ID: u16 = 0x0107;
 const CODE_RESERVED_ID: u16 = 0x0108;
 const CODE_DUPLICATE_ID: u16 = 0x0109;
+const CODE_MULTIPLE_STEP_PRIMITIVES: u16 = 0x010A;
+const CODE_MISSING_STEP_PRIMITIVE: u16 = 0x010B;
 
 /// Reference validation errors: E02xx.
 const CODE_UNKNOWN_REFERENCE: u16 = 0x0201;
@@ -49,6 +51,9 @@ const CODE_SECRET_RESULT_LEAK: u16 = 0x0406;
 const CODE_TYPE_MISMATCH: u16 = 0x0407;
 const CODE_PAYLOAD_TOO_LARGE: u16 = 0x0408;
 const CODE_LIMIT_REQUIRED: u16 = 0x0409;
+const CODE_LIMIT_EXCEEDED: u16 = 0x040A;
+const CODE_UNSUPPORTED_TRIGGER: u16 = 0x040B;
+const CODE_HTTP_TRIGGER_OUT_OF_CORE: u16 = 0x040C;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -72,114 +77,149 @@ pub fn error_code(error: &ValidationError) -> DiagnosticCode {
 
 fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
     match error {
-        ValidationError::DuplicateKey => {
-            (DiagnosticCode::new(CODE_DUPLICATE_KEY), "duplicate key".into())
-        }
-        ValidationError::ForbiddenYamlFeature => {
-            (DiagnosticCode::new(CODE_FORBIDDEN_YAML_FEATURE), "forbidden YAML feature".into())
-        }
-        ValidationError::UnknownTopLevelField => {
-            (DiagnosticCode::new(CODE_UNKNOWN_TOP_LEVEL_FIELD), "unknown top-level field".into())
-        }
-        ValidationError::UnknownStepField => {
-            (DiagnosticCode::new(CODE_UNKNOWN_STEP_FIELD), "unknown step field".into())
-        }
-        ValidationError::MissingRequiredField { field } => {
-            (DiagnosticCode::new(CODE_MISSING_REQUIRED_FIELD), format!("missing required field: {field}"))
-        }
-        ValidationError::InvalidVersion { version } => {
-            (DiagnosticCode::new(CODE_INVALID_VERSION), format!("invalid version: {version}"))
-        }
-        ValidationError::InvalidId { id } => {
-            (DiagnosticCode::new(CODE_INVALID_ID), format!("invalid ID: {id}"))
-        }
-        ValidationError::ReservedId { id } => {
-            (DiagnosticCode::new(CODE_RESERVED_ID), format!("reserved ID: {id}"))
-        }
-        ValidationError::DuplicateId { id } => {
-            (DiagnosticCode::new(CODE_DUPLICATE_ID), format!("duplicate ID: {id}"))
-        }
-        ValidationError::MultipleStepPrimitives => {
-            (DiagnosticCode::new(CODE_UNKNOWN_STEP_FIELD), "multiple step primitives".into())
-        }
-        ValidationError::MissingStepPrimitive => {
-            (DiagnosticCode::new(CODE_UNKNOWN_STEP_FIELD), "missing step primitive".into())
-        }
-        ValidationError::UnknownReference { reference } => {
-            (DiagnosticCode::new(CODE_UNKNOWN_REFERENCE), format!("unknown reference: {reference}"))
-        }
-        ValidationError::FutureReference { reference } => {
-            (DiagnosticCode::new(CODE_FUTURE_REFERENCE), format!("future reference: {reference}"))
-        }
-        ValidationError::SecretNotDeclared { secret } => {
-            (DiagnosticCode::new(CODE_SECRET_NOT_DECLARED), format!("secret not declared: {secret}"))
-        }
-        ValidationError::DirectRuntimeReference => {
-            (DiagnosticCode::new(CODE_DIRECT_RUNTIME_REFERENCE), "direct runtime reference".into())
-        }
-        ValidationError::InvalidThenTarget => {
-            (DiagnosticCode::new(CODE_INVALID_THEN_TARGET), "invalid then target".into())
-        }
-        ValidationError::ControlFlowCycle => {
-            (DiagnosticCode::new(CODE_CONTROL_FLOW_CYCLE), "control-flow cycle".into())
-        }
-        ValidationError::UnreachableStep { step } => {
-            (DiagnosticCode::new(CODE_UNREACHABLE_STEP), format!("unreachable step: {step}"))
-        }
-        ValidationError::InvalidChoose => {
-            (DiagnosticCode::new(CODE_INVALID_CHOOSE), "invalid choose".into())
-        }
-        ValidationError::InvalidForEach => {
-            (DiagnosticCode::new(CODE_INVALID_FOR_EACH), "invalid for_each".into())
-        }
-        ValidationError::InvalidTogether => {
-            (DiagnosticCode::new(CODE_INVALID_TOGETHER), "invalid together".into())
-        }
-        ValidationError::InvalidCollect => {
-            (DiagnosticCode::new(CODE_INVALID_COLLECT), "invalid collect".into())
-        }
-        ValidationError::InvalidReduce => {
-            (DiagnosticCode::new(CODE_INVALID_REDUCE), "invalid reduce".into())
-        }
-        ValidationError::InvalidRepeat => {
-            (DiagnosticCode::new(CODE_INVALID_REPEAT), "invalid repeat".into())
-        }
-        ValidationError::InvalidWait => {
-            (DiagnosticCode::new(CODE_INVALID_WAIT), "invalid wait".into())
-        }
+        ValidationError::DuplicateKey => (
+            DiagnosticCode::new(CODE_DUPLICATE_KEY),
+            "duplicate key".into(),
+        ),
+        ValidationError::ForbiddenYamlFeature => (
+            DiagnosticCode::new(CODE_FORBIDDEN_YAML_FEATURE),
+            "forbidden YAML feature".into(),
+        ),
+        ValidationError::UnknownTopLevelField => (
+            DiagnosticCode::new(CODE_UNKNOWN_TOP_LEVEL_FIELD),
+            "unknown top-level field".into(),
+        ),
+        ValidationError::UnknownStepField => (
+            DiagnosticCode::new(CODE_UNKNOWN_STEP_FIELD),
+            "unknown step field".into(),
+        ),
+        ValidationError::MissingRequiredField { field } => (
+            DiagnosticCode::new(CODE_MISSING_REQUIRED_FIELD),
+            format!("missing required field: {field}"),
+        ),
+        ValidationError::InvalidVersion { version } => (
+            DiagnosticCode::new(CODE_INVALID_VERSION),
+            format!("invalid version: {version}"),
+        ),
+        ValidationError::InvalidId { id } => (
+            DiagnosticCode::new(CODE_INVALID_ID),
+            format!("invalid ID: {id}"),
+        ),
+        ValidationError::ReservedId { id } => (
+            DiagnosticCode::new(CODE_RESERVED_ID),
+            format!("reserved ID: {id}"),
+        ),
+        ValidationError::DuplicateId { id } => (
+            DiagnosticCode::new(CODE_DUPLICATE_ID),
+            format!("duplicate ID: {id}"),
+        ),
+        ValidationError::MultipleStepPrimitives => (
+            DiagnosticCode::new(CODE_MULTIPLE_STEP_PRIMITIVES),
+            "multiple step primitives".into(),
+        ),
+        ValidationError::MissingStepPrimitive => (
+            DiagnosticCode::new(CODE_MISSING_STEP_PRIMITIVE),
+            "missing step primitive".into(),
+        ),
+        ValidationError::UnknownReference { reference } => (
+            DiagnosticCode::new(CODE_UNKNOWN_REFERENCE),
+            format!("unknown reference: {reference}"),
+        ),
+        ValidationError::FutureReference { reference } => (
+            DiagnosticCode::new(CODE_FUTURE_REFERENCE),
+            format!("future reference: {reference}"),
+        ),
+        ValidationError::SecretNotDeclared { secret } => (
+            DiagnosticCode::new(CODE_SECRET_NOT_DECLARED),
+            format!("secret not declared: {secret}"),
+        ),
+        ValidationError::DirectRuntimeReference => (
+            DiagnosticCode::new(CODE_DIRECT_RUNTIME_REFERENCE),
+            "direct runtime reference".into(),
+        ),
+        ValidationError::InvalidThenTarget => (
+            DiagnosticCode::new(CODE_INVALID_THEN_TARGET),
+            "invalid then target".into(),
+        ),
+        ValidationError::ControlFlowCycle => (
+            DiagnosticCode::new(CODE_CONTROL_FLOW_CYCLE),
+            "control-flow cycle".into(),
+        ),
+        ValidationError::UnreachableStep { step } => (
+            DiagnosticCode::new(CODE_UNREACHABLE_STEP),
+            format!("unreachable step: {step}"),
+        ),
+        ValidationError::InvalidChoose => (
+            DiagnosticCode::new(CODE_INVALID_CHOOSE),
+            "invalid choose".into(),
+        ),
+        ValidationError::InvalidForEach => (
+            DiagnosticCode::new(CODE_INVALID_FOR_EACH),
+            "invalid for_each".into(),
+        ),
+        ValidationError::InvalidTogether => (
+            DiagnosticCode::new(CODE_INVALID_TOGETHER),
+            "invalid together".into(),
+        ),
+        ValidationError::InvalidCollect => (
+            DiagnosticCode::new(CODE_INVALID_COLLECT),
+            "invalid collect".into(),
+        ),
+        ValidationError::InvalidReduce => (
+            DiagnosticCode::new(CODE_INVALID_REDUCE),
+            "invalid reduce".into(),
+        ),
+        ValidationError::InvalidRepeat => (
+            DiagnosticCode::new(CODE_INVALID_REPEAT),
+            "invalid repeat".into(),
+        ),
+        ValidationError::InvalidWait => (
+            DiagnosticCode::new(CODE_INVALID_WAIT),
+            "invalid wait".into(),
+        ),
         ValidationError::InvalidAsk => {
             (DiagnosticCode::new(CODE_INVALID_ASK), "invalid ask".into())
         }
-        ValidationError::InvalidFinish => {
-            (DiagnosticCode::new(CODE_INVALID_FINISH), "invalid finish".into())
-        }
-        ValidationError::InvalidRetry => {
-            (DiagnosticCode::new(CODE_INVALID_RETRY), "invalid retry".into())
-        }
-        ValidationError::InvalidOnError => {
-            (DiagnosticCode::new(CODE_INVALID_ON_ERROR), "invalid on_error".into())
-        }
-        ValidationError::SecretResultLeak => {
-            (DiagnosticCode::new(CODE_SECRET_RESULT_LEAK), "secret result leak".into())
-        }
-        ValidationError::TypeMismatch { expected, found } => {
-            (DiagnosticCode::new(CODE_TYPE_MISMATCH), format!("type mismatch: expected {expected}, found {found}"))
-        }
-        ValidationError::PayloadTooLarge => {
-            (DiagnosticCode::new(CODE_PAYLOAD_TOO_LARGE), "payload too large".into())
-        }
-        ValidationError::LimitRequired { resource } => {
-            (DiagnosticCode::new(CODE_LIMIT_REQUIRED), format!("limit required: {resource}"))
-        }
-        ValidationError::LimitExceeded { resource } => {
-            (DiagnosticCode::new(CODE_PAYLOAD_TOO_LARGE), format!("limit exceeded: {resource}"))
-        }
-        ValidationError::UnsupportedTrigger { trigger } => {
-            (DiagnosticCode::new(CODE_MISSING_REQUIRED_FIELD), format!("unsupported trigger: {trigger}"))
-        }
-        ValidationError::HttpTriggerOutOfCore => {
-            (DiagnosticCode::new(CODE_FORBIDDEN_YAML_FEATURE), "HTTP trigger out of core".into())
-        }
+        ValidationError::InvalidFinish => (
+            DiagnosticCode::new(CODE_INVALID_FINISH),
+            "invalid finish".into(),
+        ),
+        ValidationError::InvalidRetry => (
+            DiagnosticCode::new(CODE_INVALID_RETRY),
+            "invalid retry".into(),
+        ),
+        ValidationError::InvalidOnError => (
+            DiagnosticCode::new(CODE_INVALID_ON_ERROR),
+            "invalid on_error".into(),
+        ),
+        ValidationError::SecretResultLeak => (
+            DiagnosticCode::new(CODE_SECRET_RESULT_LEAK),
+            "secret result leak".into(),
+        ),
+        ValidationError::TypeMismatch { expected, found } => (
+            DiagnosticCode::new(CODE_TYPE_MISMATCH),
+            format!("type mismatch: expected {expected}, found {found}"),
+        ),
+        ValidationError::PayloadTooLarge => (
+            DiagnosticCode::new(CODE_PAYLOAD_TOO_LARGE),
+            "payload too large".into(),
+        ),
+        ValidationError::LimitRequired { resource } => (
+            DiagnosticCode::new(CODE_LIMIT_REQUIRED),
+            format!("limit required: {resource}"),
+        ),
+        ValidationError::LimitExceeded { resource } => (
+            DiagnosticCode::new(CODE_LIMIT_EXCEEDED),
+            format!("limit exceeded: {resource}"),
+        ),
+        ValidationError::UnsupportedTrigger { trigger } => (
+            DiagnosticCode::new(CODE_UNSUPPORTED_TRIGGER),
+            format!("unsupported trigger: {trigger}"),
+        ),
+        ValidationError::HttpTriggerOutOfCore => (
+            DiagnosticCode::new(CODE_HTTP_TRIGGER_OUT_OF_CORE),
+            "HTTP trigger out of core".into(),
+        ),
     }
 }
 
@@ -249,9 +289,7 @@ mod tests {
 
     #[test]
     fn duplicate_id_maps_to_e0109() {
-        let diag = diagnostic_from_error(&ValidationError::DuplicateId {
-            id: "step1".into(),
-        });
+        let diag = diagnostic_from_error(&ValidationError::DuplicateId { id: "step1".into() });
         assert_eq!(diag.code.code(), 0x0109);
     }
 
@@ -276,22 +314,44 @@ mod tests {
         }
     }
 
+    #[test]
+    fn all_variants_have_unique_diagnostic_codes() {
+        let errors = all_variants();
+        let mut seen = std::collections::BTreeSet::new();
+        for error in errors {
+            let code = error_code(&error).code();
+            assert!(seen.insert(code), "duplicate diagnostic code {code:#06x}");
+        }
+    }
+
     fn all_variants() -> Vec<ValidationError> {
         vec![
             ValidationError::DuplicateKey,
             ValidationError::ForbiddenYamlFeature,
             ValidationError::UnknownTopLevelField,
             ValidationError::UnknownStepField,
-            ValidationError::MissingRequiredField { field: "test".into() },
-            ValidationError::InvalidVersion { version: "v0".into() },
+            ValidationError::MissingRequiredField {
+                field: "test".into(),
+            },
+            ValidationError::InvalidVersion {
+                version: "v0".into(),
+            },
             ValidationError::InvalidId { id: "BAD".into() },
-            ValidationError::ReservedId { id: "runtime".into() },
+            ValidationError::ReservedId {
+                id: "runtime".into(),
+            },
             ValidationError::DuplicateId { id: "dup".into() },
             ValidationError::MultipleStepPrimitives,
             ValidationError::MissingStepPrimitive,
-            ValidationError::UnknownReference { reference: "$x".into() },
-            ValidationError::FutureReference { reference: "$steps.s".into() },
-            ValidationError::SecretNotDeclared { secret: "tok".into() },
+            ValidationError::UnknownReference {
+                reference: "$x".into(),
+            },
+            ValidationError::FutureReference {
+                reference: "$steps.s".into(),
+            },
+            ValidationError::SecretNotDeclared {
+                secret: "tok".into(),
+            },
             ValidationError::DirectRuntimeReference,
             ValidationError::InvalidThenTarget,
             ValidationError::ControlFlowCycle,
@@ -308,11 +368,20 @@ mod tests {
             ValidationError::InvalidRetry,
             ValidationError::InvalidOnError,
             ValidationError::SecretResultLeak,
-            ValidationError::TypeMismatch { expected: "a".into(), found: "b".into() },
+            ValidationError::TypeMismatch {
+                expected: "a".into(),
+                found: "b".into(),
+            },
             ValidationError::PayloadTooLarge,
-            ValidationError::LimitRequired { resource: "r".into() },
-            ValidationError::LimitExceeded { resource: "r".into() },
-            ValidationError::UnsupportedTrigger { trigger: "cron".into() },
+            ValidationError::LimitRequired {
+                resource: "r".into(),
+            },
+            ValidationError::LimitExceeded {
+                resource: "r".into(),
+            },
+            ValidationError::UnsupportedTrigger {
+                trigger: "cron".into(),
+            },
             ValidationError::HttpTriggerOutOfCore,
         ]
     }

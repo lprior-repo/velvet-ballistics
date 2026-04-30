@@ -25,15 +25,13 @@ pub fn validate_yaml_profile(text: &str) -> YamlResult<()> {
 }
 
 /// Validate with explicit limits.
-pub(crate) fn validate_yaml_profile_with_limits(
-    text: &str,
-    limits: &YamlLimits,
-) -> YamlResult<()> {
+pub(crate) fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
     check_source_size(text, limits.max_source_bytes)?;
     let events = collect_and_validate_events(text, limits)?;
     reject_forbidden_features(&events)?;
     reject_multiple_documents(&events)?;
     reject_anchors_aliases_merges(&events)?;
+    reject_duplicate_mapping_keys(&events)?;
     check_scalar_ambiguity(&events)?;
     Ok(())
 }
@@ -42,16 +40,16 @@ pub(crate) fn validate_yaml_profile_with_limits(
 fn check_source_size(text: &str, max_bytes: usize) -> YamlResult<()> {
     let size = text.len();
     if size > max_bytes {
-        return Err(YamlError::SourceTooLarge { size, max: max_bytes });
+        return Err(YamlError::SourceTooLarge {
+            size,
+            max: max_bytes,
+        });
     }
     Ok(())
 }
 
 /// Collect events from the parser while tracking depth and node counts.
-fn collect_and_validate_events(
-    text: &str,
-    limits: &YamlLimits,
-) -> YamlResult<Vec<YamlEvent>> {
+fn collect_and_validate_events(text: &str, limits: &YamlLimits) -> YamlResult<Vec<YamlEvent>> {
     let mut parser = saphyr_parser::Parser::new_from_str(text);
     let mut events = Vec::new();
     let mut depth: u16 = 0;
@@ -75,12 +73,10 @@ fn collect_and_validate_events(
             saphyr_parser::Event::DocumentEnd => {}
             saphyr_parser::Event::MappingStart(_, _)
             | saphyr_parser::Event::SequenceStart(_, _) => {
-                depth = depth
-                    .checked_add(1)
-                    .ok_or(YamlError::NestingTooDeep {
-                        depth,
-                        max: limits.max_depth,
-                    })?;
+                depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
+                    depth,
+                    max: limits.max_depth,
+                })?;
                 if depth > limits.max_depth {
                     return Err(YamlError::NestingTooDeep {
                         depth,
@@ -131,7 +127,10 @@ fn collect_and_validate_events(
 fn check_scalar_length(value: &str, max_bytes: usize) -> YamlResult<()> {
     let len = value.len();
     if len > max_bytes {
-        return Err(YamlError::ScalarTooLong { len, max: max_bytes });
+        return Err(YamlError::ScalarTooLong {
+            len,
+            max: max_bytes,
+        });
     }
     Ok(())
 }
@@ -144,9 +143,7 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
         if let Some(tag) = event.tag() {
             // Allow YAML core schema tags (the !! tags).
             if !tag.starts_with("tag:yaml.org,2002:") && !tag.starts_with("!!") {
-                return Err(YamlError::CustomTag {
-                    tag: tag.into(),
-                });
+                return Err(YamlError::CustomTag { tag: tag.into() });
             }
         }
         if let YamlEvent::Scalar { style, value, .. } = event {
@@ -171,15 +168,9 @@ pub fn reject_anchors_aliases_merges(events: &[YamlEvent]) -> YamlResult<()> {
             YamlEvent::Alias { .. } => {
                 return Err(YamlError::AnchorAliasMerge);
             }
-            YamlEvent::Scalar {
-                anchor_id, tag, ..
-            }
-            | YamlEvent::SequenceStart {
-                anchor_id, tag, ..
-            }
-            | YamlEvent::MappingStart {
-                anchor_id, tag, ..
-            } => {
+            YamlEvent::Scalar { anchor_id, tag, .. }
+            | YamlEvent::SequenceStart { anchor_id, tag, .. }
+            | YamlEvent::MappingStart { anchor_id, tag, .. } => {
                 if *anchor_id != 0 {
                     return Err(YamlError::AnchorAliasMerge);
                 }
@@ -227,10 +218,7 @@ pub fn reject_yaml_1_1_ambiguous_scalars(scalars: &[&str]) -> YamlResult<()> {
 /// Check if a scalar value is a YAML 1.1 ambiguous boolean.
 fn is_yaml_1_1_ambiguous(scalar: &str) -> bool {
     let lower = scalar.to_ascii_lowercase();
-    matches!(
-        lower.as_str(),
-        "yes" | "no" | "on" | "off" | "y" | "n"
-    )
+    matches!(lower.as_str(), "yes" | "no" | "on" | "off" | "y" | "n")
 }
 
 /// Check collected scalar events for YAML 1.1 ambiguous values.
@@ -256,6 +244,80 @@ pub fn reject_duplicate_keys(keys: &[&str]) -> YamlResult<()> {
             return Err(YamlError::DuplicateKey { key: (*key).into() });
         }
         seen.push(*key);
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+enum Container<'a> {
+    Mapping(MappingFrame<'a>),
+    Sequence,
+}
+
+#[derive(Debug)]
+struct MappingFrame<'a> {
+    keys: Vec<&'a str>,
+    expecting_key: bool,
+}
+
+fn reject_duplicate_mapping_keys(events: &[YamlEvent]) -> YamlResult<()> {
+    let mut stack: Vec<Container<'_>> = Vec::new();
+    for event in events {
+        match event {
+            YamlEvent::MappingStart { .. } => {
+                finish_mapping_value_if_needed(&mut stack);
+                stack.push(Container::Mapping(MappingFrame {
+                    keys: Vec::new(),
+                    expecting_key: true,
+                }));
+            }
+            YamlEvent::MappingEnd { .. } => {
+                let _ = stack.pop();
+            }
+            YamlEvent::SequenceStart { .. } => {
+                finish_mapping_value_if_needed(&mut stack);
+                stack.push(Container::Sequence);
+            }
+            YamlEvent::SequenceEnd { .. } => {
+                let _ = stack.pop();
+            }
+            YamlEvent::Scalar { value, .. } => {
+                handle_scalar_for_duplicate_key(value, &mut stack)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn finish_mapping_value_if_needed(stack: &mut [Container<'_>]) {
+    let Some(Container::Mapping(frame)) = stack.last_mut() else {
+        return;
+    };
+    if !frame.expecting_key {
+        frame.expecting_key = true;
+    }
+}
+
+fn handle_scalar_for_duplicate_key<'a>(
+    value: &'a str,
+    stack: &mut [Container<'a>],
+) -> YamlResult<()> {
+    let Some(container) = stack.last_mut() else {
+        return Ok(());
+    };
+    match container {
+        Container::Mapping(frame) if frame.expecting_key => {
+            if frame.keys.contains(&value) {
+                return Err(YamlError::DuplicateKey { key: value.into() });
+            }
+            frame.keys.push(value);
+            frame.expecting_key = false;
+        }
+        Container::Mapping(frame) => {
+            frame.expecting_key = true;
+        }
+        Container::Sequence => {}
     }
     Ok(())
 }
@@ -315,6 +377,20 @@ mod tests {
         let keys = vec!["a", "b", "a"];
         let result = reject_duplicate_keys(&keys);
         assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "a"));
+    }
+
+    #[test]
+    fn strict_profile_rejects_duplicate_top_level_key() {
+        let yaml = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
+        let result = validate_yaml_profile(yaml);
+        assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
+    }
+
+    #[test]
+    fn strict_profile_rejects_duplicate_nested_key() {
+        let yaml = "version: velvet-ballastics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
+        let result = validate_yaml_profile(yaml);
+        assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
     }
 
     #[test]
