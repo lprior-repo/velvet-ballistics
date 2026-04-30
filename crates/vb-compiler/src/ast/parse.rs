@@ -257,7 +257,7 @@ fn parse_step_kind(
     match field {
         "save" => parse_save(body),
         "choose" => parse_choose(body, index),
-        "finish" => parse_finish(body),
+        "finish" => parse_finish(body, index),
         _ => Err(CompileError::UnknownStepField {
             step: index,
             field: field.into(),
@@ -298,10 +298,27 @@ fn parse_choose(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileErr
     })
 }
 
-fn parse_finish(body: &Yaml<'_>) -> Result<StepKindAst, CompileError> {
+fn parse_finish(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
     Ok(StepKindAst::Finish {
-        result: parse_expression(body.as_mapping_get("result").unwrap_or(body))?,
+        result: parse_finish_expression(body.as_mapping_get("result").unwrap_or(body), index)?,
     })
+}
+
+fn parse_finish_expression(node: &Yaml<'_>, index: usize) -> Result<AstExpression, CompileError> {
+    if let Some(value) = node.as_integer() {
+        if finish_integer_is_slot(value, index) {
+            return parse_slot_expr(value);
+        }
+        return Ok(AstExpression::Literal(AstValue::I64(value)));
+    }
+    parse_expression(node)
+}
+
+fn finish_integer_is_slot(value: i64, index: usize) -> bool {
+    match usize::try_from(value) {
+        Ok(slot) => slot <= index,
+        Err(_) => false,
+    }
 }
 
 fn parse_value_fields(body: &Yaml<'_>) -> Result<Vec<AstMapEntry<AstValue>>, CompileError> {

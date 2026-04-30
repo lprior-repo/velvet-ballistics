@@ -46,7 +46,7 @@ fn compile_error(source: &[u8]) -> Result<CompileError, String> {
 #[test]
 fn parse_ast_rejects_unknown_input_reference_after_schema() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet/v1
+        br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -56,6 +56,9 @@ examples:
   - name: fixture
     value: $input.missing
 steps:
+  - id: build_result
+    save:
+      value: 1
   - id: done
     finish:
       result: 0
@@ -74,7 +77,7 @@ steps:
 #[test]
 fn parse_ast_accepts_declared_cold_references() -> Result<(), String> {
     parse_ok(
-        br#"version: velvet/v1
+        br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -90,6 +93,9 @@ examples:
     var_ref: $vars.retries
     secret_ref: $secret.token
 steps:
+  - id: build_result
+    save:
+      value: 1
   - id: done
     finish:
       result: 0
@@ -101,7 +107,7 @@ steps:
 fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
     for reference in ["$runtime.now", "$now", "$random", "$steps.done"] {
         let source = format!(
-            "version: velvet/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+            "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
         );
         let error = parse_error(source.as_bytes())?;
         ensure(
@@ -115,7 +121,7 @@ fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_reference_root() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet/v1
+        br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -137,7 +143,7 @@ steps:
 
 #[test]
 fn reference_validation_does_not_preempt_lowering_errors() -> Result<(), String> {
-    let source = br#"version: velvet/v1
+    let source = br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -162,7 +168,7 @@ steps:
 #[test]
 fn compile_rejects_unknown_reference_in_retained_surface() -> Result<(), String> {
     let error = compile_error(
-        br#"version: velvet/v1
+        br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -189,7 +195,7 @@ steps:
 #[test]
 fn compile_rejects_illegal_reference_in_retained_surface() -> Result<(), String> {
     let error = compile_error(
-        br#"version: velvet/v1
+        br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}

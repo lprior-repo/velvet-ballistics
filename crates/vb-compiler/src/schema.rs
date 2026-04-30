@@ -474,7 +474,7 @@ mod tests {
     use saphyr::LoadableYamlNode;
 
     fn validate_inputs(inputs: &str) -> Result<(), CompileError> {
-        let source = format!("version: velvet/v1\ninputs:\n{inputs}\n");
+        let source = format!("version: velvet-ballastics/v1\ninputs:\n{inputs}\n");
         let docs = Yaml::load_from_str(&source)?;
         let Some(doc) = docs.first() else {
             return Err(CompileError::EmptySource);

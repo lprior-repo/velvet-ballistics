@@ -157,6 +157,11 @@ pub enum CompiledNodeKind {
         /// Result slot.
         result: SlotIdx,
     },
+    /// Finish the run with a constant-pool value.
+    FinishConst {
+        /// Result constant.
+        value: ConstIdx,
+    },
 }
 
 fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -192,6 +197,7 @@ fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), Workf
             on_false,
         } => validate_choose(condition, on_true, on_false, parts),
         CompiledNodeKind::Finish { result } => validate_slot(result, parts.slot_count),
+        CompiledNodeKind::FinishConst { value } => validate_const(value, parts.constants.len()),
     }
 }
 

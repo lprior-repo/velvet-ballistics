@@ -132,8 +132,15 @@ pub fn step_once(plan: &CompiledWorkflow, run: &mut RunFrame) -> Result<EngineSi
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
+    execute_node(plan, run, node.kind)
+}
 
-    match node.kind {
+fn execute_node(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    kind: CompiledNodeKind,
+) -> Result<EngineSignal, EngineError> {
+    match kind {
         CompiledNodeKind::SetConst {
             output,
             value,
@@ -150,6 +157,7 @@ pub fn step_once(plan: &CompiledWorkflow, run: &mut RunFrame) -> Result<EngineSi
             on_false,
         } => choose_branch(run, condition, on_true, on_false),
         CompiledNodeKind::Finish { result } => finish_run(run, result),
+        CompiledNodeKind::FinishConst { value } => finish_const(plan, value),
     }
 }
 
@@ -220,6 +228,17 @@ fn finish_run(run: &RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineErr
     Ok(EngineSignal::Finished(*run.slot(result)?))
 }
 
+fn finish_const(
+    plan: &CompiledWorkflow,
+    value: crate::ids::ConstIdx,
+) -> Result<EngineSignal, EngineError> {
+    let constant = plan
+        .constant(value)
+        .copied()
+        .ok_or(EngineError::ConstOutOfBounds { constant: value })?;
+    Ok(EngineSignal::Finished(constant))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{EngineSignal, RunFrame, StepBudget, run_until_blocked};
@@ -258,6 +277,36 @@ mod tests {
     }
 
     #[test]
+    fn const_finish_returns_constant_pool_value() -> Result<(), String> {
+        let workflow = const_finish_workflow(SlotValue::Bool(true), ConstIdx::new(0))
+            .map_err(|error| error.to_string())?;
+        let mut run = RunFrame::new(RunId::new(9), &workflow);
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX)
+            .map_err(|error| error.to_string())?;
+
+        if result == EngineSignal::Finished(SlotValue::Bool(true)) {
+            Ok(())
+        } else {
+            Err(format!("unexpected const finish result: {result:?}"))
+        }
+    }
+
+    #[test]
+    fn const_finish_rejects_missing_constant() -> Result<(), String> {
+        let result = const_finish_workflow(SlotValue::Null, ConstIdx::new(1));
+
+        match result {
+            Err(crate::WorkflowError::ConstOutOfBounds { constant })
+                if constant == ConstIdx::new(1) =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected const validation result: {other:?}")),
+        }
+    }
+
+    #[test]
     fn zero_budget_is_rejected() {
         let budget = StepBudget::new(0);
 
@@ -265,27 +314,56 @@ mod tests {
     }
 
     fn tiny_workflow(value: SlotValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
-        let digest = WorkflowDigest::from_bytes([1; 32]);
-        let nodes = vec![
-            CompiledNode {
-                kind: CompiledNodeKind::SetConst {
-                    output: SlotIdx::new(0),
-                    value: ConstIdx::new(0),
-                    next: StepIdx::new(1),
-                },
-            },
-            CompiledNode {
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-            },
-        ];
-        let parts = WorkflowParts {
+        CompiledWorkflow::try_from_parts(tiny_workflow_parts(value))
+    }
+
+    fn tiny_workflow_parts(value: SlotValue) -> WorkflowParts {
+        WorkflowParts {
             name: Box::<str>::from("tiny"),
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            nodes: tiny_workflow_nodes(),
+            constants: vec![value].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+        }
+    }
+
+    fn tiny_workflow_nodes() -> Box<[CompiledNode]> {
+        vec![tiny_set_const_node(), tiny_finish_node()].into_boxed_slice()
+    }
+
+    fn tiny_set_const_node() -> CompiledNode {
+        CompiledNode {
+            kind: CompiledNodeKind::SetConst {
+                output: SlotIdx::new(0),
+                value: ConstIdx::new(0),
+                next: StepIdx::new(1),
+            },
+        }
+    }
+
+    fn tiny_finish_node() -> CompiledNode {
+        CompiledNode {
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }
+    }
+
+    fn const_finish_workflow(
+        value: SlotValue,
+        constant: ConstIdx,
+    ) -> Result<CompiledWorkflow, crate::WorkflowError> {
+        let digest = WorkflowDigest::from_bytes([2; 32]);
+        let nodes = vec![CompiledNode {
+            kind: CompiledNodeKind::FinishConst { value: constant },
+        }];
+        let parts = WorkflowParts {
+            name: Box::<str>::from("const_finish"),
             digest,
             nodes: nodes.into_boxed_slice(),
             constants: vec![value].into_boxed_slice(),
-            slot_count: 1,
+            slot_count: 0,
             entry: StepIdx::new(0),
         };
         CompiledWorkflow::try_from_parts(parts)

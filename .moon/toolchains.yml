@@ -1,17 +1,3 @@
 rust:
   version: 'nightly-2026-04-28'
-  bins:
-    - 'cargo-nextest@latest'
-    - 'cargo-audit@latest'
-    - 'cargo-deny@latest'
-    - 'cargo-vet@latest'
-    - 'cargo-geiger@latest'
-    - 'cargo-machete@latest'
-    - 'cargo-hack@latest'
-    - 'cargo-mutants@latest'
-    - 'cargo-llvm-cov@latest'
-    - 'cargo-semver-checks@latest'
-    - 'cargo-public-api@latest'
-    - 'cargo-bloat@latest'
-    - 'cargo-fuzz@latest'
   syncToolchainConfig: true

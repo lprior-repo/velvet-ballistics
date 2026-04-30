@@ -44,19 +44,19 @@ fn parse_err(source: &[u8]) -> Result<CompileError, String> {
 #[test]
 fn parse_ast_retains_vars_and_examples_surface() -> Result<(), String> {
     let ast = parse(
-        b"version: velvet/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nexamples:\n  - name: happy\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nexamples:\n  - name: happy\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(ast.vars.len() == 1, "vars surface not retained")?;
     ensure(ast.examples.len() == 1, "examples surface not retained")?;
-    ensure(ast.steps.len() == 1, "step surface not retained")?;
+    ensure(ast.steps.len() == 2, "step surface not retained")?;
     Ok(())
 }
 
 #[test]
 fn parse_ast_rejects_ipc_like_compile_boundary() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet/v1\nname: ast_surface\nwhen:\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -69,7 +69,7 @@ fn parse_ast_rejects_ipc_like_compile_boundary() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_trigger_fields() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet/v1\nname: ast_surface\nwhen:\n  manual:\n    extra: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual:\n    extra: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -82,7 +82,7 @@ fn parse_ast_rejects_unknown_trigger_fields() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_step_fields() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet/v1\nname: ast_surface\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    mystery: true\n    finish:\n      result: 0\n",
+        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    mystery: true\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -94,7 +94,7 @@ fn parse_ast_rejects_unknown_step_fields() -> Result<(), String> {
 
 #[test]
 fn parse_ast_keeps_available_source_marks() -> Result<(), String> {
-    let source = "version: velvet/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+    let source = "version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
     let ast = parse(source.as_bytes())?;
     let mark = ast.mark.ok_or_else(|| "workflow mark missing".to_owned())?;
     let trigger_mark = match ast.trigger {
@@ -116,6 +116,6 @@ fn parse_ast_keeps_available_source_marks() -> Result<(), String> {
     ensure(mark.index == 0, "workflow mark index not document start")?;
     ensure_mark(trigger_mark, source, "manual", 4, 2)?;
     ensure_mark(var_mark, source, "retries", 6, 2)?;
-    ensure_mark(step_mark, source, "id: done", 8, 4)?;
+    ensure_mark(step_mark, source, "id: build_result", 8, 4)?;
     Ok(())
 }

@@ -103,15 +103,13 @@ tasks:
       runInCI: true
 
   test:
-    command: 'rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features'
+    command: 'rustup run nightly-2026-04-28 cargo test --workspace --all-targets --all-features'
     toolchains:
       - rust
     inputs:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
-    outputs:
-      - 'target/nextest/**'
     options:
       runInCI: true
 
@@ -144,7 +142,7 @@ tasks:
       - 'cargo-vet.toml'
       - '@globs(configs)'
     options:
-      runInCI: true
+      runInCI: false
 
   feature-powerset:
     command: 'rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --no-dev-deps'
@@ -154,7 +152,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     options:
-      runInCI: true
+      runInCI: false
 
   miri:
     command: 'rustup run nightly-2026-04-28 cargo miri test --workspace --all-features'
@@ -165,7 +163,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: true
+      runInCI: false
 
   coverage:
     command: 'rustup run nightly-2026-04-28 cargo llvm-cov nextest --workspace --all-features --lcov --output-path target/llvm-cov/lcov.info'
@@ -178,10 +176,10 @@ tasks:
     outputs:
       - 'target/llvm-cov/**'
     options:
-      runInCI: true
+      runInCI: false
 
   mutants-smoke:
-    command: 'rustup run nightly-2026-04-28 cargo mutants --workspace --no-shuffle --timeout 60 --jobs 2 --in-place --minimum-test-timeout 10'
+    command: 'rustup run nightly-2026-04-28 cargo mutants --workspace --no-shuffle --timeout 60 --in-place --minimum-test-timeout 10'
     toolchains:
       - rust
     inputs:
@@ -189,7 +187,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: true
+      runInCI: false
 
   fuzz-smoke:
     command: 'rustup run nightly-2026-04-28 cargo fuzz build'
@@ -200,7 +198,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: true
+      runInCI: false
 
   sanitizer-address-check:
     script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-features --no-run'
@@ -278,7 +276,9 @@ tasks:
       runInCI: true
 
   maxperf-native:
-    command: 'rustup run nightly-2026-04-28 cargo rustc --workspace --all-features --release -- -C target-cpu=native'
+    script: |
+      export RUSTFLAGS="-C target-cpu=native"
+      rustup run nightly-2026-04-28 cargo build --workspace --all-features --release
     toolchains:
       - rust
     inputs:

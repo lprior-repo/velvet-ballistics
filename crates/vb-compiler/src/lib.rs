@@ -4,9 +4,11 @@
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
 pub mod ast;
+mod control_flow;
 mod references;
 mod schema;
 pub mod strict_yaml;
+mod type_taint;
 
 use saphyr::{LoadableYamlNode, Yaml};
 use saphyr_parser::{Event, Parser, Span, StrInput};
@@ -24,7 +26,7 @@ const DEFAULT_MAX_NODES: u32 = 100_000;
 const DEFAULT_MAX_SEQUENCE_LEN: usize = 10_000;
 const DEFAULT_MAX_MAPPING_ENTRIES: usize = 1_024;
 const DEFAULT_MAX_SCALAR_BYTES: usize = 65_536;
-const WORKFLOW_VERSION: &str = "velvet/v1";
+const WORKFLOW_VERSION: &str = "velvet-ballastics/v1";
 
 /// Strict YAML resource limits for cold compilation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,8 +67,8 @@ pub struct YamlCompiler {
 /// Source location exposed by `saphyr-parser`.
 ///
 /// `index` is the parser-provided byte offset into the UTF-8 source. `line` and
-/// `column` are one-indexed parser marks. Tree-only validation paths use
-/// [`SourceMark::unavailable`] because `saphyr::Yaml` nodes do not retain marks.
+/// `column` are one-indexed parser marks. Tree-only validation paths use an
+/// unavailable mark because `saphyr::Yaml` nodes do not retain marks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceMark {
     /// Parser-provided byte offset.
@@ -120,10 +122,14 @@ impl YamlCompiler {
         let docs = Yaml::load_from_str(text)?;
         let doc = single_document(&docs)?;
         validate_strict_profile(doc, self.limits)?;
-        let workflow = compile_validated_document(text, doc)?;
+        validate_workflow_document_shape(doc)?;
         schema::validate_input_schemas(doc)?;
         let ast = ast::parse_workflow_ast(text, doc)?;
         references::validate_workflow_ast(&ast)?;
+        type_taint::validate_workflow_ast(&ast)?;
+        control_flow::validate_workflow_ast(&ast)?;
+        let parts = build_workflow_parts(text, doc)?;
+        let workflow = CompiledWorkflow::try_from_parts(parts)?;
         Ok(workflow)
     }
 
@@ -135,10 +141,12 @@ impl YamlCompiler {
         let docs = Yaml::load_from_str(text)?;
         let doc = single_document(&docs)?;
         validate_strict_profile(doc, self.limits)?;
-        let _ = compile_validated_document(text, doc)?;
+        validate_workflow_document_shape(doc)?;
         schema::validate_input_schemas(doc)?;
         let ast = ast::parse_workflow_ast(text, doc)?;
         references::validate_workflow_ast(&ast)?;
+        type_taint::validate_workflow_ast(&ast)?;
+        control_flow::validate_workflow_ast(&ast)?;
         Ok(ast)
     }
 }
@@ -510,6 +518,44 @@ pub enum CompileError {
         /// Missing declaration name.
         name: Box<str>,
     },
+    /// Branch target points outside the declared step table.
+    #[error("step {step} branch target {target} is not a declared step")]
+    UnknownStepTarget {
+        /// Step containing the invalid target.
+        step: usize,
+        /// Missing target index.
+        target: usize,
+    },
+    /// A declared step cannot be reached from the entry step.
+    #[error("step {step} is unreachable from workflow entry")]
+    UnreachableStep {
+        /// Unreachable step index.
+        step: usize,
+    },
+    /// Expression type did not match the field contract.
+    #[error("type mismatch in {field}: expected {expected}, found {found}")]
+    TypeMismatch {
+        /// Field being validated.
+        field: &'static str,
+        /// Required type.
+        expected: &'static str,
+        /// Inferred type.
+        found: &'static str,
+    },
+    /// Expression referenced a slot whose type is not known at validation time.
+    #[error("unknown slot type in {field}: {slot}")]
+    UnknownSlotType {
+        /// Field being validated.
+        field: &'static str,
+        /// Missing slot index.
+        slot: usize,
+    },
+    /// Secret-tainted data cannot cross a public result boundary.
+    #[error("secret-tainted value cannot be used in {field}")]
+    SecretTaintLeak {
+        /// Field being validated.
+        field: &'static str,
+    },
 }
 
 fn checked_utf8(source: &[u8], limits: YamlLimits) -> Result<&str, CompileError> {
@@ -563,7 +609,6 @@ fn validate_duplicate_keys_in_mapping<'input>(
     parser: &mut Parser<'input, StrInput<'input>>,
 ) -> Result<(), CompileError> {
     let mut seen = HashSet::new();
-
     loop {
         let Some((key_event, key_mark)) = parser.next_event().transpose()? else {
             return Ok(());
@@ -571,19 +616,28 @@ fn validate_duplicate_keys_in_mapping<'input>(
         if key_event == Event::MappingEnd {
             return Ok(());
         }
-        let key = mapping_key_text(key_event, key_mark)?;
-        let duplicate = key.clone();
-        if !seen.insert(key) {
-            return Err(CompileError::DuplicateKey {
-                key: duplicate,
-                mark: SourceMark::from_parser_span(key_mark),
-            });
-        }
-
+        validate_unique_mapping_key(key_event, key_mark, &mut seen)?;
         let Some((value_event, value_mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
         validate_duplicate_keys_in_started_node(value_event, value_mark, parser)?;
+    }
+}
+
+fn validate_unique_mapping_key(
+    event: Event<'_>,
+    mark: Span,
+    seen: &mut HashSet<Box<str>>,
+) -> Result<(), CompileError> {
+    let key = mapping_key_text(event, mark)?;
+    let duplicate = key.clone();
+    if seen.insert(key) {
+        Ok(())
+    } else {
+        Err(CompileError::DuplicateKey {
+            key: duplicate,
+            mark: SourceMark::from_parser_span(mark),
+        })
     }
 }
 
@@ -676,14 +730,22 @@ fn validate_one_node<'a>(
         Yaml::BadValue => Err(CompileError::BadValue),
         Yaml::Value(value) => validate_scalar(value, limits),
         Yaml::Representation(value, _, tag) => {
-            if tag.is_some() {
-                return Err(CompileError::TagForbidden {
-                    mark: SourceMark::unavailable(),
-                });
-            }
-            validate_scalar_len(value.as_ref(), limits)
+            validate_representation(value.as_ref(), tag.is_some(), limits)
         }
     }
+}
+
+fn validate_representation(
+    value: &str,
+    has_tag: bool,
+    limits: YamlLimits,
+) -> Result<(), CompileError> {
+    if has_tag {
+        return Err(CompileError::TagForbidden {
+            mark: SourceMark::unavailable(),
+        });
+    }
+    validate_scalar_len(value, limits)
 }
 
 fn push_mapping<'a>(
@@ -787,10 +849,30 @@ fn validate_scalar_len(value: &str, limits: YamlLimits) -> Result<(), CompileErr
     }
 }
 
-fn compile_validated_document(
-    text: &str,
-    doc: &Yaml<'_>,
-) -> Result<CompiledWorkflow, CompileError> {
+fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, CompileError> {
+    validate_workflow_document_shape(doc)?;
+
+    let name = required_string_field(doc, "name")?;
+    let steps = required_sequence_field(doc, "steps")?;
+    let digest = WorkflowDigest::from_bytes(blake3::hash(text.as_bytes()).into());
+    let mut builder = WorkflowBuilder::new();
+    let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
+
+    for (index, step) in steps.iter().enumerate() {
+        let node = compile_step(step, index, last_step, &mut builder)?;
+        builder.nodes.push(node);
+    }
+    Ok(WorkflowParts {
+        name: Box::<str>::from(name),
+        digest,
+        slot_count: builder.slot_count()?,
+        nodes: builder.nodes.into_boxed_slice(),
+        constants: builder.constants.into_boxed_slice(),
+        entry: StepIdx::new(0),
+    })
+}
+
+fn validate_workflow_document_shape(doc: &Yaml<'_>) -> Result<(), CompileError> {
     validate_top_level_keys(doc)?;
     validate_workflow_version(doc)?;
     validate_workflow_trigger(doc)?;
@@ -803,24 +885,79 @@ fn compile_validated_document(
         return Err(CompileError::EmptySteps);
     }
     validate_step_ids(steps)?;
+    validate_phase_zero_step_shapes(steps)
+}
 
-    let digest = WorkflowDigest::from_bytes(blake3::hash(text.as_bytes()).into());
-    let mut builder = WorkflowBuilder::new();
+fn validate_phase_zero_step_shapes(steps: &saphyr::Sequence<'_>) -> Result<(), CompileError> {
     let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
-
     for (index, step) in steps.iter().enumerate() {
-        let node = compile_step(step, index, last_step, &mut builder)?;
-        builder.nodes.push(node);
+        validate_phase_zero_step_shape(step, index, last_step)?;
     }
-    let parts = WorkflowParts {
-        name: Box::<str>::from(name),
-        digest,
-        slot_count: builder.slot_count()?,
-        nodes: builder.nodes.into_boxed_slice(),
-        constants: builder.constants.into_boxed_slice(),
-        entry: StepIdx::new(0),
-    };
-    Ok(CompiledWorkflow::try_from_parts(parts)?)
+    Ok(())
+}
+
+fn validate_phase_zero_step_shape(
+    step: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    let StepSpec { primitive, body } = step_spec(step, index)?;
+    match primitive {
+        StepPrimitive::Save => validate_save_shape(body, index, last_step),
+        StepPrimitive::Choose => validate_choose_shape(body, index, last_step),
+        StepPrimitive::Finish => validate_finish_shape(body, index, last_step),
+        value => Err(CompileError::UnsupportedStepPrimitive {
+            step: index,
+            primitive: value.as_str(),
+        }),
+    }
+}
+
+fn validate_save_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    if body.is_mapping() {
+        Ok(())
+    } else {
+        Err(CompileError::StepFieldShape {
+            step: index,
+            field: "save",
+            expected: "an object",
+        })
+    }
+}
+
+fn validate_choose_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "choose", &["condition", "on_true", "on_false"])?;
+    let _ = required_step_field(body, index, "condition")?;
+    let _ = required_branch_target(body, index, "on_true")?;
+    let _ = required_branch_target(body, index, "on_false")?;
+    Ok(())
+}
+
+fn validate_finish_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    if index != last_step {
+        return Err(CompileError::StepFieldShape {
+            step: index,
+            field: "finish",
+            expected: "the last step",
+        });
+    }
+    reject_unknown_primitive_fields(body, index, "finish", &["result"])?;
+    let _ = required_step_field(body, index, "result")?;
+    Ok(())
 }
 
 fn validate_phase_zero_result(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -986,42 +1123,43 @@ fn is_public_name(value: &str) -> bool {
         && !is_reserved_name(value)
 }
 
+const RESERVED_NAMES: &[&str] = &[
+    "input",
+    "inputs",
+    "vars",
+    "secrets",
+    "steps",
+    "result",
+    "when",
+    "item",
+    "error",
+    "summary",
+    "cursor",
+    "page",
+    "event",
+    "attempt",
+    "attempts",
+    "true",
+    "false",
+    "null",
+    "run",
+    "save",
+    "choose",
+    "for_each",
+    "together",
+    "gather",
+    "summarize",
+    "repeat",
+    "wait",
+    "ask",
+    "try_again",
+    "on_error",
+    "then",
+    "finish",
+];
+
 fn is_reserved_name(value: &str) -> bool {
-    matches!(
-        value,
-        "input"
-            | "inputs"
-            | "vars"
-            | "secrets"
-            | "steps"
-            | "result"
-            | "when"
-            | "item"
-            | "error"
-            | "summary"
-            | "cursor"
-            | "page"
-            | "event"
-            | "attempt"
-            | "attempts"
-            | "true"
-            | "false"
-            | "null"
-            | "run"
-            | "save"
-            | "choose"
-            | "for_each"
-            | "together"
-            | "gather"
-            | "summarize"
-            | "repeat"
-            | "wait"
-            | "ask"
-            | "try_again"
-            | "on_error"
-            | "then"
-            | "finish"
-    )
+    RESERVED_NAMES.contains(&value)
 }
 
 fn validate_top_level_keys(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -1359,6 +1497,12 @@ struct StepSpec<'a> {
     body: &'a Yaml<'a>,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum ChooseCondition {
+    Slot(SlotIdx),
+    Literal(bool),
+}
+
 fn step_spec<'a>(step: &'a Yaml<'a>, index: usize) -> Result<StepSpec<'a>, CompileError> {
     let Some(mapping) = step.as_mapping() else {
         return Err(CompileError::StepShape { step: index });
@@ -1422,22 +1566,41 @@ fn compile_save(
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    if !body.is_mapping() {
-        return Err(CompileError::StepFieldShape {
-            step: index,
-            field: "save",
-            expected: "an object",
-        });
-    }
+    reject_non_mapping_step_body(body, index, "save", "an object")?;
     let output = slot_idx_for_step(index)?;
     let constant = save_slot_value(body, index)?;
     let constant = builder.push_constant(constant)?;
     builder.record_slot(output);
+    set_const_node(output, constant, next_step(index)?)
+}
+
+fn reject_non_mapping_step_body(
+    body: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+    expected: &'static str,
+) -> Result<(), CompileError> {
+    if body.is_mapping() {
+        Ok(())
+    } else {
+        Err(CompileError::StepFieldShape {
+            step,
+            field,
+            expected,
+        })
+    }
+}
+
+fn set_const_node(
+    output: SlotIdx,
+    value: ConstIdx,
+    next: StepIdx,
+) -> Result<CompiledNode, CompileError> {
     Ok(CompiledNode {
         kind: CompiledNodeKind::SetConst {
             output,
-            value: constant,
-            next: next_step(index)?,
+            value,
+            next,
         },
     })
 }
@@ -1468,17 +1631,50 @@ fn compile_choose(
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "choose", &["condition", "on_true", "on_false"])?;
-    let condition = required_slot(body, index, "condition")?;
+    let condition = required_choose_condition(body, index)?;
     let on_true = required_branch_target(body, index, "on_true")?;
     let on_false = required_branch_target(body, index, "on_false")?;
-    reject_backward_branch(index, on_true)?;
-    reject_backward_branch(index, on_false)?;
+    match condition {
+        ChooseCondition::Slot(condition) => {
+            compile_slot_choose(condition, on_true, on_false, builder)
+        }
+        ChooseCondition::Literal(value) => {
+            compile_literal_choose(index, value, on_true, on_false, builder)
+        }
+    }
+}
+
+fn compile_slot_choose(
+    condition: SlotIdx,
+    on_true: StepIdx,
+    on_false: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
     builder.record_slot(condition);
     Ok(CompiledNode {
         kind: CompiledNodeKind::ChooseSlot {
             condition,
             on_true,
             on_false,
+        },
+    })
+}
+
+fn compile_literal_choose(
+    index: usize,
+    value: bool,
+    on_true: StepIdx,
+    on_false: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    let output = slot_idx_for_step(index)?;
+    let constant = builder.push_constant(SlotValue::Bool(value))?;
+    builder.record_slot(output);
+    Ok(CompiledNode {
+        kind: CompiledNodeKind::SetConst {
+            output,
+            value: constant,
+            next: if value { on_true } else { on_false },
         },
     })
 }
@@ -1497,11 +1693,44 @@ fn compile_finish(
         });
     }
     reject_unknown_primitive_fields(body, index, "finish", &["result"])?;
-    let result = required_slot(body, index, "result")?;
-    builder.record_slot(result);
+    let result = required_step_field(body, index, "result")?;
+    compile_finish_result(result, index, builder)
+}
+
+fn compile_finish_result(
+    result: &Yaml<'_>,
+    index: usize,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    if let Some(slot) = finish_result_slot(result, index)? {
+        builder.record_slot(slot);
+        return Ok(CompiledNode {
+            kind: CompiledNodeKind::Finish { result: slot },
+        });
+    }
+    let value = slot_value(result, index)?;
+    let value = builder.push_constant(value)?;
     Ok(CompiledNode {
-        kind: CompiledNodeKind::Finish { result },
+        kind: CompiledNodeKind::FinishConst { value },
     })
+}
+
+fn finish_result_slot(result: &Yaml<'_>, index: usize) -> Result<Option<SlotIdx>, CompileError> {
+    let Some(value) = result.as_integer() else {
+        return Ok(None);
+    };
+    if !finish_integer_is_slot(value, index) {
+        return Ok(None);
+    }
+    let value = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
+    Ok(Some(SlotIdx::new(value)))
+}
+
+fn finish_integer_is_slot(value: i64, index: usize) -> bool {
+    match usize::try_from(value) {
+        Ok(slot) => slot <= index,
+        Err(_) => false,
+    }
 }
 
 fn reject_last_non_finish(index: usize, last_step: usize) -> Result<(), CompileError> {
@@ -1544,26 +1773,43 @@ fn reject_unknown_primitive_fields(
     primitive: &'static str,
     allowed: &[&str],
 ) -> Result<(), CompileError> {
-    let Some(mapping) = body.as_mapping() else {
-        return Err(CompileError::StepFieldShape {
-            step,
-            field: primitive,
-            expected: "a mapping",
-        });
-    };
+    let mapping = primitive_body_mapping(body, step, primitive)?;
     for (key, _) in mapping {
-        let Some(field) = key.as_str() else {
-            return Err(CompileError::StepShape { step });
-        };
-        if !allowed.contains(&field) {
-            return Err(CompileError::UnknownStepPrimitiveField {
-                step,
-                primitive,
-                field: Box::<str>::from(field),
-            });
-        }
+        reject_unknown_primitive_field(key, step, primitive, allowed)?;
     }
     Ok(())
+}
+
+fn primitive_body_mapping<'a>(
+    body: &'a Yaml<'a>,
+    step: usize,
+    primitive: &'static str,
+) -> Result<&'a saphyr::Mapping<'a>, CompileError> {
+    body.as_mapping().ok_or(CompileError::StepFieldShape {
+        step,
+        field: primitive,
+        expected: "a mapping",
+    })
+}
+
+fn reject_unknown_primitive_field(
+    key: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+    allowed: &[&str],
+) -> Result<(), CompileError> {
+    let Some(field) = key.as_str() else {
+        return Err(CompileError::StepShape { step });
+    };
+    if allowed.contains(&field) {
+        Ok(())
+    } else {
+        Err(CompileError::UnknownStepPrimitiveField {
+            step,
+            primitive,
+            field: Box::<str>::from(field),
+        })
+    }
 }
 
 fn required_slot(
@@ -1581,6 +1827,17 @@ fn required_slot(
     Ok(SlotIdx::new(value))
 }
 
+fn required_choose_condition(
+    body: &Yaml<'_>,
+    step: usize,
+) -> Result<ChooseCondition, CompileError> {
+    let node = required_step_field(body, step, "condition")?;
+    if let Some(value) = node.as_bool() {
+        return Ok(ChooseCondition::Literal(value));
+    }
+    required_slot(body, step, "condition").map(ChooseCondition::Slot)
+}
+
 fn required_branch_target(
     body: &Yaml<'_>,
     step: usize,
@@ -1594,15 +1851,6 @@ fn required_branch_target(
     })?;
     let value = u16::try_from(value).map_err(|_| CompileError::BranchTargetOutOfRange { value })?;
     Ok(StepIdx::new(value))
-}
-
-fn reject_backward_branch(step: usize, target: StepIdx) -> Result<(), CompileError> {
-    let target = target.as_usize();
-    if target <= step {
-        Err(CompileError::BackwardBranchTarget { step, target })
-    } else {
-        Ok(())
-    }
 }
 
 fn slot_value(node: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
@@ -1641,9 +1889,55 @@ mod tests {
     use super::{CompileError, YamlCompiler, YamlLimits};
     use vb_core::CompiledWorkflow;
 
+    const NESTED_SAVE_SOURCE: &[u8] = br#"
+version: velvet-ballastics/v1
+name: nested_save
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      text: done
+      tags:
+        - demo
+        - fast
+      metadata:
+        attempts: 1
+        active: true
+        note: null
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    const OPTIONAL_TOP_LEVEL_FIELDS_SOURCE: &[u8] = br#"
+version: velvet-ballastics/v1
+name: fast_path
+when:
+  manual: {}
+inputs:
+  value: text
+vars:
+  label: 1
+secrets:
+  api_key: API_KEY
+result: {}
+examples:
+  - name: fixture
+    input:
+      value: 1
+steps:
+  - id: build_result
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+
     fn compile_with_inputs(inputs: &str) -> Result<CompiledWorkflow, CompileError> {
         let source = format!(
-            "version: velvet/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
+            "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
         );
         YamlCompiler::default().compile(source.as_bytes())
     }
@@ -1669,7 +1963,7 @@ mod tests {
     #[test]
     fn compiler_rejects_save_object_until_handle_arenas_exist() {
         let source = br#"
-version: velvet/v1
+version: velvet-ballastics/v1
 name: fast_path
 when:
   manual: {}
@@ -1691,27 +1985,7 @@ steps:
 
     #[test]
     fn compiler_rejects_nested_save_values_until_handle_arenas_exist() {
-        let source = br#"
-version: velvet/v1
-name: nested_save
-when:
-  manual: {}
-steps:
-  - id: build_result
-    save:
-      text: done
-      tags:
-        - demo
-        - fast
-      metadata:
-        attempts: 1
-        active: true
-        note: null
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = YamlCompiler::default().compile(source);
+        let result = YamlCompiler::default().compile(NESTED_SAVE_SOURCE);
 
         assert!(matches!(
             result,
@@ -1722,7 +1996,7 @@ steps:
     #[test]
     fn compiler_rejects_scalar_save_body() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save: done\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save: done\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -1734,7 +2008,7 @@ steps:
     #[test]
     fn compiler_rejects_save_references_until_expressions_exist() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      text: $input.value\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs:\n  value: text\nsteps:\n  - id: build_result\n    save:\n      text: $input.value\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -1745,8 +2019,9 @@ steps:
 
     #[test]
     fn compiler_rejects_empty_steps() {
-        let result = YamlCompiler::default()
-            .compile(b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps: []\n");
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps: []\n",
+        );
 
         assert!(matches!(result, Err(CompileError::EmptySteps)));
     }
@@ -1754,7 +2029,7 @@ steps:
     #[test]
     fn compiler_rejects_unsupported_top_level_fields() {
         let result = YamlCompiler::default()
-            .compile(b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - finish:\n      result: 0\n");
+            .compile(b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - finish:\n      result: 0\n");
 
         assert!(matches!(
             result,
@@ -1774,7 +2049,7 @@ steps:
     #[test]
     fn compiler_rejects_non_canonical_workflow_version() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::InvalidVersion { .. })));
@@ -1782,31 +2057,7 @@ steps:
 
     #[test]
     fn compiler_accepts_optional_top_level_fields() {
-        let source = br#"
-version: velvet/v1
-name: fast_path
-when:
-  manual: {}
-inputs:
-  value: text
-vars:
-  label: 1
-secrets:
-  api_key: API_KEY
-result: {}
-examples:
-  - name: fixture
-    input:
-      value: 1
-steps:
-  - id: build_result
-    save:
-      value: 1
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = YamlCompiler::default().compile(source);
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
     }
@@ -1853,7 +2104,7 @@ steps:
             "  value:\n    is: text\n    default: 1\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
             );
 
             assert_compile_parse_first_error(source.as_bytes());
@@ -1863,20 +2114,20 @@ steps:
     #[test]
     fn schema_validation_does_not_preempt_yaml_profile_errors() {
         assert_compile_parse_first_error(
-            b"version: velvet/v1\nname: &n schema_case\ninputs:\n  value: integer\ncopy: *n\n",
+            b"version: velvet-ballastics/v1\nname: &n schema_case\ninputs:\n  value: integer\ncopy: *n\n",
         );
     }
 
     #[test]
     fn schema_validation_does_not_preempt_duplicate_key_errors() {
         assert_compile_parse_first_error(
-            b"version: velvet/v1\nversion: velvet/v1\nname: schema_case\ninputs:\n  value: integer\n",
+            b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: schema_case\ninputs:\n  value: integer\n",
         );
     }
 
     #[test]
     fn schema_validation_does_not_preempt_lowering_errors() {
-        let source = b"version: velvet/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: route\n    choose: true\n";
+        let source = b"version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: route\n    choose: true\n";
 
         assert_eq!(
             compile_error_text(source),
@@ -1887,7 +2138,7 @@ steps:
 
     #[test]
     fn schema_validation_does_not_preempt_finish_position_errors() {
-        let source = b"version: velvet/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: early\n    finish:\n      result: 0\n      status: success\n  - id: done\n    finish:\n      result: 0\n";
+        let source = b"version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: early\n    finish:\n      result: 0\n      status: success\n  - id: done\n    finish:\n      result: 0\n";
 
         assert!(compile_error_text(source).contains("field finish"));
         assert_compile_parse_first_error(source);
@@ -2040,7 +2291,7 @@ steps:
     fn compiler_rejects_non_mapping_optional_top_level_fields() {
         for field in ["inputs", "vars", "secrets"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2059,7 +2310,7 @@ steps:
             ("secrets", "api-key"),
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}:\n  {key}: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}:\n  {key}: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2073,7 +2324,7 @@ steps:
     #[test]
     fn compiler_rejects_invalid_input_schema_shapes() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs:\n  value:\n    - text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs:\n  value:\n    - text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::FieldShape { .. })));
@@ -2082,7 +2333,7 @@ steps:
     #[test]
     fn compiler_rejects_runtime_references_in_vars() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nvars:\n  label: $input.value\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nvars:\n  label: $input.value\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2094,7 +2345,7 @@ steps:
     #[test]
     fn compiler_rejects_non_string_secret_bindings() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsecrets:\n  api_key: 42\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsecrets:\n  api_key: 42\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::FieldShape { .. })));
@@ -2104,7 +2355,7 @@ steps:
     fn compiler_rejects_invalid_examples_shape() {
         for examples in ["true", "\n  - fixture"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2119,7 +2370,7 @@ steps:
     fn compiler_rejects_examples_without_valid_names() {
         for examples in ["\n  - input: {}", "\n  - name: 42", "\n  - name: run"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2138,7 +2389,7 @@ steps:
     #[test]
     fn compiler_rejects_non_empty_top_level_result_until_result_ir_exists() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nresult:\n  value: $build_result.value\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nresult:\n  value: $build_result.value\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2150,7 +2401,7 @@ steps:
     #[test]
     fn compiler_rejects_non_mapping_top_level_result() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nresult: done\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nresult: done\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2166,7 +2417,7 @@ steps:
     fn compiler_rejects_invalid_workflow_names() {
         for name in ["", "FastPath", "fast-path", "run"] {
             let source = format!(
-                "version: velvet/v1\nname: \"{name}\"\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: \"{name}\"\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2180,7 +2431,7 @@ steps:
     #[test]
     fn compiler_rejects_missing_step_ids() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::MissingStepId { .. })));
@@ -2190,7 +2441,7 @@ steps:
     fn compiler_rejects_invalid_step_ids() {
         for id in ["", "BuildResult", "build-result", "finish"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2210,7 +2461,7 @@ steps:
     #[test]
     fn compiler_rejects_duplicate_step_ids() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::DuplicateStepId { .. })));
@@ -2219,7 +2470,7 @@ steps:
     #[test]
     fn compiler_accepts_step_display_name_metadata() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: Build Result\n    save:\n      value: 1\n  - id: done\n    name: Done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: Build Result\n    save:\n      value: 1\n  - id: done\n    name: Done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
@@ -2228,7 +2479,7 @@ steps:
     #[test]
     fn compiler_rejects_non_string_step_display_name() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: 42\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    name: 42\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2241,7 +2492,7 @@ steps:
     fn compiler_rejects_unsupported_phase_zero_step_control_fields() {
         for control in ["if", "with", "try_again", "on_error", "then"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2258,7 +2509,7 @@ steps:
     #[test]
     fn compiler_rejects_missing_workflow_trigger() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nsteps:\n  - finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::MissingField { .. })));
@@ -2267,9 +2518,9 @@ steps:
     #[test]
     fn compiler_rejects_invalid_workflow_trigger_shapes() {
         for source in [
-            b"version: velvet/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n".as_slice(),
-            b"version: velvet/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n",
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n".as_slice(),
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n",
         ] {
             let result = YamlCompiler::default().compile(source);
 
@@ -2283,7 +2534,7 @@ steps:
     #[test]
     fn compiler_rejects_unknown_workflow_trigger_kind() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  file: {}\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  file: {}\nsteps:\n  - finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2296,7 +2547,7 @@ steps:
     fn compiler_rejects_scalar_workflow_trigger_config() {
         for trigger in ["manual", "webhook", "schedule", "event"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2316,7 +2567,7 @@ steps:
             "  event:\n    name: customer.created\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2336,7 +2587,7 @@ steps:
             "  event:\n    name: customer.created\n    extra: true\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2356,7 +2607,7 @@ steps:
             "  event: {}\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2380,7 +2631,7 @@ steps:
             "  event:\n    name: 42\n",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2394,7 +2645,7 @@ steps:
     #[test]
     fn compiler_rejects_backward_branch_targets() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: 0\n      on_true: 0\n      on_false: 1\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 0\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n",
         );
 
         assert!(matches!(
@@ -2406,7 +2657,7 @@ steps:
     #[test]
     fn compiler_rejects_extra_phase_zero_choose_fields() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: 0\n      on_true: 1\n      on_false: 1\n      otherwise: true\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: 0\n      on_true: 1\n      on_false: 1\n      otherwise: true\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2421,7 +2672,7 @@ steps:
     #[test]
     fn compiler_rejects_non_mapping_phase_zero_choose_body() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2436,7 +2687,7 @@ steps:
     #[test]
     fn compiler_rejects_extra_phase_zero_finish_fields() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n      status: success\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n      status: success\n",
         );
 
         assert!(matches!(
@@ -2451,7 +2702,7 @@ steps:
     #[test]
     fn compiler_rejects_non_mapping_phase_zero_finish_body() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish: success\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish: success\n",
         );
 
         assert!(matches!(
@@ -2465,8 +2716,8 @@ steps:
 
     #[test]
     fn compiler_rejects_aliases() {
-        let result =
-            YamlCompiler::default().compile(b"version: velvet/v1\nname: &n fast\ncopy: *n\n");
+        let result = YamlCompiler::default()
+            .compile(b"version: velvet-ballastics/v1\nname: &n fast\ncopy: *n\n");
 
         assert!(matches!(
             result,
@@ -2476,7 +2727,7 @@ steps:
 
     #[test]
     fn compiler_rejects_custom_tags_with_mark() {
-        let result = YamlCompiler::default().compile(b"version: !custom velvet/v1\n");
+        let result = YamlCompiler::default().compile(b"version: !custom velvet-ballastics/v1\n");
 
         assert!(matches!(
             result,
@@ -2497,7 +2748,7 @@ steps:
     #[test]
     fn compiler_rejects_duplicate_top_level_keys() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nversion: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::DuplicateKey { .. })));
@@ -2506,7 +2757,7 @@ steps:
     #[test]
     fn compiler_rejects_duplicate_nested_keys() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      text: first\n      text: second\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      text: first\n      text: second\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Err(CompileError::DuplicateKey { .. })));
@@ -2516,7 +2767,7 @@ steps:
     fn compiler_rejects_legacy_step_aliases() {
         for alias in ["do", "set", "collect", "reduce", "copy"] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2530,7 +2781,7 @@ steps:
     #[test]
     fn compiler_rejects_missing_step_primitive() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2542,7 +2793,7 @@ steps:
     #[test]
     fn compiler_rejects_multiple_step_primitives() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      slot: 0\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      slot: 0\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2564,7 +2815,7 @@ steps:
             "ask",
         ] {
             let source = format!(
-                "version: velvet/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
@@ -2589,7 +2840,7 @@ steps:
     #[test]
     fn compiler_accepts_minimal_strict_workflow() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: strict_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: strict_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "strict_minimal"));
@@ -2605,7 +2856,7 @@ steps:
     #[test]
     fn compiler_rejects_multiple_yaml_documents() {
         let result = YamlCompiler::default().compile(
-            b"---\nversion: velvet/v1\nname: first\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n---\nversion: velvet/v1\nname: second\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"---\nversion: velvet-ballastics/v1\nname: first\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n---\nversion: velvet-ballastics/v1\nname: second\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
@@ -2617,7 +2868,7 @@ steps:
     #[test]
     fn compiler_rejects_yaml_merge_keys() {
         let result = YamlCompiler::default().compile(
-            b"version: velvet/v1\nname: merge_key\nwhen:\n  manual: {}\n<<:\n  steps: []\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: merge_key\nwhen:\n  manual: {}\n<<:\n  steps: []\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
         assert!(matches!(
