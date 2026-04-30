@@ -1,0 +1,18 @@
+[package]
+name = "vb_ipc"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+bytes.workspace = true
+crossbeam-channel.workspace = true
+mio = { workspace = true, features = ["net", "os-poll"] }
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+vb_runtime = { path = "../vb_runtime" }
+
+[lints]
+workspace = true

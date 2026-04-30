@@ -1,0 +1,14 @@
+[package]
+name = "vb_runtime"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+crossbeam-queue.workspace = true
+rtrb.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+
+[lints]
+workspace = true
