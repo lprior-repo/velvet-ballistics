@@ -18,7 +18,7 @@ use vb_core::value_store::{ObjectField, ValueStore};
 
 #[test]
 fn numeric_ids_construct_access_parse_and_serialize() {
-    assert_eq!(WorkflowId::new(11).get(), 11);
+    assert_eq!(WorkflowId::new(11).as_u32(), 11);
     assert_eq!(StepIdx::new(12).as_usize(), 12);
     assert_eq!(SlotIdx::new(13).as_usize(), 13);
     assert_eq!(ExprIdx::new(14).as_usize(), 14);

@@ -3,28 +3,30 @@ use crate::{CompileError, YamlCompiler};
 fn compile_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors.0.into_iter().next()
+            .ok_or_else(|| "compile failed with no errors".to_string()),
     }
 }
 
 fn parse_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors.0.into_iter().next()
+            .ok_or_else(|| "parse_ast failed with no errors".to_string()),
     }
 }
 
 fn compile_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => format!("compile unexpectedly succeeded: {workflow:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => errors.to_string(),
     }
 }
 
 fn parse_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => format!("parse_ast unexpectedly succeeded: {ast:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => errors.to_string(),
     }
 }
 

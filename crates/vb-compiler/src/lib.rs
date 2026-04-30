@@ -6,10 +6,13 @@
 pub mod ast;
 mod control_flow;
 pub mod expression;
+mod expression_bytecode;
 mod references;
 mod schema;
 pub mod strict_yaml;
 mod type_taint;
+
+pub use expression_bytecode::compile_expr_to_bytecode;
 
 use saphyr::{LoadableYamlNode, Yaml};
 use saphyr_parser::{Event, Parser, Span, StrInput};
@@ -17,8 +20,8 @@ use std::collections::HashSet;
 use std::str;
 use thiserror::Error;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, SlotValue, StepIdx,
-    WorkflowDigest, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
@@ -116,35 +119,35 @@ impl YamlCompiler {
     }
 
     /// Parses and validates YAML, then emits compiled workflow IR.
-    pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileError> {
-        let text = checked_utf8(source, self.limits)?;
-        strict_yaml::reject_unsupported_profile_events(text)?;
-        reject_duplicate_mapping_keys(text)?;
-        let docs = Yaml::load_from_str(text)?;
-        let doc = single_document(&docs)?;
-        validate_strict_profile(doc, self.limits)?;
-        validate_workflow_document_shape(doc)?;
+    pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
+        let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        strict_yaml::reject_unsupported_profile_events(text).map_err(|e| CompileErrors(vec![e]))?;
+        reject_duplicate_mapping_keys(text).map_err(|e| CompileErrors(vec![e]))?;
+        let docs = Yaml::load_from_str(text).map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
+        let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
+        validate_strict_profile(doc, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
         schema::validate_input_schemas(doc)?;
-        let ast = ast::parse_workflow_ast(text, doc)?;
+        let ast = ast::parse_workflow_ast(text, doc).map_err(|e| CompileErrors(vec![e]))?;
         references::validate_workflow_ast(&ast)?;
         type_taint::validate_workflow_ast(&ast)?;
         control_flow::validate_workflow_ast(&ast)?;
-        let parts = build_workflow_parts(text, doc)?;
-        let workflow = CompiledWorkflow::try_from_parts(parts)?;
+        let parts = build_workflow_parts(text, doc).map_err(|e| CompileErrors(vec![e]))?;
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))?;
         Ok(workflow)
     }
 
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
-    pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileError> {
-        let text = checked_utf8(source, self.limits)?;
-        strict_yaml::reject_unsupported_profile_events(text)?;
-        reject_duplicate_mapping_keys(text)?;
-        let docs = Yaml::load_from_str(text)?;
-        let doc = single_document(&docs)?;
-        validate_strict_profile(doc, self.limits)?;
-        validate_workflow_document_shape(doc)?;
+    pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileErrors> {
+        let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        strict_yaml::reject_unsupported_profile_events(text).map_err(|e| CompileErrors(vec![e]))?;
+        reject_duplicate_mapping_keys(text).map_err(|e| CompileErrors(vec![e]))?;
+        let docs = Yaml::load_from_str(text).map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
+        let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
+        validate_strict_profile(doc, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
         schema::validate_input_schemas(doc)?;
-        let ast = ast::parse_workflow_ast(text, doc)?;
+        let ast = ast::parse_workflow_ast(text, doc).map_err(|e| CompileErrors(vec![e]))?;
         references::validate_workflow_ast(&ast)?;
         type_taint::validate_workflow_ast(&ast)?;
         control_flow::validate_workflow_ast(&ast)?;
@@ -165,7 +168,7 @@ fn non_string_key_error() -> CompileError {
 }
 
 /// YAML compiler errors.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum CompileError {
     /// Source exceeded configured byte limit.
     #[error("YAML source exceeds byte limit: actual={actual}, limit={limit}")]
@@ -613,6 +616,65 @@ pub enum CompileError {
         /// Unknown identifier.
         identifier: Box<str>,
     },
+    /// Expression bytecode lowering needs a later compiler/runtime table.
+    #[error("expression bytecode lowering does not support {feature} yet")]
+    ExpressionLoweringUnsupported {
+        /// Unsupported expression feature.
+        feature: &'static str,
+    },
+    /// Helper call has the wrong number of arguments for bytecode lowering.
+    #[error("expression helper {helper} expects {expected} args, found {actual}")]
+    ExpressionHelperArity {
+        /// Helper name.
+        helper: &'static str,
+        /// Required arity.
+        expected: usize,
+        /// Actual argument count.
+        actual: usize,
+    },
+}
+
+/// Multiple compilation errors collected in one pass (railway programming).
+#[derive(Debug, Error)]
+pub struct CompileErrors(pub Vec<CompileError>);
+
+impl CompileErrors {
+    /// Returns the first error, or None if empty (should not happen by construction).
+    #[must_use]
+    pub fn first(&self) -> Option<&CompileError> {
+        self.0.first()
+    }
+
+    /// Total number of collected errors.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns true if there are no errors (should never happen by construction).
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl std::fmt::Display for CompileErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, error) in self.0.iter().enumerate() {
+            if i > 0 {
+                writeln!(f)?;
+            }
+            write!(f, "[{i}] {error}")?;
+        }
+        Ok(())
+    }
+}
+
+/// Appends an error to the collector, if the result is `Err`.
+fn collect(errors: &mut Vec<CompileError>, result: Result<(), CompileError>) {
+    if let Err(error) = result {
+        errors.push(error);
+    }
 }
 
 fn checked_utf8(source: &[u8], limits: YamlLimits) -> Result<&str, CompileError> {
@@ -924,6 +986,7 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         digest,
         slot_count: builder.slot_count()?,
         nodes: builder.nodes.into_boxed_slice(),
+        expressions: Box::new([]),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
     })
@@ -1438,7 +1501,7 @@ fn required_mapping_field<'a>(
 #[derive(Debug, Default)]
 struct WorkflowBuilder {
     nodes: Vec<CompiledNode>,
-    constants: Vec<SlotValue>,
+    constants: Vec<ConstValue>,
     max_slot: Option<usize>,
 }
 
@@ -1447,7 +1510,7 @@ impl WorkflowBuilder {
         Self::default()
     }
 
-    fn push_constant(&mut self, value: SlotValue) -> Result<ConstIdx, CompileError> {
+    fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, CompileError> {
         let index = u16::try_from(self.constants.len()).map_err(|_| {
             CompileError::Workflow(WorkflowError::ConstOutOfBounds {
                 constant: ConstIdx::new(u16::MAX),
@@ -1628,7 +1691,7 @@ fn compile_save(
     let constant = save_slot_value(body, index)?;
     let constant = builder.push_constant(constant)?;
     builder.record_slot(output);
-    set_const_node(output, constant, next_step(index)?)
+    set_const_node(step_idx(index)?, output, constant, next_step(index)?)
 }
 
 fn reject_non_mapping_step_body(
@@ -1649,11 +1712,13 @@ fn reject_non_mapping_step_body(
 }
 
 fn set_const_node(
+    id: StepIdx,
     output: SlotIdx,
     value: ConstIdx,
     next: StepIdx,
 ) -> Result<CompiledNode, CompileError> {
     Ok(CompiledNode {
+        id,
         kind: CompiledNodeKind::SetConst {
             output,
             value,
@@ -1662,7 +1727,7 @@ fn set_const_node(
     })
 }
 
-fn save_slot_value(body: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
+fn save_slot_value(body: &Yaml<'_>, step: usize) -> Result<ConstValue, CompileError> {
     let Some(mapping) = body.as_mapping() else {
         return Err(CompileError::StepFieldShape {
             step,
@@ -1693,7 +1758,7 @@ fn compile_choose(
     let on_false = required_branch_target(body, index, "on_false")?;
     match condition {
         ChooseCondition::Slot(condition) => {
-            compile_slot_choose(condition, on_true, on_false, builder)
+            compile_slot_choose(step_idx(index)?, condition, on_true, on_false, builder)
         }
         ChooseCondition::Literal(value) => {
             compile_literal_choose(index, value, on_true, on_false, builder)
@@ -1702,6 +1767,7 @@ fn compile_choose(
 }
 
 fn compile_slot_choose(
+    id: StepIdx,
     condition: SlotIdx,
     on_true: StepIdx,
     on_false: StepIdx,
@@ -1709,6 +1775,7 @@ fn compile_slot_choose(
 ) -> Result<CompiledNode, CompileError> {
     builder.record_slot(condition);
     Ok(CompiledNode {
+        id,
         kind: CompiledNodeKind::ChooseSlot {
             condition,
             on_true,
@@ -1725,9 +1792,10 @@ fn compile_literal_choose(
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     let output = slot_idx_for_step(index)?;
-    let constant = builder.push_constant(SlotValue::Bool(value))?;
+    let constant = builder.push_constant(ConstValue::Bool(value))?;
     builder.record_slot(output);
     Ok(CompiledNode {
+        id: step_idx(index)?,
         kind: CompiledNodeKind::SetConst {
             output,
             value: constant,
@@ -1762,12 +1830,14 @@ fn compile_finish_result(
     if let Some(slot) = finish_result_slot(result, index)? {
         builder.record_slot(slot);
         return Ok(CompiledNode {
+            id: step_idx(index)?,
             kind: CompiledNodeKind::Finish { result: slot },
         });
     }
     let value = slot_value(result, index)?;
     let value = builder.push_constant(value)?;
     Ok(CompiledNode {
+        id: step_idx(index)?,
         kind: CompiledNodeKind::FinishConst { value },
     })
 }
@@ -1910,11 +1980,11 @@ fn required_branch_target(
     Ok(StepIdx::new(value))
 }
 
-fn slot_value(node: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
+fn slot_value(node: &Yaml<'_>, step: usize) -> Result<ConstValue, CompileError> {
     match node {
-        Yaml::Value(saphyr::Scalar::Null) => Ok(SlotValue::Null),
-        Yaml::Value(saphyr::Scalar::Boolean(value)) => Ok(SlotValue::Bool(*value)),
-        Yaml::Value(saphyr::Scalar::Integer(value)) => Ok(SlotValue::I64(*value)),
+        Yaml::Value(saphyr::Scalar::Null) => Ok(ConstValue::Null),
+        Yaml::Value(saphyr::Scalar::Boolean(value)) => Ok(ConstValue::Bool(*value)),
+        Yaml::Value(saphyr::Scalar::Integer(value)) => Ok(ConstValue::I64(*value)),
         Yaml::Value(saphyr::Scalar::String(value)) => text_slot_value(value.as_ref(), step),
         Yaml::Representation(value, _, None) => text_slot_value(value.as_ref(), step),
         Yaml::Sequence(sequence) => list_slot_value(sequence, step),
@@ -1923,27 +1993,27 @@ fn slot_value(node: &Yaml<'_>, step: usize) -> Result<SlotValue, CompileError> {
     }
 }
 
-fn text_slot_value(_value: &str, step: usize) -> Result<SlotValue, CompileError> {
+fn text_slot_value(_value: &str, step: usize) -> Result<ConstValue, CompileError> {
     Err(CompileError::UnsupportedConstantValue { step })
 }
 
 fn list_slot_value(
     _sequence: &saphyr::Sequence<'_>,
     step: usize,
-) -> Result<SlotValue, CompileError> {
+) -> Result<ConstValue, CompileError> {
     Err(CompileError::UnsupportedConstantValue { step })
 }
 
 fn object_slot_value(
     _mapping: &saphyr::Mapping<'_>,
     step: usize,
-) -> Result<SlotValue, CompileError> {
+) -> Result<ConstValue, CompileError> {
     Err(CompileError::UnsupportedConstantValue { step })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{CompileError, YamlCompiler, YamlLimits};
+    use super::{CompileError, CompileErrors, YamlCompiler, YamlLimits};
     use vb_core::CompiledWorkflow;
 
     const NESTED_SAVE_SOURCE: &[u8] = br#"
@@ -1992,7 +2062,7 @@ steps:
       result: 0
 "#;
 
-    fn compile_with_inputs(inputs: &str) -> Result<CompiledWorkflow, CompileError> {
+    fn compile_with_inputs(inputs: &str) -> Result<CompiledWorkflow, CompileErrors> {
         let source = format!(
             "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
         );
@@ -2002,14 +2072,20 @@ steps:
     fn compile_error_text(source: &[u8]) -> String {
         match YamlCompiler::default().compile(source) {
             Ok(_) => "compile unexpectedly succeeded".to_owned(),
-            Err(error) => error.to_string(),
+            Err(errors) => match errors.first() {
+                Some(error) => error.to_string(),
+                None => "CompileErrors was empty".to_owned(),
+            },
         }
     }
 
     fn parse_ast_error_text(source: &[u8]) -> String {
         match YamlCompiler::default().parse_ast(source) {
             Ok(_) => "parse_ast unexpectedly succeeded".to_owned(),
-            Err(error) => error.to_string(),
+            Err(errors) => match errors.first() {
+                Some(error) => error.to_string(),
+                None => "CompileErrors was empty".to_owned(),
+            },
         }
     }
 
@@ -2036,7 +2112,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnsupportedConstantValue { step: 0 })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedConstantValue { step: 0 }))
         ));
     }
 
@@ -2046,7 +2122,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnsupportedConstantValue { step: 0 })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedConstantValue { step: 0 }))
         ));
     }
 
@@ -2058,7 +2134,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::StepFieldShape { field: "save", .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "save", .. }))
         ));
     }
 
@@ -2070,7 +2146,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnsupportedConstantValue { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedConstantValue { .. }))
         ));
     }
 
@@ -2080,7 +2156,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps: []\n",
         );
 
-        assert!(matches!(result, Err(CompileError::EmptySteps)));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::EmptySteps))));
     }
 
     #[test]
@@ -2090,7 +2166,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnknownTopLevelField { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTopLevelField { .. }))
         ));
     }
 
@@ -2100,7 +2176,7 @@ steps:
             b"name: fast_path\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::MissingField { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingField { .. }))));
     }
 
     #[test]
@@ -2109,7 +2185,7 @@ steps:
             b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::InvalidVersion { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidVersion { .. }))));
     }
 
     #[test]
@@ -2147,7 +2223,7 @@ steps:
             let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
 
             assert!(
-                matches!(result, Err(CompileError::InvalidInputSchema { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
                 "schema shorthand {shorthand} should be rejected"
             );
         }
@@ -2243,7 +2319,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::UnknownInputSchemaField { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))
             ));
         }
     }
@@ -2254,10 +2330,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::InvalidInputSchema {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema {
                 field: "inputs.pattern",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2276,7 +2352,7 @@ steps:
             let result = compile_with_inputs(inputs);
 
             assert!(
-                matches!(result, Err(CompileError::InvalidInputSchema { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
                 "invalid schema should be rejected: {inputs}"
             );
         }
@@ -2289,7 +2365,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::InvalidInputSchema { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
             ));
         }
     }
@@ -2307,7 +2383,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::InvalidInputSchema { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
             ));
         }
     }
@@ -2320,7 +2396,7 @@ steps:
 
         assert!(matches!(
             rejected,
-            Err(CompileError::InvalidInputSchema { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
         ));
         assert!(matches!(accepted, Ok(ref workflow) if workflow.name() == "schema_case"));
     }
@@ -2338,7 +2414,7 @@ steps:
             let result = compile_with_inputs(inputs);
 
             assert!(
-                matches!(result, Err(CompileError::InvalidInputSchema { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
                 "invalid bounds should be rejected: {inputs}"
             );
         }
@@ -2353,7 +2429,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::FieldShape { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))),
                 "{field} must be mapping-shaped"
             );
         }
@@ -2372,7 +2448,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::InvalidName { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))),
                 "{field}.{key} must use Velvet v1 public naming"
             );
         }
@@ -2384,7 +2460,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs:\n  value:\n    - text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::FieldShape { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
     }
 
     #[test]
@@ -2395,7 +2471,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnsupportedConstantValue { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedConstantValue { .. }))
         ));
     }
 
@@ -2405,7 +2481,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsecrets:\n  api_key: 42\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::FieldShape { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
     }
 
     #[test]
@@ -2417,7 +2493,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::FieldShape { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))),
                 "examples must be a sequence of mappings"
             );
         }
@@ -2434,9 +2510,14 @@ steps:
             assert!(
                 matches!(
                     result,
-                    Err(CompileError::MissingField { .. }
-                        | CompileError::FieldShape { .. }
-                        | CompileError::InvalidName { .. })
+                    Err(ref errors) if matches!(
+                        errors.first(),
+                        Some(
+                            CompileError::MissingField { .. }
+                                | CompileError::FieldShape { .. }
+                                | CompileError::InvalidName { .. }
+                        )
+                    )
                 ),
                 "examples must declare valid fixture names"
             );
@@ -2451,7 +2532,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnsupportedTopLevelResult)
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedTopLevelResult))
         ));
     }
 
@@ -2463,10 +2544,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::FieldShape {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape {
                 field: "result",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2479,7 +2560,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::InvalidName { field: "name", .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))),
                 "workflow name {name:?} must be rejected"
             );
         }
@@ -2491,7 +2572,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::MissingStepId { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingStepId { .. }))));
     }
 
     #[test]
@@ -2505,10 +2586,13 @@ steps:
             assert!(
                 matches!(
                     result,
-                    Err(CompileError::InvalidName {
-                        field: "step id",
-                        ..
-                    })
+                    Err(ref errors) if matches!(
+                        errors.first(),
+                        Some(CompileError::InvalidName {
+                            field: "step id",
+                            ..
+                        })
+                    )
                 ),
                 "step id {id:?} must be rejected"
             );
@@ -2521,7 +2605,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::DuplicateStepId { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::DuplicateStepId { .. }))));
     }
 
     #[test]
@@ -2541,7 +2625,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::StepFieldShape { field: "name", .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "name", .. }))
         ));
     }
 
@@ -2556,7 +2640,7 @@ steps:
             assert!(
                 matches!(
                     result,
-                    Err(CompileError::UnsupportedStepControlField { .. })
+                    Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
                 ),
                 "control field {control} must be rejected until Phase 0 compiles it"
             );
@@ -2569,7 +2653,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nsteps:\n  - finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::MissingField { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingField { .. }))));
     }
 
     #[test]
@@ -2583,7 +2667,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
             ));
         }
     }
@@ -2596,7 +2680,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnknownTriggerKind { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerKind { .. }))
         ));
     }
 
@@ -2609,7 +2693,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::TriggerShape { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
                 "trigger {trigger} config must be mapping-shaped"
             );
         }
@@ -2650,7 +2734,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::UnknownTriggerField { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))
             ));
         }
     }
@@ -2670,7 +2754,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::MissingTriggerField { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))
             ));
         }
     }
@@ -2694,7 +2778,7 @@ steps:
 
             assert!(matches!(
                 result,
-                Err(CompileError::InvalidTriggerField { .. })
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))
             ));
         }
     }
@@ -2707,7 +2791,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::BackwardBranchTarget { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::BackwardBranchTarget { .. }))
         ));
     }
 
@@ -2719,10 +2803,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnknownStepPrimitiveField {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepPrimitiveField {
                 primitive: "choose",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2734,10 +2818,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::StepFieldShape {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape {
                 field: "choose",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2749,10 +2833,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::UnknownStepPrimitiveField {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepPrimitiveField {
                 primitive: "finish",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2764,10 +2848,10 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::StepFieldShape {
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape {
                 field: "finish",
                 ..
-            })
+            }))
         ));
     }
 
@@ -2778,7 +2862,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::AnchorForbidden { mark }) if mark.available
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::AnchorForbidden { mark }) if mark.available)
         ));
     }
 
@@ -2788,7 +2872,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::TagForbidden { mark }) if mark.available
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::TagForbidden { mark }) if mark.available)
         ));
     }
 
@@ -2798,7 +2882,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::NonStringKey { mark }) if mark.available
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::NonStringKey { mark }) if mark.available)
         ));
     }
 
@@ -2808,7 +2892,7 @@ steps:
             b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::DuplicateKey { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::DuplicateKey { .. }))));
     }
 
     #[test]
@@ -2817,7 +2901,7 @@ steps:
             b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      text: first\n      text: second\n  - id: done\n    finish:\n      result: 0\n",
         );
 
-        assert!(matches!(result, Err(CompileError::DuplicateKey { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::DuplicateKey { .. }))));
     }
 
     #[test]
@@ -2829,7 +2913,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::UnknownStepField { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
                 "legacy alias {alias} must be rejected"
             );
         }
@@ -2843,7 +2927,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::MissingStepPrimitive { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingStepPrimitive { .. }))
         ));
     }
 
@@ -2855,7 +2939,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::MultipleStepPrimitives { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MultipleStepPrimitives { .. }))
         ));
     }
 
@@ -2877,7 +2961,7 @@ steps:
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(CompileError::UnsupportedStepPrimitive { .. })),
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepPrimitive { .. }))),
                 "primitive {primitive} should be recognized but unsupported in Phase 0"
             );
         }
@@ -2891,7 +2975,7 @@ steps:
         };
         let result = YamlCompiler::new(limits).compile(b"name: too_large\n");
 
-        assert!(matches!(result, Err(CompileError::SourceTooLarge { .. })));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::SourceTooLarge { .. }))));
     }
 
     #[test]
@@ -2907,7 +2991,7 @@ steps:
     fn compiler_rejects_empty_yaml_source() {
         let result = YamlCompiler::default().compile(b"   \n\t  ");
 
-        assert!(matches!(result, Err(CompileError::EmptySource)));
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::EmptySource))));
     }
 
     #[test]
@@ -2918,7 +3002,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::DocumentCount { count: 2 })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::DocumentCount { count: 2 }))
         ));
     }
 
@@ -2930,7 +3014,7 @@ steps:
 
         assert!(matches!(
             result,
-            Err(CompileError::MergeKeyForbidden { .. })
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MergeKeyForbidden { .. }))
         ));
     }
 }

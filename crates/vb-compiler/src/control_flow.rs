@@ -1,10 +1,16 @@
-use crate::CompileError;
+use crate::{CompileError, CompileErrors, collect};
 use crate::ast::{StepAst, StepKindAst, WorkflowAst};
 
-pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileError> {
+pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let table = StepTable::new(ast);
-    validate_targets(&table)?;
-    validate_reachability(&table)
+    let mut errors = Vec::new();
+    validate_targets(&table, &mut errors);
+    validate_reachability(&table, &mut errors);
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompileErrors(errors))
+    }
 }
 
 struct StepTable<'a> {
@@ -33,17 +39,16 @@ impl<'a> StepTable<'a> {
     }
 }
 
-fn validate_targets(table: &StepTable<'_>) -> Result<(), CompileError> {
+fn validate_targets(table: &StepTable<'_>, errors: &mut Vec<CompileError>) {
     for (index, step) in table.steps.iter().enumerate() {
         if let StepKindAst::Choose {
             on_true, on_false, ..
         } = step.kind
         {
-            validate_target(table, index, on_true.as_usize())?;
-            validate_target(table, index, on_false.as_usize())?;
+            collect(errors, validate_target(table, index, on_true.as_usize()));
+            collect(errors, validate_target(table, index, on_false.as_usize()));
         }
     }
-    Ok(())
 }
 
 fn validate_target(table: &StepTable<'_>, step: usize, target: usize) -> Result<(), CompileError> {
@@ -57,27 +62,27 @@ fn validate_target(table: &StepTable<'_>, step: usize, target: usize) -> Result<
     Ok(())
 }
 
-fn validate_reachability(table: &StepTable<'_>) -> Result<(), CompileError> {
+fn validate_reachability(table: &StepTable<'_>, errors: &mut Vec<CompileError>) {
     if table.is_empty() {
-        return Ok(());
+        return;
     }
 
     let mut reachable = vec![false; table.len()];
-    mark_reachable(table, &mut reachable)?;
-    reject_unreachable(&reachable)
+    mark_reachable(table, &mut reachable, errors);
+    collect(errors, reject_unreachable(&reachable));
 }
 
-fn mark_reachable(table: &StepTable<'_>, reachable: &mut [bool]) -> Result<(), CompileError> {
+fn mark_reachable(table: &StepTable<'_>, reachable: &mut [bool], errors: &mut Vec<CompileError>) {
     let mut stack = Vec::with_capacity(table.len());
     stack.push(0_usize);
 
     while let Some(index) = stack.pop() {
-        if mark_seen(reachable, index)? {
-            push_successors(table, index, &mut stack);
+        match mark_seen(reachable, index) {
+            Ok(true) => push_successors(table, index, &mut stack),
+            Ok(false) => {}
+            Err(error) => errors.push(error),
         }
     }
-
-    Ok(())
 }
 
 fn mark_seen(reachable: &mut [bool], index: usize) -> Result<bool, CompileError> {

@@ -86,6 +86,21 @@ pub enum CoreError {
     /// Allocation failed at a fallible allocation boundary.
     #[error("allocation failed")]
     AllocationFailed,
+    /// Expression bytecode exceeded its declared or global stack capacity.
+    #[error("expression stack overflow: max {max}")]
+    ExpressionStackOverflow {
+        /// Maximum allowed stack entries.
+        max: u8,
+    },
+    /// Expression bytecode attempted to consume a missing stack value.
+    #[error("expression stack underflow")]
+    ExpressionStackUnderflow,
+    /// Compiled workflow failed an internal consistency check.
+    #[error("invalid compiled workflow: {reason}")]
+    InvalidCompiledWorkflow {
+        /// Stable validation failure reason.
+        reason: &'static str,
+    },
     /// A symbol handle did not resolve in the cold value store.
     #[error("symbol id out of bounds: {symbol:?}")]
     SymbolOutOfBounds {
@@ -143,6 +158,10 @@ impl CoreError {
     pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x0402);
     /// Allocation failed diagnostic code.
     pub const ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0403);
+    /// Expression stack validation diagnostic code.
+    pub const EXPRESSION_STACK_CODE: DiagnosticCode = DiagnosticCode::new(0x0404);
+    /// Invalid compiled workflow diagnostic code.
+    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x0405);
     /// Value arena handle out-of-bounds diagnostic code.
     pub const VALUE_HANDLE_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0411);
 
@@ -164,6 +183,10 @@ impl CoreError {
             Self::QueueFull => Self::QUEUE_FULL_CODE,
             Self::ResourceLimitExceeded { .. } => Self::RESOURCE_LIMIT_EXCEEDED_CODE,
             Self::AllocationFailed => Self::ALLOCATION_FAILED_CODE,
+            Self::ExpressionStackOverflow { .. } | Self::ExpressionStackUnderflow => {
+                Self::EXPRESSION_STACK_CODE
+            }
+            Self::InvalidCompiledWorkflow { .. } => Self::INVALID_COMPILED_WORKFLOW_CODE,
             Self::SymbolOutOfBounds { .. }
             | Self::ListOutOfBounds { .. }
             | Self::ObjectOutOfBounds { .. }

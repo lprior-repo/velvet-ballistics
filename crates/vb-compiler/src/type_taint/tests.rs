@@ -4,19 +4,27 @@ use crate::ast::{
 };
 use crate::expression::{ExpressionLiteral, ParsedExpression};
 use crate::{CompileError, YamlCompiler, YamlLimits};
-use vb_core::{CompiledNodeKind, CompiledWorkflow, SlotValue, StepIdx};
+use vb_core::{CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx};
 
 fn compile_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors
+            .0
+            .into_iter()
+            .next()
+            .ok_or_else(|| "compile returned empty CompileErrors".to_owned()),
     }
 }
 
 fn parse_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors
+            .0
+            .into_iter()
+            .next()
+            .ok_or_else(|| "parse_ast returned empty CompileErrors".to_owned()),
     }
 }
 
@@ -27,14 +35,20 @@ fn compile_parse_errors(source: &[u8]) -> Result<(CompileError, CompileError), S
 fn compile_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => format!("compile unexpectedly succeeded: {workflow:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => match errors.first() {
+            Some(error) => error.to_string(),
+            None => "compile returned empty CompileErrors".to_owned(),
+        },
     }
 }
 
 fn parse_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => format!("parse_ast unexpectedly succeeded: {ast:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => match errors.first() {
+            Some(error) => error.to_string(),
+            None => "parse_ast returned empty CompileErrors".to_owned(),
+        },
     }
 }
 
@@ -58,7 +72,7 @@ fn ensure_pair(source: &[u8], check: fn(CompileError) -> Result<(), String>) -> 
 fn ensure_parse_ok(source: &[u8]) -> Result<(), String> {
     match YamlCompiler::default().parse_ast(source) {
         Ok(_) => Ok(()),
-        Err(error) => Err(format!("parse_ast unexpectedly failed: {error}")),
+        Err(errors) => Err(format!("parse_ast unexpectedly failed: {errors}")),
     }
 }
 
@@ -70,18 +84,18 @@ fn ensure_compile_and_parse_ok(source: &[u8]) -> Result<(), String> {
 fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, String> {
     YamlCompiler::default()
         .compile(source)
-        .map_err(|error| format!("compile unexpectedly failed: {error}"))
+        .map_err(|errors| format!("compile unexpectedly failed: {errors}"))
 }
 
 fn parse_workflow(source: &[u8]) -> Result<WorkflowAst, String> {
     YamlCompiler::default()
         .parse_ast(source)
-        .map_err(|error| format!("parse_ast unexpectedly failed: {error}"))
+        .map_err(|errors| format!("parse_ast unexpectedly failed: {errors}"))
 }
 
 fn ensure_value(
-    actual: SlotValue,
-    expected: SlotValue,
+    actual: ConstValue,
+    expected: ConstValue,
     message: &'static str,
 ) -> Result<(), String> {
     if actual == expected {
@@ -131,7 +145,7 @@ fn choose_expression(source: &[u8]) -> Result<AstExpression, String> {
     }
 }
 
-fn ensure_finish_const_value(source: &[u8], expected: SlotValue) -> Result<(), String> {
+fn ensure_finish_const_value(source: &[u8], expected: ConstValue) -> Result<(), String> {
     let workflow = compile_workflow(source)?;
     let node = workflow
         .node(StepIdx::new(0))
@@ -174,7 +188,7 @@ fn ensure_literal_choose_value(
         .and_then(|actual| {
             ensure_value(
                 actual,
-                SlotValue::Bool(true),
+                ConstValue::Bool(true),
                 "choose literal payload mismatch",
             )
         })
@@ -247,10 +261,13 @@ fn finish_literal_source(value: &str) -> Vec<u8> {
 fn ensure_compile_unsupported_constant(source: &[u8]) -> Result<(), String> {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(CompileError::UnsupportedConstantValue { step: 0 }) => Ok(()),
-        Err(error) => Err(format!(
-            "compile did not reject finish literal with exact UnsupportedConstantValue: {error}"
-        )),
+        Err(errors) => match errors.0.into_iter().next() {
+            Some(CompileError::UnsupportedConstantValue { step: 0 }) => Ok(()),
+            Some(error) => Err(format!(
+                "compile did not reject finish literal with exact UnsupportedConstantValue: {error}"
+            )),
+            None => Err("compile returned empty CompileErrors".to_owned()),
+        },
     }
 }
 
@@ -364,7 +381,7 @@ fn ensure_slot_index_out_of_range(error: CompileError) -> Result<(), String> {
 fn ensure_compiles(source: &[u8]) -> Result<(), String> {
     match YamlCompiler::default().compile(source) {
         Ok(_) => Ok(()),
-        Err(error) => Err(format!("compile unexpectedly failed: {error}")),
+        Err(errors) => Err(format!("compile unexpectedly failed: {errors}")),
     }
 }
 
@@ -544,7 +561,7 @@ fn ensure_forward_finish_slot(error: CompileError) -> Result<(), String> {
     )
 }
 
-fn ensure_supported_scalar_finish_const(value: &str, expected: SlotValue) -> Result<(), String> {
+fn ensure_supported_scalar_finish_const(value: &str, expected: ConstValue) -> Result<(), String> {
     let source = finish_literal_source(value);
 
     ensure_compile_and_parse_ok(&source)?;
@@ -699,7 +716,10 @@ fn parse_ast_rejects_finish_slot_index_out_of_range_exactly() -> Result<(), Stri
 
     match compiler.parse_ast(&source) {
         Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
-        Err(error) => ensure_slot_index_out_of_range(error),
+        Err(errors) => match errors.0.into_iter().next() {
+            Some(error) => ensure_slot_index_out_of_range(error),
+            None => Err("parse_ast returned empty CompileErrors".to_owned()),
+        },
     }
 }
 
@@ -709,7 +729,10 @@ fn validator_rejects_secret_tainted_finish_result() -> Result<(), String> {
 
     match validate_workflow_ast(&ast) {
         Ok(()) => Err("validator unexpectedly accepted secret result".to_owned()),
-        Err(error) => ensure_secret_result(error),
+        Err(errors) => match errors.0.into_iter().next() {
+            Some(error) => ensure_secret_result(error),
+            None => Err("validate_workflow_ast returned empty CompileErrors".to_owned()),
+        },
     }
 }
 
@@ -842,11 +865,11 @@ fn parse_ast_accepts_clean_literal_finish_results() -> Result<(), String> {
 
 #[test]
 fn compile_and_parse_ast_accept_supported_scalar_finish_literals() -> Result<(), String> {
-    ensure_supported_scalar_finish_const("null", SlotValue::Null)?;
-    ensure_supported_scalar_finish_const("true", SlotValue::Bool(true))?;
-    ensure_supported_scalar_finish_const("false", SlotValue::Bool(false))?;
-    ensure_supported_scalar_finish_const("42", SlotValue::I64(42))?;
-    ensure_supported_scalar_finish_const("-7", SlotValue::I64(-7))
+    ensure_supported_scalar_finish_const("null", ConstValue::Null)?;
+    ensure_supported_scalar_finish_const("true", ConstValue::Bool(true))?;
+    ensure_supported_scalar_finish_const("false", ConstValue::Bool(false))?;
+    ensure_supported_scalar_finish_const("42", ConstValue::I64(42))?;
+    ensure_supported_scalar_finish_const("-7", ConstValue::I64(-7))
 }
 
 #[test]

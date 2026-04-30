@@ -96,26 +96,28 @@ impl RunFrame {
             .ok_or(EngineError::SlotOutOfBounds { slot })
     }
 
+    #[inline]
     fn write_slot(
         &mut self,
         slot: SlotIdx,
         value: SlotValue,
         taint: Taint,
     ) -> Result<(), EngineError> {
-        let target = self
+        let index = slot.as_usize();
+        let slot_entry = self
             .slots
-            .get_mut(slot.as_usize())
+            .get_mut(index)
             .ok_or(EngineError::SlotOutOfBounds { slot })?;
-        *target = value;
-
-        let marker = self
+        let taint_entry = self
             .taint
-            .get_mut(slot.as_usize())
+            .get_mut(index)
             .ok_or(EngineError::SlotOutOfBounds { slot })?;
-        *marker = taint;
+        *slot_entry = value;
+        *taint_entry = taint;
         Ok(())
     }
 
+    #[inline]
     fn jump_to(&mut self, next: StepIdx) -> Result<(), EngineError> {
         self.current = next;
         self.steps_executed = self
@@ -135,6 +137,7 @@ pub fn step_once(plan: &CompiledWorkflow, run: &mut RunFrame) -> Result<EngineSi
     execute_node(plan, run, node.kind)
 }
 
+#[inline]
 fn execute_node(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -173,13 +176,12 @@ pub fn run_until_blocked(
         if !matches!(signal, EngineSignal::Continue) {
             return Ok(signal);
         }
-        remaining = remaining
-            .checked_sub(1)
-            .ok_or(EngineError::StepBudgetExhausted)?;
+        remaining = remaining.saturating_sub(1);
     }
     Ok(EngineSignal::BudgetExhausted)
 }
 
+#[inline]
 fn set_const(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -189,13 +191,15 @@ fn set_const(
 ) -> Result<EngineSignal, EngineError> {
     let constant = plan
         .constant(value)
-        .cloned()
+        .copied()
         .ok_or(EngineError::ConstOutOfBounds { constant: value })?;
-    run.write_slot(output, constant, Taint::Clean)?;
+    let slot_value = constant.to_slot_value()?;
+    run.write_slot(output, slot_value, Taint::Clean)?;
     run.jump_to(next)?;
     Ok(EngineSignal::Continue)
 }
 
+#[inline]
 fn copy_slot(
     run: &mut RunFrame,
     output: SlotIdx,
@@ -209,6 +213,7 @@ fn copy_slot(
     Ok(EngineSignal::Continue)
 }
 
+#[inline]
 fn choose_branch(
     run: &mut RunFrame,
     condition: SlotIdx,
@@ -224,10 +229,12 @@ fn choose_branch(
     Ok(EngineSignal::Continue)
 }
 
+#[inline]
 fn finish_run(run: &RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineError> {
     Ok(EngineSignal::Finished(*run.slot(result)?))
 }
 
+#[inline]
 fn finish_const(
     plan: &CompiledWorkflow,
     value: crate::ids::ConstIdx,
@@ -236,19 +243,20 @@ fn finish_const(
         .constant(value)
         .copied()
         .ok_or(EngineError::ConstOutOfBounds { constant: value })?;
-    Ok(EngineSignal::Finished(constant))
+    let slot_value = constant.to_slot_value()?;
+    Ok(EngineSignal::Finished(slot_value))
 }
 
 #[cfg(test)]
 mod tests {
     use super::{EngineSignal, RunFrame, StepBudget, run_until_blocked};
-    use crate::ids::{ConstIdx, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest};
-    use crate::value::SlotValue;
+    use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::value::{ConstValue, SlotValue};
     use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     #[test]
     fn set_chain_finishes_with_slot_value() {
-        let workflow = tiny_workflow(SlotValue::I64(42));
+        let workflow = tiny_workflow(ConstValue::I64(42));
         assert!(workflow.is_ok());
         let Ok(workflow) = workflow else {
             return;
@@ -263,8 +271,7 @@ mod tests {
 
     #[test]
     fn set_chain_finishes_with_object_slot_value() {
-        let value = SlotValue::Object(ObjectId::new(2));
-        let workflow = tiny_workflow(value);
+        let workflow = tiny_workflow(ConstValue::Bool(true));
         assert!(workflow.is_ok());
         let Ok(workflow) = workflow else {
             return;
@@ -273,12 +280,12 @@ mod tests {
 
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX);
 
-        assert_eq!(result, Ok(EngineSignal::Finished(value)));
+        assert_eq!(result, Ok(EngineSignal::Finished(SlotValue::Bool(true))));
     }
 
     #[test]
     fn const_finish_returns_constant_pool_value() -> Result<(), String> {
-        let workflow = const_finish_workflow(SlotValue::Bool(true), ConstIdx::new(0))
+        let workflow = const_finish_workflow(ConstValue::Bool(true), ConstIdx::new(0))
             .map_err(|error| error.to_string())?;
         let mut run = RunFrame::new(RunId::new(9), &workflow);
 
@@ -294,7 +301,7 @@ mod tests {
 
     #[test]
     fn const_finish_rejects_missing_constant() -> Result<(), String> {
-        let result = const_finish_workflow(SlotValue::Null, ConstIdx::new(1));
+        let result = const_finish_workflow(ConstValue::Null, ConstIdx::new(1));
 
         match result {
             Err(crate::WorkflowError::ConstOutOfBounds { constant })
@@ -313,15 +320,16 @@ mod tests {
         assert!(budget.is_err());
     }
 
-    fn tiny_workflow(value: SlotValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
         CompiledWorkflow::try_from_parts(tiny_workflow_parts(value))
     }
 
-    fn tiny_workflow_parts(value: SlotValue) -> WorkflowParts {
+    fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
         WorkflowParts {
             name: Box::<str>::from("tiny"),
             digest: WorkflowDigest::from_bytes([1; 32]),
             nodes: tiny_workflow_nodes(),
+            expressions: Box::new([]),
             constants: vec![value].into_boxed_slice(),
             slot_count: 1,
             entry: StepIdx::new(0),
@@ -334,6 +342,7 @@ mod tests {
 
     fn tiny_set_const_node() -> CompiledNode {
         CompiledNode {
+            id: StepIdx::new(0),
             kind: CompiledNodeKind::SetConst {
                 output: SlotIdx::new(0),
                 value: ConstIdx::new(0),
@@ -344,6 +353,7 @@ mod tests {
 
     fn tiny_finish_node() -> CompiledNode {
         CompiledNode {
+            id: StepIdx::new(1),
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -351,17 +361,19 @@ mod tests {
     }
 
     fn const_finish_workflow(
-        value: SlotValue,
+        value: ConstValue,
         constant: ConstIdx,
     ) -> Result<CompiledWorkflow, crate::WorkflowError> {
         let digest = WorkflowDigest::from_bytes([2; 32]);
         let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
             kind: CompiledNodeKind::FinishConst { value: constant },
         }];
         let parts = WorkflowParts {
             name: Box::<str>::from("const_finish"),
             digest,
             nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
             constants: vec![value].into_boxed_slice(),
             slot_count: 0,
             entry: StepIdx::new(0),

@@ -23,8 +23,9 @@ pub use ids::{
     SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use span::{Located, SourceMap, Span, Spanned};
-pub use value::{FiniteF64, SlotValue, Taint};
+pub use value::{ConstValue, FiniteF64, SlotValue, Taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowError,
+    WorkflowParts, check_expr_stack_bound,
 };

@@ -1,9 +1,9 @@
-use crate::CompileError;
+use crate::{CompileError, CompileErrors};
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst};
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use std::collections::HashMap;
 
-pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileError> {
+pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let mut facts = Facts::new(ast);
     validate_steps(ast, &mut facts)
 }
@@ -159,15 +159,28 @@ fn secret_facts<T>(entries: &[AstMapEntry<T>]) -> HashMap<&str, ValueFact> {
     facts
 }
 
-fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), CompileError> {
+fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), CompileErrors> {
+    let mut errors = Vec::new();
     for (index, step) in ast.steps.iter().enumerate() {
         match &step.kind {
             StepKindAst::Save { fields } => facts.write_slot(index, save_fact(fields, facts)),
-            StepKindAst::Choose { condition, .. } => validate_condition(condition, facts)?,
-            StepKindAst::Finish { result } => validate_public_result(result, facts)?,
+            StepKindAst::Choose { condition, .. } => {
+                if let Err(e) = validate_condition(condition, facts) {
+                    errors.push(e);
+                }
+            }
+            StepKindAst::Finish { result } => {
+                if let Err(e) = validate_public_result(result, facts) {
+                    errors.push(e);
+                }
+            }
         }
     }
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompileErrors(errors))
+    }
 }
 
 fn save_fact(fields: &[AstMapEntry<AstValue>], facts: &Facts<'_>) -> ValueFact {

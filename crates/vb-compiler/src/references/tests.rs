@@ -3,7 +3,9 @@ use crate::{CompileError, YamlCompiler};
 fn parse_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors.0.into_iter().next().ok_or_else(|| {
+            "parse_ast failed with no errors".to_string()
+        }),
     }
 }
 
@@ -11,7 +13,7 @@ fn parse_ok(source: &[u8]) -> Result<(), String> {
     YamlCompiler::default()
         .parse_ast(source)
         .map(|_| ())
-        .map_err(|error| format!("parse_ast failed: {error:?}"))
+        .map_err(|errors| format!("parse_ast failed: {errors:?}"))
 }
 
 fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
@@ -25,21 +27,29 @@ fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
 fn compile_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => format!("compile unexpectedly succeeded: {workflow:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => match errors.first() {
+            Some(error) => error.to_string(),
+            None => "compile failed with no errors".to_string(),
+        },
     }
 }
 
 fn parse_error_text(source: &[u8]) -> String {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => format!("parse_ast unexpectedly succeeded: {ast:?}"),
-        Err(error) => error.to_string(),
+        Err(errors) => match errors.first() {
+            Some(error) => error.to_string(),
+            None => "parse_ast failed with no errors".to_string(),
+        },
     }
 }
 
 fn compile_error(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => errors.0.into_iter().next().ok_or_else(|| {
+            "compile failed with no errors".to_string()
+        }),
     }
 }
 

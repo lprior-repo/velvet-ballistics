@@ -1,15 +1,21 @@
-use crate::CompileError;
+use crate::{CompileError, CompileErrors};
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use std::collections::HashSet;
 
-pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileError> {
+pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let tables = ReferenceTables::new(ast);
-    validate_value_entries(&ast.inputs, &tables)?;
-    validate_value_entries(&ast.vars, &tables)?;
-    validate_expression_entries(&ast.result, &tables)?;
-    validate_values(&ast.examples, &tables)?;
-    validate_steps(&ast.steps, &tables)
+    let mut errors = Vec::new();
+    validate_value_entries(&ast.inputs, &tables, &mut errors);
+    validate_value_entries(&ast.vars, &tables, &mut errors);
+    validate_expression_entries(&ast.result, &tables, &mut errors);
+    validate_values(&ast.examples, &tables, &mut errors);
+    validate_steps(&ast.steps, &tables, &mut errors);
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompileErrors(errors))
+    }
 }
 
 struct ReferenceTables<'a> {
@@ -49,92 +55,105 @@ fn step_names(steps: &[StepAst]) -> HashSet<&str> {
 fn validate_value_entries(
     entries: &[AstMapEntry<AstValue>],
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     for entry in entries {
-        validate_value(&entry.value, tables)?;
+        validate_value(&entry.value, tables, errors);
     }
-    Ok(())
 }
 
 fn validate_expression_entries(
     entries: &[AstMapEntry<AstExpression>],
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     for entry in entries {
-        validate_expression(&entry.value, tables)?;
+        validate_expression(&entry.value, tables, errors);
     }
-    Ok(())
 }
 
-fn validate_values(values: &[AstValue], tables: &ReferenceTables<'_>) -> Result<(), CompileError> {
+fn validate_values(values: &[AstValue], tables: &ReferenceTables<'_>, errors: &mut Vec<CompileError>) {
     for value in values {
-        validate_value(value, tables)?;
+        validate_value(value, tables, errors);
     }
-    Ok(())
 }
 
-fn validate_steps(steps: &[StepAst], tables: &ReferenceTables<'_>) -> Result<(), CompileError> {
+fn validate_steps(steps: &[StepAst], tables: &ReferenceTables<'_>, errors: &mut Vec<CompileError>) {
     for step in steps {
-        validate_step_kind(&step.kind, tables)?;
+        validate_step_kind(&step.kind, tables, errors);
     }
-    Ok(())
 }
 
 fn validate_step_kind(
     kind: &StepKindAst,
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     match kind {
-        StepKindAst::Save { fields } => validate_value_entries(fields, tables),
-        StepKindAst::Choose { condition, .. } => validate_expression(condition, tables),
-        StepKindAst::Finish { result } => validate_expression(result, tables),
+        StepKindAst::Save { fields } => validate_value_entries(fields, tables, errors),
+        StepKindAst::Choose { condition, .. } => validate_expression(condition, tables, errors),
+        StepKindAst::Finish { result } => validate_expression(result, tables, errors),
     }
 }
 
 fn validate_expression(
     expression: &AstExpression,
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     match expression {
-        AstExpression::Slot(_) => Ok(()),
-        AstExpression::Reference(reference) => validate_reference(reference, tables),
-        AstExpression::Parsed(expression) => validate_parsed_expression(expression, tables),
-        AstExpression::Literal(value) => validate_value(value, tables),
+        AstExpression::Slot(_) => {}
+        AstExpression::Reference(reference) => {
+            if let Err(e) = validate_reference(reference, tables) {
+                errors.push(e);
+            }
+        }
+        AstExpression::Parsed(expression) => validate_parsed_expression(expression, tables, errors),
+        AstExpression::Literal(value) => validate_value(value, tables, errors),
     }
 }
 
 fn validate_parsed_expression(
     expression: &ParsedExpression,
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     match expression {
-        ParsedExpression::Reference(reference) => validate_reference(reference, tables),
-        ParsedExpression::Unary { expr, .. } => validate_parsed_expression(expr, tables),
-        ParsedExpression::Binary { left, right, .. } => {
-            validate_parsed_expression(left, tables)?;
-            validate_parsed_expression(right, tables)
+        ParsedExpression::Reference(reference) => {
+            if let Err(e) = validate_reference(reference, tables) {
+                errors.push(e);
+            }
         }
-        ParsedExpression::HelperCall { args, .. } => validate_parsed_args(args, tables),
-        ParsedExpression::Literal(_) => Ok(()),
+        ParsedExpression::Unary { expr, .. } => validate_parsed_expression(expr, tables, errors),
+        ParsedExpression::Binary { left, right, .. } => {
+            validate_parsed_expression(left, tables, errors);
+            validate_parsed_expression(right, tables, errors);
+        }
+        ParsedExpression::HelperCall { args, .. } => validate_parsed_args(args, tables, errors),
+        ParsedExpression::Literal(_) => {}
     }
 }
 
 fn validate_parsed_args(
     args: &[ParsedExpression],
     tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
+    errors: &mut Vec<CompileError>,
+) {
     for arg in args {
-        validate_parsed_expression(arg, tables)?;
+        validate_parsed_expression(arg, tables, errors);
     }
-    Ok(())
 }
 
-fn validate_value(value: &AstValue, tables: &ReferenceTables<'_>) -> Result<(), CompileError> {
+fn validate_value(value: &AstValue, tables: &ReferenceTables<'_>, errors: &mut Vec<CompileError>) {
     match value {
-        AstValue::Reference(reference) => validate_reference(reference, tables),
-        AstValue::Sequence(values) => validate_values(values, tables),
-        AstValue::Mapping(entries) => validate_value_entries(entries, tables),
-        AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => Ok(()),
+        AstValue::Reference(reference) => {
+            if let Err(e) = validate_reference(reference, tables) {
+                errors.push(e);
+            }
+        }
+        AstValue::Sequence(values) => validate_values(values, tables, errors),
+        AstValue::Mapping(entries) => validate_value_entries(entries, tables, errors),
+        AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
     }
 }
 

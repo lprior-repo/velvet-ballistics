@@ -32,20 +32,26 @@ fn ensure_mark(
 fn parse(source: &[u8]) -> Result<WorkflowAst, String> {
     YamlCompiler::default()
         .parse_ast(source)
-        .map_err(|error| format!("parse_ast failed: {error:?}"))
+        .map_err(|errors| format!("parse_ast failed: {errors:?}"))
 }
 
 fn parse_err(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().parse_ast(source) {
         Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => match errors.first() {
+            Some(error) => Ok(error.clone()),
+            None => Err("CompileErrors was empty".to_string()),
+        },
     }
 }
 
 fn compile_err(source: &[u8]) -> Result<CompileError, String> {
     match YamlCompiler::default().compile(source) {
         Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(error) => Ok(error),
+        Err(errors) => match errors.first() {
+            Some(error) => Ok(error.clone()),
+            None => Err("CompileErrors was empty".to_string()),
+        },
     }
 }
 

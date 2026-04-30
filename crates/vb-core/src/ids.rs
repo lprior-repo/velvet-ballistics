@@ -65,7 +65,7 @@ macro_rules! checked_index {
     };
 }
 
-numeric_id!(WorkflowId, u32, get);
+numeric_id!(WorkflowId, u32, as_u32);
 numeric_id!(StepIdx, u16, get);
 numeric_id!(SlotIdx, u16, get);
 numeric_id!(ExprIdx, u16, get);
