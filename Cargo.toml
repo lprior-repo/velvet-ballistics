@@ -1,13 +1,18 @@
 [workspace]
 members = [
-    "crates/vb-compiler",
-    "crates/vb-core",
-    "crates/vb-ipc",
-    "crates/vb-storage",
-    "crates/velvet-ballastics",
+    "crates/vb_core",
+    "crates/vb_yaml",
+    "crates/vb_validate",
+    "crates/vb_expr",
+    "crates/vb_compile",
+    "crates/vb_storage",
+    "crates/vb_runtime",
+    "crates/vb_ipc",
+    "crates/vb_codegen",
+    "crates/velvet_ballastics",
     "fuzz",
 ]
-resolver = "3"
+resolver = "2"
 
 # Root package for workspace-level integration tests
 [package]
@@ -25,41 +30,38 @@ toml = "0.8"
 serde_yaml = "0.9"
 criterion = "0.5"
 
-[[bench]]
-name = "velvet_ballastics"
-harness = false
-
-[profile.bench]
-inherits = "release"
-debug = true
-lto = "thin"
-codegen-units = 1
-
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 version = "0.1.0"
 
 [workspace.dependencies]
-arrayvec = "0.7.6"
-blake3 = "1.8.2"
-bytes = { version = "1.10.1", features = ["serde"] }
-crossbeam-channel = "0.5.15"
-fjall = { version = "3.1.4", default-features = false, features = ["lz4"] }
-postcard = { version = "1.1.1", features = ["alloc"] }
+arrayvec = "0.7"
+blake3 = "1"
+bytes = { version = "1", features = ["serde"] }
+crc32c = "0.6"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+criterion = "0.8"
+fjall = { version = "3.1", default-features = false, features = ["lz4"] }
+iai-callgrind = "0.16"
+indoc = "2"
+mio = "1"
+postcard = { version = "1", features = ["alloc"] }
+proptest = "1"
+rtrb = "0.3"
 saphyr = { version = "0.0.6", default-features = false }
 saphyr-parser = "0.0.6"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde-saphyr = { version = "0.0.25", default-features = false, features = ["deserialize"] }
-thiserror = "2.0.17"
-tempfile = "3.23.0"
+thiserror = "2"
+tempfile = "3"
 
 [workspace.lints.rust]
-rust_2018_idioms = { level = "deny", priority = -1 }
 unsafe_code = "forbid"
-unreachable_pub = "deny"
 unused_must_use = "deny"
-missing_docs = "warn"
+unreachable_pub = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }
@@ -90,15 +92,14 @@ lto = "thin"
 codegen-units = 1
 strip = "symbols"
 
-[profile.hardened]
-inherits = "release"
-debug = true
-debug-assertions = true
-overflow-checks = true
-strip = false
-
 [profile.maxperf]
 inherits = "release"
 lto = "fat"
 codegen-units = 1
 debug = false
+
+[profile.bench]
+inherits = "release"
+debug = true
+lto = "thin"
+codegen-units = 1
