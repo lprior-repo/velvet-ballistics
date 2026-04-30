@@ -1,5 +1,6 @@
 use crate::CompileError;
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, WorkflowAst};
+use crate::expression::ParsedExpression;
 use std::collections::HashSet;
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileError> {
@@ -97,8 +98,35 @@ fn validate_expression(
     match expression {
         AstExpression::Slot(_) => Ok(()),
         AstExpression::Reference(reference) => validate_reference(reference, tables),
+        AstExpression::Parsed(expression) => validate_parsed_expression(expression, tables),
         AstExpression::Literal(value) => validate_value(value, tables),
     }
+}
+
+fn validate_parsed_expression(
+    expression: &ParsedExpression,
+    tables: &ReferenceTables<'_>,
+) -> Result<(), CompileError> {
+    match expression {
+        ParsedExpression::Reference(reference) => validate_reference(reference, tables),
+        ParsedExpression::Unary { expr, .. } => validate_parsed_expression(expr, tables),
+        ParsedExpression::Binary { left, right, .. } => {
+            validate_parsed_expression(left, tables)?;
+            validate_parsed_expression(right, tables)
+        }
+        ParsedExpression::HelperCall { args, .. } => validate_parsed_args(args, tables),
+        ParsedExpression::Literal(_) => Ok(()),
+    }
+}
+
+fn validate_parsed_args(
+    args: &[ParsedExpression],
+    tables: &ReferenceTables<'_>,
+) -> Result<(), CompileError> {
+    for arg in args {
+        validate_parsed_expression(arg, tables)?;
+    }
+    Ok(())
 }
 
 fn validate_value(value: &AstValue, tables: &ReferenceTables<'_>) -> Result<(), CompileError> {
@@ -140,7 +168,7 @@ fn validate_rooted_reference(
     match root {
         "input" => validate_declared(reference, tail, "input", &tables.inputs),
         "var" | "vars" => validate_declared(reference, tail, "var", &tables.vars),
-        "secret" | "secrets" => validate_declared(reference, tail, "secret", &tables.secrets),
+        "secrets" => validate_declared(reference, tail, "secrets", &tables.secrets),
         "runtime" => Err(illegal_reference(reference)),
         "step" | "steps" => validate_step_reference(reference, tail, tables),
         _ => Err(CompileError::UnknownReferenceRoot {

@@ -5,6 +5,7 @@
 
 pub mod ast;
 mod control_flow;
+pub mod expression;
 mod references;
 mod schema;
 pub mod strict_yaml;
@@ -555,6 +556,62 @@ pub enum CompileError {
     SecretTaintLeak {
         /// Field being validated.
         field: &'static str,
+    },
+    /// Expression lexer found a character outside the v1 expression grammar.
+    #[error("expression lex failed at byte {index} in {expression}: unexpected {found:?}")]
+    ExpressionUnexpectedChar {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Byte index in the expression string.
+        index: usize,
+        /// Character that could not be tokenized.
+        found: char,
+    },
+    /// Expression lexer reached EOF inside a string literal.
+    #[error("expression string is unterminated at byte {index} in {expression}")]
+    ExpressionUnterminatedString {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Opening quote byte index.
+        index: usize,
+    },
+    /// Expression integer literal exceeded i64.
+    #[error("expression integer is outside i64 range at byte {index} in {expression}")]
+    ExpressionIntegerOutOfRange {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Literal start byte index.
+        index: usize,
+    },
+    /// Expression exceeded a compiler-side hard bound.
+    #[error("expression exceeds {limit} limit {max} in {expression}")]
+    ExpressionLimitExceeded {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Limit category.
+        limit: &'static str,
+        /// Maximum allowed value.
+        max: usize,
+    },
+    /// Expression parser found the wrong token shape.
+    #[error("expression parse failed at byte {index} in {expression}: expected {expected}")]
+    ExpressionUnexpectedToken {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Byte index in the expression string.
+        index: usize,
+        /// Expected syntactic element.
+        expected: &'static str,
+    },
+    /// Expression parser does not accept bare identifiers beyond literals.
+    #[error("unknown expression identifier at byte {index} in {expression}: {identifier}")]
+    ExpressionUnknownIdentifier {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Byte index in the expression string.
+        index: usize,
+        /// Unknown identifier.
+        identifier: Box<str>,
     },
 }
 

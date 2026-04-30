@@ -2,6 +2,7 @@ use super::validate_workflow_ast;
 use crate::ast::{
     AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, TriggerAst, WorkflowAst,
 };
+use crate::expression::{ExpressionLiteral, ParsedExpression};
 use crate::{CompileError, YamlCompiler, YamlLimits};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, SlotValue, StepIdx};
 
@@ -100,6 +101,16 @@ fn ensure_expression(
     } else {
         Err(format!("{message}: expected {expected:?}, got {actual:?}"))
     }
+}
+
+fn parsed_reference_expression(reference: &'static str) -> AstExpression {
+    AstExpression::Parsed(Box::new(ParsedExpression::Reference(reference.into())))
+}
+
+fn parsed_text_expression(value: &'static str) -> AstExpression {
+    AstExpression::Parsed(Box::new(ParsedExpression::Literal(
+        ExpressionLiteral::Text(value.into()),
+    )))
 }
 
 fn finish_expression(source: &[u8]) -> Result<AstExpression, String> {
@@ -410,7 +421,7 @@ fn secret_tainted_finish_step() -> StepAst {
         id: "done".into(),
         name: None,
         kind: StepKindAst::Finish {
-            result: AstExpression::Reference("$secret.token".into()),
+            result: AstExpression::Reference("$secrets.token".into()),
         },
         mark: None,
     }
@@ -427,7 +438,7 @@ steps:
   - id: capture
     save:
       value:
-        - $secret.token
+        - $secrets.token
   - id: done
     finish:
       result: 0
@@ -445,7 +456,7 @@ steps:
   - id: capture
     save:
       value:
-        token: $secret.token
+        token: $secrets.token
   - id: done
     finish:
       result: 0
@@ -713,7 +724,7 @@ secrets:
 steps:
   - id: done
     finish:
-      result: $secret.token
+      result: $secrets.token
 "#;
 
     ensure_secret_result_pair(source)
@@ -730,7 +741,7 @@ secrets:
 steps:
   - id: capture
     save:
-      value: $secret.token
+      value: $secrets.token
   - id: done
     finish:
       result: 0
@@ -749,19 +760,19 @@ fn compile_and_parse_ast_reject_nested_secret_slot_finish_results() -> Result<()
 fn parse_ast_accepts_clean_public_finish_references_exactly() -> Result<(), String> {
     ensure_expression(
         finish_expression(clean_input_finish_source())?,
-        AstExpression::Reference("$input.user".into()),
+        parsed_reference_expression("$input.user"),
         "input finish reference was not retained exactly",
     )?;
     ensure_expression(
         finish_expression(clean_vars_finish_source())?,
-        AstExpression::Reference("$vars.label".into()),
+        parsed_reference_expression("$vars.label"),
         "vars finish reference was not retained exactly",
     )
 }
 
 #[test]
 fn compile_and_parse_ast_reject_non_boolean_literal_choose_conditions() -> Result<(), String> {
-    ensure_choose_rejects_type(&literal_choose_condition_source(" public"), "text")?;
+    ensure_choose_rejects_type(&literal_choose_condition_source(" '\"public\"'"), "text")?;
     ensure_choose_rejects_type(&literal_choose_condition_source(" null"), "null")?;
     ensure_choose_rejects_type(&literal_choose_condition_source("\n        - true"), "list")?;
     ensure_choose_rejects_type(
@@ -795,7 +806,7 @@ steps:
   - id: done
     finish:
       result:
-        token: $secret.token
+        token: $secrets.token
 "#;
 
     ensure_secret_result_pair(source)
@@ -809,8 +820,8 @@ fn compile_and_parse_ast_reject_uninitialized_forward_finish_slot() -> Result<()
 #[test]
 fn parse_ast_accepts_clean_literal_finish_results() -> Result<(), String> {
     ensure_expression(
-        finish_expression(&finish_result_fragment_source(" public"))?,
-        AstExpression::Literal(AstValue::Text("public".into())),
+        finish_expression(&finish_result_fragment_source(" '\"public\"'"))?,
+        parsed_text_expression("public"),
         "text finish literal was not retained exactly",
     )?;
     ensure_expression(
@@ -847,7 +858,7 @@ fn finish_result_zero_keeps_current_slot_zero_semantics() -> Result<(), String> 
 
 #[test]
 fn compile_rejects_unsupported_finish_literals_with_exact_error() -> Result<(), String> {
-    let text_source = finish_literal_source("public");
+    let text_source = finish_literal_source("'\"public\"'");
     let list_source = finish_literal_source("[public]");
     let object_source = finish_literal_source("{ value: public }");
 

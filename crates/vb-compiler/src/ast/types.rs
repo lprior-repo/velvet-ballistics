@@ -1,4 +1,5 @@
 use crate::SourceMark;
+use crate::expression::ParsedExpression;
 use vb_core::{SlotIdx, StepIdx};
 
 /// A parsed workflow document before numeric IR lowering.
@@ -137,6 +138,8 @@ pub enum AstExpression {
     Slot(SlotIdx),
     /// Source reference string beginning with `$`.
     Reference(Box<str>),
+    /// Parsed v1 source expression retained for later bytecode lowering.
+    Parsed(Box<ParsedExpression>),
     /// Literal expression.
     Literal(AstValue),
 }

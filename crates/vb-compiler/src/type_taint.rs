@@ -1,5 +1,6 @@
 use crate::CompileError;
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst};
+use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use std::collections::HashMap;
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileError> {
@@ -218,7 +219,165 @@ fn expression_fact(
     match expression {
         AstExpression::Slot(slot) => facts.read_slot(slot.as_usize(), field),
         AstExpression::Reference(reference) => Ok(reference_fact(reference, Some(facts))),
+        AstExpression::Parsed(expression) => parsed_expression_fact(expression, facts, field),
         AstExpression::Literal(value) => Ok(value_fact(value, Some(facts))),
+    }
+}
+
+fn parsed_expression_fact(
+    expression: &ParsedExpression,
+    facts: &Facts<'_>,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    match expression {
+        ParsedExpression::Literal(value) => Ok(expression_literal_fact(value)),
+        ParsedExpression::Reference(reference) => Ok(reference_fact(reference, Some(facts))),
+        ParsedExpression::Unary { op, expr } => unary_fact(*op, expr, facts, field),
+        ParsedExpression::Binary { op, left, right } => binary_fact(*op, left, right, facts, field),
+        ParsedExpression::HelperCall { name, args } => helper_fact(*name, args, facts, field),
+    }
+}
+
+fn expression_literal_fact(value: &ExpressionLiteral) -> ValueFact {
+    match value {
+        ExpressionLiteral::Null => ValueFact::clean(ValueType::Null),
+        ExpressionLiteral::Bool(_) => ValueFact::clean(ValueType::Boolean),
+        ExpressionLiteral::I64(_) => ValueFact::clean(ValueType::Number),
+        ExpressionLiteral::Text(_) => ValueFact::clean(ValueType::Text),
+    }
+}
+
+fn unary_fact(
+    op: UnaryOp,
+    expr: &ParsedExpression,
+    facts: &Facts<'_>,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    let inner = parsed_expression_fact(expr, facts, field)?;
+    match op {
+        UnaryOp::Not => typed_unary_fact(inner, ValueType::Boolean, field),
+        UnaryOp::Neg => typed_unary_fact(inner, ValueType::Number, field),
+    }
+}
+
+fn typed_unary_fact(
+    fact: ValueFact,
+    expected: ValueType,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    if matches_type(fact.value_type, expected) {
+        Ok(ValueFact {
+            value_type: expected,
+            taint: fact.taint,
+        })
+    } else {
+        Err(type_mismatch(field, expected, fact.value_type))
+    }
+}
+
+fn binary_fact(
+    op: BinaryOp,
+    left: &ParsedExpression,
+    right: &ParsedExpression,
+    facts: &Facts<'_>,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    let left = parsed_expression_fact(left, facts, field)?;
+    let right = parsed_expression_fact(right, facts, field)?;
+    match op {
+        BinaryOp::Or | BinaryOp::And => typed_binary_fact(left, right, ValueType::Boolean, field),
+        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+            typed_binary_fact(left, right, ValueType::Number, field)
+        }
+        _ => Ok(ValueFact {
+            value_type: ValueType::Boolean,
+            taint: left.merge(right).taint,
+        }),
+    }
+}
+
+fn helper_fact(
+    name: ExpressionHelper,
+    args: &[ParsedExpression],
+    facts: &Facts<'_>,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    let taint = helper_taint(args, facts, field)?;
+    Ok(ValueFact {
+        value_type: helper_type(name),
+        taint,
+    })
+}
+
+fn helper_taint(
+    args: &[ParsedExpression],
+    facts: &Facts<'_>,
+    field: &'static str,
+) -> Result<Taint, CompileError> {
+    let mut taint = Taint::Clean;
+    for arg in args {
+        if parsed_expression_fact(arg, facts, field)?.taint == Taint::Secret {
+            taint = Taint::Secret;
+        }
+    }
+    Ok(taint)
+}
+
+fn helper_type(name: ExpressionHelper) -> ValueType {
+    match name {
+        ExpressionHelper::Contains
+        | ExpressionHelper::StartsWith
+        | ExpressionHelper::EndsWith
+        | ExpressionHelper::Has
+        | ExpressionHelper::Exists
+        | ExpressionHelper::Empty => ValueType::Boolean,
+        ExpressionHelper::Length | ExpressionHelper::Sum | ExpressionHelper::Count => {
+            ValueType::Number
+        }
+        ExpressionHelper::Append | ExpressionHelper::AppendIf | ExpressionHelper::Unique => {
+            ValueType::List
+        }
+        ExpressionHelper::Merge => ValueType::Object,
+    }
+}
+
+fn typed_binary_fact(
+    left: ValueFact,
+    right: ValueFact,
+    expected: ValueType,
+    field: &'static str,
+) -> Result<ValueFact, CompileError> {
+    if matches_type(left.value_type, expected) && matches_type(right.value_type, expected) {
+        Ok(ValueFact {
+            value_type: expected,
+            taint: left.merge(right).taint,
+        })
+    } else {
+        Err(type_mismatch(
+            field,
+            expected,
+            first_mismatch(left, right, expected),
+        ))
+    }
+}
+
+fn first_mismatch(left: ValueFact, right: ValueFact, expected: ValueType) -> ValueType {
+    if matches_type(left.value_type, expected) {
+        right.value_type
+    } else {
+        left.value_type
+    }
+}
+
+fn matches_type(actual: ValueType, expected: ValueType) -> bool {
+    matches!(actual, ValueType::Any) || actual == expected
+}
+
+fn type_mismatch(field: &'static str, expected: ValueType, found: ValueType) -> CompileError {
+    CompileError::TypeMismatch {
+        field,
+        expected: expected.as_str(),
+        found: found.as_str(),
     }
 }
 
@@ -267,7 +426,7 @@ fn reference_fact(reference: &str, facts: Option<&Facts<'_>>) -> ValueFact {
     let table = match root {
         "input" => Some(&facts.inputs),
         "var" | "vars" => Some(&facts.vars),
-        "secret" | "secrets" => Some(&facts.secrets),
+        "secrets" => Some(&facts.secrets),
         _ => None,
     };
     match table.and_then(|values| values.get(name)) {

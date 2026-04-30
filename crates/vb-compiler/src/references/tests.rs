@@ -45,8 +45,19 @@ fn compile_error(source: &[u8]) -> Result<CompileError, String> {
 
 #[test]
 fn parse_ast_rejects_unknown_input_reference_after_schema() -> Result<(), String> {
-    let error = parse_error(
-        br#"version: velvet-ballastics/v1
+    let error = parse_error(unknown_input_reference_source())?;
+
+    ensure(
+        matches!(
+            error,
+            CompileError::UnknownReferenceName { kind: "input", .. }
+        ),
+        "unknown input reference did not use typed diagnostic",
+    )
+}
+
+fn unknown_input_reference_source() -> &'static [u8] {
+    br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -62,22 +73,16 @@ steps:
   - id: done
     finish:
       result: 0
-"#,
-    )?;
-
-    ensure(
-        matches!(
-            error,
-            CompileError::UnknownReferenceName { kind: "input", .. }
-        ),
-        "unknown input reference did not use typed diagnostic",
-    )
+"#
 }
 
 #[test]
 fn parse_ast_accepts_declared_cold_references() -> Result<(), String> {
-    parse_ok(
-        br#"version: velvet-ballastics/v1
+    parse_ok(declared_cold_references_source())
+}
+
+fn declared_cold_references_source() -> &'static [u8] {
+    br#"version: velvet-ballastics/v1
 name: ref_case
 when:
   manual: {}
@@ -91,7 +96,7 @@ examples:
   - name: fixture
     input_ref: $input.user
     var_ref: $vars.retries
-    secret_ref: $secret.token
+    secret_ref: $secrets.token
 steps:
   - id: build_result
     save:
@@ -99,8 +104,7 @@ steps:
   - id: done
     finish:
       result: 0
-"#,
-    )
+"#
 }
 
 #[test]

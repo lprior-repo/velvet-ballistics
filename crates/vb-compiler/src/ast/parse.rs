@@ -2,6 +2,7 @@ use super::marks::AstMarks;
 use super::types::{
     AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, TriggerAst, WorkflowAst,
 };
+use crate::expression;
 use crate::{CompileError, SourceMark};
 use saphyr::Yaml;
 use vb_core::{SlotIdx, StepIdx};
@@ -379,9 +380,13 @@ fn parse_expression(node: &Yaml<'_>) -> Result<AstExpression, CompileError> {
         return parse_slot_expr(value);
     }
     Ok(match node.as_str() {
-        Some(value) if value.starts_with('$') => AstExpression::Reference(value.into()),
+        Some(value) => parse_source_expression(value)?,
         _ => AstExpression::Literal(parse_value(node)?),
     })
+}
+
+fn parse_source_expression(value: &str) -> Result<AstExpression, CompileError> {
+    expression::parse_expression(value).map(|parsed| AstExpression::Parsed(Box::new(parsed)))
 }
 
 fn parse_slot_expr(value: i64) -> Result<AstExpression, CompileError> {
