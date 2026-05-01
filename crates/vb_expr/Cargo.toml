@@ -6,6 +6,7 @@ version.workspace = true
 
 [dependencies]
 arrayvec.workspace = true
+logos.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 

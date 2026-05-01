@@ -185,8 +185,11 @@ Strict nightly governance:
 | `postcard` | Compact binary records | Required for journal, snapshots, IPC payloads, compiled artifacts. |
 | `fjall` | Embedded LSM persistence | Required storage engine. |
 | `thiserror` | Typed errors | Public errors must stay typed and stable. |
+| `byteorder` | Little-endian binary boundary helpers | Allowed for IPC/header/record field encode/decode only. Fjall keys remain explicit big-endian byte layouts for lexicographic ordering. |
 | `bytes` | Payload and blob sharing | Handles only in hot runtime state. |
 | `arrayvec` | Fixed-capacity expression stacks and bounded scratch buffers | Hot path allowed when capacity is explicit. |
+| `logos` | Expression lexer state machine | Compile-time/cold-path lexer only. Must preserve exact spans, diagnostics, token limits, and fuzz coverage. No runtime execution path dependency. |
+| `indexmap` | Deterministic object field side indexes | Cold `ValueStore` object lookup side table only. `SlotValue` remains handle-only; insertion order and duplicate-key behavior must remain stable. |
 | `crossbeam-queue::ArrayQueue` | Bounded MPMC shard queues | No unbounded channel replacement. |
 | `rtrb` | SPSC ring buffers and trace/action completion paths | Capacity required at construction. |
 | `mio` | Low-level IPC event loop | No HTTP server, no JSON routing. |
@@ -204,6 +207,8 @@ Strict nightly governance:
 `crossbeam-queue::ArrayQueue` is required for bounded MPMC queues because capacity is fixed at construction and admission can fail without allocating. `rtrb` is required for SPSC trace/action rings where single-producer/single-consumer ownership gives predictable bounded behavior.
 
 `serde` is allowed only for deriving binary/data schema serialization used by Postcard or cold diagnostics. `serde_json` is excluded from v1 runtime core.
+
+`ordered-float` is not approved as the v1 `FiniteF64` implementation. `ordered_float::NotNan<f64>` rejects NaN but permits positive and negative infinity, while this language requires finite-only scalar values. Any future replacement must prove release-mode rejection of NaN and infinities, unchanged serialized representation, no panic/unwrap path, and no larger transitive footprint than the custom newtype.
 
 ---
 
@@ -1855,8 +1860,11 @@ version = "0.1.0"
 thiserror = "2"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 postcard = { version = "1", default-features = false, features = ["alloc"] }
+byteorder = "1.5"
 bytes = "1"
 arrayvec = "0.7"
+indexmap = "2"
+logos = "0.15"
 saphyr-parser = "0.0.6"
 fjall = "3.1"
 crossbeam-queue = "0.3"
@@ -2324,6 +2332,30 @@ release-gates
 ```
 
 Every phase requires a parent bead. Every function cluster requires a child bead. The benchmark suite requires dedicated beads. Each fuzz target requires its own bead. Every P0 blocker requires a dedicated bead.
+
+Dependency-scoping beads are mandatory when a library is added to reduce code footprint. They must record the removed handwritten code, semantic parity tests, hot-path allocation impact, and rollback decision. Current required dependency-scope beads:
+
+```text
+byteorder-ipc-little-endian-helpers
+logos-expression-lexer-parity
+indexmap-valuestore-object-field-index
+ordered-float-finitef64-rejection-record
+```
+
+Current black-hat/test-review gaps that are not optional phase polish require dedicated beads before implementation continues:
+
+```text
+generated-interpreter-suspension-error-parity
+runtime-collect-next-pagination-state
+runtime-admission-run-header-persistence
+runtime-journal-sequence-hydration
+unsafe-fuzz-cabi-isolation
+workspace-exact-assertion-sharpness
+rust-test-loop-removal
+silent-discard-elimination
+test-plan-current-api-mutation-refresh
+error-variant-completeness-audit
+```
 
 Required first beads:
 

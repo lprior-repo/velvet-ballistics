@@ -7,6 +7,7 @@ version.workspace = true
 [dependencies]
 arrayvec.workspace = true
 blake3.workspace = true
+byteorder.workspace = true
 crc32c.workspace = true
 fjall.workspace = true
 postcard.workspace = true

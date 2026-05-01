@@ -1,5 +1,6 @@
 //! IPC frame encoding and decoding utilities.
 
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
 
 use crate::{IPC_HEADER_LEN, IPC_MAGIC, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
@@ -57,11 +58,9 @@ pub fn validate_frame_magic(bytes: &[u8]) -> Result<(), IpcError> {
         return Err(IpcError::HeaderDecodeFailed);
     }
     let mut cursor = Cursor::new(bytes);
-    let mut magic_bytes = [0u8; 4];
-    cursor
-        .read_exact(&mut magic_bytes)
+    let magic = cursor
+        .read_u32::<LittleEndian>()
         .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    let magic = u32::from_le_bytes(magic_bytes);
     if magic != IPC_MAGIC {
         return Err(IpcError::InvalidMagic { actual: magic });
     }

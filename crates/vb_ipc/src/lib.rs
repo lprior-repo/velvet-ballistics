@@ -7,12 +7,14 @@ pub mod client;
 pub mod frame;
 pub mod server;
 
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
 use serde::{Deserialize, Serialize};
-use std::io::{Cursor, Read, Write};
+use std::io::Cursor;
 use std::num::NonZeroUsize;
 use thiserror::Error;
+use vb_core::DiagnosticCode;
 use vb_core::action::ActionOutputReady;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
@@ -121,25 +123,25 @@ impl IpcFrameHeader {
         let mut bytes = [0u8; IPC_HEADER_LEN];
         let mut cursor = std::io::Cursor::new(&mut bytes[..]);
         cursor
-            .write_all(&IPC_MAGIC.to_le_bytes())
+            .write_u32::<LittleEndian>(IPC_MAGIC)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&IPC_VERSION.to_le_bytes())
+            .write_u16::<LittleEndian>(IPC_VERSION)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&self.command.as_u16().to_le_bytes())
+            .write_u16::<LittleEndian>(self.command.as_u16())
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&self.flags.to_le_bytes())
+            .write_u16::<LittleEndian>(self.flags)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&0_u16.to_le_bytes())
+            .write_u16::<LittleEndian>(0_u16)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&self.correlation.to_le_bytes())
+            .write_u64::<LittleEndian>(self.correlation)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
-            .write_all(&self.payload_len.to_le_bytes())
+            .write_u32::<LittleEndian>(self.payload_len)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         Ok(bytes)
     }
@@ -150,24 +152,40 @@ impl IpcFrameHeader {
         max_payload: MaxPayloadBytes,
     ) -> Result<Self, IpcError> {
         let mut cursor = Cursor::new(bytes.as_slice());
-        let magic = read_u32_le(&mut cursor)?;
+        let magic = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
         if magic != IPC_MAGIC {
             return Err(IpcError::InvalidMagic { actual: magic });
         }
 
-        let version = read_u16_le(&mut cursor)?;
+        let version = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
         if version != IPC_VERSION {
             return Err(IpcError::UnsupportedVersion { actual: version });
         }
 
-        let command = IpcCommand::from_u16(read_u16_le(&mut cursor)?)?;
-        let flags = read_u16_le(&mut cursor)?;
-        let reserved = read_u16_le(&mut cursor)?;
+        let command = IpcCommand::from_u16(
+            cursor
+                .read_u16::<LittleEndian>()
+                .map_err(|_| IpcError::HeaderDecodeFailed)?,
+        )?;
+        let flags = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
+        let reserved = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
         if reserved != 0 {
             return Err(IpcError::ReservedNonZero { actual: reserved });
         }
-        let correlation = read_u64_le(&mut cursor)?;
-        let payload_len = read_u32_le(&mut cursor)?;
+        let correlation = cursor
+            .read_u64::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
+        let payload_len = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(|_| IpcError::HeaderDecodeFailed)?;
         let payload_len_usize = u32_to_usize(payload_len)?;
         if payload_len_usize > max_payload.get() {
             return Err(IpcError::PayloadTooLarge {
@@ -619,6 +637,56 @@ impl IpcError {
     /// Runtime code for bounded IPC ingress queues at capacity.
     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
 
+    /// Diagnostic code for queue full.
+    pub const FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0301);
+    /// Diagnostic code for disconnected.
+    pub const DISCONNECTED_CODE: DiagnosticCode = DiagnosticCode::new(0x0302);
+    /// Diagnostic code for payload too large.
+    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x0303);
+    /// Diagnostic code for invalid magic.
+    pub const INVALID_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x0304);
+    /// Diagnostic code for unsupported version.
+    pub const UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x0305);
+    /// Diagnostic code for unknown command.
+    pub const UNKNOWN_COMMAND_CODE: DiagnosticCode = DiagnosticCode::new(0x0306);
+    /// Diagnostic code for reserved non-zero.
+    pub const RESERVED_NON_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x0307);
+    /// Diagnostic code for payload length mismatch.
+    pub const PAYLOAD_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0308);
+    /// Diagnostic code for header encode failed.
+    pub const HEADER_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0309);
+    /// Diagnostic code for header decode failed.
+    pub const HEADER_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030A);
+    /// Diagnostic code for payload length out of range.
+    pub const PAYLOAD_LENGTH_OUT_OF_RANGE_CODE: DiagnosticCode = DiagnosticCode::new(0x030B);
+    /// Diagnostic code for payload encode failed.
+    pub const PAYLOAD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030C);
+    /// Diagnostic code for payload decode failed.
+    pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030D);
+    /// Diagnostic code for response decode failed.
+    pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030E);
+
+    /// Returns the stable diagnostic code for this error.
+    #[must_use]
+    pub const fn diagnostic_code(&self) -> DiagnosticCode {
+        match self {
+            Self::Full => Self::FULL_CODE,
+            Self::Disconnected => Self::DISCONNECTED_CODE,
+            Self::PayloadTooLarge { .. } => Self::PAYLOAD_TOO_LARGE_CODE,
+            Self::InvalidMagic { .. } => Self::INVALID_MAGIC_CODE,
+            Self::UnsupportedVersion { .. } => Self::UNSUPPORTED_VERSION_CODE,
+            Self::UnknownCommand(_) => Self::UNKNOWN_COMMAND_CODE,
+            Self::ReservedNonZero { .. } => Self::RESERVED_NON_ZERO_CODE,
+            Self::PayloadLengthMismatch { .. } => Self::PAYLOAD_LENGTH_MISMATCH_CODE,
+            Self::HeaderEncodeFailed => Self::HEADER_ENCODE_FAILED_CODE,
+            Self::HeaderDecodeFailed => Self::HEADER_DECODE_FAILED_CODE,
+            Self::PayloadLengthOutOfRange { .. } => Self::PAYLOAD_LENGTH_OUT_OF_RANGE_CODE,
+            Self::PayloadEncodeFailed => Self::PAYLOAD_ENCODE_FAILED_CODE,
+            Self::PayloadDecodeFailed => Self::PAYLOAD_DECODE_FAILED_CODE,
+            Self::ResponseDecodeFailed => Self::RESPONSE_DECODE_FAILED_CODE,
+        }
+    }
+
     /// Returns the stable section 17 runtime code when this IPC error has a direct mapping.
     #[must_use]
     pub const fn runtime_code(&self) -> Option<&'static str> {
@@ -638,30 +706,6 @@ impl IpcError {
             Self::Disconnected | Self::HeaderEncodeFailed | Self::PayloadEncodeFailed => None,
         }
     }
-}
-
-fn read_u16_le(cursor: &mut Cursor<&[u8]>) -> Result<u16, IpcError> {
-    let mut bytes = [0_u8; 2];
-    cursor
-        .read_exact(&mut bytes)
-        .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    Ok(u16::from_le_bytes(bytes))
-}
-
-fn read_u32_le(cursor: &mut Cursor<&[u8]>) -> Result<u32, IpcError> {
-    let mut bytes = [0_u8; 4];
-    cursor
-        .read_exact(&mut bytes)
-        .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    Ok(u32::from_le_bytes(bytes))
-}
-
-fn read_u64_le(cursor: &mut Cursor<&[u8]>) -> Result<u64, IpcError> {
-    let mut bytes = [0_u8; 8];
-    cursor
-        .read_exact(&mut bytes)
-        .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    Ok(u64::from_le_bytes(bytes))
 }
 
 fn u32_to_usize(value: u32) -> Result<usize, IpcError> {
@@ -686,7 +730,7 @@ mod tests {
         SubmitRunPayload, decode_frame, decode_payload, encode_payload,
     };
     use bytes::Bytes;
-    use vb_core::{RunId, WorkflowDigest};
+    use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
     fn header_bytes(
         magic: u32,
@@ -1935,6 +1979,138 @@ mod tests {
         assert_eq!(IpcError::Disconnected.runtime_code(), None);
         assert_eq!(IpcError::HeaderEncodeFailed.runtime_code(), None);
         assert_eq!(IpcError::PayloadEncodeFailed.runtime_code(), None);
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_codes_are_unique() {
+        let errors = [
+            IpcError::Full,
+            IpcError::Disconnected,
+            IpcError::PayloadTooLarge { actual: 1, limit: 0 },
+            IpcError::InvalidMagic { actual: 0 },
+            IpcError::UnsupportedVersion { actual: 0 },
+            IpcError::UnknownCommand(0),
+            IpcError::ReservedNonZero { actual: 0 },
+            IpcError::PayloadLengthMismatch { header: 0, actual: 0 },
+            IpcError::HeaderEncodeFailed,
+            IpcError::HeaderDecodeFailed,
+            IpcError::PayloadLengthOutOfRange { actual: 0 },
+            IpcError::PayloadEncodeFailed,
+            IpcError::PayloadDecodeFailed,
+            IpcError::ResponseDecodeFailed,
+        ];
+        let mut seen = std::collections::BTreeSet::new();
+        for err in &errors {
+            let code = err.diagnostic_code();
+            assert!(seen.insert(code), "duplicate diagnostic code: {code}");
+        }
+        assert_eq!(seen.len(), errors.len());
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_full() {
+        assert_eq!(IpcError::Full.diagnostic_code(), DiagnosticCode::new(0x0301));
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_disconnected() {
+        assert_eq!(IpcError::Disconnected.diagnostic_code(), DiagnosticCode::new(0x0302));
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_payload_too_large() {
+        assert_eq!(
+            IpcError::PayloadTooLarge { actual: 100, limit: 10 }.diagnostic_code(),
+            DiagnosticCode::new(0x0303)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_invalid_magic() {
+        assert_eq!(
+            IpcError::InvalidMagic { actual: 0xDEAD_BEEF }.diagnostic_code(),
+            DiagnosticCode::new(0x0304)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_unsupported_version() {
+        assert_eq!(
+            IpcError::UnsupportedVersion { actual: 99 }.diagnostic_code(),
+            DiagnosticCode::new(0x0305)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_unknown_command() {
+        assert_eq!(
+            IpcError::UnknownCommand(200).diagnostic_code(),
+            DiagnosticCode::new(0x0306)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_reserved_non_zero() {
+        assert_eq!(
+            IpcError::ReservedNonZero { actual: 7 }.diagnostic_code(),
+            DiagnosticCode::new(0x0307)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_payload_length_mismatch() {
+        assert_eq!(
+            IpcError::PayloadLengthMismatch { header: 4, actual: 3 }.diagnostic_code(),
+            DiagnosticCode::new(0x0308)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_header_encode_failed() {
+        assert_eq!(
+            IpcError::HeaderEncodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x0309)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_header_decode_failed() {
+        assert_eq!(
+            IpcError::HeaderDecodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x030A)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_payload_length_out_of_range() {
+        assert_eq!(
+            IpcError::PayloadLengthOutOfRange { actual: u32::MAX }.diagnostic_code(),
+            DiagnosticCode::new(0x030B)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_payload_encode_failed() {
+        assert_eq!(
+            IpcError::PayloadEncodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x030C)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_payload_decode_failed() {
+        assert_eq!(
+            IpcError::PayloadDecodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x030D)
+        );
+    }
+
+    #[test]
+    fn ipc_error_diagnostic_code_response_decode_failed() {
+        assert_eq!(
+            IpcError::ResponseDecodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x030E)
+        );
     }
 }
 

@@ -15,6 +15,7 @@ use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::Mutex;
 use thiserror::Error;
+use vb_core::DiagnosticCode;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 /// Immutable YAML source records by digest.
@@ -1469,6 +1470,79 @@ pub enum JournalError {
     PostcardDecodeFailed,
 }
 
+impl JournalError {
+    /// Diagnostic code for fjall operation failure.
+    pub const FJALL_CODE: DiagnosticCode = DiagnosticCode::new(0x0401);
+    /// Diagnostic code for binary encoding failure.
+    pub const ENCODE_CODE: DiagnosticCode = DiagnosticCode::new(0x0402);
+    /// Diagnostic code for key capacity exceeded.
+    pub const KEY_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x0403);
+    /// Diagnostic code for duplicate event.
+    pub const DUPLICATE_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x0404);
+    /// Diagnostic code for write lock poisoned.
+    pub const WRITE_LOCK_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x0405);
+    /// Diagnostic code for queue capacity zero.
+    pub const QUEUE_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x0406);
+    /// Diagnostic code for queue full.
+    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0407);
+    /// Diagnostic code for wrong run.
+    pub const WRONG_RUN_CODE: DiagnosticCode = DiagnosticCode::new(0x0408);
+    /// Diagnostic code for sequence gap.
+    pub const SEQUENCE_GAP_CODE: DiagnosticCode = DiagnosticCode::new(0x0409);
+    /// Diagnostic code for sequence overflow.
+    pub const SEQUENCE_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x040A);
+    /// Diagnostic code for bad magic.
+    pub const BAD_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x040B);
+    /// Diagnostic code for unsupported schema version.
+    pub const UNSUPPORTED_SCHEMA_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x040C);
+    /// Diagnostic code for migration required.
+    pub const MIGRATION_REQUIRED_CODE: DiagnosticCode = DiagnosticCode::new(0x040D);
+    /// Diagnostic code for unknown record kind.
+    pub const UNKNOWN_RECORD_KIND_CODE: DiagnosticCode = DiagnosticCode::new(0x040E);
+    /// Diagnostic code for record kind family mismatch.
+    pub const RECORD_KIND_FAMILY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x040F);
+    /// Diagnostic code for header length mismatch.
+    pub const HEADER_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0410);
+    /// Diagnostic code for payload too large.
+    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x0411);
+    /// Diagnostic code for header checksum mismatch.
+    pub const HEADER_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0412);
+    /// Diagnostic code for payload digest mismatch.
+    pub const PAYLOAD_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0413);
+    /// Diagnostic code for unexpected eof.
+    pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x0414);
+    /// Diagnostic code for postcard decode failed.
+    pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0415);
+
+    /// Returns the stable diagnostic code for this error.
+    #[must_use]
+    pub const fn diagnostic_code(&self) -> DiagnosticCode {
+        match self {
+            Self::Fjall(_) => Self::FJALL_CODE,
+            Self::Encode(_) => Self::ENCODE_CODE,
+            Self::KeyCapacity => Self::KEY_CAPACITY_CODE,
+            Self::DuplicateEvent { .. } => Self::DUPLICATE_EVENT_CODE,
+            Self::WriteLockPoisoned => Self::WRITE_LOCK_POISONED_CODE,
+            Self::QueueCapacity => Self::QUEUE_CAPACITY_CODE,
+            Self::QueueFull => Self::QUEUE_FULL_CODE,
+            Self::WrongRun { .. } => Self::WRONG_RUN_CODE,
+            Self::SequenceGap { .. } => Self::SEQUENCE_GAP_CODE,
+            Self::SequenceOverflow => Self::SEQUENCE_OVERFLOW_CODE,
+            Self::BadMagic { .. } => Self::BAD_MAGIC_CODE,
+            Self::UnsupportedSchemaVersion { .. } => Self::UNSUPPORTED_SCHEMA_VERSION_CODE,
+            Self::MigrationRequired { .. } => Self::MIGRATION_REQUIRED_CODE,
+            Self::UnknownRecordKind { .. } => Self::UNKNOWN_RECORD_KIND_CODE,
+            Self::RecordKindFamilyMismatch { .. } => Self::RECORD_KIND_FAMILY_MISMATCH_CODE,
+            Self::HeaderLengthMismatch { .. } => Self::HEADER_LENGTH_MISMATCH_CODE,
+            Self::PayloadTooLarge { .. } => Self::PAYLOAD_TOO_LARGE_CODE,
+            Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
+            Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
+            Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
+            Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
+        }
+    }
+}
+
 fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
     sequenced_run_key(PREFIX_RUN_EVENT, run, seq)
 }
@@ -1756,21 +1830,21 @@ fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
 )]
 mod tests {
     use super::{
-        BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, EventSeq, FjallJournal,
-        JournalError, JournalEvent, JournalWriterQueue, KeyspaceProfile, MAGIC_BLOB,
-        MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME, MAGIC_JOURNAL_EVENT,
-        MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES,
-        MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
-        PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
-        PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
-        RecordKind, RunHeaderRecord, StorageKey, StorageLimits, WorkflowSourceRecord,
-        append_journal_event, blob_key, compiled_ir_key, decode_record, decode_record_header,
-        encode_key, encode_record, encode_record_header, flush_profile, index_action_key,
-        index_status_key, index_workflow_key, init_keyspaces, journal_key, keyspace_options_for,
-        open_store, put_blob, put_compiled_ir, put_run_header, put_workflow_source, read_blob,
-        read_run_events, replay_journal, run_event_key, run_header_key, run_snapshot_key,
-        verify_digest_match, workflow_source_key, write_snapshot,
+        BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DiagnosticCode,
+        EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue, KeyspaceProfile,
+        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
+        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
+        MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
+        MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR,
+        PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT,
+        PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECORD_HEADER_BYTES,
+        RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageKey, StorageLimits,
+        WorkflowSourceRecord, append_journal_event, blob_key, compiled_ir_key, decode_record,
+        decode_record_header, encode_key, encode_record, encode_record_header, flush_profile,
+        index_action_key, index_status_key, index_workflow_key, init_keyspaces, journal_key,
+        keyspace_options_for, open_store, put_blob, put_compiled_ir, put_run_header,
+        put_workflow_source, read_blob, read_run_events, replay_journal, run_event_key,
+        run_header_key, run_snapshot_key, verify_digest_match, workflow_source_key, write_snapshot,
     };
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
@@ -6281,6 +6355,218 @@ mod tests {
                 MAX_COMPILED_IR_BYTES
             )
             .is_ok()
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_codes_are_unique() {
+        let errors = [
+            JournalError::KeyCapacity,
+            JournalError::WriteLockPoisoned,
+            JournalError::QueueCapacity,
+            JournalError::QueueFull,
+            JournalError::SequenceOverflow,
+            JournalError::HeaderChecksumMismatch,
+            JournalError::PayloadDigestMismatch,
+            JournalError::UnexpectedEof,
+            JournalError::PostcardDecodeFailed,
+            JournalError::DuplicateEvent {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+            },
+            JournalError::WrongRun {
+                expected: RunId::new(1),
+                actual: RunId::new(2),
+            },
+            JournalError::SequenceGap {
+                expected: EventSeq::new(0),
+                actual: EventSeq::new(1),
+            },
+            JournalError::BadMagic { found: 0 },
+            JournalError::UnsupportedSchemaVersion { version: 0 },
+            JournalError::MigrationRequired { from: 0, to: 1 },
+            JournalError::UnknownRecordKind { kind: 0 },
+            JournalError::RecordKindFamilyMismatch {
+                magic: 0,
+                kind: 0,
+            },
+            JournalError::HeaderLengthMismatch { found: 0 },
+            JournalError::PayloadTooLarge { len: 0, max: 0 },
+        ];
+        let mut seen = std::collections::BTreeSet::new();
+        for err in &errors {
+            let code = err.diagnostic_code();
+            assert!(seen.insert(code), "duplicate diagnostic code: {code}");
+        }
+        assert_eq!(seen.len(), errors.len());
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_fjall() {
+        // Fjall and Encode variants hold external errors; we verify via KeyCapacity
+        assert_eq!(
+            JournalError::KeyCapacity.diagnostic_code(),
+            DiagnosticCode::new(0x0403)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_duplicate_event() {
+        assert_eq!(
+            JournalError::DuplicateEvent {
+                run: RunId::new(42),
+                seq: EventSeq::new(7),
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x0404)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_write_lock_poisoned() {
+        assert_eq!(
+            JournalError::WriteLockPoisoned.diagnostic_code(),
+            DiagnosticCode::new(0x0405)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_queue_capacity() {
+        assert_eq!(
+            JournalError::QueueCapacity.diagnostic_code(),
+            DiagnosticCode::new(0x0406)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_queue_full() {
+        assert_eq!(
+            JournalError::QueueFull.diagnostic_code(),
+            DiagnosticCode::new(0x0407)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_wrong_run() {
+        assert_eq!(
+            JournalError::WrongRun {
+                expected: RunId::new(1),
+                actual: RunId::new(2),
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x0408)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_sequence_gap() {
+        assert_eq!(
+            JournalError::SequenceGap {
+                expected: EventSeq::new(0),
+                actual: EventSeq::new(1),
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x0409)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_sequence_overflow() {
+        assert_eq!(
+            JournalError::SequenceOverflow.diagnostic_code(),
+            DiagnosticCode::new(0x040A)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_bad_magic() {
+        assert_eq!(
+            JournalError::BadMagic { found: 0xDEAD_BEEF }.diagnostic_code(),
+            DiagnosticCode::new(0x040B)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_unsupported_schema_version() {
+        assert_eq!(
+            JournalError::UnsupportedSchemaVersion { version: 99 }.diagnostic_code(),
+            DiagnosticCode::new(0x040C)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_migration_required() {
+        assert_eq!(
+            JournalError::MigrationRequired { from: 0, to: 1 }.diagnostic_code(),
+            DiagnosticCode::new(0x040D)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_unknown_record_kind() {
+        assert_eq!(
+            JournalError::UnknownRecordKind { kind: 200 }.diagnostic_code(),
+            DiagnosticCode::new(0x040E)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_record_kind_family_mismatch() {
+        assert_eq!(
+            JournalError::RecordKindFamilyMismatch {
+                magic: MAGIC_JOURNAL_EVENT,
+                kind: 1,
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x040F)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_header_length_mismatch() {
+        assert_eq!(
+            JournalError::HeaderLengthMismatch { found: 99 }.diagnostic_code(),
+            DiagnosticCode::new(0x0410)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_payload_too_large() {
+        assert_eq!(
+            JournalError::PayloadTooLarge { len: 200, max: 10 }.diagnostic_code(),
+            DiagnosticCode::new(0x0411)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_header_checksum_mismatch() {
+        assert_eq!(
+            JournalError::HeaderChecksumMismatch.diagnostic_code(),
+            DiagnosticCode::new(0x0412)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_payload_digest_mismatch() {
+        assert_eq!(
+            JournalError::PayloadDigestMismatch.diagnostic_code(),
+            DiagnosticCode::new(0x0413)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_unexpected_eof() {
+        assert_eq!(
+            JournalError::UnexpectedEof.diagnostic_code(),
+            DiagnosticCode::new(0x0414)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_postcard_decode_failed() {
+        assert_eq!(
+            JournalError::PostcardDecodeFailed.diagnostic_code(),
+            DiagnosticCode::new(0x0415)
         );
     }
 }

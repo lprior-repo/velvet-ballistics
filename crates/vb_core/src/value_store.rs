@@ -25,6 +25,7 @@ pub struct ValueStore {
     symbols: Vec<Box<str>>,
     lists: Vec<Box<[SlotValue]>>,
     objects: Vec<Box<[ObjectField]>>,
+    /// Secondary index for O(1) object field lookup, mirroring `objects`.
     object_field_index: Vec<IndexMap<SymbolId, SlotValue>>,
     blobs: Vec<Bytes>,
 }
@@ -66,8 +67,19 @@ impl ValueStore {
         validate_object_len(fields.len())?;
         let id = next_object_id(self.objects.len())?;
         let mut index = IndexMap::new();
-        for field in fields.iter() {
+        let mut field_pos = 0usize;
+        while field_pos < fields.len() {
+            let field = fields
+                .get(field_pos)
+                .ok_or(CoreError::InternalInvariantViolation {
+                    reason: "object field index checked by loop bound",
+                })?;
             index.entry(field.key).or_insert(field.value);
+            field_pos = field_pos
+                .checked_add(1)
+                .ok_or(CoreError::InternalInvariantViolation {
+                    reason: "object field index overflow",
+                })?;
         }
         self.object_field_index.push(index);
         self.objects.push(fields);

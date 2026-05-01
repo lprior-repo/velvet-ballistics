@@ -55,6 +55,7 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0"
 
 [workspace.dependencies]
+byteorder = "1.5"
 arrayvec = "0.7"
 blake3 = "1"
 bytes = { version = "1", features = ["serde"] }
@@ -64,8 +65,8 @@ crossbeam-queue = "0.3"
 criterion = "0.8"
 fjall = { version = "3.1", default-features = false, features = ["lz4"] }
 iai-callgrind = "0.16"
-indexmap = "2"
 indoc = "2"
+indexmap = "2"
 logos = "0.15"
 mio = "1"
 postcard = { version = "1", features = ["alloc"] }

@@ -16,7 +16,7 @@ use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
 use crate::{
-    IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent,
+    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent,
     IpcTraceEventKind, MaxPayloadBytes,
 };
 
@@ -869,16 +869,15 @@ fn send_response(
     let payload_bytes =
         postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
-    write_buffer.clear();
     let payload_len =
         u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-    write_buffer.extend_from_slice(&IPC_MAGIC.to_le_bytes());
-    write_buffer.extend_from_slice(&IPC_VERSION.to_le_bytes());
-    write_buffer.extend_from_slice(&request_header.command.as_u16().to_le_bytes());
-    write_buffer.extend_from_slice(&0u16.to_le_bytes());
-    write_buffer.extend_from_slice(&0u16.to_le_bytes());
-    write_buffer.extend_from_slice(&request_header.correlation.to_le_bytes());
-    write_buffer.extend_from_slice(&payload_len.to_le_bytes());
+
+    // Build the response frame header via IpcFrameHeader::encode (uses byteorder internally).
+    let header = IpcFrameHeader::new(request_header.command, 0, request_header.correlation, payload_len);
+    let header_bytes = header.encode().map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+
+    write_buffer.clear();
+    write_buffer.extend_from_slice(&header_bytes);
     write_buffer.extend_from_slice(&payload_bytes);
 
     let written = match stream.write(write_buffer) {

@@ -1428,6 +1428,7 @@ name = "vb_ipc"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "byteorder",
  "bytes",
  "crossbeam-channel",
  "mio",
@@ -1458,6 +1459,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "blake3",
+ "byteorder",
  "crc32c",
  "fjall",
  "postcard",
