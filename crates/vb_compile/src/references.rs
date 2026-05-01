@@ -190,6 +190,7 @@ fn validate_rooted_reference(
 ) -> Result<(), CompileError> {
     match root {
         "input" => validate_declared(reference, tail, "input", &tables.inputs),
+        "slot" | "slots" => validate_slot_reference(reference, root, tail),
         "var" | "vars" => validate_declared(reference, tail, "var", &tables.vars),
         "secrets" => validate_declared(reference, tail, "secrets", &tables.secrets),
         "runtime" => Err(illegal_reference(reference)),
@@ -199,6 +200,29 @@ fn validate_rooted_reference(
             root: Box::<str>::from(root),
         }),
     }
+}
+
+fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<(), CompileError> {
+    let (slot, path) = match tail.split_once('.') {
+        Some((slot, path)) => (slot, Some(path)),
+        None => (tail, None),
+    };
+    if slot.parse::<u16>().is_err() {
+        return Err(CompileError::UnknownReferenceName {
+            kind: "slot",
+            reference: Box::<str>::from(reference),
+            name: Box::<str>::from(slot),
+        });
+    }
+    if let Some(path) = path {
+        let accessor_root = format!("{root}.{slot}");
+        return Err(CompileError::UnsupportedAccessorReference {
+            reference: Box::<str>::from(reference),
+            root: Box::<str>::from(accessor_root),
+            path: Box::<str>::from(path),
+        });
+    }
+    Ok(())
 }
 
 fn validate_step_reference(
@@ -226,6 +250,13 @@ fn validate_declared(
 ) -> Result<(), CompileError> {
     let name = reference_name(tail);
     if names.contains(name) {
+        if let Some((_, path)) = tail.split_once('.') {
+            return Err(CompileError::UnsupportedAccessorReference {
+                reference: Box::<str>::from(reference),
+                root: Box::<str>::from(format!("{kind}.{name}")),
+                path: Box::<str>::from(path),
+            });
+        }
         Ok(())
     } else {
         Err(CompileError::UnknownReferenceName {

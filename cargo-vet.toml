@@ -13,7 +13,7 @@
 "vb_storage" = { audit-as-crates-io = true }
 "vb_validate" = { audit-as-crates-io = true }
 "vb_yaml" = { audit-as-crates-io = true }
-"velvet_ballastics" = { audit-as-crates-io = true }
+"velvet-ballastics" = { audit-as-crates-io = true }
 "velvet-ballastics-workspace" = { audit-as-crates-io = true }
 "velvet-ballastics-fuzz" = { audit-as-crates-io = true }
 

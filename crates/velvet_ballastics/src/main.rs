@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -506,43 +506,76 @@ fn cmd_run_compiled(
 
 fn run_compiled_workflow(compiled: &vb_core::CompiledWorkflow, _input_data: &[u8]) -> ExitCode {
     let run_id = vb_core::RunId::new(1);
-    let budget = vb_core::engine::StepBudget::new(10_000);
-    let mut frame = match vb_core::engine::new_run_frame(run_id, compiled) {
-        Ok(f) => f,
-        Err(e) => {
-            errln!("frame init error: {e}");
-            return ExitCode::FAILURE;
-        }
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        errln!("runtime configuration error: shard count must be non-zero");
+        return ExitCode::FAILURE;
     };
-    let mut store = vb_core::value_store::ValueStore::new();
+    let config = vb_runtime::shard::ShardConfig::default();
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
 
-    match vb_core::engine::run_until_blocked(compiled, &mut frame, budget, &mut store) {
-        Ok(vb_core::engine::EngineSignal::Finished(_)) => {
-            outln!("run completed");
-        }
-        Ok(vb_core::engine::EngineSignal::AwaitingAction) => {
-            outln!("run blocked (awaiting action)");
-        }
-        Ok(vb_core::engine::EngineSignal::AwaitingWait) => {
-            outln!("run blocked (awaiting wait)");
-        }
-        Ok(vb_core::engine::EngineSignal::AwaitingAsk) => {
-            outln!("run blocked (awaiting ask)");
-        }
-        Ok(vb_core::engine::EngineSignal::StepBudgetExhausted) => {
-            errln!("run exhausted step budget");
-            return ExitCode::FAILURE;
-        }
-        Ok(vb_core::engine::EngineSignal::Continue) => {
-            outln!("run returned continue");
-        }
-        Err(e) => {
-            errln!("engine error: {e}");
-            return ExitCode::FAILURE;
-        }
+    if let Err(e) = runtime.submit_compiled(run_id, compiled.clone()) {
+        errln!("runtime submit error: {e}");
+        return ExitCode::FAILURE;
+    }
+    if let Err(e) = runtime.tick_all() {
+        errln!("runtime tick error: {e}");
+        return ExitCode::FAILURE;
+    }
+
+    let counters = runtime.counters_snapshot();
+    let traces = runtime.drain_trace();
+    outln!(
+        "run {}: submitted={} completed={} failed={} steps={}",
+        run_id.as_u64(),
+        counters.runs_submitted,
+        counters.runs_completed,
+        counters.runs_failed,
+        counters.steps_executed
+    );
+    for trace in &traces {
+        print_trace_event(trace);
+    }
+
+    if counters.runs_failed != 0 {
+        errln!("run failed");
+        return ExitCode::FAILURE;
+    }
+    if counters.runs_completed != 0 {
+        outln!("run completed");
+    } else {
+        outln!("run accepted but not terminal after one runtime tick");
     }
 
     ExitCode::SUCCESS
+}
+
+fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
+    match event {
+        vb_runtime::trace::TraceEvent::StepStarted { step, .. } => {
+            outln!("  trace: StepStarted step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::StepEnded { step, .. } => {
+            outln!("  trace: StepEnded step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::SlotWritten { slot, .. } => {
+            outln!("  trace: SlotWritten slot={}", slot.get());
+        }
+        vb_runtime::trace::TraceEvent::ActionScheduled { step, .. } => {
+            outln!("  trace: ActionScheduled step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::ActionCompleted { step, .. } => {
+            outln!("  trace: ActionCompleted step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::RunSubmitted { .. } => {
+            outln!("  trace: RunSubmitted");
+        }
+        vb_runtime::trace::TraceEvent::RunFinished { .. } => {
+            outln!("  trace: RunFinished");
+        }
+        vb_runtime::trace::TraceEvent::RunFailed { .. } => {
+            outln!("  trace: RunFailed");
+        }
+    }
 }
 
 fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
@@ -769,19 +802,21 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
         }
     };
 
-    // Replay events from the journal
-    match journal.events_for_run(rid) {
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
         Ok(events) => {
-            if events.is_empty() {
-                errln!("no recovery data found for run {run_id}");
-                return ExitCode::FAILURE;
-            }
             outln!("recovered {} event(s) for run {run_id}", events.len());
             for event in &events {
                 print_event(event);
             }
-
-            outln!("digest verification: not performed (no expected digest supplied by CLI)");
+            match vb_storage::recovery::extract_terminal(&events) {
+                Some(terminal) => {
+                    outln!("terminal: {}", event_name(terminal));
+                }
+                None => {
+                    outln!("terminal: none");
+                }
+            }
         }
         Err(e) => {
             errln!("error replaying run {run_id}: {e}");
@@ -810,35 +845,43 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     };
     let compile_elapsed = compile_start.elapsed();
 
-    let run_id = vb_core::RunId::new(1);
     let run_start = Instant::now();
-    let budget = vb_core::engine::StepBudget::new(10_000);
-    let mut frame = match vb_core::engine::new_run_frame(run_id, &compiled) {
-        Ok(f) => f,
-        Err(e) => {
-            errln!("frame init error: {e}");
-            return ExitCode::FAILURE;
-        }
+    let run_id = vb_core::RunId::new(1);
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        errln!("runtime configuration error: shard count must be non-zero");
+        return ExitCode::FAILURE;
     };
-    let mut store = vb_core::value_store::ValueStore::new();
+    let config = vb_runtime::shard::ShardConfig::default();
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
+    if let Err(e) = runtime.submit_compiled(run_id, compiled) {
+        errln!("runtime submit error: {e}");
+        return ExitCode::FAILURE;
+    }
+    if let Err(e) = runtime.tick_all() {
+        errln!("runtime tick error: {e}");
+        return ExitCode::FAILURE;
+    }
+    let run_elapsed = run_start.elapsed();
+    let counters = runtime.counters_snapshot();
 
-    match vb_core::engine::run_until_blocked(&compiled, &mut frame, budget, &mut store) {
-        Ok(signal) => {
-            let run_elapsed = run_start.elapsed();
-            outln!("compile: {}us", compile_elapsed.as_micros());
-            outln!("execute: {}us", run_elapsed.as_micros());
-            outln!(
-                "total:   {}us",
-                compile_elapsed
-                    .as_micros()
-                    .saturating_add(run_elapsed.as_micros())
-            );
-            outln!("signal:  {signal:?}");
-        }
-        Err(e) => {
-            errln!("engine error: {e}");
-            return ExitCode::FAILURE;
-        }
+    outln!("compile: {}us", compile_elapsed.as_micros());
+    outln!("execute: {}us", run_elapsed.as_micros());
+    outln!(
+        "total:   {}us",
+        compile_elapsed
+            .as_micros()
+            .saturating_add(run_elapsed.as_micros())
+    );
+    outln!(
+        "runtime: submitted={} completed={} failed={} steps={}",
+        counters.runs_submitted,
+        counters.runs_completed,
+        counters.runs_failed,
+        counters.steps_executed
+    );
+
+    if counters.runs_failed != 0 {
+        return ExitCode::FAILURE;
     }
 
     ExitCode::SUCCESS
@@ -865,7 +908,7 @@ fn cmd_doctor(db: &std::path::Path) -> ExitCode {
     }
 
     // Check 3: can we write and read back an event?
-    let test_run = vb_core::RunId::new(u64::MAX);
+    let test_run = vb_core::RunId::new(unique_doctor_run_id());
     let test_event = vb_storage::JournalEvent::RunAccepted {
         run: test_run,
         seq: vb_storage::EventSeq::new(0),
@@ -894,6 +937,36 @@ fn cmd_doctor(db: &std::path::Path) -> ExitCode {
 
     outln!("doctor: all checks passed");
     ExitCode::SUCCESS
+}
+
+fn event_name(event: &vb_storage::JournalEvent) -> &'static str {
+    match event {
+        vb_storage::JournalEvent::RunAccepted { .. } => "RunAccepted",
+        vb_storage::JournalEvent::StepStarted { .. } => "StepStarted",
+        vb_storage::JournalEvent::StepSucceeded { .. } => "StepSucceeded",
+        vb_storage::JournalEvent::ActionScheduled { .. } => "ActionScheduled",
+        vb_storage::JournalEvent::ActionCompletedEvent { .. } => "ActionCompleted",
+        vb_storage::JournalEvent::ActionFailedEvent { .. } => "ActionFailed",
+        vb_storage::JournalEvent::SlotWrittenEvent { .. } => "SlotWritten",
+        vb_storage::JournalEvent::WaitScheduledEvent { .. } => "WaitScheduled",
+        vb_storage::JournalEvent::AskScheduledEvent { .. } => "AskScheduled",
+        vb_storage::JournalEvent::AskAnsweredEvent { .. } => "AskAnswered",
+        vb_storage::JournalEvent::RetryScheduledEvent { .. } => "RetryScheduled",
+        vb_storage::JournalEvent::RunCancelled { .. } => "RunCancelled",
+        vb_storage::JournalEvent::RunFinished { .. } => "RunFinished",
+        vb_storage::JournalEvent::RunFailedEvent { .. } => "RunFailed",
+    }
+}
+
+fn unique_doctor_run_id() -> u64 {
+    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration,
+        Err(_) => return u64::MAX,
+    };
+    match u64::try_from(now.as_nanos()) {
+        Ok(value) => value,
+        Err(_) => now.as_secs(),
+    }
 }
 
 // --- Helpers ---

@@ -221,23 +221,9 @@ pub fn execute_node_full(
             collector_slot,
             body,
             done,
-        } => {
-            let source = *collector_slot;
-            let limit = 0;
-            let page_size = 100;
-            primitives::collect::collect_next(
-                run,
-                store,
-                source,
-                limit,
-                page_size,
-                *collector_slot,
-                *body,
-                *done,
-            )
+        } => primitives::collect::collect_next(run, store, *collector_slot, *body, *done)
             .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+            .map(runtime_from_core),
 
         CompiledNodeKind::CollectFinish { collector_slot } => {
             let step = node.id;
@@ -355,15 +341,19 @@ pub fn execute_node_full(
 
         CompiledNodeKind::Do { action, input } => {
             let seq = SeqNo::new(run.executed());
-            execute_do(
-                run,
-                node.id,
-                *action,
-                *input,
-                seq,
-                resolve_contract(*action, contracts)?,
-                contracts,
-            )
+            if contracts.is_empty() {
+                execute_do_without_contract(run, node.id, *action, *input, seq)
+            } else {
+                execute_do(
+                    run,
+                    node.id,
+                    *action,
+                    *input,
+                    seq,
+                    resolve_contract(*action, contracts)?,
+                    contracts,
+                )
+            }
         }
 
         CompiledNodeKind::RetryCheck {
@@ -479,6 +469,24 @@ pub fn execute_do(
         return Err(RuntimeEngineError::TaintViolation { step });
     }
 
+    Ok(RuntimeSignal::AwaitingAction(ticket))
+}
+
+fn execute_do_without_contract(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    _input: SlotIdx,
+    seq: SeqNo,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    let ticket = ActionTicket {
+        run: run.run_id(),
+        step,
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
+    };
     Ok(RuntimeSignal::AwaitingAction(ticket))
 }
 

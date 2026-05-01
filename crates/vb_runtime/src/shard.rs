@@ -2,13 +2,16 @@
 
 use crossbeam_queue::ArrayQueue;
 use std::collections::HashMap;
-use vb_core::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
+use vb_core::action::{ActionFailure, ActionTicket};
+use vb_core::engine::{StepBudget, new_run_frame};
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
+use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::ShardCounters;
+use crate::engine::{RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full};
 use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
@@ -34,6 +37,18 @@ pub enum ShardCommand {
         /// Step that was waiting for this action.
         step: StepIdx,
     },
+    /// An external action failed.
+    ActionFailed {
+        /// Ticket for the action being failed.
+        ticket: ActionTicket,
+        /// Typed failure payload.
+        failure: ActionFailure,
+    },
+    /// An external ask was answered.
+    AskAnswered {
+        /// Typed ask answer payload.
+        answer: AskAnswer,
+    },
     /// A timer fired for a suspended run.
     TimerFired {
         /// Run identifier.
@@ -53,6 +68,30 @@ pub enum ShardCommand {
     },
     /// Shut down the shard gracefully.
     Shutdown,
+}
+
+/// Ticket identifying where an ask answer must resume execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AskTicket {
+    /// Owning run.
+    pub run: RunId,
+    /// Step that issued the ask and is currently marked asking.
+    pub ask_step: StepIdx,
+    /// Step that consumes the answer slot, usually an AskResume node.
+    pub resume_step: StepIdx,
+}
+
+/// Explicit ask answer contract. The caller supplies both payload and destination slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AskAnswer {
+    /// Ask ticket proving the intended resume point.
+    pub ticket: AskTicket,
+    /// Slot that receives the answer before resuming.
+    pub answer_slot: vb_core::ids::SlotIdx,
+    /// Answer payload.
+    pub value: SlotValue,
+    /// Answer taint marker.
+    pub taint: Taint,
 }
 
 /// Mutable run state owned directly by the shard.
@@ -144,6 +183,10 @@ impl Shard {
             ShardCommand::ActionCompleted { run, step } => {
                 self.handle_action_completion(run, step)?
             }
+            ShardCommand::ActionFailed { ticket, failure } => {
+                self.handle_action_failure(ticket, failure)?;
+            }
+            ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
             ShardCommand::TimerFired { run } => self.handle_timer(run)?,
             ShardCommand::Cancel { run } => self.handle_cancel(run)?,
             ShardCommand::Inspect { run, correlation } => {
@@ -167,6 +210,21 @@ impl Shard {
     /// Returns a mutable reference to the trace ring.
     pub fn trace_ring_mut(&mut self) -> &mut TraceRing {
         &mut self.trace_ring
+    }
+
+    /// Returns an immutable reference to the trace ring.
+    #[must_use]
+    pub const fn trace_ring(&self) -> &TraceRing {
+        &self.trace_ring
+    }
+
+    /// Returns a direct non-queued diagnostic snapshot for a run.
+    #[must_use]
+    pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
+        match self.runs.get(&run) {
+            Some(state) => InspectResponse::Found(snapshot_from_state(run, correlation, state)),
+            None => InspectResponse::NotFound { run, correlation },
+        }
     }
 
     /// Takes the latest inspect response, if one is available.
@@ -217,6 +275,46 @@ impl Shard {
         self.drive_run(run)
     }
 
+    fn handle_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
+        let run = ticket.run;
+        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_failed(ticket.step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        self.trace_ring.push(TraceEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            code: failure.code,
+        });
+        self.fail_run(run);
+        Ok(())
+    }
+
+    fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
+        let run = answer.ticket.run;
+        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_succeeded(answer.ticket.ask_step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        state.frame.set_pc(answer.ticket.resume_step);
+        self.trace_ring.push(TraceEvent::AskAnswered {
+            run,
+            step: answer.ticket.ask_step,
+            slot: answer.answer_slot,
+        });
+        self.drive_run(run)
+    }
+
     fn handle_timer(&mut self, run: RunId) -> RuntimeResult<()> {
         self.drive_run(run)
     }
@@ -230,58 +328,86 @@ impl Shard {
     }
 
     fn handle_inspect(&mut self, run: RunId, correlation: u64) {
-        self.inspect_response = match self.runs.get(&run) {
-            Some(state) => Some(InspectResponse::Found(InspectSnapshot {
-                run,
-                correlation,
-                pc: state.frame.pc(),
-                executed: state.frame.executed(),
-            })),
-            None => Some(InspectResponse::NotFound { run, correlation }),
-        };
+        self.inspect_response = Some(self.snapshot_run(run, correlation));
     }
 
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {
-        let state = self.runs.remove(&run);
-        let Some(mut state) = state else {
-            return Err(RuntimeError::RunNotFound);
-        };
-
-        let budget = StepBudget::new(self.step_budget_per_tick);
-        let result = run_until_blocked(&state.workflow, &mut state.frame, budget, &mut state.store);
-
-        match result {
-            Ok(EngineSignal::Continue) => {
-                self.counters.add_steps(state.frame.executed());
-                self.runs.insert(run, state);
-            }
-            Ok(EngineSignal::Finished(_)) => {
-                self.counters.inc_completed();
-                self.counters.add_steps(state.frame.executed());
-                self.trace_ring.push(TraceEvent::RunFinished { run });
-            }
-            Ok(EngineSignal::StepBudgetExhausted) => {
-                self.counters.add_steps(state.frame.executed());
-                self.runs.insert(run, state);
-            }
-            Ok(EngineSignal::AwaitingAction) => {
-                self.counters.add_steps(state.frame.executed());
-                let step = state.frame.pc();
-                self.trace_ring
-                    .push(TraceEvent::ActionScheduled { run, step });
-                self.runs.insert(run, state);
-            }
-            Ok(EngineSignal::AwaitingWait) | Ok(EngineSignal::AwaitingAsk) => {
-                self.counters.add_steps(state.frame.executed());
-                self.runs.insert(run, state);
-            }
-            Err(_) => {
-                self.counters.inc_failed();
-                self.trace_ring.push(TraceEvent::RunFailed { run });
-            }
-        }
-
+        let mut state = self.take_run_state(run)?;
+        let result = Self::drive_state(&mut state, self.step_budget_per_tick);
+        self.apply_drive_result(run, state, result);
         Ok(())
+    }
+
+    fn take_run_state(&mut self, run: RunId) -> RuntimeResult<RunState> {
+        match self.runs.remove(&run) {
+            Some(state) => Ok(state),
+            None => Err(RuntimeError::RunNotFound),
+        }
+    }
+
+    fn drive_state(
+        state: &mut RunState,
+        step_budget_per_tick: u64,
+    ) -> RuntimeEngineResult<RuntimeSignal> {
+        let mut budget = StepBudget::new(step_budget_per_tick);
+        drive_deterministic_full(
+            &state.workflow,
+            &mut state.frame,
+            &mut budget,
+            &mut state.store,
+            &[],
+            RetryPolicy::NEVER,
+        )
+    }
+
+    fn apply_drive_result(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        result: RuntimeEngineResult<RuntimeSignal>,
+    ) {
+        match result {
+            Ok(RuntimeSignal::Continue) => self.keep_run(run, state),
+            Ok(RuntimeSignal::Finished(_)) => self.finish_run(run, state),
+            Ok(RuntimeSignal::StepBudgetExhausted) => self.keep_run(run, state),
+            Ok(RuntimeSignal::AwaitingAction(_)) => self.await_action(run, state),
+            Ok(RuntimeSignal::AwaitingWait) => self.keep_run(run, state),
+            Ok(RuntimeSignal::AwaitingAsk) => self.keep_run(run, state),
+            Err(_) => self.fail_run(run),
+        }
+    }
+
+    fn keep_run(&mut self, run: RunId, state: RunState) {
+        self.counters.add_steps(state.frame.executed());
+        self.runs.insert(run, state);
+    }
+
+    fn finish_run(&mut self, run: RunId, state: RunState) {
+        self.counters.inc_completed();
+        self.counters.add_steps(state.frame.executed());
+        self.trace_ring.push(TraceEvent::RunFinished { run });
+    }
+
+    fn await_action(&mut self, run: RunId, state: RunState) {
+        self.counters.add_steps(state.frame.executed());
+        let step = state.frame.pc();
+        self.trace_ring
+            .push(TraceEvent::ActionScheduled { run, step });
+        self.runs.insert(run, state);
+    }
+
+    fn fail_run(&mut self, run: RunId) {
+        self.counters.inc_failed();
+        self.trace_ring.push(TraceEvent::RunFailed { run });
+    }
+}
+
+fn snapshot_from_state(run: RunId, correlation: u64, state: &RunState) -> InspectSnapshot {
+    InspectSnapshot {
+        run,
+        correlation,
+        pc: state.frame.pc(),
+        executed: state.frame.executed(),
     }
 }
 

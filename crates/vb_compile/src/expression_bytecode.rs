@@ -12,28 +12,64 @@ pub fn compile_expr_to_bytecode(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
 ) -> Result<ExprProgram, CompileError> {
+    compile_expr_to_bytecode_with_resolver(expression, constants, &RejectingReferenceResolver)
+}
+
+/// Lowers a parsed expression tree into bytecode using compiler-owned reference
+/// resolution.
+pub(crate) fn compile_expr_to_bytecode_with_resolver(
+    expression: &ParsedExpression,
+    constants: &mut Vec<ConstValue>,
+    resolver: &impl ExpressionReferenceResolver,
+) -> Result<ExprProgram, CompileError> {
     let mut ops = Vec::new();
-    lower_expr(expression, constants, &mut ops)?;
+    lower_expr(expression, constants, &mut ops, resolver)?;
     ExprProgram::try_from_ops(ops.into_boxed_slice())
         .map_err(|error| CompileError::Workflow(WorkflowError::Expression(error)))
+}
+
+/// Compiler reference resolver used by expression bytecode lowering.
+pub(crate) trait ExpressionReferenceResolver {
+    /// Returns the bytecode operation for a source reference.
+    fn resolve_reference(&self, reference: &str) -> Result<ExprOp, CompileError>;
+}
+
+struct RejectingReferenceResolver;
+
+impl ExpressionReferenceResolver for RejectingReferenceResolver {
+    fn resolve_reference(&self, _reference: &str) -> Result<ExprOp, CompileError> {
+        Err(CompileError::ExpressionLoweringUnsupported {
+            feature: "accessor references",
+        })
+    }
 }
 
 fn lower_expr(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     match expression {
         ParsedExpression::Literal(literal) => lower_literal(literal, constants, ops),
-        ParsedExpression::Unary { op, expr } => lower_unary(*op, expr, constants, ops),
+        ParsedExpression::Unary { op, expr } => lower_unary(*op, expr, constants, ops, resolver),
         ParsedExpression::Binary { op, left, right } => {
-            lower_binary(*op, left, right, constants, ops)
+            lower_binary(*op, left, right, constants, ops, resolver)
         }
-        ParsedExpression::HelperCall { name, args } => lower_helper(*name, args, constants, ops),
-        ParsedExpression::Reference(_) => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: "accessor references",
-        }),
+        ParsedExpression::HelperCall { name, args } => {
+            lower_helper(*name, args, constants, ops, resolver)
+        }
+        ParsedExpression::Reference(reference) => lower_reference(reference, ops, resolver),
     }
+}
+
+fn lower_reference(
+    reference: &str,
+    ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
+) -> Result<(), CompileError> {
+    ops.push(resolver.resolve_reference(reference)?);
+    Ok(())
 }
 
 fn lower_literal(
@@ -61,14 +97,15 @@ fn lower_unary(
     expr: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     match op {
         UnaryOp::Not => {
-            lower_expr(expr, constants, ops)?;
+            lower_expr(expr, constants, ops, resolver)?;
             ops.push(ExprOp::Not);
             Ok(())
         }
-        UnaryOp::Neg => lower_numeric_negation(expr, constants, ops),
+        UnaryOp::Neg => lower_numeric_negation(expr, constants, ops, resolver),
     }
 }
 
@@ -76,10 +113,11 @@ fn lower_numeric_negation(
     expr: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     let zero = push_expression_constant(ConstValue::I64(0), constants)?;
     ops.push(ExprOp::LoadConst(zero));
-    lower_expr(expr, constants, ops)?;
+    lower_expr(expr, constants, ops, resolver)?;
     ops.push(ExprOp::Sub);
     Ok(())
 }
@@ -90,9 +128,10 @@ fn lower_binary(
     right: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
-    lower_expr(left, constants, ops)?;
-    lower_expr(right, constants, ops)?;
+    lower_expr(left, constants, ops, resolver)?;
+    lower_expr(right, constants, ops, resolver)?;
     ops.push(binary_op(op));
     Ok(())
 }
@@ -102,10 +141,12 @@ fn lower_helper(
     args: &[ParsedExpression],
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     validate_helper_arity(name, args.len())?;
-    args.iter()
-        .try_for_each(|arg| lower_expr(arg, constants, ops))?;
+    for arg in args {
+        lower_expr(arg, constants, ops, resolver)?;
+    }
     ops.push(helper_op(name));
     Ok(())
 }

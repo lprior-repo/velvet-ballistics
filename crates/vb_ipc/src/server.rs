@@ -1,11 +1,18 @@
 //! Mio-based Unix domain socket IPC server.
 
+use arrayvec::ArrayVec;
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::Path;
+use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
+use vb_core::ids::WorkflowDigest;
+use vb_core::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::runtime::Runtime;
+use vb_runtime::shard::{AskAnswer, AskTicket};
 
 use crate::frame::write_frame;
 use crate::{IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
@@ -65,6 +72,8 @@ pub enum IpcResponse {
     CommandPayloadMismatch,
     /// The IPC layer needs a workflow resolver before it can submit the run.
     WorkflowResolutionRequired,
+    /// Resolved workflow did not match the request digest.
+    WorkflowDigestMismatch,
     /// A runtime count exceeded the response field width.
     CountOutOfRange {
         /// Actual count that could not fit in the response.
@@ -82,6 +91,29 @@ pub enum IpcResponse {
         /// Error description.
         message: String,
     },
+}
+
+/// Resolves compiled workflows for IPC submit commands.
+pub trait WorkflowResolver {
+    /// Returns the compiled workflow for an already-validated digest.
+    fn resolve_workflow(
+        &mut self,
+        digest: WorkflowDigest,
+    ) -> Result<CompiledWorkflow, WorkflowResolutionError>;
+}
+
+/// Workflow resolution failed before runtime submission.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum WorkflowResolutionError {
+    /// No resolver is wired into this IPC surface.
+    #[error("workflow resolution required")]
+    Required,
+    /// The requested workflow digest is unknown.
+    #[error("workflow not found")]
+    NotFound,
+    /// Resolver rejected the compiled workflow artifact.
+    #[error("workflow artifact invalid")]
+    InvalidArtifact,
 }
 
 impl IpcServer {
@@ -122,11 +154,12 @@ impl IpcServer {
             .poll(&mut self.events, timeout)
             .map_err(|source| IpcServerError::PollFailed { source })?;
 
-        let pending: Vec<(Token, bool)> = self
-            .events
-            .iter()
-            .map(|e| (e.token(), e.is_readable()))
-            .collect();
+        let mut pending: ArrayVec<(Token, bool), MAX_CLIENTS> = ArrayVec::new();
+        for event in &self.events {
+            pending
+                .try_push((event.token(), event.is_readable()))
+                .map_err(|_| IpcServerError::TooManyClients)?;
+        }
         for (token, readable) in pending {
             if token == SERVER_TOKEN {
                 self.accept_client()?;
@@ -146,6 +179,10 @@ impl IpcServer {
     }
 
     fn accept_client(&mut self) -> Result<(), IpcServerError> {
+        if self.clients.len() >= MAX_CLIENTS {
+            return Err(IpcServerError::TooManyClients);
+        }
+
         let (stream, _addr) = self
             .listener
             .accept()
@@ -199,12 +236,12 @@ impl IpcServer {
                 Err(error) => {
                     let response = frame_error_response(error);
                     let fallback_header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);
-                    drop(send_response(
+                    send_response(
                         &mut client.stream,
                         &mut client.write_buffer,
                         &fallback_header,
                         &response,
-                    ));
+                    )?;
                     return Ok(true);
                 }
             };
@@ -218,14 +255,12 @@ impl IpcServer {
             client.read_buffer.drain(..total_len);
 
             let response = dispatch_command(&header, &payload_bytes, runtime);
-            // Response write failures are logged by dropping the error; the
-            // server continues serving other clients.
-            drop(send_response(
+            send_response(
                 &mut client.stream,
                 &mut client.write_buffer,
                 &header,
                 &response,
-            ));
+            )?;
         }
 
         Ok(false)
@@ -238,12 +273,30 @@ impl IpcServer {
     }
 }
 
+/// Serves one IPC polling turn on an existing server.
+pub fn serve_ipc(
+    server: &mut IpcServer,
+    runtime: &mut Runtime,
+    timeout: Option<std::time::Duration>,
+) -> Result<bool, IpcServerError> {
+    server.poll_once(runtime, timeout)
+}
+
 fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    dispatch_command_with_resolver(header, payload, runtime, None)
+}
+
+fn dispatch_command_with_resolver(
+    header: &IpcFrameHeader,
+    payload: &[u8],
+    runtime: &mut Runtime,
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
     match header.command {
         IpcCommand::Health => handle_health(),
         IpcCommand::Shutdown => handle_shutdown(runtime),
         IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
-            handle_submit_run(header, payload, runtime)
+            handle_submit_run(header, payload, runtime, resolver)
         }
         IpcCommand::CancelRun => handle_cancel_run(payload, runtime),
         IpcCommand::InspectRun => handle_inspect_run(payload, runtime),
@@ -255,11 +308,18 @@ fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runti
     }
 }
 
-fn handle_health() -> IpcResponse {
+/// Handles a ping/health request.
+pub fn handle_ping() -> IpcResponse {
     IpcResponse::Healthy
 }
 
-fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
+/// Handles a health request.
+pub fn handle_health() -> IpcResponse {
+    handle_ping()
+}
+
+/// Handles shutdown.
+pub fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
     match runtime.shutdown_graceful() {
         Ok(()) => IpcResponse::ShuttingDown,
         Err(e) => IpcResponse::RuntimeError {
@@ -268,10 +328,12 @@ fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_submit_run(
+/// Handles submit-run commands after resolving the compiled workflow explicitly.
+pub fn handle_submit_run(
     header: &IpcFrameHeader,
     payload: &[u8],
-    _runtime: &mut Runtime,
+    runtime: &mut Runtime,
+    resolver: Option<&mut dyn WorkflowResolver>,
 ) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(decoded) = decoded else {
@@ -281,15 +343,24 @@ fn handle_submit_run(
     match (header.command, decoded) {
         (IpcCommand::SubmitRun, crate::IpcPayload::SubmitRun(submit))
         | (IpcCommand::SubmitRunInline, crate::IpcPayload::SubmitRunInline(submit)) => {
-            let _workflow_digest = submit.workflow;
-            let _input = submit.input;
-            IpcResponse::WorkflowResolutionRequired
+            submit_resolved_workflow(header.command, submit, runtime, resolver)
         }
         _ => IpcResponse::CommandPayloadMismatch,
     }
 }
 
-fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles inline submit-run commands.
+pub fn handle_submit_run_inline(
+    payload: &[u8],
+    runtime: &mut Runtime,
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 0, 0);
+    handle_submit_run(&header, payload, runtime, resolver)
+}
+
+/// Handles cancel-run.
+pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::CancelRun { run_id }) = decoded else {
         return IpcResponse::BadRequest;
@@ -305,7 +376,8 @@ fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles inspect-run.
+pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::InspectRun { run_id }) = decoded else {
         return IpcResponse::BadRequest;
@@ -321,7 +393,8 @@ fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles list-events.
+pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::ListEvents { run_id, .. }) = decoded else {
         return IpcResponse::BadRequest;
@@ -335,13 +408,29 @@ fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles answer-ask.
+pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::AnswerAsk { run_id, .. }) = decoded else {
+    let Ok(crate::IpcPayload::AnswerAsk { run_id, ticket, .. }) = decoded else {
         return IpcResponse::BadRequest;
     };
 
-    match runtime.answer_ask(run_id) {
+    let ask_step = match step_from_ticket(ticket) {
+        Some(step) => step,
+        None => return IpcResponse::BadRequest,
+    };
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run: run_id,
+            ask_step,
+            resume_step: ask_step,
+        },
+        answer_slot: SlotIdx::ZERO,
+        value: SlotValue::Null,
+        taint: Taint::Clean,
+    };
+
+    match runtime.answer_ask(answer) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.as_u64(),
         },
@@ -351,7 +440,8 @@ fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles complete-action.
+pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::CompleteAction { run_id, ticket, .. }) = decoded else {
         return IpcResponse::BadRequest;
@@ -371,13 +461,26 @@ fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
     }
 }
 
-fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+/// Handles fail-action.
+pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::FailAction { run_id, .. }) = decoded else {
+    let Ok(crate::IpcPayload::FailAction { run_id, ticket, error }) = decoded else {
         return IpcResponse::BadRequest;
     };
 
-    match runtime.fail_action(run_id) {
+    let action_ticket = match action_ticket_from_wire(run_id, ticket) {
+        Some(ticket) => ticket,
+        None => return IpcResponse::BadRequest,
+    };
+    let failure = ActionFailure {
+        code: ActionFailureCode::Unknown,
+        retryable: false,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: payload_len(error.len()),
+    };
+
+    match runtime.fail_action(action_ticket, failure) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.as_u64(),
         },
@@ -387,7 +490,34 @@ fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
-fn handle_drain_trace(runtime: &mut Runtime) -> IpcResponse {
+fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
+    match u16::try_from(ticket) {
+        Ok(step) => Some(StepIdx::new(step)),
+        Err(_) => None,
+    }
+}
+
+fn action_ticket_from_wire(run_id: vb_core::RunId, ticket: u64) -> Option<ActionTicket> {
+    let step = step_from_ticket(ticket)?;
+    Some(ActionTicket {
+        run: run_id,
+        step,
+        seq: SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+    })
+}
+
+fn payload_len(len: usize) -> u32 {
+    match u32::try_from(len) {
+        Ok(value) => value,
+        Err(_) => u32::MAX,
+    }
+}
+
+/// Handles drain-trace.
+pub fn handle_drain_trace(runtime: &mut Runtime) -> IpcResponse {
     let events = runtime.drain_trace();
     count_response(events.len(), IpcResponseKind::Trace)
 }
@@ -406,6 +536,42 @@ fn count_response(count: usize, kind: IpcResponseKind) -> IpcResponse {
         Err(_) => IpcResponse::CountOutOfRange {
             actual: count,
             limit: u32::MAX,
+        },
+    }
+}
+
+fn submit_resolved_workflow(
+    command: IpcCommand,
+    submit: crate::SubmitRunPayload,
+    runtime: &mut Runtime,
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
+    let Some(resolver) = resolver else {
+        return IpcResponse::WorkflowResolutionRequired;
+    };
+    let workflow = match resolver.resolve_workflow(submit.workflow) {
+        Ok(workflow) => workflow,
+        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
+        Err(error) => {
+            return IpcResponse::RuntimeError {
+                message: error.to_string(),
+            };
+        }
+    };
+    if workflow.digest() != submit.workflow {
+        return IpcResponse::WorkflowDigestMismatch;
+    }
+    let result = match command {
+        IpcCommand::SubmitRun => runtime.submit_compiled(submit.run_id, workflow),
+        IpcCommand::SubmitRunInline => runtime.submit_direct(submit.run_id, workflow),
+        _ => return IpcResponse::CommandPayloadMismatch,
+    };
+    match result {
+        Ok(()) => IpcResponse::AcceptedRun {
+            run_id: submit.run_id.as_u64(),
+        },
+        Err(e) => IpcResponse::RuntimeError {
+            message: e.to_string(),
         },
     }
 }

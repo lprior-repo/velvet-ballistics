@@ -48,6 +48,8 @@ tasks:
 
   check:
     command: 'rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features'
+    deps:
+      - 'nightly-feature-gate'
     toolchains:
       - rust
     inputs:
@@ -69,7 +71,9 @@ tasks:
       runInCI: true
 
   nightly-feature-cargo-probe:
-    command: 'rustup run nightly-2026-04-28 cargo -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs check --workspace --all-targets --all-features'
+    script: 'rustup run nightly-2026-04-28 cargo -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs check --workspace --all-targets --all-features'
+    deps:
+      - 'nightly-feature-gate'
     toolchains:
       - rust
     inputs:
@@ -77,7 +81,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   source-length:
     command: 'bash scripts/check-source-length.sh'
@@ -91,19 +95,26 @@ tasks:
       runInCI: true
 
   hardened-build:
-    command: 'rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile hardened'
+    command: 'env RUSTC_WRAPPER= CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile hardened'
+    deps:
+      - 'check'
+      - 'lint-src'
+      - 'source-length'
     toolchains:
       - rust
     inputs:
       - '@globs(sources)'
       - '@globs(configs)'
     outputs:
-      - 'target/hardened/**'
+      - 'target/hardened-build/hardened/**'
     options:
+      cache: false
       runInCI: true
 
   test:
-    command: 'rustup run nightly-2026-04-28 cargo test --workspace --all-targets --all-features'
+    command: 'rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -113,8 +124,22 @@ tasks:
     options:
       runInCI: true
 
+  doc-test:
+    command: 'rustup run nightly-2026-04-28 cargo test --doc --workspace --all-features'
+    deps:
+      - 'check'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
   doc:
     command: 'rustup run nightly-2026-04-28 cargo doc --workspace --all-features --no-deps'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -128,11 +153,16 @@ tasks:
 
   supply-chain:
     script: |
+      set -euo pipefail
       rustup run nightly-2026-04-28 cargo audit
       rustup run nightly-2026-04-28 cargo deny check
-      rustup run nightly-2026-04-28 cargo vet --locked
-      rustup run nightly-2026-04-28 cargo geiger --all-features --output-format GitHubMarkdown
-      rustup run nightly-2026-04-28 cargo machete
+      rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked
+      # Geiger is reporting-only: first-party unsafe is forbidden by workspace
+      # lints; transitive unsafe remains visible here and governed by vet/deny.
+      for package in vb_codegen vb_compile vb_core vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballastics velvet-ballastics-fuzz; do
+        rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown
+      done
+      rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_codegen crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/velvet_ballastics fuzz
     toolchains:
       - rust
     inputs:
@@ -140,22 +170,27 @@ tasks:
       - 'Cargo.lock'
       - 'deny.toml'
       - 'cargo-vet.toml'
+      - 'supply-chain/**/*'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   feature-powerset:
     command: 'rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --no-dev-deps'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
       - '@globs(sources)'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   miri:
-    command: 'rustup run nightly-2026-04-28 cargo miri test --workspace --all-features'
+    command: 'rustup run nightly-2026-04-28 cargo miri test -p vb_core -p vb_expr -p vb_compile --all-features'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -163,10 +198,12 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   coverage:
     command: 'rustup run nightly-2026-04-28 cargo llvm-cov nextest --workspace --all-features --lcov --output-path target/llvm-cov/lcov.info'
+    deps:
+      - 'test'
     toolchains:
       - rust
     inputs:
@@ -176,10 +213,12 @@ tasks:
     outputs:
       - 'target/llvm-cov/**'
     options:
-      runInCI: false
+      runInCI: true
 
   mutants-smoke:
-    command: 'rustup run nightly-2026-04-28 cargo mutants --workspace --no-shuffle --timeout 60 --in-place --minimum-test-timeout 10'
+    command: 'rustup run nightly-2026-04-28 cargo mutants --package vb_core --no-shuffle --timeout 60 --in-place --minimum-test-timeout 10'
+    deps:
+      - 'test'
     toolchains:
       - rust
     inputs:
@@ -187,21 +226,31 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   fuzz-smoke:
-    command: 'rustup run nightly-2026-04-28 cargo fuzz build'
+    command: 'rustup run nightly-2026-04-28 cargo build -p velvet-ballastics-fuzz --bins --features fuzz --locked'
     toolchains:
       - rust
     inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
-      - '@globs(configs)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'fuzz/**/*'
+      - 'crates/vb_core/**/*'
+      - 'crates/vb_yaml/**/*'
+      - 'crates/vb_expr/**/*'
+      - 'crates/vb_compile/**/*'
+      - 'crates/vb_codegen/**/*'
+      - 'crates/vb_ipc/**/*'
+      - 'crates/vb_storage/**/*'
     options:
-      runInCI: false
+      runInCI: true
 
   sanitizer-address-check:
     script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-features --no-run'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -213,6 +262,8 @@ tasks:
 
   bench-build:
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features --no-run'
+    deps:
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -265,6 +316,9 @@ tasks:
 
   maxperf:
     command: 'rustup run nightly-2026-04-28 cargo build --workspace --all-features --release'
+    deps:
+      - 'check'
+      - 'lint-src'
     toolchains:
       - rust
     inputs:
@@ -279,6 +333,9 @@ tasks:
     script: |
       export RUSTFLAGS="-C target-cpu=native"
       rustup run nightly-2026-04-28 cargo build --workspace --all-features --release
+    deps:
+      - 'check'
+      - 'lint-src'
     toolchains:
       - rust
     inputs:

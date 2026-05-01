@@ -39,7 +39,7 @@ use std::str;
 use thiserror::Error;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx,
+    ExprBranch, ExprIdx, ExprOp, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx,
     WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
@@ -50,6 +50,13 @@ const DEFAULT_MAX_SEQUENCE_LEN: usize = 10_000;
 const DEFAULT_MAX_MAPPING_ENTRIES: usize = 1_024;
 const DEFAULT_MAX_SCALAR_BYTES: usize = 65_536;
 const WORKFLOW_VERSION: &str = "velvet-ballastics/v1";
+const RECORD_HEADER_BYTES: usize = 60;
+const RECORD_HEADER_LEN: u32 = 60;
+const RECORD_CRC_OFFSET: usize = 56;
+const CURRENT_SCHEMA_VERSION: u16 = 1;
+const MAGIC_COMPILED_ARTIFACT: u32 = 0x5642_4952;
+const RECORD_KIND_COMPILED_IR: u16 = 2;
+const MAX_COMPILED_ARTIFACT_BYTES: u32 = 16_777_216;
 
 /// Strict YAML resource limits for cold compilation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -352,9 +359,10 @@ pub fn lower_together(
     join: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
-    let branch_count = u16::try_from(branches.len()).map_err(|_| CompileError::SlotIndexOutOfRange {
-        value: i64::try_from(branches.len()).unwrap_or(i64::MAX),
-    })?;
+    let branch_count =
+        u16::try_from(branches.len()).map_err(|_| CompileError::SlotIndexOutOfRange {
+            value: i64::try_from(branches.len()).unwrap_or(i64::MAX),
+        })?;
     let accumulator = alloc_accumulator_slot(builder)?;
     let mut nodes = vec![CompiledNode {
         id,
@@ -374,7 +382,10 @@ pub fn lower_together(
         id: join,
         output: Some(accumulator),
         next: None,
-        kind: CompiledNodeKind::TogetherJoin { branch_count, accumulator },
+        kind: CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        },
     });
     Ok(nodes)
 }
@@ -485,11 +496,11 @@ pub fn lower_repeat(
     done: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
-    let attempt_slot = slot_idx_for_step(id.as_usize().checked_add(1).ok_or(
-        CompileError::SlotIndexOutOfRange {
-            value: i64::MAX,
-        },
-    )?)?;
+    let attempt_slot = slot_idx_for_step(
+        id.as_usize()
+            .checked_add(1)
+            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+    )?;
     builder.record_slot(attempt_slot);
     Ok(vec![
         CompiledNode {
@@ -532,6 +543,9 @@ pub fn lower_wait(
     builder: &mut SlotCompiler,
 ) -> CompiledNode {
     builder.record_slot(deadline_or_event);
+    if let Some(timeout) = timeout_slot {
+        builder.record_slot(timeout);
+    }
     let kind = if is_event {
         CompiledNodeKind::WaitEvent {
             event: deadline_or_event,
@@ -557,10 +571,16 @@ pub fn lower_ask(
     answer: SlotIdx,
     timeout_slot: Option<SlotIdx>,
     builder: &mut SlotCompiler,
-) -> Vec<CompiledNode> {
+) -> Result<Vec<CompiledNode>, CompileError> {
     builder.record_slot(prompt);
     builder.record_slot(answer);
-    vec![
+    if let Some(timeout) = timeout_slot {
+        builder.record_slot(timeout);
+    }
+    let resume = id.checked_add(1).ok_or(CompileError::StepIndexOutOfRange {
+        value: id.as_usize(),
+    })?;
+    Ok(vec![
         CompiledNode {
             id,
             output: None,
@@ -571,12 +591,12 @@ pub fn lower_ask(
             },
         },
         CompiledNode {
-            id: id.checked_add(1).unwrap_or(StepIdx::MAX),
+            id: resume,
             output: Some(answer),
             next: None,
             kind: CompiledNodeKind::AskResume { answer },
         },
-    ]
+    ])
 }
 
 /// Lowers a `finish` primitive into a terminal `Finish` node.
@@ -604,17 +624,77 @@ pub fn compute_compiled_digest(source: &[u8]) -> WorkflowDigest {
 
 /// Emits a postcard-serialized compiled workflow artifact.
 ///
-/// The serialized artifact can be loaded by the hot runtime without
-/// re-parsing YAML source.
+/// The artifact is a storage-compatible `VBIR` record: a 60-byte envelope
+/// followed by a postcard `WorkflowParts` payload.
 pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, CompileErrors> {
     let parts = workflow.to_parts();
-    postcard::to_allocvec(&parts)
-        .map(|vec| vec.into_boxed_slice())
-        .map_err(|error| {
-            CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-                feature: Box::leak(format!("postcard serialization failed: {error}").into_boxed_str()),
-            }])
-        })
+    let payload = postcard::to_allocvec(&parts).map_err(|error| {
+        CompileErrors(vec![CompileError::ExpressionService {
+            reason: format!("postcard serialization failed: {error}").into_boxed_str(),
+        }])
+    })?;
+    encode_compiled_artifact_payload(&payload).map_err(|error| {
+        CompileErrors(vec![CompileError::ExpressionService {
+            reason: error.into(),
+        }])
+    })
+}
+
+fn encode_compiled_artifact_payload(payload: &[u8]) -> Result<Box<[u8]>, &'static str> {
+    let payload_len = u32::try_from(payload.len()).map_err(|_| "compiled artifact too large")?;
+    if payload_len > MAX_COMPILED_ARTIFACT_BYTES {
+        return Err("compiled artifact too large");
+    }
+    let capacity = RECORD_HEADER_BYTES
+        .checked_add(payload.len())
+        .ok_or("compiled artifact too large")?;
+    let mut header = [0_u8; RECORD_HEADER_BYTES];
+    write_u32_le(&mut header, 0, MAGIC_COMPILED_ARTIFACT)?;
+    write_u16_le(&mut header, 4, CURRENT_SCHEMA_VERSION)?;
+    write_u16_le(&mut header, 6, RECORD_KIND_COMPILED_IR)?;
+    write_u32_le(&mut header, 8, RECORD_HEADER_LEN)?;
+    write_u32_le(&mut header, 12, payload_len)?;
+    write_u64_le(&mut header, 16, 0)?;
+    write_digest(&mut header, blake3::hash(payload).as_bytes())?;
+    let checksum = crc32c::crc32c(&header[..RECORD_CRC_OFFSET]);
+    write_u32_le(&mut header, RECORD_CRC_OFFSET, checksum)?;
+
+    let mut encoded = Vec::with_capacity(capacity);
+    encoded.extend_from_slice(&header);
+    encoded.extend_from_slice(payload);
+    Ok(encoded.into_boxed_slice())
+}
+
+fn write_u16_le(target: &mut [u8], offset: usize, value: u16) -> Result<(), &'static str> {
+    let Some(window) = target.get_mut(offset..offset.saturating_add(2)) else {
+        return Err("record header write out of bounds");
+    };
+    window.copy_from_slice(&value.to_le_bytes());
+    Ok(())
+}
+
+fn write_u32_le(target: &mut [u8], offset: usize, value: u32) -> Result<(), &'static str> {
+    let Some(window) = target.get_mut(offset..offset.saturating_add(4)) else {
+        return Err("record header write out of bounds");
+    };
+    window.copy_from_slice(&value.to_le_bytes());
+    Ok(())
+}
+
+fn write_u64_le(target: &mut [u8], offset: usize, value: u64) -> Result<(), &'static str> {
+    let Some(window) = target.get_mut(offset..offset.saturating_add(8)) else {
+        return Err("record header write out of bounds");
+    };
+    window.copy_from_slice(&value.to_le_bytes());
+    Ok(())
+}
+
+fn write_digest(target: &mut [u8], digest: &[u8; 32]) -> Result<(), &'static str> {
+    let Some(window) = target.get_mut(24..RECORD_CRC_OFFSET) else {
+        return Err("record header write out of bounds");
+    };
+    window.copy_from_slice(digest);
+    Ok(())
 }
 
 /// Generates a Rust source file from a compiled workflow.
@@ -622,10 +702,11 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
 /// The generated Rust code can be compiled and linked for maxperf execution
 /// where the hot interpreter is bypassed entirely.
 pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    vb_codegen::emit_rust_workflow(workflow)
-        .map_err(|error| CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
+    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
+        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
             feature: Box::leak(error.to_string().into_boxed_str()),
-        }]))
+        }])
+    })
 }
 
 /// Mutable slot compiler state for building node arrays.
@@ -671,7 +752,10 @@ impl SlotCompiler {
     }
 
     /// Pushes an accessor program and returns its index.
-    pub fn push_accessor(&mut self, program: AccessorProgram) -> Result<vb_core::AccessorIdx, CompileError> {
+    pub fn push_accessor(
+        &mut self,
+        program: AccessorProgram,
+    ) -> Result<vb_core::AccessorIdx, CompileError> {
         let index = u16::try_from(self.accessors.len()).map_err(|_| {
             CompileError::ExpressionLoweringUnsupported {
                 feature: "accessor table overflow",
@@ -745,6 +829,14 @@ fn non_string_key_error() -> CompileError {
     CompileError::NonStringKey {
         mark: SourceMark::unavailable(),
     }
+}
+
+/// Runs the shared `vb_yaml` strict-profile service for integrations that need
+/// parser-service parity without changing compiler diagnostic precedence.
+pub fn validate_yaml_service(text: &str) -> Result<(), CompileError> {
+    vb_yaml::validate_yaml_profile(text).map_err(|error| CompileError::YamlService {
+        reason: error.to_string().into_boxed_str(),
+    })
 }
 
 /// YAML compiler errors.
@@ -857,6 +949,12 @@ pub enum CompileError {
         actual: usize,
         /// Configured scalar limit.
         limit: usize,
+    },
+    /// Shared `vb_yaml` service rejected the source before compiler-local validation.
+    #[error("YAML service validation failed: {reason}")]
+    YamlService {
+        /// Service error detail.
+        reason: Box<str>,
     },
     /// Compiled IR validation failed.
     #[error("compiled workflow IR failed validation: {0}")]
@@ -1102,6 +1200,16 @@ pub enum CompileError {
         /// Missing declaration name.
         name: Box<str>,
     },
+    /// Reference uses a nested accessor path that is not honestly lowered.
+    #[error("unsupported accessor reference in {reference}: {root}.{path}")]
+    UnsupportedAccessorReference {
+        /// Full source reference string.
+        reference: Box<str>,
+        /// Supported root segment.
+        root: Box<str>,
+        /// Unsupported nested path.
+        path: Box<str>,
+    },
     /// Branch target points outside the declared step table.
     #[error("step {step} branch target {target} is not a declared step")]
     UnknownStepTarget {
@@ -1212,6 +1320,12 @@ pub enum CompileError {
         /// Actual argument count.
         actual: usize,
     },
+    /// Shared `vb_expr` service rejected or could not lower an expression.
+    #[error("expression service failed: {reason}")]
+    ExpressionService {
+        /// Service error detail.
+        reason: Box<str>,
+    },
 }
 
 impl CompileError {
@@ -1236,6 +1350,7 @@ impl CompileError {
             | Self::SequenceLimit { .. }
             | Self::MappingLimit { .. }
             | Self::ScalarLimit { .. } => "LIMIT_EXCEEDED",
+            Self::YamlService { .. } => "FORBIDDEN_YAML_FEATURE",
             Self::Workflow(error) => workflow_error_code(error),
             Self::MissingField { .. }
             | Self::MissingTriggerField { .. }
@@ -1275,6 +1390,7 @@ impl CompileError {
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),
+            Self::UnsupportedAccessorReference { .. } => "UNSUPPORTED_ACCESSOR_REFERENCE",
             Self::UnreachableStep { .. } => "UNREACHABLE_STEP",
             Self::TypeMismatch { .. } | Self::UnknownSlotType { .. } => "TYPE_MISMATCH",
             Self::SecretTaintLeak { .. } => "SECRET_RESULT_LEAK",
@@ -1285,7 +1401,8 @@ impl CompileError {
             | Self::ExpressionUnexpectedToken { .. }
             | Self::ExpressionUnknownIdentifier { .. }
             | Self::ExpressionLoweringUnsupported { .. }
-            | Self::ExpressionHelperArity { .. } => "INVALID_EXPRESSION",
+            | Self::ExpressionHelperArity { .. }
+            | Self::ExpressionService { .. } => "INVALID_EXPRESSION",
         }
     }
 
@@ -1717,7 +1834,8 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
     let name = required_string_field(doc, "name")?;
     let steps = required_sequence_field(doc, "steps")?;
     let digest = WorkflowDigest::from_bytes(blake3::hash(text.as_bytes()).into());
-    let mut builder = WorkflowBuilder::new();
+    let input_names = input_names(doc)?;
+    let mut builder = WorkflowBuilder::new(input_names);
     let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
 
     for (index, step) in steps.iter().enumerate() {
@@ -1729,8 +1847,8 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         digest,
         slot_count: builder.slot_count()?,
         nodes: builder.nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
+        expressions: builder.expressions.into_boxed_slice(),
+        accessors: builder.accessors.into_boxed_slice(),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
@@ -1862,6 +1980,24 @@ fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
         validate_public_name("inputs", name)?;
     }
     Ok(())
+}
+
+fn input_names(doc: &Yaml<'_>) -> Result<Vec<Box<str>>, CompileError> {
+    let Some(node) = doc.as_mapping_get("inputs") else {
+        return Ok(Vec::new());
+    };
+    let mapping = node.as_mapping().ok_or(CompileError::FieldShape {
+        field: "inputs",
+        expected: "a mapping",
+    })?;
+    let mut names = Vec::with_capacity(mapping.len());
+    for (key, _) in mapping {
+        let Some(name) = key.as_str() else {
+            return Err(non_string_key_error());
+        };
+        names.push(Box::<str>::from(name));
+    }
+    Ok(names)
 }
 
 fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -2247,12 +2383,18 @@ fn required_mapping_field<'a>(
 struct WorkflowBuilder {
     nodes: Vec<CompiledNode>,
     constants: Vec<ConstValue>,
+    expressions: Vec<ExprProgram>,
+    accessors: Vec<AccessorProgram>,
+    input_names: Vec<Box<str>>,
     max_slot: Option<usize>,
 }
 
 impl WorkflowBuilder {
-    fn new() -> Self {
-        Self::default()
+    fn new(input_names: Vec<Box<str>>) -> Self {
+        Self {
+            input_names,
+            ..Self::default()
+        }
     }
 
     fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, CompileError> {
@@ -2263,6 +2405,31 @@ impl WorkflowBuilder {
         })?;
         self.constants.push(value);
         Ok(ConstIdx::new(index))
+    }
+
+    fn push_expression(&mut self, program: ExprProgram) -> Result<ExprIdx, CompileError> {
+        let index = u16::try_from(self.expressions.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "expression table overflow",
+            }
+        })?;
+        self.expressions.push(program);
+        Ok(ExprIdx::new(index))
+    }
+
+    fn input_slot(&self, name: &str) -> Option<SlotIdx> {
+        let mut index = 0usize;
+        while index < self.input_names.len() {
+            let input_name = self.input_names.get(index)?;
+            if input_name.as_ref() == name {
+                let Ok(slot) = u16::try_from(index) else {
+                    return None;
+                };
+                return Some(SlotIdx::new(slot));
+            }
+            index = index.saturating_add(1);
+        }
+        None
     }
 
     fn record_slot(&mut self, slot: SlotIdx) {
@@ -2363,10 +2530,11 @@ struct StepSpec<'a> {
     body: &'a Yaml<'a>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum ChooseCondition {
     Slot(SlotIdx),
     Literal(bool),
+    Expression(Box<str>),
 }
 
 fn step_spec<'a>(step: &'a Yaml<'a>, index: usize) -> Result<StepSpec<'a>, CompileError> {
@@ -2507,7 +2675,35 @@ fn compile_choose(
         ChooseCondition::Literal(value) => {
             compile_literal_choose(index, value, on_true, on_false, builder)
         }
+        ChooseCondition::Expression(source) => {
+            compile_expression_choose(step_idx(index)?, &source, on_true, on_false, builder)
+        }
     }
+}
+
+fn compile_expression_choose(
+    id: StepIdx,
+    source: &str,
+    on_true: StepIdx,
+    on_false: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    let program = compile_source_expression(source, builder)?;
+    record_expression_slots(&program, builder);
+    let condition = builder.push_expression(program)?;
+    Ok(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Choose {
+            branches: vec![ExprBranch {
+                condition,
+                target: on_true,
+            }]
+            .into_boxed_slice(),
+            otherwise: Some(on_false),
+        },
+    })
 }
 
 fn compile_slot_choose(
@@ -2583,6 +2779,11 @@ fn compile_finish_result(
             kind: CompiledNodeKind::Finish { result: slot },
         }]);
     }
+    if let Some(source) = result.as_str()
+        && is_expression_source(source)
+    {
+        return compile_finish_expression(source, index, builder);
+    }
     let value = slot_value(result, index)?;
     let value = builder.push_constant(value)?;
     let output = slot_idx_for_step(index)?;
@@ -2594,6 +2795,47 @@ fn compile_finish_result(
             output: Some(output),
             next: Some(finish_id),
             kind: CompiledNodeKind::SetConst { value },
+        },
+        CompiledNode {
+            id: finish_id,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish { result: output },
+        },
+    ])
+}
+
+fn is_expression_source(source: &str) -> bool {
+    source.starts_with('$')
+        || source.contains(" == ")
+        || source.contains(" != ")
+        || source.contains(" >= ")
+        || source.contains(" <= ")
+        || source.contains(" > ")
+        || source.contains(" < ")
+        || source.contains(" and ")
+        || source.contains(" or ")
+        || source.starts_with("not ")
+        || source.contains('(')
+}
+
+fn compile_finish_expression(
+    source: &str,
+    index: usize,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    let program = compile_source_expression(source, builder)?;
+    record_expression_slots(&program, builder);
+    let expression = builder.push_expression(program)?;
+    let output = slot_idx_for_step(index)?;
+    builder.record_slot(output);
+    let finish_id = next_step(index)?;
+    Ok(vec![
+        CompiledNode {
+            id: step_idx(index)?,
+            output: Some(output),
+            next: Some(finish_id),
+            kind: CompiledNodeKind::EvalExpr { expr: expression },
         },
         CompiledNode {
             id: finish_id,
@@ -2724,7 +2966,164 @@ fn required_choose_condition(
     if let Some(value) = node.as_bool() {
         return Ok(ChooseCondition::Literal(value));
     }
+    if let Some(source) = node.as_str() {
+        return Ok(ChooseCondition::Expression(Box::<str>::from(source)));
+    }
     required_slot(body, step, "condition").map(ChooseCondition::Slot)
+}
+
+fn compile_source_expression(
+    source: &str,
+    builder: &mut WorkflowBuilder,
+) -> Result<ExprProgram, CompileError> {
+    let expression = expression::parse_expression(source)?;
+    let resolver = SlotReferenceResolver { builder };
+    let mut constants = Vec::new();
+    let program = expression_bytecode::compile_expr_to_bytecode_with_resolver(
+        &expression,
+        &mut constants,
+        &resolver,
+    )?;
+    remap_expression_constants(program, constants, builder)
+}
+
+struct SlotReferenceResolver<'a> {
+    builder: &'a WorkflowBuilder,
+}
+
+impl expression_bytecode::ExpressionReferenceResolver for SlotReferenceResolver<'_> {
+    fn resolve_reference(&self, reference: &str) -> Result<ExprOp, CompileError> {
+        resolve_expression_reference(reference, self.builder)
+    }
+}
+
+fn resolve_expression_reference(
+    reference: &str,
+    builder: &WorkflowBuilder,
+) -> Result<ExprOp, CompileError> {
+    let Some(body) = reference.strip_prefix('$') else {
+        return Err(CompileError::UnknownReferenceRoot {
+            reference: Box::<str>::from(reference),
+            root: Box::<str>::from(reference),
+        });
+    };
+    if let Some(slot) = body.strip_prefix("slot.") {
+        return resolve_slot_reference(reference, "slot", slot);
+    }
+    if let Some(slot) = body.strip_prefix("slots.") {
+        return resolve_slot_reference(reference, "slots", slot);
+    }
+    if let Some(input) = body.strip_prefix("input.") {
+        return resolve_input_reference(reference, input, builder);
+    }
+    let root = match body.split_once('.') {
+        Some((root, _)) => root,
+        None => body,
+    };
+    Err(CompileError::UnknownReferenceRoot {
+        reference: Box::<str>::from(reference),
+        root: Box::<str>::from(root),
+    })
+}
+
+fn resolve_slot_reference(reference: &str, root: &str, body: &str) -> Result<ExprOp, CompileError> {
+    let Some((slot, path)) = body.split_once('.') else {
+        return parse_u16_slot(body).map(ExprOp::LoadSlot).ok_or_else(|| {
+            CompileError::UnknownReferenceName {
+                kind: "slot",
+                reference: Box::<str>::from(reference),
+                name: Box::<str>::from(body),
+            }
+        });
+    };
+    let _ = parse_u16_slot(slot).ok_or_else(|| CompileError::UnknownReferenceName {
+        kind: "slot",
+        reference: Box::<str>::from(reference),
+        name: Box::<str>::from(slot),
+    })?;
+    let accessor_root = format!("{root}.{slot}");
+    Err(unsupported_accessor_reference(
+        reference,
+        accessor_root.as_str(),
+        path,
+    ))
+}
+
+fn parse_u16_slot(value: &str) -> Option<SlotIdx> {
+    match value.parse::<u16>() {
+        Ok(slot) => Some(SlotIdx::new(slot)),
+        Err(_) => None,
+    }
+}
+
+fn resolve_input_reference(
+    reference: &str,
+    body: &str,
+    builder: &WorkflowBuilder,
+) -> Result<ExprOp, CompileError> {
+    let (name, path) = match body.split_once('.') {
+        Some((name, path)) => (name, Some(path)),
+        None => (body, None),
+    };
+    let Some(slot) = builder.input_slot(name) else {
+        return Err(CompileError::UnknownReferenceName {
+            kind: "input",
+            reference: Box::<str>::from(reference),
+            name: Box::<str>::from(name),
+        });
+    };
+    if let Some(path) = path {
+        let accessor_root = format!("input.{name}");
+        return Err(unsupported_accessor_reference(
+            reference,
+            accessor_root.as_str(),
+            path,
+        ));
+    }
+    Ok(ExprOp::LoadSlot(slot))
+}
+
+fn unsupported_accessor_reference(reference: &str, root: &str, path: &str) -> CompileError {
+    CompileError::UnsupportedAccessorReference {
+        reference: Box::<str>::from(reference),
+        root: Box::<str>::from(root),
+        path: Box::<str>::from(path),
+    }
+}
+
+fn remap_expression_constants(
+    program: ExprProgram,
+    constants: Vec<ConstValue>,
+    builder: &mut WorkflowBuilder,
+) -> Result<ExprProgram, CompileError> {
+    let mut remap = Vec::with_capacity(constants.len());
+    for constant in constants {
+        remap.push(builder.push_constant(constant)?);
+    }
+    let mut ops = Vec::with_capacity(program.ops.len());
+    for op in &program.ops {
+        match *op {
+            ExprOp::LoadConst(index) => {
+                let Some(mapped) = remap.get(index.as_usize()).copied() else {
+                    return Err(CompileError::Workflow(WorkflowError::ConstOutOfBounds {
+                        constant: index,
+                    }));
+                };
+                ops.push(ExprOp::LoadConst(mapped));
+            }
+            other => ops.push(other),
+        }
+    }
+    ExprProgram::try_from_ops(ops.into_boxed_slice())
+        .map_err(|error| CompileError::Workflow(WorkflowError::Expression(error)))
+}
+
+fn record_expression_slots(program: &ExprProgram, builder: &mut WorkflowBuilder) {
+    for op in &program.ops {
+        if let ExprOp::LoadSlot(slot) = *op {
+            builder.record_slot(slot);
+        }
+    }
 }
 
 fn required_branch_target(
@@ -2775,8 +3174,13 @@ fn object_slot_value(
 
 #[cfg(test)]
 mod tests {
-    use super::{CompileError, CompileErrors, YamlCompiler, YamlLimits};
-    use vb_core::{CompiledWorkflow, ResourceContract};
+    use super::{
+        CompileError, CompileErrors, SlotCompiler, YamlCompiler, YamlLimits,
+        emit_compiled_artifact, lower_ask, lower_wait,
+    };
+    use vb_core::{
+        CompiledNodeKind, CompiledWorkflow, ExprIdx, ExprOp, ResourceContract, SlotIdx, StepIdx,
+    };
 
     const NESTED_SAVE_SOURCE: &[u8] = br#"
 version: velvet-ballastics/v1
@@ -3956,6 +4360,239 @@ steps:
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "strict_minimal"));
+    }
+
+    #[test]
+    fn compiler_lowers_string_choose_condition_to_expression_table() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                br#"version: velvet-ballastics/v1
+name: expression_choose
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "1 == 1"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#,
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let Some(node) = workflow.node(vb_core::StepIdx::new(0)) else {
+            return Err("missing route node".to_owned());
+        };
+        if !matches!(node.kind, CompiledNodeKind::Choose { .. }) {
+            return Err(format!(
+                "expected expression choose node, found {:?}",
+                node.kind
+            ));
+        }
+        if workflow.expression(vb_core::ExprIdx::new(0)).is_none() {
+            return Err("missing expression program".to_owned());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_direct_input_reference_without_accessor_path() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                br#"version: velvet-ballastics/v1
+name: direct_input_reference
+when:
+  manual: {}
+inputs:
+  flag: boolean
+steps:
+  - id: route
+    choose:
+      condition: "$input.flag == true"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#,
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let Some(program) = workflow.expression(ExprIdx::new(0)) else {
+            return Err("missing expression program".to_owned());
+        };
+        let first = program
+            .ops
+            .first()
+            .copied()
+            .ok_or_else(|| "expression program had no ops".to_owned())?;
+        if first == ExprOp::LoadSlot(vb_core::SlotIdx::new(0))
+            && workflow.accessor(vb_core::AccessorIdx::new(0)).is_none()
+        {
+            Ok(())
+        } else {
+            Err(format!(
+                "expected direct slot load and no accessors, first={first:?} accessor0={:?}",
+                workflow.accessor(vb_core::AccessorIdx::new(0))
+            ))
+        }
+    }
+
+    #[test]
+    fn compiler_rejects_nested_input_accessor_before_runtime() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: nested_input_reference
+when:
+  manual: {}
+inputs:
+  user: object
+steps:
+  - id: route
+    choose:
+      condition: "$input.user.name == true"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+        match compile_first_error(source)? {
+            CompileError::UnsupportedAccessorReference {
+                reference,
+                root,
+                path,
+            } if reference.as_ref() == "$input.user.name"
+                && root.as_ref() == "input.user"
+                && path.as_ref() == "name" =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected error: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn compiler_rejects_nested_slot_accessor_before_runtime() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: nested_slot_reference
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "$slot.0.name == true"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+        match compile_first_error(source)? {
+            CompileError::UnsupportedAccessorReference {
+                reference,
+                root,
+                path,
+            } if reference.as_ref() == "$slot.0.name"
+                && root.as_ref() == "slot.0"
+                && path.as_ref() == "name" =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected error: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn lower_wait_records_timeout_slot() -> Result<(), String> {
+        let mut builder = SlotCompiler::new();
+        let node = lower_wait(
+            StepIdx::new(0),
+            SlotIdx::new(1),
+            Some(SlotIdx::new(3)),
+            true,
+            &mut builder,
+        );
+
+        if !matches!(node.kind, CompiledNodeKind::WaitEvent { .. }) {
+            return Err(format!("expected wait event node, found {:?}", node.kind));
+        }
+        let slot_count = builder
+            .slot_count()
+            .map_err(|error| format!("slot count failed: {error:?}"))?;
+        if slot_count == 4 {
+            Ok(())
+        } else {
+            Err(format!("timeout slot was not recorded: {slot_count}"))
+        }
+    }
+
+    #[test]
+    fn lower_ask_records_timeout_and_uses_checked_resume_step() -> Result<(), String> {
+        let mut builder = SlotCompiler::new();
+        let nodes = lower_ask(
+            StepIdx::new(4),
+            SlotIdx::new(1),
+            SlotIdx::new(2),
+            Some(SlotIdx::new(5)),
+            &mut builder,
+        )
+        .map_err(|error| format!("lower ask failed: {error:?}"))?;
+
+        let Some(resume) = nodes.get(1) else {
+            return Err("missing ask resume node".to_owned());
+        };
+        if resume.id != StepIdx::new(5) {
+            return Err(format!("unexpected resume id: {:?}", resume.id));
+        }
+        let slot_count = builder
+            .slot_count()
+            .map_err(|error| format!("slot count failed: {error:?}"))?;
+        if slot_count == 6 {
+            Ok(())
+        } else {
+            Err(format!("timeout slot was not recorded: {slot_count}"))
+        }
+    }
+
+    #[test]
+    fn lower_ask_rejects_resume_step_overflow() {
+        let mut builder = SlotCompiler::new();
+        let result = lower_ask(
+            StepIdx::MAX,
+            SlotIdx::new(1),
+            SlotIdx::new(2),
+            None,
+            &mut builder,
+        );
+
+        assert!(matches!(
+            result,
+            Err(CompileError::StepIndexOutOfRange { .. })
+        ));
+    }
+
+    #[test]
+    fn compiler_emits_vbir_enveloped_artifact() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: artifact_case\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let artifact = emit_compiled_artifact(&workflow)
+            .map_err(|errors| format!("unexpected artifact errors: {errors:?}"))?;
+        if artifact.len() <= 60 {
+            return Err(format!("artifact too short: {}", artifact.len()));
+        }
+        let magic = u32::from_le_bytes([artifact[0], artifact[1], artifact[2], artifact[3]]);
+        let kind = u16::from_le_bytes([artifact[6], artifact[7]]);
+        let header_len = u32::from_le_bytes([artifact[8], artifact[9], artifact[10], artifact[11]]);
+        if magic != 0x5642_4952 || kind != 2 || header_len != 60 {
+            return Err(format!(
+                "bad artifact header: magic={magic:x} kind={kind} header_len={header_len}"
+            ));
+        }
+        Ok(())
     }
 
     #[test]

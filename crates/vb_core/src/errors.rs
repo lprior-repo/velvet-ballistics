@@ -302,3 +302,95 @@ impl CoreError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CoreError;
+    use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+
+    #[test]
+    fn runtime_diagnostic_codes_are_unique() -> Result<(), String> {
+        let errors = [
+            CoreError::InvalidProgramCounter {
+                step: StepIdx::new(0),
+            },
+            CoreError::MissingNextStep {
+                step: StepIdx::new(0),
+            },
+            CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(0),
+            },
+            CoreError::ExprOutOfBounds {
+                expr: ExprIdx::new(0),
+            },
+            CoreError::ConstOutOfBounds {
+                index: ConstIdx::new(0),
+            },
+            CoreError::MissingOutputSlot {
+                step: StepIdx::new(0),
+            },
+            CoreError::StepStateOutOfBounds {
+                step: StepIdx::new(0),
+            },
+            CoreError::TypeMismatch {
+                expected: "a",
+                found: "b",
+            },
+            CoreError::NonBoolCondition {
+                slot: SlotIdx::new(0),
+            },
+            CoreError::DivisionByZero,
+            CoreError::NonFiniteNumber,
+            CoreError::StepBudgetExhausted,
+            CoreError::StepCounterOverflow,
+            CoreError::QueueFull,
+            CoreError::ResourceLimitExceeded { resource: "r" },
+            CoreError::AllocationFailed,
+            CoreError::ExpressionStackOverflow { max: 1 },
+            CoreError::ExpressionStackUnderflow,
+            CoreError::InvalidCompiledWorkflow { reason: "r" },
+            CoreError::UnsupportedPrimitive { primitive: "p" },
+            CoreError::UnsupportedAccessorTraversal {
+                segment: "s",
+                found: "f",
+            },
+            CoreError::ObjectFieldNotFound {
+                field: SymbolId::new(0),
+            },
+            CoreError::ListIndexOutOfBounds { index: 0 },
+            CoreError::InternalInvariantViolation { reason: "r" },
+            CoreError::SymbolOutOfBounds {
+                symbol: SymbolId::new(0),
+            },
+            CoreError::ListOutOfBounds {
+                list: ListId::new(0),
+            },
+            CoreError::ObjectOutOfBounds {
+                object: ObjectId::new(0),
+            },
+            CoreError::BlobOutOfBounds {
+                blob: BlobId::new(0),
+            },
+            CoreError::IterationLimitExceeded { resource: "r" },
+            CoreError::RepeatExhausted { max: 1 },
+            CoreError::CollectPageLimitExceeded,
+            CoreError::CollectItemLimitExceeded,
+            CoreError::TogetherBranchLimitExceeded { max: 1 },
+        ];
+
+        let mut left = 0usize;
+        while left < errors.len() {
+            let mut right = left.saturating_add(1);
+            while right < errors.len() {
+                let left_code = errors[left].diagnostic_code().code();
+                let right_code = errors[right].diagnostic_code().code();
+                if left_code == right_code {
+                    return Err(format!("duplicate diagnostic code E{left_code:04X}"));
+                }
+                right = right.saturating_add(1);
+            }
+            left = left.saturating_add(1);
+        }
+        Ok(())
+    }
+}

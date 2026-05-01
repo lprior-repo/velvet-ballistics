@@ -5,6 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+arrayvec.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 mio = { workspace = true, features = ["net", "os-poll"] }

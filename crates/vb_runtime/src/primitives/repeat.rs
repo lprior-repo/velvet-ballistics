@@ -14,19 +14,28 @@ const REPEAT_SHIFT: u32 = 32;
 /// Layout: bits [47:32] = max_attempts, bits [15:0] = current_attempt.
 /// Both fields are u16 so the result always fits in 48 bits (well within i64).
 fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> i64 {
-    let high = u64::from(max_attempts) << REPEAT_SHIFT;
-    let low = u64::from(current_attempt);
-    let packed = high | low;
-    // packed is at most 0x0000_FFFF_0000_FFFF which is positive in i64.
-    i64::try_from(packed).unwrap_or(i64::MAX)
+    let high = i64::from(max_attempts) << REPEAT_SHIFT;
+    let low = i64::from(current_attempt);
+    high | low
 }
 
 /// Decodes a packed repeat-state I64 into (max_attempts, current_attempt).
-fn decode_repeat_state(packed: i64) -> (u16, u16) {
-    let bits = u64::try_from(packed).unwrap_or(0);
-    let max_attempts = u16::try_from(bits >> REPEAT_SHIFT).unwrap_or(u16::MAX);
-    let current_attempt = u16::try_from(bits).unwrap_or(u16::MAX);
-    (max_attempts, current_attempt)
+fn decode_repeat_state(packed: i64) -> Result<(u16, u16), EngineError> {
+    let bits = u64::try_from(packed).map_err(|_| EngineError::InvalidCompiledWorkflow {
+        reason: "repeat state must be nonnegative",
+    })?;
+    let max_attempts =
+        u16::try_from((bits >> REPEAT_SHIFT) & u64::from(u16::MAX)).map_err(|_| {
+            EngineError::InternalInvariantViolation {
+                reason: "repeat max masked to u16",
+            }
+        })?;
+    let current_attempt = u16::try_from(bits & u64::from(u16::MAX)).map_err(|_| {
+        EngineError::InternalInvariantViolation {
+            reason: "repeat attempt masked to u16",
+        }
+    })?;
+    Ok((max_attempts, current_attempt))
 }
 
 /// Executes RepeatStart: initializes attempt counter and jumps to body.
@@ -56,7 +65,7 @@ pub fn repeat_attempt(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let packed = expect_i64(*run.read_slot(attempt_slot)?)?;
     // Validate that the slot contains a valid repeat state.
-    let (_max, _current) = decode_repeat_state(packed);
+    let (_max, _current) = decode_repeat_state(packed)?;
     // Slot already holds the correct packed state; just jump to body.
     jump_to(run, body)
 }
@@ -72,7 +81,7 @@ pub fn repeat_check(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let packed = expect_i64(*run.read_slot(attempt_slot)?)?;
-    let (max_attempts, current_attempt) = decode_repeat_state(packed);
+    let (max_attempts, current_attempt) = decode_repeat_state(packed)?;
 
     // Increment attempt, clamping at u16::MAX to avoid overflow.
     let next_attempt = current_attempt.saturating_add(1);

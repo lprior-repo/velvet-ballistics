@@ -17,6 +17,8 @@ pub mod runtime;
 pub mod shard;
 pub mod trace;
 
+pub use shard::{AskAnswer, AskTicket};
+
 use thiserror::Error;
 
 /// Runtime error type.

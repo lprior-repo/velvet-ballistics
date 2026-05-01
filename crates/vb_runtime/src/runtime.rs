@@ -1,11 +1,12 @@
 //! Multi-shard runtime routing commands to correct shards.
 
 use std::num::NonZeroUsize;
+use vb_core::action::{ActionFailure, ActionTicket};
 use vb_core::ids::{RunId, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::CounterSnapshot;
-use crate::shard::{InspectResponse, Shard, ShardCommand, ShardConfig};
+use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -49,6 +50,12 @@ impl Runtime {
         shard.enqueue(ShardCommand::Inspect { run, correlation })
     }
 
+    /// Returns a direct, non-queued run snapshot from the owning shard.
+    pub fn snapshot_run(&self, run: RunId, correlation: u64) -> RuntimeResult<InspectResponse> {
+        let shard = self.shard_for(run)?;
+        Ok(shard.snapshot_run(run, correlation))
+    }
+
     /// Processes one command on each shard. Returns false if any shard is shutting down.
     pub fn tick_all(&mut self) -> RuntimeResult<bool> {
         let mut alive = true;
@@ -66,30 +73,26 @@ impl Runtime {
         shard.enqueue(ShardCommand::ActionCompleted { run, step })
     }
 
-    /// Fails an action. Durable failure routing is not implemented yet.
-    pub fn fail_action(&self, run: RunId) -> RuntimeResult<()> {
-        let _shard = self.shard_for(run)?;
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "durable_action_failure",
-        })
+    /// Fails an action with a typed failure payload.
+    pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
+        let shard = self.shard_for(ticket.run)?;
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure })
     }
 
-    /// Lists trace events for a run by bounded-draining the shard trace ring.
-    pub fn list_events(&mut self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
+    /// Lists trace events for a run without draining the shard trace ring.
+    pub fn list_events(&self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
         let shard_index = self.shard_index(run);
-        let Some(shard) = self.shards.get_mut(shard_index) else {
+        let Some(shard) = self.shards.get(shard_index) else {
             return Err(RuntimeError::RunNotFound);
         };
-        let limit = shard.trace_ring_mut().capacity();
-        Ok(shard.trace_ring_mut().drain_for_run(run, limit))
+        let limit = shard.trace_ring().capacity();
+        Ok(shard.trace_ring().snapshot_for_run(run, limit))
     }
 
-    /// Answers an ask. Durable answer injection is not implemented yet.
-    pub fn answer_ask(&self, run: RunId) -> RuntimeResult<()> {
-        let _shard = self.shard_for(run)?;
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "durable_ask_answer",
-        })
+    /// Answers an ask with an explicit typed payload and resume ticket.
+    pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
+        let shard = self.shard_for(answer.ticket.run)?;
+        shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
     /// Takes the latest inspect response from the run's shard.
@@ -164,32 +167,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ask_answer_reports_unsupported_durable_path() {
+    fn snapshot_run_reports_missing_run_without_command_queue() {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
         let runtime = Runtime::new(shard_count, ShardConfig::default());
-        let result = runtime.answer_ask(RunId::new(1));
+        let result = runtime.snapshot_run(RunId::new(1), 7);
         assert_eq!(
             result,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "durable_ask_answer",
+            Ok(InspectResponse::NotFound {
+                run: RunId::new(1),
+                correlation: 7,
             })
         );
     }
 
     #[test]
-    fn fail_action_reports_unsupported_durable_path() {
+    fn list_events_is_non_destructive() {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, ShardConfig::default());
-        let result = runtime.fail_action(RunId::new(1));
-        assert_eq!(
-            result,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "durable_action_failure",
-            })
-        );
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+        };
+        let runtime = Runtime::new(shard_count, config);
+        let first = runtime.list_events(RunId::new(1));
+        let second = runtime.list_events(RunId::new(1));
+        assert_eq!(first, Ok(Vec::new()));
+        assert_eq!(second, Ok(Vec::new()));
     }
 }

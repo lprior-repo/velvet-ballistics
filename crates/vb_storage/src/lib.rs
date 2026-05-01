@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Mutex;
 use thiserror::Error;
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_core::{ActionId, ResourceContract, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 /// Immutable YAML source records by digest.
 pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
@@ -447,6 +447,71 @@ pub struct BlobRecord {
     pub bytes: Vec<u8>,
 }
 
+/// Payload limits used before any envelope payload allocation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StorageLimits {
+    /// Maximum journal event payload bytes.
+    pub journal_event_bytes: u32,
+    /// Maximum workflow source payload bytes.
+    pub workflow_source_bytes: u32,
+    /// Maximum compiled IR payload bytes.
+    pub compiled_ir_bytes: u32,
+    /// Maximum run header payload bytes.
+    pub run_header_bytes: u32,
+    /// Maximum snapshot payload bytes.
+    pub snapshot_bytes: u32,
+    /// Maximum blob payload bytes.
+    pub blob_bytes: u32,
+}
+
+impl StorageLimits {
+    /// Default storage limits matching the crate constants.
+    pub const DEFAULT: Self = Self {
+        journal_event_bytes: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        workflow_source_bytes: MAX_WORKFLOW_SOURCE_BYTES,
+        compiled_ir_bytes: MAX_COMPILED_IR_BYTES,
+        run_header_bytes: MAX_RUN_HEADER_BYTES,
+        snapshot_bytes: MAX_SNAPSHOT_BYTES,
+        blob_bytes: MAX_BLOB_BYTES,
+    };
+
+    /// Builds limits from the workflow resource contract where the contract owns the bound.
+    pub fn from_resource_contract(contract: ResourceContract) -> Result<Self, JournalError> {
+        Ok(Self {
+            journal_event_bytes: contract.max_journal_batch_bytes,
+            workflow_source_bytes: contract.max_input_bytes,
+            compiled_ir_bytes: MAX_COMPILED_IR_BYTES,
+            run_header_bytes: MAX_RUN_HEADER_BYTES,
+            snapshot_bytes: contract.max_output_bytes,
+            blob_bytes: u64_to_u32_limit(contract.max_blob_bytes)?,
+        })
+    }
+}
+
+/// Decoded pending action index entry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PendingActionIndex {
+    /// Action identifier.
+    pub action: ActionId,
+    /// Run identifier.
+    pub run: RunId,
+    /// Step index where the action is pending.
+    pub step: StepIdx,
+}
+
+/// Durable state loaded for recovery without reparsing workflow source.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryHydration {
+    /// Persisted run header.
+    pub header: RunHeaderRecord,
+    /// Persisted compiled IR artifact, if present.
+    pub compiled_ir: Option<CompiledIrRecord>,
+    /// Latest persisted snapshot, if present.
+    pub latest_snapshot: Option<RunSnapshot>,
+    /// Journal events after the latest snapshot, or the full journal without a snapshot.
+    pub tail_events: Vec<JournalEvent>,
+}
+
 /// Encodes a postcard payload behind the 60-byte storage envelope.
 pub fn encode_record<T: Serialize>(
     magic: u32,
@@ -630,6 +695,15 @@ impl FjallJournal {
 
     /// Stores immutable workflow source bytes by digest.
     pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
+        self.put_workflow_source_with_limits(record, StorageLimits::DEFAULT)
+    }
+
+    /// Stores immutable workflow source bytes by digest with caller-provided limits.
+    pub fn put_workflow_source_with_limits(
+        &self,
+        record: &WorkflowSourceRecord,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -640,7 +714,7 @@ impl FjallJournal {
             RecordKind::WorkflowSource,
             0,
             record,
-            MAX_WORKFLOW_SOURCE_BYTES,
+            limits.workflow_source_bytes,
         )?;
         self.workflow_source.insert(key.to_vec(), value)?;
         Ok(())
@@ -662,6 +736,15 @@ impl FjallJournal {
 
     /// Stores compiled IR bytes by digest.
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+        self.put_compiled_ir_with_limits(record, StorageLimits::DEFAULT)
+    }
+
+    /// Stores compiled IR bytes by digest with caller-provided limits.
+    pub fn put_compiled_ir_with_limits(
+        &self,
+        record: &CompiledIrRecord,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -672,7 +755,7 @@ impl FjallJournal {
             RecordKind::CompiledIr,
             0,
             record,
-            MAX_COMPILED_IR_BYTES,
+            limits.compiled_ir_bytes,
         )?;
         self.compiled_ir.insert(key.to_vec(), value)?;
         Ok(())
@@ -694,6 +777,15 @@ impl FjallJournal {
 
     /// Stores run metadata by run id.
     pub fn put_run_header(&self, record: &RunHeaderRecord) -> Result<(), JournalError> {
+        self.put_run_header_with_limits(record, StorageLimits::DEFAULT)
+    }
+
+    /// Stores run metadata by run id with caller-provided limits.
+    pub fn put_run_header_with_limits(
+        &self,
+        record: &RunHeaderRecord,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -704,7 +796,7 @@ impl FjallJournal {
             RecordKind::RunHeader,
             record.run.as_u64(),
             record,
-            MAX_RUN_HEADER_BYTES,
+            limits.run_header_bytes,
         )?;
         self.run_header.insert(key.to_vec(), value)?;
         Ok(())
@@ -723,6 +815,20 @@ impl FjallJournal {
 
     /// Stores a compact run snapshot.
     pub fn put_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+        self.write_snapshot(snapshot)
+    }
+
+    /// Stores a compact run snapshot.
+    pub fn write_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+        self.write_snapshot_with_limits(snapshot, StorageLimits::DEFAULT)
+    }
+
+    /// Stores a compact run snapshot with caller-provided limits.
+    pub fn write_snapshot_with_limits(
+        &self,
+        snapshot: &RunSnapshot,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -733,7 +839,7 @@ impl FjallJournal {
             RecordKind::Snapshot,
             snapshot.seq.get(),
             snapshot,
-            MAX_SNAPSHOT_BYTES,
+            limits.snapshot_bytes,
         )?;
         self.run_snapshot.insert(key.to_vec(), value)?;
         Ok(())
@@ -752,12 +858,21 @@ impl FjallJournal {
 
     /// Stores a bounded blob by digest.
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
+        self.put_blob_with_limits(record, StorageLimits::DEFAULT)
+    }
+
+    /// Stores a bounded blob by digest with caller-provided limits.
+    pub fn put_blob_with_limits(
+        &self,
+        record: &BlobRecord,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = blob_key(record.digest)?;
-        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, limits.blob_bytes)?;
         self.blob.insert(key.to_vec(), value)?;
         Ok(())
     }
@@ -780,11 +895,33 @@ impl FjallJournal {
         Ok(())
     }
 
+    /// Queries run ids for a status byte in index order.
+    pub fn runs_by_status(&self, state: u8) -> Result<Vec<RunId>, JournalError> {
+        let prefix = status_index_prefix(state)?;
+        let mut runs = Vec::new();
+        for item in self.index_status.prefix(prefix) {
+            let key = item.key()?;
+            runs.push(run_from_status_key(key.as_ref())?);
+        }
+        Ok(runs)
+    }
+
     /// Inserts minimal workflow index marker bytes.
     pub fn put_workflow_index(&self, workflow: WorkflowId, run: RunId) -> Result<(), JournalError> {
         let key = index_workflow_key(workflow, run)?;
         self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
         Ok(())
+    }
+
+    /// Queries run ids for a workflow id in run-id order.
+    pub fn runs_by_workflow(&self, workflow: WorkflowId) -> Result<Vec<RunId>, JournalError> {
+        let prefix = workflow_index_prefix(workflow)?;
+        let mut runs = Vec::new();
+        for item in self.index_workflow.prefix(prefix) {
+            let key = item.key()?;
+            runs.push(run_from_workflow_key(key.as_ref())?);
+        }
+        Ok(runs)
     }
 
     /// Inserts minimal pending action index marker bytes.
@@ -799,26 +936,62 @@ impl FjallJournal {
         Ok(())
     }
 
+    /// Queries pending action index entries for an action id.
+    pub fn pending_actions(
+        &self,
+        action: ActionId,
+    ) -> Result<Vec<PendingActionIndex>, JournalError> {
+        let prefix = action_index_prefix(action)?;
+        let mut entries = Vec::new();
+        for item in self.index_action.prefix(prefix) {
+            let key = item.key()?;
+            entries.push(pending_action_from_key(key.as_ref())?);
+        }
+        Ok(entries)
+    }
+
     /// Appends one event without forcing a durability barrier.
     pub fn append_journaled(&self, event: &JournalEvent) -> Result<(), JournalError> {
+        self.append_journaled_with_limits(event, StorageLimits::DEFAULT)
+    }
+
+    /// Appends one event with caller-provided limits.
+    pub fn append_journaled_with_limits(
+        &self,
+        event: &JournalEvent,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        self.append_unpersisted(event)
+        self.append_unpersisted(event, limits)
     }
 
     /// Appends one event and forces a strict durability barrier before returning.
     pub fn append_strict(&self, event: &JournalEvent) -> Result<(), JournalError> {
+        self.append_strict_with_limits(event, StorageLimits::DEFAULT)
+    }
+
+    /// Appends one event with caller-provided limits and forces strict durability.
+    pub fn append_strict_with_limits(
+        &self,
+        event: &JournalEvent,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        self.append_unpersisted(event)?;
+        self.append_unpersisted(event, limits)?;
         self.persist_strict()
     }
 
-    fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+    fn append_unpersisted(
+        &self,
+        event: &JournalEvent,
+        limits: StorageLimits,
+    ) -> Result<(), JournalError> {
         let key = journal_key(event.run_id(), event.seq())?;
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
@@ -831,7 +1004,7 @@ impl FjallJournal {
             event.record_kind(),
             event.seq().get(),
             event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            limits.journal_event_bytes,
         )?;
         self.events.insert(key.to_vec(), value)?;
         Ok(())
@@ -861,6 +1034,80 @@ impl FjallJournal {
         }
 
         Ok(replay)
+    }
+
+    /// Reads the latest snapshot for a run using the lexicographic sequence suffix.
+    pub fn read_latest_snapshot(&self, run: RunId) -> Result<Option<RunSnapshot>, JournalError> {
+        let prefix = run_snapshot_prefix(run)?;
+        let mut latest: Option<RunSnapshot> = None;
+        for item in self.run_snapshot.prefix(prefix) {
+            let value = item.value()?;
+            let (_, snapshot) =
+                decode_record::<RunSnapshot>(value.as_ref(), MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)?;
+            latest = Some(snapshot);
+        }
+        Ok(latest)
+    }
+
+    /// Reads events after `seq` for snapshot-plus-tail recovery.
+    pub fn events_for_run_after(
+        &self,
+        run: RunId,
+        seq: EventSeq,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
+        let mut events = Vec::new();
+        let mut expected = next_seq(seq)?;
+        for item in self.events.prefix(run_prefix(run)?) {
+            let value = item.value()?;
+            let (_, event) = decode_record::<JournalEvent>(
+                value.as_ref(),
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            if event.seq() <= seq {
+                continue;
+            }
+            validate_replayed_event(run, expected, &event)?;
+            expected = next_seq(expected)?;
+            events.push(event);
+        }
+        Ok(events)
+    }
+
+    /// Hydrates persisted recovery state for a run without reparsing workflow source.
+    pub fn hydrate_recovery_state(
+        &self,
+        run: RunId,
+    ) -> Result<Option<RecoveryHydration>, JournalError> {
+        let Some(header) = self.run_header(run)? else {
+            return Ok(None);
+        };
+        let latest_snapshot = self.read_latest_snapshot(run)?;
+        let tail_events = match &latest_snapshot {
+            Some(snapshot) => self.events_for_run_after(run, snapshot.seq)?,
+            None => self.events_for_run(run)?,
+        };
+        let compiled_ir = self.compiled_ir(header.compiled_digest)?;
+        Ok(Some(RecoveryHydration {
+            header,
+            compiled_ir,
+            latest_snapshot,
+            tail_events,
+        }))
+    }
+
+    /// Verifies run metadata against the immutable accepted-run digest.
+    pub fn verify_run_metadata_digest(&self, run: RunId) -> Result<(), JournalError> {
+        let header = self
+            .run_header(run)?
+            .ok_or(JournalError::MissingRunHeader { run })?;
+        let events = self.events_for_run(run)?;
+        for event in &events {
+            if let JournalEvent::RunAccepted { workflow, .. } = event {
+                return verify_digest_match(header.compiled_digest, *workflow);
+            }
+        }
+        Err(JournalError::MissingRunAccepted { run })
     }
 
     fn decode_optional<T: DeserializeOwned>(
@@ -980,6 +1227,26 @@ pub enum JournalError {
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,
+    /// A run header was required for recovery but was not present.
+    #[error("missing run header for run {run:?}")]
+    MissingRunHeader {
+        /// Run identifier.
+        run: RunId,
+    },
+    /// A run accepted event was required for digest verification but was not present.
+    #[error("missing run accepted event for run {run:?}")]
+    MissingRunAccepted {
+        /// Run identifier.
+        run: RunId,
+    },
+    /// Run metadata digest differs from the accepted event digest.
+    #[error("run metadata digest mismatch")]
+    DigestMismatch {
+        /// Expected digest.
+        expected: WorkflowDigest,
+        /// Found digest.
+        found: WorkflowDigest,
+    },
 }
 
 fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
@@ -1003,6 +1270,36 @@ fn sequenced_run_key(
 
 fn run_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
     run_only_key(PREFIX_RUN_EVENT, run)
+}
+
+fn run_snapshot_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
+    run_only_key(PREFIX_RUN_SNAPSHOT, run)
+}
+
+fn status_index_prefix(state: u8) -> Result<[u8; 2], JournalError> {
+    let mut key = ArrayVec::<u8, 2>::new();
+    key.try_push(PREFIX_INDEX_STATUS)
+        .map_err(|_| JournalError::KeyCapacity)?;
+    key.try_push(state).map_err(|_| JournalError::KeyCapacity)?;
+    key.into_inner().map_err(|_| JournalError::KeyCapacity)
+}
+
+fn workflow_index_prefix(workflow: WorkflowId) -> Result<[u8; 5], JournalError> {
+    let mut key = ArrayVec::<u8, 5>::new();
+    key.try_push(PREFIX_INDEX_WORKFLOW)
+        .map_err(|_| JournalError::KeyCapacity)?;
+    key.try_extend_from_slice(&workflow.as_u32().to_be_bytes())
+        .map_err(|_| JournalError::KeyCapacity)?;
+    key.into_inner().map_err(|_| JournalError::KeyCapacity)
+}
+
+fn action_index_prefix(action: ActionId) -> Result<[u8; 3], JournalError> {
+    let mut key = ArrayVec::<u8, 3>::new();
+    key.try_push(PREFIX_INDEX_ACTION)
+        .map_err(|_| JournalError::KeyCapacity)?;
+    key.try_extend_from_slice(&action.get().to_be_bytes())
+        .map_err(|_| JournalError::KeyCapacity)?;
+    key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
 
 fn digest_key(
@@ -1038,6 +1335,25 @@ fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError> {
         });
     }
     Ok(payload_len)
+}
+
+fn u64_to_u32_limit(value: u64) -> Result<u32, JournalError> {
+    u32::try_from(value).map_err(|_| JournalError::PayloadTooLarge {
+        len: PAYLOAD_LEN_CONVERSION_MAX,
+        max: PAYLOAD_LEN_CONVERSION_MAX,
+    })
+}
+
+/// Verifies two digests match exactly.
+pub fn verify_digest_match(
+    expected: WorkflowDigest,
+    found: WorkflowDigest,
+) -> Result<(), JournalError> {
+    if expected == found {
+        Ok(())
+    } else {
+        Err(JournalError::DigestMismatch { expected, found })
+    }
 }
 
 fn encode_record_payload(
@@ -1198,6 +1514,45 @@ fn read_u64(bytes: &[u8], offset: usize) -> Result<u64, JournalError> {
     Ok(u64::from_le_bytes(raw))
 }
 
+fn read_u16_be(bytes: &[u8], offset: usize) -> Result<u16, JournalError> {
+    let end = offset.checked_add(2).ok_or(JournalError::UnexpectedEof)?;
+    let slice = bytes.get(offset..end).ok_or(JournalError::UnexpectedEof)?;
+    let raw = <[u8; 2]>::try_from(slice).map_err(|_| JournalError::UnexpectedEof)?;
+    Ok(u16::from_be_bytes(raw))
+}
+
+fn read_u64_be(bytes: &[u8], offset: usize) -> Result<u64, JournalError> {
+    let end = offset.checked_add(8).ok_or(JournalError::UnexpectedEof)?;
+    let slice = bytes.get(offset..end).ok_or(JournalError::UnexpectedEof)?;
+    let raw = <[u8; 8]>::try_from(slice).map_err(|_| JournalError::UnexpectedEof)?;
+    Ok(u64::from_be_bytes(raw))
+}
+
+fn run_from_status_key(key: &[u8]) -> Result<RunId, JournalError> {
+    if key.len() != INDEX_STATUS_KEY_BYTES {
+        return Err(JournalError::UnexpectedEof);
+    }
+    Ok(RunId::new(read_u64_be(key, 10)?))
+}
+
+fn run_from_workflow_key(key: &[u8]) -> Result<RunId, JournalError> {
+    if key.len() != INDEX_WORKFLOW_KEY_BYTES {
+        return Err(JournalError::UnexpectedEof);
+    }
+    Ok(RunId::new(read_u64_be(key, 5)?))
+}
+
+fn pending_action_from_key(key: &[u8]) -> Result<PendingActionIndex, JournalError> {
+    if key.len() != INDEX_ACTION_KEY_BYTES {
+        return Err(JournalError::UnexpectedEof);
+    }
+    Ok(PendingActionIndex {
+        action: ActionId::new(read_u16_be(key, 1)?),
+        run: RunId::new(read_u64_be(key, 3)?),
+        step: StepIdx::new(read_u16_be(key, 11)?),
+    })
+}
+
 fn write_u16(bytes: &mut [u8], offset: usize, value: u16) -> Result<(), JournalError> {
     let end = offset.checked_add(2).ok_or(JournalError::UnexpectedEof)?;
     let target = bytes
@@ -1265,13 +1620,20 @@ mod tests {
     use super::{
         BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
         MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
-        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
-        index_status_key, index_workflow_key, journal_key, run_event_key, run_header_key,
-        run_snapshot_key, workflow_source_key,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, RunHeaderRecord, StorageLimits,
+        WorkflowSourceRecord, blob_key, compiled_ir_key, decode_record, encode_record,
+        index_action_key, index_status_key, index_workflow_key, journal_key, run_event_key,
+        run_header_key, run_snapshot_key, workflow_source_key,
     };
     use crate::recovery::RunSnapshot;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
+
+    fn storage_tempdir() -> Result<tempfile::TempDir, std::io::Error> {
+        let base =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/vb_storage_tests");
+        std::fs::create_dir_all(&base)?;
+        tempfile::Builder::new().prefix("journal-").tempdir_in(base)
+    }
 
     #[test]
     fn journal_key_is_fixed_width() {
@@ -1477,7 +1839,7 @@ mod tests {
 
     #[test]
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
-        let temp_dir = tempfile::tempdir();
+        let temp_dir = storage_tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -1576,7 +1938,7 @@ mod tests {
 
     #[test]
     fn duplicate_event_append_is_rejected() {
-        let temp_dir = tempfile::tempdir();
+        let temp_dir = storage_tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -1601,7 +1963,7 @@ mod tests {
 
     #[test]
     fn replay_returns_contiguous_events_for_run() {
-        let temp_dir = tempfile::tempdir();
+        let temp_dir = storage_tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -1628,5 +1990,165 @@ mod tests {
         let replay = journal.events_for_run(run);
 
         assert!(matches!(replay, Ok(events) if events == vec![accepted, finished]));
+    }
+
+    #[test]
+    fn index_queries_return_decoded_runs_and_pending_actions() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok(), "tempdir should be created");
+        let Ok(temp_dir) = temp_dir else {
+            return;
+        };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok(), "journal should open");
+        let Ok(journal) = journal else {
+            return;
+        };
+        let workflow = WorkflowId::new(7);
+        let action = ActionId::new(9);
+
+        assert!(journal.put_status_index(2, 10, RunId::new(3)).is_ok());
+        assert!(journal.put_status_index(2, 11, RunId::new(4)).is_ok());
+        assert!(journal.put_workflow_index(workflow, RunId::new(5)).is_ok());
+        assert!(
+            journal
+                .put_action_index(action, RunId::new(6), StepIdx::new(8))
+                .is_ok()
+        );
+
+        assert!(
+            matches!(journal.runs_by_status(2), Ok(runs) if runs == vec![RunId::new(3), RunId::new(4)])
+        );
+        assert!(
+            matches!(journal.runs_by_workflow(workflow), Ok(runs) if runs == vec![RunId::new(5)])
+        );
+        assert!(matches!(
+            journal.pending_actions(action),
+            Ok(entries) if matches!(entries.as_slice(), [entry] if entry.run == RunId::new(6) && entry.step == StepIdx::new(8))
+        ));
+    }
+
+    #[test]
+    fn contract_limits_reject_oversized_journal_payload() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok(), "tempdir should be created");
+        let Ok(temp_dir) = temp_dir else {
+            return;
+        };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok(), "journal should open");
+        let Ok(journal) = journal else {
+            return;
+        };
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut limits = StorageLimits::DEFAULT;
+        limits.journal_event_bytes = 1;
+
+        let result = journal.append_journaled_with_limits(&event, limits);
+
+        assert!(matches!(result, Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn latest_snapshot_tail_and_digest_verification_use_run_metadata() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok(), "tempdir should be created");
+        let Ok(temp_dir) = temp_dir else {
+            return;
+        };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok(), "journal should open");
+        let Ok(journal) = journal else {
+            return;
+        };
+        let run = RunId::new(12);
+        let digest = WorkflowDigest::from_bytes([3; 32]);
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(4),
+            compiled_digest: digest,
+            status: 1,
+            accepted_at_ms: 2,
+        };
+        let old_snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+            slots: vec![1],
+        };
+        let latest_snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(1),
+            workflow: digest,
+            slots: vec![2],
+        };
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        };
+        let before_snapshot = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let tail = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(2),
+            result: vb_core::SlotIdx::new(0),
+        };
+
+        assert!(journal.put_run_header(&header).is_ok());
+        assert!(journal.write_snapshot(&old_snapshot).is_ok());
+        assert!(journal.write_snapshot(&latest_snapshot).is_ok());
+        assert!(journal.append_journaled(&accepted).is_ok());
+        assert!(journal.append_journaled(&before_snapshot).is_ok());
+        assert!(journal.append_journaled(&tail).is_ok());
+
+        assert!(journal.verify_run_metadata_digest(run).is_ok());
+        assert!(
+            matches!(journal.read_latest_snapshot(run), Ok(Some(snapshot)) if snapshot == latest_snapshot)
+        );
+        assert!(
+            matches!(journal.hydrate_recovery_state(run), Ok(Some(state)) if state.header == header && state.latest_snapshot == Some(latest_snapshot) && state.tail_events == vec![tail])
+        );
+    }
+
+    #[test]
+    fn digest_verification_rejects_accepted_digest_mismatch() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok(), "tempdir should be created");
+        let Ok(temp_dir) = temp_dir else {
+            return;
+        };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok(), "journal should open");
+        let Ok(journal) = journal else {
+            return;
+        };
+        let run = RunId::new(13);
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(4),
+            compiled_digest: WorkflowDigest::from_bytes([3; 32]),
+            status: 1,
+            accepted_at_ms: 2,
+        };
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([4; 32]),
+        };
+
+        assert!(journal.put_run_header(&header).is_ok());
+        assert!(journal.append_journaled(&accepted).is_ok());
+
+        let result = journal.verify_run_metadata_digest(run);
+
+        assert!(matches!(result, Err(JournalError::DigestMismatch { .. })));
     }
 }

@@ -42,10 +42,10 @@ impl FromStr for DiagnosticCode {
             return Err(DiagnosticCodeParseError::InvalidFormat);
         }
 
-        let first = parse_digit(chars.next())?;
-        let second = parse_digit(chars.next())?;
-        let third = parse_digit(chars.next())?;
-        let fourth = parse_digit(chars.next())?;
+        let first = parse_hex_digit(chars.next())?;
+        let second = parse_hex_digit(chars.next())?;
+        let third = parse_hex_digit(chars.next())?;
+        let fourth = parse_hex_digit(chars.next())?;
         if chars.next().is_some() {
             return Err(DiagnosticCodeParseError::InvalidFormat);
         }
@@ -62,7 +62,7 @@ impl FromStr for DiagnosticCode {
 /// Diagnostic code parse failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum DiagnosticCodeParseError {
-    /// Input was not exactly `E` followed by four decimal digits.
+    /// Input was not exactly `E` followed by four hexadecimal digits.
     #[error("diagnostic code must use format E0101")]
     InvalidFormat,
     /// Input was syntactically valid but not in a supported code range.
@@ -112,11 +112,11 @@ impl Diagnostic {
     }
 }
 
-fn parse_digit(value: Option<char>) -> Result<u16, DiagnosticCodeParseError> {
+fn parse_hex_digit(value: Option<char>) -> Result<u16, DiagnosticCodeParseError> {
     let Some(character) = value else {
         return Err(DiagnosticCodeParseError::InvalidFormat);
     };
-    let Some(digit) = character.to_digit(10) else {
+    let Some(digit) = character.to_digit(16) else {
         return Err(DiagnosticCodeParseError::InvalidFormat);
     };
     u16::try_from(digit).map_err(|_| DiagnosticCodeParseError::InvalidFormat)
@@ -151,7 +151,9 @@ const fn is_supported_code(code: u16) -> bool {
             | 0x0111..=0x0119
             | 0x0201..=0x0209
             | 0x0301..=0x0309
-            | 0x0401..=0x0409
+            | 0x0401..=0x040D
+            | 0x0411..=0x0414
+            | 0x0501..=0x0505
     )
 }
 
@@ -183,6 +185,18 @@ mod tests {
             DiagnosticCode::from_str("E0409"),
             Ok(DiagnosticCode::new(0x0409))
         );
+        assert_eq!(
+            DiagnosticCode::from_str("E040D"),
+            Ok(DiagnosticCode::new(0x040D))
+        );
+        assert_eq!(
+            DiagnosticCode::from_str("E0414"),
+            Ok(DiagnosticCode::new(0x0414))
+        );
+        assert_eq!(
+            DiagnosticCode::from_str("E0505"),
+            Ok(DiagnosticCode::new(0x0505))
+        );
     }
 
     #[test]
@@ -193,7 +207,7 @@ mod tests {
         );
         assert_eq!(
             DiagnosticCode::from_str("E010A"),
-            Err(DiagnosticCodeParseError::InvalidFormat)
+            Err(DiagnosticCodeParseError::UnsupportedCode)
         );
         assert_eq!(
             DiagnosticCode::from_str("E0410"),

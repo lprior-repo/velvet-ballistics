@@ -65,3 +65,11 @@ pub const MAX_LANGUAGE_NESTING_DEPTH: u8 = 8;
 /// Maximum number of slots in a single run frame.
 ///
 pub const MAX_SLOTS: u16 = u16::MAX;
+
+/// Maximum items in one runtime list arena value.
+///
+pub const MAX_LIST_ITEMS_PER_VALUE: usize = 65_535;
+
+/// Maximum fields in one runtime object arena value.
+///
+pub const MAX_OBJECT_FIELDS_PER_VALUE: usize = 65_535;

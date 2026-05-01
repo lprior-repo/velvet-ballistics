@@ -6,7 +6,8 @@ use crate::ids::{
 };
 use crate::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS,
-    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
+    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_SLOTS_PER_WORKFLOW,
+    MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
 use serde::{Deserialize, Serialize};
@@ -715,7 +716,7 @@ fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), Workf
         CompiledNodeKind::Copy { source } => validate_slot(*source, parts.slot_count),
         CompiledNodeKind::EvalExpr { expr } => validate_expr(*expr, parts.expressions.len()),
         CompiledNodeKind::BuildObject { fields } => validate_build_object(fields, parts),
-        CompiledNodeKind::BuildList { items } => validate_slots(items, parts.slot_count),
+        CompiledNodeKind::BuildList { items } => validate_build_list(items, parts.slot_count),
         CompiledNodeKind::Do { action: _, input } => validate_slot(*input, parts.slot_count),
         CompiledNodeKind::ChooseSlot {
             branches,
@@ -850,10 +851,24 @@ fn validate_slots(slots: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowErro
     Ok(())
 }
 
+fn validate_build_list(items: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowError> {
+    if items.len() > MAX_LIST_ITEMS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "list_items",
+        });
+    }
+    validate_slots(items, slot_count)
+}
+
 fn validate_build_object(
     fields: &[(crate::ids::SymbolId, SlotIdx)],
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
+    if fields.len() > MAX_OBJECT_FIELDS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "object_fields",
+        });
+    }
     for (_, slot) in fields {
         validate_slot(*slot, parts.slot_count)?;
     }

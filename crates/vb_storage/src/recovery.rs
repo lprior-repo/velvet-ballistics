@@ -8,7 +8,7 @@
 //! - Snapshot-plus-tail journal recovery
 //! - Full journal recovery when no snapshot available
 
-use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
+use crate::{EventSeq, FjallJournal, JournalError, JournalEvent, RecoveryHydration};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
@@ -165,18 +165,18 @@ pub fn check_workflow_source_digest(
     run: RunId,
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    let events = journal.events_for_run(run)?;
-    for event in &events {
-        if let JournalEvent::RunAccepted { workflow, .. } = event {
-            if *workflow != expected {
-                return Err(RecoveryError::WorkflowSourceDigestMismatch {
-                    expected,
-                    found: *workflow,
-                });
-            }
-            return Ok(());
-        }
+    let Some(header) = journal.run_header(run)? else {
+        return Err(RecoveryError::Journal(JournalError::MissingRunHeader {
+            run,
+        }));
+    };
+    if header.compiled_digest != expected {
+        return Err(RecoveryError::WorkflowSourceDigestMismatch {
+            expected,
+            found: header.compiled_digest,
+        });
     }
+    journal.verify_run_metadata_digest(run)?;
     Ok(())
 }
 
@@ -214,7 +214,7 @@ pub fn verify_digests(
 }
 
 /// Replays a full journal for a run when no snapshot is available.
-/// Returns the ordered sequence of journal events and populates the action tracker.
+/// Returns the persisted sequence of journal events and populates the action tracker.
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
@@ -225,6 +225,27 @@ pub fn recover_full_journal(
         return Err(RecoveryError::NoRecoveryData { run });
     }
     replay_events(&events, tracker)
+}
+
+/// Hydrates persisted run state and replays either full journal or snapshot tail.
+pub fn recover_run(
+    journal: &FjallJournal,
+    run: RunId,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<RecoveryHydration> {
+    journal.verify_run_metadata_digest(run)?;
+    let Some(hydration) = journal.hydrate_recovery_state(run)? else {
+        return Err(RecoveryError::NoRecoveryData { run });
+    };
+    match &hydration.latest_snapshot {
+        Some(snapshot) => {
+            recover_snapshot_plus_tail(snapshot, &hydration.tail_events, tracker)?;
+        }
+        None => {
+            replay_events(&hydration.tail_events, tracker)?;
+        }
+    }
+    Ok(hydration)
 }
 
 /// Replays from a snapshot plus tail events.
@@ -259,7 +280,7 @@ pub fn replay_events(
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<Vec<JournalEvent>> {
     let mut replayed = Vec::new();
-    let mut last_step: Option<StepIdx> = None;
+    let resolved_before_replay = tracker.clone();
 
     for event in events {
         match event {
@@ -267,28 +288,18 @@ pub fn replay_events(
                 // Accepted is the start of a run
             }
             JournalEvent::StepStarted { step, .. } => {
-                // Verify step ordering
-                if let Some(prev) = last_step
-                    && step.get() < prev.get()
-                {
-                    return Err(RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: format!(
-                            "step {} executed before previous step {}",
-                            step.get(),
-                            prev.get()
-                        ),
-                    });
-                }
-                last_step = Some(*step);
+                // Step indexes are graph node identifiers, not a monotonic clock.
+                let _ = step;
             }
             JournalEvent::StepSucceeded { step, .. } => {
                 // Step completed successfully
                 let _ = step;
             }
             JournalEvent::ActionScheduled { action, step, .. } => {
-                // Check if this action was already resolved
-                if tracker.is_resolved(*action, *step) {
+                // Only pre-existing resolutions block re-execution. Resolutions
+                // observed inside this persisted replay are journal truth and may
+                // be followed by retry/loop events for the same step.
+                if resolved_before_replay.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
                         action: *action,
                         step: *step,
@@ -355,14 +366,23 @@ pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
 mod tests {
     use super::{
         ActionReplayTracker, RecoveryError, RunSnapshot, check_compiled_ir_digest,
-        extract_terminal, is_terminal_event, recover_full_journal, recover_snapshot_plus_tail,
-        replay_events,
+        check_workflow_source_digest, extract_terminal, is_terminal_event, recover_full_journal,
+        recover_snapshot_plus_tail, replay_events,
     };
-    use crate::{EventSeq, FjallJournal, JournalEvent};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
+    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
     fn test_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    fn storage_tempdir() -> Result<tempfile::TempDir, std::io::Error> {
+        let base =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/vb_storage_tests");
+        std::fs::create_dir_all(&base)?;
+        tempfile::Builder::new()
+            .prefix("recovery-")
+            .tempdir_in(base)
     }
 
     #[test]
@@ -462,6 +482,71 @@ mod tests {
     }
 
     #[test]
+    fn workflow_digest_check_uses_run_metadata() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+        let run = RunId::new(31);
+        let digest = test_digest(7);
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(2),
+            compiled_digest: digest,
+            status: 1,
+            accepted_at_ms: 2,
+        };
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        };
+
+        assert!(journal.put_run_header(&header).is_ok());
+        assert!(journal.append_journaled(&accepted).is_ok());
+
+        let result = check_workflow_source_digest(&journal, run, test_digest(8));
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::WorkflowSourceDigestMismatch { found, .. }) if found == digest
+        ));
+    }
+
+    #[test]
+    fn workflow_digest_check_rejects_metadata_event_mismatch() {
+        let temp_dir = storage_tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+        let run = RunId::new(32);
+        let digest = test_digest(7);
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(2),
+            compiled_digest: digest,
+            status: 1,
+            accepted_at_ms: 2,
+        };
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(9),
+        };
+
+        assert!(journal.put_run_header(&header).is_ok());
+        assert!(journal.append_journaled(&accepted).is_ok());
+
+        let result = check_workflow_source_digest(&journal, run, digest);
+
+        assert!(matches!(result, Err(RecoveryError::Journal(_))));
+    }
+
+    #[test]
     fn is_terminal_event_identifies_terminals() {
         assert!(is_terminal_event(&JournalEvent::RunFinished {
             run: RunId::new(1),
@@ -540,13 +625,12 @@ mod tests {
 
     #[test]
     fn full_journal_recovery_with_no_data_fails() {
-        let temp_dir = tempfile::tempdir();
+        let temp_dir = storage_tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
         let journal = FjallJournal::open(temp_dir.path());
         assert!(journal.is_ok());
         let Ok(journal) = journal else {
-            assert!(false, "journal should open");
             return;
         };
         let mut tracker = ActionReplayTracker::new();
@@ -560,13 +644,12 @@ mod tests {
 
     #[test]
     fn full_journal_recovery_replays_events() {
-        let temp_dir = tempfile::tempdir();
+        let temp_dir = storage_tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
         let journal = FjallJournal::open(temp_dir.path());
         assert!(journal.is_ok());
         let Ok(journal) = journal else {
-            assert!(false, "journal should open");
             return;
         };
         let run = RunId::new(42);
@@ -595,6 +678,125 @@ mod tests {
         let result = recover_full_journal(&journal, run, &mut tracker);
 
         assert!(matches!(result, Ok(events) if events.len() == 3));
+    }
+
+    #[test]
+    fn replay_allows_loop_back_to_lower_step() {
+        let run = RunId::new(43);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(4),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(4),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(4),
+                result: SlotIdx::new(0),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+
+        let result = replay_events(&events, &mut tracker);
+
+        assert!(matches!(result, Ok(replayed) if replayed == events));
+    }
+
+    #[test]
+    fn replay_allows_persisted_retry_after_action_failure() {
+        let run = RunId::new(44);
+        let action = ActionId::new(3);
+        let step = StepIdx::new(1);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(1),
+                step,
+                action,
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(2),
+                step,
+                action,
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(3),
+                step,
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(4),
+                step,
+                action,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step,
+                action,
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+
+        let result = replay_events(&events, &mut tracker);
+
+        assert!(matches!(result, Ok(replayed) if replayed == events));
+        assert!(tracker.is_resolved(action, step));
+    }
+
+    #[test]
+    fn snapshot_tail_replays_loop_without_monotonic_step_order() {
+        let run = RunId::new(45);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(10),
+            workflow: test_digest(1),
+            slots: Vec::new(),
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(11),
+                step: StepIdx::new(9),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(12),
+                step: StepIdx::new(9),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(13),
+                step: StepIdx::new(1),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+
+        let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+
+        assert!(matches!(result, Ok(replayed) if replayed == tail));
     }
 
     #[test]

@@ -240,6 +240,9 @@ pub fn build_object(
     fields: &[(SymbolId, SlotIdx)],
 ) -> Result<ObjectId, EngineError> {
     let mut entries = Vec::new();
+    entries
+        .try_reserve_exact(fields.len())
+        .map_err(|_| EngineError::AllocationFailed)?;
     let mut index = 0usize;
     while index < fields.len() {
         let (key, slot) = fields
@@ -265,6 +268,9 @@ pub fn build_list(
     items: &[SlotIdx],
 ) -> Result<ListId, EngineError> {
     let mut values = Vec::new();
+    values
+        .try_reserve_exact(items.len())
+        .map_err(|_| EngineError::AllocationFailed)?;
     let mut index = 0usize;
     while index < items.len() {
         let slot = items

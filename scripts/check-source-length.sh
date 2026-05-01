@@ -6,10 +6,17 @@ status=0
 
 hot_files() {
   rg --files \
-    -g 'crates/*/src/engine.rs' \
-    -g 'crates/*/src/runtime/**' \
-    -g 'crates/*/src/generated/**' \
-    -g 'crates/*/src/perf/**' \
+    -g 'crates/vb_*/src/engine.rs' \
+    -g 'crates/vb_*/src/engine/**' \
+    -g 'crates/vb_runtime/src/**' \
+    -g 'crates/vb_*/src/runtime/**' \
+    -g 'crates/vb_*/src/generated/**' \
+    -g 'crates/vb_*/src/perf/**' \
+    -g 'crates/velvet_ballastics/src/engine.rs' \
+    -g 'crates/velvet_ballastics/src/engine/**' \
+    -g 'crates/velvet_ballastics/src/runtime/**' \
+    -g 'crates/velvet_ballastics/src/generated/**' \
+    -g 'crates/velvet_ballastics/src/perf/**' \
     -g '!target/**' \
     -g '!vb-*/**'
 }

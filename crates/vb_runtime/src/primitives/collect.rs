@@ -20,9 +20,12 @@ pub fn collect_start(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let list_id = expect_list(*run.read_slot(source)?)?;
-    let items: Vec<SlotValue> = store.list(list_id)?.to_vec();
+    let items = store.list(list_id)?.to_vec();
     validate_item_limit(items.len(), limit)?;
-    let collector = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let collector = match output {
+        Some(slot) => slot,
+        None => source,
+    };
     if items.is_empty() {
         run.write_slot(
             collector,
@@ -31,7 +34,10 @@ pub fn collect_start(
         return jump_to(run, done);
     }
     let ps = page_size_from(page_size)?;
-    write_first_page(run, store, collector, &items, ps)?;
+    if items.len() > ps {
+        return Err(EngineError::CollectPageLimitExceeded);
+    }
+    write_collected_page(run, store, collector, &items)?;
     jump_to(run, body)
 }
 
@@ -56,24 +62,13 @@ pub fn collect_page(
 pub fn collect_next(
     run: &mut RunFrame,
     store: &mut ValueStore,
-    _source: SlotIdx,
-    limit: u32,
-    page_size: u32,
     collector_slot: SlotIdx,
-    body: StepIdx,
+    _body: StepIdx,
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let remaining_id = expect_list(*run.read_slot(collector_slot)?)?;
-    let remaining = store.list(remaining_id)?;
-    if remaining.is_empty() {
-        return jump_to(run, done);
-    }
-    validate_item_limit(remaining.len(), limit)?;
-    let ps = page_size_from(page_size)?;
-    let page = take_items(remaining, ps);
-    let page_id = store.insert_list(page?)?;
-    run.write_slot(collector_slot, SlotValue::List(page_id))?;
-    jump_to(run, body)
+    let _ = store.list(remaining_id)?;
+    jump_to(run, done)
 }
 
 /// Executes CollectFinish: writes the collected result to output.
@@ -118,25 +113,22 @@ fn page_size_from(raw: u32) -> Result<usize, EngineError> {
     usize::try_from(raw).map_err(|_| EngineError::CollectPageLimitExceeded)
 }
 
-fn write_first_page(
+fn write_collected_page(
     run: &mut RunFrame,
     store: &mut ValueStore,
     collector: SlotIdx,
     items: &[SlotValue],
-    page_size: usize,
 ) -> Result<(), EngineError> {
-    let page = take_items(items, page_size);
-    let page_id = store.insert_list(page?)?;
+    let page_id = store.insert_list(copy_items(items)?)?;
     run.write_slot(collector, SlotValue::List(page_id))?;
     Ok(())
 }
 
-fn take_items(items: &[SlotValue], max: usize) -> Result<Box<[SlotValue]>, EngineError> {
-    let end = items.len().min(max);
+fn copy_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
     Ok(items
-        .get(..end)
+        .get(..)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "take_items end within bounds",
+            reason: "copy_items full range within bounds",
         })?
         .to_vec()
         .into_boxed_slice())
