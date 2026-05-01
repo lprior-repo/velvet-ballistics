@@ -1,6 +1,6 @@
 //! Runtime-local journal append port.
 
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{
@@ -240,7 +240,7 @@ impl RuntimeJournal for VolatileRuntimeJournal {
 /// Runtime journal adapter that appends lifecycle events into `vb_storage`.
 pub struct StorageRuntimeJournal {
     journal: Arc<FjallJournal>,
-    next_seq_by_run: Mutex<HashMap<RunId, EventSeq>>,
+    next_seq_by_run: Mutex<IndexMap<RunId, EventSeq>>,
     profile: DurabilityProfile,
 }
 
@@ -250,7 +250,7 @@ impl StorageRuntimeJournal {
     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
-            next_seq_by_run: Mutex::new(HashMap::new()),
+            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -260,7 +260,7 @@ impl StorageRuntimeJournal {
     pub fn strict(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
-            next_seq_by_run: Mutex::new(HashMap::new()),
+            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Strict,
         }
     }
@@ -412,7 +412,7 @@ impl RuntimeJournal for StorageRuntimeJournal {
 pub struct QueuedStorageRuntimeJournal {
     journal: Arc<FjallJournal>,
     queue: Arc<JournalWriterQueue>,
-    next_seq_by_run: Mutex<HashMap<RunId, EventSeq>>,
+    next_seq_by_run: Mutex<IndexMap<RunId, EventSeq>>,
     profile: DurabilityProfile,
 }
 
@@ -423,7 +423,7 @@ impl QueuedStorageRuntimeJournal {
         Self {
             journal,
             queue,
-            next_seq_by_run: Mutex::new(HashMap::new()),
+            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -434,7 +434,7 @@ impl QueuedStorageRuntimeJournal {
         Self {
             journal,
             queue,
-            next_seq_by_run: Mutex::new(HashMap::new()),
+            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Strict,
         }
     }
@@ -495,7 +495,7 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     }
 }
 
-fn current_seq(sequences: &HashMap<RunId, EventSeq>, run: RunId) -> EventSeq {
+fn current_seq(sequences: &IndexMap<RunId, EventSeq>, run: RunId) -> EventSeq {
     match sequences.get(&run).copied() {
         Some(value) => value,
         None => EventSeq::new(0),
