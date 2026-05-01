@@ -266,9 +266,9 @@ fn parse_step_kind(
     }
 }
 
-fn primitive_entry<'a>(
-    mapping: &'a saphyr::Mapping<'a>,
-) -> Result<Option<(&'a str, &'a Yaml<'a>)>, CompileError> {
+fn primitive_entry<'map, 'input>(
+    mapping: &'map saphyr::Mapping<'input>,
+) -> Result<Option<(&'map str, &'map Yaml<'input>)>, CompileError> {
     mapping.iter().try_fold(None, |selected, (key, body)| {
         let field = key.as_str().ok_or_else(crate::non_string_key_error)?;
         if is_supported_primitive(field) {

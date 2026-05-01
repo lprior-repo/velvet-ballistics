@@ -21,6 +21,25 @@ hot_files() {
     -g '!vb-*/**'
 }
 
+check_mutants_residue() {
+  local matches
+  local grep_status
+
+  set +e
+  matches=$(git grep -n -I -E 'changed by cargo[-]mutants' -- . ':!target' ':!.moon/cache' ':!.beads')
+  grep_status=$?
+  set -e
+
+  if [[ "$grep_status" -eq 0 ]]; then
+    printf 'cargo-mutants residue markers found:\n' >&2
+    printf '%s\n' "$matches" >&2
+    status=1
+  elif [[ "$grep_status" -gt 1 ]]; then
+    printf 'cargo-mutants residue check failed\n' >&2
+    status=1
+  fi
+}
+
 check_file() {
   local file="$1"
 
@@ -73,5 +92,7 @@ while IFS= read -r file; do
   [[ -z "$file" ]] && continue
   check_file "$file"
 done < <(hot_files)
+
+check_mutants_residue
 
 exit "$status"

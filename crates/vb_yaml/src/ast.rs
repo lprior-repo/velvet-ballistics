@@ -825,12 +825,23 @@ fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleAst>> {
 mod tests {
     use super::*;
 
+    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
+        let _ = message;
+        false
+    }
+
+    macro_rules! fail_assert {
+        ($($arg:tt)*) => {
+            assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        };
+    }
+
     macro_rules! parse_ok {
         ($yaml:expr) => {
             match parse_workflow_ast($yaml) {
                 Ok(value) => value,
                 Err(error) => {
-                    assert!(false, "parse failed: {error}");
+                    fail_assert!("parse failed: {error}");
                     return;
                 }
             }
@@ -842,7 +853,7 @@ mod tests {
             match $values.first() {
                 Some(value) => value,
                 None => {
-                    assert!(false, "missing {}", $label);
+                    fail_assert!("missing {}", $label);
                     return;
                 }
             }
@@ -1038,7 +1049,7 @@ mod tests {
                 assert_eq!(first_branch.steps.len(), 1);
                 assert_eq!(otherwise.as_deref(), Some("handle_zero"));
             }
-            other => assert!(false, "expected Choose, got {other:?}"),
+            other => fail_assert!("expected Choose, got {other:?}"),
         }
     }
 
@@ -1075,7 +1086,7 @@ mod tests {
                 assert_eq!(*at_once, Some(5));
                 assert_eq!(body.len(), 1);
             }
-            other => assert!(false, "expected ForEach, got {other:?}"),
+            other => fail_assert!("expected ForEach, got {other:?}"),
         }
     }
 
@@ -1108,12 +1119,12 @@ mod tests {
                 assert_eq!(first_branch.label, "a");
                 assert_eq!(first_branch.steps.len(), 1);
                 let Some(second_branch) = branches.get(1) else {
-                    assert!(false, "missing second branch");
+                    fail_assert!("missing second branch");
                     return;
                 };
                 assert_eq!(second_branch.label, "b");
             }
-            other => assert!(false, "expected Together, got {other:?}"),
+            other => fail_assert!("expected Together, got {other:?}"),
         }
     }
 
@@ -1153,7 +1164,7 @@ mod tests {
                 assert_eq!(*items, Some(50));
                 assert_eq!(body.len(), 1);
             }
-            other => assert!(false, "expected Collect, got {other:?}"),
+            other => fail_assert!("expected Collect, got {other:?}"),
         }
     }
 
@@ -1186,7 +1197,7 @@ mod tests {
                 assert_eq!(initial, "0");
                 assert!(body.is_empty());
             }
-            other => assert!(false, "expected Reduce, got {other:?}"),
+            other => fail_assert!("expected Reduce, got {other:?}"),
         }
     }
 
@@ -1214,7 +1225,7 @@ mod tests {
                 assert_eq!(*max_attempts, 3);
                 assert_eq!(body.len(), 1);
             }
-            other => assert!(false, "expected Repeat, got {other:?}"),
+            other => fail_assert!("expected Repeat, got {other:?}"),
         }
     }
 
@@ -1238,7 +1249,7 @@ mod tests {
                 assert_eq!(event.as_deref(), Some("approval"));
                 assert_eq!(timeout.as_deref(), Some("30s"));
             }
-            other => assert!(false, "expected Wait, got {other:?}"),
+            other => fail_assert!("expected Wait, got {other:?}"),
         }
     }
 
@@ -1262,7 +1273,7 @@ mod tests {
                 assert_eq!(prompt, "Continue?");
                 assert_eq!(timeout.as_deref(), Some("60s"));
             }
-            other => assert!(false, "expected Ask, got {other:?}"),
+            other => fail_assert!("expected Ask, got {other:?}"),
         }
     }
 
@@ -1284,7 +1295,7 @@ mod tests {
             StepPrimitive::Finish { result } => {
                 assert_eq!(result, "output");
             }
-            other => assert!(false, "expected Finish, got {other:?}"),
+            other => fail_assert!("expected Finish, got {other:?}"),
         }
     }
 
@@ -1318,14 +1329,14 @@ mod tests {
         assert_eq!(step.then.as_deref(), Some("next_step"));
 
         let Some(retry) = step.retry.as_ref() else {
-            assert!(false, "missing retry");
+            fail_assert!("missing retry");
             return;
         };
         assert_eq!(retry.max_attempts, 3);
         assert_eq!(retry.delay.as_deref(), Some("1s"));
 
         let Some(on_error) = step.on_error.as_ref() else {
-            assert!(false, "missing on_error");
+            fail_assert!("missing on_error");
             return;
         };
         assert_eq!(on_error.handler, "fallback");
@@ -1348,7 +1359,7 @@ mod tests {
         "};
         let wf = parse_ok!(yaml);
         let Some(result) = wf.result.as_ref() else {
-            assert!(false, "missing result");
+            fail_assert!("missing result");
             return;
         };
         assert_eq!(result.value, "final_output");
@@ -1414,7 +1425,7 @@ mod tests {
                 assert_eq!(wf.name, "typed");
                 assert_eq!(wf.steps.len(), 1);
             }
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -1441,7 +1452,7 @@ mod tests {
                 assert_eq!(output, "x");
                 assert_eq!(value, "hello");
             }
-            other => assert!(false, "expected Set, got {other:?}"),
+            other => fail_assert!("expected Set, got {other:?}"),
         }
     }
 
@@ -1466,7 +1477,7 @@ mod tests {
         // Then: retry is parsed as a mapping with correct fields
         let first_step = first_item!(wf.steps, "step");
         let Some(retry) = first_step.retry.as_ref() else {
-            assert!(false, "missing retry");
+            fail_assert!("missing retry");
             return;
         };
         assert_eq!(retry.max_attempts, 5);
@@ -1495,8 +1506,8 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: steps is a sequence with correct length and IDs
         assert_eq!(wf.steps.len(), 2);
-        assert_eq!(wf.steps[0].id, "s1");
-        assert_eq!(wf.steps[1].id, "s2");
+        assert_eq!(wf.steps.first().map(|step| step.id.as_str()), Some("s1"));
+        assert_eq!(wf.steps.get(1).map(|step| step.id.as_str()), Some("s2"));
     }
 
     #[test]
@@ -1517,12 +1528,12 @@ mod tests {
                 assert!(!map.is_empty());
                 let first_span = map.span_for_node(0);
                 let Some(span) = first_span else {
-                    assert!(false, "expected Some span for node 0");
+                    fail_assert!("expected Some span for node 0");
                     return;
                 };
                 assert!(span.start_line > 0);
             }
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -1533,10 +1544,7 @@ mod tests {
         // When: parsing
         let result = parse_workflow_ast(yaml);
         // Then: Err(YamlError::MissingField { field: "version" })
-        assert_eq!(
-            result,
-            Err(YamlError::MissingField { field: "version" })
-        );
+        assert_eq!(result, Err(YamlError::MissingField { field: "version" }));
     }
 
     #[test]
@@ -1546,10 +1554,7 @@ mod tests {
         // When: parsing
         let result = parse_workflow_ast(yaml);
         // Then: Err(YamlError::MissingField { field: "name" })
-        assert_eq!(
-            result,
-            Err(YamlError::MissingField { field: "name" })
-        );
+        assert_eq!(result, Err(YamlError::MissingField { field: "name" }));
     }
 
     #[test]
@@ -1559,10 +1564,7 @@ mod tests {
         // When: parsing
         let result = parse_workflow_ast(yaml);
         // Then: Err(YamlError::MissingField { field: "when" })
-        assert_eq!(
-            result,
-            Err(YamlError::MissingField { field: "when" })
-        );
+        assert_eq!(result, Err(YamlError::MissingField { field: "when" }));
     }
 
     #[test]
@@ -1586,7 +1588,7 @@ mod tests {
                     "expected step primitive field, got: {field}"
                 );
             }
-            other => assert!(false, "expected MissingField, got {other:?}"),
+            other => fail_assert!("expected MissingField, got {other:?}"),
         }
     }
 
@@ -1681,7 +1683,7 @@ mod tests {
                 assert_eq!(*event, None);
                 assert_eq!(timeout.as_deref(), Some("10s"));
             }
-            other => assert!(false, "expected Wait, got {other:?}"),
+            other => fail_assert!("expected Wait, got {other:?}"),
         }
     }
 
@@ -1707,7 +1709,7 @@ mod tests {
                 assert_eq!(prompt, "What?");
                 assert_eq!(*timeout, None);
             }
-            other => assert!(false, "expected Ask, got {other:?}"),
+            other => fail_assert!("expected Ask, got {other:?}"),
         }
     }
 
@@ -1775,12 +1777,34 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: two inputs with correct fields
         assert_eq!(wf.inputs.len(), 2);
-        assert_eq!(wf.inputs[0].name, "count");
-        assert_eq!(wf.inputs[0].field_type.as_deref(), Some("u32"));
-        assert_eq!(wf.inputs[0].default.as_deref(), Some("10"));
-        assert_eq!(wf.inputs[1].name, "name");
-        assert_eq!(wf.inputs[1].field_type.as_deref(), Some("string"));
-        assert_eq!(wf.inputs[1].default, None);
+        assert_eq!(
+            wf.inputs.first().map(|input| input.name.as_str()),
+            Some("count")
+        );
+        assert_eq!(
+            wf.inputs
+                .first()
+                .and_then(|input| input.field_type.as_deref()),
+            Some("u32")
+        );
+        assert_eq!(
+            wf.inputs.first().and_then(|input| input.default.as_deref()),
+            Some("10")
+        );
+        assert_eq!(
+            wf.inputs.get(1).map(|input| input.name.as_str()),
+            Some("name")
+        );
+        assert_eq!(
+            wf.inputs
+                .get(1)
+                .and_then(|input| input.field_type.as_deref()),
+            Some("string")
+        );
+        assert_eq!(
+            wf.inputs.get(1).and_then(|input| input.default.as_ref()),
+            None
+        );
     }
 
     #[test]
@@ -1801,10 +1825,13 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: two vars with correct fields
         assert_eq!(wf.vars.len(), 2);
-        assert_eq!(wf.vars[0].name, "acc");
-        assert_eq!(wf.vars[0].value.as_deref(), Some("0"));
-        assert_eq!(wf.vars[1].name, "buf");
-        assert_eq!(wf.vars[1].value, None);
+        assert_eq!(wf.vars.first().map(|var| var.name.as_str()), Some("acc"));
+        assert_eq!(
+            wf.vars.first().and_then(|var| var.value.as_deref()),
+            Some("0")
+        );
+        assert_eq!(wf.vars.get(1).map(|var| var.name.as_str()), Some("buf"));
+        assert_eq!(wf.vars.get(1).and_then(|var| var.value.as_ref()), None);
     }
 
     #[test]
@@ -1825,10 +1852,22 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: two secrets with correct fields
         assert_eq!(wf.secrets.len(), 2);
-        assert_eq!(wf.secrets[0].name, "api_key");
-        assert_eq!(wf.secrets[0].key.as_deref(), Some("vault/api_key"));
-        assert_eq!(wf.secrets[1].name, "db_pass");
-        assert_eq!(wf.secrets[1].key, None);
+        assert_eq!(
+            wf.secrets.first().map(|secret| secret.name.as_str()),
+            Some("api_key")
+        );
+        assert_eq!(
+            wf.secrets.first().and_then(|secret| secret.key.as_deref()),
+            Some("vault/api_key")
+        );
+        assert_eq!(
+            wf.secrets.get(1).map(|secret| secret.name.as_str()),
+            Some("db_pass")
+        );
+        assert_eq!(
+            wf.secrets.get(1).and_then(|secret| secret.key.as_ref()),
+            None
+        );
     }
 
     #[test]
@@ -1847,7 +1886,7 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: result is Some with exact value
         let Some(ref result) = wf.result else {
-            assert!(false, "missing result");
+            fail_assert!("missing result");
             return;
         };
         assert_eq!(result.value, "final_output");
@@ -1888,12 +1927,42 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: two examples with correct fields
         assert_eq!(wf.examples.len(), 2);
-        assert_eq!(wf.examples[0].description.as_deref(), Some("basic"));
-        assert_eq!(wf.examples[0].input.as_deref(), Some("{\"x\": 1}"));
-        assert_eq!(wf.examples[0].expected.as_deref(), Some("2"));
-        assert_eq!(wf.examples[1].description.as_deref(), Some("empty"));
-        assert_eq!(wf.examples[1].input, None);
-        assert_eq!(wf.examples[1].expected, None);
+        assert_eq!(
+            wf.examples
+                .first()
+                .and_then(|example| example.description.as_deref()),
+            Some("basic")
+        );
+        assert_eq!(
+            wf.examples
+                .first()
+                .and_then(|example| example.input.as_deref()),
+            Some("{\"x\": 1}")
+        );
+        assert_eq!(
+            wf.examples
+                .first()
+                .and_then(|example| example.expected.as_deref()),
+            Some("2")
+        );
+        assert_eq!(
+            wf.examples
+                .get(1)
+                .and_then(|example| example.description.as_deref()),
+            Some("empty")
+        );
+        assert_eq!(
+            wf.examples
+                .get(1)
+                .and_then(|example| example.input.as_ref()),
+            None
+        );
+        assert_eq!(
+            wf.examples
+                .get(1)
+                .and_then(|example| example.expected.as_ref()),
+            None
+        );
     }
 
     #[test]
@@ -1942,7 +2011,7 @@ mod tests {
                 assert_eq!(*at_once, None);
                 assert!(body.is_empty());
             }
-            other => assert!(false, "expected ForEach, got {other:?}"),
+            other => fail_assert!("expected ForEach, got {other:?}"),
         }
     }
 
@@ -1978,7 +2047,7 @@ mod tests {
                 assert_eq!(*items, None);
                 assert!(body.is_empty());
             }
-            other => assert!(false, "expected Collect, got {other:?}"),
+            other => fail_assert!("expected Collect, got {other:?}"),
         }
     }
 
@@ -2004,7 +2073,7 @@ mod tests {
                 assert_eq!(*max_attempts, 5);
                 assert!(body.is_empty());
             }
-            other => assert!(false, "expected Repeat, got {other:?}"),
+            other => fail_assert!("expected Repeat, got {other:?}"),
         }
     }
 
@@ -2030,7 +2099,7 @@ mod tests {
                 assert_eq!(action, "http.post");
                 assert_eq!(input, "payload");
             }
-            other => assert!(false, "expected Do, got {other:?}"),
+            other => fail_assert!("expected Do, got {other:?}"),
         }
     }
 
@@ -2054,7 +2123,7 @@ mod tests {
             StepPrimitive::Finish { result } => {
                 assert_eq!(result, "done");
             }
-            other => assert!(false, "expected Finish, got {other:?}"),
+            other => fail_assert!("expected Finish, got {other:?}"),
         }
     }
 
@@ -2085,11 +2154,17 @@ mod tests {
                 otherwise,
             } => {
                 assert_eq!(branches.len(), 2);
-                assert_eq!(branches[0].when, "x > 0");
-                assert_eq!(branches[1].when, "x < 0");
+                assert_eq!(
+                    branches.first().map(|branch| branch.when.as_str()),
+                    Some("x > 0")
+                );
+                assert_eq!(
+                    branches.get(1).map(|branch| branch.when.as_str()),
+                    Some("x < 0")
+                );
                 assert_eq!(otherwise.as_deref(), Some("zero"));
             }
-            other => assert!(false, "expected Choose, got {other:?}"),
+            other => fail_assert!("expected Choose, got {other:?}"),
         }
     }
 
@@ -2116,10 +2191,16 @@ mod tests {
         match &first_step.primitive {
             StepPrimitive::Together { branches } => {
                 assert_eq!(branches.len(), 2);
-                assert_eq!(branches[0].label, "first");
-                assert_eq!(branches[1].label, "second");
+                assert_eq!(
+                    branches.first().map(|branch| branch.label.as_str()),
+                    Some("first")
+                );
+                assert_eq!(
+                    branches.get(1).map(|branch| branch.label.as_str()),
+                    Some("second")
+                );
             }
-            other => assert!(false, "expected Together, got {other:?}"),
+            other => fail_assert!("expected Together, got {other:?}"),
         }
     }
 
@@ -2143,7 +2224,7 @@ mod tests {
         let wf = parse_ok!(yaml);
         let step = first_item!(wf.steps, "step");
         let Some(ref on_error) = step.on_error else {
-            assert!(false, "missing on_error");
+            fail_assert!("missing on_error");
             return;
         };
         assert_eq!(on_error.handler, "fallback");
@@ -2211,5 +2292,417 @@ mod tests {
         let wf = parse_ok!(yaml);
         // Then: steps is empty vec
         assert!(wf.steps.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial BDD tests - AST layer attack vectors
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn adversarial_ast_non_mapping_step_rejected() {
+        // Given: workflow with a step that is a scalar, not a mapping
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: bad-step
+            when:
+              manual: {}
+            steps:
+              - just_a_string
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape)
+        assert!(
+            matches!(result, Err(YamlError::FieldShape { field, .. }) if field == "step"),
+            "expected FieldShape(step), got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_step_missing_id_rejected() {
+        // Given: workflow with a step that has no id field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-id
+            when:
+              manual: {}
+            steps:
+              - set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "step.id" })
+        assert_eq!(result, Err(YamlError::MissingField { field: "step.id" }));
+    }
+
+    #[test]
+    fn adversarial_ast_empty_step_id_rejected() {
+        // Given: workflow with a step whose id is empty string
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: empty-id
+            when:
+              manual: {}
+            steps:
+              - id: ''
+                set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape) - empty id is not a non-empty string
+        assert!(
+            matches!(result, Err(YamlError::FieldShape { field, .. }) if field == "step.id"),
+            "expected FieldShape for empty id, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_set_missing_output_rejected() {
+        // Given: set step missing output field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-output
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                set:
+                  value: \"1\"
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "set.output" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "set.output"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_do_missing_action_rejected() {
+        // Given: do step missing action field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-action
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                do:
+                  input: payload
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "do.action" })
+        assert_eq!(result, Err(YamlError::MissingField { field: "do.action" }));
+    }
+
+    #[test]
+    fn adversarial_ast_ask_missing_prompt_rejected() {
+        // Given: ask step missing prompt field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-prompt
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                ask:
+                  timeout: 10s
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "ask.prompt" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "ask.prompt"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_repeat_missing_max_attempts_rejected() {
+        // Given: repeat step missing max_attempts
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-max
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                repeat:
+                  steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "max_attempts" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "max_attempts"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_reduce_missing_initial_rejected() {
+        // Given: reduce step missing initial field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-init
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                reduce:
+                  variable: acc
+                  input: items
+                  steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "reduce.initial" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "reduce.initial"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_collect_missing_source_rejected() {
+        // Given: collect step missing source field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-source
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                collect:
+                  variable: page
+                  steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "collect.source" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "collect.source"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_finish_missing_result_rejected() {
+        // Given: finish step missing result field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-result
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                finish: {}
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "finish.result" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "finish.result"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_invalid_input_type_rejected() {
+        // Given: inputs field is a string, not a sequence
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: bad-inputs
+            when:
+              manual: {}
+            inputs: not_a_list
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: inputs is treated as empty (opt-in parsing returns empty)
+        assert!(
+            wf.inputs.is_empty(),
+            "non-sequence inputs should be treated as empty"
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_non_mapping_input_item_rejected() {
+        // Given: inputs with a scalar item instead of mapping
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: bad-input-item
+            when:
+              manual: {}
+            inputs:
+              - just_a_string
+            steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "inputs", expected: "mapping" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "inputs",
+                expected: "mapping"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_http_trigger_rejected_by_ast_layer() {
+        // Given: YAML with http trigger
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: http-trigger
+            when:
+              http: {}
+            steps: []
+        "};
+        // When: parsing AST directly (bypassing profile)
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::UnsupportedFeature { feature: "http trigger" })
+        assert_eq!(
+            result,
+            Err(YamlError::UnsupportedFeature {
+                feature: "http trigger"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_scalar_root_rejected() {
+        // Given: YAML whose root is a plain scalar
+        let yaml = "42\n";
+        // When: parsing AST
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "workflow", expected: "mapping" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "workflow",
+                expected: "mapping"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_sequence_root_rejected() {
+        // Given: YAML whose root is a sequence
+        let yaml = "- a\n- b\n";
+        // When: parsing AST
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "workflow", expected: "mapping" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "workflow",
+                expected: "mapping"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_together_branch_missing_label_rejected() {
+        // Given: together branch without a label
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-label
+            when:
+              manual: {}
+            steps:
+              - id: t1
+                together:
+                  branches:
+                    - steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "together.branches[].label" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "together.branches[].label"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_choose_branch_missing_when_rejected() {
+        // Given: choose branch without a when condition
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-when
+            when:
+              manual: {}
+            steps:
+              - id: c1
+                choose:
+                  branches:
+                    - steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "choose.branches[].when" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "choose.branches[].when"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_ipc_trigger_missing_name_rejected() {
+        // Given: IPC trigger without a name field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-ipc-name
+            when:
+              ipc: {}
+            steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "when.ipc.name" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField {
+                field: "when.ipc.name"
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_ast_when_with_empty_mapping_rejected() {
+        // Given: when field with empty mapping (no manual or ipc)
+        let yaml = "version: velvet-ballastics/v1\nname: bad\nwhen: {}\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape) - empty when has no recognized trigger
+        assert!(
+            matches!(result, Err(YamlError::FieldShape { field, .. }) if field == "when"),
+            "expected FieldShape for empty when, got: {result:?}"
+        );
     }
 }

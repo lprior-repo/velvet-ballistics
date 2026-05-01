@@ -412,9 +412,12 @@ mod tests {
         // When validate_reachability is called
         let result = validate_reachability(&flow);
         // Then it returns UnreachableStep with the orphan id
-        assert_eq!(result, Err(ValidationError::UnreachableStep {
-            step: "orphaned".to_owned(),
-        }));
+        assert_eq!(
+            result,
+            Err(ValidationError::UnreachableStep {
+                step: "orphaned".to_owned(),
+            })
+        );
     }
 
     #[test]
@@ -491,8 +494,260 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns UnreachableStep with message about no steps
-        assert_eq!(result, Err(ValidationError::UnreachableStep {
-            step: "workflow has no steps".to_owned(),
-        }));
+        assert_eq!(
+            result,
+            Err(ValidationError::UnreachableStep {
+                step: "workflow has no steps".to_owned(),
+            })
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Adversarial BDD tests: validation bypass attacks
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn adversarial_three_step_cycle_a_to_b_to_c_to_a_is_rejected() {
+        // Given a three-step cycle: step_0 branches to step_2, step_1 branches to step_0, step_2 branches to step_1
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("a".to_owned()),
+                    branch_targets: vec![2],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("b".to_owned()),
+                    branch_targets: vec![0],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("c".to_owned()),
+                    branch_targets: vec![1],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns ControlFlowCycle (E0302) -- step 0 has backward branch from step 1
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn adversarial_then_target_pointing_to_self_is_rejected() {
+        // Given a step whose then_target points to itself (self-loop)
+        let flow = WorkflowFlow {
+            steps: vec![StepFlow {
+                id: Some("loop_to_self".to_owned()),
+                branch_targets: vec![],
+                then_target: Some(0), // points to itself
+            }],
+        };
+        // When validate_forward_only_then is called
+        let result = validate_forward_only_then(&flow);
+        // Then it returns ControlFlowCycle (E0302)
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn adversarial_then_target_out_of_bounds_is_rejected() {
+        // Given a step whose then_target is beyond the step count
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("first".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(99), // way out of bounds
+                },
+                StepFlow {
+                    id: Some("second".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_forward_only_then is called
+        let result = validate_forward_only_then(&flow);
+        // Then it returns InvalidThenTarget (E0301)
+        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+    }
+
+    #[test]
+    fn adversarial_backward_then_target_is_rejected() {
+        // Given a step whose then_target points backward
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("start".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("go_back".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(0), // backward
+                },
+            ],
+        };
+        // When validate_forward_only_then is called
+        let result = validate_forward_only_then(&flow);
+        // Then it returns ControlFlowCycle (E0302)
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn adversarial_large_branch_target_out_of_bounds_is_rejected() {
+        // Given a step with a branch target far exceeding step count
+        let flow = WorkflowFlow {
+            steps: vec![StepFlow {
+                id: Some("big_jump".to_owned()),
+                branch_targets: vec![1000],
+                then_target: None,
+            }],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns InvalidThenTarget (E0301)
+        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+    }
+
+    #[test]
+    fn adversarial_isolated_step_not_reachable_from_entry_is_rejected() {
+        // Given a flow where step 0 has explicit then_target skipping step 1
+        // and step 1 has no incoming edges
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("start".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(2), // skips step 1
+                },
+                StepFlow {
+                    id: Some("orphan".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("target".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns UnreachableStep (E0303) for "orphan"
+        assert_eq!(
+            result,
+            Err(ValidationError::UnreachableStep {
+                step: "orphan".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_step_without_id_orphan_reports_generic_name() {
+        // Given a flow where an orphaned step has no id set
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("start".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(2),
+                },
+                StepFlow {
+                    id: None, // no id
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("end".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns UnreachableStep with a generated name "step_1"
+        assert_eq!(
+            result,
+            Err(ValidationError::UnreachableStep {
+                step: "step_1".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_multiple_branches_all_forward_are_accepted() {
+        // Given a step with multiple forward branch targets, all valid
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("router".to_owned()),
+                    branch_targets: vec![1, 2, 3],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("branch_a".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(3),
+                },
+                StepFlow {
+                    id: Some("branch_b".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(3),
+                },
+                StepFlow {
+                    id: Some("merge".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns Ok -- all targets are valid and forward
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_zero_target_is_backward_from_step_zero() {
+        // Given step 0 with a branch target of 0 (self-cycle via branch)
+        let flow = WorkflowFlow {
+            steps: vec![StepFlow {
+                id: Some("self_loop".to_owned()),
+                branch_targets: vec![0],
+                then_target: None,
+            }],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns ControlFlowCycle (E0302) -- target <= step_index
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn adversarial_exact_boundary_target_equals_step_count_is_rejected() {
+        // Given a step with branch target exactly equal to steps.len()
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("start".to_owned()),
+                    branch_targets: vec![2], // but only 2 steps (indices 0 and 1)
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("second".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns InvalidThenTarget (E0301) -- index 2 out of bounds
+        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
     }
 }

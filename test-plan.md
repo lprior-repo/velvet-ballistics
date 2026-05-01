@@ -332,6 +332,14 @@ Use Criterion for micro/throughput benchmarks and Iai-Callgrind or `perf stat` f
 - `bench_no_http_hot_path_dependency_baseline`: not a timing benchmark; stores dependency graph artifact proving no HTTP crates in hot path.
 - `bench_engine_vs_journal_boundary`: run deterministic chain with and without journal append to prove disk barrier is not hidden inside pure hot-loop benchmark.
 
+### Current harness traceability notes
+- Implemented in `benches/velvet_ballastics.rs`: `bench_engine_step_once_save_const_single_transition`, `bench_engine_run_save_chain_10_steps`, `bench_engine_run_save_chain_1000_steps`, `bench_engine_choose_true_branch`, `bench_engine_choose_false_branch`, `bench_engine_finish_no_observability`, `bench_engine_numeric_slots_read_write_i64`, `bench_memory_ingress_try_submit_capacity_1024`, `bench_memory_ingress_submit_recv_single_thread`, `bench_memory_ingress_backpressure_full_queue`, `bench_fjall_append_run_accepted_no_persist`, and `bench_replay_ordered_journal_1000_events`.
+- Intentionally deferred: `bench_memory_ingress_mpsc_4_producers_capacity_4096` until the harness records p50/p95 submit latency instead of only Criterion wall time.
+- Intentionally deferred: `bench_fjall_append_step_events_no_persist_batch_1000`, `bench_fjall_group_commit_100_events`, and `bench_fjall_strict_persist_each_event` until storage event seeding uses mixed valid lifecycle events and reports explicit barrier latency.
+- Intentional model difference: `bench_engine_numeric_slots_copy_bytes_arc_cost` is not present because `SlotValue` currently stores handle-only `BlobId` values, not owned `Bytes`/Arc payloads.
+- Cold-path projection gap: `bench_jsonl_projection_cold_path_1000_events` remains deferred until the JSONL projection boundary is implemented outside the engine hot loop.
+- Architecture check gap: `bench_no_http_hot_path_dependency_baseline` and `bench_engine_vs_journal_boundary` remain traceability checks rather than Criterion timing benchmarks.
+
 Benchmark acceptance gates:
 - Any PR claiming speed must include before/after numbers for affected benchmark names above.
 - Engine hot-loop benchmarks must not include YAML parsing, JSON/JSONL projection, Fjall `persist`, HTTP routing, or task spawning.

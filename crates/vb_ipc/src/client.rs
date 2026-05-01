@@ -151,7 +151,10 @@ mod tests {
         let path = PathBuf::from("/tmp/vb_ipc_test_nonexistent_39f2.socket");
         let result = IpcClient::connect(&path);
 
-        assert!(result.is_err(), "connecting to a nonexistent socket must fail");
+        assert!(
+            result.is_err(),
+            "connecting to a nonexistent socket must fail"
+        );
         let Err(error) = result else {
             return;
         };
@@ -251,7 +254,10 @@ mod tests {
 
         // When: connection fails, no client to send with
         // Then: verify the client was not created
-        assert!(client.is_err(), "connect should fail for nonexistent socket");
+        assert!(
+            client.is_err(),
+            "connect should fail for nonexistent socket"
+        );
     }
 
     #[test]
@@ -263,5 +269,71 @@ mod tests {
         // When: connection fails
         // Then: no recv possible
         assert!(client.is_err(), "connect should fail");
+    }
+
+    // ══ Adversarial client tests ══
+
+    #[test]
+    fn adversarial_connect_to_directory_returns_connect_failed() {
+        // Given: a path that is a directory, not a socket
+        let path = PathBuf::from("/tmp");
+
+        // When: trying to connect
+        let result = IpcClient::connect(&path);
+
+        // Then: ConnectFailed
+        let Err(IpcClientError::ConnectFailed { .. }) = result else {
+            return;
+        };
+    }
+
+    #[test]
+    fn adversarial_connect_to_empty_path_returns_connect_failed() {
+        // Given: an empty path
+        let path = PathBuf::from("");
+
+        // When: trying to connect
+        let result = IpcClient::connect(&path);
+
+        // Then: ConnectFailed
+        let Err(IpcClientError::ConnectFailed { .. }) = result else {
+            return;
+        };
+    }
+
+    #[test]
+    fn adversarial_connect_to_nested_nonexistent_returns_connect_failed() {
+        // Given: a deeply nested nonexistent path
+        let path = PathBuf::from("/tmp/vb_ipc_noexist_a1b2/noexist_subdir/noexist.socket");
+
+        // When: trying to connect
+        let result = IpcClient::connect(&path);
+
+        // Then: ConnectFailed
+        let Err(IpcClientError::ConnectFailed { .. }) = result else {
+            return;
+        };
+    }
+
+    #[test]
+    fn adversarial_client_error_variants_are_distinct() {
+        // Given: all four IpcClientError variants
+        let connect_err = IpcClientError::ConnectFailed {
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "not found"),
+        };
+        let io_err = IpcClientError::IoError {
+            source: std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken pipe"),
+        };
+        let frame_err = IpcClientError::FrameError {
+            source: crate::IpcError::InvalidMagic { actual: 0 },
+        };
+        let encode_err = IpcClientError::EncodeFailed;
+
+        // When: checking Display output
+        // Then: each has a distinct message prefix
+        assert!(connect_err.to_string().contains("connect failed"));
+        assert!(io_err.to_string().contains("io error"));
+        assert!(frame_err.to_string().contains("frame error"));
+        assert!(encode_err.to_string().contains("payload encode failed"));
     }
 }

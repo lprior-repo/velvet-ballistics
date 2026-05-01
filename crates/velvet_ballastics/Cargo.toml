@@ -17,6 +17,7 @@ vb_yaml = { path = "../vb_yaml" }
 postcard = { workspace = true }
 
 [dev-dependencies]
+bytes = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
 

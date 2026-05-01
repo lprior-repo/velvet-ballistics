@@ -9,9 +9,11 @@ crossbeam-queue.workspace = true
 rtrb.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
+vb_storage = { path = "../vb_storage" }
 
 [dev-dependencies]
 proptest = { workspace = true }
+tempfile.workspace = true
 
 [lints]
 workspace = true

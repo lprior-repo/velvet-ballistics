@@ -4,7 +4,7 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
-    propagate_action_taint,
+    Idempotency, propagate_action_taint,
 };
 use vb_core::engine::{EngineSignal, StepBudget, step_once};
 use vb_core::errors::EngineError;
@@ -49,6 +49,22 @@ impl From<EngineError> for RuntimeEngineError {
 impl From<ActionError> for RuntimeEngineError {
     fn from(error: ActionError) -> Self {
         Self::Action(error)
+    }
+}
+
+impl RuntimeEngineError {
+    /// Runtime code for exhausted retry policies.
+    pub const RETRY_EXHAUSTED_RUNTIME_CODE: &str = "RETRY_EXHAUSTED";
+
+    /// Returns the stable section 17 runtime code when this error has a direct mapping.
+    #[must_use]
+    pub const fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::Core(error) => error.runtime_code(),
+            Self::Action(error) => error.runtime_code(),
+            Self::RetryExhausted { .. } => Some(Self::RETRY_EXHAUSTED_RUNTIME_CODE),
+            Self::TaintViolation { .. } => None,
+        }
     }
 }
 
@@ -362,7 +378,7 @@ pub fn execute_node_full(
             exhausted,
         } => {
             let target = execute_retry_check(1, retry_policy, *body, *exhausted);
-            run.set_pc(target);
+            run.set_pc(target).map_err(RuntimeEngineError::Core)?;
             run.increment_executed().map_err(RuntimeEngineError::Core)?;
             Ok(RuntimeSignal::Continue)
         }
@@ -371,7 +387,8 @@ pub fn execute_node_full(
             body: handler_body,
             handler: _,
         } => {
-            run.set_pc(*handler_body);
+            run.set_pc(*handler_body)
+                .map_err(RuntimeEngineError::Core)?;
             run.increment_executed().map_err(RuntimeEngineError::Core)?;
             Ok(RuntimeSignal::Continue)
         }
@@ -454,6 +471,10 @@ pub fn execute_do(
         .ok_or(ActionError::UnknownAction { action })?;
 
     let input_taint = run.read_taint(input).map_err(RuntimeEngineError::Core)?;
+    if resolved.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+        return Err(RuntimeEngineError::TaintViolation { step });
+    }
+
     let output_taint = propagate_action_taint(resolved.idempotency, input_taint);
 
     let ticket = ActionTicket {
@@ -607,6 +628,7 @@ fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ConstIdx;
     use vb_core::action::Idempotency;
     use vb_core::engine::EngineSignal;
     use vb_core::errors::EngineError;
@@ -769,7 +791,8 @@ mod tests {
             Ok(f) => f,
             Err(_) => return,
         };
-        let write_result = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+        let write_result =
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
         assert_eq!(write_result.map(|_| ()), Ok(()));
         let contract = ActionContract {
             id: ActionId::new(1),
@@ -881,9 +904,11 @@ mod tests {
         let result = resume_action_outcome(&mut run, &outcome);
         assert_eq!(
             result,
-            Err(RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
-                primitive: "action_failed_non_retryable",
-            }))
+            Err(RuntimeEngineError::Core(
+                EngineError::UnsupportedPrimitive {
+                    primitive: "action_failed_non_retryable",
+                }
+            ))
         );
     }
 
@@ -973,10 +998,13 @@ mod tests {
                 assert_eq!(action, ActionId::new(3));
                 assert_eq!(attempts, 5);
             }
-            other => assert_eq!(other, RuntimeEngineError::RetryExhausted {
-                action: ActionId::new(0),
-                attempts: 0,
-            }),
+            other => assert_eq!(
+                other,
+                RuntimeEngineError::RetryExhausted {
+                    action: ActionId::new(0),
+                    attempts: 0,
+                }
+            ),
         }
     }
 
@@ -991,9 +1019,12 @@ mod tests {
             RuntimeEngineError::TaintViolation { step } => {
                 assert_eq!(step, StepIdx::new(42));
             }
-            other => assert_eq!(other, RuntimeEngineError::TaintViolation {
-                step: StepIdx::new(0),
-            }),
+            other => assert_eq!(
+                other,
+                RuntimeEngineError::TaintViolation {
+                    step: StepIdx::new(0),
+                }
+            ),
         }
     }
 
@@ -1029,15 +1060,19 @@ mod tests {
         let mut budget = StepBudget::new(10);
         let contracts: Vec<ActionContract> = Vec::new();
         // When driving with an out-of-bounds pc
-        run.set_pc(StepIdx::new(5));
-        let result = drive_deterministic_full(
-            &workflow,
-            &mut run,
-            &mut budget,
-            &mut store,
-            &contracts,
-            RetryPolicy::NEVER,
-        );
+        let result = run
+            .set_pc(StepIdx::new(5))
+            .map_err(RuntimeEngineError::Core)
+            .and_then(|()| {
+                drive_deterministic_full(
+                    &workflow,
+                    &mut run,
+                    &mut budget,
+                    &mut store,
+                    &contracts,
+                    RetryPolicy::NEVER,
+                )
+            });
         // Then it returns a Core error with InvalidProgramCounter
         match result {
             Err(RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step })) => {
@@ -1273,13 +1308,17 @@ mod tests {
     #[test]
     fn runtime_engine_error_from_action_error() {
         // Given an ActionError
-        let action = ActionError::UnknownAction { action: ActionId::new(5) };
+        let action = ActionError::UnknownAction {
+            action: ActionId::new(5),
+        };
         // When converting to RuntimeEngineError via From
         let engine_err: RuntimeEngineError = action.into();
         // Then it is wrapped in Action variant
         assert_eq!(
             engine_err,
-            RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(5) })
+            RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(5)
+            })
         );
     }
 
@@ -1300,7 +1339,11 @@ mod tests {
     #[test]
     fn retry_check_routes_to_body_below_max() {
         // Given a policy with max_attempts = 3
-        let policy = RetryPolicy { max_attempts: 3, base_delay_ms: 0, exponential_backoff: false };
+        let policy = RetryPolicy {
+            max_attempts: 3,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
         // When current attempt is 0
         let target = execute_retry_check(0, policy, StepIdx::new(5), StepIdx::new(10));
         // Then routes to body
@@ -1310,7 +1353,11 @@ mod tests {
     #[test]
     fn retry_check_routes_to_body_at_max_minus_one() {
         // Given a policy with max_attempts = 3
-        let policy = RetryPolicy { max_attempts: 3, base_delay_ms: 0, exponential_backoff: false };
+        let policy = RetryPolicy {
+            max_attempts: 3,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
         // When current attempt is 2 (max - 1)
         let target = execute_retry_check(2, policy, StepIdx::new(5), StepIdx::new(10));
         // Then routes to body
@@ -1335,11 +1382,21 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
         };
         // When executing with an empty registry
-        let result = execute_do(&run, StepIdx::new(0), ActionId::new(0), SlotIdx::new(0), SeqNo::new(0), &dummy, &empty_contracts);
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(0),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            &dummy,
+            &empty_contracts,
+        );
         // Then it returns UnknownAction
         assert_eq!(
             result,
-            Err(RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(0) }))
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(0)
+            }))
         );
     }
 
@@ -1365,32 +1422,54 @@ mod tests {
     #[test]
     fn runtime_engine_error_equality_retry_exhausted() {
         // Given two identical RetryExhausted errors
-        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
-        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let a = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(1),
+            attempts: 3,
+        };
+        let b = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(1),
+            attempts: 3,
+        };
         assert_eq!(a, b);
     }
 
     #[test]
     fn runtime_engine_error_equality_taint_violation() {
         // Given two identical TaintViolation errors
-        let a = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
-        let b = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        let a = RuntimeEngineError::TaintViolation {
+            step: StepIdx::new(5),
+        };
+        let b = RuntimeEngineError::TaintViolation {
+            step: StepIdx::new(5),
+        };
         assert_eq!(a, b);
     }
 
     #[test]
     fn runtime_engine_error_equality_differs_attempts() {
         // Given two RetryExhausted with different attempts
-        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
-        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 5 };
+        let a = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(1),
+            attempts: 3,
+        };
+        let b = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(1),
+            attempts: 5,
+        };
         assert_ne!(a, b);
     }
 
     #[test]
     fn runtime_engine_error_equality_differs_action() {
         // Given two RetryExhausted with different actions
-        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
-        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(2), attempts: 3 };
+        let a = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(1),
+            attempts: 3,
+        };
+        let b = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(2),
+            attempts: 3,
+        };
         assert_ne!(a, b);
     }
 
@@ -1475,11 +1554,20 @@ mod tests {
             None => return,
         };
         // When executing Do node
-        let result = execute_do(&run, StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), SeqNo::new(10), contract_ref, &registry_contracts);
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(10),
+            contract_ref,
+            &registry_contracts,
+        );
         // Then the idempotency key is deterministic
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                let expected_key = compute_idempotency_key(RunId::new(42), SeqNo::new(10), ActionId::new(1));
+                let expected_key =
+                    compute_idempotency_key(RunId::new(42), SeqNo::new(10), ActionId::new(1));
                 assert_eq!(ticket.idempotency_key, expected_key);
             }
             other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
@@ -1519,7 +1607,15 @@ mod tests {
             None => return,
         };
         // When executing Do with clean input
-        let result = execute_do(&run, StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), SeqNo::new(0), contract_ref, &registry_contracts);
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            contract_ref,
+            &registry_contracts,
+        );
         // Then it returns AwaitingAction (no taint violation)
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -1532,16 +1628,78 @@ mod tests {
     #[test]
     fn runtime_engine_error_debug_output() {
         // Given engine errors
-        let core = RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" });
-        let action = RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(1) });
-        let retry = RuntimeEngineError::RetryExhausted { action: ActionId::new(2), attempts: 3 };
-        let taint = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        let core =
+            RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" });
+        let action = RuntimeEngineError::Action(ActionError::UnknownAction {
+            action: ActionId::new(1),
+        });
+        let retry = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(2),
+            attempts: 3,
+        };
+        let taint = RuntimeEngineError::TaintViolation {
+            step: StepIdx::new(5),
+        };
         // When formatting with debug
         // Then debug output contains relevant variant names
         assert_eq!(format!("{core:?}").contains("Core"), true);
         assert_eq!(format!("{action:?}").contains("Action"), true);
         assert_eq!(format!("{retry:?}").contains("RetryExhausted"), true);
         assert_eq!(format!("{taint:?}").contains("TaintViolation"), true);
+    }
+
+    #[test]
+    fn runtime_engine_error_runtime_codes_delegate_to_core_and_action() {
+        assert_eq!(
+            RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" })
+                .runtime_code(),
+            Some("UNSUPPORTED_PRIMITIVE")
+        );
+        assert_eq!(
+            RuntimeEngineError::Action(ActionError::PayloadTooLarge {
+                max_bytes: 1,
+                actual_bytes: 2,
+            })
+            .runtime_code(),
+            Some("PAYLOAD_TOO_LARGE")
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_runtime_codes_cover_section_17_mappings() {
+        assert_eq!(
+            RuntimeEngineError::RetryExhausted {
+                action: ActionId::new(2),
+                attempts: 3,
+            }
+            .runtime_code(),
+            Some("RETRY_EXHAUSTED")
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_runtime_codes_are_unique() {
+        let codes = [RuntimeEngineError::RETRY_EXHAUSTED_RUNTIME_CODE];
+        assert_eq!(codes.len(), 1);
+        assert_eq!(
+            codes
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_runtime_code_is_absent_without_section_17_equivalent() {
+        assert_eq!(
+            RuntimeEngineError::TaintViolation {
+                step: StepIdx::new(5)
+            }
+            .runtime_code(),
+            None
+        );
     }
 
     #[test]
@@ -1553,7 +1711,10 @@ mod tests {
     #[test]
     fn runtime_signal_equality_exhausted() {
         // Given two StepBudgetExhausted signals
-        assert_eq!(RuntimeSignal::StepBudgetExhausted, RuntimeSignal::StepBudgetExhausted);
+        assert_eq!(
+            RuntimeSignal::StepBudgetExhausted,
+            RuntimeSignal::StepBudgetExhausted
+        );
     }
 
     #[test]
@@ -1576,12 +1737,570 @@ mod tests {
     #[test]
     fn retry_policy_clone_preserves_values() {
         // Given a retry policy
-        let policy = RetryPolicy { max_attempts: 5, base_delay_ms: 200, exponential_backoff: true };
+        let policy = RetryPolicy {
+            max_attempts: 5,
+            base_delay_ms: 200,
+            exponential_backoff: true,
+        };
         // When cloning
         let cloned = policy.clone();
         // Then values match
         assert_eq!(cloned.max_attempts, 5);
         assert_eq!(cloned.base_delay_ms, 200);
         assert_eq!(cloned.exponential_backoff, true);
+    }
+
+    // =======================================================================
+    // Adversarial BDD tests — engine
+    // =======================================================================
+
+    #[test]
+    fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
+        // Given a workflow that would normally finish
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let parts = vb_core::workflow::WorkflowParts {
+            name: Box::from("nop"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        };
+        let workflow = match CompiledWorkflow::try_from_parts(parts) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(0);
+        // When driving with zero budget
+        let result = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+        );
+        // Then it returns StepBudgetExhausted
+        assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
+    }
+
+    #[test]
+    fn execute_do_taint_violation_for_pure_action_with_secret_input() {
+        // Given a run with a secret-tainted input slot and DeterministicPure action
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret),
+            Ok(())
+        );
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        // When executing Do with secret input on pure action
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            contract_ref,
+            &registry_contracts,
+        );
+        // Then the pure action ABI rejects tainted input before scheduling.
+        match result {
+            Err(RuntimeEngineError::TaintViolation { step }) => {
+                assert_eq!(step, StepIdx::new(0));
+            }
+            other => {
+                assert_eq!(
+                    other,
+                    Err(RuntimeEngineError::TaintViolation {
+                        step: StepIdx::new(0)
+                    })
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn drive_deterministic_full_invalid_pc_returns_core_error() {
+        // Given a workflow with 1 node but pc set to 99
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let parts = vb_core::workflow::WorkflowParts {
+            name: Box::from("tiny"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        };
+        let workflow = match CompiledWorkflow::try_from_parts(parts) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        run.set_pc(StepIdx::new(99));
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(10);
+        // When driving with invalid pc
+        let result = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+        );
+        // Then it returns Core(InvalidProgramCounter)
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Core(
+                EngineError::InvalidProgramCounter {
+                    step: StepIdx::new(99),
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn resolve_contract_returns_unknown_action_for_empty_contracts() {
+        // Given empty contracts slice
+        let contracts: Vec<ActionContract> = Vec::new();
+        // When resolving any action
+        let result = resolve_contract(ActionId::new(0), &contracts);
+        // Then it returns UnknownAction
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(0),
+            }))
+        );
+    }
+
+    #[test]
+    fn resume_action_outcome_ready_writes_slot_and_continues() {
+        // Given a run with slot 0 unwritten
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let ready = vb_core::action::ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::Bool(true),
+            taint: Taint::Clean,
+            encoded_len: 1,
+        };
+        // When resuming with a Ready outcome
+        let result = resume_action_outcome(&mut run, &ActionOutcome::Ready(ready));
+        // Then it returns Continue and slot is written
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
+        assert_eq!(run.read_slot(SlotIdx::new(0)), Ok(&SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn compute_idempotency_key_handles_large_values_without_overflow() {
+        // Given maximum-ish values
+        let key = compute_idempotency_key(
+            RunId::new(u64::MAX),
+            SeqNo::new(u64::MAX),
+            ActionId::new(65535),
+        );
+        // Then the key is a valid u128 (no panic from overflow)
+        let _ = key;
+        // And the same inputs produce the same key
+        let key2 = compute_idempotency_key(
+            RunId::new(u64::MAX),
+            SeqNo::new(u64::MAX),
+            ActionId::new(65535),
+        );
+        assert_eq!(key, key2);
+    }
+
+    #[test]
+    fn execute_error_handler_routes_to_body_only_when_unknown_and_non_retryable() {
+        // Given all combinations of failure properties
+        let cases: Vec<(ActionFailureCode, bool, StepIdx)> = vec![
+            (ActionFailureCode::Unknown, false, StepIdx::new(3)), // body: only case
+            (ActionFailureCode::Unknown, true, StepIdx::new(8)),  // handler: retryable
+            (ActionFailureCode::Timeout, false, StepIdx::new(8)), // handler: not Unknown
+            (ActionFailureCode::Rejected, true, StepIdx::new(8)), // handler: retryable
+            (ActionFailureCode::Rejected, false, StepIdx::new(8)), // handler: not Unknown
+        ];
+        let handler = StepIdx::new(8);
+        let body = StepIdx::new(3);
+        for (code, retryable, expected) in cases {
+            let failure = ActionFailure {
+                code,
+                retryable,
+                taint: Taint::Clean,
+                detail: None,
+                encoded_len: 0,
+            };
+            let target = execute_error_handler(&failure, handler, body);
+            assert_eq!(
+                target, expected,
+                "Failed for code={code:?} retryable={retryable}"
+            );
+        }
+    }
+
+    // =======================================================================
+    // Adversarial BDD tests - engine attack vectors
+    // =======================================================================
+
+    #[test]
+    fn drive_deterministic_full_single_step_budget_exhausts_after_one_step() {
+        // Given a workflow with 3 nodes (SetConst -> SetConst -> Finish)
+        let set1 = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let set2 = CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = vb_core::workflow::WorkflowParts {
+            name: Box::from("multi_step"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([5; 32]),
+            nodes: Box::from([set1, set2, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
+            slot_count: 2,
+            entry: StepIdx::ZERO,
+            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        };
+        let workflow = match CompiledWorkflow::try_from_parts(parts) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(1);
+        // When driving with budget of 1
+        let result = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+        );
+        // Then it returns StepBudgetExhausted (only one step executed)
+        assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
+        // And pc has advanced to step 1
+        assert_eq!(run.pc(), StepIdx::new(1));
+    }
+
+    #[test]
+    fn execute_do_with_at_least_once_external_idempotency_propagates_secret_taint() {
+        // Given a run with secret input and AtLeastOnceExternal idempotency
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret),
+            Ok(())
+        );
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::AtLeastOnceExternal,
+        };
+        let registry: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        // When executing Do with secret input on AtLeastOnceExternal
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            contract_ref,
+            &registry,
+        );
+        // Then it returns AwaitingAction (no taint violation for external actions)
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(1));
+            }
+            other => {
+                assert_eq!(other, Ok(RuntimeSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn resolve_contract_for_action_with_mismatched_id_in_slot_returns_unknown() {
+        // Given a contracts vector where slot 1 has ActionId(99) instead of ActionId(1)
+        let contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            ActionContract {
+                id: ActionId::new(99),
+                input_slot_count: 1,
+                output_slot_count: 1,
+                max_input_bytes: 1024,
+                max_output_bytes: 1024,
+                timeout_ms: 5000,
+                idempotency: Idempotency::DeterministicPure,
+            },
+        ];
+        // When resolving ActionId(1) which is at index 1 but stored as ActionId(99)
+        let result = resolve_contract(ActionId::new(1), &contracts);
+        // Then it returns UnknownAction (id mismatch filter)
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(1),
+            }))
+        );
+    }
+
+    #[test]
+    fn resume_action_outcome_ready_with_wrong_slot_index_returns_slot_out_of_bounds() {
+        // Given a run with 1 slot (slot_count=1) and an outcome targeting slot 5
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 1) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let ready = vb_core::action::ActionOutputReady {
+            output_slot: SlotIdx::new(5),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 8,
+        };
+        // When resuming with an out-of-bounds output slot
+        let result = resume_action_outcome(&mut run, &ActionOutcome::Ready(ready));
+        // Then it returns a Core error (SlotOutOfBounds)
+        match result {
+            Err(RuntimeEngineError::Core(EngineError::SlotOutOfBounds { slot })) => {
+                assert_eq!(slot, SlotIdx::new(5));
+            }
+            other => {
+                assert_eq!(other, Ok(RuntimeSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn drive_deterministic_full_step_budget_exactly_one_runs_one_step() {
+        // Given a 2-step workflow (Nop -> Nop)
+        let node0 = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::Nop,
+        };
+        let node1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let parts = vb_core::workflow::WorkflowParts {
+            name: Box::from("two_nop"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([6; 32]),
+            nodes: Box::from([node0, node1]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        };
+        let workflow = match CompiledWorkflow::try_from_parts(parts) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 1) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(1);
+        // When driving with budget=1 (exactly one step)
+        let result = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+        );
+        // Then it returns StepBudgetExhausted
+        assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
+        // And budget is now exhausted
+        assert_eq!(budget.try_take(), Ok(false));
+    }
+
+    #[test]
+    fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
+        // Given a run and no registered contracts
+        let run = match RunFrame::new(RunId::new(42), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        // When executing without a contract
+        let result = execute_do_without_contract(
+            &run,
+            StepIdx::new(3),
+            ActionId::new(7),
+            SlotIdx::new(0),
+            SeqNo::new(5),
+        );
+        // Then it returns AwaitingAction with correct fields
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.run, RunId::new(42));
+                assert_eq!(ticket.step, StepIdx::new(3));
+                assert_eq!(ticket.action, ActionId::new(7));
+                assert_eq!(ticket.seq, SeqNo::new(5));
+                assert_eq!(ticket.attempt, 1);
+            }
+            other => {
+                assert_eq!(other, Ok(RuntimeSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn runtime_signal_equality_differs_for_different_finished_values() {
+        // Given two Finished signals with different values
+        let a = RuntimeSignal::Finished(SlotValue::I64(1));
+        let b = RuntimeSignal::Finished(SlotValue::I64(2));
+        // Then they are not equal
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn runtime_signal_awaiting_action_equality_matches_on_ticket() {
+        // Given two AwaitingAction signals with same ticket
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 42,
+        };
+        let a = RuntimeSignal::AwaitingAction(ticket);
+        let b = RuntimeSignal::AwaitingAction(ticket);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn runtime_signal_awaiting_action_differs_for_different_ticket() {
+        // Given two AwaitingAction signals with different tickets
+        let a = RuntimeSignal::AwaitingAction(ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        });
+        let b = RuntimeSignal::AwaitingAction(ActionTicket {
+            run: RunId::new(2),
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        });
+        assert_ne!(a, b);
     }
 }

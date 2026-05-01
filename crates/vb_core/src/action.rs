@@ -169,6 +169,29 @@ pub enum ActionError {
     DispatchFailed,
 }
 
+impl ActionError {
+    /// Runtime code for unresolved action references.
+    pub const REFERENCE_MISSING_RUNTIME_CODE: &str = "REFERENCE_MISSING";
+    /// Runtime code for action dispatch or encoding failures.
+    pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
+    /// Runtime code for oversized action payloads.
+    pub const PAYLOAD_TOO_LARGE_RUNTIME_CODE: &str = "PAYLOAD_TOO_LARGE";
+    /// Runtime code for bounded action queues at capacity.
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+
+    /// Returns the stable section 17 runtime code when this error has a direct mapping.
+    #[must_use]
+    pub const fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::UnknownAction { .. } => Some(Self::REFERENCE_MISSING_RUNTIME_CODE),
+            Self::PayloadTooLarge { .. } => Some(Self::PAYLOAD_TOO_LARGE_RUNTIME_CODE),
+            Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+            Self::EncodingFailed | Self::DispatchFailed => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            _ => None,
+        }
+    }
+}
+
 /// Terminal outcome of an action invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionOutcome {
@@ -256,14 +279,17 @@ mod tests {
     // -- ActionError exact variant assertions --
 
     #[test]
-    fn action_error_unknown_action_exact_variant() {
+    fn action_error_unknown_action_exact_variant() -> Result<(), String> {
         let error = ActionError::UnknownAction {
             action: ActionId::new(42),
         };
         let ActionError::UnknownAction { action } = error else {
-            panic!("expected UnknownAction variant");
+            return Err(String::from("expected UnknownAction variant"));
         };
-        assert_eq!(action, ActionId::new(42));
+        if action != ActionId::new(42) {
+            return Err(String::from("unexpected action id"));
+        }
+        Ok(())
     }
 
     #[test]
@@ -273,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn action_error_payload_too_large_exact_variant() {
+    fn action_error_payload_too_large_exact_variant() -> Result<(), String> {
         let error = ActionError::PayloadTooLarge {
             max_bytes: 1024,
             actual_bytes: 2048,
@@ -283,23 +309,27 @@ mod tests {
             actual_bytes,
         } = error
         else {
-            panic!("expected PayloadTooLarge variant");
+            return Err(String::from("expected PayloadTooLarge variant"));
         };
-        assert_eq!(max_bytes, 1024);
-        assert_eq!(actual_bytes, 2048);
+        if max_bytes != 1024 || actual_bytes != 2048 {
+            return Err(String::from("unexpected payload size fields"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn action_error_output_slot_out_of_bounds_exact_variant() {
+    fn action_error_output_slot_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = ActionError::OutputSlotOutOfBounds {
             slot: 5,
             max_slots: 4,
         };
         let ActionError::OutputSlotOutOfBounds { slot, max_slots } = error else {
-            panic!("expected OutputSlotOutOfBounds variant");
+            return Err(String::from("expected OutputSlotOutOfBounds variant"));
         };
-        assert_eq!(slot, 5);
-        assert_eq!(max_slots, 4);
+        if slot != 5 || max_slots != 4 {
+            return Err(String::from("unexpected output slot bounds fields"));
+        }
+        Ok(())
     }
 
     #[test]
@@ -330,5 +360,311 @@ mod tests {
     fn action_error_dispatch_failed_exact_variant() {
         let error = ActionError::DispatchFailed;
         assert_eq!(error, ActionError::DispatchFailed);
+    }
+
+    #[test]
+    fn action_error_runtime_codes_cover_section_17_mappings() {
+        assert_eq!(
+            ActionError::UnknownAction {
+                action: ActionId::new(9)
+            }
+            .runtime_code(),
+            Some("REFERENCE_MISSING")
+        );
+        assert_eq!(
+            ActionError::PayloadTooLarge {
+                max_bytes: 1,
+                actual_bytes: 2,
+            }
+            .runtime_code(),
+            Some("PAYLOAD_TOO_LARGE")
+        );
+        assert_eq!(ActionError::QueueFull.runtime_code(), Some("QUEUE_FULL"));
+        assert_eq!(
+            ActionError::EncodingFailed.runtime_code(),
+            Some("ACTION_FAILED")
+        );
+        assert_eq!(
+            ActionError::DispatchFailed.runtime_code(),
+            Some("ACTION_FAILED")
+        );
+    }
+
+    #[test]
+    fn action_error_runtime_codes_are_unique() {
+        let codes = [
+            ActionError::REFERENCE_MISSING_RUNTIME_CODE,
+            ActionError::ACTION_FAILED_RUNTIME_CODE,
+            ActionError::PAYLOAD_TOO_LARGE_RUNTIME_CODE,
+            ActionError::QUEUE_FULL_RUNTIME_CODE,
+        ];
+        assert_eq!(codes.len(), 4);
+        assert_eq!(
+            codes
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            4
+        );
+    }
+
+    #[test]
+    fn action_error_runtime_code_is_absent_without_section_17_equivalent() {
+        assert_eq!(ActionError::InvalidTicket.runtime_code(), None);
+        assert_eq!(ActionError::CompletionAlreadyRecorded.runtime_code(), None);
+    }
+
+    // =========================================================================
+    // Phase 2 adversarial BDD tests — action ABI security & taint vectors
+    // =========================================================================
+
+    // --- Idempotency key = 0 is not treated specially ---
+
+    #[test]
+    fn action_ticket_with_idempotency_key_zero_is_a_valid_ticket() {
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        assert_eq!(ticket.idempotency_key, 0);
+        assert_eq!(ticket.run, RunId::new(1));
+    }
+
+    // --- Taint downgrade: Secret cannot become Clean through any operation ---
+
+    #[test]
+    fn deterministic_pure_propagate_cannot_downgrade_secret_to_clean() {
+        let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Secret);
+        assert_eq!(result, Taint::Secret);
+    }
+
+    #[test]
+    fn deterministic_pure_propagate_cannot_downgrade_derived_to_clean() {
+        let result =
+            propagate_action_taint(Idempotency::DeterministicPure, Taint::DerivedFromSecret);
+        assert_eq!(result, Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn idempotent_external_propagate_cannot_downgrade_secret_to_clean() {
+        let result = propagate_action_taint(Idempotency::IdempotentExternal, Taint::Secret);
+        assert_eq!(result, Taint::Secret);
+    }
+
+    #[test]
+    fn idempotent_external_propagate_cannot_downgrade_derived_to_clean() {
+        let result =
+            propagate_action_taint(Idempotency::IdempotentExternal, Taint::DerivedFromSecret);
+        assert_eq!(result, Taint::DerivedFromSecret);
+    }
+
+    // --- AtLeastOnceExternal always upgrades Secret to DerivedFromSecret ---
+
+    #[test]
+    fn at_least_once_secret_is_always_derived_never_secret() {
+        let result = propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::Secret);
+        assert_eq!(result, Taint::DerivedFromSecret);
+        assert_ne!(result, Taint::Clean);
+    }
+
+    #[test]
+    fn at_least_once_derived_remains_derived_never_clean() {
+        let result =
+            propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::DerivedFromSecret);
+        assert_eq!(result, Taint::DerivedFromSecret);
+        assert_ne!(result, Taint::Clean);
+    }
+
+    // --- Ticket reuse across runs: different run IDs are distinct tickets ---
+
+    #[test]
+    fn action_ticket_from_different_run_is_not_equal() {
+        let ticket_a = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 100,
+        };
+        let ticket_b = ActionTicket {
+            run: RunId::new(2),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 100,
+        };
+        assert_ne!(ticket_a, ticket_b);
+    }
+
+    // --- Payload too large error carries exact byte counts ---
+
+    #[test]
+    fn action_error_payload_too_large_reports_exact_overflow() {
+        let error = ActionError::PayloadTooLarge {
+            max_bytes: 1024,
+            actual_bytes: 2048,
+        };
+        match error {
+            ActionError::PayloadTooLarge {
+                max_bytes,
+                actual_bytes,
+            } => {
+                assert_eq!(max_bytes, 1024);
+                assert_eq!(actual_bytes, 2048);
+            }
+            other => assert_eq!(
+                other,
+                ActionError::PayloadTooLarge {
+                    max_bytes: 1024,
+                    actual_bytes: 2048,
+                }
+            ),
+        }
+    }
+
+    // --- Output slot out of bounds carries exact slot and max ---
+
+    #[test]
+    fn action_error_output_slot_out_of_bounds_reports_exact_boundary() {
+        let error = ActionError::OutputSlotOutOfBounds {
+            slot: 10,
+            max_slots: 4,
+        };
+        match error {
+            ActionError::OutputSlotOutOfBounds { slot, max_slots } => {
+                assert_eq!(slot, 10);
+                assert_eq!(max_slots, 4);
+            }
+            other => assert_eq!(
+                other,
+                ActionError::OutputSlotOutOfBounds {
+                    slot: 10,
+                    max_slots: 4,
+                }
+            ),
+        }
+    }
+
+    // --- ActionContract with max_output_bytes = 0 is syntactically valid ---
+
+    #[test]
+    fn action_contract_with_zero_output_bytes_is_constructable() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        assert_eq!(contract.max_output_bytes, 0);
+        assert_eq!(contract.output_slot_count, 0);
+    }
+
+    // --- ActionContract with timeout_ms = 0 is syntactically valid ---
+
+    #[test]
+    fn action_contract_with_zero_timeout_is_constructable() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 0,
+            idempotency: Idempotency::AtLeastOnceExternal,
+        };
+        assert_eq!(contract.timeout_ms, 0);
+    }
+
+    // --- ActionOutputReady with Secret taint propagation ---
+
+    #[test]
+    fn action_output_ready_carries_secret_taint_without_downgrade() {
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(42),
+            taint: Taint::Secret,
+            encoded_len: 8,
+        };
+        assert_eq!(output.taint, Taint::Secret);
+    }
+
+    // --- ActionFailure with retryable flag ---
+
+    #[test]
+    fn action_failure_with_retryable_true_is_retryable() {
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retryable: true,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        assert!(failure.retryable);
+    }
+
+    // --- ActionOutcome equality for Suspended with ticket ---
+
+    #[test]
+    fn action_outcome_suspended_carries_ticket_identity() {
+        let ticket = ActionTicket {
+            run: RunId::new(42),
+            step: StepIdx::new(3),
+            seq: SeqNo::new(7),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 999,
+        };
+        let outcome = ActionOutcome::Suspended(ticket);
+        match outcome {
+            ActionOutcome::Suspended(t) => {
+                assert_eq!(t.run, RunId::new(42));
+                assert_eq!(t.idempotency_key, 999);
+            }
+            other => assert_eq!(other, ActionOutcome::Suspended(ticket)),
+        }
+    }
+
+    // --- All ActionFailureCode variants have distinct repr values ---
+
+    #[test]
+    fn action_failure_code_repr_values_are_distinct() {
+        use std::collections::BTreeSet;
+        let codes = [
+            ActionFailureCode::Rejected,
+            ActionFailureCode::Timeout,
+            ActionFailureCode::RateLimited,
+            ActionFailureCode::ResourceExhausted,
+            ActionFailureCode::ExternalUnavailable,
+            ActionFailureCode::InvalidInput,
+            ActionFailureCode::PermissionDenied,
+            ActionFailureCode::Conflict,
+            ActionFailureCode::Unknown,
+        ];
+        let reprs: BTreeSet<u8> = codes.iter().map(|c| failure_code_repr(*c)).collect();
+        assert_eq!(reprs.len(), codes.len());
+    }
+
+    fn failure_code_repr(code: ActionFailureCode) -> u8 {
+        match code {
+            ActionFailureCode::Rejected => 0,
+            ActionFailureCode::Timeout => 1,
+            ActionFailureCode::RateLimited => 2,
+            ActionFailureCode::ResourceExhausted => 3,
+            ActionFailureCode::ExternalUnavailable => 4,
+            ActionFailureCode::InvalidInput => 5,
+            ActionFailureCode::PermissionDenied => 6,
+            ActionFailureCode::Conflict => 7,
+            ActionFailureCode::Unknown => 255,
+        }
     }
 }

@@ -32,6 +32,10 @@ fn resolve_test_reference(reference: &str) -> Option<vb_core::ids::SlotIdx> {
     }
 }
 
+fn test_failed() -> bool {
+    false
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1: YAML parsing — vb_yaml
 // ---------------------------------------------------------------------------
@@ -65,7 +69,7 @@ steps: []
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(false, "missing version should fail");
+            assert!(test_failed(), "missing version should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -87,7 +91,7 @@ steps: []
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(false, "missing name should fail");
+            assert!(test_failed(), "missing name should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -121,7 +125,7 @@ steps:
             assert_eq!(wf.name, "test-workflow");
             assert_eq!(wf.steps.len(), 2);
         }
-        Err(err) => assert!(false, "should parse valid workflow: {err:?}"),
+        Err(err) => assert!(test_failed(), "should parse valid workflow: {err:?}"),
     }
 }
 
@@ -155,7 +159,7 @@ steps:
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(false, "missing do.action should fail");
+            assert!(test_failed(), "missing do.action should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -181,7 +185,7 @@ steps:
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(false, "missing set.output should fail");
+            assert!(test_failed(), "missing set.output should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -222,9 +226,9 @@ fn expr_lex_and_parse_simple_addition() {
     match vb_expr::lexer::lex_expr("1 + 2") {
         Ok(tokens) => match vb_expr::parser::parse_expr(&tokens) {
             Ok(ast) => assert!(matches!(ast, vb_expr::parser::ExprAst::Binary { .. })),
-            Err(err) => assert!(false, "parse failed: {err:?}"),
+            Err(err) => assert!(test_failed(), "parse failed: {err:?}"),
         },
-        Err(err) => assert!(false, "lex failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "lex failed: {err:?}"),
     }
 }
 
@@ -233,14 +237,14 @@ fn expr_bytecode_compile_and_eval() {
     let tokens = match vb_expr::lexer::lex_expr("1 + 2") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(false, "lex failed: {err:?}");
+            assert!(test_failed(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(false, "parse failed: {err:?}");
+            assert!(test_failed(), "parse failed: {err:?}");
             return;
         }
     };
@@ -248,14 +252,14 @@ fn expr_bytecode_compile_and_eval() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(false, "bytecode failed: {err:?}");
+            assert!(test_failed(), "bytecode failed: {err:?}");
             return;
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(3)),
-        Err(err) => assert!(false, "eval failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
     }
 }
 
@@ -264,14 +268,14 @@ fn expr_rejects_division_by_zero() {
     let tokens = match vb_expr::lexer::lex_expr("1 / 0") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(false, "lex failed: {err:?}");
+            assert!(test_failed(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(false, "parse failed: {err:?}");
+            assert!(test_failed(), "parse failed: {err:?}");
             return;
         }
     };
@@ -279,7 +283,7 @@ fn expr_rejects_division_by_zero() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(false, "bytecode failed: {err:?}");
+            assert!(test_failed(), "bytecode failed: {err:?}");
             return;
         }
     };
@@ -293,14 +297,14 @@ fn expr_boolean_logic() {
     let tokens = match vb_expr::lexer::lex_expr("true and false") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(false, "lex failed: {err:?}");
+            assert!(test_failed(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(false, "parse failed: {err:?}");
+            assert!(test_failed(), "parse failed: {err:?}");
             return;
         }
     };
@@ -308,14 +312,14 @@ fn expr_boolean_logic() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(false, "bytecode failed: {err:?}");
+            assert!(test_failed(), "bytecode failed: {err:?}");
             return;
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::Bool(false)),
-        Err(err) => assert!(false, "eval failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
     }
 }
 
@@ -324,7 +328,7 @@ fn expr_variable_reference() {
     let compiled = match vb_expr::bytecode::compile_expr("$x + 1", &resolve_test_reference) {
         Ok(compiled) => compiled,
         Err(err) => {
-            assert!(false, "compile failed: {err:?}");
+            assert!(test_failed(), "compile failed: {err:?}");
             return;
         }
     };
@@ -333,7 +337,7 @@ fn expr_variable_reference() {
     let slots: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
     match vb_expr::eval::eval_expr_program(&program, &slots, &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(42)),
-        Err(err) => assert!(false, "eval failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
     }
 }
 
@@ -403,14 +407,14 @@ fn ipc_frame_roundtrip() {
     let encoded = match header.encode() {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(false, "encode failed: {err:?}");
+            assert!(test_failed(), "encode failed: {err:?}");
             return;
         }
     };
     let nonzero = match std::num::NonZeroUsize::new(4096) {
         Some(nonzero) => nonzero,
         None => {
-            assert!(false, "nonzero payload limit should be valid");
+            assert!(test_failed(), "nonzero payload limit should be valid");
             return;
         }
     };
@@ -421,7 +425,7 @@ fn ipc_frame_roundtrip() {
             assert_eq!(decoded.command, vb_ipc::IpcCommand::Health);
             assert_eq!(decoded.payload_len, 0);
         }
-        Err(err) => assert!(false, "decode failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "decode failed: {err:?}"),
     }
 }
 
@@ -453,7 +457,7 @@ fn storage_encode_decode_roundtrip() {
     ) {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(false, "encode failed: {err:?}");
+            assert!(test_failed(), "encode failed: {err:?}");
             return;
         }
     };
@@ -463,7 +467,7 @@ fn storage_encode_decode_roundtrip() {
         vb_storage::decode_record(&encoded, MAGIC, 4096);
     match decoded {
         Ok((_envelope, decoded)) => assert_eq!(decoded, payload),
-        Err(err) => assert!(false, "decode failed: {err:?}"),
+        Err(err) => assert!(test_failed(), "decode failed: {err:?}"),
     }
 }
 
@@ -487,7 +491,7 @@ fn storage_corrupt_record_fails_decode() {
     ) {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(false, "encode failed: {err:?}");
+            assert!(test_failed(), "encode failed: {err:?}");
             return;
         }
     };
@@ -535,7 +539,7 @@ fn codegen_emit_rust_produces_output() {
     let compiled = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(compiled) => compiled,
         Err(err) => {
-            assert!(false, "compile workflow failed: {err:?}");
+            assert!(test_failed(), "compile workflow failed: {err:?}");
             return;
         }
     };
@@ -545,7 +549,7 @@ fn codegen_emit_rust_produces_output() {
             assert!(!output.is_empty(), "codegen output should not be empty");
             assert!(output.contains("fn drive"), "should contain drive function");
         }
-        Err(err) => assert!(false, "codegen should succeed: {err:?}"),
+        Err(err) => assert!(test_failed(), "codegen should succeed: {err:?}"),
     }
 }
 

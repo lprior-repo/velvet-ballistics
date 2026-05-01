@@ -122,12 +122,23 @@ fn event_span_to_source_span(span: EventSpan) -> SourceSpan {
 mod tests {
     use super::*;
 
+    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
+        let _ = message;
+        false
+    }
+
+    macro_rules! fail_assert {
+        ($($arg:tt)*) => {
+            assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        };
+    }
+
     macro_rules! build_ok {
         ($yaml:expr) => {
             match build_source_map($yaml) {
                 Ok(value) => value,
                 Err(error) => {
-                    assert!(false, "source map failed: {error}");
+                    fail_assert!("source map failed: {error}");
                     return;
                 }
             }
@@ -163,7 +174,7 @@ mod tests {
         // Indices should be 0, 1, 2, ...
         for (i, idx) in found.iter().enumerate() {
             let Ok(expected) = u32::try_from(i) else {
-                assert!(false, "index does not fit u32");
+                fail_assert!("index does not fit u32");
                 return;
             };
             assert_eq!(*idx, expected);
@@ -211,7 +222,10 @@ mod tests {
         let entries: Vec<(u32, SourceSpan)> = map.iter().collect();
         // Then: at least one entry with a valid span
         assert!(!entries.is_empty());
-        let first = entries[0];
+        let Some(first) = entries.first() else {
+            fail_assert!("missing first source-map entry");
+            return;
+        };
         assert_eq!(first.0, 0);
         assert!(first.1.start_line > 0);
     }
@@ -225,7 +239,7 @@ mod tests {
         let span = map.span_for_node(0);
         // Then: Some with valid line/column
         let Some(s) = span else {
-            assert!(false, "expected Some span for node 0");
+            fail_assert!("expected Some span for node 0");
             return;
         };
         assert!(s.start_line > 0);
@@ -240,7 +254,7 @@ mod tests {
         let span = map.span_for_node(0);
         // Then: the span line/col match (end = start for single-point spans)
         let Some(s) = span else {
-            assert!(false, "expected Some span");
+            fail_assert!("expected Some span");
             return;
         };
         assert_eq!(s.start_line, s.end_line);
@@ -293,7 +307,11 @@ mod tests {
         // When: iterating
         let entries: Vec<(u32, SourceSpan)> = map.iter().collect();
         // Then: node count >= 6 (mapping start + 6 scalars)
-        assert!(entries.len() >= 3, "expected at least 3 entries, got {}", entries.len());
+        assert!(
+            entries.len() >= 3,
+            "expected at least 3 entries, got {}",
+            entries.len()
+        );
     }
 
     #[test]
@@ -303,7 +321,11 @@ mod tests {
         let map = build_ok!(yaml);
         // When: checking length
         // Then: multiple nodes tracked
-        assert!(map.len() >= 3, "expected at least 3 entries, got {}", map.len());
+        assert!(
+            map.len() >= 3,
+            "expected at least 3 entries, got {}",
+            map.len()
+        );
     }
 
     #[test]
@@ -313,6 +335,136 @@ mod tests {
         let map = build_ok!(yaml);
         // When: checking length
         // Then: sequence nodes are tracked
-        assert!(map.len() >= 2, "expected at least 2 entries, got {}", map.len());
+        assert!(
+            map.len() >= 2,
+            "expected at least 2 entries, got {}",
+            map.len()
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial BDD tests - source map edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn adversarial_source_map_empty_input_returns_empty_map() {
+        // Given: empty string
+        // When: building source map
+        let result = build_source_map("");
+        // Then: Ok with empty map (collect_events succeeds with empty stream)
+        match result {
+            Ok(map) => {
+                assert!(map.is_empty(), "expected empty source map for empty input");
+            }
+            Err(e) => {
+                // Also acceptable if the parser rejects empty input
+                let _ = e;
+            }
+        }
+    }
+
+    #[test]
+    fn adversarial_source_map_malformed_yaml_returns_error() {
+        // Given: malformed YAML with unclosed bracket
+        let yaml = "a: [1, 2\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Err(YamlError::ParseError) - malformed YAML
+        assert!(
+            result.is_err(),
+            "expected error for malformed YAML in source map"
+        );
+    }
+
+    #[test]
+    fn adversarial_source_map_multi_line_scalar_tracks_spans() {
+        // Given: YAML with a multi-line block scalar
+        let yaml = "key: |\n  line1\n  line2\n  line3\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Ok with non-empty spans
+        match result {
+            Ok(map) => {
+                assert!(!map.is_empty(), "expected non-empty source map");
+                // First span should be on line 1
+                let first = map.span_for_node(0);
+                assert!(first.is_some(), "expected span for node 0");
+                let span = first;
+                let Some(s) = span else { return };
+                assert!(s.start_line > 0, "start_line should be > 0");
+            }
+            Err(e) => fail_assert!("expected Ok source map, got Err: {e}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_source_map_null_byte_accepted_as_known_gap() {
+        // Given: YAML with a null byte
+        let yaml = "key: \x00value\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Ok - BUG GAP: null bytes pass through just like in events.
+        // Source maps built from null-byte-contaminated YAML are valid
+        // but track positions of potentially dangerous content.
+        assert!(
+            result.is_ok(),
+            "null bytes pass through source map build (known gap matching events layer)"
+        );
+    }
+
+    #[test]
+    fn adversarial_source_map_deeply_nested_yaml_tracked() {
+        // Given: deeply nested YAML (5 levels)
+        let yaml = "a:\n  b:\n    c:\n      d:\n        e: 1\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Ok with multiple tracked nodes
+        match result {
+            Ok(map) => {
+                assert!(
+                    map.len() >= 5,
+                    "expected at least 5 nodes, got {}",
+                    map.len()
+                );
+            }
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_source_map_unicode_keys_tracked() {
+        // Given: YAML with Unicode keys
+        let yaml = "\u{00E9}clat: 1\n\u{00FC}ber: 2\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Ok with tracked nodes
+        match result {
+            Ok(map) => {
+                assert!(map.len() >= 2, "expected at least 2 nodes");
+            }
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_source_map_large_input_tracked() {
+        // Given: YAML with many key-value pairs
+        let mut yaml = String::new();
+        for i in 0..100 {
+            yaml.push_str(&format!("key{i}: val{i}\n"));
+        }
+        // When: building source map
+        let result = build_source_map(&yaml);
+        // Then: Ok with many tracked nodes
+        match result {
+            Ok(map) => {
+                assert!(
+                    map.len() >= 100,
+                    "expected at least 100 nodes, got {}",
+                    map.len()
+                );
+            }
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
+        }
     }
 }

@@ -3,8 +3,13 @@
 #![allow(missing_docs)]
 
 use bytes::Bytes;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use vb_core::{RunId, SlotIdx, StepBudget, StepIdx, WorkflowDigest};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use std::hint::black_box;
+use std::num::NonZeroUsize;
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ResourceContract, RunId,
+    SlotBranch, SlotIdx, StepBudget, StepIdx, WorkflowDigest, WorkflowParts,
+};
 use vb_storage::{EventSeq, JournalEvent};
 
 const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballastics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
@@ -14,12 +19,16 @@ const EXPR_NUMBER_COMPARE: &str = "7 > 3";
 const EXPR_BOOLEAN_CHAIN: &str = "true && false || true";
 const EXPR_ARITHMETIC: &str = "1 + 2 * 3";
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
-const JOURNAL_REPLAY_EVENTS: u64 = 128;
+const JOURNAL_REPLAY_EVENTS: u64 = 1000;
+
+fn bytes_len(bytes: &[u8]) -> u64 {
+    u64::try_from(bytes.len()).unwrap_or(u64::MAX)
+}
 
 fn parse_yaml_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("yaml_parse");
     let small_meta = metadata("parse_yaml_small", SMALL_WORKFLOW, "fixture=small_workflow");
-    group.throughput(Throughput::Bytes(SMALL_WORKFLOW.len() as u64));
+    group.throughput(Throughput::Bytes(bytes_len(SMALL_WORKFLOW)));
     group.bench_with_input(
         BenchmarkId::from_parameter(small_meta),
         SMALL_WORKFLOW,
@@ -40,7 +49,7 @@ fn parse_yaml_benches(c: &mut Criterion) {
         one_mb.as_bytes(),
         "fixture=generated_1mb_yaml",
     );
-    group.throughput(Throughput::Bytes(one_mb.len() as u64));
+    group.throughput(Throughput::Bytes(bytes_len(one_mb.as_bytes())));
     group.bench_with_input(
         BenchmarkId::from_parameter(large_meta),
         &one_mb,
@@ -51,10 +60,10 @@ fn parse_yaml_benches(c: &mut Criterion) {
 
 fn compile_and_validate_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("compile_validate");
-    group.throughput(Throughput::Bytes(SMALL_WORKFLOW.len() as u64));
+    group.throughput(Throughput::Bytes(bytes_len(SMALL_WORKFLOW)));
     group.bench_function(
         metadata(
-            "validator_compile_and_validate_minimal",
+            "validate_minimal",
             SMALL_WORKFLOW,
             "fixture=small_workflow;surface=validator",
         ),
@@ -71,7 +80,7 @@ fn compile_and_validate_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "parser_to_ir_compile_minimal",
+            "compile_ir_minimal",
             SMALL_WORKFLOW,
             "fixture=small_workflow;surface=compiler",
         ),
@@ -79,10 +88,10 @@ fn compile_and_validate_benches(c: &mut Criterion) {
     );
 
     let many_steps = many_step_workflow(1000);
-    group.throughput(Throughput::Bytes(many_steps.len() as u64));
+    group.throughput(Throughput::Bytes(bytes_len(many_steps.as_bytes())));
     group.bench_function(
         metadata(
-            "parser_to_ir_compile_1000_steps",
+            "compile_ir_1000_steps",
             many_steps.as_bytes(),
             "fixture=generated_1000_steps;surface=compiler",
         ),
@@ -90,7 +99,7 @@ fn compile_and_validate_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "validator_compile_and_validate_1000_steps",
+            "validate_1000_steps",
             many_steps.as_bytes(),
             "fixture=generated_1000_steps;surface=validator",
         ),
@@ -119,14 +128,24 @@ fn expression_benches(c: &mut Criterion) {
 
 fn slot_and_transition_benches(c: &mut Criterion) {
     let workflow = vb_compile::compile_workflow(SMALL_WORKFLOW);
+    let save_chain_10 = save_chain_workflow(10);
+    let save_chain_1000 = save_chain_workflow(1000);
+    let choose_true = choose_slot_workflow(true);
+    let choose_false = choose_slot_workflow(false);
+    let finish_only = finish_workflow();
     let mut group = c.benchmark_group("runtime_core");
     group.bench_function(
-        metadata("slot_write", SMALL_WORKFLOW, "fixture=run_frame_slot"),
+        metadata(
+            "bench_engine_numeric_slots_read_write_i64",
+            SMALL_WORKFLOW,
+            "fixture=run_frame_slot;surface=slot_i64_rw",
+        ),
         |b| {
             b.iter(|| {
                 let mut frame = vb_core::RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
                 if let Ok(run) = frame.as_mut() {
                     let _written = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(7));
+                    let _read = run.read_slot(black_box(SlotIdx::new(0)));
                 }
                 frame
             })
@@ -147,7 +166,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "engine_step_once_small",
+            "bench_engine_step_once_save_const_single_transition",
             SMALL_WORKFLOW,
             "fixture=small_workflow;surface=engine_step",
         ),
@@ -168,7 +187,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "engine_run_until_blocked_budget_10",
+            "engine_run_until_blocked_budget_10_small_workflow",
             SMALL_WORKFLOW,
             "fixture=small_workflow;surface=engine_run",
         ),
@@ -191,6 +210,41 @@ fn slot_and_transition_benches(c: &mut Criterion) {
                 }
             })
         },
+    );
+    bench_run_workflow(
+        &mut group,
+        "bench_engine_run_save_chain_10_steps",
+        &save_chain_10,
+        11,
+        "fixture=ir_save_chain_10;surface=engine_run",
+    );
+    bench_run_workflow(
+        &mut group,
+        "bench_engine_run_save_chain_1000_steps",
+        &save_chain_1000,
+        1001,
+        "fixture=ir_save_chain_1000;surface=engine_run",
+    );
+    bench_run_workflow(
+        &mut group,
+        "bench_engine_choose_true_branch",
+        &choose_true,
+        5,
+        "fixture=ir_choose_slot_true;surface=engine_choose",
+    );
+    bench_run_workflow(
+        &mut group,
+        "bench_engine_choose_false_branch",
+        &choose_false,
+        5,
+        "fixture=ir_choose_slot_false;surface=engine_choose",
+    );
+    bench_run_workflow(
+        &mut group,
+        "bench_engine_finish_no_observability",
+        &finish_only,
+        1,
+        "fixture=ir_finish_only;surface=engine_finish",
     );
     group.finish();
 }
@@ -230,11 +284,73 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
         }
         Err(_) => None,
     };
+    let ingress_frame = sample_ingress_frame();
 
     let mut group = c.benchmark_group("storage_ipc");
     group.bench_function(
         metadata(
-            "journal_event_envelope_encode",
+            "bench_memory_ingress_try_submit_capacity_1024",
+            SMALL_WORKFLOW,
+            "fixture=memory_ingress_1024;surface=ipc_memory;durability=memory",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(frame) = ingress_frame.as_ref() {
+                    let capacity = queue_capacity(1024);
+                    let queue = vb_ipc::MemoryIngress::bounded(capacity);
+                    let mut submitted = 0_u16;
+                    while submitted < 1024 {
+                        let _sent = queue.try_submit(black_box(frame.clone()));
+                        submitted = submitted.saturating_add(1);
+                    }
+                    queue.len()
+                } else {
+                    0
+                }
+            })
+        },
+    );
+    group.bench_function(
+        metadata(
+            "bench_memory_ingress_submit_recv_single_thread",
+            SMALL_WORKFLOW,
+            "fixture=memory_ingress_pair;surface=ipc_memory;durability=memory",
+        ),
+        |b| {
+            let queue = vb_ipc::MemoryIngress::bounded(queue_capacity(1024));
+            b.iter(|| {
+                if let Some(frame) = ingress_frame.as_ref() {
+                    let _sent = queue.try_submit(black_box(frame.clone()));
+                    queue.try_recv()
+                } else {
+                    Ok(None)
+                }
+            })
+        },
+    );
+    group.bench_function(
+        metadata(
+            "bench_memory_ingress_backpressure_full_queue",
+            SMALL_WORKFLOW,
+            "fixture=memory_ingress_full;surface=ipc_memory;durability=memory",
+        ),
+        |b| {
+            let queue = vb_ipc::MemoryIngress::bounded(queue_capacity(1));
+            if let Some(frame) = ingress_frame.as_ref() {
+                let _prefill = queue.try_submit(frame.clone());
+            }
+            b.iter(|| {
+                if let Some(frame) = ingress_frame.as_ref() {
+                    queue.try_submit(black_box(frame.clone()))
+                } else {
+                    Err(vb_ipc::IpcError::Disconnected)
+                }
+            })
+        },
+    );
+    group.bench_function(
+        metadata(
+            "postcard_encode_event",
             SMALL_WORKFLOW,
             "fixture=run_accepted_event;surface=journal_encode",
         ),
@@ -242,7 +358,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "journal_event_envelope_decode",
+            "postcard_decode_event",
             SMALL_WORKFLOW,
             "fixture=run_accepted_event;surface=journal_decode",
         ),
@@ -264,7 +380,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "ipc_frame_encode_submit_run",
+            "ipc_frame_encode",
             SMALL_WORKFLOW,
             "fixture=submit_run_payload;surface=ipc_encode",
         ),
@@ -285,7 +401,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "ipc_frame_decode_submit_run",
+            "ipc_frame_decode",
             SMALL_WORKFLOW,
             "fixture=submit_run_payload;surface=ipc_decode",
         ),
@@ -301,9 +417,9 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "journal_append_fjall_unpersisted",
+            "bench_fjall_append_run_accepted_no_persist",
             SMALL_WORKFLOW,
-            "fixture=fjall_run_events;surface=journal_append;durability=append_without_sync",
+            "fixture=fjall_run_events;surface=journal_append;durability=journaled",
         ),
         |b| {
             let mut seq = 0_u64;
@@ -320,9 +436,9 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     );
     group.bench_function(
         metadata(
-            "journal_replay_fjall_128_events",
+            "bench_replay_ordered_journal_1000_events",
             SMALL_WORKFLOW,
-            "fixture=fjall_run_events_128;surface=journal_replay",
+            "fixture=fjall_run_events_1000;surface=journal_replay;durability=journaled",
         ),
         |b| {
             b.iter(|| {
@@ -335,6 +451,170 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
         },
     );
     group.finish();
+}
+
+fn bench_run_workflow(
+    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    name: &str,
+    workflow: &Option<CompiledWorkflow>,
+    budget: u64,
+    extra: &str,
+) {
+    group.bench_function(metadata(name, name.as_bytes(), extra), |b| {
+        b.iter(|| {
+            if let Some(plan) = workflow.as_ref() {
+                let mut frame = vb_core::new_run_frame(RunId::new(6), plan);
+                let mut store = vb_core::ValueStore::new();
+                if let Ok(run) = frame.as_mut() {
+                    let _signal = vb_core::run_until_blocked(
+                        black_box(plan),
+                        run,
+                        StepBudget::new(budget),
+                        &mut store,
+                    );
+                }
+                Some(frame)
+            } else {
+                None
+            }
+        })
+    });
+}
+
+fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
+    let mut nodes = Vec::with_capacity(usize::from(count).saturating_add(1));
+    let mut step = 0_u16;
+    while step < count {
+        nodes.push(CompiledNode {
+            id: StepIdx::new(step),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(step.saturating_add(1))),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        });
+        step = step.saturating_add(1);
+    }
+    nodes.push(CompiledNode {
+        id: StepIdx::new(count),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    });
+    compiled_from_nodes(
+        "bench_save_chain",
+        nodes,
+        Box::from([vb_core::ConstValue::I64(1)]),
+    )
+}
+
+fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: Box::from([SlotBranch {
+                    condition: SlotIdx::new(0),
+                    target: StepIdx::new(2),
+                }]),
+                otherwise: Some(StepIdx::new(3)),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(4)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(4)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(2),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        },
+    ];
+    compiled_from_nodes(
+        "bench_choose_slot",
+        nodes,
+        Box::from([
+            vb_core::ConstValue::Bool(condition),
+            vb_core::ConstValue::Bool(true),
+            vb_core::ConstValue::Bool(false),
+        ]),
+    )
+}
+
+fn finish_workflow() -> Option<CompiledWorkflow> {
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }];
+    compiled_from_nodes("bench_finish_only", nodes, Box::from([]))
+}
+
+fn compiled_from_nodes(
+    name: &str,
+    nodes: Vec<CompiledNode>,
+    constants: Box<[vb_core::ConstValue]>,
+) -> Option<CompiledWorkflow> {
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from(name),
+        digest: WorkflowDigest::from_bytes([0x33; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants,
+        slot_count: 2,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+    })
+    .ok()
+}
+
+fn queue_capacity(value: usize) -> vb_ipc::QueueCapacity {
+    let capacity = match NonZeroUsize::new(value) {
+        Some(value) => value,
+        None => NonZeroUsize::MIN,
+    };
+    vb_ipc::QueueCapacity::new(capacity)
+}
+
+fn sample_ingress_frame() -> Option<vb_ipc::IngressFrame> {
+    vb_ipc::IngressFrame::new(
+        RunId::new(9),
+        WorkflowDigest::from_bytes([0x44; 32]),
+        Bytes::from_static(b"bench-input"),
+        vb_ipc::MaxPayloadBytes::DEFAULT,
+    )
+    .ok()
 }
 
 fn generated_benches(c: &mut Criterion) {

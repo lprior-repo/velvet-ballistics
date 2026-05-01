@@ -20,7 +20,7 @@ publish = false
 
 [dev-dependencies]
 toml = "0.8"
-serde_yaml = "0.9"
+saphyr.workspace = true
 criterion = "0.5"
 
 [profile.bench]

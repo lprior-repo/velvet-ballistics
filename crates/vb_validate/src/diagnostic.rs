@@ -556,7 +556,11 @@ mod tests {
         // Then the severity is always Error
         for error in &errors {
             let diag = diagnostic_from_error(error);
-            assert_eq!(diag.severity, Severity::Error, "wrong severity for {error:?}");
+            assert_eq!(
+                diag.severity,
+                Severity::Error,
+                "wrong severity for {error:?}"
+            );
         }
     }
 

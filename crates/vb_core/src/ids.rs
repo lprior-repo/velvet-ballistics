@@ -201,4 +201,235 @@ mod tests {
         let idx = SlotIdx::new(15);
         assert_eq!(idx.as_usize(), 15);
     }
+
+    // =========================================================================
+    // Adversarial BDD tests — ID boundary and overflow edge cases
+    // =========================================================================
+
+    #[test]
+    fn step_idx_zero_is_valid() {
+        let idx = StepIdx::new(0);
+        assert_eq!(idx.get(), 0);
+        assert_eq!(idx.as_usize(), 0);
+    }
+
+    #[test]
+    fn step_idx_max_u16_is_valid() {
+        let idx = StepIdx::new(u16::MAX);
+        assert_eq!(idx.get(), u16::MAX);
+    }
+
+    #[test]
+    fn step_idx_checked_add_overflow_returns_none() {
+        let idx = StepIdx::new(u16::MAX);
+        assert_eq!(idx.checked_add(1), None);
+    }
+
+    #[test]
+    fn step_idx_checked_add_zero_is_identity() {
+        let idx = StepIdx::new(100);
+        assert_eq!(idx.checked_add(0), Some(StepIdx::new(100)));
+    }
+
+    #[test]
+    fn step_idx_checked_add_exact_max_saturates() {
+        let idx = StepIdx::new(0);
+        assert_eq!(idx.checked_add(u16::MAX), Some(StepIdx::new(u16::MAX)));
+    }
+
+    #[test]
+    fn slot_idx_zero_is_valid() {
+        let idx = SlotIdx::new(0);
+        assert_eq!(idx.get(), 0);
+        assert_eq!(idx.as_usize(), 0);
+    }
+
+    #[test]
+    fn slot_idx_max_u16_is_valid() {
+        let idx = SlotIdx::new(u16::MAX);
+        assert_eq!(idx.get(), u16::MAX);
+    }
+
+    #[test]
+    fn slot_idx_checked_add_overflow_returns_none() {
+        let idx = SlotIdx::new(u16::MAX);
+        assert_eq!(idx.checked_add(1), None);
+    }
+
+    #[test]
+    fn slot_idx_checked_add_exact_max() {
+        let idx = SlotIdx::new(0);
+        assert_eq!(idx.checked_add(u16::MAX), Some(SlotIdx::new(u16::MAX)));
+    }
+
+    #[test]
+    fn slot_idx_min_is_zero() {
+        assert_eq!(SlotIdx::MIN.get(), 0);
+    }
+
+    #[test]
+    fn slot_idx_max_is_u16_max() {
+        assert_eq!(SlotIdx::MAX.get(), u16::MAX);
+    }
+
+    #[test]
+    fn slot_idx_zero_constant_is_zero() {
+        assert_eq!(SlotIdx::ZERO.get(), 0);
+    }
+
+    #[test]
+    fn const_idx_checked_add_overflow_returns_none() {
+        use super::ConstIdx;
+        let idx = ConstIdx::new(u16::MAX);
+        assert_eq!(idx.checked_add(1), None);
+    }
+
+    #[test]
+    fn const_idx_checked_add_success() {
+        use super::ConstIdx;
+        let idx = ConstIdx::new(10);
+        assert_eq!(idx.checked_add(5), Some(ConstIdx::new(15)));
+    }
+
+    #[test]
+    fn seq_no_zero_is_valid() {
+        use super::SeqNo;
+        assert_eq!(SeqNo::ZERO.as_u64(), 0);
+    }
+
+    #[test]
+    fn seq_no_min_is_zero() {
+        use super::SeqNo;
+        assert_eq!(SeqNo::MIN.as_u64(), 0);
+    }
+
+    #[test]
+    fn seq_no_max_is_u64_max() {
+        use super::SeqNo;
+        assert_eq!(SeqNo::MAX.as_u64(), u64::MAX);
+    }
+
+    #[test]
+    fn seq_no_checked_add_overflow_returns_none() {
+        use super::SeqNo;
+        let seq = SeqNo::new(u64::MAX);
+        assert_eq!(seq.checked_add(1), None);
+    }
+
+    #[test]
+    fn seq_no_checked_add_exact_max() {
+        use super::SeqNo;
+        let seq = SeqNo::new(0);
+        assert_eq!(seq.checked_add(u64::MAX), Some(SeqNo::new(u64::MAX)));
+    }
+
+    #[test]
+    fn run_id_zero_constant() {
+        assert_eq!(RunId::ZERO.as_u64(), 0);
+    }
+
+    #[test]
+    fn run_id_max_u64() {
+        let id = RunId::new(u64::MAX);
+        assert_eq!(id.as_u64(), u64::MAX);
+    }
+
+    #[test]
+    fn symbol_id_zero_is_valid() {
+        use super::SymbolId;
+        let id = SymbolId::new(0);
+        assert_eq!(id.get(), 0);
+    }
+
+    #[test]
+    fn symbol_id_max_u32_is_valid() {
+        use super::SymbolId;
+        let id = SymbolId::new(u32::MAX);
+        assert_eq!(id.get(), u32::MAX);
+    }
+
+    #[test]
+    fn list_id_max_u32_is_valid() {
+        use super::ListId;
+        let id = ListId::new(u32::MAX);
+        assert_eq!(id.get(), u32::MAX);
+    }
+
+    #[test]
+    fn object_id_max_u32_is_valid() {
+        use super::ObjectId;
+        let id = ObjectId::new(u32::MAX);
+        assert_eq!(id.get(), u32::MAX);
+    }
+
+    #[test]
+    fn blob_id_max_u64_is_valid() {
+        use super::BlobId;
+        let id = BlobId::new(u64::MAX);
+        assert_eq!(id.as_u64(), u64::MAX);
+    }
+
+    #[test]
+    fn workflow_id_zero_is_valid() {
+        let id = WorkflowId::new(0);
+        assert_eq!(id.as_u32(), 0);
+    }
+
+    #[test]
+    fn workflow_id_max_u32() {
+        let id = WorkflowId::new(u32::MAX);
+        assert_eq!(id.as_u32(), u32::MAX);
+    }
+
+    #[test]
+    fn action_id_zero_is_valid() {
+        use super::ActionId;
+        let id = ActionId::new(0);
+        assert_eq!(id.get(), 0);
+    }
+
+    #[test]
+    fn accessor_idx_as_usize() {
+        use super::AccessorIdx;
+        let idx = AccessorIdx::new(42);
+        assert_eq!(idx.as_usize(), 42);
+    }
+
+    #[test]
+    fn expr_idx_as_usize() {
+        use super::ExprIdx;
+        let idx = ExprIdx::new(13);
+        assert_eq!(idx.as_usize(), 13);
+    }
+
+    #[test]
+    fn ids_from_str_valid() -> Result<(), String> {
+        let step: StepIdx = "42".parse().map_err(|_| String::from("parse failed"))?;
+        if step.get() != 42 {
+            return Err(String::from("expected 42"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn ids_from_str_invalid() {
+        use super::SymbolId;
+        let result: Result<SymbolId, _> = "not_a_number".parse();
+        assert!(result.is_err(), "non-numeric string must fail to parse");
+    }
+
+    #[test]
+    fn workflow_digest_roundtrip() {
+        use super::WorkflowDigest;
+        let bytes = [0xAB_u8; 32];
+        let digest = WorkflowDigest::from_bytes(bytes);
+        assert_eq!(digest.as_bytes(), bytes);
+    }
+
+    #[test]
+    fn workflow_digest_zero_array() {
+        use super::WorkflowDigest;
+        let digest = WorkflowDigest::from_bytes([0u8; 32]);
+        assert_eq!(digest.as_bytes(), [0u8; 32]);
+    }
 }

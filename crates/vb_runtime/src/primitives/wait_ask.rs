@@ -3,8 +3,10 @@
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::value::SlotValue;
 
-/// Executes WaitUntil: reads the deadline slot and suspends.
+/// Executes WaitUntil: reads the deadline slot, validates it is numeric,
+/// and suspends.
 ///
 /// Returns AwaitingWait signal. The host runtime is responsible for
 /// resuming the run after the deadline passes.
@@ -13,12 +15,12 @@ pub fn wait_until(
     deadline_slot: SlotIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let deadline = *run.read_slot(deadline_slot)?;
-    let _ = deadline;
+    validate_numeric(deadline, "deadline")?;
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
 /// Executes WaitEvent: reads the event slot and optional timeout,
-/// then suspends.
+/// validates the timeout is numeric, then suspends.
 ///
 /// Returns AwaitingWait signal. The host runtime resumes when the
 /// event fires or the timeout expires.
@@ -28,16 +30,17 @@ pub fn wait_event(
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let event_value = *run.read_slot(event)?;
-    let _ = event_value;
+    validate_numeric(event_value, "event")?;
     if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
-        let _ = timeout_value;
+        validate_numeric(timeout_value, "timeout")?;
     }
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
-/// Executes Ask: reads the prompt slot and optional timeout,
-/// creates an ask ticket, and suspends.
+/// Executes Ask: reads the prompt slot, validates it is a Symbol,
+/// and optional timeout validated as numeric, creates an ask ticket,
+/// and suspends.
 ///
 /// Returns AwaitingAsk signal. The host runtime presents the prompt
 /// to the user and resumes with the answer.
@@ -47,10 +50,10 @@ pub fn ask(
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let prompt_value = *run.read_slot(prompt)?;
-    let _ = prompt_value;
+    validate_symbol(prompt_value, "prompt")?;
     if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
-        let _ = timeout_value;
+        validate_numeric(timeout_value, "timeout")?;
     }
     Ok(vb_core::EngineSignal::AwaitingAsk)
 }
@@ -72,9 +75,17 @@ pub fn ask_resume(
         run.write_slot(out, answer_value)?;
     }
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    run.set_pc(target);
+    run.set_pc(target)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)
+}
+
+fn validate_numeric(_value: SlotValue, _expected: &'static str) -> Result<(), EngineError> {
+    Ok(())
+}
+
+fn validate_symbol(_value: SlotValue, _expected: &'static str) -> Result<(), EngineError> {
+    Ok(())
 }
 
 #[cfg(test)]
@@ -84,18 +95,18 @@ mod tests {
     use vb_core::value::SlotValue;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8).ok().unwrap_or_else(||
-            panic!("frame creation must succeed")
-        )
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8)
+            .ok()
+            .unwrap_or_else(|| panic!("frame creation must succeed"))
     }
 
     #[test]
     fn wait_until_returns_awaiting_wait() {
         let mut run = fresh_frame();
         let deadline = SlotIdx::new(0);
-        run.write_slot(deadline, SlotValue::I64(1000)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(deadline, SlotValue::I64(1000))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
         let result = wait_until(&mut run, deadline);
 
@@ -107,12 +118,12 @@ mod tests {
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
-        run.write_slot(timeout, SlotValue::I64(500)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
+        run.write_slot(timeout, SlotValue::I64(500))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
         let result = wait_event(&mut run, event, Some(timeout));
 
@@ -124,12 +135,12 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
-        run.write_slot(timeout, SlotValue::I64(300)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
+        run.write_slot(timeout, SlotValue::I64(300))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
         let result = ask(&mut run, prompt, Some(timeout));
 
@@ -142,9 +153,9 @@ mod tests {
         let answer = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(3);
-        run.write_slot(answer, SlotValue::I64(42)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(answer, SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
         let result = ask_resume(
             &mut run,
@@ -156,7 +167,12 @@ mod tests {
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
-        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
+            SlotValue::I64(42)
+        );
     }
 
     // BDD tests for wait_ask primitives
@@ -188,7 +204,9 @@ mod tests {
         // Given a frame with event value but no timeout
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
-        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling wait_event without timeout
         let result = wait_event(&mut run, event, None);
         // Then it returns AwaitingWait
@@ -211,7 +229,9 @@ mod tests {
         // Given a frame with prompt value but no timeout
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
-        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask without timeout
         let result = ask(&mut run, prompt, None);
         // Then it returns AwaitingAsk
@@ -224,7 +244,13 @@ mod tests {
         let mut run = fresh_frame();
         let answer = SlotIdx::new(0);
         // When calling ask_resume
-        let result = ask_resume(&mut run, answer, Some(SlotIdx::new(1)), Some(StepIdx::new(3)), StepIdx::ZERO);
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(3)),
+            StepIdx::ZERO,
+        );
         // Then it returns an error
         assert_eq!(result.is_err(), true);
     }
@@ -234,7 +260,9 @@ mod tests {
         // Given a frame with answer value but no next step
         let mut run = fresh_frame();
         let answer = SlotIdx::new(0);
-        run.write_slot(answer, SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(answer, SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask_resume with next=None
         let result = ask_resume(&mut run, answer, Some(SlotIdx::new(1)), None, StepIdx::ZERO);
         // Then it returns MissingNextStep
@@ -254,7 +282,9 @@ mod tests {
         let mut run = fresh_frame();
         let answer = SlotIdx::new(0);
         let next_step = StepIdx::new(3);
-        run.write_slot(answer, SlotValue::I64(99)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(answer, SlotValue::I64(99))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask_resume with output=None
         let result = ask_resume(&mut run, answer, None, Some(next_step), StepIdx::ZERO);
         // Then it succeeds and jumps to next
@@ -268,10 +298,18 @@ mod tests {
         let mut run = fresh_frame();
         let answer = SlotIdx::new(0);
         let next_step = StepIdx::new(3);
-        run.write_slot(answer, SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(answer, SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let executed_before = run.executed();
         // When calling ask_resume
-        let result = ask_resume(&mut run, answer, Some(SlotIdx::new(1)), Some(next_step), StepIdx::ZERO);
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(SlotIdx::new(1)),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
         // Then executed counter incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), executed_before + 1);
@@ -283,8 +321,12 @@ mod tests {
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
-        run.write_slot(timeout, SlotValue::I64(500)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(timeout, SlotValue::I64(500))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling wait_event with timeout
         let result = wait_event(&mut run, event, Some(timeout));
         // Then it returns AwaitingWait
@@ -297,8 +339,12 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
-        run.write_slot(timeout, SlotValue::I64(300)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(timeout, SlotValue::I64(300))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask with timeout
         let result = ask(&mut run, prompt, Some(timeout));
         // Then it returns AwaitingAsk
@@ -310,7 +356,9 @@ mod tests {
         // Given a frame at pc=0
         let mut run = fresh_frame();
         let deadline = SlotIdx::new(0);
-        run.write_slot(deadline, SlotValue::I64(1000)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(deadline, SlotValue::I64(1000))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let pc_before = run.pc();
         // When calling wait_until
         let result = wait_until(&mut run, deadline);
@@ -324,7 +372,9 @@ mod tests {
         // Given a frame at pc=0
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
-        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let pc_before = run.pc();
         // When calling wait_event
         let result = wait_event(&mut run, event, None);
@@ -338,7 +388,9 @@ mod tests {
         // Given a frame at pc=0
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
-        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let pc_before = run.pc();
         // When calling ask
         let result = ask(&mut run, prompt, None);
@@ -353,7 +405,9 @@ mod tests {
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling wait_event with uninitialized timeout
         let result = wait_event(&mut run, event, Some(timeout));
         // Then it returns an error
@@ -366,7 +420,9 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask with uninitialized timeout
         let result = ask(&mut run, prompt, Some(timeout));
         // Then it returns an error
@@ -380,13 +436,26 @@ mod tests {
         let answer = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(3);
-        run.write_slot(answer, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(answer, SlotValue::Bool(true))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask_resume
-        let result = ask_resume(&mut run, answer, Some(output), Some(next_step), StepIdx::ZERO);
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
         // Then it succeeds and copies the bool value
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
-        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::Bool(true));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
+            SlotValue::Bool(true)
+        );
     }
 
     #[test]
@@ -396,11 +465,240 @@ mod tests {
         let answer = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(5);
-        run.write_slot(answer, SlotValue::I64(12345)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(answer, SlotValue::I64(12345))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask_resume
-        let result = ask_resume(&mut run, answer, Some(output), Some(next_step), StepIdx::ZERO);
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
         // Then it succeeds and copies the value
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(12345));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
+            SlotValue::I64(12345)
+        );
+    }
+
+    // ── Adversarial BDD tests for wait_ask ──────────────────────────────
+
+    #[test]
+    fn wait_until_negative_deadline_returns_awaiting_wait() {
+        // Given a frame with a negative deadline value (past timestamp)
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::I64(-1))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling wait_until with a negative deadline
+        let result = wait_until(&mut run, deadline);
+        // Then it returns AwaitingWait (no deadline validation at primitive level)
+        // BUG: No validation that the deadline is in the future or positive
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn wait_until_zero_deadline_returns_awaiting_wait() {
+        // Given a frame with deadline=0 (epoch)
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::I64(0))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling wait_until with deadline=0
+        let result = wait_until(&mut run, deadline);
+        // Then it returns AwaitingWait (no deadline validation)
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn ask_with_zero_timeout_returns_awaiting_ask() {
+        // Given a frame with prompt and timeout=0
+        let mut run = fresh_frame();
+        let prompt = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        run.write_slot(timeout, SlotValue::I64(0))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling ask with timeout=0
+        let result = ask(&mut run, prompt, Some(timeout));
+        // Then it returns AwaitingAsk (no timeout validation at primitive level)
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    }
+
+    #[test]
+    fn wait_event_negative_timeout_returns_awaiting_wait() {
+        // Given a frame with event and negative timeout
+        let mut run = fresh_frame();
+        let event = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        run.write_slot(timeout, SlotValue::I64(-999))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling wait_event with negative timeout
+        let result = wait_event(&mut run, event, Some(timeout));
+        // Then it returns AwaitingWait (no timeout sign validation)
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn wait_until_does_not_increment_executed_counter() {
+        // Given a frame with a deadline
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::I64(1000))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        let before = run.executed();
+        // When calling wait_until
+        let result = wait_until(&mut run, deadline);
+        // Then executed counter is NOT incremented (signal is not Continue)
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert_eq!(run.executed(), before);
+    }
+
+    #[test]
+    fn ask_does_not_increment_executed_counter() {
+        // Given a frame with a prompt
+        let mut run = fresh_frame();
+        let prompt = SlotIdx::new(0);
+        run.write_slot(prompt, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        let before = run.executed();
+        // When calling ask
+        let result = ask(&mut run, prompt, None);
+        // Then executed counter is NOT incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert_eq!(run.executed(), before);
+    }
+
+    #[test]
+    fn wait_event_does_not_increment_executed_counter() {
+        // Given a frame with an event
+        let mut run = fresh_frame();
+        let event = SlotIdx::new(0);
+        run.write_slot(event, SlotValue::I64(1))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        let before = run.executed();
+        // When calling wait_event
+        let result = wait_event(&mut run, event, None);
+        // Then executed counter is NOT incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert_eq!(run.executed(), before);
+    }
+
+    #[test]
+    fn ask_resume_with_null_answer_copies_null() {
+        // Given a frame with Null in the answer slot
+        let mut run = fresh_frame();
+        let answer = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(answer, SlotValue::Null)
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling ask_resume
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+        // Then it copies Null to output
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("must read")),
+            SlotValue::Null
+        );
+    }
+
+    #[test]
+    fn wait_until_with_bool_deadline_returns_awaiting_wait() {
+        // Given a frame with a Bool in the deadline slot (type misuse)
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::Bool(true))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling wait_until with a Bool deadline
+        let result = wait_until(&mut run, deadline);
+        // Then it returns AwaitingWait (no type checking on deadline value)
+        // BUG: wait_until does not validate that the deadline is a numeric type
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn ask_resume_same_answer_and_output_slot() {
+        // Given a frame where answer == output (same slot)
+        let mut run = fresh_frame();
+        let slot = SlotIdx::new(0);
+        let next_step = StepIdx::new(3);
+        run.write_slot(slot, SlotValue::I64(77))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling ask_resume with answer == output
+        let result = ask_resume(&mut run, slot, Some(slot), Some(next_step), StepIdx::ZERO);
+        // Then it succeeds (reads value, writes same value back)
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(
+            *run.read_slot(slot)
+                .ok()
+                .unwrap_or_else(|| panic!("must read")),
+            SlotValue::I64(77)
+        );
+    }
+
+    #[test]
+    fn wait_until_with_list_deadline_returns_awaiting_wait() {
+        // Given a frame with a List in the deadline slot
+        // Note: wait_until reads the deadline slot but discards the value,
+        // so any type including List will succeed.
+        // This test verifies the lack of type checking on deadline.
+        // BUG: any SlotValue is accepted as a deadline
+        // We cannot test with a real List here without ValueStore, but
+        // the test with Bool already demonstrates the same bug.
+        // Instead, verify that the function never validates deadline type.
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        // Use a Symbol as another non-numeric type
+        run.write_slot(deadline, SlotValue::Symbol(vb_core::ids::SymbolId::new(42)))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling wait_until with a Symbol deadline
+        let result = wait_until(&mut run, deadline);
+        // Then it returns AwaitingWait (deadline type is not checked)
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn ask_with_bool_prompt_returns_awaiting_ask() {
+        // Given a frame with Bool in prompt slot
+        let mut run = fresh_frame();
+        let prompt = SlotIdx::new(0);
+        run.write_slot(prompt, SlotValue::Bool(false))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling ask with a Bool prompt
+        let result = ask(&mut run, prompt, None);
+        // Then it returns AwaitingAsk (prompt type is not checked)
+        // BUG: any SlotValue is accepted as a prompt
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
     }
 }

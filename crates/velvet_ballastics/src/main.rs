@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -27,8 +28,8 @@ velvet-ballastics - compiled workflow runtime
 commands:
   validate   <workflow.yaml>                          Validate a workflow definition
   compile    <workflow.yaml> --emit <ir|rust> --out <file>  Compile a workflow to IR or Rust
-  run        <workflow.yaml> --input-bin <file> --durability <mode>  Execute a workflow
-  run-compiled <workflow.vbir> --input-bin <file> --durability <mode>  Execute compiled IR
+  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]  Execute a workflow
+  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]  Execute compiled IR
   ipc-serve  --socket <path> --db <path>               Start IPC server
   inspect    <run_id> --db <path>                       Inspect a run
   events     <run_id> --db <path>                       List run events
@@ -57,12 +58,14 @@ fn main() -> ExitCode {
             workflow,
             input_bin,
             durability,
-        }) => cmd_run(&workflow, &input_bin, &durability),
+            db,
+        }) => cmd_run(&workflow, &input_bin, &durability, db.as_deref()),
         Ok(Command::RunCompiled {
             workflow,
             input_bin,
             durability,
-        }) => cmd_run_compiled(&workflow, &input_bin, &durability),
+            db,
+        }) => cmd_run_compiled(&workflow, &input_bin, &durability, db.as_deref()),
         Ok(Command::IpcServe { socket, db }) => cmd_ipc_serve(&socket, &db),
         Ok(Command::Inspect { run_id, db }) => cmd_inspect(&run_id, &db),
         Ok(Command::Events { run_id, db }) => cmd_events(&run_id, &db),
@@ -89,11 +92,13 @@ enum Command {
         workflow: PathBuf,
         input_bin: PathBuf,
         durability: DurabilityMode,
+        db: Option<PathBuf>,
     },
     RunCompiled {
         workflow: PathBuf,
         input_bin: PathBuf,
         durability: DurabilityMode,
+        db: Option<PathBuf>,
     },
     IpcServe {
         socket: PathBuf,
@@ -192,10 +197,12 @@ fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
     let durability_raw =
         named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
+    let db = parse_optional_run_db(args, durability)?;
     Ok(Command::Run {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
+        db,
     })
 }
 
@@ -206,11 +213,27 @@ fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
     let durability_raw =
         named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
+    let db = parse_optional_run_db(args, durability)?;
     Ok(Command::RunCompiled {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
+        db,
     })
+}
+
+fn parse_optional_run_db(
+    args: &[OsString],
+    durability: DurabilityMode,
+) -> Result<Option<PathBuf>, ParseError> {
+    let db = named_flag(args, "--db").map(PathBuf::from);
+    if durability == DurabilityMode::None {
+        return Ok(db);
+    }
+    match db {
+        Some(path) => Ok(Some(path)),
+        None => Err(ParseError::MissingArgument("--db")),
+    }
 }
 
 fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
@@ -419,6 +442,7 @@ fn cmd_run(
     workflow: &std::path::Path,
     input_bin: &std::path::Path,
     durability: &DurabilityMode,
+    db: Option<&std::path::Path>,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
         Ok(b) => b,
@@ -440,13 +464,6 @@ fn cmd_run(
         }
     };
 
-    if *durability != DurabilityMode::None {
-        errln!(
-            "unsupported durability mode for direct run: {durability:?}; use --durability none until journaled run execution is wired"
-        );
-        return ExitCode::FAILURE;
-    }
-
     if !input_data.is_empty() {
         errln!(
             "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
@@ -454,13 +471,14 @@ fn cmd_run(
         return ExitCode::FAILURE;
     }
 
-    run_compiled_workflow(&compiled, &input_data)
+    run_compiled_workflow(&compiled, &input_data, *durability, db)
 }
 
 fn cmd_run_compiled(
     vbir_path: &std::path::Path,
     input_bin: &std::path::Path,
     durability: &DurabilityMode,
+    db: Option<&std::path::Path>,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
         Ok(b) => b,
@@ -487,13 +505,6 @@ fn cmd_run_compiled(
             }
         };
 
-    if *durability != DurabilityMode::None {
-        errln!(
-            "unsupported durability mode for compiled run: {durability:?}; use --durability none until journaled run execution is wired"
-        );
-        return ExitCode::FAILURE;
-    }
-
     if !input_data.is_empty() {
         errln!(
             "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
@@ -501,17 +512,60 @@ fn cmd_run_compiled(
         return ExitCode::FAILURE;
     }
 
-    run_compiled_workflow(&compiled, &input_data)
+    run_compiled_workflow(&compiled, &input_data, *durability, db)
 }
 
-fn run_compiled_workflow(compiled: &vb_core::CompiledWorkflow, _input_data: &[u8]) -> ExitCode {
+fn runtime_journal_for_mode(
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    match durability {
+        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true),
+    }
+}
+
+fn open_storage_runtime_journal(
+    db: Option<&std::path::Path>,
+    strict: bool,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    let Some(path) = db else {
+        errln!("--db is required when --durability is strict or journaled");
+        return Err(ExitCode::FAILURE);
+    };
+    let journal = match vb_storage::FjallJournal::open(path) {
+        Ok(journal) => Arc::new(journal),
+        Err(e) => {
+            errln!("error opening journal at {}: {e}", path.display());
+            return Err(ExitCode::FAILURE);
+        }
+    };
+    if strict {
+        return Ok(vb_runtime::journal::StorageRuntimeJournal::shared_strict(
+            journal,
+        ));
+    }
+    Ok(vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal))
+}
+
+fn run_compiled_workflow(
+    compiled: &vb_core::CompiledWorkflow,
+    _input_data: &[u8],
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+) -> ExitCode {
     let run_id = vb_core::RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         errln!("runtime configuration error: shard count must be non-zero");
         return ExitCode::FAILURE;
     };
     let config = vb_runtime::shard::ShardConfig::default();
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
+    let journal = match runtime_journal_for_mode(durability, db) {
+        Ok(journal) => journal,
+        Err(code) => return code,
+    };
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
 
     if let Err(e) = runtime.submit_compiled(run_id, compiled.clone()) {
         errln!("runtime submit error: {e}");
@@ -565,6 +619,16 @@ fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         }
         vb_runtime::trace::TraceEvent::ActionCompleted { step, .. } => {
             outln!("  trace: ActionCompleted step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::ActionFailed { step, .. } => {
+            outln!("  trace: ActionFailed step={}", step.get());
+        }
+        vb_runtime::trace::TraceEvent::AskAnswered { step, slot, .. } => {
+            outln!(
+                "  trace: AskAnswered step={} slot={}",
+                step.get(),
+                slot.get()
+            );
         }
         vb_runtime::trace::TraceEvent::RunSubmitted { .. } => {
             outln!("  trace: RunSubmitted");
@@ -1037,5 +1101,160 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     }
     match handle.write_all(b"\n") {
         Ok(()) | Err(_) => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Command, DurabilityMode, ParseError, parse_args, run_compiled_workflow};
+    use std::ffi::OsString;
+    use std::path::PathBuf;
+    use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::value::ConstValue;
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
+    use vb_storage::{EventSeq, JournalEvent};
+
+    fn args(parts: &[&str]) -> Vec<OsString> {
+        parts.iter().map(|part| OsString::from(*part)).collect()
+    }
+
+    fn finish_workflow() -> Option<CompiledWorkflow> {
+        let set_const = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("finish"),
+            digest: WorkflowDigest::from_bytes([9; 32]),
+            nodes: Box::from([set_const, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::Bool(true)]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    #[test]
+    fn parse_run_accepts_db_for_journaled_mode() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
+            "--db",
+            "journal-db",
+        ]));
+
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run {
+            workflow,
+            input_bin,
+            durability,
+            db,
+        }) = parsed
+        {
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(input_bin, PathBuf::from("input.bin"));
+            assert_eq!(durability, DurabilityMode::Journaled);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+        }
+    }
+
+    #[test]
+    fn parse_run_compiled_requires_db_for_strict_mode() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run-compiled",
+            "workflow.vbir",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "strict",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--db"))),
+            "unexpected parse result: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_run_none_mode_keeps_db_optional() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+        ]));
+
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run { durability, db, .. }) = parsed {
+            assert_eq!(durability, DurabilityMode::None);
+            assert_eq!(db, None);
+        }
+    }
+
+    #[test]
+    fn journaled_run_writes_storage_events() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        let dir = tempfile::tempdir().ok();
+        assert!(dir.is_some(), "test directory should be available");
+
+        if let (Some(compiled), Some(dir)) = (compiled, dir) {
+            let code =
+                run_compiled_workflow(&compiled, &[], DurabilityMode::Journaled, Some(dir.path()));
+            assert_eq!(code, std::process::ExitCode::SUCCESS);
+
+            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            assert!(journal.is_some(), "journal should reopen");
+            if let Some(journal) = journal {
+                let run = vb_core::RunId::new(1);
+                let events = journal.events_for_run(run).ok();
+                assert!(events.is_some(), "events should be readable");
+
+                if let Some(events) = events {
+                    assert!(events.contains(&JournalEvent::RunAccepted {
+                        run,
+                        seq: EventSeq::new(0),
+                        workflow: WorkflowDigest::from_bytes([9; 32]),
+                    }));
+                    assert!(events.contains(&JournalEvent::RunFinished {
+                        run,
+                        seq: EventSeq::new(1),
+                        result: SlotIdx::ZERO,
+                    }));
+                }
+            }
+        }
     }
 }

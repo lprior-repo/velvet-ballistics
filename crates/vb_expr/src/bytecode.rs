@@ -378,6 +378,7 @@ fn fold_bool_binop(
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
 
@@ -590,8 +591,8 @@ mod tests {
         let mut constants = Vec::new();
         let _program = compile_expr_with_pool(&ast, &mut constants)?;
         assert_eq!(constants.len(), 2);
-        assert_eq!(constants[0], ConstValue::I64(10));
-        assert_eq!(constants[1], ConstValue::I64(20));
+        assert_eq!(constants.first(), Some(&ConstValue::I64(10)));
+        assert_eq!(constants.get(1), Some(&ConstValue::I64(20)));
         Ok(())
     }
 
@@ -649,6 +650,156 @@ mod tests {
             });
         };
         assert_eq!(reference, "$missing");
+        Ok(())
+    }
+
+    // --- Adversarial BDD bytecode tests ---
+
+    #[test]
+    fn const_fold_expr_rejects_i64_max_overflow_addition() -> ExprResult<()> {
+        // Given: the expression "9223372036854775807 + 1" (i64::MAX + 1)
+        // When: const_fold_expr is called
+        // Then: the result is None (overflow detected, cannot fold)
+        let tokens = crate::lexer::lex_expr("9223372036854775807 + 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, None, "i64::MAX + 1 should not fold (overflow)");
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_folds_boundary_subtraction_to_i64_min() -> ExprResult<()> {
+        // Given: the expression "0 - 9223372036854775807 - 1"
+        // When: const_fold_expr is called
+        // Then: the result is Some(I64(MIN)) because 0 - MAX = -MAX, -MAX - 1 = MIN
+        // This is NOT an overflow; it's a valid computation.
+        let tokens = crate::lexer::lex_expr("0 - 9223372036854775807 - 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, Some(ConstValue::I64(i64::MIN)));
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_rejects_i64_max_overflow_multiplication() -> ExprResult<()> {
+        // Given: the expression "9223372036854775807 * 2"
+        // When: const_fold_expr is called
+        // Then: the result is None (overflow detected)
+        let tokens = crate::lexer::lex_expr("9223372036854775807 * 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, None, "i64::MAX * 2 should not fold (overflow)");
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_rejects_division_by_zero() -> ExprResult<()> {
+        // Given: the expression "1 / 0"
+        // When: const_fold_expr is called
+        // Then: the result is None (division by zero cannot fold)
+        let tokens = crate::lexer::lex_expr("1 / 0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, None, "1 / 0 should not fold (division by zero)");
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_folds_valid_division() -> ExprResult<()> {
+        // Given: the expression "10 / 2"
+        // When: const_fold_expr is called
+        // Then: the result is Some(ConstValue::I64(5))
+        let tokens = crate::lexer::lex_expr("10 / 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, Some(ConstValue::I64(5)));
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_rejects_negation_of_negated_max() -> ExprResult<()> {
+        // Given: verifying that i64::MIN negation overflows
+        // When: checked_neg is called on i64::MIN
+        // Then: the result is None
+        let neg_result = i64::MIN.checked_neg();
+        assert_eq!(neg_result, None, "negating i64::MIN should overflow");
+        // And through const_fold, test that 0 - 9223372036854775807 produces None
+        // because (0 - MAX) = -MAX, and that's fine. Instead, test MAX+1:
+        // 9223372036854775807 + 1 already tested above.
+        // Test that 0 - 0 + 9223372036854775807 + 1 correctly does not fold
+        let tokens = crate::lexer::lex_expr("0 + 9223372036854775807 + 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, None, "0 + MAX + 1 should not fold (overflow)");
+        Ok(())
+    }
+
+    #[test]
+    fn check_expr_stack_bound_rejects_empty_ops() -> ExprResult<()> {
+        // Given: an empty ops vector
+        // When: check_expr_stack_bound is called
+        // Then: the result is Err because final stack depth 0 is invalid
+        let ops: Vec<ExprOp> = vec![];
+        let result = check_expr_stack_bound(&ops);
+        // Empty ops means final depth is 0, which fails the final depth check
+        assert!(
+            result.is_err(),
+            "empty ops should fail stack validation (nothing to return)"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_with_resolver_rejects_text_literal() -> ExprResult<()> {
+        // Given: the expression "\"hello\" + 1"
+        // When: compile_expr is called with a resolver
+        // Then: the result is Err(UnsupportedLiteral) because text cannot be compiled to bytecode
+        let result = super::compile_expr("\"hello\" + 1", &resolve_test_reference);
+        let Err(ExprError::UnsupportedLiteral { literal }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnsupportedLiteral".into(),
+            });
+        };
+        assert_eq!(literal, "text");
+        Ok(())
+    }
+
+    #[test]
+    fn push_constant_returns_overflow_on_max_constants() -> ExprResult<()> {
+        // Given: a constant pool at MAX_CONSTANTS capacity
+        // When: push_constant is called
+        // Then: the result is Err(ConstantPoolOverflow)
+        let mut constants: Vec<ConstValue> = Vec::new();
+        // Fill to just under the limit
+        for i in 0u16..65_535 {
+            constants.push(ConstValue::I64(i64::from(i)));
+        }
+        assert_eq!(constants.len(), 65_535);
+        let result = push_constant(ConstValue::I64(0), &mut constants);
+        assert!(
+            matches!(result, Err(ExprError::ConstantPoolOverflow)),
+            "pushing beyond MAX_CONSTANTS should overflow"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_to_bytecode_produces_correct_negation_ops() -> ExprResult<()> {
+        // Given: the expression "-5"
+        // When: compile_expr_to_bytecode is called
+        // Then: the ops are [LoadConst(0=0), LoadConst(1=5), Sub]
+        // This verifies negation is compiled as 0 - x
+        let tokens = crate::lexer::lex_expr("-5")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = compile_expr_with_pool(&ast, &mut constants)?;
+        let expected_ops = vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Sub,
+        ];
+        assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+        assert_eq!(constants, vec![ConstValue::I64(0), ConstValue::I64(5)]);
         Ok(())
     }
 }

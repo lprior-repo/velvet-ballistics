@@ -308,6 +308,7 @@ pub fn infix_binding_power(op: BinaryOp) -> (u8, u8) {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
 
@@ -606,6 +607,183 @@ mod tests {
         // Then: the token is Unary(Not)
         let tokens = lex_expr("not")?;
         let expected = vec![Token::Unary(UnaryOp::Not), Token::End];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    // --- Adversarial BDD tests ---
+
+    #[test]
+    fn lex_expr_rejects_empty_string_as_only_end_token() -> ExprResult<()> {
+        // Given: the empty expression ""
+        // When: lex_expr is called
+        // Then: the result is a single End token
+        let tokens = lex_expr("")?;
+        assert_eq!(
+            tokens.len(),
+            1,
+            "empty input should produce exactly one End token"
+        );
+        assert_eq!(tokens.first(), Some(&Token::End));
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_whitespace_only_input_as_only_end_token() -> ExprResult<()> {
+        // Given: the expression "   \t\n  "
+        // When: lex_expr is called
+        // Then: the result is a single End token (whitespace is consumed)
+        let tokens = lex_expr("   \t\n  ")?;
+        assert_eq!(
+            tokens.len(),
+            1,
+            "whitespace-only input should produce exactly one End token"
+        );
+        assert_eq!(tokens.first(), Some(&Token::End));
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_unexpected_unicode_character() -> ExprResult<()> {
+        // Given: the expression "\u{00F7}" (division sign, looks like /)
+        // When: lex_expr is called
+        // Then: the result is Err(UnexpectedChar { ch })
+        let result = lex_expr("\u{00F7}");
+        let Err(ExprError::UnexpectedChar { ch }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedChar for unicode division sign".into(),
+            });
+        };
+        assert_eq!(ch, '\u{00F7}');
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_unexpected_at_sign() -> ExprResult<()> {
+        // Given: the expression "@"
+        // When: lex_expr is called
+        // Then: the result is Err(UnexpectedChar { ch: '@' })
+        let result = lex_expr("@");
+        let Err(ExprError::UnexpectedChar { ch }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedChar for @".into(),
+            });
+        };
+        assert_eq!(ch, '@');
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_handles_max_i64_literal() -> ExprResult<()> {
+        // Given: the expression "9223372036854775807" (i64::MAX)
+        // When: lex_expr is called
+        // Then: the token is I64(9223372036854775807)
+        let tokens = lex_expr("9223372036854775807")?;
+        let expected = vec![Token::Literal(LiteralToken::I64(i64::MAX)), Token::End];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_i64_overflow_literal() -> ExprResult<()> {
+        // Given: the expression "9223372036854775808" (i64::MAX + 1)
+        // When: lex_expr is called
+        // Then: the result is Err(IntegerOutOfRange)
+        let result = lex_expr("9223372036854775808");
+        assert!(
+            matches!(result, Err(ExprError::IntegerOutOfRange)),
+            "expected IntegerOutOfRange for value exceeding i64::MAX"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_deeply_nested_parentheses() -> ExprResult<()> {
+        // Given: the expression "((((1))))"
+        // When: lex_expr is called
+        // Then: all parentheses and the literal are correctly tokenized
+        let tokens = lex_expr("((((1))))")?;
+        assert_eq!(tokens.first(), Some(&Token::LParen));
+        assert_eq!(tokens.last(), Some(&Token::End));
+        let rparen_count = tokens.iter().filter(|t| matches!(t, Token::RParen)).count();
+        assert_eq!(rparen_count, 4);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_lone_dollar_after_whitespace_is_dollar_token() -> ExprResult<()> {
+        // Given: the expression "$ + 1" where $ is standalone
+        // When: lex_expr is called
+        // Then: the first token is Dollar (not a reference)
+        let tokens = lex_expr("$ + 1")?;
+        assert_eq!(tokens.first(), Some(&Token::Dollar));
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_bare_exclamation_mark() -> ExprResult<()> {
+        // Given: the expression "!"
+        // When: lex_expr is called
+        // Then: the result is Err(UnexpectedChar { ch: '!' })
+        let result = lex_expr("!");
+        let Err(ExprError::UnexpectedChar { ch }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedChar for bare !".into(),
+            });
+        };
+        assert_eq!(ch, '!');
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_bare_equals_sign() -> ExprResult<()> {
+        // Given: the expression "="
+        // When: lex_expr is called
+        // Then: the result is Err(UnexpectedChar { ch: '=' })
+        let result = lex_expr("=");
+        let Err(ExprError::UnexpectedChar { ch }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedChar for bare =".into(),
+            });
+        };
+        assert_eq!(ch, '=');
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_handles_string_with_spaces() -> ExprResult<()> {
+        // Given: the expression "\"a b c\""
+        // When: lex_expr is called
+        // Then: the token is Text("a b c")
+        let tokens = lex_expr("\"a b c\"")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::Text(Box::from("a b c"))),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_rejects_unterminated_string_immediately() -> ExprResult<()> {
+        // Given: the expression "\""
+        // When: lex_expr is called
+        // Then: the result is Err(UnterminatedString)
+        let result = lex_expr("\"");
+        assert!(matches!(result, Err(ExprError::UnterminatedString)));
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_reference_with_dots_allows_path_access() -> ExprResult<()> {
+        // Given: the expression "$input.field1.field2.field3"
+        // When: lex_expr is called
+        // Then: the token is Reference("$input.field1.field2.field3")
+        let tokens = lex_expr("$input.field1.field2.field3")?;
+        let expected = vec![
+            Token::Reference(Box::from("$input.field1.field2.field3")),
+            Token::End,
+        ];
         assert_eq!(tokens, expected);
         Ok(())
     }

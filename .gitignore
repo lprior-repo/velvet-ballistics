@@ -3,6 +3,7 @@ target/
 
 # Local agent/search state
 .memsearch/
+.claude/worktrees/
 
 # Moon local cache
 .moon/cache/
@@ -47,3 +48,6 @@ perf.data*
 flamegraph.svg
 heaptrack.*
 callgrind.out.*
+mutants.out/
+mutants.out.old/
+mutants.out.*/

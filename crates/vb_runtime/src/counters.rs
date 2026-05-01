@@ -58,12 +58,15 @@ mod tests {
     fn new_creates_zeroed_counters() {
         let counters = ShardCounters::new();
         let snap = counters.snapshot();
-        assert_eq!(snap, CounterSnapshot {
-            runs_submitted: 0,
-            runs_completed: 0,
-            runs_failed: 0,
-            steps_executed: 0,
-        });
+        assert_eq!(
+            snap,
+            CounterSnapshot {
+                runs_submitted: 0,
+                runs_completed: 0,
+                runs_failed: 0,
+                steps_executed: 0,
+            }
+        );
     }
 
     #[test]
@@ -284,8 +287,18 @@ mod tests {
     #[test]
     fn counter_snapshot_equality_same_values() {
         // Given two snapshots with same values
-        let a = CounterSnapshot { runs_submitted: 1, runs_completed: 2, runs_failed: 3, steps_executed: 4 };
-        let b = CounterSnapshot { runs_submitted: 1, runs_completed: 2, runs_failed: 3, steps_executed: 4 };
+        let a = CounterSnapshot {
+            runs_submitted: 1,
+            runs_completed: 2,
+            runs_failed: 3,
+            steps_executed: 4,
+        };
+        let b = CounterSnapshot {
+            runs_submitted: 1,
+            runs_completed: 2,
+            runs_failed: 3,
+            steps_executed: 4,
+        };
         // Then they are equal
         assert_eq!(a, b);
     }
@@ -293,31 +306,66 @@ mod tests {
     #[test]
     fn counter_snapshot_equality_differs_completed() {
         // Given two snapshots with different completed
-        let a = CounterSnapshot { runs_submitted: 0, runs_completed: 0, runs_failed: 0, steps_executed: 0 };
-        let b = CounterSnapshot { runs_submitted: 0, runs_completed: 1, runs_failed: 0, steps_executed: 0 };
+        let a = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
+        let b = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 1,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
         assert_ne!(a, b);
     }
 
     #[test]
     fn counter_snapshot_equality_differs_failed() {
         // Given two snapshots with different failed
-        let a = CounterSnapshot { runs_submitted: 0, runs_completed: 0, runs_failed: 0, steps_executed: 0 };
-        let b = CounterSnapshot { runs_submitted: 0, runs_completed: 0, runs_failed: 1, steps_executed: 0 };
+        let a = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
+        let b = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 1,
+            steps_executed: 0,
+        };
         assert_ne!(a, b);
     }
 
     #[test]
     fn counter_snapshot_equality_differs_steps() {
         // Given two snapshots with different steps
-        let a = CounterSnapshot { runs_submitted: 0, runs_completed: 0, runs_failed: 0, steps_executed: 0 };
-        let b = CounterSnapshot { runs_submitted: 0, runs_completed: 0, runs_failed: 0, steps_executed: 1 };
+        let a = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
+        let b = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 1,
+        };
         assert_ne!(a, b);
     }
 
     #[test]
     fn counter_snapshot_debug_output() {
         // Given a snapshot
-        let snap = CounterSnapshot { runs_submitted: 1, runs_completed: 2, runs_failed: 3, steps_executed: 4 };
+        let snap = CounterSnapshot {
+            runs_submitted: 1,
+            runs_completed: 2,
+            runs_failed: 3,
+            steps_executed: 4,
+        };
         // When formatting with debug
         let debug = format!("{snap:?}");
         // Then the debug output contains relevant field info
@@ -340,6 +388,93 @@ mod tests {
         assert_eq!(snap.runs_completed, 1);
         assert_eq!(snap.runs_failed, 1);
         assert_eq!(snap.steps_executed, 50);
+    }
+
+    // =======================================================================
+    // Adversarial BDD tests - counters attack vectors
+    // =======================================================================
+
+    #[test]
+    fn counter_add_steps_near_u64_max_wraps_via_atomic() {
+        // Given counters near u64::MAX for steps
+        let counters = ShardCounters::new();
+        counters.add_steps(u64::MAX);
+        // When adding one more step
+        counters.add_steps(1);
+        // Then the counter wraps (fetch_add wraps on overflow for AtomicU64)
+        let snap = counters.snapshot();
+        assert_eq!(snap.steps_executed, 0);
+    }
+
+    #[test]
+    fn counter_inc_submitted_never_panics() {
+        // Given counters incremented many times
+        let counters = ShardCounters::new();
+        for _ in 0..100 {
+            counters.inc_submitted();
+        }
+        let snap = counters.snapshot();
+        assert_eq!(snap.runs_submitted, 100);
+    }
+
+    #[test]
+    fn counter_snapshot_saturating_add_with_zero_is_identity() {
+        // Given a snapshot with some values
+        let snap = CounterSnapshot {
+            runs_submitted: 100,
+            runs_completed: 50,
+            runs_failed: 10,
+            steps_executed: 1000,
+        };
+        let zero = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
+        // When adding zero
+        let result = CounterSnapshot {
+            runs_submitted: snap.runs_submitted.saturating_add(zero.runs_submitted),
+            runs_completed: snap.runs_completed.saturating_add(zero.runs_completed),
+            runs_failed: snap.runs_failed.saturating_add(zero.runs_failed),
+            steps_executed: snap.steps_executed.saturating_add(zero.steps_executed),
+        };
+        // Then result equals original
+        assert_eq!(result, snap);
+    }
+
+    #[test]
+    fn counter_snapshot_saturating_add_is_commutative() {
+        // Given two snapshots
+        let a = CounterSnapshot {
+            runs_submitted: 10,
+            runs_completed: 5,
+            runs_failed: 2,
+            steps_executed: 100,
+        };
+        let b = CounterSnapshot {
+            runs_submitted: 20,
+            runs_completed: 10,
+            runs_failed: 3,
+            steps_executed: 200,
+        };
+        // When adding a+b and b+a
+        let ab = CounterSnapshot {
+            runs_submitted: a.runs_submitted.saturating_add(b.runs_submitted),
+            runs_completed: a.runs_completed.saturating_add(b.runs_completed),
+            runs_failed: a.runs_failed.saturating_add(b.runs_failed),
+            steps_executed: a.steps_executed.saturating_add(b.steps_executed),
+        };
+        let ba = CounterSnapshot {
+            runs_submitted: b.runs_submitted.saturating_add(a.runs_submitted),
+            runs_completed: b.runs_completed.saturating_add(a.runs_completed),
+            runs_failed: b.runs_failed.saturating_add(a.runs_failed),
+            steps_executed: b.steps_executed.saturating_add(a.steps_executed),
+        };
+        // Then they are equal (commutative)
+        assert_eq!(ab, ba);
+        assert_eq!(ab.runs_submitted, 30);
+        assert_eq!(ab.runs_completed, 15);
     }
 }
 

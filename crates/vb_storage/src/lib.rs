@@ -11,6 +11,7 @@ use arrayvec::ArrayVec;
 use recovery::RunSnapshot;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::Mutex;
 use thiserror::Error;
@@ -97,6 +98,156 @@ pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 /// Maximum blob payload bytes accepted by the default blob APIs.
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
 const PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;
+
+/// Storage write limits shared by direct and queued journal writers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StorageLimits {
+    /// Maximum payload bytes accepted for a journal event.
+    pub max_journal_event_payload_bytes: u32,
+}
+
+impl StorageLimits {
+    /// Default storage limits.
+    pub const DEFAULT: Self = Self {
+        max_journal_event_payload_bytes: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    };
+}
+
+/// Runtime/storage durability profile selected for journal writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DurabilityProfile {
+    /// Keep runtime events in volatile memory only; do not write Fjall during the run.
+    Volatile,
+    /// Queue compact events for bounded group commit without a per-event sync barrier.
+    Journaled,
+    /// Queue compact events that require a strict persistence barrier when flushed.
+    Strict,
+}
+
+/// Counts queued journal writes by durability profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct JournalWriterQueueProfileCounts {
+    /// Number of journaled pending writes.
+    pub journaled: usize,
+    /// Number of strict pending writes.
+    pub strict: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct QueuedJournalEvent {
+    event: JournalEvent,
+    profile: DurabilityProfile,
+}
+
+/// Result of flushing a bounded writer queue batch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct JournalWriterFlushReport {
+    /// Number of queued events drained from memory.
+    pub drained: usize,
+    /// Number of events written to Fjall.
+    pub written: usize,
+}
+
+/// Bounded in-memory queue for journal writer batching.
+#[derive(Debug)]
+pub struct JournalWriterQueue {
+    pending: Mutex<VecDeque<QueuedJournalEvent>>,
+    capacity: usize,
+    batch_size: usize,
+}
+
+impl JournalWriterQueue {
+    /// Creates a bounded writer queue.
+    pub fn new(
+        capacity: usize,
+        batch_size: usize,
+        _limits: StorageLimits,
+    ) -> Result<Self, JournalError> {
+        if capacity == 0 || batch_size == 0 {
+            return Err(JournalError::QueueCapacity);
+        }
+        Ok(Self {
+            pending: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            batch_size,
+        })
+    }
+
+    /// Enqueues an event for journaled append.
+    pub fn enqueue_journaled(&self, event: JournalEvent) -> Result<(), JournalError> {
+        self.enqueue(event, DurabilityProfile::Journaled)
+    }
+
+    /// Enqueues an event for strict append.
+    pub fn enqueue_strict(&self, event: JournalEvent) -> Result<(), JournalError> {
+        self.enqueue(event, DurabilityProfile::Strict)
+    }
+
+    fn enqueue(&self, event: JournalEvent, profile: DurabilityProfile) -> Result<(), JournalError> {
+        let mut pending = self
+            .pending
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        if pending.len() >= self.capacity {
+            return Err(JournalError::QueueFull);
+        }
+        pending.push_back(QueuedJournalEvent { event, profile });
+        Ok(())
+    }
+
+    /// Returns pending write counts split by durability profile.
+    pub fn pending_profile_counts(&self) -> Result<JournalWriterQueueProfileCounts, JournalError> {
+        let pending = self
+            .pending
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let mut counts = JournalWriterQueueProfileCounts {
+            journaled: 0,
+            strict: 0,
+        };
+        for item in &*pending {
+            match item.profile {
+                DurabilityProfile::Journaled => {
+                    counts.journaled = counts.journaled.saturating_add(1);
+                }
+                DurabilityProfile::Strict => {
+                    counts.strict = counts.strict.saturating_add(1);
+                }
+                DurabilityProfile::Volatile => {}
+            }
+        }
+        Ok(counts)
+    }
+
+    /// Flushes at most one configured batch to the journal.
+    pub fn flush_batch(
+        &self,
+        journal: &FjallJournal,
+    ) -> Result<JournalWriterFlushReport, JournalError> {
+        let mut drained = 0usize;
+        let mut written = 0usize;
+        while drained < self.batch_size {
+            let item = {
+                let mut pending = self
+                    .pending
+                    .lock()
+                    .map_err(|_| JournalError::WriteLockPoisoned)?;
+                pending.pop_front()
+            };
+            let Some(item) = item else {
+                break;
+            };
+            drained = drained.saturating_add(1);
+            if item.profile == DurabilityProfile::Strict {
+                journal.append_strict(&item.event)?;
+            } else {
+                journal.append_journaled(&item.event)?;
+            }
+            written = written.saturating_add(1);
+        }
+        Ok(JournalWriterFlushReport { drained, written })
+    }
+}
 
 /// Monotonic per-run event sequence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -878,6 +1029,62 @@ impl FjallJournal {
     }
 }
 
+/// Opens the Fjall-backed storage engine.
+pub fn open_store(path: impl AsRef<Path>) -> Result<FjallJournal, JournalError> {
+    FjallJournal::open(path)
+}
+
+/// Initializes all declared keyspaces by opening the store.
+pub fn init_keyspaces(path: impl AsRef<Path>) -> Result<FjallJournal, JournalError> {
+    FjallJournal::open(path)
+}
+
+/// Appends one journal event without forcing a durability barrier.
+pub fn append_journal_event(
+    journal: &FjallJournal,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    journal.append_journaled(event)
+}
+
+/// Writes a compact run snapshot.
+pub fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+    journal.put_snapshot(snapshot)
+}
+
+/// Reads a stored blob by digest.
+pub fn read_blob(
+    journal: &FjallJournal,
+    digest: [u8; DIGEST_BYTES],
+) -> Result<Option<BlobRecord>, JournalError> {
+    journal.blob(digest)
+}
+
+/// Reads one run's journal events in replay order.
+pub fn read_run_events(
+    journal: &FjallJournal,
+    run: RunId,
+) -> Result<Vec<JournalEvent>, JournalError> {
+    journal.events_for_run(run)
+}
+
+/// Replays one run's full journal through the recovery path.
+pub fn replay_journal(
+    journal: &FjallJournal,
+    run: RunId,
+    tracker: &mut recovery::ActionReplayTracker,
+) -> recovery::RecoveryResult<Vec<JournalEvent>> {
+    recovery::recover_full_journal(journal, run, tracker)
+}
+
+/// Flushes one queued writer batch using each event's durability profile.
+pub fn flush_profile(
+    queue: &JournalWriterQueue,
+    journal: &FjallJournal,
+) -> Result<JournalWriterFlushReport, JournalError> {
+    queue.flush_batch(journal)
+}
+
 /// Storage errors.
 #[derive(Debug, Error)]
 pub enum JournalError {
@@ -901,6 +1108,12 @@ pub enum JournalError {
     /// Serialized append lock was poisoned by a panicking holder.
     #[error("journal write lock is poisoned")]
     WriteLockPoisoned,
+    /// Queue capacity or batch size was zero.
+    #[error("journal writer queue capacity must be non-zero")]
+    QueueCapacity,
+    /// Queue has no room for another event.
+    #[error("journal writer queue is full")]
+    QueueFull,
     /// Replay returned an event for a different run than requested.
     #[error("journal replay returned run {actual:?}, expected {expected:?}")]
     WrongRun {
@@ -1261,23 +1474,32 @@ fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::assertions_on_constants,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
 mod tests {
     use super::{
-        BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
-        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
+        BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, EventSeq, FjallJournal, JournalError,
+        JournalEvent, JournalWriterQueue, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
+        MAGIC_IPC_FRAME, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
         MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
-        PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS,
-        PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT,
-        PREFIX_WORKFLOW_SOURCE,
-        CURRENT_SCHEMA_VERSION, RECORD_HEADER_LEN,
-        RecordKind, RunHeaderRecord, WorkflowSourceRecord,
-        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
-        index_status_key, index_workflow_key, journal_key, run_event_key, run_header_key,
-        run_snapshot_key, workflow_source_key,
+        MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB,
+        PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW,
+        PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE,
+        RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageLimits, WorkflowSourceRecord,
+        append_journal_event, blob_key, compiled_ir_key, decode_record, encode_record,
+        flush_profile, index_action_key, index_status_key, index_workflow_key, init_keyspaces,
+        journal_key, open_store, read_blob, read_run_events, replay_journal, run_event_key,
+        run_header_key, run_snapshot_key, workflow_source_key, write_snapshot,
     };
-    use crate::recovery::RunSnapshot;
+    use crate::recovery::{ActionReplayTracker, RunSnapshot};
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     #[test]
@@ -1322,8 +1544,8 @@ mod tests {
         let rh = run_header_key(RunId::new(1)).expect("run_header_key should succeed");
         assert_eq!(rh.len(), 9);
 
-        let rs =
-            run_snapshot_key(RunId::new(1), EventSeq::new(2)).expect("run_snapshot_key should succeed");
+        let rs = run_snapshot_key(RunId::new(1), EventSeq::new(2))
+            .expect("run_snapshot_key should succeed");
         assert_eq!(rs.len(), 17);
 
         let bl = blob_key(digest).expect("blob_key should succeed");
@@ -1640,6 +1862,67 @@ mod tests {
     }
 
     #[test]
+    fn journal_writer_queue_counts_pending_durability_profiles() {
+        let Ok(queue) = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT) else {
+            return;
+        };
+        let run = RunId::new(56);
+        let journaled = JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(0),
+        };
+        let strict = JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+        };
+
+        assert!(queue.enqueue_journaled(journaled).is_ok());
+        assert!(queue.enqueue_strict(strict).is_ok());
+
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 1 && counts.strict == 1
+        ));
+    }
+
+    #[test]
+    fn flush_profile_wrapper_flushes_queued_events() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = open_store(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+        let Ok(queue) = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT) else {
+            return;
+        };
+        let run = RunId::new(57);
+        let journaled = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([5; 32]),
+        };
+        let strict = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(1),
+            result: vb_core::SlotIdx::new(0),
+        };
+
+        assert!(queue.enqueue_journaled(journaled.clone()).is_ok());
+        assert!(queue.enqueue_strict(strict.clone()).is_ok());
+        let report = flush_profile(&queue, &journal);
+
+        assert!(report.is_ok());
+        let Ok(report) = report else { return };
+        assert_eq!(report.drained, 2);
+        assert_eq!(report.written, 2);
+        let events = read_run_events(&journal, run);
+        assert!(events.is_ok());
+        let Ok(events) = events else { return };
+        assert_eq!(events, vec![journaled, strict]);
+    }
+
+    #[test]
     fn replay_returns_contiguous_events_for_run() {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
@@ -1789,7 +2072,10 @@ mod tests {
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
         assert!(matches!(
             result,
-            Err(JournalError::RecordKindFamilyMismatch { magic: MAGIC_JOURNAL_EVENT, kind: 1 })
+            Err(JournalError::RecordKindFamilyMismatch {
+                magic: MAGIC_JOURNAL_EVENT,
+                kind: 1
+            })
         ));
     }
 
@@ -1928,13 +2214,7 @@ mod tests {
             digest: WorkflowDigest::from_bytes([1; 32]),
             source: vec![1],
         };
-        let result = encode_record(
-            MAGIC_WORKFLOW_SOURCE,
-            RecordKind::Blob,
-            0,
-            &source,
-            128,
-        );
+        let result = encode_record(MAGIC_WORKFLOW_SOURCE, RecordKind::Blob, 0, &source, 128);
         let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
             panic!("expected RecordKindFamilyMismatch, got {:?}", result);
         };
@@ -2365,6 +2645,92 @@ mod tests {
         let Ok(temp_dir) = temp_dir else { return };
         let journal = FjallJournal::open(temp_dir.path());
         assert!(journal.is_ok());
+    }
+
+    #[test]
+    fn public_open_wrappers_create_declared_keyspaces() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+
+        let journal = open_store(temp_dir.path());
+        assert!(journal.is_ok());
+        drop(journal);
+
+        let reopened = init_keyspaces(temp_dir.path());
+        assert!(reopened.is_ok());
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
+    }
+
+    #[test]
+    fn public_wrappers_delegate_to_journal_storage_paths() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = open_store(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+        let run = RunId::new(70);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+        };
+        let blob = BlobRecord {
+            digest: [3; 32],
+            bytes: vec![1, 2, 3],
+        };
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+            slots: vec![4, 5, 6],
+        };
+
+        assert!(append_journal_event(&journal, &event).is_ok());
+        assert!(journal.put_blob(&blob).is_ok());
+        assert!(write_snapshot(&journal, &snapshot).is_ok());
+
+        let events = read_run_events(&journal, run);
+        assert!(events.is_ok());
+        let Ok(events) = events else { return };
+        assert_eq!(events, vec![event.clone()]);
+        let loaded_blob = read_blob(&journal, blob.digest);
+        assert!(loaded_blob.is_ok());
+        let Ok(loaded_blob) = loaded_blob else {
+            return;
+        };
+        assert_eq!(loaded_blob, Some(blob));
+        let loaded_snapshot = journal.snapshot(run, EventSeq::new(0));
+        assert!(loaded_snapshot.is_ok());
+        let Ok(loaded_snapshot) = loaded_snapshot else {
+            return;
+        };
+        assert_eq!(loaded_snapshot, Some(snapshot));
+    }
+
+    #[test]
+    fn replay_journal_wrapper_uses_recovery_replay() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = open_store(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+        let run = RunId::new(71);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([8; 32]),
+        };
+        assert!(append_journal_event(&journal, &event).is_ok());
+
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = replay_journal(&journal, run, &mut tracker);
+
+        assert!(replayed.is_ok());
+        let Ok(replayed) = replayed else { return };
+        assert_eq!(replayed, vec![event]);
     }
 
     #[test]
@@ -3018,7 +3384,9 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].run_id(), run);
     }
@@ -3043,7 +3411,9 @@ mod tests {
         assert!(journal.append_strict(&accepted).is_ok());
         assert!(journal.append_strict(&started).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 2);
         assert_eq!(events[0], accepted);
         assert_eq!(events[1], started);
@@ -3064,9 +3434,14 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::StepStarted { step: found_step, .. } = events[0] else {
+        let JournalEvent::StepStarted {
+            step: found_step, ..
+        } = events[0]
+        else {
             panic!("expected StepStarted event");
         };
         assert_eq!(found_step, step);
@@ -3089,9 +3464,16 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::StepSucceeded { step: found_step, output: found_output, .. } = events[0] else {
+        let JournalEvent::StepSucceeded {
+            step: found_step,
+            output: found_output,
+            ..
+        } = events[0]
+        else {
             panic!("expected StepSucceeded event");
         };
         assert_eq!(found_step, step);
@@ -3113,9 +3495,14 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::SlotWrittenEvent { slot: found_slot, .. } = events[0] else {
+        let JournalEvent::SlotWrittenEvent {
+            slot: found_slot, ..
+        } = events[0]
+        else {
             panic!("expected SlotWrittenEvent");
         };
         assert_eq!(found_slot, slot);
@@ -3138,9 +3525,16 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::ActionScheduled { step: found_step, action: found_action, .. } = events[0] else {
+        let JournalEvent::ActionScheduled {
+            step: found_step,
+            action: found_action,
+            ..
+        } = events[0]
+        else {
             panic!("expected ActionScheduled event");
         };
         assert_eq!(found_step, step);
@@ -3164,9 +3558,16 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::ActionCompletedEvent { step: found_step, action: found_action, .. } = events[0] else {
+        let JournalEvent::ActionCompletedEvent {
+            step: found_step,
+            action: found_action,
+            ..
+        } = events[0]
+        else {
             panic!("expected ActionCompletedEvent");
         };
         assert_eq!(found_step, step);
@@ -3188,9 +3589,15 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::RunFinished { result: found_result, .. } = events[0] else {
+        let JournalEvent::RunFinished {
+            result: found_result,
+            ..
+        } = events[0]
+        else {
             panic!("expected RunFinished event");
         };
         assert_eq!(found_result, result);
@@ -3209,7 +3616,9 @@ mod tests {
         };
         assert!(journal.append_strict(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].run_id(), run);
     }
@@ -3240,7 +3649,9 @@ mod tests {
         assert!(journal.append_strict(&e1).is_ok());
         assert!(journal.append_strict(&e2).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 3);
         assert_eq!(events[0].seq(), EventSeq::new(0));
         assert_eq!(events[1].seq(), EventSeq::new(1));
@@ -3262,7 +3673,11 @@ mod tests {
         assert!(journal.append_strict(&event).is_ok());
 
         let result = journal.append_strict(&event);
-        let Err(JournalError::DuplicateEvent { run: dup_run, seq: dup_seq }) = result else {
+        let Err(JournalError::DuplicateEvent {
+            run: dup_run,
+            seq: dup_seq,
+        }) = result
+        else {
             panic!("expected DuplicateEvent, got {:?}", result);
         };
         assert_eq!(dup_run, run);
@@ -3276,18 +3691,41 @@ mod tests {
         // Then events are returned in ascending sequence order
         let (_guard, journal) = open_journal();
         let run = RunId::new(18);
-        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
-        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
-        let e2 = JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(2), slot: vb_core::SlotIdx::new(0) };
-        let e3 = JournalEvent::StepSucceeded { run, seq: EventSeq::new(3), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) };
-        let e4 = JournalEvent::RunFinished { run, seq: EventSeq::new(4), result: vb_core::SlotIdx::new(1) };
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let e1 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let e2 = JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(2),
+            slot: vb_core::SlotIdx::new(0),
+        };
+        let e3 = JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(0),
+            output: vb_core::SlotIdx::new(1),
+        };
+        let e4 = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(4),
+            result: vb_core::SlotIdx::new(1),
+        };
         assert!(journal.append_journaled(&e0).is_ok());
         assert!(journal.append_journaled(&e1).is_ok());
         assert!(journal.append_journaled(&e2).is_ok());
         assert!(journal.append_journaled(&e3).is_ok());
         assert!(journal.append_journaled(&e4).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 5);
         assert_eq!(events[0], e0);
         assert_eq!(events[1], e1);
@@ -3303,10 +3741,16 @@ mod tests {
         // Then it returns an empty vec
         let (_guard, journal) = open_journal();
         let run_a = RunId::new(1);
-        let event = JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let event = JournalEvent::RunAccepted {
+            run: run_a,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
         assert!(journal.append_journaled(&event).is_ok());
 
-        let events = journal.events_for_run(RunId::new(2)).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(RunId::new(2))
+            .expect("events_for_run should succeed");
         assert!(events.is_empty());
     }
 
@@ -3319,11 +3763,31 @@ mod tests {
         let run_a = RunId::new(100);
         let run_b = RunId::new(200);
 
-        let a0 = JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: test_digest(1) };
-        let b0 = JournalEvent::RunAccepted { run: run_b, seq: EventSeq::new(0), workflow: test_digest(2) };
-        let a1 = JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(1), step: StepIdx::new(0) };
-        let b1 = JournalEvent::StepStarted { run: run_b, seq: EventSeq::new(1), step: StepIdx::new(0) };
-        let a2 = JournalEvent::RunFinished { run: run_a, seq: EventSeq::new(2), result: vb_core::SlotIdx::new(0) };
+        let a0 = JournalEvent::RunAccepted {
+            run: run_a,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let b0 = JournalEvent::RunAccepted {
+            run: run_b,
+            seq: EventSeq::new(0),
+            workflow: test_digest(2),
+        };
+        let a1 = JournalEvent::StepStarted {
+            run: run_a,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let b1 = JournalEvent::StepStarted {
+            run: run_b,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let a2 = JournalEvent::RunFinished {
+            run: run_a,
+            seq: EventSeq::new(2),
+            result: vb_core::SlotIdx::new(0),
+        };
 
         assert!(journal.append_journaled(&a0).is_ok());
         assert!(journal.append_journaled(&b0).is_ok());
@@ -3331,13 +3795,17 @@ mod tests {
         assert!(journal.append_journaled(&b1).is_ok());
         assert!(journal.append_journaled(&a2).is_ok());
 
-        let events_a = journal.events_for_run(run_a).expect("events_for_run A should succeed");
+        let events_a = journal
+            .events_for_run(run_a)
+            .expect("events_for_run A should succeed");
         assert_eq!(events_a.len(), 3);
         assert_eq!(events_a[0], a0);
         assert_eq!(events_a[1], a1);
         assert_eq!(events_a[2], a2);
 
-        let events_b = journal.events_for_run(run_b).expect("events_for_run B should succeed");
+        let events_b = journal
+            .events_for_run(run_b)
+            .expect("events_for_run B should succeed");
         assert_eq!(events_b.len(), 2);
         assert_eq!(events_b[0], b0);
         assert_eq!(events_b[1], b1);
@@ -3350,10 +3818,16 @@ mod tests {
         // Then the event is readable immediately
         let (_guard, journal) = open_journal();
         let run = RunId::new(30);
-        let event = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
         assert!(journal.append_journaled(&event).is_ok());
 
-        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -3373,7 +3847,9 @@ mod tests {
         };
         assert!(journal.put_run_header(&record).is_ok());
 
-        let retrieved = journal.run_header(RunId::new(1)).expect("lookup should succeed");
+        let retrieved = journal
+            .run_header(RunId::new(1))
+            .expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
 
@@ -3391,7 +3867,9 @@ mod tests {
         };
         assert!(journal.put_snapshot(&snapshot).is_ok());
 
-        let retrieved = journal.snapshot(RunId::new(1), EventSeq::new(0)).expect("lookup should succeed");
+        let retrieved = journal
+            .snapshot(RunId::new(1), EventSeq::new(0))
+            .expect("lookup should succeed");
         assert_eq!(retrieved, Some(snapshot));
     }
 
@@ -3402,10 +3880,15 @@ mod tests {
         // Then it returns None
         let (_guard, journal) = open_journal();
         let stored_digest = test_digest(1);
-        let record = CompiledIrRecord { digest: stored_digest, ir: vec![1, 2, 3] };
+        let record = CompiledIrRecord {
+            digest: stored_digest,
+            ir: vec![1, 2, 3],
+        };
         assert!(journal.put_compiled_ir(&record).is_ok());
 
-        let result = journal.compiled_ir(test_digest(2)).expect("lookup should succeed");
+        let result = journal
+            .compiled_ir(test_digest(2))
+            .expect("lookup should succeed");
         assert_eq!(result, None);
     }
 
@@ -3416,10 +3899,15 @@ mod tests {
         // Then it returns None
         let (_guard, journal) = open_journal();
         let stored_digest = test_digest(10);
-        let record = WorkflowSourceRecord { digest: stored_digest, source: vec![1] };
+        let record = WorkflowSourceRecord {
+            digest: stored_digest,
+            source: vec![1],
+        };
         assert!(journal.put_workflow_source(&record).is_ok());
 
-        let result = journal.workflow_source(test_digest(11)).expect("lookup should succeed");
+        let result = journal
+            .workflow_source(test_digest(11))
+            .expect("lookup should succeed");
         assert_eq!(result, None);
     }
 
@@ -3429,20 +3917,134 @@ mod tests {
         // When run_id() is called
         // Then each returns RunId::new(99)
         let run = RunId::new(99);
-        assert_eq!(JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }.run_id(), run);
-        assert_eq!(JournalEvent::StepStarted { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::StepSucceeded { run, seq: EventSeq::new(0), step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::ActionScheduled { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
-        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
-        assert_eq!(JournalEvent::ActionFailedEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
-        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(0), slot: vb_core::SlotIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::AskScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::RunCancelled { run, seq: EventSeq::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::RunFinished { run, seq: EventSeq::new(0), result: vb_core::SlotIdx::new(0) }.run_id(), run);
-        assert_eq!(JournalEvent::RunFailedEvent { run, seq: EventSeq::new(0) }.run_id(), run);
+        assert_eq!(
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                output: vb_core::SlotIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(0),
+                slot: vb_core::SlotIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(0),
+                result: vb_core::SlotIdx::new(0)
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(0)
+            }
+            .run_id(),
+            run
+        );
     }
 
     #[test]
@@ -3452,19 +4054,119 @@ mod tests {
         // Then each returns EventSeq::new(42)
         let seq = EventSeq::new(42);
         let run = RunId::new(1);
-        assert_eq!(JournalEvent::RunAccepted { run, seq, workflow: test_digest(1) }.seq(), seq);
-        assert_eq!(JournalEvent::StepStarted { run, seq, step: StepIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::StepSucceeded { run, seq, step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::ActionScheduled { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
-        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
-        assert_eq!(JournalEvent::ActionFailedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
-        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq, slot: vb_core::SlotIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::AskScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
-        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(
+            JournalEvent::RunAccepted {
+                run,
+                seq,
+                workflow: test_digest(1)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::StepStarted {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::StepSucceeded {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                output: vb_core::SlotIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::ActionScheduled {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq,
+                slot: vb_core::SlotIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
         assert_eq!(JournalEvent::RunCancelled { run, seq }.seq(), seq);
-        assert_eq!(JournalEvent::RunFinished { run, seq, result: vb_core::SlotIdx::new(0) }.seq(), seq);
+        assert_eq!(
+            JournalEvent::RunFinished {
+                run,
+                seq,
+                result: vb_core::SlotIdx::new(0)
+            }
+            .seq(),
+            seq
+        );
         assert_eq!(JournalEvent::RunFailedEvent { run, seq }.seq(), seq);
     }
 
@@ -3475,20 +4177,126 @@ mod tests {
         // Then each returns the expected RecordKind
         let run = RunId::new(1);
         let seq = EventSeq::new(0);
-        assert_eq!(JournalEvent::RunAccepted { run, seq, workflow: test_digest(1) }.record_kind(), RecordKind::RunAccepted);
-        assert_eq!(JournalEvent::StepStarted { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::StepStarted);
-        assert_eq!(JournalEvent::StepSucceeded { run, seq, step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::SlotWritten);
-        assert_eq!(JournalEvent::ActionScheduled { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionScheduled);
-        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionCompleted);
-        assert_eq!(JournalEvent::ActionFailedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionFailed);
-        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq, slot: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::SlotWritten);
-        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::WaitScheduled);
-        assert_eq!(JournalEvent::AskScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::AskScheduled);
-        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::AskAnswered);
-        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::RetryScheduled);
-        assert_eq!(JournalEvent::RunCancelled { run, seq }.record_kind(), RecordKind::RunCancelled);
-        assert_eq!(JournalEvent::RunFinished { run, seq, result: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::RunFinished);
-        assert_eq!(JournalEvent::RunFailedEvent { run, seq }.record_kind(), RecordKind::RunFailed);
+        assert_eq!(
+            JournalEvent::RunAccepted {
+                run,
+                seq,
+                workflow: test_digest(1)
+            }
+            .record_kind(),
+            RecordKind::RunAccepted
+        );
+        assert_eq!(
+            JournalEvent::StepStarted {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::StepStarted
+        );
+        assert_eq!(
+            JournalEvent::StepSucceeded {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                output: vb_core::SlotIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::SlotWritten
+        );
+        assert_eq!(
+            JournalEvent::ActionScheduled {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .record_kind(),
+            RecordKind::ActionScheduled
+        );
+        assert_eq!(
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .record_kind(),
+            RecordKind::ActionCompleted
+        );
+        assert_eq!(
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                action: ActionId::new(1)
+            }
+            .record_kind(),
+            RecordKind::ActionFailed
+        );
+        assert_eq!(
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq,
+                slot: vb_core::SlotIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::SlotWritten
+        );
+        assert_eq!(
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::WaitScheduled
+        );
+        assert_eq!(
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::AskScheduled
+        );
+        assert_eq!(
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::AskAnswered
+        );
+        assert_eq!(
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq,
+                step: StepIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::RetryScheduled
+        );
+        assert_eq!(
+            JournalEvent::RunCancelled { run, seq }.record_kind(),
+            RecordKind::RunCancelled
+        );
+        assert_eq!(
+            JournalEvent::RunFinished {
+                run,
+                seq,
+                result: vb_core::SlotIdx::new(0)
+            }
+            .record_kind(),
+            RecordKind::RunFinished
+        );
+        assert_eq!(
+            JournalEvent::RunFailedEvent { run, seq }.record_kind(),
+            RecordKind::RunFailed
+        );
     }
 
     // --- Section 5: Encode/Decode Roundtrip Tests ---
@@ -3573,8 +4381,14 @@ mod tests {
             step: StepIdx::new(2),
             action: ActionId::new(3),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionScheduled, 4, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::ActionScheduled,
+            4,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -3591,8 +4405,14 @@ mod tests {
             step: StepIdx::new(2),
             action: ActionId::new(3),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionCompleted, 5, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::ActionCompleted,
+            5,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -3640,7 +4460,13 @@ mod tests {
             digest: test_digest(1),
             source: vec![0u8; 200],
         };
-        let result = encode_record(MAGIC_WORKFLOW_SOURCE, RecordKind::WorkflowSource, 0, &source, 10);
+        let result = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            &source,
+            10,
+        );
         let Err(JournalError::PayloadTooLarge { len, max }) = result else {
             panic!("expected PayloadTooLarge, got {:?}", result);
         };
@@ -3659,8 +4485,14 @@ mod tests {
             step: StepIdx::new(1),
             action: ActionId::new(4),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionFailed, 3, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::ActionFailed,
+            3,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -3800,7 +4632,9 @@ mod tests {
         assert!(journal.put_run_header(&original).is_ok());
         assert!(journal.put_run_header(&updated).is_ok());
 
-        let retrieved = journal.run_header(RunId::new(1)).expect("lookup should succeed");
+        let retrieved = journal
+            .run_header(RunId::new(1))
+            .expect("lookup should succeed");
         assert_eq!(retrieved, Some(updated));
     }
 
@@ -3813,11 +4647,31 @@ mod tests {
         let run1 = RunId::new(1);
         let run2 = RunId::new(2);
 
-        let r1_e0 = JournalEvent::RunAccepted { run: run1, seq: EventSeq::new(0), workflow: test_digest(1) };
-        let r1_e1 = JournalEvent::StepStarted { run: run1, seq: EventSeq::new(1), step: StepIdx::new(0) };
-        let r2_e0 = JournalEvent::RunAccepted { run: run2, seq: EventSeq::new(0), workflow: test_digest(2) };
-        let r2_e1 = JournalEvent::StepStarted { run: run2, seq: EventSeq::new(1), step: StepIdx::new(1) };
-        let r2_e2 = JournalEvent::RunFinished { run: run2, seq: EventSeq::new(2), result: vb_core::SlotIdx::new(0) };
+        let r1_e0 = JournalEvent::RunAccepted {
+            run: run1,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let r1_e1 = JournalEvent::StepStarted {
+            run: run1,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let r2_e0 = JournalEvent::RunAccepted {
+            run: run2,
+            seq: EventSeq::new(0),
+            workflow: test_digest(2),
+        };
+        let r2_e1 = JournalEvent::StepStarted {
+            run: run2,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+        };
+        let r2_e2 = JournalEvent::RunFinished {
+            run: run2,
+            seq: EventSeq::new(2),
+            result: vb_core::SlotIdx::new(0),
+        };
 
         assert!(journal.append_journaled(&r1_e0).is_ok());
         assert!(journal.append_journaled(&r1_e1).is_ok());
@@ -3825,9 +4679,13 @@ mod tests {
         assert!(journal.append_journaled(&r2_e1).is_ok());
         assert!(journal.append_journaled(&r2_e2).is_ok());
 
-        let events1 = journal.events_for_run(run1).expect("events_for_run run1 should succeed");
+        let events1 = journal
+            .events_for_run(run1)
+            .expect("events_for_run run1 should succeed");
         assert_eq!(events1.len(), 2);
-        let events2 = journal.events_for_run(run2).expect("events_for_run run2 should succeed");
+        let events2 = journal
+            .events_for_run(run2)
+            .expect("events_for_run run2 should succeed");
         assert_eq!(events2.len(), 3);
     }
 
@@ -3872,7 +4730,11 @@ mod tests {
         sorted.sort();
         let mut deduped = sorted.clone();
         deduped.dedup();
-        assert_eq!(ids.len(), deduped.len(), "all RecordKind ids must be distinct");
+        assert_eq!(
+            ids.len(),
+            deduped.len(),
+            "all RecordKind ids must be distinct"
+        );
     }
 
     #[test]
@@ -3927,9 +4789,15 @@ mod tests {
         // Then it returns Ok (tested indirectly via events_for_run)
         let (_guard, journal) = open_journal();
         let run = RunId::new(42);
-        let event = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
         assert!(journal.append_journaled(&event).is_ok());
-        let events = journal.events_for_run(run).expect("should succeed with contiguous events");
+        let events = journal
+            .events_for_run(run)
+            .expect("should succeed with contiguous events");
         assert_eq!(events.len(), 1);
     }
 
@@ -3946,13 +4814,44 @@ mod tests {
         {
             let journal = FjallJournal::open(temp_dir.path()).expect("open should succeed");
             let events = vec![
-                JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) },
-                JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) },
-                JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(2), slot: vb_core::SlotIdx::new(0) },
-                JournalEvent::ActionScheduled { run, seq: EventSeq::new(3), step: StepIdx::new(0), action: ActionId::new(1) },
-                JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(4), step: StepIdx::new(0), action: ActionId::new(1) },
-                JournalEvent::StepSucceeded { run, seq: EventSeq::new(5), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) },
-                JournalEvent::RunFinished { run, seq: EventSeq::new(6), result: vb_core::SlotIdx::new(1) },
+                JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow: test_digest(1),
+                },
+                JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(1),
+                    step: StepIdx::new(0),
+                },
+                JournalEvent::SlotWrittenEvent {
+                    run,
+                    seq: EventSeq::new(2),
+                    slot: vb_core::SlotIdx::new(0),
+                },
+                JournalEvent::ActionScheduled {
+                    run,
+                    seq: EventSeq::new(3),
+                    step: StepIdx::new(0),
+                    action: ActionId::new(1),
+                },
+                JournalEvent::ActionCompletedEvent {
+                    run,
+                    seq: EventSeq::new(4),
+                    step: StepIdx::new(0),
+                    action: ActionId::new(1),
+                },
+                JournalEvent::StepSucceeded {
+                    run,
+                    seq: EventSeq::new(5),
+                    step: StepIdx::new(0),
+                    output: vb_core::SlotIdx::new(1),
+                },
+                JournalEvent::RunFinished {
+                    run,
+                    seq: EventSeq::new(6),
+                    result: vb_core::SlotIdx::new(1),
+                },
             ];
             for event in &events {
                 assert!(journal.append_strict(event).is_ok());
@@ -3960,7 +4859,9 @@ mod tests {
         }
 
         let journal2 = FjallJournal::open(temp_dir.path()).expect("reopen should succeed");
-        let events = journal2.events_for_run(run).expect("events_for_run should succeed");
+        let events = journal2
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
         assert_eq!(events.len(), 7);
         assert_eq!(events[0].seq(), EventSeq::new(0));
         assert_eq!(events[6].seq(), EventSeq::new(6));
@@ -3980,7 +4881,9 @@ mod tests {
             accepted_at_ms: 1700000000,
         };
         assert!(journal.put_run_header(&record).is_ok());
-        let retrieved = journal.run_header(RunId::new(42)).expect("lookup should succeed");
+        let retrieved = journal
+            .run_header(RunId::new(42))
+            .expect("lookup should succeed");
         let Some(found) = retrieved else {
             panic!("expected Some(record)");
         };
@@ -3998,7 +4901,10 @@ mod tests {
         // Then the record survives with empty bytes
         let (_guard, journal) = open_journal();
         let digest = [0u8; 32];
-        let record = BlobRecord { digest, bytes: vec![] };
+        let record = BlobRecord {
+            digest,
+            bytes: vec![],
+        };
         assert!(journal.put_blob(&record).is_ok());
         let retrieved = journal.blob(digest).expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
@@ -4011,9 +4917,14 @@ mod tests {
         // Then the record survives with empty source
         let (_guard, journal) = open_journal();
         let digest = test_digest(0);
-        let record = WorkflowSourceRecord { digest, source: vec![] };
+        let record = WorkflowSourceRecord {
+            digest,
+            source: vec![],
+        };
         assert!(journal.put_workflow_source(&record).is_ok());
-        let retrieved = journal.workflow_source(digest).expect("lookup should succeed");
+        let retrieved = journal
+            .workflow_source(digest)
+            .expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
 
@@ -4027,8 +4938,14 @@ mod tests {
             seq: EventSeq::new(2),
             step: StepIdx::new(3),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::WaitScheduled, 2, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::WaitScheduled,
+            2,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -4044,8 +4961,14 @@ mod tests {
             seq: EventSeq::new(3),
             step: StepIdx::new(4),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::AskScheduled, 3, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::AskScheduled,
+            3,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -4078,8 +5001,14 @@ mod tests {
             seq: EventSeq::new(5),
             step: StepIdx::new(6),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RetryScheduled, 5, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RetryScheduled,
+            5,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -4094,25 +5023,378 @@ mod tests {
             run: RunId::new(14),
             seq: EventSeq::new(6),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunCancelled, 6, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            6,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
     }
+
+    // =========================================================================
+    // Section: Adversarial Record Header Decode Tests
+    // =========================================================================
+
+    fn encode_and_patch_field(
+        event: &JournalEvent,
+        kind: RecordKind,
+        offset: usize,
+        new_bytes: &[u8],
+    ) -> Vec<u8> {
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT, kind, event.seq().get(), event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        ).expect("encoding should succeed");
+        let end = offset.saturating_add(new_bytes.len());
+        assert!(end <= 56, "patch must be within CRC-protected region");
+        encoded.get_mut(offset..end).expect("patch range valid").copy_from_slice(new_bytes);
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+        encoded
+    }
+
+    #[test]
+    fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: test_digest(1) };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_SNAPSHOT, 128);
+        let Err(JournalError::BadMagic { found }) = result else { panic!("expected BadMagic, got {:?}", result) };
+        assert_eq!(found, MAGIC_JOURNAL_EVENT);
+    }
+
+    #[test]
+    fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
+        let record = CompiledIrRecord { digest: test_digest(1), ir: vec![1, 2, 3] };
+        let encoded = encode_record(MAGIC_COMPILED_ARTIFACT, RecordKind::CompiledIr, 0, &record, MAX_COMPILED_IR_BYTES).expect("ok");
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::BadMagic { found }) = result else { panic!("expected BadMagic, got {:?}", result) };
+        assert_eq!(found, MAGIC_COMPILED_ARTIFACT);
+    }
+
+    #[test]
+    fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(2), seq: EventSeq::new(0), workflow: test_digest(2) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else { panic!("expected UnsupportedSchemaVersion, got {:?}", result) };
+        assert_eq!(version, 5);
+    }
+
+    #[test]
+    fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(3), seq: EventSeq::new(0), workflow: test_digest(3) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnknownRecordKind { kind }) = result else { panic!("expected UnknownRecordKind, got {:?}", result) };
+        assert_eq!(kind, 99);
+    }
+
+    #[test]
+    fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(4), seq: EventSeq::new(0), workflow: test_digest(4) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else { panic!("expected mismatch, got {:?}", result) };
+        assert_eq!(magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(kind, 30);
+    }
+
+    #[test]
+    fn adversarial_decode_kind_family_mismatch_blob_in_snapshot() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(5), seq: EventSeq::new(0), workflow: test_digest(5) };
+        let result = encode_record(MAGIC_SNAPSHOT, RecordKind::Blob, event.seq().get(), &event, MAX_SNAPSHOT_BYTES);
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else { panic!("expected mismatch, got {:?}", result) };
+        assert_eq!(magic, MAGIC_SNAPSHOT);
+        assert_eq!(kind, RecordKind::Blob.id());
+    }
+
+    #[test]
+    fn adversarial_decode_header_len_not_60_returns_mismatch() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(6), seq: EventSeq::new(0), workflow: test_digest(6) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::HeaderLengthMismatch { found }) = result else { panic!("expected mismatch, got {:?}", result) };
+        assert_eq!(found, 48);
+    }
+
+    #[test]
+    fn adversarial_decode_payload_len_above_limit_returns_too_large() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(7), seq: EventSeq::new(0), workflow: test_digest(7) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 12, &9999u32.to_le_bytes());
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 100);
+        let Err(JournalError::PayloadTooLarge { len, max }) = result else { panic!("expected PayloadTooLarge, got {:?}", result) };
+        assert_eq!(len, 9999);
+        assert_eq!(max, 100);
+    }
+
+    #[test]
+    fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(8), seq: EventSeq::new(0), workflow: test_digest(8) };
+        let mut encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        if let Some(b) = encoded.get_mut(57) { *b ^= 0x80; }
+        assert!(matches!(decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::HeaderChecksumMismatch)));
+    }
+
+    #[test]
+    fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(9), seq: EventSeq::new(0), workflow: test_digest(9) };
+        let mut encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        if let Some(b) = encoded.get_mut(61) { *b ^= 0xFF; }
+        assert!(matches!(decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::PayloadDigestMismatch)));
+    }
+
+    #[test]
+    fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
+        let truncated = [0u8; 45];
+        assert!(matches!(decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+    }
+
+    #[test]
+    fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(10), seq: EventSeq::new(0), workflow: test_digest(10) };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        let truncated = encoded.get(..62).expect("slice");
+        assert!(matches!(decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+    }
+
+    // =========================================================================
+    // Section: Adversarial Key Encoding Tests
+    // =========================================================================
+
+    #[test]
+    fn adversarial_key_prefix_isolation_proves_different_prefixes() {
+        let digest = [0xAB; 32];
+        let ws = workflow_source_key(digest).expect("ws");
+        let ci = compiled_ir_key(digest).expect("ci");
+        let bl = blob_key(digest).expect("bl");
+        assert_ne!(ws[0], ci[0]);
+        assert_ne!(ws[0], bl[0]);
+        assert_eq!(ws[1..], ci[1..]);
+        assert_eq!(ws[1..], bl[1..]);
+    }
+
+    #[test]
+    fn adversarial_key_wrong_endianness_produces_different_keys() {
+        let key = run_header_key(RunId::new(1)).expect("key");
+        let mut le = [0u8; 9];
+        le[0] = PREFIX_RUN_HEADER;
+        le[1..9].copy_from_slice(&1u64.to_le_bytes());
+        assert_ne!(key.as_slice(), le.as_slice());
+        assert_eq!(key[1..9], 1u64.to_be_bytes());
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_different_runs_same_seq() {
+        let k1 = run_event_key(RunId::new(100), EventSeq::new(5)).expect("k1");
+        let k2 = run_event_key(RunId::new(200), EventSeq::new(5)).expect("k2");
+        assert_ne!(k1.as_slice(), k2.as_slice());
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_same_run_different_seq() {
+        let k1 = run_event_key(RunId::new(100), EventSeq::new(0)).expect("k1");
+        let k2 = run_event_key(RunId::new(100), EventSeq::new(1)).expect("k2");
+        assert_ne!(k1.as_slice(), k2.as_slice());
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_different_digests() {
+        assert_ne!(blob_key([1u8; 32]).expect("k1").as_slice(), blob_key([2u8; 32]).expect("k2").as_slice());
+    }
+
+    // =========================================================================
+    // Section: Adversarial Journal / Replay Tests
+    // =========================================================================
+
+    #[test]
+    fn adversarial_append_duplicate_sequence_rejected_with_exact_fields() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let run = RunId::new(50);
+        assert!(journal.append_journaled(&JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }).is_ok());
+        let result = journal.append_journaled(&JournalEvent::StepStarted { run, seq: EventSeq::new(0), step: StepIdx::new(0) });
+        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else { panic!("expected DuplicateEvent, got {:?}", result) };
+        assert_eq!(r, run);
+        assert_eq!(s, EventSeq::new(0));
+    }
+
+    #[test]
+    fn adversarial_read_events_with_sequence_gap_returns_exact_gap() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let run = RunId::new(777);
+        assert!(journal.append_journaled(&JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }).is_ok());
+        assert!(journal.append_journaled(&JournalEvent::RunFinished { run, seq: EventSeq::new(5), result: vb_core::SlotIdx::new(0) }).is_ok());
+        let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run) else { panic!("expected SequenceGap") };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(5));
+    }
+
+    // =========================================================================
+    // Section: Adversarial Blob / Snapshot / Size Boundary Tests
+    // =========================================================================
+
+    #[test]
+    fn adversarial_put_blob_exceeding_max_returns_payload_too_large() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let record = BlobRecord { digest: [0xFF; 32], bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)] };
+        assert!(matches!(journal.put_blob(&record), Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn adversarial_blob_zero_length_round_trips() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let record = BlobRecord { digest: [0x42; 32], bytes: vec![] };
+        assert!(journal.put_blob(&record).is_ok());
+        assert_eq!(journal.blob([0x42; 32]).expect("ok"), Some(record));
+    }
+
+    #[test]
+    fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let snap = RunSnapshot { run: RunId::new(888), seq: EventSeq::new(0), workflow: test_digest(1), slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)] };
+        assert!(matches!(journal.put_snapshot(&snap), Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
+        let snap = RunSnapshot { run: RunId::new(889), seq: EventSeq::new(0), workflow: test_digest(1), slots: vec![1, 2, 3] };
+        let mut enc = encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, snap.seq.get(), &snap, MAX_SNAPSHOT_BYTES).expect("ok");
+        if let Some(b) = enc.get_mut(0) { *b ^= 0xFF; }
+        assert!(matches!(decode_record::<RunSnapshot>(&enc, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES), Err(JournalError::BadMagic { .. })));
+    }
+
+    #[test]
+    fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let record = WorkflowSourceRecord { digest: test_digest(0xEE), source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)] };
+        assert!(matches!(journal.put_workflow_source(&record), Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let record = CompiledIrRecord { digest: test_digest(0xCC), ir: vec![0u8; (MAX_COMPILED_IR_BYTES as usize).saturating_add(1)] };
+        assert!(matches!(journal.put_compiled_ir(&record), Err(JournalError::PayloadTooLarge { .. })));
+    }
+
+    // =========================================================================
+    // Section: Adversarial Schema Migration Tests
+    // =========================================================================
+
+    #[test]
+    fn adversarial_schema_migration_from_zero_exact_fields() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(11), seq: EventSeq::new(0), workflow: test_digest(11) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
+        let Err(JournalError::MigrationRequired { from, to }) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128) else { panic!("expected MigrationRequired") };
+        assert_eq!(from, 0);
+        assert_eq!(to, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn adversarial_schema_future_version_max_unsupported() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(12), seq: EventSeq::new(0), workflow: test_digest(12) };
+        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &u16::MAX.to_le_bytes());
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128) else { panic!("expected UnsupportedSchemaVersion") };
+        assert_eq!(version, u16::MAX);
+    }
+
+    // =========================================================================
+    // Section: Adversarial Queue Tests
+    // =========================================================================
+
+    #[test]
+    fn adversarial_queue_zero_capacity_returns_queue_capacity() {
+        assert!(matches!(JournalWriterQueue::new(0, 1, StorageLimits::DEFAULT), Err(JournalError::QueueCapacity)));
+    }
+
+    #[test]
+    fn adversarial_queue_zero_batch_returns_queue_capacity() {
+        assert!(matches!(JournalWriterQueue::new(1, 0, StorageLimits::DEFAULT), Err(JournalError::QueueCapacity)));
+    }
+
+    #[test]
+    fn adversarial_queue_full_returns_queue_full() {
+        let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("q");
+        let event = JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: test_digest(1) };
+        assert!(queue.enqueue_journaled(event.clone()).is_ok());
+        assert!(matches!(queue.enqueue_journaled(event), Err(JournalError::QueueFull)));
+    }
+
+    // =========================================================================
+    // Section: Adversarial Postcard / Encoding Edge Cases
+    // =========================================================================
+
+    #[test]
+    fn adversarial_valid_header_garbage_postcard_returns_decode_failed() {
+        let event = JournalEvent::RunAccepted { run: RunId::new(13), seq: EventSeq::new(0), workflow: test_digest(13) };
+        let mut enc = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        if let Some(b) = enc.get_mut(60) { *b = 0xFF; }
+        let digest_bytes = blake3::hash(&enc[60..]).as_bytes().clone();
+        enc.get_mut(24..56).expect("digest").copy_from_slice(&digest_bytes);
+        let cs = crc32c::crc32c(&enc[..56]);
+        enc[56] = (cs & 0xFF) as u8; enc[57] = ((cs >> 8) & 0xFF) as u8;
+        enc[58] = ((cs >> 16) & 0xFF) as u8; enc[59] = ((cs >> 24) & 0xFF) as u8;
+        assert!(matches!(decode_record::<JournalEvent>(&enc, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::PostcardDecodeFailed)));
+    }
+
+    #[test]
+    fn adversarial_run_header_wrong_magic_returns_bad_magic() {
+        let record = RunHeaderRecord { run: RunId::new(123), workflow_id: WorkflowId::new(456), compiled_digest: test_digest(8), status: 1, accepted_at_ms: 1700000000 };
+        let enc = encode_record(MAGIC_INDEX_RECORD, RecordKind::RunHeader, record.run.as_u64(), &record, MAX_RUN_HEADER_BYTES).expect("ok");
+        assert!(matches!(decode_record::<RunHeaderRecord>(&enc, MAGIC_BLOB, MAX_RUN_HEADER_BYTES), Err(JournalError::BadMagic { .. })));
+    }
+
+    #[test]
+    fn adversarial_decode_empty_returns_unexpected_eof() {
+        assert!(matches!(decode_record::<JournalEvent>(&[][..], MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+    }
+
+    #[test]
+    fn adversarial_encode_empty_blob_succeeds() {
+        assert!(encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &BlobRecord { digest: [0; 32], bytes: vec![] }, MAX_BLOB_BYTES).is_ok());
+    }
+
+    #[test]
+    fn adversarial_encode_empty_source_succeeds() {
+        assert!(encode_record(MAGIC_WORKFLOW_SOURCE, RecordKind::WorkflowSource, 0, &WorkflowSourceRecord { digest: test_digest(0), source: vec![] }, MAX_WORKFLOW_SOURCE_BYTES).is_ok());
+    }
+
+    #[test]
+    fn adversarial_encode_empty_ir_succeeds() {
+        assert!(encode_record(MAGIC_COMPILED_ARTIFACT, RecordKind::CompiledIr, 0, &CompiledIrRecord { digest: test_digest(0), ir: vec![] }, MAX_COMPILED_IR_BYTES).is_ok());
+    }
 }
 
 #[cfg(test)]
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 mod proptests {
+    use super::*;
     use crate::{
-        BlobRecord, EventSeq, RecordKind, WorkflowSourceRecord,
-        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
-        index_status_key, index_workflow_key, run_event_key, run_header_key, run_snapshot_key,
-        workflow_source_key, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-        MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        BlobRecord, EventSeq, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord, blob_key,
+        compiled_ir_key, decode_record, encode_record, index_action_key, index_status_key,
+        index_workflow_key, run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
     };
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
+
+    fn test_digest(byte: u8) -> WorkflowDigest {
+        WorkflowDigest::from_bytes([byte; 32])
+    }
 
     proptest! {
         #[test]
@@ -4342,5 +5624,917 @@ mod proptests {
             let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
             prop_assert_eq!(decoded_record, record);
         }
+    }
+
+    // --- Section: Adversarial Record Header Decode Tests ---
+
+    /// Helper: encode a record and corrupt a specific byte offset, then recompute the
+    /// CRC32C over bytes 0..56 so that the CRC check passes (but the corrupted field
+    /// remains). This lets us test validation of individual header fields past the CRC.
+    fn encode_and_patch_field(
+        event: &JournalEvent,
+        kind: RecordKind,
+        offset: usize,
+        new_bytes: &[u8],
+    ) -> Vec<u8> {
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            kind,
+            event.seq().get(),
+            event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        let end = offset.saturating_add(new_bytes.len());
+        assert!(end <= 56, "patch must be within CRC-protected region");
+        let target = encoded.get_mut(offset..end).expect("patch range valid");
+        target.copy_from_slice(new_bytes);
+        // Recompute CRC32C over bytes 0..56
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+        encoded
+    }
+
+    #[test]
+    fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
+        // Given a record encoded with MAGIC_JOURNAL_EVENT
+        // When decoded with MAGIC_SNAPSHOT (wrong family)
+        // Then it returns BadMagic with the journal event magic
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_SNAPSHOT, 128);
+        let Err(JournalError::BadMagic { found }) = result else {
+            panic!("expected BadMagic, got {:?}", result);
+        };
+        assert_eq!(found, MAGIC_JOURNAL_EVENT);
+    }
+
+    #[test]
+    fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
+        // Given a record with MAGIC_COMPILED_ARTIFACT (VBIR)
+        // When decoded expecting MAGIC_JOURNAL_EVENT
+        // Then it returns BadMagic with the VBIR magic value
+        let record = CompiledIrRecord {
+            digest: test_digest(1),
+            ir: vec![1, 2, 3],
+        };
+        let encoded = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            MAX_COMPILED_IR_BYTES,
+        )
+        .expect("encoding should succeed");
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::BadMagic { found }) = result else {
+            panic!("expected BadMagic, got {:?}", result);
+        };
+        assert_eq!(found, MAGIC_COMPILED_ARTIFACT);
+    }
+
+    #[test]
+    fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
+        // Given a record with schema version patched to 5 (future)
+        // When decode_record is called
+        // Then it returns UnsupportedSchemaVersion { version: 5 }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(2),
+            seq: EventSeq::new(0),
+            workflow: test_digest(2),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
+            panic!("expected UnsupportedSchemaVersion, got {:?}", result);
+        };
+        assert_eq!(version, 5);
+    }
+
+    #[test]
+    fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
+        // Given a record with kind patched to 99 (outside all valid ranges)
+        // When decode_record is called
+        // Then it returns UnknownRecordKind { kind: 99 }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(3),
+            seq: EventSeq::new(0),
+            workflow: test_digest(3),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnknownRecordKind { kind }) = result else {
+            panic!("expected UnknownRecordKind, got {:?}", result);
+        };
+        assert_eq!(kind, 99);
+    }
+
+    #[test]
+    fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
+        // Given a record with MAGIC_JOURNAL_EVENT but kind patched to Snapshot (30)
+        // When decode_record is called
+        // Then it returns RecordKindFamilyMismatch
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(4),
+            seq: EventSeq::new(0),
+            workflow: test_digest(4),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
+            panic!("expected RecordKindFamilyMismatch, got {:?}", result);
+        };
+        assert_eq!(magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(kind, 30);
+    }
+
+    #[test]
+    fn adversarial_decode_kind_family_mismatch_blob_in_snapshot() {
+        // Given a record with MAGIC_SNAPSHOT but kind patched to Blob (40)
+        // When encode_record is called
+        // Then it returns RecordKindFamilyMismatch
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(5),
+            seq: EventSeq::new(0),
+            workflow: test_digest(5),
+        };
+        let result = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Blob,
+            event.seq().get(),
+            &event,
+            MAX_SNAPSHOT_BYTES,
+        );
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
+            panic!("expected RecordKindFamilyMismatch, got {:?}", result);
+        };
+        assert_eq!(magic, MAGIC_SNAPSHOT);
+        assert_eq!(kind, RecordKind::Blob.id());
+    }
+
+    #[test]
+    fn adversarial_decode_header_len_not_60_returns_mismatch() {
+        // Given a record with header_len patched to 48 (not 60)
+        // When decode_record is called
+        // Then it returns HeaderLengthMismatch { found: 48 }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(6),
+            seq: EventSeq::new(0),
+            workflow: test_digest(6),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::HeaderLengthMismatch { found }) = result else {
+            panic!("expected HeaderLengthMismatch, got {:?}", result);
+        };
+        assert_eq!(found, 48);
+    }
+
+    #[test]
+    fn adversarial_decode_payload_len_above_limit_returns_too_large() {
+        // Given a record with payload_len patched to 9999 but max set to 100
+        // When decode_record is called
+        // Then it returns PayloadTooLarge with exact values
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(7),
+            seq: EventSeq::new(0),
+            workflow: test_digest(7),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 12, &9999u32.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 100);
+        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
+            panic!("expected PayloadTooLarge, got {:?}", result);
+        };
+        assert_eq!(len, 9999);
+        assert_eq!(max, 100);
+    }
+
+    #[test]
+    fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
+        // Given a record with a single byte flipped in the CRC region
+        // When decode_record is called
+        // Then it returns HeaderChecksumMismatch
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(8),
+            seq: EventSeq::new(0),
+            workflow: test_digest(8),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Flip bit in CRC byte at offset 57
+        if let Some(byte) = encoded.get_mut(57) {
+            *byte ^= 0x80;
+        }
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::HeaderChecksumMismatch)),
+            "expected HeaderChecksumMismatch, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
+        // Given a record with a single byte flipped in the payload
+        // When decode_record is called
+        // Then it returns PayloadDigestMismatch
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(9),
+            seq: EventSeq::new(0),
+            workflow: test_digest(9),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Flip a payload byte (offset 60+)
+        if let Some(byte) = encoded.get_mut(61) {
+            *byte ^= 0xFF;
+        }
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "expected PayloadDigestMismatch, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
+        // Given 45 bytes (less than 60-byte header)
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let truncated = [0u8; 45];
+        let result = decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "expected UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
+        // Given a valid header but payload truncated to only 2 of N bytes
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(10),
+            seq: EventSeq::new(0),
+            workflow: test_digest(10),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Keep 60-byte header + 2 payload bytes (truncated)
+        let truncated = encoded.get(..62).expect("slice should exist");
+
+        let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "expected UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial Key Encoding Tests ---
+
+    #[test]
+    fn adversarial_key_wrong_prefix_isolation() {
+        // Given workflow_source and compiled_ir keys for the same digest
+        // When compared
+        // Then they differ in the prefix byte only, proving prefix isolation
+        let digest = [0xAB; 32];
+        let ws_key = workflow_source_key(digest).expect("ws key");
+        let ci_key = compiled_ir_key(digest).expect("ci key");
+        let bl_key = blob_key(digest).expect("blob key");
+
+        assert_ne!(ws_key[0], ci_key[0]);
+        assert_ne!(ws_key[0], bl_key[0]);
+        assert_ne!(ci_key[0], bl_key[0]);
+        // Same digest payload after prefix
+        assert_eq!(ws_key[1..], ci_key[1..]);
+        assert_eq!(ws_key[1..], bl_key[1..]);
+    }
+
+    #[test]
+    fn adversarial_key_too_short_for_format_is_rejected_by_decode() {
+        // Given a 3-byte slice (too short for any key format)
+        // When used as raw bytes in decode_record
+        // Then it returns UnexpectedEof
+        let short = [0x11, 0x00, 0x00];
+        let result = decode_record::<JournalEvent>(&short, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "expected UnexpectedEof for short key bytes"
+        );
+    }
+
+    #[test]
+    fn adversarial_key_wrong_endianness_produces_different_keys() {
+        // Given run id 1 encoded in big-endian vs little-endian in key context
+        // When the big-endian key is compared with a manually constructed LE key
+        // Then they differ, proving the key encoder uses big-endian
+        let key = run_header_key(RunId::new(1)).expect("key should succeed");
+        // Key layout: [prefix 0x10][run_id 8 bytes big-endian]
+        let mut le_key = [0u8; 9];
+        le_key[0] = PREFIX_RUN_HEADER;
+        le_key[1..9].copy_from_slice(&1u64.to_le_bytes());
+
+        assert_ne!(key.as_slice(), le_key.as_slice(), "key must use big-endian");
+        assert_eq!(
+            key[1..9],
+            1u64.to_be_bytes(),
+            "run id portion must be big-endian"
+        );
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_different_runs_same_seq() {
+        // Given two different runs with the same sequence number
+        // When their journal keys are constructed
+        // Then the keys are different
+        let k1 = run_event_key(RunId::new(100), EventSeq::new(5)).expect("key1");
+        let k2 = run_event_key(RunId::new(200), EventSeq::new(5)).expect("key2");
+        assert_ne!(k1.as_slice(), k2.as_slice());
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_same_run_different_seq() {
+        // Given the same run with different sequence numbers
+        // When their journal keys are constructed
+        // Then the keys are different
+        let k1 = run_event_key(RunId::new(100), EventSeq::new(0)).expect("key1");
+        let k2 = run_event_key(RunId::new(100), EventSeq::new(1)).expect("key2");
+        assert_ne!(k1.as_slice(), k2.as_slice());
+    }
+
+    #[test]
+    fn adversarial_key_no_collision_different_digests_same_prefix() {
+        // Given two different digests with the same blob prefix
+        // When their blob keys are constructed
+        // Then the keys are different
+        let d1 = [1u8; 32];
+        let d2 = [2u8; 32];
+        let k1 = blob_key(d1).expect("key1");
+        let k2 = blob_key(d2).expect("key2");
+        assert_ne!(k1.as_slice(), k2.as_slice());
+    }
+
+    // --- Section: Adversarial Journal Tests ---
+
+    #[test]
+    fn adversarial_append_event_for_run_with_no_prior_events_succeeds() {
+        // Given an empty journal
+        // When a RunAccepted event is appended for a new run
+        // Then it succeeds and events_for_run returns exactly that event
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(1000);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(42),
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+        let events = journal.events_for_run(run).expect("read events");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[test]
+    fn adversarial_append_duplicate_sequence_is_rejected() {
+        // Given a journal with seq 0 for run 50
+        // When appending another event at seq 0 for the same run
+        // Then DuplicateEvent is returned with exact run and seq
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(50);
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let e0_dup = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+        };
+        assert!(journal.append_journaled(&e0).is_ok());
+        let result = journal.append_journaled(&e0_dup);
+        let Err(JournalError::DuplicateEvent {
+            run: dup_run,
+            seq: dup_seq,
+        }) = result
+        else {
+            panic!("expected DuplicateEvent, got {:?}", result);
+        };
+        assert_eq!(dup_run, run);
+        assert_eq!(dup_seq, EventSeq::new(0));
+    }
+
+    #[test]
+    fn adversarial_read_events_from_empty_run_returns_empty() {
+        // Given a journal with no events
+        // When events_for_run is called
+        // Then it returns an empty vector (no error)
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let events = journal
+            .events_for_run(RunId::new(9999))
+            .expect("should succeed");
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn adversarial_read_events_with_sequence_gap_returns_error() {
+        // Given a journal with seq 0 then seq 5 (gap at 1..4)
+        // When events_for_run replays
+        // Then it returns SequenceGap with expected=1, actual=5
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(777);
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let e5 = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(5),
+            result: vb_core::SlotIdx::new(0),
+        };
+        assert!(journal.append_journaled(&e0).is_ok());
+        assert!(journal.append_journaled(&e5).is_ok());
+
+        let result = journal.events_for_run(run);
+        let Err(JournalError::SequenceGap { expected, actual }) = result else {
+            panic!("expected SequenceGap, got {:?}", result);
+        };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(5));
+    }
+
+    // --- Section: Adversarial Blob Storage Tests ---
+
+    #[test]
+    fn adversarial_put_blob_exceeding_max_bytes_returns_payload_too_large() {
+        // Given a BlobRecord with payload exceeding MAX_BLOB_BYTES
+        // When put_blob is called
+        // Then it returns PayloadTooLarge
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let record = BlobRecord {
+            digest: [0xFF; 32],
+            bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)],
+        };
+        let result = journal.put_blob(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+            "expected PayloadTooLarge for oversized blob, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn adversarial_read_nonexistent_blob_returns_none() {
+        // Given a journal with no blobs
+        // When blob is called with an arbitrary digest
+        // Then it returns None
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let result = journal.blob([0xDE; 32]).expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn adversarial_blob_zero_length_payload_round_trips() {
+        // Given a BlobRecord with zero-length bytes
+        // When stored and retrieved
+        // Then the round-trip succeeds and bytes are empty
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let record = BlobRecord {
+            digest: [0x42; 32],
+            bytes: vec![],
+        };
+        assert!(journal.put_blob(&record).is_ok());
+        let retrieved = journal.blob([0x42; 32]).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    // --- Section: Adversarial Migration / Schema Tests ---
+
+    #[test]
+    fn adversarial_schema_migration_required_from_zero() {
+        // Given a record with schema version 0
+        // When decode_record is called
+        // Then it returns MigrationRequired { from: 0, to: 1 }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(11),
+            seq: EventSeq::new(0),
+            workflow: test_digest(11),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::MigrationRequired { from, to }) = result else {
+            panic!("expected MigrationRequired, got {:?}", result);
+        };
+        assert_eq!(from, 0);
+        assert_eq!(to, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn adversarial_schema_future_version_returns_unsupported() {
+        // Given a record with schema version u16::MAX
+        // When decode_record is called
+        // Then it returns UnsupportedSchemaVersion { version: u16::MAX }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(12),
+            seq: EventSeq::new(0),
+            workflow: test_digest(12),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &u16::MAX.to_le_bytes());
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
+            panic!("expected UnsupportedSchemaVersion, got {:?}", result);
+        };
+        assert_eq!(version, u16::MAX);
+    }
+
+    // --- Section: Adversarial Workflow Source Tests ---
+
+    #[test]
+    fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
+        // Given a WorkflowSourceRecord with source exceeding MAX_WORKFLOW_SOURCE_BYTES
+        // When put_workflow_source is called
+        // Then it returns PayloadTooLarge
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let record = WorkflowSourceRecord {
+            digest: test_digest(0xEE),
+            source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)],
+        };
+        let result = journal.put_workflow_source(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+            "expected PayloadTooLarge for oversized source, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial Compiled IR Tests ---
+
+    #[test]
+    fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
+        // Given a CompiledIrRecord with IR exceeding MAX_COMPILED_IR_BYTES
+        // When put_compiled_ir is called
+        // Then it returns PayloadTooLarge
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let record = CompiledIrRecord {
+            digest: test_digest(0xCC),
+            ir: vec![0u8; (MAX_COMPILED_IR_BYTES as usize).saturating_add(1)],
+        };
+        let result = journal.put_compiled_ir(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+            "expected PayloadTooLarge for oversized IR, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial Snapshot Tests ---
+
+    #[test]
+    fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
+        // Given a RunSnapshot with slots exceeding MAX_SNAPSHOT_BYTES
+        // When put_snapshot is called
+        // Then it returns PayloadTooLarge
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let snapshot = RunSnapshot {
+            run: RunId::new(888),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)],
+        };
+        let result = journal.put_snapshot(&snapshot);
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+            "expected PayloadTooLarge for oversized snapshot, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
+        // Given an encoded snapshot record with magic corrupted
+        // When decode_record is called with MAGIC_SNAPSHOT
+        // Then it returns BadMagic
+        let snapshot = recovery::RunSnapshot {
+            run: RunId::new(889),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![1, 2, 3],
+        };
+        let mut encoded = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Snapshot,
+            snapshot.seq.get(),
+            &snapshot,
+            MAX_SNAPSHOT_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Corrupt magic byte at offset 0
+        if let Some(byte) = encoded.get_mut(0) {
+            *byte ^= 0xFF;
+        }
+        let result =
+            decode_record::<recovery::RunSnapshot>(&encoded, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES);
+        assert!(
+            matches!(result, Err(JournalError::BadMagic { .. })),
+            "expected BadMagic for corrupt snapshot, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial Queue Tests ---
+
+    #[test]
+    fn adversarial_queue_zero_capacity_returns_queue_capacity_error() {
+        // Given capacity=0, batch_size=1
+        // When JournalWriterQueue::new is called
+        // Then it returns QueueCapacity
+        let result = JournalWriterQueue::new(0, 1, StorageLimits::DEFAULT);
+        assert!(
+            matches!(result, Err(JournalError::QueueCapacity)),
+            "expected QueueCapacity for zero capacity"
+        );
+    }
+
+    #[test]
+    fn adversarial_queue_zero_batch_returns_queue_capacity_error() {
+        // Given capacity=1, batch_size=0
+        // When JournalWriterQueue::new is called
+        // Then it returns QueueCapacity
+        let result = JournalWriterQueue::new(1, 0, StorageLimits::DEFAULT);
+        assert!(
+            matches!(result, Err(JournalError::QueueCapacity)),
+            "expected QueueCapacity for zero batch size"
+        );
+    }
+
+    #[test]
+    fn adversarial_queue_full_returns_queue_full_error() {
+        // Given a queue at capacity 1
+        // When a second event is enqueued
+        // Then it returns QueueFull
+        let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("queue creation");
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        assert!(queue.enqueue_journaled(event.clone()).is_ok());
+        let result = queue.enqueue_journaled(event);
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "expected QueueFull, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial IPC Frame Magic Tests ---
+
+    #[test]
+    fn adversarial_ipc_frame_magic_accepts_any_kind() {
+        // Given MAGIC_IPC_FRAME with any record kind
+        // When validate_kind_family is called
+        // Then it returns Ok (IPC frame magic accepts all kinds)
+        let result = encode_record(
+            MAGIC_IPC_FRAME,
+            RecordKind::RunAccepted,
+            0,
+            &JournalEvent::RunAccepted {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            128,
+        );
+        assert!(
+            result.is_ok(),
+            "IPC frame magic should accept any known kind"
+        );
+    }
+
+    // --- Section: Adversarial Postcard Corruption Tests ---
+
+    #[test]
+    fn adversarial_valid_header_but_garbage_postcard_returns_decode_failed() {
+        // Given an encoded record with a valid header but garbage postcard payload
+        // When decode_record is called
+        // Then it returns PostcardDecodeFailed
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(13),
+            seq: EventSeq::new(0),
+            workflow: test_digest(13),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Corrupt payload, then fix digest and CRC so header validation passes
+        if let Some(byte) = encoded.get_mut(60) {
+            *byte = 0xFF;
+        }
+        // Re-hash the payload
+        let payload = encoded.get(60..).expect("payload");
+        let digest = blake3::hash(payload);
+        encoded
+            .get_mut(24..56)
+            .expect("digest region")
+            .copy_from_slice(digest.as_bytes());
+        // Re-compute CRC
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::PostcardDecodeFailed)),
+            "expected PostcardDecodeFailed, got {:?}",
+            result
+        );
+    }
+
+    // --- Section: Adversarial Run Header Tests ---
+
+    #[test]
+    fn adversarial_run_header_wrong_magic_returns_bad_magic() {
+        // Given an encoded run header record
+        // When decoded with the wrong expected magic (MAGIC_BLOB instead of MAGIC_INDEX_RECORD)
+        // Then it returns BadMagic
+        let record = RunHeaderRecord {
+            run: RunId::new(123),
+            workflow_id: WorkflowId::new(456),
+            compiled_digest: test_digest(8),
+            status: 1,
+            accepted_at_ms: 1700000000,
+        };
+        let encoded = encode_record(
+            MAGIC_INDEX_RECORD,
+            RecordKind::RunHeader,
+            record.run.as_u64(),
+            &record,
+            MAX_RUN_HEADER_BYTES,
+        )
+        .expect("encoding should succeed");
+
+        let result = decode_record::<RunHeaderRecord>(&encoded, MAGIC_BLOB, MAX_RUN_HEADER_BYTES);
+        assert!(
+            matches!(result, Err(JournalError::BadMagic { .. })),
+            "expected BadMagic for wrong magic on run header"
+        );
+    }
+
+    // --- Section: Adversarial Empty Input Tests ---
+
+    #[test]
+    fn adversarial_decode_empty_byte_slice_returns_unexpected_eof() {
+        // Given a zero-length byte slice
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let empty: &[u8] = &[];
+        let result = decode_record::<JournalEvent>(empty, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "expected UnexpectedEof for empty input"
+        );
+    }
+
+    #[test]
+    fn adversarial_decode_single_byte_returns_unexpected_eof() {
+        // Given a 1-byte slice
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let single = [0x56u8; 1];
+        let result = decode_record::<JournalEvent>(&single, MAGIC_JOURNAL_EVENT, 128);
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "expected UnexpectedEof for 1-byte input"
+        );
+    }
+
+    // --- Section: Adversarial Encode Boundary Tests ---
+
+    #[test]
+    fn adversarial_encode_blob_with_empty_bytes_succeeds() {
+        // Given a BlobRecord with empty bytes
+        // When encode_record is called
+        // Then it succeeds (zero-length is valid)
+        let record = BlobRecord {
+            digest: [0; 32],
+            bytes: vec![],
+        };
+        let result = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, MAX_BLOB_BYTES);
+        assert!(
+            result.is_ok(),
+            "empty blob bytes should encode successfully"
+        );
+    }
+
+    #[test]
+    fn adversarial_encode_workflow_source_with_empty_source_succeeds() {
+        // Given a WorkflowSourceRecord with empty source bytes
+        // When encode_record is called
+        // Then it succeeds
+        let record = WorkflowSourceRecord {
+            digest: test_digest(0),
+            source: vec![],
+        };
+        let result = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            &record,
+            MAX_WORKFLOW_SOURCE_BYTES,
+        );
+        assert!(result.is_ok(), "empty source should encode successfully");
+    }
+
+    #[test]
+    fn adversarial_encode_compiled_ir_with_empty_ir_succeeds() {
+        // Given a CompiledIrRecord with empty IR
+        // When encode_record is called
+        // Then it succeeds
+        let record = CompiledIrRecord {
+            digest: test_digest(0),
+            ir: vec![],
+        };
+        let result = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            MAX_COMPILED_IR_BYTES,
+        );
+        assert!(result.is_ok(), "empty IR should encode successfully");
     }
 }

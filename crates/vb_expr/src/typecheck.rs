@@ -227,6 +227,7 @@ fn type_name(ty: ExprType) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
 
@@ -436,6 +437,134 @@ mod tests {
 
         let ty_unique = check("unique($x)")?;
         assert_eq!(ty_unique, ExprType::List);
+        Ok(())
+    }
+
+    // --- Adversarial BDD typecheck tests ---
+
+    #[test]
+    fn typecheck_expr_allows_unknown_in_arithmetic_left() -> ExprResult<()> {
+        // Given: the expression "$x + 1" where $x is Unknown
+        // When: typecheck_expr is called with empty context
+        // Then: the result is Ok(ExprType::I64) because Unknown is allowed in numeric position
+        let ty = check("$x + 1")?;
+        assert_eq!(ty, ExprType::I64);
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_null_in_arithmetic() -> ExprResult<()> {
+        // Given: the expression "null + 1"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "null" })
+        let result = check("null + 1");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null + 1".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_text_in_arithmetic() -> ExprResult<()> {
+        // Given: the expression "\"hello\" - 1"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "text" })
+        let result = check("\"hello\" - 1");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for text - 1".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "text");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_null_in_comparison() -> ExprResult<()> {
+        // Given: the expression "null < 1"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "null" })
+        let result = check("null < 1");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null < 1".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_number_in_and() -> ExprResult<()> {
+        // Given: the expression "1 and 2"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "i64" })
+        let result = check("1 and 2");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for 1 and 2".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "i64");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_null_in_and() -> ExprResult<()> {
+        // Given: the expression "null and true"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "null" })
+        let result = check("null and true");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null and true".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_negation_on_null() -> ExprResult<()> {
+        // Given: the expression "-null"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "null" })
+        let result = check("-null");
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for -null".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_allows_eq_on_mixed_types() -> ExprResult<()> {
+        // Given: the expression "null == 1"
+        // When: typecheck_expr is called
+        // Then: the result is Ok(ExprType::Bool) because Eq/NotEq accept any types
+        let ty = check("null == 1")?;
+        assert_eq!(ty, ExprType::Bool);
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_allows_not_eq_on_incompatible_types() -> ExprResult<()> {
+        // Given: the expression "true != null"
+        // When: typecheck_expr is called
+        // Then: the result is Ok(ExprType::Bool) because Eq/NotEq accept any types
+        let ty = check("true != null")?;
+        assert_eq!(ty, ExprType::Bool);
         Ok(())
     }
 }

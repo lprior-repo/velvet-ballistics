@@ -114,7 +114,7 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
 }
 
 fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target);
+    run.set_pc(target)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)
 }
@@ -134,9 +134,9 @@ mod tests {
     use vb_core::ids::RunId;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8).ok().unwrap_or_else(||
-            panic!("frame creation must succeed")
-        )
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8)
+            .ok()
+            .unwrap_or_else(|| panic!("frame creation must succeed"))
     }
 
     #[test]
@@ -146,17 +146,14 @@ mod tests {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
 
-        let result = repeat_start(
-            &mut run,
-            5,
-            body,
-            done,
-            Some(output),
-        );
+        let result = repeat_start(&mut run, 5, body, done, Some(output));
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
-        let slot_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
+        let slot_val = *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"));
         assert!(matches!(slot_val, SlotValue::I64(_)));
         let packed = match slot_val {
             SlotValue::I64(v) => v,
@@ -173,16 +170,11 @@ mod tests {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
         let packed = encode_repeat_state(3, 1);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
-        let result = repeat_attempt(
-            &mut run,
-            attempt_slot,
-            body,
-            done,
-        );
+        let result = repeat_attempt(&mut run, attempt_slot, body, done);
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
@@ -195,17 +187,11 @@ mod tests {
         let done = StepIdx::new(2);
         let next_body = StepIdx::new(1);
         let packed = encode_repeat_state(5, 2);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
-        let result = repeat_check(
-            &mut run,
-            attempt_slot,
-            done,
-            Some(next_body),
-            StepIdx::ZERO,
-        );
+        let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
         // current_attempt=2 is incremented to 3, which is still < max_attempts=5,
         // so the loop routes back to the body entry point.
@@ -220,17 +206,11 @@ mod tests {
         let done = StepIdx::new(2);
         let next_body = StepIdx::new(1);
         let packed = encode_repeat_state(3, 2);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
-        let result = repeat_check(
-            &mut run,
-            attempt_slot,
-            done,
-            Some(next_body),
-            StepIdx::ZERO,
-        );
+        let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
@@ -242,9 +222,9 @@ mod tests {
         let result_slot = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(3);
-        run.write_slot(result_slot, SlotValue::I64(77)).ok().unwrap_or_else(||
-            panic!("slot write must succeed")
-        );
+        run.write_slot(result_slot, SlotValue::I64(77))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
 
         let result = repeat_finish(
             &mut run,
@@ -256,7 +236,12 @@ mod tests {
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
-        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(77));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
+            SlotValue::I64(77)
+        );
     }
 
     #[test]
@@ -297,7 +282,11 @@ mod tests {
         let result = repeat_start(&mut run, 10, StepIdx::new(1), StepIdx::new(2), Some(output));
         // Then the output slot encodes max_attempts=10, current=0
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        let packed = match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+        let packed = match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
             SlotValue::I64(v) => v,
             _ => return,
         };
@@ -311,7 +300,9 @@ mod tests {
         // Given a frame with a non-I64 in attempt slot
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        run.write_slot(attempt_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::Bool(true))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_attempt
         let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
         // Then it returns TypeMismatch
@@ -331,9 +322,17 @@ mod tests {
         // Given a frame with a non-I64 in attempt slot
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        run.write_slot(attempt_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::Bool(true))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then it returns TypeMismatch
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
@@ -352,7 +351,9 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let packed = encode_repeat_state(5, 1);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_check with next=None and attempts remain
         let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), None, StepIdx::ZERO);
         // Then it returns MissingNextStep
@@ -370,9 +371,17 @@ mod tests {
     fn repeat_finish_returns_error_when_output_missing() {
         // Given a frame with a result
         let mut run = fresh_frame();
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_finish with output=None
-        let result = repeat_finish(&mut run, SlotIdx::new(0), None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_finish(
+            &mut run,
+            SlotIdx::new(0),
+            None,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then it returns MissingOutputSlot
         match result {
             Err(EngineError::MissingOutputSlot { step }) => {
@@ -388,9 +397,17 @@ mod tests {
     fn repeat_finish_returns_error_when_next_missing() {
         // Given a frame
         let mut run = fresh_frame();
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_finish with next=None
-        let result = repeat_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), None, StepIdx::ZERO);
+        let result = repeat_finish(
+            &mut run,
+            SlotIdx::new(0),
+            Some(SlotIdx::new(1)),
+            None,
+            StepIdx::ZERO,
+        );
         // Then it returns MissingNextStep
         match result {
             Err(EngineError::MissingNextStep { step }) => {
@@ -408,12 +425,24 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let packed = encode_repeat_state(5, 2);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then the attempt counter is incremented to 3
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        let updated = match *run.read_slot(attempt_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+        let updated = match *run
+            .read_slot(attempt_slot)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
             SlotValue::I64(v) => v,
             _ => return,
         };
@@ -429,9 +458,17 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
         let packed = encode_repeat_state(3, 2);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, done, Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then it routes to done
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
@@ -444,12 +481,25 @@ mod tests {
         let result_slot = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(3);
-        run.write_slot(result_slot, SlotValue::I64(77)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(result_slot, SlotValue::I64(77))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_finish
-        let result = repeat_finish(&mut run, result_slot, Some(output), Some(next_step), StepIdx::ZERO);
+        let result = repeat_finish(
+            &mut run,
+            result_slot,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
         // Then output slot has the result value
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(77));
+        assert_eq!(
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
+            SlotValue::I64(77)
+        );
     }
 
     #[test]
@@ -491,7 +541,9 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let packed = encode_repeat_state(3, 1);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let before = run.executed();
         // When calling repeat_attempt
         let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
@@ -506,10 +558,18 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let packed = encode_repeat_state(5, 1);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let before = run.executed();
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then executed counter incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -521,10 +581,18 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let packed = encode_repeat_state(3, 2);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let before = run.executed();
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then executed counter incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -534,10 +602,18 @@ mod tests {
     fn repeat_finish_increments_executed_counter() {
         // Given a frame with result
         let mut run = fresh_frame();
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         let before = run.executed();
         // When calling repeat_finish
-        let result = repeat_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), Some(StepIdx::new(3)), StepIdx::ZERO);
+        let result = repeat_finish(
+            &mut run,
+            SlotIdx::new(0),
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(3)),
+            StepIdx::ZERO,
+        );
         // Then executed counter incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -550,13 +626,25 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
         let packed = encode_repeat_state(2, 1);
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write must succeed"));
         // When calling repeat_check
-        let result = repeat_check(&mut run, attempt_slot, done, Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then the slot value is updated to attempt=2
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
-        let updated = match *run.read_slot(attempt_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+        let updated = match *run
+            .read_slot(attempt_slot)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
             SlotValue::I64(v) => v,
             _ => return,
         };
@@ -583,7 +671,11 @@ mod tests {
         let result = repeat_start(&mut run, 1, StepIdx::new(1), StepIdx::new(2), Some(output));
         // Then it encodes max=1, current=0
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        let packed = match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+        let packed = match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
             SlotValue::I64(v) => v,
             _ => return,
         };
@@ -603,5 +695,230 @@ mod tests {
         // Then pc is at body
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
+    }
+
+    // ── Adversarial BDD tests for repeat ────────────────────────────────
+
+    #[test]
+    fn repeat_start_max_attempts_zero_encodes_zero() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        // When calling repeat_start with max_attempts=0
+        let result = repeat_start(&mut run, 0, StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then it encodes max=0, current=0 and jumps to body
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        let packed = match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(packed);
+        assert_eq!(max, 0);
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn repeat_check_max_attempts_zero_routes_immediately_to_done() {
+        // Given a frame with max=0, current=0
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(5);
+        let packed = encode_repeat_state(0, 0);
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_check
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+        // Then next_attempt=1 >= max=0, so it routes to done
+        // BUG: with max=0, next_attempt(1) >= max(0) is true, so it always routes to done.
+        // This means a repeat with max_attempts=0 can never execute the body.
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn repeat_start_max_attempts_one_immediate_check_exits() {
+        // Given repeat_start with max_attempts=1
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(5);
+        // Simulate: start wrote max=1, current=0, body ran, now check
+        let packed = encode_repeat_state(1, 0);
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_check
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+        // Then next_attempt=1 >= max=1, so it routes to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+        let updated = match *run
+            .read_slot(attempt_slot)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(updated);
+        assert_eq!(max, 1);
+        assert_eq!(current, 1);
+    }
+
+    #[test]
+    fn repeat_check_u16_max_attempts_does_not_overflow() {
+        // Given a frame with max=u16::MAX, current=u16::MAX-1
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let body = StepIdx::new(1);
+        let packed = encode_repeat_state(u16::MAX, u16::MAX - 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_check
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(body),
+            StepIdx::ZERO,
+        );
+        // Then next_attempt = (MAX-1) + 1 = MAX which >= MAX, routes to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), StepIdx::new(2));
+    }
+
+    #[test]
+    fn repeat_check_saturating_add_at_u16_max_still_routes_to_done() {
+        // Given a frame with max=u16::MAX, current=u16::MAX (already exhausted)
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(2);
+        let packed = encode_repeat_state(u16::MAX, u16::MAX);
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_check
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+        // Then saturating_add keeps it at u16::MAX which >= u16::MAX, routes to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn repeat_attempt_slot_corrupted_to_null_returns_type_mismatch() {
+        // Given a frame with Null in attempt_slot (corruption)
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        run.write_slot(attempt_slot, SlotValue::Null)
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_attempt
+        let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "number");
+                assert_eq!(found, "null");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_check_slot_corrupted_to_null_returns_type_mismatch() {
+        // Given a frame with Null in attempt_slot (corruption)
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        run.write_slot(attempt_slot, SlotValue::Null)
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_check
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "number");
+                assert_eq!(found, "null");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_finish_same_result_and_output_slot_succeeds() {
+        // Given a frame where result_slot == output_slot
+        let mut run = fresh_frame();
+        let slot = SlotIdx::new(0);
+        let next_step = StepIdx::new(3);
+        run.write_slot(slot, SlotValue::I64(42))
+            .ok()
+            .unwrap_or_else(|| panic!("write"));
+        // When calling repeat_finish with result == output
+        let result = repeat_finish(&mut run, slot, Some(slot), Some(next_step), StepIdx::ZERO);
+        // Then it succeeds (reads value first, writes same value back)
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(
+            *run.read_slot(slot)
+                .ok()
+                .unwrap_or_else(|| panic!("must read")),
+            SlotValue::I64(42)
+        );
+    }
+
+    #[test]
+    fn repeat_attempt_number_zero_is_accessible_via_decode() {
+        // Given a fresh repeat_start with max=5
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        repeat_start(&mut run, 5, StepIdx::new(1), StepIdx::new(2), Some(output))
+            .ok()
+            .unwrap_or_else(|| panic!("start"));
+        // When reading the packed state
+        let packed = match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        // Then the current attempt is 0 (first attempt)
+        let (max, current) = decode_repeat_state(packed);
+        assert_eq!(max, 5);
+        assert_eq!(current, 0);
     }
 }

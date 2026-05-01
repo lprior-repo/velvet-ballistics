@@ -13,9 +13,13 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket};
+use vb_runtime::trace::TraceEvent;
 
 use crate::frame::write_frame;
-use crate::{IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
+use crate::{
+    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent, IpcTraceEventKind,
+    MaxPayloadBytes,
+};
 
 const SERVER_TOKEN: Token = Token(0);
 const FIRST_CLIENT_TOKEN: usize = 1;
@@ -60,6 +64,11 @@ pub enum IpcResponse {
     EventCount {
         /// Number of events listed for the run.
         count: u32,
+    },
+    /// Command completed with typed run events.
+    Events {
+        /// Typed event payloads listed for the run.
+        events: Vec<IpcTraceEvent>,
     },
     /// Run inspection acknowledged.
     Inspected {
@@ -366,6 +375,20 @@ pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         return IpcResponse::BadRequest;
     };
 
+    match runtime.snapshot_run(run_id, 0) {
+        Ok(vb_runtime::shard::InspectResponse::Found(_)) => {}
+        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("run not found"),
+            };
+        }
+        Err(e) => {
+            return IpcResponse::RuntimeError {
+                message: e.to_string(),
+            };
+        }
+    }
+
     match runtime.cancel_run(run_id) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.as_u64(),
@@ -383,9 +406,12 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         return IpcResponse::BadRequest;
     };
 
-    match runtime.inspect_run(run_id, 0) {
-        Ok(()) => IpcResponse::Inspected {
+    match runtime.snapshot_run(run_id, 0) {
+        Ok(vb_runtime::shard::InspectResponse::Found(_snapshot)) => IpcResponse::Inspected {
             run_id: run_id.as_u64(),
+        },
+        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => IpcResponse::RuntimeError {
+            message: String::from("run not found"),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
@@ -396,12 +422,16 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 /// Handles list-events.
 pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::ListEvents { run_id, .. }) = decoded else {
+    let Ok(crate::IpcPayload::ListEvents {
+        run_id,
+        from_sequence,
+    }) = decoded
+    else {
         return IpcResponse::BadRequest;
     };
 
     match runtime.list_events(run_id) {
-        Ok(events) => count_response(events.len(), IpcResponseKind::Event),
+        Ok(events) => typed_events_response(&events, from_sequence),
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
         },
@@ -443,15 +473,27 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 /// Handles complete-action.
 pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::CompleteAction { run_id, ticket, .. }) = decoded else {
+    let Ok(crate::IpcPayload::CompleteAction {
+        run_id,
+        ticket,
+        output,
+    }) = decoded
+    else {
         return IpcResponse::BadRequest;
     };
 
-    let step = match u16::try_from(ticket) {
-        Ok(s) => vb_core::ids::StepIdx::new(s),
-        Err(_) => return IpcResponse::BadRequest,
+    let action_ticket = match action_ticket_from_wire(run_id, ticket) {
+        Some(ticket) => ticket,
+        None => return IpcResponse::BadRequest,
     };
-    match runtime.complete_action(run_id, step) {
+    let output_len = payload_len(output.len());
+    let decoded_output: Result<crate::IpcActionOutputPayload, _> = postcard::from_bytes(&output);
+    let Ok(decoded_output) = decoded_output else {
+        return IpcResponse::BadRequest;
+    };
+    match runtime
+        .complete_action_with_output(action_ticket, decoded_output.into_action_output(output_len))
+    {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.as_u64(),
         },
@@ -464,7 +506,12 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
 /// Handles fail-action.
 pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::FailAction { run_id, ticket, error }) = decoded else {
+    let Ok(crate::IpcPayload::FailAction {
+        run_id,
+        ticket,
+        error,
+    }) = decoded
+    else {
         return IpcResponse::BadRequest;
     };
 
@@ -510,10 +557,7 @@ fn action_ticket_from_wire(run_id: vb_core::RunId, ticket: u64) -> Option<Action
 }
 
 fn payload_len(len: usize) -> u32 {
-    match u32::try_from(len) {
-        Ok(value) => value,
-        Err(_) => u32::MAX,
-    }
+    u32::try_from(len).map_or(u32::MAX, |value| value)
 }
 
 /// Handles drain-trace.
@@ -523,20 +567,96 @@ pub fn handle_drain_trace(runtime: &mut Runtime) -> IpcResponse {
 }
 
 enum IpcResponseKind {
-    Event,
     Trace,
 }
 
 fn count_response(count: usize, kind: IpcResponseKind) -> IpcResponse {
     match u32::try_from(count) {
         Ok(value) => match kind {
-            IpcResponseKind::Event => IpcResponse::EventCount { count: value },
             IpcResponseKind::Trace => IpcResponse::TraceCount { count: value },
         },
         Err(_) => IpcResponse::CountOutOfRange {
             actual: count,
             limit: u32::MAX,
         },
+    }
+}
+
+fn typed_events_response(events: &[TraceEvent], from_sequence: u64) -> IpcResponse {
+    let mut typed_events = Vec::with_capacity(events.len());
+    let mut index = 0usize;
+    while index < events.len() {
+        let sequence = match u64::try_from(index) {
+            Ok(value) => value,
+            Err(_) => {
+                return IpcResponse::CountOutOfRange {
+                    actual: index,
+                    limit: u32::MAX,
+                };
+            }
+        };
+        if sequence >= from_sequence {
+            let Some(event) = events.get(index) else {
+                return IpcResponse::CountOutOfRange {
+                    actual: index,
+                    limit: u32::MAX,
+                };
+            };
+            typed_events.push(IpcTraceEvent {
+                sequence,
+                kind: trace_event_kind(event),
+            });
+        }
+        index = match index.checked_add(1) {
+            Some(next) => next,
+            None => {
+                return IpcResponse::CountOutOfRange {
+                    actual: index,
+                    limit: u32::MAX,
+                };
+            }
+        };
+    }
+    IpcResponse::Events {
+        events: typed_events,
+    }
+}
+
+fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
+    match event {
+        TraceEvent::StepStarted { run, step } => IpcTraceEventKind::StepStarted {
+            run: *run,
+            step: *step,
+        },
+        TraceEvent::StepEnded { run, step } => IpcTraceEventKind::StepEnded {
+            run: *run,
+            step: *step,
+        },
+        TraceEvent::SlotWritten { run, slot } => IpcTraceEventKind::SlotWritten {
+            run: *run,
+            slot: *slot,
+        },
+        TraceEvent::ActionScheduled { run, step } => IpcTraceEventKind::ActionScheduled {
+            run: *run,
+            step: *step,
+        },
+        TraceEvent::ActionCompleted { run, step } => IpcTraceEventKind::ActionCompleted {
+            run: *run,
+            step: *step,
+        },
+        TraceEvent::ActionFailed { run, step, code } => IpcTraceEventKind::ActionFailed {
+            run: *run,
+            step: *step,
+            code: *code,
+        },
+        TraceEvent::AskAnswered { run, step, slot } => IpcTraceEventKind::AskAnswered {
+            run: *run,
+            step: *step,
+            slot: *slot,
+        },
+        TraceEvent::RunSubmitted { run } => IpcTraceEventKind::RunSubmitted { run: *run },
+        TraceEvent::RunFinished { run } => IpcTraceEventKind::RunFinished { run: *run },
+        TraceEvent::RunFailed { run } => IpcTraceEventKind::RunFailed { run: *run },
     }
 }
 
@@ -719,15 +839,188 @@ pub enum IpcServerError {
 #[cfg(test)]
 mod tests {
     use super::{
-        IpcResponse, IpcResponseKind, IpcServerError, READ_CHUNK_BYTES, append_read_bytes,
-        count_response, dispatch_command, extract_payload, frame_error_response, frame_total_len,
-        read_buffer_header,
+        IpcResponse, IpcResponseKind, IpcServer, IpcServerError, READ_CHUNK_BYTES,
+        append_read_bytes, count_response, dispatch_command, extract_payload, frame_error_response,
+        frame_total_len, handle_complete_action, handle_list_events, read_buffer_header, serve_ipc,
     };
-    use crate::{IPC_HEADER_LEN, IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
+    use crate::client::IpcClient;
+    use crate::{
+        IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
+        IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload,
+    };
     use std::num::NonZeroUsize;
+    use std::sync::mpsc::{Receiver, Sender};
+    use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+    use vb_core::value::{SlotValue, Taint};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
     use vb_core::{RunId, WorkflowDigest};
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
+    use vb_runtime::trace::TraceEvent;
+
+    enum ServerStep {
+        Serve,
+        Stop,
+    }
+
+    fn server_loop(
+        mut server: IpcServer,
+        steps: Receiver<ServerStep>,
+        results: Sender<Result<bool, String>>,
+    ) {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        while let Ok(step) = steps.recv() {
+            match step {
+                ServerStep::Serve => {
+                    let result =
+                        serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                    if results.send(result).is_err() {
+                        return;
+                    }
+                }
+                ServerStep::Stop => return,
+            }
+        }
+    }
+
+    fn request_server_turn(
+        steps: &Sender<ServerStep>,
+        results: &Receiver<Result<bool, String>>,
+    ) -> bool {
+        assert!(steps.send(ServerStep::Serve).is_ok(), "server step sends");
+        let result = results.recv();
+        assert!(result.is_ok(), "server step returns");
+        let Ok(result) = result else {
+            return false;
+        };
+        assert!(result.is_ok(), "server step succeeds: {result:?}");
+        let Ok(keep_running) = result else {
+            return false;
+        };
+        keep_running
+    }
+
+    fn ipc_test_socket(name: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("vb_ipc_{name}_{}.sock", std::process::id()))
+    }
+
+    fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let do_node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::ZERO,
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("ipc_action_then_finish"),
+            digest: WorkflowDigest::from_bytes([9; 32]),
+            nodes: Box::from([do_node, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 2,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    #[test]
+    fn server_client_e2e_health_list_events_and_drain_trace() {
+        let socket_path = ipc_test_socket("health_list_drain");
+        let server = IpcServer::bind(&socket_path);
+        assert!(server.is_ok(), "server binds");
+        let Ok(server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || server_loop(server, step_rx, result_tx));
+
+        let client = IpcClient::connect(&socket_path);
+        assert!(client.is_ok(), "client connects");
+        let Ok(mut client) = client else {
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        assert!(client.health(100).is_ok(), "health request sends");
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles health"
+        );
+        let health = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert!(health.is_ok(), "health response decodes: {health:?}");
+        let Ok((health_header, health_response)) = health else {
+            return;
+        };
+        assert_eq!(health_header.command, IpcCommand::Health);
+        assert_eq!(health_header.correlation, 100);
+        assert_eq!(health_response, IpcResponse::Healthy);
+
+        let list_payload = IpcPayload::ListEvents {
+            run_id: RunId::new(44),
+            from_sequence: 0,
+        };
+        assert!(
+            client
+                .send_command(IpcCommand::ListEvents, 101, &list_payload)
+                .is_ok(),
+            "list-events request sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles list-events"
+        );
+        let listed = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert!(listed.is_ok(), "list-events response decodes: {listed:?}");
+        let Ok((listed_header, listed_response)) = listed else {
+            return;
+        };
+        assert_eq!(listed_header.command, IpcCommand::ListEvents);
+        assert_eq!(listed_header.correlation, 101);
+        assert_eq!(listed_response, IpcResponse::Events { events: Vec::new() });
+
+        assert!(
+            client.send_raw(IpcCommand::DrainTrace, 102, &[]).is_ok(),
+            "drain-trace request sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles drain-trace"
+        );
+        let drained = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert!(drained.is_ok(), "drain-trace response decodes: {drained:?}");
+        let Ok((drained_header, drained_response)) = drained else {
+            return;
+        };
+        assert_eq!(drained_header.command, IpcCommand::DrainTrace);
+        assert_eq!(drained_header.correlation, 102);
+        assert_eq!(drained_response, IpcResponse::TraceCount { count: 0 });
+
+        assert!(step_tx.send(ServerStep::Stop).is_ok(), "server stops");
+        assert!(handle.join().is_ok(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds: {remove_result:?}"
+        );
+    }
 
     #[test]
     fn extracts_payload_without_lossy_empty_fallback() {
@@ -782,7 +1075,7 @@ mod tests {
             return;
         };
         assert_eq!(
-            count_response(count, IpcResponseKind::Event),
+            count_response(count, IpcResponseKind::Trace),
             IpcResponse::CountOutOfRange {
                 actual: count,
                 limit: u32::MAX,
@@ -894,11 +1187,16 @@ mod tests {
 
     #[test]
     fn handle_inspect_run_returns_inspected_for_valid_payload() {
-        // Given: a runtime and a valid InspectRun payload
+        // Given: a runtime with a submitted run and a valid InspectRun payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
-        let payload = crate::IpcPayload::InspectRun {
-            run_id: RunId::new(42),
+        let run_id = RunId::new(42);
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
         };
+        assert_eq!(runtime.submit_direct(run_id, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let payload = crate::IpcPayload::InspectRun { run_id };
         let encoded = postcard::to_allocvec(&payload);
         assert!(encoded.is_ok(), "payload should encode");
         let Ok(encoded) = encoded else {
@@ -918,13 +1216,13 @@ mod tests {
         assert_eq!(
             response,
             IpcResponse::Inspected {
-                run_id: RunId::new(42).as_u64(),
+                run_id: run_id.as_u64(),
             }
         );
     }
 
     #[test]
-    fn handle_list_events_returns_event_count_for_valid_payload() {
+    fn handle_list_events_returns_typed_events_for_valid_payload() {
         // Given: a runtime and a valid ListEvents payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
         let payload = crate::IpcPayload::ListEvents {
@@ -946,17 +1244,66 @@ mod tests {
         // When: dispatching list_events on an empty runtime
         let response = dispatch_command(&header, &encoded, &mut runtime);
 
-        // Then: EventCount with 0 events (no run submitted yet)
-        assert_eq!(response, IpcResponse::EventCount { count: 0 });
+        // Then: typed event payload with no events (no run submitted yet)
+        assert_eq!(response, IpcResponse::Events { events: Vec::new() });
+    }
+
+    #[test]
+    fn handle_list_events_returns_typed_event_payload() {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(10);
+        assert_eq!(runtime.submit_direct(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let payload = crate::IpcPayload::ListEvents {
+            run_id: run,
+            from_sequence: 0,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+
+        let response = handle_list_events(&encoded, &mut runtime);
+
+        let IpcResponse::Events { events } = response else {
+            return;
+        };
+        assert!(
+            events.iter().any(|event| matches!(
+                event.kind,
+                IpcTraceEventKind::RunSubmitted { run: listed_run } if listed_run == run
+            )),
+            "typed events should include RunSubmitted"
+        );
+        assert!(
+            events.iter().any(|event| matches!(
+                event.kind,
+                IpcTraceEventKind::ActionScheduled {
+                    run: listed_run,
+                    step: StepIdx::ZERO,
+                } if listed_run == run
+            )),
+            "typed events should include ActionScheduled"
+        );
     }
 
     #[test]
     fn handle_cancel_run_returns_accepted_for_valid_payload() {
-        // Given: a runtime and a valid CancelRun payload
+        // Given: a runtime with a submitted run and a valid CancelRun payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
-        let payload = crate::IpcPayload::CancelRun {
-            run_id: RunId::new(99),
+        let run_id = RunId::new(99);
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
         };
+        assert_eq!(runtime.submit_direct(run_id, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let payload = crate::IpcPayload::CancelRun { run_id };
         let encoded = postcard::to_allocvec(&payload);
         assert!(encoded.is_ok(), "payload should encode");
         let Ok(encoded) = encoded else {
@@ -972,11 +1319,11 @@ mod tests {
         // When: dispatching cancel_run (runtime enqueues the cancel command)
         let response = dispatch_command(&header, &encoded, &mut runtime);
 
-        // Then: AcceptedRun with the correct run_id (cancel is enqueued, not rejected)
+        // Then: AcceptedRun with the correct run_id (cancel is enqueued for existing run)
         assert_eq!(
             response,
             IpcResponse::AcceptedRun {
-                run_id: RunId::new(99).as_u64(),
+                run_id: run_id.as_u64(),
             }
         );
     }
@@ -995,7 +1342,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_answer_ask_returns_runtime_error_for_durable_path() {
+    fn handle_answer_ask_returns_accepted_for_valid_payload() {
         // Given: a runtime and a valid AnswerAsk payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
         let payload = crate::IpcPayload::AnswerAsk {
@@ -1015,23 +1362,20 @@ mod tests {
         };
         let header = IpcFrameHeader::new(IpcCommand::AnswerAsk, 0, 1, payload_len);
 
-        // When: dispatching answer_ask (durable path unsupported)
+        // When: dispatching answer_ask
         let response = dispatch_command(&header, &encoded, &mut runtime);
 
-        // Then: RuntimeError with unsupported operation message
-        match response {
-            IpcResponse::RuntimeError { message } => {
-                assert!(
-                    message.contains("unsupported"),
-                    "expected unsupported operation error, got: {message}"
-                );
+        // Then: AcceptedRun with the correct run_id
+        assert_eq!(
+            response,
+            IpcResponse::AcceptedRun {
+                run_id: RunId::new(5).as_u64(),
             }
-            other => panic!("expected RuntimeError, got {other:?}"),
-        }
+        );
     }
 
     #[test]
-    fn handle_fail_action_returns_runtime_error_for_durable_path() {
+    fn handle_fail_action_returns_accepted_for_valid_payload() {
         // Given: a runtime and a valid FailAction payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
         let payload = crate::IpcPayload::FailAction {
@@ -1051,19 +1395,16 @@ mod tests {
         };
         let header = IpcFrameHeader::new(IpcCommand::FailAction, 0, 1, payload_len);
 
-        // When: dispatching fail_action (durable path unsupported)
+        // When: dispatching fail_action
         let response = dispatch_command(&header, &encoded, &mut runtime);
 
-        // Then: RuntimeError with unsupported operation message
-        match response {
-            IpcResponse::RuntimeError { message } => {
-                assert!(
-                    message.contains("unsupported"),
-                    "expected unsupported operation error, got: {message}"
-                );
+        // Then: AcceptedRun with the correct run_id
+        assert_eq!(
+            response,
+            IpcResponse::AcceptedRun {
+                run_id: RunId::new(8).as_u64(),
             }
-            other => panic!("expected RuntimeError, got {other:?}"),
-        }
+        );
     }
 
     #[test]
@@ -1290,12 +1631,15 @@ mod tests {
 
         // When: checking fields
         // Then: fields are accessible
-        if let IpcResponse::CountOutOfRange { actual, limit } = response {
-            assert_eq!(actual, 5_000_000_000usize);
-            assert_eq!(limit, u32::MAX);
-        } else {
-            panic!("expected CountOutOfRange variant");
-        }
+        assert!(
+            matches!(response, IpcResponse::CountOutOfRange { .. }),
+            "expected CountOutOfRange variant"
+        );
+        let IpcResponse::CountOutOfRange { actual, limit } = response else {
+            return;
+        };
+        assert_eq!(actual, 5_000_000_000usize);
+        assert_eq!(limit, u32::MAX);
     }
 
     #[test]
@@ -1307,11 +1651,14 @@ mod tests {
 
         // When: inspecting the variant
         // Then: message matches
-        if let IpcResponse::FrameError { message } = &response {
-            assert_eq!(message, "bad magic");
-        } else {
-            panic!("expected FrameError variant");
-        }
+        assert!(
+            matches!(response, IpcResponse::FrameError { .. }),
+            "expected FrameError variant"
+        );
+        let IpcResponse::FrameError { message } = &response else {
+            return;
+        };
+        assert_eq!(message, "bad magic");
     }
 
     #[test]
@@ -1323,21 +1670,24 @@ mod tests {
 
         // When: inspecting the variant
         // Then: message matches
-        if let IpcResponse::RuntimeError { message } = &response {
-            assert_eq!(message, "queue full");
-        } else {
-            panic!("expected RuntimeError variant");
-        }
+        assert!(
+            matches!(response, IpcResponse::RuntimeError { .. }),
+            "expected RuntimeError variant"
+        );
+        let IpcResponse::RuntimeError { message } = &response else {
+            return;
+        };
+        assert_eq!(message, "queue full");
     }
 
     #[test]
-    fn count_response_returns_event_count_for_event_kind() {
-        // Given: a count of 5 and Event kind
+    fn count_response_returns_trace_count_for_small_count() {
+        // Given: a count of 5 and Trace kind
         // When: calling count_response
-        let response = count_response(5, IpcResponseKind::Event);
+        let response = count_response(5, IpcResponseKind::Trace);
 
-        // Then: EventCount with count=5
-        assert_eq!(response, IpcResponse::EventCount { count: 5 });
+        // Then: TraceCount with count=5
+        assert_eq!(response, IpcResponse::TraceCount { count: 5 });
     }
 
     #[test]
@@ -1359,21 +1709,37 @@ mod tests {
         let response = frame_error_response(error);
 
         // Then: it is a FrameError with the error message
-        if let IpcResponse::FrameError { message } = &response {
-            assert!(message.contains("invalid"), "message should mention invalid: {message}");
-        } else {
-            panic!("expected FrameError variant");
-        }
+        assert!(
+            matches!(response, IpcResponse::FrameError { .. }),
+            "expected FrameError variant"
+        );
+        let IpcResponse::FrameError { message } = &response else {
+            return;
+        };
+        assert!(
+            message.contains("invalid"),
+            "message should mention invalid: {message}"
+        );
     }
 
     #[test]
     fn handle_complete_action_returns_accepted_for_valid_payload() {
         // Given: a runtime and a valid CompleteAction payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let output_payload = IpcActionOutputPayload {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        };
+        let output = postcard::to_allocvec(&output_payload);
+        assert!(output.is_ok(), "output payload should encode");
+        let Ok(output) = output else {
+            return;
+        };
         let payload = crate::IpcPayload::CompleteAction {
             run_id: RunId::new(5),
             ticket: 3,
-            output: Vec::from(&b"done"[..]),
+            output,
         };
         let encoded = postcard::to_allocvec(&payload);
         assert!(encoded.is_ok(), "payload should encode");
@@ -1397,6 +1763,59 @@ mod tests {
                 run_id: RunId::new(5).as_u64(),
             }
         );
+    }
+
+    #[test]
+    fn handle_complete_action_uses_typed_output_payload() {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(12);
+        assert_eq!(runtime.submit_direct(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let output_payload = IpcActionOutputPayload {
+            output_slot: SlotIdx::new(1),
+            value: SlotValue::I64(99),
+            taint: Taint::Clean,
+        };
+        let output = postcard::to_allocvec(&output_payload);
+        assert!(output.is_ok(), "output payload should encode");
+        let Ok(output) = output else {
+            return;
+        };
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: run,
+            ticket: 0,
+            output,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+
+        let response = handle_complete_action(&encoded, &mut runtime);
+        assert_eq!(
+            response,
+            IpcResponse::AcceptedRun {
+                run_id: run.as_u64()
+            }
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let trace = runtime.list_events(run);
+        assert!(matches!(
+            trace,
+            Ok(ref events) if events.contains(&TraceEvent::SlotWritten {
+                run,
+                slot: SlotIdx::new(1),
+            }) && events.contains(&TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::ZERO,
+            }) && events.contains(&TraceEvent::RunFinished { run })
+        ));
     }
 
     #[test]
@@ -1454,7 +1873,7 @@ mod tests {
     #[test]
     fn ipc_server_error_poll_failed_display() {
         // Given: a PollFailed error
-        let io_err = std::io::Error::new(std::io::ErrorKind::Other, "poll err");
+        let io_err = std::io::Error::other("poll err");
         let error = IpcServerError::PollFailed { source: io_err };
 
         // When: displaying the error
@@ -1522,7 +1941,7 @@ mod tests {
         let mut read_buffer = Vec::new();
         // Fill to just below max
         let fill_len = max_single.saturating_sub(1);
-        read_buffer.extend(std::iter::repeat(0u8).take(fill_len));
+        read_buffer.extend(std::iter::repeat_n(0u8, fill_len));
 
         let temp = [0u8; READ_CHUNK_BYTES];
 
@@ -1565,7 +1984,7 @@ mod tests {
     #[test]
     fn count_response_overflow_returns_count_out_of_range() {
         // Given: a count exceeding u32::MAX
-        let huge_count = usize::try_from(u32::MAX as u64 + 1);
+        let huge_count = usize::try_from(u64::from(u32::MAX) + 1);
         let Ok(huge_count) = huge_count else {
             return;
         };
@@ -1593,12 +2012,14 @@ mod tests {
         let response = dispatch_command(&header, &[], &mut runtime);
 
         // Then: TraceCount response
-        match response {
-            IpcResponse::TraceCount { count } => {
-                assert_eq!(count, 0);
-            }
-            other => panic!("expected TraceCount, got {other:?}"),
-        }
+        assert!(
+            matches!(response, IpcResponse::TraceCount { .. }),
+            "expected TraceCount response"
+        );
+        let IpcResponse::TraceCount { count } = response else {
+            return;
+        };
+        assert_eq!(count, 0);
     }
 
     #[test]
@@ -1615,5 +2036,376 @@ mod tests {
             return;
         };
         assert_eq!(total, IPC_HEADER_LEN + 10);
+    }
+
+    // ══ Adversarial server command dispatch tests ══
+
+    #[test]
+    fn adversarial_submit_run_garbage_payload_returns_bad_request() {
+        // Given: a SubmitRun command with 4 bytes of garbage
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 1, 4);
+
+        // When: dispatching with garbage
+        let response = dispatch_command(&header, b"\x00\x01\x02\x03", &mut runtime);
+
+        // Then: BadRequest (postcard decode fails)
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_cancel_run_garbage_payload_returns_bad_request() {
+        // Given: a CancelRun command with garbage
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let header = IpcFrameHeader::new(IpcCommand::CancelRun, 0, 1, 3);
+
+        // When: dispatching
+        let response = dispatch_command(&header, b"xxx", &mut runtime);
+
+        // Then: BadRequest
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_cancel_run_wrong_payload_variant_returns_bad_request() {
+        // Given: a CancelRun command but Health payload
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::Health;
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::CancelRun, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest (CancelRun expects CancelRun variant, not Health)
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_complete_action_wrong_variant_returns_bad_request() {
+        // Given: a CompleteAction command but CancelRun payload
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::CancelRun {
+            run_id: RunId::new(1),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_fail_action_wrong_variant_returns_bad_request() {
+        // Given: a FailAction command but Health payload
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::Health;
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::FailAction, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_answer_ask_ticket_overflow_returns_bad_request() {
+        // Given: an AnswerAsk with ticket=u64::MAX (doesn't fit in u16 for step)
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: RunId::new(1),
+            ticket: u64::MAX,
+            answer: Vec::new(),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::AnswerAsk, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest (step_from_ticket returns None for u64::MAX)
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_complete_action_ticket_overflow_returns_bad_request() {
+        // Given: a CompleteAction with ticket=u64::MAX
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let output_payload = IpcActionOutputPayload {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        };
+        let output = postcard::to_allocvec(&output_payload);
+        assert!(output.is_ok());
+        let Ok(output) = output else { return };
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: RunId::new(1),
+            ticket: u64::MAX,
+            output,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest (action_ticket_from_wire returns None for u64::MAX)
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_fail_action_ticket_overflow_returns_bad_request() {
+        // Given: a FailAction with ticket=u64::MAX
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::FailAction {
+            run_id: RunId::new(1),
+            ticket: u64::MAX,
+            error: Vec::from(&b"overflow"[..]),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::FailAction, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_submit_run_inline_wrong_variant_returns_command_mismatch() {
+        // Given: SubmitRunInline command but SubmitRun variant payload
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::SubmitRun(crate::SubmitRunPayload {
+            run_id: RunId::new(1),
+            workflow: WorkflowDigest::from_bytes([0; 32]),
+            input: Vec::new(),
+        });
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: CommandPayloadMismatch
+        assert_eq!(response, IpcResponse::CommandPayloadMismatch);
+    }
+
+    #[test]
+    fn adversarial_complete_action_garbage_output_returns_bad_request() {
+        // Given: a CompleteAction with valid outer payload but garbage inner output
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: RunId::new(1),
+            ticket: 0,
+            output: Vec::from(&b"\xFF\xFE\xFD\xFC\xFB\xFA"[..]),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: BadRequest (inner output postcard decode fails)
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn adversarial_cancel_run_nonexistent_run_returns_runtime_error() {
+        // Given: a CancelRun for a run that does not exist
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::CancelRun {
+            run_id: RunId::new(99991),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::CancelRun, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: RuntimeError (run was never submitted so it does not exist)
+        assert!(
+            matches!(response, IpcResponse::RuntimeError { ref message } if message.contains("not found")),
+            "expected RuntimeError with 'not found', got {response:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_inspect_run_nonexistent_run_returns_runtime_error() {
+        // Given: an InspectRun for a run that does not exist
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let payload = crate::IpcPayload::InspectRun {
+            run_id: RunId::new(88888),
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::InspectRun, 0, 1, payload_len);
+
+        // When: dispatching
+        let response = dispatch_command(&header, &encoded, &mut runtime);
+
+        // Then: RuntimeError (run was never submitted so it does not exist)
+        assert!(
+            matches!(response, IpcResponse::RuntimeError { ref message } if message.contains("not found")),
+            "expected RuntimeError with 'not found', got {response:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_append_read_bytes_enforces_single_frame_bound() {
+        // Given: a read buffer already at max_single_frame
+        let max_single = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
+        let mut read_buffer = Vec::new();
+        read_buffer.extend(std::iter::repeat_n(0u8, max_single));
+        let temp = [0u8; READ_CHUNK_BYTES];
+
+        // When: appending even 1 more byte
+        let result = append_read_bytes(&mut read_buffer, &temp, 1);
+
+        // Then: ReadBufferTooLarge
+        assert!(result.is_err());
+        let Err(error) = result else { return };
+        let message = error.to_string();
+        assert!(
+            message.contains("buffer exceeded"),
+            "expected buffer exceeded in '{message}'"
+        );
+    }
+
+    #[test]
+    fn adversarial_frame_total_len_overflow_payload_returns_error() {
+        // Given: a header with payload_len that would overflow when added to IPC_HEADER_LEN
+        // This can't happen on 64-bit since u32 fits in usize, but let's verify the path
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, u32::MAX);
+
+        // When: computing total length
+        let result = frame_total_len(&header);
+
+        // Then: it succeeds (u32::MAX fits in usize on 64-bit platforms)
+        assert!(result.is_ok(), "u32::MAX should fit in usize on 64-bit");
+        let Ok(total) = result else { return };
+        assert_eq!(
+            total,
+            IPC_HEADER_LEN
+                .checked_add(u32::MAX as usize)
+                .map_or(0, |v| v)
+        );
+    }
+
+    #[test]
+    fn adversarial_extract_payload_returns_incomplete_for_short_buffer() {
+        // Given: a total_len of 100 but buffer is only 50 bytes
+        let short_buffer = vec![0u8; 50];
+
+        // When: extracting payload
+        let result = extract_payload(&short_buffer, 100);
+
+        // Then: IncompleteFrame
+        assert!(result.is_err());
+        let Err(error) = result else { return };
+        let message = error.to_string();
+        assert!(
+            message.contains("incomplete"),
+            "expected incomplete in '{message}'"
+        );
+    }
+
+    #[test]
+    fn adversarial_frame_error_response_preserves_error_message() {
+        // Given: various IpcError variants
+        let errors: Vec<IpcError> = vec![
+            IpcError::InvalidMagic { actual: 0xDEAD },
+            IpcError::UnsupportedVersion { actual: 99 },
+            IpcError::UnknownCommand(200),
+            IpcError::ReservedNonZero { actual: 7 },
+            IpcError::PayloadTooLarge {
+                actual: 9999,
+                limit: 100,
+            },
+            IpcError::PayloadLengthMismatch {
+                header: 100,
+                actual: 50,
+            },
+        ];
+
+        for error in errors {
+            let desc = format!("{error:?}");
+            // When: converting to frame error response
+            let response = frame_error_response(error);
+
+            // Then: it's a FrameError with a non-empty message
+            let IpcResponse::FrameError { message } = &response else {
+                panic!("expected FrameError, got {response:?}");
+            };
+            assert!(
+                !message.is_empty(),
+                "message should not be empty for {desc}"
+            );
+        }
     }
 }

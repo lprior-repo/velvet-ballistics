@@ -215,6 +215,9 @@ fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<()
         });
     }
     if let Some(path) = path {
+        if numeric_accessor_path(path) {
+            return Ok(());
+        }
         let accessor_root = format!("{root}.{slot}");
         return Err(CompileError::UnsupportedAccessorReference {
             reference: Box::<str>::from(reference),
@@ -223,6 +226,17 @@ fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<()
         });
     }
     Ok(())
+}
+
+fn numeric_accessor_path(path: &str) -> bool {
+    let mut saw_segment = false;
+    for segment in path.split('.') {
+        if segment.parse::<u32>().is_err() {
+            return false;
+        }
+        saw_segment = true;
+    }
+    saw_segment
 }
 
 fn validate_step_reference(

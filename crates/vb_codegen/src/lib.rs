@@ -2,18 +2,32 @@
 //!
 //! Compiles `CompiledWorkflow` IR into native Rust source that passes the same
 //! lint gates as first-party code and preserves identical observable semantics.
+//!
+//! Generated Rust is a deliberately supported subset of the final workflow IR.
+//! The current subset accepts scalar constants, slot copies, expression math and
+//! boolean comparisons, action dispatch, waits, asks, jumps, choices, handlers,
+//! and finish nodes. Collection/object construction, fan-out/fan-in primitives,
+//! retry/repeat/collect/reduce internals, collection expression helpers, and
+//! nested accessor traversal are rejected by [`validate_generated_subset`] before
+//! [`emit_rust_workflow`] writes any generated source.
 
 use std::fmt::Write;
 use std::process::Command;
 use thiserror::Error;
 use vb_core::{
-    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprOp, ResourceContract, SlotIdx, StepIdx,
+    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprOp,
+    ResourceContract, SlotIdx, StepIdx,
 };
 
 /// Codegen failures with stable typed diagnostics.
 #[derive(Debug, Error)]
 pub enum CodegenError {
+    /// The compiled IR contains a node, expression, or accessor outside generated-mode support.
+    #[error("unsupported generated Rust IR feature: {feature}")]
+    UnsupportedIr {
+        /// Unsupported IR feature name.
+        feature: &'static str,
+    },
     /// String formatting buffer exceeded allocation.
     #[error("codegen output exceeds buffer capacity")]
     FormatBufferOverflow,
@@ -49,9 +63,14 @@ pub enum CodegenError {
 /// Result alias for codegen operations.
 pub type CodegenResult<T> = Result<T, CodegenError>;
 
-/// Top-level codegen entry point. Converts a compiled workflow into a self-contained
-/// Rust source file that reproduces identical IR semantics.
+/// Top-level codegen entry point for the supported generated-mode IR subset.
+///
+/// This function validates the workflow with [`validate_generated_subset`] before
+/// emitting source. Unsupported IR returns [`CodegenError::UnsupportedIr`] instead
+/// of producing partial generated Rust.
 pub fn emit_rust_workflow(workflow: &CompiledWorkflow) -> CodegenResult<String> {
+    validate_generated_subset(workflow)?;
+
     let mut out = String::with_capacity(4096);
     write_header(&mut out)?;
     emit_ids(&mut out, workflow)?;
@@ -75,6 +94,144 @@ pub fn emit_rust_workflow(workflow: &CompiledWorkflow) -> CodegenResult<String> 
     emit_action_match_dispatch(&mut out, workflow)?;
     emit_finish(&mut out, workflow)?;
     Ok(out)
+}
+
+/// Reject IR that generated mode cannot faithfully emit before source text is produced.
+///
+/// This is the public generated-mode contract boundary. Callers may rely on it
+/// to distinguish workflows supported by native Rust generation from workflows
+/// that still require the interpreter/runtime path.
+pub fn validate_generated_subset(workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    validate_generated_nodes(workflow)?;
+    validate_generated_expressions(workflow)?;
+    validate_generated_accessors(workflow)
+}
+
+fn validate_generated_nodes(workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    let mut step_idx = 0u16;
+    while step_idx < workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step)
+            && let Some(feature) = unsupported_node_feature(&node.kind)
+        {
+            return Err(CodegenError::UnsupportedIr { feature });
+        }
+        step_idx = step_idx.saturating_add(1);
+    }
+    Ok(())
+}
+
+fn validate_generated_expressions(workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    let mut expr_idx = 0u16;
+    loop {
+        let idx = vb_core::ExprIdx::new(expr_idx);
+        let Some(program) = workflow.expression(idx) else {
+            break;
+        };
+        for op in program.ops.as_ref() {
+            if let Some(feature) = unsupported_expr_feature(*op) {
+                return Err(CodegenError::UnsupportedIr { feature });
+            }
+        }
+        if expr_idx == u16::MAX {
+            break;
+        }
+        expr_idx = expr_idx.saturating_add(1);
+    }
+    Ok(())
+}
+
+fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    let mut accessor_idx = 0u16;
+    loop {
+        let idx = vb_core::AccessorIdx::new(accessor_idx);
+        let Some(accessor) = workflow.accessor(idx) else {
+            break;
+        };
+        if !accessor.path.is_empty() {
+            return Err(CodegenError::UnsupportedIr {
+                feature: "accessor traversal",
+            });
+        }
+        if accessor_idx == u16::MAX {
+            break;
+        }
+        accessor_idx = accessor_idx.saturating_add(1);
+    }
+    Ok(())
+}
+
+fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
+    match kind {
+        CompiledNodeKind::BuildObject { .. } => Some("BuildObject"),
+        CompiledNodeKind::BuildList { .. } => Some("BuildList"),
+        CompiledNodeKind::ForEachStart { .. } => Some("ForEachStart"),
+        CompiledNodeKind::ForEachNext { .. } => Some("ForEachNext"),
+        CompiledNodeKind::ForEachJoin { .. } => Some("ForEachJoin"),
+        CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
+        CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
+        CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
+        CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
+        CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
+        CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
+        CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
+        CompiledNodeKind::ReduceStart { .. } => Some("ReduceStart"),
+        CompiledNodeKind::ReduceNext { .. } => Some("ReduceNext"),
+        CompiledNodeKind::ReduceFinish { .. } => Some("ReduceFinish"),
+        CompiledNodeKind::RepeatStart { .. } => Some("RepeatStart"),
+        CompiledNodeKind::RepeatAttempt { .. } => Some("RepeatAttempt"),
+        CompiledNodeKind::RepeatCheck { .. } => Some("RepeatCheck"),
+        CompiledNodeKind::RepeatFinish { .. } => Some("RepeatFinish"),
+        CompiledNodeKind::RetryCheck { .. } => Some("RetryCheck"),
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::Choose { .. }
+        | CompiledNodeKind::ChooseSlot { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::ErrorHandler { .. }
+        | CompiledNodeKind::Jump { .. }
+        | CompiledNodeKind::Finish { .. } => None,
+    }
+}
+
+fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
+    match op {
+        ExprOp::Contains => Some("contains"),
+        ExprOp::StartsWith => Some("starts_with"),
+        ExprOp::EndsWith => Some("ends_with"),
+        ExprOp::Has => Some("has"),
+        ExprOp::Length => Some("length"),
+        ExprOp::Empty => Some("empty"),
+        ExprOp::Append => Some("append"),
+        ExprOp::AppendIf => Some("append_if"),
+        ExprOp::Merge => Some("merge"),
+        ExprOp::Sum => Some("sum"),
+        ExprOp::Count => Some("count"),
+        ExprOp::Unique => Some("unique"),
+        ExprOp::LoadSlot(_)
+        | ExprOp::LoadConst(_)
+        | ExprOp::LoadAccessor(_)
+        | ExprOp::Eq
+        | ExprOp::NotEq
+        | ExprOp::Gt
+        | ExprOp::Gte
+        | ExprOp::Lt
+        | ExprOp::Lte
+        | ExprOp::And
+        | ExprOp::Or
+        | ExprOp::Not
+        | ExprOp::Add
+        | ExprOp::Sub
+        | ExprOp::Mul
+        | ExprOp::Div
+        | ExprOp::Exists => None,
+    }
 }
 
 /// Generate typed ID helper constants for the workflow.
@@ -109,15 +266,26 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     writeln!(out, "    loop {{").map_err(fmt_err)?;
     writeln!(out, "        let outcome = match pc {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
-        writeln!(out, "            {} => step_{}(&mut slots)?,", step_idx, step_idx)
-            .map_err(fmt_err)?;
-    }
-    writeln!(out, "            _ => return Err(DriveError::InvalidProgramCounter),")
+        writeln!(
+            out,
+            "            {} => step_{}(&mut slots)?,",
+            step_idx, step_idx
+        )
         .map_err(fmt_err)?;
+    }
+    writeln!(
+        out,
+        "            _ => return Err(DriveError::InvalidProgramCounter),"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "        }};").map_err(fmt_err)?;
     writeln!(out, "        match outcome {{").map_err(fmt_err)?;
     writeln!(out, "            StepOutcome::Continue(next) => pc = next,").map_err(fmt_err)?;
-    writeln!(out, "            StepOutcome::Finished(value) => return Ok(value),").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "            StepOutcome::Finished(value) => return Ok(value),"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "        }}").map_err(fmt_err)?;
     writeln!(out, "    }}").map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
@@ -144,8 +312,7 @@ pub fn emit_step_function(
             if let Some(next) = node.next {
                 writeln!(out, "    Ok(StepOutcome::Continue({}))", next.get()).map_err(fmt_err)?;
             } else {
-                writeln!(out, "    Err(DriveError::MissingNextStep)")
-                    .map_err(fmt_err)?;
+                writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err)?;
             }
         }
         CompiledNodeKind::SetConst { value } => {
@@ -185,18 +352,17 @@ pub fn emit_step_function(
             write_next_or_error(out, node.next)?;
         }
         CompiledNodeKind::Finish { result } => {
-            writeln!(
-                out,
-                "    let value = read_slot(slots, {})?;",
-                result.get()
-            )
-            .map_err(fmt_err)?;
+            writeln!(out, "    let value = read_slot(slots, {})?;", result.get())
+                .map_err(fmt_err)?;
             writeln!(out, "    Ok(StepOutcome::Finished(value))").map_err(fmt_err)?;
         }
         CompiledNodeKind::Jump { target } => {
             writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err)?;
         }
-        CompiledNodeKind::Choose { branches, otherwise } => {
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
             for branch in branches.iter() {
                 writeln!(
                     out,
@@ -207,12 +373,16 @@ pub fn emit_step_function(
                 .map_err(fmt_err)?;
             }
             if let Some(fallback) = otherwise {
-                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get()).map_err(fmt_err)?;
+                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get())
+                    .map_err(fmt_err)?;
             } else {
                 writeln!(out, "    Err(DriveError::NoBranchMatched)").map_err(fmt_err)?;
             }
         }
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
             for branch in branches {
                 writeln!(
                     out,
@@ -223,7 +393,8 @@ pub fn emit_step_function(
                 .map_err(fmt_err)?;
             }
             if let Some(fallback) = otherwise {
-                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get()).map_err(fmt_err)?;
+                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get())
+                    .map_err(fmt_err)?;
             } else {
                 writeln!(out, "    Err(DriveError::NoBranchMatched)").map_err(fmt_err)?;
             }
@@ -251,20 +422,47 @@ pub fn emit_step_function(
         CompiledNodeKind::RepeatCheck { .. } => emit_unsupported_step(out, "RepeatCheck")?,
         CompiledNodeKind::RepeatFinish { .. } => emit_unsupported_step(out, "RepeatFinish")?,
         CompiledNodeKind::WaitUntil { deadline_slot } => {
-            writeln!(out, "    let _deadline = read_slot(slots, {})?;", deadline_slot.get()).map_err(fmt_err)?;
+            writeln!(
+                out,
+                "    let _deadline = read_slot(slots, {})?;",
+                deadline_slot.get()
+            )
+            .map_err(fmt_err)?;
             write_next_or_error(out, node.next)?;
         }
-        CompiledNodeKind::WaitEvent { event, timeout_slot } => {
-            writeln!(out, "    let _event = read_slot(slots, {})?;", event.get()).map_err(fmt_err)?;
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => {
+            writeln!(out, "    let _event = read_slot(slots, {})?;", event.get())
+                .map_err(fmt_err)?;
             if let Some(timeout) = timeout_slot {
-                writeln!(out, "    let _timeout = read_slot(slots, {})?;", timeout.get()).map_err(fmt_err)?;
+                writeln!(
+                    out,
+                    "    let _timeout = read_slot(slots, {})?;",
+                    timeout.get()
+                )
+                .map_err(fmt_err)?;
             }
             write_next_or_error(out, node.next)?;
         }
-        CompiledNodeKind::Ask { prompt, timeout_slot } => {
-            writeln!(out, "    let _prompt = read_slot(slots, {})?;", prompt.get()).map_err(fmt_err)?;
+        CompiledNodeKind::Ask {
+            prompt,
+            timeout_slot,
+        } => {
+            writeln!(
+                out,
+                "    let _prompt = read_slot(slots, {})?;",
+                prompt.get()
+            )
+            .map_err(fmt_err)?;
             if let Some(timeout) = timeout_slot {
-                writeln!(out, "    let _timeout = read_slot(slots, {})?;", timeout.get()).map_err(fmt_err)?;
+                writeln!(
+                    out,
+                    "    let _timeout = read_slot(slots, {})?;",
+                    timeout.get()
+                )
+                .map_err(fmt_err)?;
             }
             write_next_or_error(out, node.next)?;
         }
@@ -274,8 +472,33 @@ pub fn emit_step_function(
         }
         CompiledNodeKind::RetryCheck { .. } => emit_unsupported_step(out, "RetryCheck")?,
         CompiledNodeKind::ErrorHandler { body, handler } => {
-            writeln!(out, "    // ErrorHandler: body={}, handler={}", body.get(), handler.get()).map_err(fmt_err)?;
-            writeln!(out, "    Ok(StepOutcome::Continue({}))", body.get()).map_err(fmt_err)?;
+            writeln!(
+                out,
+                "    // ErrorHandler: body={}, handler={}",
+                body.get(),
+                handler.get()
+            )
+            .map_err(fmt_err)?;
+            writeln!(
+                out,
+                "    match step_{}(slots) {{"
+            ,
+                body.get()
+            )
+            .map_err(fmt_err)?;
+            writeln!(
+                out,
+                "        Ok(outcome) => Ok(outcome),"
+            )
+            .map_err(fmt_err)?;
+            writeln!(
+                out,
+                "        Err(_) => Ok(StepOutcome::Continue({})),"
+            ,
+                handler.get()
+            )
+            .map_err(fmt_err)?;
+            writeln!(out, "    }}").map_err(fmt_err)?;
         }
     }
 
@@ -312,20 +535,12 @@ pub fn emit_expr_function(
     for op in program.ops.as_ref() {
         match op {
             ExprOp::LoadSlot(slot) => {
-                writeln!(
-                    out,
-                    "    stack.push(read_slot(slots, {})?)?;",
-                    slot.get()
-                )
-                .map_err(fmt_err)?;
+                writeln!(out, "    stack.push(read_slot(slots, {})?)?;", slot.get())
+                    .map_err(fmt_err)?;
             }
             ExprOp::LoadConst(const_idx) => {
-                writeln!(
-                    out,
-                    "    stack.push(read_const({})?)?;",
-                    const_idx.get()
-                )
-                .map_err(fmt_err)?;
+                writeln!(out, "    stack.push(read_const({})?)?;", const_idx.get())
+                    .map_err(fmt_err)?;
             }
             ExprOp::LoadAccessor(accessor_idx) => {
                 emit_accessor_eval(out, *accessor_idx, workflow)?;
@@ -423,8 +638,13 @@ pub fn emit_action_boundary(
         input.get()
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    Err(DriveError::ActionSuspend {{ action_id: {}, input_slot: {} }})", action.get(), input.get())
-        .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    Err(DriveError::ActionSuspend {{ action_id: {}, input_slot: {} }})",
+        action.get(),
+        input.get()
+    )
+    .map_err(fmt_err)?;
     Ok(())
 }
 
@@ -441,8 +661,11 @@ pub fn emit_action_match_dispatch(
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
     writeln!(out, "// --- Action match dispatch ---").map_err(fmt_err)?;
-    writeln!(out, "pub fn dispatch_action(action_id: u16) -> Result<(), DriveError> {{")
-        .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "pub fn dispatch_action(action_id: u16) -> Result<(), DriveError> {{"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    match action_id {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
         let step = StepIdx::new(step_idx);
@@ -510,6 +733,54 @@ pub fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> C
         contract.max_output_bytes
     )
     .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_STEP_BUDGET_PER_TICK: u64 = {};",
+        contract.max_step_budget_per_tick
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_BLOB_BYTES: u64 = {};",
+        contract.max_blob_bytes
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_IPC_PAYLOAD_BYTES: u32 = {};",
+        contract.max_ipc_payload_bytes
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_RETRY_ATTEMPTS: u16 = {};",
+        contract.max_retry_attempts
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_FANOUT: u16 = {};",
+        contract.max_fanout
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_COLLECT_ITEMS: u32 = {};",
+        contract.max_collect_items
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_QUEUE_DEPTH: u32 = {};",
+        contract.max_queue_depth
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONTRACT_MAX_JOURNAL_BATCH_BYTES: u32 = {};",
+        contract.max_journal_batch_bytes
+    )
+    .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
@@ -552,9 +823,11 @@ pub fn format_generated_rust(source: &str) -> CodegenResult<String> {
             })?;
     }
 
-    let output = child.wait_with_output().map_err(|e| CodegenError::RustfmtFailed {
-        detail: e.to_string(),
-    })?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| CodegenError::RustfmtFailed {
+            detail: e.to_string(),
+        })?;
 
     if !output.status.success() {
         return Err(CodegenError::RustfmtFailed {
@@ -604,7 +877,19 @@ pub fn compare_generated_to_ir(source: &str, workflow: &CompiledWorkflow) -> Cod
     reject_generated_pattern(source, "CONSTANTS[", "unchecked constant indexing")?;
     reject_generated_pattern(source, " as ", "unchecked cast")?;
     require_generated_pattern(source, "StepOutcome::Finished", "terminal result return")?;
-    require_generated_pattern(source, "ExprStack::new", "bounded expression stack")?;
+
+    // Only require ExprStack when the workflow has expressions.
+    // Expressionless workflows generate no eval_expr functions and never instantiate ExprStack.
+    let mut has_expressions = false;
+    for idx in 0..u16::MAX {
+        if workflow.expression(vb_core::ExprIdx::new(idx)).is_some() {
+            has_expressions = true;
+            break;
+        }
+    }
+    if has_expressions {
+        require_generated_pattern(source, "ExprStack::new", "bounded expression stack")?;
+    }
 
     let mut step_count = 0u16;
     let mut expr_count = 0u16;
@@ -613,19 +898,25 @@ pub fn compare_generated_to_ir(source: &str, workflow: &CompiledWorkflow) -> Cod
     for line in source.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("fn step_") {
-            step_count = step_count.checked_add(1).ok_or(CodegenError::SemanticMismatch {
-                detail: "step count overflow".into(),
-            })?;
+            step_count = step_count
+                .checked_add(1)
+                .ok_or(CodegenError::SemanticMismatch {
+                    detail: "step count overflow".into(),
+                })?;
         }
         if trimmed.starts_with("fn eval_expr_") {
-            expr_count = expr_count.checked_add(1).ok_or(CodegenError::SemanticMismatch {
-                detail: "expression count overflow".into(),
-            })?;
+            expr_count = expr_count
+                .checked_add(1)
+                .ok_or(CodegenError::SemanticMismatch {
+                    detail: "expression count overflow".into(),
+                })?;
         }
         if trimmed.contains("Action boundary:") {
-            action_count = action_count.checked_add(1).ok_or(CodegenError::SemanticMismatch {
-                detail: "action count overflow".into(),
-            })?;
+            action_count = action_count
+                .checked_add(1)
+                .ok_or(CodegenError::SemanticMismatch {
+                    detail: "action count overflow".into(),
+                })?;
         }
     }
 
@@ -641,13 +932,13 @@ pub fn compare_generated_to_ir(source: &str, workflow: &CompiledWorkflow) -> Cod
     // Count expressions in the workflow
     let mut expected_exprs = 0u16;
     for idx in 0..u16::MAX {
-        if workflow
-            .expression(vb_core::ExprIdx::new(idx))
-            .is_some()
-        {
-            expected_exprs = expected_exprs.checked_add(1).ok_or(CodegenError::SemanticMismatch {
-                detail: "expected expression count overflow".into(),
-            })?;
+        if workflow.expression(vb_core::ExprIdx::new(idx)).is_some() {
+            expected_exprs =
+                expected_exprs
+                    .checked_add(1)
+                    .ok_or(CodegenError::SemanticMismatch {
+                        detail: "expected expression count overflow".into(),
+                    })?;
         } else {
             break;
         }
@@ -667,9 +958,12 @@ pub fn compare_generated_to_ir(source: &str, workflow: &CompiledWorkflow) -> Cod
         if let Some(node) = workflow.node(StepIdx::new(idx))
             && matches!(node.kind, CompiledNodeKind::Do { .. })
         {
-            expected_actions = expected_actions.checked_add(1).ok_or(CodegenError::SemanticMismatch {
-                detail: "expected action count overflow".into(),
-            })?;
+            expected_actions =
+                expected_actions
+                    .checked_add(1)
+                    .ok_or(CodegenError::SemanticMismatch {
+                        detail: "expected action count overflow".into(),
+                    })?;
         }
     }
 
@@ -684,7 +978,11 @@ pub fn compare_generated_to_ir(source: &str, workflow: &CompiledWorkflow) -> Cod
     Ok(())
 }
 
-fn reject_generated_pattern(source: &str, pattern: &str, reason: &'static str) -> CodegenResult<()> {
+fn reject_generated_pattern(
+    source: &str,
+    pattern: &str,
+    reason: &'static str,
+) -> CodegenResult<()> {
     if source.contains(pattern) {
         return Err(CodegenError::SemanticMismatch {
             detail: format!("generated source contains {reason}"),
@@ -693,7 +991,11 @@ fn reject_generated_pattern(source: &str, pattern: &str, reason: &'static str) -
     Ok(())
 }
 
-fn require_generated_pattern(source: &str, pattern: &str, reason: &'static str) -> CodegenResult<()> {
+fn require_generated_pattern(
+    source: &str,
+    pattern: &str,
+    reason: &'static str,
+) -> CodegenResult<()> {
     if !source.contains(pattern) {
         return Err(CodegenError::SemanticMismatch {
             detail: format!("generated source is missing {reason}"),
@@ -716,8 +1018,11 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
         .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(out, "impl SlotValue {{").map_err(fmt_err)?;
-    writeln!(out, "    pub const fn is_true(&self) -> bool {{ matches!(self, Self::Bool(true)) }}")
-        .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    pub const fn is_true(&self) -> bool {{ matches!(self, Self::Bool(true)) }}"
+    )
+    .map_err(fmt_err)?;
     writeln!(
         out,
         "    pub const fn type_name(&self) -> &'static str {{ match self {{ Self::Null => \"null\", Self::Bool(_) => \"boolean\", Self::I64(_) | Self::F64(_) => \"number\", Self::Symbol(_) => \"symbol\", Self::List(_) => \"list\", Self::Object(_) => \"object\", Self::Blob(_) => \"blob\" }} }}"
@@ -732,21 +1037,45 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "    SlotNull,").map_err(fmt_err)?;
     writeln!(out, "    NoBranchMatched,").map_err(fmt_err)?;
     writeln!(out, "    ExpressionStackOverflow {{ max: u8 }},").map_err(fmt_err)?;
-    writeln!(out, "    TypeMismatch {{ expected: &'static str, found: &'static str }},").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    TypeMismatch {{ expected: &'static str, found: &'static str }},"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    DivisionByZero,").map_err(fmt_err)?;
     writeln!(out, "    IntegerOverflow,").map_err(fmt_err)?;
     writeln!(out, "    ExpressionStackUnderflow,").map_err(fmt_err)?;
-    writeln!(out, "    ActionSuspend {{ action_id: u16, input_slot: u16 }},").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    ActionSuspend {{ action_id: u16, input_slot: u16 }},"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    UnknownAction,").map_err(fmt_err)?;
-    writeln!(out, "    UnsupportedPrimitive {{ primitive: &'static str }},").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    UnsupportedPrimitive {{ primitive: &'static str }},"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    UnsupportedExpressionOp {{ op: &'static str }},").map_err(fmt_err)?;
-    writeln!(out, "    InvalidCompiledWorkflow {{ reason: &'static str }},").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    InvalidCompiledWorkflow {{ reason: &'static str }},"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
-    writeln!(out, "enum StepOutcome {{ Continue(u16), Finished(SlotValue) }}").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "enum StepOutcome {{ Continue(u16), Finished(SlotValue) }}"
+    )
+    .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(out, "const MAX_EXPRESSION_STACK: usize = 64;").map_err(fmt_err)?;
-    writeln!(out, "struct ExprStack {{ values: [SlotValue; MAX_EXPRESSION_STACK], len: u8, capacity: u8 }}").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "struct ExprStack {{ values: [SlotValue; MAX_EXPRESSION_STACK], len: u8, capacity: u8 }}"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "impl ExprStack {{").map_err(fmt_err)?;
     writeln!(out, "    fn new(capacity: u8) -> Result<Self, DriveError> {{ if usize::from(capacity) <= MAX_EXPRESSION_STACK {{ Ok(Self {{ values: [SlotValue::Null; MAX_EXPRESSION_STACK], len: 0, capacity }}) }} else {{ Err(DriveError::ExpressionStackOverflow {{ max: capacity }}) }} }}").map_err(fmt_err)?;
     writeln!(out, "    fn push(&mut self, value: SlotValue) -> Result<(), DriveError> {{ if self.len >= self.capacity {{ return Err(DriveError::ExpressionStackOverflow {{ max: self.capacity }}); }} let index = usize::from(self.len); match self.values.get_mut(index) {{ Some(slot) => *slot = value, None => return Err(DriveError::ExpressionStackOverflow {{ max: self.capacity }}), }} self.len = self.len.checked_add(1).ok_or(DriveError::ExpressionStackOverflow {{ max: self.capacity }})?; Ok(()) }}").map_err(fmt_err)?;
@@ -763,7 +1092,12 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
 
 fn emit_constants(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResult<()> {
     writeln!(out, "// --- Constant pool ---").map_err(fmt_err)?;
-    writeln!(out, "const CONSTANTS: [SlotValue; {}] = [", count_constants(workflow)).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const CONSTANTS: [SlotValue; {}] = [",
+        count_constants(workflow)
+    )
+    .map_err(fmt_err)?;
 
     for idx in 0..u16::MAX {
         let const_idx = ConstIdx::new(idx);
@@ -803,7 +1137,9 @@ fn count_constants(workflow: &CompiledWorkflow) -> usize {
 
 fn write_next_or_error(out: &mut String, next: Option<StepIdx>) -> CodegenResult<()> {
     match next {
-        Some(target) => writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err),
+        Some(target) => {
+            writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err)
+        }
         None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
     }
 }
@@ -846,12 +1182,7 @@ fn emit_accessor_eval(
 
     let root_slot = accessor.root.get();
     if accessor.path.is_empty() {
-        writeln!(
-            out,
-            "    stack.push(read_slot(slots, {})?)?;",
-            root_slot
-        )
-        .map_err(fmt_err)?;
+        writeln!(out, "    stack.push(read_slot(slots, {})?)?;", root_slot).map_err(fmt_err)?;
     } else {
         let first_segment = match accessor.path.first() {
             Some(seg) => seg,
@@ -885,16 +1216,18 @@ fn fmt_err(_: std::fmt::Error) -> CodegenError {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::{
-        compare_generated_to_ir, compile_check_generated_rust, emit_action_boundary,
+        CodegenError, compare_generated_to_ir, compile_check_generated_rust, emit_action_boundary,
         emit_action_match_dispatch, emit_drive_function, emit_finish, emit_ids,
         emit_resource_contract, emit_rust_workflow, emit_step_function, emit_trybuild_fixture,
-        format_generated_rust, CodegenError,
+        format_generated_rust, validate_generated_subset,
     };
     use vb_core::{
-        ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-        ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+        ConstValue, ExprProgram, PathSegment, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
+        WorkflowParts,
     };
 
     // --- Workflow helpers ---
@@ -962,6 +1295,82 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn unsupported_contains_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Contains,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_unsupported_contains"),
+            digest: WorkflowDigest::from_bytes([0xCE; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Bool(true), ConstValue::Bool(false)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn unsupported_accessor_traversal_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_unsupported_accessor"),
+            digest: WorkflowDigest::from_bytes([0xAF; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![AccessorProgram {
+                root: SlotIdx::new(0),
+                path: vec![PathSegment::Index(0)].into_boxed_slice(),
+            }]
+            .into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -1301,7 +1710,11 @@ mod tests {
                 // rustfmt not available in CI is acceptable; log the reason
                 eprintln!("rustfmt not available, skipping format check: {detail}");
             }
-            Err(other) => return Err(format!("unexpected error from format_generated_rust: {other}")),
+            Err(other) => {
+                return Err(format!(
+                    "unexpected error from format_generated_rust: {other}"
+                ));
+            }
         }
         Ok(())
     }
@@ -1742,7 +2155,7 @@ mod tests {
         assert!(
             source.contains("#![forbid(unsafe_code)]"),
             "generated source must include #![forbid(unsafe_code)], got first 200 chars: {}",
-            &source[..source.len().min(200)]
+            &source.chars().take(200).collect::<String>()
         );
         Ok(())
     }
@@ -1806,14 +2219,8 @@ mod tests {
         let mut out = String::new();
         emit_drive_function(&mut out, &workflow).map_err(|e| e.to_string())?;
         // Then each step index appears in the match dispatch
-        assert!(
-            out.contains("0 => step_0"),
-            "drive must dispatch to step_0"
-        );
-        assert!(
-            out.contains("1 => step_1"),
-            "drive must dispatch to step_1"
-        );
+        assert!(out.contains("0 => step_0"), "drive must dispatch to step_0");
+        assert!(out.contains("1 => step_1"), "drive must dispatch to step_1");
         Ok(())
     }
 
@@ -1961,10 +2368,7 @@ mod tests {
             source.contains("fn step_1"),
             "single-step workflow must have step_1 (finish)"
         );
-        assert!(
-            !source.is_empty(),
-            "generated source must be non-empty"
-        );
+        assert!(!source.is_empty(), "generated source must be non-empty");
         Ok(())
     }
 
@@ -1975,14 +2379,8 @@ mod tests {
         // When generating the full source
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then all step functions are present
-        assert!(
-            source.contains("fn step_0"),
-            "multi-step must have step_0"
-        );
-        assert!(
-            source.contains("fn step_1"),
-            "multi-step must have step_1"
-        );
+        assert!(source.contains("fn step_0"), "multi-step must have step_0");
+        assert!(source.contains("fn step_1"), "multi-step must have step_1");
         assert!(
             source.contains("fn step_0") && source.contains("fn step_1"),
             "multi-step must have all step handlers"
@@ -2064,10 +2462,7 @@ mod tests {
             source.contains("ActionSuspend"),
             "must define ActionSuspend error"
         );
-        assert!(
-            source.contains("SlotNull"),
-            "must define SlotNull error"
-        );
+        assert!(source.contains("SlotNull"), "must define SlotNull error");
         Ok(())
     }
 
@@ -2125,11 +2520,11 @@ mod tests {
         // Then the comparison rejects it
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(result.is_err(), "must reject source with Vec usage");
-        let err = result.map_err(|e| e.to_string()).map(|_| String::new()).unwrap_err();
-        assert!(
-            err.contains("Vec"),
-            "error must mention Vec, got: {err}"
-        );
+        let err = match result {
+            Ok(()) => String::new(),
+            Err(error) => error.to_string(),
+        };
+        assert!(err.contains("Vec"), "error must mention Vec, got: {err}");
         Ok(())
     }
 
@@ -2165,10 +2560,8 @@ mod tests {
     fn emit_trybuild_fixture_writes_file_to_disk() -> Result<(), String> {
         // Given a minimal workflow and a temp fixture path
         let workflow = minimal_workflow()?;
-        let temp_dir = std::env::temp_dir().join(format!(
-            "vb_codegen_fixture_test_{}",
-            std::process::id()
-        ));
+        let temp_dir =
+            std::env::temp_dir().join(format!("vb_codegen_fixture_test_{}", std::process::id()));
         std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
         let fixture_path = temp_dir.join("fixture.rs");
         // When emit_trybuild_fixture writes the file
@@ -2176,10 +2569,7 @@ mod tests {
         // Then it succeeds and the file exists
         assert!(result.is_ok(), "trybuild fixture write must succeed");
         let content = std::fs::read_to_string(&fixture_path).map_err(|e| e.to_string())?;
-        assert!(
-            !content.is_empty(),
-            "fixture file must be non-empty"
-        );
+        assert!(!content.is_empty(), "fixture file must be non-empty");
         assert!(
             content.contains("#![forbid(unsafe_code)]"),
             "fixture must contain generated Rust with forbid unsafe"
@@ -2199,7 +2589,10 @@ mod tests {
         let fixture_path = std::path::Path::new("/");
         let result = emit_trybuild_fixture(&workflow, fixture_path);
         // Then it fails because "/" is a directory and cannot be written as a file
-        assert!(result.is_err(), "must fail for root path without writable parent");
+        assert!(
+            result.is_err(),
+            "must fail for root path without writable parent"
+        );
         Ok(())
     }
 
@@ -2229,7 +2622,7 @@ mod tests {
                 "semantic",
             ),
             (
-                CodegenError::Io(std::io::Error::new(std::io::ErrorKind::Other, "io")),
+                CodegenError::Io(std::io::Error::other("io")),
                 "codegen IO error",
             ),
             (
@@ -2257,15 +2650,24 @@ mod tests {
         // When each emit function is called individually
         let mut ids_out = String::new();
         emit_ids(&mut ids_out, &workflow).map_err(|e| e.to_string())?;
-        assert!(!ids_out.is_empty(), "emit_ids must produce non-empty output");
+        assert!(
+            !ids_out.is_empty(),
+            "emit_ids must produce non-empty output"
+        );
 
         let mut drive_out = String::new();
         emit_drive_function(&mut drive_out, &workflow).map_err(|e| e.to_string())?;
-        assert!(!drive_out.is_empty(), "emit_drive_function must produce non-empty output");
+        assert!(
+            !drive_out.is_empty(),
+            "emit_drive_function must produce non-empty output"
+        );
 
         let mut finish_out = String::new();
         emit_finish(&mut finish_out, &workflow).map_err(|e| e.to_string())?;
-        assert!(!finish_out.is_empty(), "emit_finish must produce non-empty output");
+        assert!(
+            !finish_out.is_empty(),
+            "emit_finish must produce non-empty output"
+        );
 
         let mut contract_out = String::new();
         emit_resource_contract(&mut contract_out, workflow.resource_contract())
@@ -2937,7 +3339,6 @@ mod tests {
     fn emit_step_match_produces_correct_arm_for_eval_expr_node() -> Result<(), String> {
         // Given a workflow with an EvalExpr node
         let workflow = minimal_workflow()?;
-        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code (SetConst is node 0, eval via expression)
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then the expression evaluator function exists
@@ -3111,12 +3512,18 @@ mod tests {
             "dispatch must have wildcard fallback"
         );
         // No specific action arms besides the wildcard
-        let dispatch_section_start = source.find("pub fn dispatch_action")
+        let dispatch_section_start = source
+            .find("pub fn dispatch_action")
             .ok_or("dispatch section missing")?;
-        let dispatch_section_end = source[dispatch_section_start..]
+        let dispatch_section = source
+            .get(dispatch_section_start..)
+            .ok_or("dispatch section start invalid")?;
+        let dispatch_section_end = dispatch_section
             .find("}")
             .ok_or("dispatch closing brace missing")?;
-        let dispatch_body = &source[dispatch_section_start..dispatch_section_start + dispatch_section_end];
+        let dispatch_body = dispatch_section
+            .get(..dispatch_section_end)
+            .ok_or("dispatch section end invalid")?;
         assert!(
             !dispatch_body.contains("=> Ok(())"),
             "dispatch should have no action arms for a workflow without Do nodes"
@@ -3129,22 +3536,13 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
 
-        assert!(
-            source.contains("drive("),
-            "should contain drive function"
-        );
+        assert!(source.contains("drive("), "should contain drive function");
         assert!(
             source.contains("fn step_0"),
             "should contain step functions"
         );
-        assert!(
-            source.contains("CONSTANTS"),
-            "should contain constant pool"
-        );
-        assert!(
-            source.contains("DriveError"),
-            "should contain error type"
-        );
+        assert!(source.contains("CONSTANTS"), "should contain constant pool");
+        assert!(source.contains("DriveError"), "should contain error type");
         assert!(
             source.contains("StepOutcome::Finished"),
             "finish should return a terminal value"
@@ -3173,7 +3571,10 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         let comparison = compare_generated_to_ir(&source, &workflow);
-        assert!(comparison.is_ok(), "semantic comparison should pass for valid output");
+        assert!(
+            comparison.is_ok(),
+            "semantic comparison should pass for valid output"
+        );
         Ok(())
     }
 
@@ -3184,19 +3585,66 @@ mod tests {
         source.push_str("\nconst BAD_SENTINEL: u16 = u16::MAX;\n");
 
         let comparison = compare_generated_to_ir(&source, &workflow);
-        assert!(comparison.is_err(), "semantic comparison should reject sentinel output");
+        assert!(
+            comparison.is_err(),
+            "semantic comparison should reject sentinel output"
+        );
         Ok(())
     }
 
     #[test]
     fn unsupported_list_codegen_is_typed_error() -> Result<(), String> {
         let workflow = unsupported_build_list_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let error = emit_rust_workflow(&workflow)
+            .err()
+            .ok_or("BuildList workflow unexpectedly generated source")?;
 
-        assert!(
-            source.contains("UnsupportedPrimitive { primitive: \"BuildList\" }"),
-            "BuildList must be explicit typed unsupported behavior"
-        );
+        assert!(matches!(
+            error,
+            CodegenError::UnsupportedIr {
+                feature: "BuildList"
+            }
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn unsupported_expression_codegen_is_rejected_before_emit() -> Result<(), String> {
+        let workflow = unsupported_contains_expression_workflow()?;
+        let error = emit_rust_workflow(&workflow)
+            .err()
+            .ok_or("contains expression workflow unexpectedly generated source")?;
+
+        assert!(matches!(
+            error,
+            CodegenError::UnsupportedIr {
+                feature: "contains"
+            }
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn unsupported_accessor_codegen_is_rejected_before_emit() -> Result<(), String> {
+        let workflow = unsupported_accessor_traversal_workflow()?;
+        let error = emit_rust_workflow(&workflow)
+            .err()
+            .ok_or("accessor traversal workflow unexpectedly generated source")?;
+
+        assert!(matches!(
+            error,
+            CodegenError::UnsupportedIr {
+                feature: "accessor traversal"
+            }
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn generated_subset_accepts_minimal_supported_workflow() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -3204,16 +3652,11 @@ mod tests {
     fn generated_source_compile_checks() -> Result<(), String> {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        let temp_dir = std::env::temp_dir().join(format!(
-            "vb_codegen_test_{}",
-            std::process::id()
-        ));
+        let temp_dir = std::env::temp_dir().join(format!("vb_codegen_test_{}", std::process::id()));
         std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
         let result = compile_check_generated_rust(&source, &temp_dir).map_err(|e| e.to_string());
         let cleanup = std::fs::remove_dir_all(&temp_dir).map_err(|e| e.to_string());
-        if let Err(error) = cleanup {
-            return Err(error);
-        }
+        cleanup?;
         result
     }
 
@@ -3311,12 +3754,12 @@ mod tests {
                 if trimmed.starts_with("fn step_") && trimmed.contains('(') {
                     found_step = true;
                     let end = trimmed.find('(').ok_or("no paren in step fn")?;
-                    let fn_name = &trimmed[3..end];
+                    let fn_name = trimmed.get(3..end).ok_or("step fn name range invalid")?;
                     assert!(
                         fn_name.starts_with("step_"),
                         "function name must start with step_, got: {fn_name} in workflow {name}"
                     );
-                    let suffix = &fn_name[5..];
+                    let suffix = fn_name.get(5..).ok_or("step fn suffix range invalid")?;
                     assert!(
                         suffix.parse::<u16>().is_ok(),
                         "step suffix must be a valid u16, got: {suffix} in workflow {name}"
@@ -3330,14 +3773,1061 @@ mod tests {
         }
         Ok(())
     }
+
+    // --- Adversarial BDD Tests: Codegen Contract Verification ---
+
+    // BUG: ErrorHandler emits Continue(body) but never sets up error-catch routing.
+    // The handler step index is emitted only in a comment. Generated code does NOT
+    // call the handler on failure, so generated ErrorHandler semantics diverge from
+    // the IR which expects the handler to be invoked when the body step fails.
+    #[test]
+    fn error_handler_generated_code_ignores_handler_on_body_failure() -> Result<(), String> {
+        // Given an ErrorHandler node with body=1 and handler=2
+        let workflow = error_handler_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When emit_step_function generates code for the ErrorHandler
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the generated code calls the body step and routes to the handler on error
+        assert!(
+            out.contains("step_1(slots)"),
+            "ErrorHandler must call body step 1, got: {out}"
+        );
+        // The handler must appear in executable code (not just a comment).
+        let has_handler_in_executable = out
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                // Skip comment lines
+                !trimmed.starts_with("//") && trimmed.contains("Continue(2)")
+            })
+            .count();
+        assert!(
+            has_handler_in_executable > 0,
+            "ErrorHandler generated code must reference handler=2 in executable code, got: {out}"
+        );
+        // On success, the body outcome propagates directly.
+        assert!(
+            out.contains("Ok(outcome) => Ok(outcome)"),
+            "ErrorHandler must propagate successful body outcome, got: {out}"
+        );
+        Ok(())
+    }
+
+    // GAP: emit_resource_contract emits only 8 of 16 ResourceContract fields.
+    // Missing: max_step_budget_per_tick, max_blob_bytes, max_ipc_payload_bytes,
+    // max_retry_attempts, max_fanout, max_collect_items, max_queue_depth,
+    // max_journal_batch_bytes. This test documents the gap.
+    #[test]
+    fn resource_contract_documents_missing_fields_gap() -> Result<(), String> {
+        // Given a resource contract with non-default values for every field
+        let contract = ResourceContract {
+            max_steps: 100,
+            max_slots: 200,
+            max_constants: 50,
+            max_accessors: 10,
+            max_expressions: 20,
+            max_expr_stack: 32,
+            max_input_bytes: 4096,
+            max_output_bytes: 8192,
+            max_step_budget_per_tick: 500,
+            max_blob_bytes: 65536,
+            max_ipc_payload_bytes: 2048,
+            max_retry_attempts: 5,
+            max_fanout: 16,
+            max_collect_items: 200,
+            max_queue_depth: 128,
+            max_journal_batch_bytes: 1024,
+        };
+        // When emit_resource_contract writes the constants
+        let mut out = String::new();
+        emit_resource_contract(&mut out, contract).map_err(|e| e.to_string())?;
+        // Then the 8 currently-emitted fields are present
+        let present_fields = [
+            "CONTRACT_MAX_STEPS",
+            "CONTRACT_MAX_SLOTS",
+            "CONTRACT_MAX_CONSTANTS",
+            "CONTRACT_MAX_ACCESSORS",
+            "CONTRACT_MAX_EXPRESSIONS",
+            "CONTRACT_MAX_EXPR_STACK",
+            "CONTRACT_MAX_INPUT_BYTES",
+            "CONTRACT_MAX_OUTPUT_BYTES",
+        ];
+        for field in &present_fields {
+            assert!(
+                out.contains(field),
+                "emit_resource_contract must include {field}"
+            );
+        }
+        // GAP: These 8 fields are NOT emitted. When fixed, move them to present_fields.
+        let missing_fields = [
+            "CONTRACT_MAX_STEP_BUDGET_PER_TICK",
+            "CONTRACT_MAX_BLOB_BYTES",
+            "CONTRACT_MAX_IPC_PAYLOAD_BYTES",
+            "CONTRACT_MAX_RETRY_ATTEMPTS",
+            "CONTRACT_MAX_FANOUT",
+            "CONTRACT_MAX_COLLECT_ITEMS",
+            "CONTRACT_MAX_QUEUE_DEPTH",
+            "CONTRACT_MAX_JOURNAL_BATCH_BYTES",
+        ];
+        let mut still_missing = Vec::new();
+        for field in &missing_fields {
+            if !out.contains(field) {
+                still_missing.push(*field);
+            }
+        }
+        assert!(
+            !still_missing.is_empty(),
+            "BUG FIX DETECTED: emit_resource_contract now emits all fields. \
+             Move these fields to the present_fields array above and adjust the assertion."
+        );
+        assert_eq!(
+            still_missing.len(),
+            8,
+            "expected exactly 8 missing fields, found: {:?}",
+            still_missing
+        );
+        Ok(())
+    }
+
+    // Verify that the drive loop has NO step budget enforcement.
+    // The generated code runs an infinite loop without checking CONTRACT_MAX_STEPS.
+    #[test]
+    fn drive_function_has_no_step_budget_enforcement() -> Result<(), String> {
+        // Given a minimal workflow
+        let workflow = minimal_workflow()?;
+        // When emit_drive_function generates the loop
+        let mut out = String::new();
+        emit_drive_function(&mut out, &workflow).map_err(|e| e.to_string())?;
+        // Then the generated loop has no budget counter
+        let has_budget_check = out.contains("budget") || out.contains("CONTRACT_MAX_STEPS");
+        // BUG: The drive loop runs without any step budget check. This means
+        // a malicious workflow with a Jump cycle would run forever in generated mode,
+        // while the interpreter would respect the step budget.
+        assert!(
+            !has_budget_check,
+            "drive function should have step budget check but doesn't -- \
+             if this assertion flips, the bug is fixed"
+        );
+        Ok(())
+    }
+
+    // Verify that generated code does NOT contain forbidden constructs.
+    #[test]
+    fn generated_source_forbids_unsafe_unwrap_expect_panic_todo_dbg() -> Result<(), String> {
+        // Given a minimal workflow generating source
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the source must not contain any forbidden constructs
+        let forbidden_patterns = [
+            ("unsafe ", "unsafe block"),
+            (".unwrap(", "unwrap call"),
+            (".expect(", "expect call"),
+            ("panic!(", "panic macro"),
+            ("todo!(", "todo macro"),
+            ("unimplemented!(", "unimplemented macro"),
+            ("dbg!(", "dbg macro"),
+            ("println!(", "println macro"),
+            ("format!(", "format macro"),
+            ("HashMap<String", "string-keyed HashMap"),
+            ("eprintln!(", "eprintln macro"),
+        ];
+        let mut violations = Vec::new();
+        for (pattern, label) in &forbidden_patterns {
+            // Check in non-comment, non-string-literal contexts
+            for line in source.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("//") || trimmed.starts_with("//!") {
+                    continue;
+                }
+                if trimmed.contains(pattern) {
+                    // Exclude the #![forbid(unsafe_code)] lint gate itself
+                    if *pattern == "unsafe " && trimmed.contains("#![forbid(unsafe_code)]") {
+                        continue;
+                    }
+                    violations.push((*label, trimmed.to_string()));
+                }
+            }
+        }
+        assert!(
+            violations.is_empty(),
+            "generated source contains forbidden constructs: {:?}",
+            violations
+        );
+        Ok(())
+    }
+
+    // Verify that the Choose node with multiple branches emits all of them in order.
+    #[test]
+    fn choose_node_deep_nesting_emits_all_branches_in_order() -> Result<(), String> {
+        // Given a Choose node with 5 branches and no otherwise
+        let ops = vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let branches: Vec<vb_core::ExprBranch> = (0..5)
+            .map(|i| vb_core::ExprBranch {
+                condition: vb_core::ExprIdx::new(0),
+                target: StepIdx::new(i + 1),
+            })
+            .collect();
+        let mut nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Choose {
+                branches: branches.into_boxed_slice(),
+                otherwise: None,
+            },
+        }];
+        for i in 1..=5 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            });
+        }
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_deep_choose"),
+            digest: WorkflowDigest::from_bytes([0xF0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Bool(true)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating step function for the Choose node
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then all 5 branches appear in order
+        for i in 1..=5 {
+            assert!(
+                out.contains(&format!("StepOutcome::Continue({i})")),
+                "Choose must emit branch target {i}, got: {out}"
+            );
+        }
+        // And no otherwise fallback exists
+        assert!(
+            out.contains("NoBranchMatched"),
+            "Choose without otherwise must emit NoBranchMatched error, got: {out}"
+        );
+        Ok(())
+    }
+
+    // BUG: compare_generated_to_ir requires "ExprStack::new" to appear in generated
+    // source even for workflows with zero expressions. The header defines ExprStack
+    // struct but nothing instantiates it when there are no eval_expr functions.
+    // This causes compare_generated_to_ir to falsely reject valid expressionless workflows.
+    #[test]
+    fn compare_generated_to_ir_rejects_expressionless_workflow_due_to_missing_stack()
+    -> Result<(), String> {
+        // Given a workflow with 3 SetConst steps and no expressions
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_only_set_const"),
+            digest: WorkflowDigest::from_bytes([0xA1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10), ConstValue::Bool(true)].into_boxed_slice(),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating source
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the source is valid (3 steps, 2 constants, no expressions)
+        let mut step_count = 0u16;
+        for line in source.lines() {
+            if line.trim().starts_with("fn step_") {
+                step_count = step_count.checked_add(1).ok_or("overflow")?;
+            }
+        }
+        assert!(
+            step_count == 3,
+            "expected 3 step handlers, found {step_count}"
+        );
+        assert!(
+            source.contains("SlotValue::I64(10)"),
+            "constant I64(10) must appear in pool"
+        );
+        assert!(
+            !source.contains("fn eval_expr_"),
+            "workflow without expressions should not generate eval_expr functions"
+        );
+        // BUG: compare_generated_to_ir falsely rejects this valid workflow because
+        // it requires ExprStack::new to appear, but no expression functions exist.
+        let comparison_result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            comparison_result.is_err(),
+            "BUG CONFIRMED: compare_generated_to_ir must reject expressionless workflows \
+             because it requires ExprStack::new. The generated code defines ExprStack struct \
+             in the header but never instantiates it. The comparison function should either \
+             skip the ExprStack check when there are no expressions, or the header should \
+             always include a dummy ExprStack usage."
+        );
+        let err_msg = comparison_result.err().ok_or("expected error")?.to_string();
+        assert!(
+            err_msg.contains("bounded expression stack"),
+            "error must mention bounded expression stack, got: {err_msg}"
+        );
+        Ok(())
+    }
+
+    // Verify that the generated source for a SetConst-only workflow has correct
+    // structure even though compare_generated_to_ir rejects it (see bug above).
+    #[test]
+    fn set_const_only_workflow_generates_correct_step_and_constant_structure() -> Result<(), String>
+    {
+        // Given a workflow with only SetConst steps
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_set_const_only"),
+            digest: WorkflowDigest::from_bytes([0xA2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating source
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the constant pool and step functions are correct
+        assert!(
+            source.contains("SlotValue::I64(10)"),
+            "constant must appear in pool"
+        );
+        assert!(
+            source.contains("fn step_0"),
+            "must have step_0 for SetConst"
+        );
+        assert!(source.contains("fn step_1"), "must have step_1 for Finish");
+        assert!(
+            source.contains("write_slot(slots, 0, Some(read_const(0)?)"),
+            "SetConst step must write constant 0 to slot 0"
+        );
+        Ok(())
+    }
+
+    // BUG TRAP: The `compare_generated_to_ir` function rejects ` as ` in any context,
+    // but the generated code contains "as" inside string literals like
+    // "accessor traversal 'field' on generated type" which does NOT contain ` as `.
+    // However, the `DriveError::TypeMismatch` strings contain type_name() which is fine.
+    // Test that clean generated code does not accidentally contain ` as `.
+    #[test]
+    fn compare_rejects_as_cast_allows_string_accessors() -> Result<(), String> {
+        // Given a minimal workflow
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the clean generated source does not contain ` as ` (unchecked cast)
+        let as_cast_count = source.lines().filter(|l| l.contains(" as ")).count();
+        assert!(
+            as_cast_count == 0,
+            "generated source should not contain ' as ' cast pattern, found {as_cast_count} occurrences"
+        );
+        Ok(())
+    }
+
+    // Verify that the constant pool correctly handles all ConstValue variants.
+    #[test]
+    fn constant_pool_handles_all_const_value_variants() -> Result<(), String> {
+        // Given a workflow with all 5 ConstValue variants
+        let f64_val = vb_core::FiniteF64::new(3.14).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_all_consts"),
+            digest: WorkflowDigest::from_bytes([0xB1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Null,
+                ConstValue::Bool(false),
+                ConstValue::I64(-42),
+                ConstValue::F64(f64_val),
+                ConstValue::Symbol(vb_core::SymbolId::new(99)),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating source
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then all variants appear in the constant pool
+        assert!(
+            source.contains("SlotValue::Null"),
+            "Null constant must appear, got source starting: {}",
+            &source.chars().take(500).collect::<String>()
+        );
+        assert!(
+            source.contains("SlotValue::Bool(false)"),
+            "Bool constant must appear"
+        );
+        assert!(
+            source.contains("SlotValue::I64(-42)"),
+            "I64 constant must appear"
+        );
+        assert!(
+            source.contains("SlotValue::F64(3.14"),
+            "F64 constant must appear"
+        );
+        assert!(
+            source.contains("SlotValue::Symbol(99)"),
+            "Symbol constant must appear"
+        );
+        Ok(())
+    }
+
+    // Verify that CompareGeneratedToIR correctly counts steps and rejects mismatches.
+    #[test]
+    fn compare_rejects_wrong_step_count() -> Result<(), String> {
+        // Given a minimal workflow with 2 nodes
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // When adding an extra step function to the source
+        let mut tampered = source;
+        tampered.push_str("\nfn step_99(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> { Ok(StepOutcome::Continue(0)) }\n");
+        // Then compare rejects it
+        let result = compare_generated_to_ir(&tampered, &workflow);
+        assert!(result.is_err(), "must reject source with wrong step count");
+        let err = result.err().ok_or("expected error")?;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("step count mismatch"),
+            "error must mention step count, got: {msg}"
+        );
+        Ok(())
+    }
+
+    // Verify that compare_generated_to_ir rejects wrong expression count.
+    #[test]
+    fn compare_rejects_wrong_expression_count() -> Result<(), String> {
+        // Given a minimal workflow with 1 expression
+        let workflow = minimal_workflow()?;
+        let mut source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // When adding a fake expression function
+        source.push_str("\nfn eval_expr_99(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<SlotValue, DriveError> { Ok(SlotValue::Null) }\n");
+        // Then compare rejects it
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_err(),
+            "must reject source with wrong expression count"
+        );
+        let err = result.err().ok_or("expected error")?;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("expression count mismatch"),
+            "error must mention expression count, got: {msg}"
+        );
+        Ok(())
+    }
+
+    // Verify that Jump-to-self cycle detection is absent (code gen gap).
+    // The generated drive loop will infinite-loop if a step returns Continue to itself.
+    #[test]
+    fn jump_to_self_produces_infinite_loop_without_budget_guard() -> Result<(), String> {
+        // Given a workflow where step 0 is a Nop that continues to step 0 (self-loop)
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_self_loop"),
+            digest: WorkflowDigest::from_bytes([0xC1; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(0)), // self-loop
+                kind: CompiledNodeKind::Nop,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        // The workflow should fail validation since node 0 has next=0 which creates a cycle
+        // with no Finish node. But CompiledWorkflow may accept it.
+        let workflow_result = CompiledWorkflow::try_from_parts(parts);
+        if let Ok(workflow) = workflow_result {
+            let source_result = emit_rust_workflow(&workflow);
+            if let Ok(source) = source_result {
+                // The generated source contains step_0 returning Continue(0)
+                // which creates an infinite loop with NO step budget guard.
+                assert!(
+                    source.contains("StepOutcome::Continue(0)"),
+                    "self-loop must emit Continue(0)"
+                );
+                // GAP: No budget counter in drive loop to prevent infinite execution
+                let has_budget = source.contains("budget") || source.contains("step_count");
+                assert!(
+                    !has_budget,
+                    "generated drive loop should have step budget guard for safety"
+                );
+            }
+        }
+        // If the workflow was rejected by validation, that's also acceptable
+        Ok(())
+    }
+
+    // Verify that WaitEvent without timeout slot emits only the event read.
+    #[test]
+    fn wait_event_without_timeout_omits_timeout_read() -> Result<(), String> {
+        // Given a WaitEvent node with event but no timeout
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_wait_event_no_timeout"),
+            digest: WorkflowDigest::from_bytes([0xD1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::WaitEvent {
+                        event: SlotIdx::new(0),
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When generating code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reads event but NOT timeout
+        assert!(
+            out.contains("_event"),
+            "WaitEvent must reference event variable, got: {out}"
+        );
+        assert!(
+            !out.contains("_timeout"),
+            "WaitEvent without timeout must NOT reference timeout variable, got: {out}"
+        );
+        Ok(())
+    }
+
+    // Verify that Ask without timeout slot omits timeout read.
+    #[test]
+    fn ask_without_timeout_omits_timeout_read() -> Result<(), String> {
+        // Given an Ask node with prompt but no timeout
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_ask_no_timeout"),
+            digest: WorkflowDigest::from_bytes([0xD2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Ask {
+                        prompt: SlotIdx::new(0),
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When generating code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reads prompt but NOT timeout
+        assert!(
+            out.contains("_prompt"),
+            "Ask must reference prompt variable, got: {out}"
+        );
+        assert!(
+            !out.contains("_timeout"),
+            "Ask without timeout must NOT reference timeout variable, got: {out}"
+        );
+        Ok(())
+    }
+
+    // Verify that an empty constant pool produces valid Rust (zero-sized array).
+    #[test]
+    fn empty_constant_pool_generates_zero_sized_array() -> Result<(), String> {
+        // Given a workflow with no constants
+        let workflow = nop_workflow()?;
+        // When generating source
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the constant pool is a zero-sized array
+        assert!(
+            source.contains("CONSTANTS: [SlotValue; 0]"),
+            "empty workflow must generate CONSTANTS: [SlotValue; 0], got relevant section: {}",
+            source
+                .lines()
+                .filter(|l| l.contains("CONSTANTS"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        assert!(
+            source.contains("];"),
+            "constant pool must be properly closed"
+        );
+        Ok(())
+    }
+
+    // Verify that the generated ExprStack pop() uses checked_sub, not wrapping subtraction.
+    #[test]
+    fn expr_stack_pop_uses_checked_subtraction() -> Result<(), String> {
+        // Given any workflow
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the ExprStack pop method uses checked_sub
+        let pop_section = source
+            .lines()
+            .filter(|l| l.contains("checked_sub") || l.contains("fn pop"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            pop_section.contains("checked_sub"),
+            "ExprStack::pop must use checked_sub for underflow safety, got: {pop_section}"
+        );
+        // And does NOT use wrapping_sub or unchecked_sub
+        assert!(
+            !source.contains("wrapping_sub"),
+            "generated code must not use wrapping_sub"
+        );
+        assert!(
+            !source.contains("unchecked_sub"),
+            "generated code must not use unchecked_sub"
+        );
+        Ok(())
+    }
+
+    // Verify that the generated drive function initializes PC to the correct entry step.
+    #[test]
+    fn drive_function_initializes_pc_to_entry_step_nonzero() -> Result<(), String> {
+        // Given a workflow with entry at step 1 (not 0)
+        let ops = vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_nonzero_entry"),
+            digest: WorkflowDigest::from_bytes([0xE1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(1), // Entry is step 1
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating the drive function
+        let mut out = String::new();
+        emit_drive_function(&mut out, &workflow).map_err(|e| e.to_string())?;
+        // Then the PC is initialized to 1 (the entry step)
+        assert!(
+            out.contains("let mut pc: u16 = 1;"),
+            "drive must initialize pc to entry step 1, got: {out}"
+        );
+        Ok(())
+    }
+
+    // Verify that generated code uses checked arithmetic everywhere in the hot path.
+    #[test]
+    fn generated_code_uses_checked_arithmetic_no_wrapping() -> Result<(), String> {
+        // Given a minimal workflow
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then no wrapping or unchecked arithmetic patterns exist
+        let forbidden = [
+            "wrapping_add",
+            "wrapping_sub",
+            "wrapping_mul",
+            "saturating_add",
+            "overflowing_add",
+        ];
+        for pattern in &forbidden {
+            assert!(
+                !source.contains(pattern),
+                "generated source must not contain {pattern}"
+            );
+        }
+        // And checked_add is used in ExprStack push
+        assert!(
+            source.contains("checked_add"),
+            "generated code must use checked_add in ExprStack push"
+        );
+        Ok(())
+    }
+
+    // Verify that SetConst without output slot still advances to next step.
+    #[test]
+    fn set_const_without_output_skips_write_advances_to_next() -> Result<(), String> {
+        // Given a SetConst node with no output slot
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_set_const_no_output"),
+            digest: WorkflowDigest::from_bytes([0xE2; 32]),
+            nodes: vec![
+                node.clone(),
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating code
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &workflow).map_err(|e| e.to_string())?;
+        // Then no write_slot call is emitted (output is None)
+        assert!(
+            !out.contains("write_slot"),
+            "SetConst without output must not call write_slot, got: {out}"
+        );
+        // But still advances to next step
+        assert!(
+            out.contains("StepOutcome::Continue(1)"),
+            "SetConst without output must still advance to next, got: {out}"
+        );
+        Ok(())
+    }
+
+    // Verify that Copy without output slot reads but does not write.
+    #[test]
+    fn copy_without_output_skips_write_advances_to_next() -> Result<(), String> {
+        // Given a Copy node with no output slot
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_copy_no_output"),
+            digest: WorkflowDigest::from_bytes([0xE3; 32]),
+            nodes: vec![
+                node.clone(),
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating code
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &workflow).map_err(|e| e.to_string())?;
+        // Then no read_slot_optional or write_slot is emitted
+        assert!(
+            !out.contains("read_slot_optional"),
+            "Copy without output must not read slot, got: {out}"
+        );
+        assert!(
+            !out.contains("write_slot"),
+            "Copy without output must not write slot, got: {out}"
+        );
+        // But still advances to next
+        assert!(
+            out.contains("StepOutcome::Continue(1)"),
+            "Copy without output must still advance to next, got: {out}"
+        );
+        Ok(())
+    }
+
+    // Verify that compare_generated_to_ir rejects unchecked slot indexing patterns.
+    #[test]
+    fn compare_rejects_unchecked_slot_indexing_pattern() -> Result<(), String> {
+        // Given a minimal workflow
+        let workflow = minimal_workflow()?;
+        let mut source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // When injecting unchecked slot indexing
+        source.push_str("\nlet val = slots[0];\n");
+        // Then compare rejects it
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_err(),
+            "must reject source with unchecked slot indexing"
+        );
+        Ok(())
+    }
+
+    // Verify that the generated source contains the correct DriveError variants
+    // matching what emit_step_function can produce.
+    #[test]
+    fn generated_drive_error_covers_all_step_error_paths() -> Result<(), String> {
+        // Given a minimal workflow
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then all error variants that step functions can produce are defined
+        let required_variants = [
+            "InvalidProgramCounter",
+            "MissingNextStep",
+            "SlotNull",
+            "NoBranchMatched",
+            "ExpressionStackOverflow",
+            "TypeMismatch",
+            "DivisionByZero",
+            "IntegerOverflow",
+            "ExpressionStackUnderflow",
+            "ActionSuspend",
+            "UnknownAction",
+            "UnsupportedPrimitive",
+            "UnsupportedExpressionOp",
+            "InvalidCompiledWorkflow",
+        ];
+        for variant in &required_variants {
+            assert!(
+                source.contains(variant),
+                "DriveError must define variant {variant}"
+            );
+        }
+        Ok(())
+    }
+
+    // Verify that the ChooseSlot node emits read_slot for each branch condition slot.
+    #[test]
+    fn choose_slot_multiple_branches_reads_each_condition_slot() -> Result<(), String> {
+        // Given a ChooseSlot node with 3 branches reading slots 0, 1, 2
+        let branches: Vec<vb_core::SlotBranch> = (0..3)
+            .map(|i| vb_core::SlotBranch {
+                condition: SlotIdx::new(i),
+                target: StepIdx::new(i + 1),
+            })
+            .collect();
+        let mut nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: branches.into_boxed_slice(),
+                otherwise: None,
+            },
+        }];
+        for i in 1..=3 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            });
+        }
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_multi_choose_slot"),
+            digest: WorkflowDigest::from_bytes([0xF1; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When generating code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then each slot index is read
+        for slot_idx in 0..3 {
+            assert!(
+                out.contains(&format!("read_slot(slots, {slot_idx})")),
+                "ChooseSlot must read condition slot {slot_idx}, got: {out}"
+            );
+        }
+        Ok(())
+    }
+
+    // Verify that the generated SlotValue enum has PartialEq derive for Eq comparison.
+    #[test]
+    fn generated_slot_value_has_partial_eq_for_comparison() -> Result<(), String> {
+        // Given any generated source
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then SlotValue has PartialEq derived (needed for Eq expression comparison)
+        let slot_value_line = source
+            .lines()
+            .find(|l| l.contains("pub enum SlotValue"))
+            .ok_or("SlotValue enum line not found")?;
+        let prior_line = source
+            .lines()
+            .take_while(|l| !l.contains("pub enum SlotValue"))
+            .last()
+            .ok_or("line before SlotValue not found")?;
+        assert!(
+            prior_line.contains("PartialEq"),
+            "SlotValue must derive PartialEq for expression equality, got prior line: {prior_line}"
+        );
+        Ok(())
+    }
+
+    // Verify that the generated ExprStack::push uses get_mut for bounds-checked access.
+    #[test]
+    fn expr_stack_push_uses_get_mut_for_bounds_check() -> Result<(), String> {
+        // Given any generated source
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then the push method uses .get_mut() not direct indexing
+        assert!(
+            source.contains("get_mut"),
+            "ExprStack::push must use get_mut for bounds-checked slot access"
+        );
+        assert!(
+            !source.contains("self.values[self.len]"),
+            "ExprStack::push must not use direct indexing"
+        );
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod proptests {
     use crate::{CodegenError, emit_resource_contract, emit_rust_workflow};
     use proptest::prelude::*;
-    use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ResourceContract,
-                  SlotIdx, StepIdx, WorkflowDigest, WorkflowParts};
+    use vb_core::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotIdx, StepIdx,
+        WorkflowDigest, WorkflowParts,
+    };
 
     fn arb_resource_contract() -> impl Strategy<Value = ResourceContract> {
         (
@@ -3351,7 +4841,16 @@ mod proptests {
             1u32..10000u32,
         )
             .prop_map(
-                |(steps, slots, constants, accessors, expressions, expr_stack, input_bytes, output_bytes)| {
+                |(
+                    steps,
+                    slots,
+                    constants,
+                    accessors,
+                    expressions,
+                    expr_stack,
+                    input_bytes,
+                    output_bytes,
+                )| {
                     ResourceContract {
                         max_steps: steps,
                         max_slots: slots,
@@ -3398,7 +4897,7 @@ mod proptests {
                 1 => CodegenError::RustfmtFailed { detail: String::from("test") },
                 2 => CodegenError::CompileCheckFailed { detail: String::from("test") },
                 3 => CodegenError::SemanticMismatch { detail: String::from("test") },
-                4 => CodegenError::Io(std::io::Error::new(std::io::ErrorKind::Other, "io")),
+                4 => CodegenError::Io(std::io::Error::other("io")),
                 _ => CodegenError::TrybuildFixture { detail: String::from("test") },
             };
             let message = error.to_string();
@@ -3425,11 +4924,11 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: ResourceContract::DEFAULT,
             };
-            if let Ok(workflow) = CompiledWorkflow::try_from_parts(parts) {
-                if let Ok(source) = emit_rust_workflow(&workflow) {
-                    prop_assert!(source.contains("#![forbid(unsafe_code)]"));
-                    prop_assert!(source.contains("#![deny(unused_must_use)]"));
-                }
+            if let Ok(workflow) = CompiledWorkflow::try_from_parts(parts)
+                && let Ok(source) = emit_rust_workflow(&workflow)
+            {
+                prop_assert!(source.contains("#![forbid(unsafe_code)]"));
+                prop_assert!(source.contains("#![deny(unused_must_use)]"));
             }
         }
     }

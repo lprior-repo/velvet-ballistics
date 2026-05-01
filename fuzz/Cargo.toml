@@ -14,13 +14,9 @@ fuzz = []
 workspace = true
 
 [dependencies]
-bytes.workspace = true
 postcard.workspace = true
-vb_compile = { path = "../crates/vb_compile" }
-vb_codegen = { path = "../crates/vb_codegen" }
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
-vb_ipc = { path = "../crates/vb_ipc" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_yaml = { path = "../crates/vb_yaml" }
 

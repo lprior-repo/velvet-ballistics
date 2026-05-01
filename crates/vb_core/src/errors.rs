@@ -262,6 +262,31 @@ impl CoreError {
     /// Together branch limit exceeded diagnostic code.
     pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x0505);
 
+    /// Runtime code for constant-pool bounds failures.
+    pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
+    /// Runtime code for runtime input type mismatches.
+    pub const INPUT_TYPE_MISMATCH_RUNTIME_CODE: &str = "INPUT_TYPE_MISMATCH";
+    /// Runtime code for missing output-slot failures.
+    pub const MISSING_OUTPUT_SLOT_RUNTIME_CODE: &str = "MISSING_OUTPUT_SLOT";
+    /// Runtime code for step-state bounds failures.
+    pub const STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "STEP_STATE_OUT_OF_BOUNDS";
+    /// Runtime code for expression stack overflow failures.
+    pub const EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE: &str = "EXPRESSION_STACK_OVERFLOW";
+    /// Runtime code for expression stack underflow failures.
+    pub const EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE: &str = "EXPRESSION_STACK_UNDERFLOW";
+    /// Runtime code for invalid compiled workflow failures.
+    pub const INVALID_COMPILED_WORKFLOW_RUNTIME_CODE: &str = "INVALID_COMPILED_WORKFLOW";
+    /// Runtime code for internal invariant failures.
+    pub const INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE: &str = "INTERNAL_INVARIANT_VIOLATION";
+    /// Runtime code for unsupported primitive failures.
+    pub const UNSUPPORTED_PRIMITIVE_RUNTIME_CODE: &str = "UNSUPPORTED_PRIMITIVE";
+    /// Runtime code for queue capacity failures.
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+    /// Runtime code for repeat attempt-limit failures.
+    pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str = "REPEAT_LIMIT_REACHED";
+    /// Runtime code for collect item/page limit failures.
+    pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
+
     /// Returns the stable diagnostic code for this error.
     #[must_use]
     pub const fn diagnostic_code(&self) -> DiagnosticCode {
@@ -301,14 +326,42 @@ impl CoreError {
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
         }
     }
+
+    /// Returns the stable section 17 runtime code when this core error crosses a runtime boundary.
+    #[must_use]
+    pub const fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::ConstOutOfBounds { .. } => Some(Self::CONST_OUT_OF_BOUNDS_RUNTIME_CODE),
+            Self::TypeMismatch { .. } | Self::NonBoolCondition { .. } => {
+                Some(Self::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
+            }
+            Self::MissingOutputSlot { .. } => Some(Self::MISSING_OUTPUT_SLOT_RUNTIME_CODE),
+            Self::StepStateOutOfBounds { .. } => Some(Self::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE),
+            Self::ExpressionStackOverflow { .. } => {
+                Some(Self::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE)
+            }
+            Self::ExpressionStackUnderflow => Some(Self::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE),
+            Self::InvalidCompiledWorkflow { .. } => {
+                Some(Self::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE)
+            }
+            Self::InternalInvariantViolation { .. } => {
+                Some(Self::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE)
+            }
+            Self::UnsupportedPrimitive { .. } => Some(Self::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE),
+            Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+            Self::RepeatExhausted { .. } => Some(Self::REPEAT_LIMIT_REACHED_RUNTIME_CODE),
+            Self::CollectPageLimitExceeded | Self::CollectItemLimitExceeded => {
+                Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE)
+            }
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{CoreError, DiagnosticCode};
-    use crate::ids::{
-        BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
-    };
+    use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
 
     // -- diagnostic_code is correct for every variant --
 
@@ -317,10 +370,7 @@ mod tests {
         let error = CoreError::InvalidProgramCounter {
             step: StepIdx::new(5),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0101)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0101));
         assert_eq!(error.to_string(), "invalid program counter: StepIdx(5)");
     }
 
@@ -329,10 +379,7 @@ mod tests {
         let error = CoreError::MissingNextStep {
             step: StepIdx::new(3),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0102)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0102));
         assert_eq!(error.to_string(), "missing next step for StepIdx(3)");
     }
 
@@ -341,10 +388,7 @@ mod tests {
         let error = CoreError::SlotOutOfBounds {
             slot: SlotIdx::new(99),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0111)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0111));
         assert_eq!(error.to_string(), "slot index out of bounds: SlotIdx(99)");
     }
 
@@ -353,11 +397,11 @@ mod tests {
         let error = CoreError::ExprOutOfBounds {
             expr: ExprIdx::new(7),
         };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0112));
         assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0112)
+            error.to_string(),
+            "expression index out of bounds: ExprIdx(7)"
         );
-        assert_eq!(error.to_string(), "expression index out of bounds: ExprIdx(7)");
     }
 
     #[test]
@@ -365,11 +409,11 @@ mod tests {
         let error = CoreError::ConstOutOfBounds {
             index: ConstIdx::new(12),
         };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0113));
         assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0113)
+            error.to_string(),
+            "constant index out of bounds: ConstIdx(12)"
         );
-        assert_eq!(error.to_string(), "constant index out of bounds: ConstIdx(12)");
     }
 
     #[test]
@@ -377,10 +421,7 @@ mod tests {
         let error = CoreError::MissingOutputSlot {
             step: StepIdx::new(2),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0405)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0405));
         assert_eq!(error.to_string(), "missing output slot for StepIdx(2)");
     }
 
@@ -389,11 +430,11 @@ mod tests {
         let error = CoreError::StepStateOutOfBounds {
             step: StepIdx::new(200),
         };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0406));
         assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0406)
+            error.to_string(),
+            "step state index out of bounds: StepIdx(200)"
         );
-        assert_eq!(error.to_string(), "step state index out of bounds: StepIdx(200)");
     }
 
     #[test]
@@ -402,11 +443,11 @@ mod tests {
             expected: "number",
             found: "boolean",
         };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0201));
         assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0201)
+            error.to_string(),
+            "type mismatch: expected number, found boolean"
         );
-        assert_eq!(error.to_string(), "type mismatch: expected number, found boolean");
     }
 
     #[test]
@@ -414,10 +455,7 @@ mod tests {
         let error = CoreError::NonBoolCondition {
             slot: SlotIdx::new(4),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0204)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0204));
         assert_eq!(
             error.to_string(),
             "type mismatch: expected boolean, found slot SlotIdx(4)"
@@ -427,104 +465,70 @@ mod tests {
     #[test]
     fn core_error_diagnostic_code_division_by_zero() {
         let error = CoreError::DivisionByZero;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0203)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0203));
         assert_eq!(error.to_string(), "division by zero");
     }
 
     #[test]
     fn core_error_diagnostic_code_non_finite_number() {
         let error = CoreError::NonFiniteNumber;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0202)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0202));
         assert_eq!(error.to_string(), "non-finite number is not allowed");
     }
 
     #[test]
     fn core_error_diagnostic_code_step_budget_exhausted() {
         let error = CoreError::StepBudgetExhausted;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0301)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0301));
         assert_eq!(error.to_string(), "step budget exhausted");
     }
 
     #[test]
     fn core_error_diagnostic_code_step_counter_overflow() {
         let error = CoreError::StepCounterOverflow;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0302)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0302));
         assert_eq!(error.to_string(), "step counter overflow");
     }
 
     #[test]
     fn core_error_diagnostic_code_queue_full() {
         let error = CoreError::QueueFull;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0401)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0401));
         assert_eq!(error.to_string(), "queue full");
     }
 
     #[test]
     fn core_error_diagnostic_code_resource_limit_exceeded() {
-        let error = CoreError::ResourceLimitExceeded {
-            resource: "memory",
-        };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0402)
-        );
+        let error = CoreError::ResourceLimitExceeded { resource: "memory" };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0402));
         assert_eq!(error.to_string(), "resource limit exceeded: memory");
     }
 
     #[test]
     fn core_error_diagnostic_code_allocation_failed() {
         let error = CoreError::AllocationFailed;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0403)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0403));
         assert_eq!(error.to_string(), "allocation failed");
     }
 
     #[test]
     fn core_error_diagnostic_code_expression_stack_overflow() {
         let error = CoreError::ExpressionStackOverflow { max: 64 };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0404)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0404));
         assert_eq!(error.to_string(), "expression stack overflow: max 64");
     }
 
     #[test]
     fn core_error_diagnostic_code_expression_stack_underflow() {
         let error = CoreError::ExpressionStackUnderflow;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x040B)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040B));
         assert_eq!(error.to_string(), "expression stack underflow");
     }
 
     #[test]
     fn core_error_diagnostic_code_invalid_compiled_workflow() {
-        let error = CoreError::InvalidCompiledWorkflow {
-            reason: "bad node",
-        };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0407)
-        );
+        let error = CoreError::InvalidCompiledWorkflow { reason: "bad node" };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0407));
         assert_eq!(error.to_string(), "invalid compiled workflow: bad node");
     }
 
@@ -533,10 +537,7 @@ mod tests {
         let error = CoreError::UnsupportedPrimitive {
             primitive: "fancy_op",
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0408)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0408));
         assert_eq!(error.to_string(), "unsupported primitive: fancy_op");
     }
 
@@ -546,10 +547,7 @@ mod tests {
             segment: "field",
             found: "list",
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x040A)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040A));
         assert_eq!(
             error.to_string(),
             "unsupported accessor traversal: field on list"
@@ -561,20 +559,14 @@ mod tests {
         let error = CoreError::ObjectFieldNotFound {
             field: SymbolId::new(42),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x040C)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040C));
         assert_eq!(error.to_string(), "object field not found: SymbolId(42)");
     }
 
     #[test]
     fn core_error_diagnostic_code_list_index_out_of_bounds() {
         let error = CoreError::ListIndexOutOfBounds { index: 10 };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x040D)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040D));
         assert_eq!(error.to_string(), "list index out of bounds: 10");
     }
 
@@ -583,11 +575,11 @@ mod tests {
         let error = CoreError::InternalInvariantViolation {
             reason: "impossible",
         };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0409));
         assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0409)
+            error.to_string(),
+            "internal invariant violation: impossible"
         );
-        assert_eq!(error.to_string(), "internal invariant violation: impossible");
     }
 
     #[test]
@@ -595,10 +587,7 @@ mod tests {
         let error = CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(100),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0411)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0411));
         assert_eq!(error.to_string(), "symbol id out of bounds: SymbolId(100)");
     }
 
@@ -607,10 +596,7 @@ mod tests {
         let error = CoreError::ListOutOfBounds {
             list: ListId::new(7),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0412)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0412));
         assert_eq!(error.to_string(), "list id out of bounds: ListId(7)");
     }
 
@@ -619,10 +605,7 @@ mod tests {
         let error = CoreError::ObjectOutOfBounds {
             object: ObjectId::new(3),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0413)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0413));
         assert_eq!(error.to_string(), "object id out of bounds: ObjectId(3)");
     }
 
@@ -631,10 +614,7 @@ mod tests {
         let error = CoreError::BlobOutOfBounds {
             blob: BlobId::new(9),
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0414)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0414));
         assert_eq!(error.to_string(), "blob id out of bounds: BlobId(9)");
     }
 
@@ -643,312 +623,475 @@ mod tests {
         let error = CoreError::IterationLimitExceeded {
             resource: "for_each",
         };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0501)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0501));
         assert_eq!(error.to_string(), "iteration limit exceeded: for_each");
     }
 
     #[test]
     fn core_error_diagnostic_code_repeat_exhausted() {
         let error = CoreError::RepeatExhausted { max: 5 };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0502)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0502));
         assert_eq!(error.to_string(), "repeat exhausted max attempts: 5");
     }
 
     #[test]
     fn core_error_diagnostic_code_collect_page_limit_exceeded() {
         let error = CoreError::CollectPageLimitExceeded;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0503)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0503));
         assert_eq!(error.to_string(), "collect page limit exceeded");
     }
 
     #[test]
     fn core_error_diagnostic_code_collect_item_limit_exceeded() {
         let error = CoreError::CollectItemLimitExceeded;
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0504)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0504));
         assert_eq!(error.to_string(), "collect item limit exceeded");
     }
 
     #[test]
     fn core_error_diagnostic_code_together_branch_limit_exceeded() {
         let error = CoreError::TogetherBranchLimitExceeded { max: 32 };
-        assert_eq!(
-            error.diagnostic_code(),
-            DiagnosticCode::new(0x0505)
-        );
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0505));
         assert_eq!(error.to_string(), "together branch limit exceeded: 32");
+    }
+
+    #[test]
+    fn core_error_runtime_codes_cover_section_17_core_mappings() {
+        assert_eq!(
+            CoreError::ConstOutOfBounds {
+                index: ConstIdx::new(1)
+            }
+            .runtime_code(),
+            Some("CONST_OUT_OF_BOUNDS")
+        );
+        assert_eq!(
+            CoreError::TypeMismatch {
+                expected: "list",
+                found: "number",
+            }
+            .runtime_code(),
+            Some("INPUT_TYPE_MISMATCH")
+        );
+        assert_eq!(
+            CoreError::NonBoolCondition {
+                slot: SlotIdx::new(1)
+            }
+            .runtime_code(),
+            Some("INPUT_TYPE_MISMATCH")
+        );
+        assert_eq!(
+            CoreError::MissingOutputSlot {
+                step: StepIdx::new(2)
+            }
+            .runtime_code(),
+            Some("MISSING_OUTPUT_SLOT")
+        );
+        assert_eq!(
+            CoreError::StepStateOutOfBounds {
+                step: StepIdx::new(3)
+            }
+            .runtime_code(),
+            Some("STEP_STATE_OUT_OF_BOUNDS")
+        );
+        assert_eq!(
+            CoreError::ExpressionStackOverflow { max: 4 }.runtime_code(),
+            Some("EXPRESSION_STACK_OVERFLOW")
+        );
+        assert_eq!(
+            CoreError::ExpressionStackUnderflow.runtime_code(),
+            Some("EXPRESSION_STACK_UNDERFLOW")
+        );
+        assert_eq!(
+            CoreError::InvalidCompiledWorkflow { reason: "bad" }.runtime_code(),
+            Some("INVALID_COMPILED_WORKFLOW")
+        );
+        assert_eq!(
+            CoreError::InternalInvariantViolation { reason: "bad" }.runtime_code(),
+            Some("INTERNAL_INVARIANT_VIOLATION")
+        );
+        assert_eq!(
+            CoreError::UnsupportedPrimitive { primitive: "op" }.runtime_code(),
+            Some("UNSUPPORTED_PRIMITIVE")
+        );
+        assert_eq!(CoreError::QueueFull.runtime_code(), Some("QUEUE_FULL"));
+        assert_eq!(
+            CoreError::RepeatExhausted { max: 3 }.runtime_code(),
+            Some("REPEAT_LIMIT_REACHED")
+        );
+        assert_eq!(
+            CoreError::CollectPageLimitExceeded.runtime_code(),
+            Some("COLLECT_LIMIT_REACHED")
+        );
+        assert_eq!(
+            CoreError::CollectItemLimitExceeded.runtime_code(),
+            Some("COLLECT_LIMIT_REACHED")
+        );
+    }
+
+    #[test]
+    fn core_error_runtime_codes_are_unique() {
+        let codes = [
+            CoreError::CONST_OUT_OF_BOUNDS_RUNTIME_CODE,
+            CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE,
+            CoreError::MISSING_OUTPUT_SLOT_RUNTIME_CODE,
+            CoreError::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE,
+            CoreError::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE,
+            CoreError::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE,
+            CoreError::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE,
+            CoreError::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE,
+            CoreError::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE,
+            CoreError::QUEUE_FULL_RUNTIME_CODE,
+            CoreError::REPEAT_LIMIT_REACHED_RUNTIME_CODE,
+            CoreError::COLLECT_LIMIT_REACHED_RUNTIME_CODE,
+        ];
+        assert_eq!(codes.len(), 12);
+        assert_eq!(
+            codes
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            12
+        );
+    }
+
+    #[test]
+    fn core_error_runtime_code_is_absent_without_section_17_equivalent() {
+        let error = CoreError::InvalidProgramCounter {
+            step: StepIdx::new(1),
+        };
+        assert_eq!(error.runtime_code(), None);
     }
 
     // -- exact variant field assertions for variants with fields --
 
     #[test]
-    fn core_error_invalid_program_counter_exact_variant() {
+    fn core_error_invalid_program_counter_exact_variant() -> Result<(), String> {
         let error = CoreError::InvalidProgramCounter {
             step: StepIdx::new(42),
         };
         let CoreError::InvalidProgramCounter { step } = error else {
-            panic!("expected InvalidProgramCounter variant");
+            return Err(String::from("expected InvalidProgramCounter variant"));
         };
-        assert_eq!(step, StepIdx::new(42));
+        if step != StepIdx::new(42) {
+            return Err(String::from("unexpected step"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_missing_next_step_exact_variant() {
+    fn core_error_missing_next_step_exact_variant() -> Result<(), String> {
         let error = CoreError::MissingNextStep {
             step: StepIdx::new(10),
         };
         let CoreError::MissingNextStep { step } = error else {
-            panic!("expected MissingNextStep variant");
+            return Err(String::from("expected MissingNextStep variant"));
         };
-        assert_eq!(step, StepIdx::new(10));
+        if step != StepIdx::new(10) {
+            return Err(String::from("unexpected step"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_slot_out_of_bounds_exact_variant() {
+    fn core_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::SlotOutOfBounds {
             slot: SlotIdx::new(255),
         };
         let CoreError::SlotOutOfBounds { slot } = error else {
-            panic!("expected SlotOutOfBounds variant");
+            return Err(String::from("expected SlotOutOfBounds variant"));
         };
-        assert_eq!(slot, SlotIdx::new(255));
+        if slot != SlotIdx::new(255) {
+            return Err(String::from("unexpected slot"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_expr_out_of_bounds_exact_variant() {
+    fn core_error_expr_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::ExprOutOfBounds {
             expr: ExprIdx::new(8),
         };
         let CoreError::ExprOutOfBounds { expr } = error else {
-            panic!("expected ExprOutOfBounds variant");
+            return Err(String::from("expected ExprOutOfBounds variant"));
         };
-        assert_eq!(expr, ExprIdx::new(8));
+        if expr != ExprIdx::new(8) {
+            return Err(String::from("unexpected expr"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_const_out_of_bounds_exact_variant() {
+    fn core_error_const_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::ConstOutOfBounds {
             index: ConstIdx::new(99),
         };
         let CoreError::ConstOutOfBounds { index } = error else {
-            panic!("expected ConstOutOfBounds variant");
+            return Err(String::from("expected ConstOutOfBounds variant"));
         };
-        assert_eq!(index, ConstIdx::new(99));
+        if index != ConstIdx::new(99) {
+            return Err(String::from("unexpected const index"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_missing_output_slot_exact_variant() {
+    fn core_error_missing_output_slot_exact_variant() -> Result<(), String> {
         let error = CoreError::MissingOutputSlot {
             step: StepIdx::new(1),
         };
         let CoreError::MissingOutputSlot { step } = error else {
-            panic!("expected MissingOutputSlot variant");
+            return Err(String::from("expected MissingOutputSlot variant"));
         };
-        assert_eq!(step, StepIdx::new(1));
+        if step != StepIdx::new(1) {
+            return Err(String::from("unexpected step"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_step_state_out_of_bounds_exact_variant() {
+    fn core_error_step_state_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::StepStateOutOfBounds {
             step: StepIdx::new(500),
         };
         let CoreError::StepStateOutOfBounds { step } = error else {
-            panic!("expected StepStateOutOfBounds variant");
+            return Err(String::from("expected StepStateOutOfBounds variant"));
         };
-        assert_eq!(step, StepIdx::new(500));
+        if step != StepIdx::new(500) {
+            return Err(String::from("unexpected step"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_type_mismatch_exact_variant() {
+    fn core_error_type_mismatch_exact_variant() -> Result<(), String> {
         let error = CoreError::TypeMismatch {
             expected: "i64",
             found: "bool",
         };
         let CoreError::TypeMismatch { expected, found } = error else {
-            panic!("expected TypeMismatch variant");
+            return Err(String::from("expected TypeMismatch variant"));
         };
-        assert_eq!(expected, "i64");
-        assert_eq!(found, "bool");
+        if expected != "i64" || found != "bool" {
+            return Err(String::from("unexpected type mismatch fields"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_non_bool_condition_exact_variant() {
+    fn core_error_non_bool_condition_exact_variant() -> Result<(), String> {
         let error = CoreError::NonBoolCondition {
             slot: SlotIdx::new(3),
         };
         let CoreError::NonBoolCondition { slot } = error else {
-            panic!("expected NonBoolCondition variant");
+            return Err(String::from("expected NonBoolCondition variant"));
         };
-        assert_eq!(slot, SlotIdx::new(3));
+        if slot != SlotIdx::new(3) {
+            return Err(String::from("unexpected slot"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_resource_limit_exceeded_exact_variant() {
-        let error = CoreError::ResourceLimitExceeded {
-            resource: "slots",
-        };
+    fn core_error_resource_limit_exceeded_exact_variant() -> Result<(), String> {
+        let error = CoreError::ResourceLimitExceeded { resource: "slots" };
         let CoreError::ResourceLimitExceeded { resource } = error else {
-            panic!("expected ResourceLimitExceeded variant");
+            return Err(String::from("expected ResourceLimitExceeded variant"));
         };
-        assert_eq!(resource, "slots");
+        if resource != "slots" {
+            return Err(String::from("unexpected resource"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_expression_stack_overflow_exact_variant() {
+    fn core_error_expression_stack_overflow_exact_variant() -> Result<(), String> {
         let error = CoreError::ExpressionStackOverflow { max: 128 };
         let CoreError::ExpressionStackOverflow { max } = error else {
-            panic!("expected ExpressionStackOverflow variant");
+            return Err(String::from("expected ExpressionStackOverflow variant"));
         };
-        assert_eq!(max, 128);
+        if max != 128 {
+            return Err(String::from("unexpected max"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_invalid_compiled_workflow_exact_variant() {
+    fn core_error_invalid_compiled_workflow_exact_variant() -> Result<(), String> {
         let error = CoreError::InvalidCompiledWorkflow {
             reason: "missing entry",
         };
         let CoreError::InvalidCompiledWorkflow { reason } = error else {
-            panic!("expected InvalidCompiledWorkflow variant");
+            return Err(String::from("expected InvalidCompiledWorkflow variant"));
         };
-        assert_eq!(reason, "missing entry");
+        if reason != "missing entry" {
+            return Err(String::from("unexpected reason"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_unsupported_primitive_exact_variant() {
+    fn core_error_unsupported_primitive_exact_variant() -> Result<(), String> {
         let error = CoreError::UnsupportedPrimitive {
             primitive: "async_await",
         };
         let CoreError::UnsupportedPrimitive { primitive } = error else {
-            panic!("expected UnsupportedPrimitive variant");
+            return Err(String::from("expected UnsupportedPrimitive variant"));
         };
-        assert_eq!(primitive, "async_await");
+        if primitive != "async_await" {
+            return Err(String::from("unexpected primitive"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_unsupported_accessor_traversal_exact_variant() {
+    fn core_error_unsupported_accessor_traversal_exact_variant() -> Result<(), String> {
         let error = CoreError::UnsupportedAccessorTraversal {
             segment: "index",
             found: "object",
         };
         let CoreError::UnsupportedAccessorTraversal { segment, found } = error else {
-            panic!("expected UnsupportedAccessorTraversal variant");
+            return Err(String::from(
+                "expected UnsupportedAccessorTraversal variant",
+            ));
         };
-        assert_eq!(segment, "index");
-        assert_eq!(found, "object");
+        if segment != "index" || found != "object" {
+            return Err(String::from("unexpected accessor traversal fields"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_object_field_not_found_exact_variant() {
+    fn core_error_object_field_not_found_exact_variant() -> Result<(), String> {
         let error = CoreError::ObjectFieldNotFound {
             field: SymbolId::new(7),
         };
         let CoreError::ObjectFieldNotFound { field } = error else {
-            panic!("expected ObjectFieldNotFound variant");
+            return Err(String::from("expected ObjectFieldNotFound variant"));
         };
-        assert_eq!(field, SymbolId::new(7));
+        if field != SymbolId::new(7) {
+            return Err(String::from("unexpected field"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_list_index_out_of_bounds_exact_variant() {
+    fn core_error_list_index_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::ListIndexOutOfBounds { index: 999 };
         let CoreError::ListIndexOutOfBounds { index } = error else {
-            panic!("expected ListIndexOutOfBounds variant");
+            return Err(String::from("expected ListIndexOutOfBounds variant"));
         };
-        assert_eq!(index, 999);
+        if index != 999 {
+            return Err(String::from("unexpected index"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_internal_invariant_violation_exact_variant() {
+    fn core_error_internal_invariant_violation_exact_variant() -> Result<(), String> {
         let error = CoreError::InternalInvariantViolation {
             reason: "corrupted",
         };
         let CoreError::InternalInvariantViolation { reason } = error else {
-            panic!("expected InternalInvariantViolation variant");
+            return Err(String::from("expected InternalInvariantViolation variant"));
         };
-        assert_eq!(reason, "corrupted");
+        if reason != "corrupted" {
+            return Err(String::from("unexpected reason"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_symbol_out_of_bounds_exact_variant() {
+    fn core_error_symbol_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(55),
         };
         let CoreError::SymbolOutOfBounds { symbol } = error else {
-            panic!("expected SymbolOutOfBounds variant");
+            return Err(String::from("expected SymbolOutOfBounds variant"));
         };
-        assert_eq!(symbol, SymbolId::new(55));
+        if symbol != SymbolId::new(55) {
+            return Err(String::from("unexpected symbol"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_list_out_of_bounds_exact_variant() {
+    fn core_error_list_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::ListOutOfBounds {
             list: ListId::new(33),
         };
         let CoreError::ListOutOfBounds { list } = error else {
-            panic!("expected ListOutOfBounds variant");
+            return Err(String::from("expected ListOutOfBounds variant"));
         };
-        assert_eq!(list, ListId::new(33));
+        if list != ListId::new(33) {
+            return Err(String::from("unexpected list"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_object_out_of_bounds_exact_variant() {
+    fn core_error_object_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::ObjectOutOfBounds {
             object: ObjectId::new(21),
         };
         let CoreError::ObjectOutOfBounds { object } = error else {
-            panic!("expected ObjectOutOfBounds variant");
+            return Err(String::from("expected ObjectOutOfBounds variant"));
         };
-        assert_eq!(object, ObjectId::new(21));
+        if object != ObjectId::new(21) {
+            return Err(String::from("unexpected object"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_blob_out_of_bounds_exact_variant() {
+    fn core_error_blob_out_of_bounds_exact_variant() -> Result<(), String> {
         let error = CoreError::BlobOutOfBounds {
             blob: BlobId::new(11),
         };
         let CoreError::BlobOutOfBounds { blob } = error else {
-            panic!("expected BlobOutOfBounds variant");
+            return Err(String::from("expected BlobOutOfBounds variant"));
         };
-        assert_eq!(blob, BlobId::new(11));
+        if blob != BlobId::new(11) {
+            return Err(String::from("unexpected blob"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_iteration_limit_exceeded_exact_variant() {
+    fn core_error_iteration_limit_exceeded_exact_variant() -> Result<(), String> {
         let error = CoreError::IterationLimitExceeded {
             resource: "collect",
         };
         let CoreError::IterationLimitExceeded { resource } = error else {
-            panic!("expected IterationLimitExceeded variant");
+            return Err(String::from("expected IterationLimitExceeded variant"));
         };
-        assert_eq!(resource, "collect");
+        if resource != "collect" {
+            return Err(String::from("unexpected resource"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_repeat_exhausted_exact_variant() {
+    fn core_error_repeat_exhausted_exact_variant() -> Result<(), String> {
         let error = CoreError::RepeatExhausted { max: 10 };
         let CoreError::RepeatExhausted { max } = error else {
-            panic!("expected RepeatExhausted variant");
+            return Err(String::from("expected RepeatExhausted variant"));
         };
-        assert_eq!(max, 10);
+        if max != 10 {
+            return Err(String::from("unexpected max"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn core_error_together_branch_limit_exceeded_exact_variant() {
+    fn core_error_together_branch_limit_exceeded_exact_variant() -> Result<(), String> {
         let error = CoreError::TogetherBranchLimitExceeded { max: 64 };
         let CoreError::TogetherBranchLimitExceeded { max } = error else {
-            panic!("expected TogetherBranchLimitExceeded variant");
+            return Err(String::from("expected TogetherBranchLimitExceeded variant"));
         };
-        assert_eq!(max, 64);
+        if max != 64 {
+            return Err(String::from("unexpected max"));
+        }
+        Ok(())
     }
 }

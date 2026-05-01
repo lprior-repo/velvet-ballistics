@@ -25,7 +25,7 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
-pub use expression_bytecode::compile_expr_to_bytecode;
+pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 // Re-export the shared validation error types from `vb_validate` so that
 // downstream consumers of this crate can optionally use the standalone
@@ -39,8 +39,8 @@ use std::str;
 use thiserror::Error;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx,
-    WorkflowDigest, WorkflowError, WorkflowParts,
+    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
+    WorkflowError, WorkflowParts,
 };
 
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
@@ -352,8 +352,13 @@ pub fn lower_together(
     join: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
-    let branch_count = u16::try_from(branches.len()).map_err(|_| CompileError::SlotIndexOutOfRange {
-        value: i64::try_from(branches.len()).unwrap_or(i64::MAX),
+    let branch_count = u16::try_from(branches.len()).map_err(|_| {
+        CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: branches.len(),
+            limit: usize::from(u16::MAX),
+        }
     })?;
     let accumulator = alloc_accumulator_slot(builder)?;
     let mut nodes = vec![CompiledNode {
@@ -374,7 +379,10 @@ pub fn lower_together(
         id: join,
         output: Some(accumulator),
         next: None,
-        kind: CompiledNodeKind::TogetherJoin { branch_count, accumulator },
+        kind: CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        },
     });
     Ok(nodes)
 }
@@ -485,11 +493,11 @@ pub fn lower_repeat(
     done: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
-    let attempt_slot = slot_idx_for_step(id.as_usize().checked_add(1).ok_or(
-        CompileError::SlotIndexOutOfRange {
-            value: i64::MAX,
-        },
-    )?)?;
+    let attempt_slot = slot_idx_for_step(
+        id.as_usize()
+            .checked_add(1)
+            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+    )?;
     builder.record_slot(attempt_slot);
     Ok(vec![
         CompiledNode {
@@ -557,10 +565,18 @@ pub fn lower_ask(
     answer: SlotIdx,
     timeout_slot: Option<SlotIdx>,
     builder: &mut SlotCompiler,
-) -> Vec<CompiledNode> {
+) -> Result<Vec<CompiledNode>, CompileError> {
     builder.record_slot(prompt);
     builder.record_slot(answer);
-    vec![
+    let resume = id
+        .checked_add(1)
+        .ok_or(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "ask",
+            field: "resume_step",
+            value: id.as_usize(),
+            limit: usize::from(u16::MAX),
+        })?;
+    Ok(vec![
         CompiledNode {
             id,
             output: None,
@@ -571,12 +587,12 @@ pub fn lower_ask(
             },
         },
         CompiledNode {
-            id: id.checked_add(1).unwrap_or(StepIdx::MAX),
+            id: resume,
             output: Some(answer),
             next: None,
             kind: CompiledNodeKind::AskResume { answer },
         },
-    ]
+    ])
 }
 
 /// Lowers a `finish` primitive into a terminal `Finish` node.
@@ -612,20 +628,26 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
         .map(|vec| vec.into_boxed_slice())
         .map_err(|error| {
             CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-                feature: Box::leak(format!("postcard serialization failed: {error}").into_boxed_str()),
+                feature: Box::leak(
+                    format!("postcard serialization failed: {error}").into_boxed_str(),
+                ),
             }])
         })
 }
 
 /// Generates a Rust source file from a compiled workflow.
 ///
-/// The generated Rust code can be compiled and linked for maxperf execution
-/// where the hot interpreter is bypassed entirely.
+/// The generated Rust backend is a supported subset, not a catch-all lowering
+/// path for every valid [`CompiledWorkflow`]. Unsupported IR is rejected by
+/// `vb_codegen` before source emission and is surfaced here as a compile error,
+/// so callers can fall back to the interpreter/runtime path without compiling
+/// partial generated Rust.
 pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    vb_codegen::emit_rust_workflow(workflow)
-        .map_err(|error| CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
+    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
+        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
             feature: Box::leak(error.to_string().into_boxed_str()),
-        }]))
+        }])
+    })
 }
 
 /// Mutable slot compiler state for building node arrays.
@@ -671,7 +693,10 @@ impl SlotCompiler {
     }
 
     /// Pushes an accessor program and returns its index.
-    pub fn push_accessor(&mut self, program: AccessorProgram) -> Result<vb_core::AccessorIdx, CompileError> {
+    pub fn push_accessor(
+        &mut self,
+        program: AccessorProgram,
+    ) -> Result<vb_core::AccessorIdx, CompileError> {
         let index = u16::try_from(self.accessors.len()).map_err(|_| {
             CompileError::ExpressionLoweringUnsupported {
                 feature: "accessor table overflow",
@@ -1069,6 +1094,18 @@ pub enum CompileError {
         /// Invalid target.
         target: usize,
     },
+    /// Primitive lowering would exceed a bounded compiler representation.
+    #[error("step primitive {primitive} field {field} value {value} exceeds limit {limit}")]
+    PrimitiveLoweringLimitExceeded {
+        /// Primitive being lowered.
+        primitive: &'static str,
+        /// Bounded field being computed.
+        field: &'static str,
+        /// Attempted value or source value at the limit.
+        value: usize,
+        /// Maximum accepted representation value.
+        limit: usize,
+    },
     /// Linear workflows must end with an explicit finish step.
     #[error("last workflow step must be finish")]
     LastStepMustFinish,
@@ -1101,6 +1138,16 @@ pub enum CompileError {
         reference: Box<str>,
         /// Missing declaration name.
         name: Box<str>,
+    },
+    /// Reference uses an accessor path outside the current compiled surface.
+    #[error("unsupported accessor reference in {reference}: {root}.{path}")]
+    UnsupportedAccessorReference {
+        /// Full source reference string.
+        reference: Box<str>,
+        /// Resolved root segment.
+        root: Box<str>,
+        /// Unsupported accessor tail.
+        path: Box<str>,
     },
     /// Branch target points outside the declared step table.
     #[error("step {step} branch target {target} is not a declared step")]
@@ -1266,7 +1313,8 @@ impl CompileError {
             Self::StepFieldShape { field, .. } => step_field_shape_code(field),
             Self::StepIndexOutOfRange { .. }
             | Self::SlotIndexOutOfRange { .. }
-            | Self::BranchTargetOutOfRange { .. } => "LIMIT_EXCEEDED",
+            | Self::BranchTargetOutOfRange { .. }
+            | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
             Self::BackwardBranchTarget { .. } | Self::UnknownStepTarget { .. } => {
                 "INVALID_THEN_TARGET"
             }
@@ -1275,6 +1323,7 @@ impl CompileError {
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),
+            Self::UnsupportedAccessorReference { .. } => "UNSUPPORTED_ACCESSOR_REFERENCE",
             Self::UnreachableStep { .. } => "UNREACHABLE_STEP",
             Self::TypeMismatch { .. } | Self::UnknownSlotType { .. } => "TYPE_MISMATCH",
             Self::SecretTaintLeak { .. } => "SECRET_RESULT_LEAK",
@@ -2774,13 +2823,25 @@ fn object_slot_value(
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
-    use super::{compute_compiled_digest, lower_do, lower_finish, lower_set};
-    use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNodeKind, ExprProgram};
+    use super::{
+        compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
+        lower_set,
+    };
     use vb_core::ConstValue;
+    use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, WorkflowParts};
     use vb_core::{CompiledWorkflow, ResourceContract};
+
+    macro_rules! compile_test_fail {
+        ($($arg:tt)*) => {{
+            let failed = false;
+            assert!(failed, $($arg)*);
+            return;
+        }};
+    }
 
     const NESTED_SAVE_SOURCE: &[u8] = br#"
 version: velvet-ballastics/v1
@@ -4017,13 +4078,20 @@ steps:
 
     #[test]
     fn compile_returns_source_too_large_with_exact_fields() {
-        let tiny_limits = YamlLimits { max_source_bytes: 10, ..YamlLimits::default() };
-        let compiler = YamlCompiler { limits: tiny_limits };
+        let tiny_limits = YamlLimits {
+            max_source_bytes: 10,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler {
+            limits: tiny_limits,
+        };
         let source = b"version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0";
         let result = compiler.compile(source);
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::SourceTooLarge { actual, limit }) = errors.first() else {
-            panic!("expected SourceTooLarge, got {:?}", errors.first());
+            compile_test_fail!("expected SourceTooLarge, got {:?}", errors.first());
         };
         assert_eq!(*limit, 10);
         assert_eq!(*actual, source.len());
@@ -4032,23 +4100,31 @@ steps:
     #[test]
     fn compile_returns_empty_source_for_empty_input() {
         let result = YamlCompiler::default().compile(b"");
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         assert!(matches!(errors.first(), Some(CompileError::EmptySource)));
     }
 
     #[test]
     fn compile_returns_top_level_not_mapping_for_list_root() {
         let result = YamlCompiler::default().compile(b"- item1\n- item2");
-        let Err(errors) = result else { panic!("expected error") };
-        assert!(matches!(errors.first(), Some(CompileError::TopLevelNotMapping)));
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
+        assert!(matches!(
+            errors.first(),
+            Some(CompileError::TopLevelNotMapping)
+        ));
     }
 
     #[test]
     fn compile_returns_empty_steps_for_steps_with_empty_list() {
-        let result = YamlCompiler::default().compile(
-            b"version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []",
-        );
-        let Err(errors) = result else { panic!("expected error") };
+        let result = YamlCompiler::default()
+            .compile(b"version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []");
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         assert!(matches!(errors.first(), Some(CompileError::EmptySteps)));
     }
 
@@ -4057,9 +4133,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: bad-version\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::InvalidVersion { actual }) = errors.first() else {
-            panic!("expected InvalidVersion, got {:?}", errors.first());
+            compile_test_fail!("expected InvalidVersion, got {:?}", errors.first());
         };
         assert_eq!(actual.as_ref(), "bad-version");
     }
@@ -4069,9 +4147,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"name: no_version\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingField { field }) = errors.first() else {
-            panic!("expected MissingField, got {:?}", errors.first());
+            compile_test_fail!("expected MissingField, got {:?}", errors.first());
         };
         assert_eq!(*field, "version");
     }
@@ -4081,9 +4161,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingField { field }) = errors.first() else {
-            panic!("expected MissingField, got {:?}", errors.first());
+            compile_test_fail!("expected MissingField, got {:?}", errors.first());
         };
         assert_eq!(*field, "name");
     }
@@ -4093,21 +4175,24 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: no_trigger\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingField { field }) = errors.first() else {
-            panic!("expected MissingField, got {:?}", errors.first());
+            compile_test_fail!("expected MissingField, got {:?}", errors.first());
         };
         assert_eq!(*field, "when");
     }
 
     #[test]
     fn compile_returns_missing_field_for_absent_steps() {
-        let result = YamlCompiler::default().compile(
-            b"version: velvet-ballastics/v1\nname: no_steps\nwhen:\n  manual: {}",
-        );
-        let Err(errors) = result else { panic!("expected error") };
+        let result = YamlCompiler::default()
+            .compile(b"version: velvet-ballastics/v1\nname: no_steps\nwhen:\n  manual: {}");
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingField { field }) = errors.first() else {
-            panic!("expected MissingField, got {:?}", errors.first());
+            compile_test_fail!("expected MissingField, got {:?}", errors.first());
         };
         assert_eq!(*field, "steps");
     }
@@ -4117,9 +4202,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: empty_when\nwhen: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::InvalidTriggerCount { count }) = errors.first() else {
-            panic!("expected InvalidTriggerCount, got {:?}", errors.first());
+            compile_test_fail!("expected InvalidTriggerCount, got {:?}", errors.first());
         };
         assert_eq!(*count, 0);
     }
@@ -4129,9 +4216,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: bad_trigger\nwhen:\n  teleport: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::UnknownTriggerKind { trigger }) = errors.first() else {
-            panic!("expected UnknownTriggerKind, got {:?}", errors.first());
+            compile_test_fail!("expected UnknownTriggerKind, got {:?}", errors.first());
         };
         assert_eq!(trigger.as_ref(), "teleport");
     }
@@ -4141,9 +4230,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: no_id\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingStepId { step }) = errors.first() else {
-            panic!("expected MissingStepId, got {:?}", errors.first());
+            compile_test_fail!("expected MissingStepId, got {:?}", errors.first());
         };
         assert_eq!(*step, 0);
     }
@@ -4153,9 +4244,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: bad_step\nwhen:\n  manual: {}\nsteps:\n  - \"scalar\"",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::StepShape { step }) = errors.first() else {
-            panic!("expected StepShape, got {:?}", errors.first());
+            compile_test_fail!("expected StepShape, got {:?}", errors.first());
         };
         assert_eq!(*step, 0);
     }
@@ -4165,9 +4258,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: dup_step\nwhen:\n  manual: {}\nsteps:\n  - id: same\n    save:\n      x: 1\n  - id: same\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::DuplicateStepId { id }) = errors.first() else {
-            panic!("expected DuplicateStepId, got {:?}", errors.first());
+            compile_test_fail!("expected DuplicateStepId, got {:?}", errors.first());
         };
         assert_eq!(id.as_ref(), "same");
     }
@@ -4177,9 +4272,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: no_prim\nwhen:\n  manual: {}\nsteps:\n  - id: empty_step",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MissingStepPrimitive { step }) = errors.first() else {
-            panic!("expected MissingStepPrimitive, got {:?}", errors.first());
+            compile_test_fail!("expected MissingStepPrimitive, got {:?}", errors.first());
         };
         assert_eq!(*step, 0);
     }
@@ -4189,9 +4286,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: bad_field\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    unknown_field: 1\n    save:\n      x: 1",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::UnknownStepField { step, field }) = errors.first() else {
-            panic!("expected UnknownStepField, got {:?}", errors.first());
+            compile_test_fail!("expected UnknownStepField, got {:?}", errors.first());
         };
         assert_eq!(*step, 0);
         assert_eq!(field.as_ref(), "unknown_field");
@@ -4202,8 +4301,13 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: no_finish\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      x: 1",
         );
-        let Err(errors) = result else { panic!("expected error") };
-        assert!(matches!(errors.first(), Some(CompileError::LastStepMustFinish)));
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
+        assert!(matches!(
+            errors.first(),
+            Some(CompileError::LastStepMustFinish)
+        ));
     }
 
     #[test]
@@ -4211,9 +4315,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: extra\nwhen:\n  manual: {}\nunknown_root: true\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::UnknownTopLevelField { field }) = errors.first() else {
-            panic!("expected UnknownTopLevelField, got {:?}", errors.first());
+            compile_test_fail!("expected UnknownTopLevelField, got {:?}", errors.first());
         };
         assert_eq!(field.as_ref(), "unknown_root");
     }
@@ -4223,8 +4329,13 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: tagged\nwhen:\n  manual: {}\nsteps:\n  - id: !!tag done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
-        assert!(matches!(errors.first(), Some(CompileError::TagForbidden { .. })));
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
+        assert!(matches!(
+            errors.first(),
+            Some(CompileError::TagForbidden { .. })
+        ));
     }
 
     #[test]
@@ -4232,20 +4343,29 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: floaty\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 3.14",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         assert!(matches!(errors.first(), Some(CompileError::FloatForbidden)));
     }
 
     #[test]
     fn compile_returns_depth_limit_for_deeply_nested_yaml() {
-        let tiny_limits = YamlLimits { max_depth: 3, ..YamlLimits::default() };
-        let compiler = YamlCompiler { limits: tiny_limits };
+        let tiny_limits = YamlLimits {
+            max_depth: 3,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler {
+            limits: tiny_limits,
+        };
         let result = compiler.compile(
             b"version: velvet-ballastics/v1\nname: deep\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\na:\n  b:\n    c:\n      d: deep",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::DepthLimit { depth, limit }) = errors.first() else {
-            panic!("expected DepthLimit, got {:?}", errors.first());
+            compile_test_fail!("expected DepthLimit, got {:?}", errors.first());
         };
         assert_eq!(*limit, 3);
         assert!(*depth > 3);
@@ -4253,28 +4373,42 @@ steps:
 
     #[test]
     fn compile_returns_node_limit_for_many_nodes() {
-        let tiny_limits = YamlLimits { max_nodes: 5, ..YamlLimits::default() };
-        let compiler = YamlCompiler { limits: tiny_limits };
+        let tiny_limits = YamlLimits {
+            max_nodes: 5,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler {
+            limits: tiny_limits,
+        };
         let result = compiler.compile(
             b"version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      a: 1\n      b: 2\n      c: 3\n      d: 4\n      e: 5\n      f: 6\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::NodeLimit { limit }) = errors.first() else {
-            panic!("expected NodeLimit, got {:?}", errors.first());
+            compile_test_fail!("expected NodeLimit, got {:?}", errors.first());
         };
         assert_eq!(*limit, 5);
     }
 
     #[test]
     fn compile_returns_scalar_limit_for_long_scalar() {
-        let tiny_limits = YamlLimits { max_scalar_bytes: 5, ..YamlLimits::default() };
-        let compiler = YamlCompiler { limits: tiny_limits };
+        let tiny_limits = YamlLimits {
+            max_scalar_bytes: 5,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler {
+            limits: tiny_limits,
+        };
         let result = compiler.compile(
             b"version: velvet-ballastics/v1\nname: long_scalar\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nlabel: abcdefgh",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::ScalarLimit { actual, limit }) = errors.first() else {
-            panic!("expected ScalarLimit, got {:?}", errors.first());
+            compile_test_fail!("expected ScalarLimit, got {:?}", errors.first());
         };
         assert_eq!(*limit, 5);
         assert!(*actual > 5);
@@ -4285,9 +4419,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::DuplicateKey { key, .. }) = errors.first() else {
-            panic!("expected DuplicateKey, got {:?}", errors.first());
+            compile_test_fail!("expected DuplicateKey, got {:?}", errors.first());
         };
         assert_eq!(key.as_ref(), "name");
     }
@@ -4297,9 +4433,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: reserved\nwhen:\n  manual: {}\nsteps:\n  - id: run\n    save:\n      x: 1\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::InvalidName { field, value }) = errors.first() else {
-            panic!("expected InvalidName, got {:?}", errors.first());
+            compile_test_fail!("expected InvalidName, got {:?}", errors.first());
         };
         assert_eq!(*field, "step id");
         assert_eq!(value.as_ref(), "run");
@@ -4310,9 +4448,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: multi\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      x: 1\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::MultipleStepPrimitives { step }) = errors.first() else {
-            panic!("expected MultipleStepPrimitives, got {:?}", errors.first());
+            compile_test_fail!("expected MultipleStepPrimitives, got {:?}", errors.first());
         };
         assert_eq!(*step, 0);
     }
@@ -4322,9 +4462,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: multi_trigger\nwhen:\n  manual: {}\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::InvalidTriggerCount { count }) = errors.first() else {
-            panic!("expected InvalidTriggerCount, got {:?}", errors.first());
+            compile_test_fail!("expected InvalidTriggerCount, got {:?}", errors.first());
         };
         assert_eq!(*count, 2);
     }
@@ -4334,9 +4476,11 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: bad_inputs\nwhen:\n  manual: {}\ninputs: []\nsteps:\n  - id: done\n    finish:\n      result: 0",
         );
-        let Err(errors) = result else { panic!("expected error") };
+        let Err(errors) = result else {
+            compile_test_fail!("expected error")
+        };
         let Some(CompileError::FieldShape { field, expected }) = errors.first() else {
-            panic!("expected FieldShape, got {:?}", errors.first());
+            compile_test_fail!("expected FieldShape, got {:?}", errors.first());
         };
         assert_eq!(*field, "inputs");
         assert!(!expected.is_empty());
@@ -4348,7 +4492,9 @@ steps:
     fn compile_produces_valid_workflow_for_minimal_source() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
         assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let wf = result.unwrap();
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok")
+        };
         assert_eq!(wf.node_count(), 2);
     }
 
@@ -4362,15 +4508,22 @@ steps:
     fn compile_produces_non_default_workflow_digest() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
         assert!(result.is_ok());
-        let wf = result.unwrap();
-        assert_ne!(wf.digest(), vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]));
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok")
+        };
+        assert_ne!(
+            wf.digest(),
+            vb_core::ids::WorkflowDigest::from_bytes([0u8; 32])
+        );
     }
 
     #[test]
     fn compile_produces_matching_workflow_name() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
         assert!(result.is_ok());
-        let wf = result.unwrap();
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok")
+        };
         assert_eq!(wf.name(), "fast_path");
     }
 
@@ -4378,23 +4531,147 @@ steps:
     fn compile_produces_correct_entry_step_index() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
         assert!(result.is_ok());
-        let wf = result.unwrap();
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok")
+        };
         assert_eq!(wf.entry(), vb_core::ids::StepIdx::ZERO);
     }
 
     #[test]
     fn compile_with_limits_respects_custom_source_limit() {
         let source = OPTIONAL_TOP_LEVEL_FIELDS_SOURCE;
-        let limits = YamlLimits { max_source_bytes: source.len() + 1, ..YamlLimits::default() };
+        let limits = YamlLimits {
+            max_source_bytes: source.len() + 1,
+            ..YamlLimits::default()
+        };
         let compiler = YamlCompiler { limits };
         assert!(compiler.compile(source).is_ok());
+    }
+
+    #[test]
+    fn compile_to_generated_rust_accepts_supported_subset() -> Result<(), String> {
+        let workflow = supported_codegen_workflow()?;
+
+        let source = compile_to_generated_rust(&workflow).map_err(|e| e.to_string())?;
+
+        assert!(
+            source.contains("pub fn drive"),
+            "generated source must contain drive function"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compile_to_generated_rust_rejects_unsupported_ir_before_emit() -> Result<(), String> {
+        let workflow = unsupported_codegen_workflow()?;
+
+        let error = compile_to_generated_rust(&workflow)
+            .err()
+            .ok_or("unsupported IR unexpectedly generated source")?;
+
+        assert!(
+            error.to_string().contains("BuildList"),
+            "unsupported IR error must name rejected feature, got: {error}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compile_to_generated_rust_reports_subset_rejection_as_compile_error() -> Result<(), String> {
+        let workflow = unsupported_codegen_workflow()?;
+
+        let errors = compile_to_generated_rust(&workflow)
+            .err()
+            .ok_or("unsupported IR unexpectedly generated source")?;
+        let first = errors
+            .0
+            .first()
+            .ok_or("unsupported IR must produce a compile error")?;
+
+        assert_eq!(first.diagnostic_code(), "INVALID_EXPRESSION");
+        assert!(
+            first
+                .to_string()
+                .contains("unsupported generated Rust IR feature"),
+            "generated-mode subset rejection must be explicit, got: {first}"
+        );
+        Ok(())
+    }
+
+    fn supported_codegen_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("compile_codegen_supported"),
+            digest: WorkflowDigest::from_bytes([0x31; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn unsupported_codegen_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("compile_codegen_unsupported"),
+            digest: WorkflowDigest::from_bytes([0x32; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0)].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
     // ── Round 2: CompileError::code() tests ──────────────────────────────
 
     #[test]
     fn compile_error_code_returns_payload_too_large_for_source_too_large() {
-        let err = CompileError::SourceTooLarge { actual: 100, limit: 50 };
+        let err = CompileError::SourceTooLarge {
+            actual: 100,
+            limit: 50,
+        };
         assert_eq!(err.code(), "PAYLOAD_TOO_LARGE");
     }
 
@@ -4414,14 +4691,23 @@ steps:
     fn compile_error_code_returns_duplicate_key_for_duplicate_key() {
         let err = CompileError::DuplicateKey {
             key: Box::from("test"),
-            mark: SourceMark { index: 0, end_index: 0, line: 1, column: 1, available: true },
+            mark: SourceMark {
+                index: 0,
+                end_index: 0,
+                line: 1,
+                column: 1,
+                available: true,
+            },
         };
         assert_eq!(err.code(), "DUPLICATE_KEY");
     }
 
     #[test]
     fn compile_error_code_returns_limit_exceeded_for_depth_limit() {
-        let err = CompileError::DepthLimit { depth: 10, limit: 5 };
+        let err = CompileError::DepthLimit {
+            depth: 10,
+            limit: 5,
+        };
         assert_eq!(err.code(), "LIMIT_EXCEEDED");
     }
 
@@ -4434,7 +4720,13 @@ steps:
     #[test]
     fn compile_error_code_returns_forbidden_yaml_for_alias() {
         let err = CompileError::AliasForbidden {
-            mark: SourceMark { index: 0, end_index: 0, line: 1, column: 1, available: true },
+            mark: SourceMark {
+                index: 0,
+                end_index: 0,
+                line: 1,
+                column: 1,
+                available: true,
+            },
         };
         assert_eq!(err.code(), "FORBIDDEN_YAML_FEATURE");
     }
@@ -4504,7 +4796,10 @@ steps:
     #[test]
     fn yaml_compiler_default_uses_default_limits() {
         let compiler = YamlCompiler::default();
-        assert_eq!(compiler.limits.max_source_bytes, YamlLimits::default().max_source_bytes);
+        assert_eq!(
+            compiler.limits.max_source_bytes,
+            YamlLimits::default().max_source_bytes
+        );
     }
 
     // ── Round 2: Lowering function tests ─────────────────────────────────
@@ -4512,18 +4807,17 @@ steps:
     #[test]
     fn lower_finish_produces_finish_node_kind() {
         let mut builder = SlotCompiler::new();
-        let node = lower_finish(
-            StepIdx::new(0),
-            SlotIdx::new(0),
-            &mut builder,
-        );
+        let node = lower_finish(StepIdx::new(0), SlotIdx::new(0), &mut builder);
         assert!(matches!(node.kind, CompiledNodeKind::Finish { .. }));
     }
 
     #[test]
     fn lower_set_produces_set_node_kind() {
         let mut builder = SlotCompiler::new();
-        let const_idx = builder.push_constant(ConstValue::I64(42)).ok().unwrap_or(ConstIdx::new(0));
+        let const_idx = builder
+            .push_constant(ConstValue::I64(42))
+            .ok()
+            .unwrap_or(ConstIdx::new(0));
         let node = lower_set(
             StepIdx::new(0),
             SlotIdx::new(0),
@@ -4548,6 +4842,58 @@ steps:
     }
 
     #[test]
+    fn lower_ask_uses_checked_resume_step() -> Result<(), String> {
+        let mut builder = SlotCompiler::new();
+        let nodes = lower_ask(
+            StepIdx::new(7),
+            SlotIdx::new(1),
+            SlotIdx::new(2),
+            None,
+            &mut builder,
+        )
+        .map_err(|error| error.to_string())?;
+
+        assert_eq!(nodes.len(), 2);
+        let Some(first) = nodes.first() else {
+            return Err(String::from("expected ask node"));
+        };
+        let Some(second) = nodes.get(1) else {
+            return Err(String::from("expected ask resume node"));
+        };
+        assert!(matches!(first.kind, CompiledNodeKind::Ask { .. }));
+        assert_eq!(second.id, StepIdx::new(8));
+        assert_eq!(second.output, Some(SlotIdx::new(2)));
+        assert!(matches!(second.kind, CompiledNodeKind::AskResume { .. }));
+        Ok(())
+    }
+
+    #[test]
+    fn lower_ask_rejects_resume_step_overflow() {
+        let mut builder = SlotCompiler::new();
+        let result = lower_ask(
+            StepIdx::MAX,
+            SlotIdx::new(1),
+            SlotIdx::new(2),
+            None,
+            &mut builder,
+        );
+
+        let Err(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value,
+            limit,
+        }) = result
+        else {
+            compile_test_fail!("expected primitive lowering limit error");
+        };
+        assert_eq!(primitive, "ask");
+        assert_eq!(field, "resume_step");
+        assert_eq!(value, StepIdx::MAX.as_usize());
+        assert_eq!(limit, usize::from(u16::MAX));
+    }
+
+    #[test]
     fn compute_compiled_digest_is_deterministic() {
         let d1 = compute_compiled_digest(NESTED_SAVE_SOURCE);
         let d2 = compute_compiled_digest(NESTED_SAVE_SOURCE);
@@ -4566,7 +4912,10 @@ steps:
     #[test]
     fn slot_compiler_new_starts_empty() {
         let mut sc = SlotCompiler::new();
-        assert_eq!(sc.push_constant(ConstValue::I64(42)).ok().map(|i| i.get()), Some(0));
+        assert_eq!(
+            sc.push_constant(ConstValue::I64(42)).ok().map(|i| i.get()),
+            Some(0)
+        );
     }
 
     #[test]
@@ -4582,8 +4931,9 @@ steps:
     fn slot_compiler_push_expression_returns_ascending_indices() {
         let mut sc = SlotCompiler::new();
         let empty_ops: Box<[vb_core::workflow::ExprOp]> = Box::from([]);
-        let prog = ExprProgram::try_from_ops(empty_ops).unwrap_or_else(|_| {
-            ExprProgram { ops: Box::from([]), max_stack: 0 }
+        let prog = ExprProgram::try_from_ops(empty_ops).unwrap_or_else(|_| ExprProgram {
+            ops: Box::from([]),
+            max_stack: 0,
         });
         let idx = sc.push_expression(prog);
         assert!(idx.is_ok());
@@ -4595,5 +4945,925 @@ steps:
         sc.record_slot(SlotIdx::new(5));
         sc.record_slot(SlotIdx::new(10));
         // record_slot doesn't return anything but should not panic
+    }
+
+    // ── Adversarial compilation pipeline tests ──────────────────────────────
+
+    fn adv_compile_error(source: &[u8]) -> Result<CompileError, String> {
+        match YamlCompiler::default().compile(source) {
+            Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
+            Err(errors) => errors
+                .first()
+                .cloned()
+                .ok_or_else(|| "CompileErrors was empty".to_owned()),
+        }
+    }
+
+    fn adv_parse_error(source: &[u8]) -> Result<CompileError, String> {
+        match YamlCompiler::default().parse_ast(source) {
+            Ok(ast) => Err(format!("parse_ast unexpectedly succeeded: {ast:?}")),
+            Err(errors) => errors
+                .first()
+                .cloned()
+                .ok_or_else(|| "CompileErrors was empty".to_owned()),
+        }
+    }
+
+    fn adv_compile_ok(source: &[u8]) -> Result<CompiledWorkflow, String> {
+        YamlCompiler::default()
+            .compile(source)
+            .map_err(|errors| format!("compile unexpectedly failed: {errors}"))
+    }
+
+    fn adv_ensure(condition: bool, message: &'static str) -> Result<(), String> {
+        if condition {
+            Ok(())
+        } else {
+            Err(message.to_owned())
+        }
+    }
+
+    fn adv_ensure_parity(
+        source: &[u8],
+        check: fn(CompileError) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let c_text = compile_error_text(source);
+        let p_text = parse_ast_error_text(source);
+        adv_ensure(
+            c_text == p_text,
+            "compile and parse_ast diagnostics diverged",
+        )?;
+        check(adv_compile_error(source)?)?;
+        check(adv_parse_error(source)?)
+    }
+
+    /// Attack vector 6: Empty steps list should be caught before any downstream validation.
+    #[test]
+    fn empty_steps_list_rejected_with_exact_error() -> Result<(), String> {
+        let source =
+            b"version: velvet-ballastics/v1\nname: empty_case\nwhen:\n  manual: {}\nsteps: []\n";
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::EmptySteps),
+            "empty steps did not produce EmptySteps diagnostic",
+        )
+    }
+
+    /// Attack vector 17: Workflow with only a single finish step and no other steps.
+    #[test]
+    fn single_finish_step_only_workflow_compiles_cleanly() -> Result<(), String> {
+        let source = b"version: velvet-ballastics/v1\nname: single_finish\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: true\n";
+        let workflow = adv_compile_ok(source)?;
+        // Should produce 2 nodes: SetConst(true) + Finish(slot 0)
+        adv_ensure(
+            workflow.node_count() == 2,
+            "single finish should produce 2 IR nodes",
+        )
+    }
+
+    /// Attack vector 11: Missing finish step -- last step is a save.
+    #[test]
+    fn missing_finish_step_rejected_with_exact_last_step_must_finish() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: no_finish
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::LastStepMustFinish),
+            "missing finish did not produce LastStepMustFinish",
+        )
+    }
+
+    /// Attack vector 7: Finish step references an input not declared but used.
+    #[test]
+    fn finish_referencing_undeclared_input_rejected_by_reference_pass() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: missing_input_ref
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: $input.nonexistent
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(
+                error,
+                CompileError::UnknownReferenceName { kind: "input", .. }
+            ),
+            "undeclared input reference did not produce UnknownReferenceName diagnostic",
+        )
+    }
+
+    /// Attack vector 8: Choose branches creating unreachable dead code (both branches skip a step).
+    #[test]
+    fn choose_both_branches_skip_produces_unreachable_step() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: unreachable_dead_code
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 3
+      on_false: 3
+  - id: dead
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::UnreachableStep { step: 2 }),
+            "unreachable dead step did not produce exact UnreachableStep diagnostic",
+        )
+    }
+
+    /// Attack vector 1 (approximation): Source byte limit hit produces SourceTooLarge.
+    #[test]
+    fn oversized_workflow_source_rejected_with_source_too_large() -> Result<(), String> {
+        let tiny_limits = YamlLimits {
+            max_source_bytes: 100,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler::new(tiny_limits);
+        let mut source =
+            String::from("version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n");
+        // Add enough steps to exceed 100 bytes
+        for i in 0..20 {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: 1\n"));
+        }
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let result = compiler.compile(source.as_bytes());
+        let Err(errors) = result else {
+            return Err("expected compile error for oversized source".to_owned());
+        };
+        adv_ensure(
+            matches!(errors.first(), Some(CompileError::SourceTooLarge { .. })),
+            "oversized source did not produce SourceTooLarge",
+        )
+    }
+
+    /// Attack vector 9 (approximation): Constant pool overflow through many save steps.
+    /// With default limits this is too large to test, but we verify the constant
+    /// pool tracks correctly for a modest number of steps.
+    #[test]
+    fn many_save_steps_compile_with_correct_node_count() -> Result<(), String> {
+        let mut source = String::from(
+            "version: velvet-ballastics/v1\nname: many_saves\nwhen:\n  manual: {}\nsteps:\n",
+        );
+        let step_count: usize = 50;
+        for i in 0..step_count {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: {i}\n"));
+        }
+        // Finish with literal 0 (treated as slot 0, which is written by save step 0)
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let workflow = adv_compile_ok(source.as_bytes())?;
+        // Each save produces 1 node, finish with slot 0 produces 1 node
+        let expected = step_count + 1;
+        adv_ensure(
+            usize::from(workflow.node_count()) == expected,
+            "node count mismatch for many saves",
+        )
+    }
+
+    /// Attack vector 12: Choose condition referencing undefined input via expression string.
+    #[test]
+    fn choose_expression_referencing_undefined_input_rejected() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: choose_undefined_ref
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "$input.nonexistent == true"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(
+                error,
+                CompileError::UnknownReferenceName { kind: "input", .. }
+            ),
+            "undefined input in choose expression did not produce reference diagnostic",
+        )
+    }
+
+    /// Attack vector 5: Reference resolution with shadowed-looking variable names.
+    /// Step IDs and input names should not collide.
+    #[test]
+    fn step_id_does_not_shadow_input_reference() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: shadow_test
+when:
+  manual: {}
+inputs:
+  value: text
+steps:
+  - id: value
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        // This should compile fine because step IDs and input references
+        // are in separate namespaces ($input.value vs step id "value").
+        let _workflow = adv_compile_ok(source)?;
+        Ok(())
+    }
+
+    /// Attack vector 3 approximation: Nested choose creates multiple branch targets.
+    #[test]
+    fn nested_choose_branches_compile_with_correct_ir() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: nested_choose
+when:
+  manual: {}
+steps:
+  - id: outer_flag
+    save:
+      value: true
+  - id: inner_flag
+    save:
+      value: false
+  - id: route_outer
+    choose:
+      condition: 0
+      on_true: 3
+      on_false: 4
+  - id: route_inner
+    choose:
+      condition: 1
+      on_true: 5
+      on_false: 5
+  - id: alt_path
+    save:
+      value: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // 3 saves + 2 chooses + 1 finish(slot 0) = 6 nodes
+        let expected = 6u16;
+        adv_ensure(
+            workflow.node_count() == expected,
+            "nested choose did not produce correct node count",
+        )
+    }
+
+    /// Attack vector 10: Accessor path with deeply nested numeric segments.
+    #[test]
+    fn deep_numeric_accessor_path_accepted_by_reference_pass() -> Result<(), String> {
+        // Build a deeply nested numeric path: $slot.0.1.2.3.4.5.6.7.8.9.10.11.12.13.14.15
+        let source = br#"version: velvet-ballastics/v1
+name: deep_accessor
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+examples:
+  - name: fixture
+    value: $slot.0.1.2.3.4.5.6.7.8.9.10.11.12.13.14.15
+"#;
+        // Should pass reference validation because numeric accessor paths are allowed
+        let _workflow = adv_compile_ok(source)?;
+        Ok(())
+    }
+
+    /// Attack vector: Non-numeric accessor path segment rejected.
+    #[test]
+    fn non_numeric_accessor_path_in_slot_rejected_with_unsupported_accessor() -> Result<(), String>
+    {
+        let source = br#"version: velvet-ballastics/v1
+name: field_accessor
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: $slot.0.field_name
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(error, CompileError::UnsupportedAccessorReference { root, path, .. }
+                    if root.as_ref() == "slot.0" && path.as_ref() == "field_name"),
+                "field accessor did not produce UnsupportedAccessorReference",
+            )
+        })
+    }
+
+    /// Attack vector: Illegal $steps.done reference in examples.
+    #[test]
+    fn steps_reference_in_examples_rejected_as_illegal() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: illegal_steps_ref
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+examples:
+  - name: fixture
+    value: $steps.done
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::IllegalReference { .. }),
+            "steps reference did not produce IllegalReference diagnostic",
+        )
+    }
+
+    /// Attack vector: $runtime.now in choose condition is rejected.
+    #[test]
+    fn runtime_now_in_choose_condition_rejected_as_illegal() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: runtime_ref
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "$runtime.now == true"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::IllegalReference { .. }),
+            "runtime.now in choose did not produce IllegalReference",
+        )
+    }
+
+    /// Attack vector: Bare $now reference is rejected.
+    #[test]
+    fn bare_now_reference_in_finish_rejected_as_illegal() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: bare_now
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: $now
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::IllegalReference { reference } if reference.as_ref() == "$now"),
+            "bare $now did not produce IllegalReference diagnostic",
+        )
+    }
+
+    /// Attack vector: Unknown reference root $env.HOME rejected.
+    #[test]
+    fn unknown_reference_root_env_rejected_with_unknown_root() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: env_ref
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: $env.HOME
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::UnknownReferenceRoot { root, .. } if root.as_ref() == "env"),
+            "$env.HOME did not produce UnknownReferenceRoot with root=env",
+        )
+    }
+
+    /// Attack vector: Secret reference in finish result leaks taint.
+    #[test]
+    fn secret_in_finish_object_rejected_with_taint_leak() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: taint_leak
+when:
+  manual: {}
+secrets:
+  key: SECRET_KEY
+steps:
+  - id: done
+    finish:
+      result:
+        token: $secrets.key
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::SecretTaintLeak {
+                        field: "finish.result"
+                    }
+                ),
+                "secret in finish object did not produce taint leak",
+            )
+        })
+    }
+
+    /// Attack vector: Choose condition with non-boolean type (number literal in slot).
+    #[test]
+    fn choose_numeric_slot_condition_rejected_with_type_mismatch() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: num_choose
+when:
+  manual: {}
+steps:
+  - id: num
+    save:
+      value: 42
+  - id: route
+    choose:
+      condition: 0
+      on_true: 2
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::TypeMismatch {
+                        field: "choose.condition",
+                        expected: "boolean",
+                        found: "number",
+                    }
+                ),
+                "numeric slot condition did not produce type mismatch",
+            )
+        })
+    }
+
+    /// Attack vector: Finish slot referencing a forward (uninitialized) slot.
+    #[test]
+    fn finish_forward_slot_reference_rejected_with_unknown_slot() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: forward_slot
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 1
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::UnknownSlotType {
+                        field: "finish.result",
+                        slot: 1
+                    }
+                ),
+                "forward finish slot did not produce unknown slot diagnostic",
+            )
+        })
+    }
+
+    /// Attack vector: Expression helper with wrong arity (contains with 3 args).
+    /// Expression parsing accepts the call but arity is checked during lowering.
+    /// In the Phase 0 pipeline, expressions are retained in the AST without
+    /// bytecode lowering, so arity is only checked when expression lowering runs.
+    #[test]
+    fn expression_helper_wrong_arity_rejected_in_bytecode_lowering() -> Result<(), String> {
+        use crate::expression::parse_expression;
+        use crate::expression_bytecode::compile_expr_to_bytecode;
+
+        let expr = parse_expression("contains(1, 2, 3)").map_err(|e| format!("parse: {e:?}"))?;
+        let mut constants = Vec::new();
+        let error = compile_expr_to_bytecode(&expr, &mut constants)
+            .map(|_| "unexpected success".to_owned())
+            .unwrap_or_else(|e| e.to_string());
+        adv_ensure(
+            error.contains("contains") && error.contains("expects 2") && error.contains("found 3"),
+            "helper arity mismatch did not produce exact diagnostic",
+        )
+    }
+
+    /// Attack vector: Expression parse error (incomplete expression) produces
+    /// deterministic diagnostic with compile/parse parity.
+    #[test]
+    fn malformed_expression_produces_deterministic_parse_error() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: bad_expr
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "1 +"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+        adv_ensure(
+            compile_error_text(source) == parse_ast_error_text(source),
+            "compile and parse_ast diverged on malformed expression",
+        )
+    }
+
+    /// Attack vector: Two steps writing to the same slot index.
+    /// In Phase 0, save steps write to their step index as slot.
+    /// Steps 0 and 1 write to slot 0 and slot 1 respectively, so no collision.
+    /// But a finish referencing slot 0 when step 0 saved value 1 is valid.
+    /// Test that the compiler handles slot layout correctly.
+    #[test]
+    fn slot_layout_two_saves_finish_reads_first_slot() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: slot_layout
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 10
+  - id: second
+    save:
+      value: 20
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let node = workflow
+            .node(StepIdx::new(2))
+            .ok_or("missing finish node")?;
+        // The finish should read slot 0 (from first save step)
+        match &node.kind {
+            CompiledNodeKind::Finish { result } if result.get() == 0 => Ok(()),
+            other => Err(format!("finish did not reference slot 0: {other:?}")),
+        }
+    }
+
+    /// Attack vector: Non-last finish step rejected with exact diagnostic.
+    #[test]
+    fn finish_in_middle_position_rejected_with_step_field_shape() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: mid_finish
+when:
+  manual: {}
+steps:
+  - id: early
+    finish:
+      result: 0
+  - id: late
+    finish:
+      result: 0
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::StepFieldShape {
+                        step: 0,
+                        field: "finish",
+                        expected: "the last step",
+                    }
+                ),
+                "mid-position finish did not produce exact StepFieldShape diagnostic",
+            )
+        })
+    }
+
+    /// Attack vector: Choose with negative branch target rejected.
+    #[test]
+    fn choose_negative_branch_target_rejected_with_out_of_range() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: neg_target
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: true
+      on_true: -1
+      on_false: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::BranchTargetOutOfRange { value: -1 }),
+            "negative branch target did not produce BranchTargetOutOfRange",
+        )
+    }
+
+    /// Attack vector: Choose with branch target exceeding step count.
+    #[test]
+    fn choose_branch_target_exceeding_step_count_rejected() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: exceed_target
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 3
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::UnknownStepTarget { step: 1, target: 3 }
+                ),
+                "branch target exceeding step count did not produce UnknownStepTarget",
+            )
+        })
+    }
+
+    /// Attack vector: Multiple diagnostics in a single pass -- reference errors
+    /// in examples and steps should accumulate.
+    #[test]
+    fn multiple_reference_errors_accumulate_in_compile() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: multi_error
+when:
+  manual: {}
+inputs:
+  user: text
+examples:
+  - name: bad1
+    value: $input.missing_one
+  - name: bad2
+    value: $input.missing_two
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().compile(source);
+        let Err(errors) = result else {
+            return Err("expected compile error".to_owned());
+        };
+        // Should have at least 2 errors (one for each missing input reference)
+        adv_ensure(
+            errors.len() >= 2,
+            "expected at least 2 accumulated reference errors",
+        )?;
+        for error in errors.iter() {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::UnknownReferenceName { kind: "input", .. }
+                ),
+                "accumulated error was not an input reference error",
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Attack vector: Expression with deeply nested parentheses hits depth limit.
+    #[test]
+    fn deeply_nested_expression_hits_parse_depth_limit() -> Result<(), String> {
+        let depth = 70;
+        let opens = "(".repeat(depth);
+        let closes = ")".repeat(depth);
+        let expr = format!("{opens}true{closes}");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: deep_expr\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition: \"{expr}\"\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n"
+        );
+        let error = adv_compile_error(source.as_bytes())?;
+        adv_ensure(
+            matches!(
+                error,
+                CompileError::ExpressionLimitExceeded {
+                    limit: "parse depth",
+                    ..
+                }
+            ),
+            "deeply nested expression did not hit parse depth limit",
+        )
+    }
+
+    /// Attack vector: Expression exceeding token limit rejected.
+    #[test]
+    fn long_expression_hits_token_limit() -> Result<(), String> {
+        // Generate an expression with more than 256 tokens
+        let parts: Vec<&str> = (0..300).map(|_| "1").collect();
+        let expr = parts.join(" + ");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: token_limit\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition: \"{expr}\"\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n"
+        );
+        let error = adv_compile_error(source.as_bytes())?;
+        adv_ensure(
+            matches!(
+                error,
+                CompileError::ExpressionLimitExceeded {
+                    limit: "token count",
+                    ..
+                }
+            ),
+            "long expression did not hit token count limit",
+        )
+    }
+
+    /// Attack vector: Expression exceeding source length limit rejected.
+    #[test]
+    fn oversized_expression_hits_source_length_limit() -> Result<(), String> {
+        // 4096+ character expression
+        let expr = "1".repeat(4097);
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: expr_len\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition: \"{expr}\"\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n"
+        );
+        let error = adv_compile_error(source.as_bytes())?;
+        adv_ensure(
+            matches!(
+                error,
+                CompileError::ExpressionLimitExceeded {
+                    limit: "source length",
+                    ..
+                }
+            ),
+            "oversized expression did not hit source length limit",
+        )
+    }
+
+    /// Attack vector: Choose with self-referencing target rejected.
+    #[test]
+    fn choose_self_referencing_target_rejected_with_backward_branch() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: self_ref
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: true
+      on_true: 1
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        adv_ensure_parity(source, |error| {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::BackwardBranchTarget { step: 1, target: 1 }
+                ),
+                "self-referencing branch did not produce exact backward target diagnostic",
+            )
+        })
+    }
+
+    /// Attack vector: Finish with integer 65536 that exceeds u16 slot range.
+    /// Since 65536 > step index 0, it's treated as a literal value, not a slot.
+    /// The Phase 0 compiler emits it as ConstValue::I64(65536) and compiles.
+    #[test]
+    fn finish_large_integer_compiled_as_literal_not_slot() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: huge_slot
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 65536
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // 65536 is > step index 0, so it's a literal, not a slot.
+        // Produces 2 nodes: SetConst(65536) + Finish(slot 0)
+        adv_ensure(
+            workflow.node_count() == 2,
+            "large integer finish should produce 2 nodes",
+        )?;
+        // Check constant pool contains the literal
+        let node = workflow.node(StepIdx::new(0)).ok_or("missing node 0")?;
+        match &node.kind {
+            CompiledNodeKind::SetConst { value } => {
+                let const_val = workflow.constant(*value).ok_or("missing constant")?;
+                adv_ensure(
+                    *const_val == ConstValue::I64(65536),
+                    "constant should be I64(65536)",
+                )
+            }
+            other => Err(format!("expected SetConst, got {other:?}")),
+        }
+    }
+
+    /// Attack vector: Var referencing an accessor path ($vars.x.field) rejected.
+    #[test]
+    fn var_accessor_path_in_finish_rejected_with_unsupported_accessor() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: var_accessor
+when:
+  manual: {}
+vars:
+  data: 1
+steps:
+  - id: done
+    finish:
+      result: $vars.data.field
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::UnsupportedAccessorReference { .. }),
+            "var accessor path did not produce UnsupportedAccessorReference",
+        )
+    }
+
+    /// Attack vector: Validate that compile and parse_ast produce the same first
+    /// diagnostic for a complex workflow with multiple issues (schema + reference).
+    #[test]
+    fn compile_parse_ast_parity_for_schema_then_reference_errors() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: parity_test
+when:
+  manual: {}
+inputs:
+  bad_field:
+    is: text
+    unknown_field: true
+steps:
+  - id: done
+    finish:
+      result: $input.missing
+"#;
+        adv_ensure(
+            compile_error_text(source) == parse_ast_error_text(source),
+            "compile and parse_ast diverged on schema+reference error",
+        )
+    }
+
+    /// Attack vector: SlotCompiler constant pool overflow produces exact error.
+    #[test]
+    fn slot_compiler_constant_pool_overflow_rejected() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        // Fill up to u16::MAX + 1 (65536) constants; the 65537th push should fail
+        let count = usize::from(u16::MAX) + 1;
+        for i in 0..count {
+            let value = i64::try_from(i).map_err(|error| error.to_string())?;
+            let val = ConstValue::I64(value);
+            sc.push_constant(val)
+                .map_err(|e| format!("push {i} failed: {e:?}"))?;
+        }
+        // Now the pool has 65536 entries; the next push should fail
+        let result = sc.push_constant(ConstValue::I64(0));
+        adv_ensure(
+            result.is_err(),
+            "constant pool overflow (65536 existing + 1 new) should produce an error",
+        )
     }
 }

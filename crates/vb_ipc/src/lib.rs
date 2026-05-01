@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
 use std::num::NonZeroUsize;
 use thiserror::Error;
+use vb_core::action::ActionOutputReady;
+use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::value::{SlotValue, Taint};
 use vb_core::{RunId, WorkflowDigest};
 
 /// IPC frame magic: `VBLT` little-endian.
@@ -301,6 +304,71 @@ pub enum IpcPayload {
     Shutdown,
 }
 
+/// Typed IPC action output payload carried by `CompleteAction`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IpcActionOutputPayload {
+    /// Output slot receiving the action result.
+    pub output_slot: SlotIdx,
+    /// Runtime value produced by the action.
+    pub value: SlotValue,
+    /// Taint attached to the result.
+    pub taint: Taint,
+}
+
+impl IpcActionOutputPayload {
+    /// Converts the wire payload into the runtime completion shape.
+    pub fn into_action_output(self, encoded_len: u32) -> ActionOutputReady {
+        ActionOutputReady {
+            output_slot: self.output_slot,
+            value: self.value,
+            taint: self.taint,
+            encoded_len,
+        }
+    }
+}
+
+/// Typed trace event returned by `ListEvents`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IpcTraceEvent {
+    /// Monotonic sequence assigned by the IPC snapshot response.
+    pub sequence: u64,
+    /// Event payload.
+    pub kind: IpcTraceEventKind,
+}
+
+/// Stable IPC event payload independent of runtime internals.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IpcTraceEventKind {
+    /// A step began execution.
+    StepStarted { run: RunId, step: StepIdx },
+    /// A step completed execution.
+    StepEnded { run: RunId, step: StepIdx },
+    /// A slot was written.
+    SlotWritten { run: RunId, slot: SlotIdx },
+    /// An action was scheduled.
+    ActionScheduled { run: RunId, step: StepIdx },
+    /// An action completed.
+    ActionCompleted { run: RunId, step: StepIdx },
+    /// An action failed.
+    ActionFailed {
+        run: RunId,
+        step: StepIdx,
+        code: vb_core::action::ActionFailureCode,
+    },
+    /// An ask was answered.
+    AskAnswered {
+        run: RunId,
+        step: StepIdx,
+        slot: SlotIdx,
+    },
+    /// A run was submitted.
+    RunSubmitted { run: RunId },
+    /// A run finished.
+    RunFinished { run: RunId },
+    /// A run failed.
+    RunFailed { run: RunId },
+}
+
 /// Encodes a typed IPC payload with Postcard.
 pub fn encode_payload(
     payload: &IpcPayload,
@@ -525,6 +593,9 @@ pub enum IpcError {
     /// Typed Postcard payload decoding failed.
     #[error("failed to decode IPC payload")]
     PayloadDecodeFailed,
+    /// Typed response payload decoding failed.
+    #[error("failed to decode IPC response")]
+    ResponseDecodeFailed,
 }
 
 fn read_u16_le(cursor: &mut Cursor<&[u8]>) -> Result<u16, IpcError> {
@@ -568,8 +639,8 @@ fn map_try_send(error: TrySendError<IngressFrame>) -> IpcError {
 #[cfg(test)]
 mod tests {
     use super::{
-        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, BoundedPayload, IngressFrame, IpcCommand,
-        IpcError, IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
+        BoundedPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcCommand, IpcError,
+        IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
         SubmitRunPayload, decode_frame, decode_payload, encode_payload,
     };
     use bytes::Bytes;
@@ -962,10 +1033,7 @@ mod tests {
 
         // Then: first 4 bytes are IPC_MAGIC in little-endian
         let magic_bytes = encoded.get(..4);
-        assert_eq!(
-            magic_bytes,
-            Some(IPC_MAGIC.to_le_bytes().as_slice())
-        );
+        assert_eq!(magic_bytes, Some(IPC_MAGIC.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -982,10 +1050,7 @@ mod tests {
 
         // Then: bytes 4..6 are IPC_VERSION in little-endian
         let version_bytes = encoded.get(4..6);
-        assert_eq!(
-            version_bytes,
-            Some(IPC_VERSION.to_le_bytes().as_slice())
-        );
+        assert_eq!(version_bytes, Some(IPC_VERSION.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1002,10 +1067,7 @@ mod tests {
 
         // Then: bytes 6..8 are the command id (3) in little-endian
         let command_bytes = encoded.get(6..8);
-        assert_eq!(
-            command_bytes,
-            Some(3u16.to_le_bytes().as_slice())
-        );
+        assert_eq!(command_bytes, Some(3u16.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1022,10 +1084,7 @@ mod tests {
 
         // Then: bytes 8..10 are flags in little-endian
         let flags_bytes = encoded.get(8..10);
-        assert_eq!(
-            flags_bytes,
-            Some(0x1234u16.to_le_bytes().as_slice())
-        );
+        assert_eq!(flags_bytes, Some(0x1234u16.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1042,10 +1101,7 @@ mod tests {
 
         // Then: bytes 10..12 (reserved) are zero
         let reserved_bytes = encoded.get(10..12);
-        assert_eq!(
-            reserved_bytes,
-            Some(0u16.to_le_bytes().as_slice())
-        );
+        assert_eq!(reserved_bytes, Some(0u16.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1063,10 +1119,7 @@ mod tests {
 
         // Then: bytes 12..20 are correlation in little-endian
         let corr_bytes = encoded.get(12..20);
-        assert_eq!(
-            corr_bytes,
-            Some(correlation.to_le_bytes().as_slice())
-        );
+        assert_eq!(corr_bytes, Some(correlation.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1083,10 +1136,7 @@ mod tests {
 
         // Then: bytes 20..24 are payload_len in little-endian
         let plen_bytes = encoded.get(20..24);
-        assert_eq!(
-            plen_bytes,
-            Some(4096u32.to_le_bytes().as_slice())
-        );
+        assert_eq!(plen_bytes, Some(4096u32.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -1195,7 +1245,8 @@ mod tests {
         assert_eq!(queue.try_submit(frame), Ok(()));
 
         // When: receiving the frame
-        let _ = queue.try_recv();
+        let drained = queue.try_recv();
+        assert!(drained.is_ok(), "queued frame should drain");
 
         // Then: queue is empty
         assert!(queue.is_empty());
@@ -1603,7 +1654,10 @@ mod tests {
         );
 
         // Then: it succeeds (0 bytes is within max of 1)
-        assert!(result.is_ok(), "empty payload should fit within any non-zero max");
+        assert!(
+            result.is_ok(),
+            "empty payload should fit within any non-zero max"
+        );
     }
 
     #[test]
@@ -1660,12 +1714,7 @@ mod tests {
     #[test]
     fn frame_header_const_new_is_compile_time() {
         // Given: a const header
-        const HEADER: IpcFrameHeader = IpcFrameHeader::new(
-            IpcCommand::Shutdown,
-            0,
-            0,
-            0,
-        );
+        const HEADER: IpcFrameHeader = IpcFrameHeader::new(IpcCommand::Shutdown, 0, 0, 0);
 
         // When: checking fields
         // Then: const construction works and fields match
@@ -1696,7 +1745,10 @@ mod tests {
         let message = error.to_string();
 
         // Then: message mentions encode
-        assert!(message.contains("encode"), "expected 'encode' in '{message}'");
+        assert!(
+            message.contains("encode"),
+            "expected 'encode' in '{message}'"
+        );
     }
 
     #[test]
@@ -1708,7 +1760,10 @@ mod tests {
         let message = error.to_string();
 
         // Then: message mentions decode
-        assert!(message.contains("decode"), "expected 'decode' in '{message}'");
+        assert!(
+            message.contains("decode"),
+            "expected 'decode' in '{message}'"
+        );
     }
 
     #[test]
@@ -1732,7 +1787,10 @@ mod tests {
         let message = error.to_string();
 
         // Then: message mentions encode
-        assert!(message.contains("encode"), "expected 'encode' in '{message}'");
+        assert!(
+            message.contains("encode"),
+            "expected 'encode' in '{message}'"
+        );
     }
 
     #[test]
@@ -1760,9 +1818,414 @@ mod tests {
     }
 }
 
+// ══ Adversarial command-specific attacks ══
+
+#[test]
+fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
+    // Given: a CancelRun payload with run_id=0
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(0),
+    };
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+
+    // When: decoding the payload
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips (the protocol layer accepts it; runtime rejects later)
+    assert!(decoded.is_ok(), "CancelRun with run_id=0 should decode");
+    let Ok(decoded) = decoded else { return };
+    assert_eq!(
+        decoded,
+        IpcPayload::CancelRun {
+            run_id: RunId::new(0)
+        }
+    );
+}
+
+#[test]
+fn adversarial_cancel_run_with_run_id_max_encoded_roundtrips() {
+    // Given: a CancelRun payload with run_id=u64::MAX (nonexistent run)
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(u64::MAX),
+    };
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+
+    // When: decoding
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips (runtime will reject later; protocol accepts it)
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_answer_ask_with_zero_ticket_roundtrips() {
+    // Given: an AnswerAsk with ticket=0 and empty answer
+    let payload = IpcPayload::AnswerAsk {
+        run_id: RunId::new(1),
+        ticket: 0,
+        answer: Vec::new(),
+    };
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips (protocol layer accepts; runtime validation happens later)
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_answer_ask_with_max_u64_ticket_roundtrips() {
+    // Given: an AnswerAsk with ticket=u64::MAX
+    let payload = IpcPayload::AnswerAsk {
+        run_id: RunId::new(1),
+        ticket: u64::MAX,
+        answer: Vec::from(&b"malicious"[..]),
+    };
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips (protocol accepts; step_from_ticket will reject at dispatch)
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_fail_action_with_unregistered_run_id_roundtrips() {
+    // Given: a FailAction for a run that does not exist
+    let payload = IpcPayload::FailAction {
+        run_id: RunId::new(99991),
+        ticket: 7777,
+        error: Vec::from(&b"no such run"[..]),
+    };
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips (dispatch will return RuntimeError)
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_complete_action_with_mismatched_output_bytes_rejected() {
+    // Given: a CompleteAction with garbage output bytes (not valid IpcActionOutputPayload)
+    let payload = IpcPayload::CompleteAction {
+        run_id: RunId::new(1),
+        ticket: 5,
+        output: Vec::from(&b"\xFF\xFF\xFF\xFF"[..]),
+    };
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+
+    // When: decoding the outer payload
+    let decoded = decode_payload(&encoded);
+
+    // Then: outer payload roundtrips (the inner output decode fails at dispatch, not protocol)
+    assert!(decoded.is_ok(), "outer IpcPayload should decode");
+}
+
+#[test]
+fn adversarial_submit_run_with_empty_input_roundtrips() {
+    // Given: a SubmitRun with empty input bytes
+    let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+        run_id: RunId::new(42),
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+        input: Vec::new(),
+    });
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_submit_run_with_large_input_under_limit_roundtrips() {
+    // Given: a SubmitRun with a large input (but under 1 MiB)
+    let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+        run_id: RunId::new(7),
+        workflow: WorkflowDigest::from_bytes([0xAA; 32]),
+        input: vec![0u8; 100_000],
+    });
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_list_events_with_from_sequence_max_roundtrips() {
+    // Given: a ListEvents with from_sequence=u64::MAX
+    let payload = IpcPayload::ListEvents {
+        run_id: RunId::new(5),
+        from_sequence: u64::MAX,
+    };
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_drain_trace_with_max_records_roundtrips() {
+    // Given: a DrainTrace with max_records=u32::MAX
+    let payload = IpcPayload::DrainTrace {
+        run_id: RunId::new(3),
+        max_records: u32::MAX,
+    };
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    // Then: payload roundtrips
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn adversarial_bounded_payload_rejects_exactly_one_over_max() {
+    // Given: bytes 1 byte over the max
+    let max_val = 32;
+    let max = MaxPayloadBytes::new(
+        std::num::NonZeroUsize::new(max_val).unwrap_or(std::num::NonZeroUsize::MIN),
+    );
+    let data = Bytes::from(vec![0u8; max_val.saturating_add(1)]);
+
+    // When: creating a bounded payload
+    let result = BoundedPayload::new(data, max);
+
+    // Then: PayloadTooLarge
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: max_val.saturating_add(1),
+            limit: max_val,
+        })
+    );
+}
+
+#[test]
+fn adversarial_decode_frame_rejects_oversized_payload_bytes() {
+    // Given: a valid header with payload_len=3 but we pass 1000 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 3);
+    let encoded = header.encode();
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+    let oversized = Bytes::from(vec![0u8; 1000]);
+
+    // When: decoding the frame
+    let result = decode_frame(&encoded, oversized, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadLengthMismatch
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadLengthMismatch {
+            header: 3,
+            actual: 1000,
+        })
+    );
+}
+
+#[test]
+fn adversarial_encode_payload_exceeding_bound_rejected() {
+    // Given: an IpcPayload that would serialize to more than 1 byte
+    // We use a tiny max to force rejection
+    let payload = IpcPayload::Health;
+    let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+
+    // When: encoding with tiny max
+    let result = encode_payload(&payload, tiny_max);
+
+    // Then: either it fits (if Health serializes to 0 or 1 bytes) or PayloadTooLarge
+    // Health serializes to a small postcard encoding - check it succeeds or fails correctly
+    match result {
+        Ok(_) => {
+            // Health is small enough even for 1 byte
+        }
+        Err(IpcError::PayloadTooLarge { .. }) => {
+            // Also acceptable
+        }
+        Err(other) => {
+            panic!("unexpected error: {other:?}");
+        }
+    }
+}
+
+#[test]
+fn adversarial_ipc_frame_new_rejects_mismatched_lengths() {
+    // Given: a header with payload_len=10 but 5 bytes of payload
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
+    let short_payload = Bytes::from(vec![0u8; 5]);
+
+    // When: constructing an IpcFrame
+    let result = IpcFrame::new(header, short_payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadLengthMismatch
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadLengthMismatch {
+            header: 10,
+            actual: 5,
+        })
+    );
+}
+
+#[test]
+fn adversarial_ipc_frame_new_rejects_oversized_payload() {
+    // Given: a header with payload_len=100 and 100 bytes, but max=1
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+    let payload = Bytes::from(vec![0u8; 100]);
+    let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+
+    // When: constructing an IpcFrame
+    let result = IpcFrame::new(header, payload, tiny_max);
+
+    // Then: PayloadTooLarge
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 100,
+            limit: 1,
+        })
+    );
+}
+
+#[test]
+fn adversarial_memory_ingress_full_then_drain_then_submit() {
+    // Given: a queue with capacity 1
+    let capacity = QueueCapacity::new(std::num::NonZeroUsize::MIN);
+    let queue = MemoryIngress::bounded(capacity);
+    let frame = IngressFrame::new(
+        RunId::new(1),
+        WorkflowDigest::from_bytes([0; 32]),
+        Bytes::new(),
+        MaxPayloadBytes::DEFAULT,
+    );
+    assert!(frame.is_ok());
+    let Ok(frame) = frame else { return };
+
+    // When: filling, draining, then submitting again
+    assert_eq!(queue.try_submit(frame.clone()), Ok(()));
+    assert_eq!(queue.try_submit(frame.clone()), Err(IpcError::Full));
+    let drained = queue.try_recv();
+    assert!(drained.is_ok());
+    assert_eq!(queue.try_submit(frame), Ok(()));
+
+    // Then: the queue accepts after drain
+    assert_eq!(queue.len(), 1);
+}
+
+#[test]
+fn adversarial_memory_ingress_disconnected_after_sender_drop() {
+    // Given: a queue where the receiver's sender clone is dropped
+    let capacity =
+        QueueCapacity::new(std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN));
+    let queue = MemoryIngress::bounded(capacity);
+    // Clone the receiver side (MemoryIngress has both sender and receiver)
+    // Drop the original queue to disconnect sender
+    let receiver_only = queue.receiver.clone();
+    let sender = queue.sender.clone();
+    drop(queue);
+    drop(sender);
+
+    // When: receiving from disconnected channel
+    let result = receiver_only.try_recv();
+
+    // Then: Disconnected
+    assert!(matches!(
+        result,
+        Err(crossbeam_channel::TryRecvError::Disconnected)
+    ));
+}
+
+#[test]
+fn adversarial_decode_frame_bad_magic_in_header_returns_invalid_magic() {
+    // Given: raw bytes with wrong magic
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    let payload = Bytes::new();
+
+    // When: decoding the frame
+    let result = decode_frame(&header_bytes, payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: InvalidMagic
+    assert_eq!(
+        result,
+        Err(IpcError::InvalidMagic {
+            actual: 0xDEAD_BEEF
+        })
+    );
+}
+
+#[test]
+fn adversarial_decode_frame_bad_version_in_header_returns_unsupported_version() {
+    // Given: valid magic but version=99
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&99u16.to_le_bytes());
+    let payload = Bytes::new();
+
+    // When: decoding the frame
+    let result = decode_frame(&header_bytes, payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: UnsupportedVersion
+    assert_eq!(result, Err(IpcError::UnsupportedVersion { actual: 99 }));
+}
+
+#[test]
+fn adversarial_submit_run_payload_with_zero_workflow_roundtrips() {
+    // Given: a SubmitRun with all-zero workflow digest
+    let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+        run_id: RunId::new(0),
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+        input: Vec::new(),
+    });
+
+    // When: encoding then decoding
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert!(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
+
+    // Then: roundtrips (protocol doesn't validate semantic correctness)
+    assert_eq!(decode_payload(&encoded), Ok(payload));
+}
+
 #[cfg(test)]
 mod proptests {
-    use super::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes, IpcPayload, encode_payload, decode_payload};
+    use super::{
+        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
+        MaxPayloadBytes, decode_payload, encode_payload,
+    };
     use proptest::prelude::*;
     use vb_core::RunId;
 

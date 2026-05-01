@@ -191,7 +191,12 @@ mod tests {
     fn resolve_unknown_action_returns_error() {
         let registry = ActionRegistry::new();
         let result = registry.resolve_compile_time(ActionId::new(99));
-        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(99) }));
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(99)
+            })
+        );
     }
 
     #[test]
@@ -210,14 +215,17 @@ mod tests {
             Ok(ActionOutcome::Suspended(ticket)) => {
                 assert_eq!(ticket.action, ActionId::new(5));
             }
-            other => assert_eq!(other, Ok(ActionOutcome::Suspended(ActionTicket {
-                run: RunId::new(1),
-                step: StepIdx::new(0),
-                seq: SeqNo::new(0),
-                action: ActionId::new(5),
-                attempt: 1,
-                idempotency_key: 0,
-            }))),
+            other => assert_eq!(
+                other,
+                Ok(ActionOutcome::Suspended(ActionTicket {
+                    run: RunId::new(1),
+                    step: StepIdx::new(0),
+                    seq: SeqNo::new(0),
+                    action: ActionId::new(5),
+                    attempt: 1,
+                    idempotency_key: 0,
+                }))
+            ),
         }
     }
 
@@ -227,7 +235,10 @@ mod tests {
         let contract = test_contract(3);
         assert_eq!(registry.register(contract), Ok(()));
         let duplicate = test_contract(3);
-        assert_eq!(registry.register(duplicate), Err(ActionError::DispatchFailed));
+        assert_eq!(
+            registry.register(duplicate),
+            Err(ActionError::DispatchFailed)
+        );
     }
 
     #[test]
@@ -270,7 +281,13 @@ mod tests {
         let contract = resolved.ok().cloned();
         let Some(ref contract) = contract else { return };
         let result = registry.dispatch(&input, contract);
-        assert_eq!(result, Err(ActionError::PayloadTooLarge { max_bytes: 0, actual_bytes: 0 }));
+        assert_eq!(
+            result,
+            Err(ActionError::PayloadTooLarge {
+                max_bytes: 0,
+                actual_bytes: 0
+            })
+        );
     }
 
     #[test]
@@ -326,7 +343,12 @@ mod tests {
         };
         let result = registry.dispatch(&input, &wrong_contract);
         // Then it returns an UnknownAction error
-        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(5) }));
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(5)
+            })
+        );
     }
 
     #[test]
@@ -361,9 +383,24 @@ mod tests {
         assert_eq!(registry.register(test_contract(1)), Ok(()));
         assert_eq!(registry.register(test_contract(2)), Ok(()));
         // Then all resolve correctly
-        assert_eq!(registry.resolve_compile_time(ActionId::new(0)).map(|c| c.id), Ok(ActionId::new(0)));
-        assert_eq!(registry.resolve_compile_time(ActionId::new(1)).map(|c| c.id), Ok(ActionId::new(1)));
-        assert_eq!(registry.resolve_compile_time(ActionId::new(2)).map(|c| c.id), Ok(ActionId::new(2)));
+        assert_eq!(
+            registry
+                .resolve_compile_time(ActionId::new(0))
+                .map(|c| c.id),
+            Ok(ActionId::new(0))
+        );
+        assert_eq!(
+            registry
+                .resolve_compile_time(ActionId::new(1))
+                .map(|c| c.id),
+            Ok(ActionId::new(1))
+        );
+        assert_eq!(
+            registry
+                .resolve_compile_time(ActionId::new(2))
+                .map(|c| c.id),
+            Ok(ActionId::new(2))
+        );
         assert_eq!(registry.len(), 3);
     }
 
@@ -375,7 +412,12 @@ mod tests {
         // When resolving unregistered action 5
         let result = registry.resolve_compile_time(ActionId::new(5));
         // Then it returns UnknownAction
-        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(5) }));
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(5)
+            })
+        );
     }
 
     #[test]
@@ -393,14 +435,17 @@ mod tests {
                 assert_eq!(ticket.action, ActionId::new(0));
             }
             other => {
-                assert_eq!(other, Ok(ActionOutcome::Suspended(ActionTicket {
-                    run: RunId::new(1),
-                    step: StepIdx::new(0),
-                    seq: SeqNo::new(0),
-                    action: ActionId::new(0),
-                    attempt: 1,
-                    idempotency_key: 0,
-                })));
+                assert_eq!(
+                    other,
+                    Ok(ActionOutcome::Suspended(ActionTicket {
+                        run: RunId::new(1),
+                        step: StepIdx::new(0),
+                        seq: SeqNo::new(0),
+                        action: ActionId::new(0),
+                        attempt: 1,
+                        idempotency_key: 0,
+                    }))
+                );
             }
         }
     }
@@ -473,6 +518,221 @@ mod tests {
         // When resolving action 3 (gap slot with default id, not matching 3)
         let result = registry.resolve_compile_time(ActionId::new(3));
         // Then it returns UnknownAction
-        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(3) }));
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(3)
+            })
+        );
+    }
+
+    // =======================================================================
+    // Adversarial BDD tests - action registry attack vectors
+    // =======================================================================
+
+    #[test]
+    fn action_registry_dispatch_unknown_action_returns_exact_error_variant() {
+        // Given an empty registry
+        let registry = ActionRegistry::new();
+        let input = test_input(99);
+        let contract = test_contract(99);
+        // When dispatching an unknown action
+        let result = registry.dispatch(&input, &contract);
+        // Then it returns UnknownAction with the exact action id
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn action_registry_register_then_reregister_same_id_returns_dispatch_failed() {
+        // Given a registry with action 1
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        // When registering the same action id again
+        let result = registry.register(test_contract(1));
+        // Then it returns DispatchFailed (duplicate rejection)
+        assert_eq!(result, Err(ActionError::DispatchFailed));
+    }
+
+    #[test]
+    fn action_registry_register_max_action_id_does_not_overflow() {
+        // Given an empty registry
+        let mut registry = ActionRegistry::new();
+        // When registering action at max valid index (65534)
+        let contract = ActionContract {
+            id: ActionId::new(65534),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let result = registry.register(contract);
+        // Then it succeeds (65534 < 65535 = MAX_REGISTERED_ACTIONS)
+        assert_eq!(result, Ok(()));
+        assert_eq!(registry.len(), 65535);
+    }
+
+    #[test]
+    fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
+        // Given a contract with max_input_bytes=0 and input_slot_count=1
+        let mut registry = ActionRegistry::new();
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        assert_eq!(registry.register(contract), Ok(()));
+        let input = test_input(1);
+        let resolved = registry.resolve_compile_time(ActionId::new(1));
+        let contract = match resolved {
+            Ok(c) => c.clone(),
+            Err(_) => return,
+        };
+        // When dispatching
+        let result = registry.dispatch(&input, &contract);
+        // Then it returns PayloadTooLarge (zero bytes with slots)
+        assert_eq!(
+            result,
+            Err(ActionError::PayloadTooLarge {
+                max_bytes: 0,
+                actual_bytes: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
+        // Given a contract with max_input_bytes=0 and input_slot_count=0
+        let mut registry = ActionRegistry::new();
+        let contract = ActionContract {
+            id: ActionId::new(2),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        assert_eq!(registry.register(contract), Ok(()));
+        let input = ActionInput {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(2),
+            input: SlotIdx::new(0),
+            ticket: ActionTicket {
+                run: RunId::new(1),
+                step: StepIdx::new(0),
+                seq: SeqNo::new(0),
+                action: ActionId::new(2),
+                attempt: 1,
+                idempotency_key: 0,
+            },
+        };
+        let contract = match registry.resolve_compile_time(ActionId::new(2)) {
+            Ok(c) => c.clone(),
+            Err(_) => return,
+        };
+        // When dispatching with zero bytes and zero slots
+        let result = registry.dispatch(&input, &contract);
+        // Then it succeeds (no payload to validate)
+        match result {
+            Ok(ActionOutcome::Suspended(_)) => {}
+            other => {
+                assert_eq!(
+                    other,
+                    Ok(ActionOutcome::Suspended(ActionTicket {
+                        run: RunId::new(1),
+                        step: StepIdx::new(0),
+                        seq: SeqNo::new(0),
+                        action: ActionId::new(2),
+                        attempt: 1,
+                        idempotency_key: 0,
+                    }))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn action_registry_resolve_after_many_registrations_finds_correct_action() {
+        // Given a registry with actions 0, 5, 10, 20
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(0)), Ok(()));
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.register(test_contract(10)), Ok(()));
+        assert_eq!(registry.register(test_contract(20)), Ok(()));
+        // When resolving action 10
+        let result = registry.resolve_compile_time(ActionId::new(10));
+        // Then it returns the correct contract
+        match result {
+            Ok(c) => {
+                assert_eq!(c.id, ActionId::new(10));
+                assert_eq!(c.input_slot_count, 1);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
+        // Given a registry with action 3
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(3)), Ok(()));
+        let input = ActionInput {
+            run: RunId::new(77),
+            step: StepIdx::new(5),
+            action: ActionId::new(3),
+            input: SlotIdx::new(0),
+            ticket: ActionTicket {
+                run: RunId::new(77),
+                step: StepIdx::new(5),
+                seq: SeqNo::new(10),
+                action: ActionId::new(3),
+                attempt: 2,
+                idempotency_key: 99,
+            },
+        };
+        let contract = match registry.resolve_compile_time(ActionId::new(3)) {
+            Ok(c) => c.clone(),
+            Err(_) => return,
+        };
+        // When dispatching
+        let result = registry.dispatch(&input, &contract);
+        // Then the returned ticket carries the input ticket's fields
+        match result {
+            Ok(ActionOutcome::Suspended(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(3));
+                assert_eq!(ticket.run, RunId::new(77));
+                assert_eq!(ticket.step, StepIdx::new(5));
+                assert_eq!(ticket.seq, SeqNo::new(10));
+                assert_eq!(ticket.attempt, 2);
+                assert_eq!(ticket.idempotency_key, 99);
+            }
+            other => {
+                assert_eq!(
+                    other,
+                    Ok(ActionOutcome::Suspended(ActionTicket {
+                        run: RunId::new(0),
+                        step: StepIdx::new(0),
+                        seq: SeqNo::new(0),
+                        action: ActionId::new(0),
+                        attempt: 0,
+                        idempotency_key: 0,
+                    }))
+                );
+            }
+        }
     }
 }

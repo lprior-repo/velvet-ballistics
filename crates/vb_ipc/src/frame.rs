@@ -99,6 +99,18 @@ pub fn read_frame_header<R: Read>(reader: &mut R) -> Result<IpcFrameHeader, IpcE
     decode_frame_header(&header_bytes)
 }
 
+/// Reads a frame header and validates it against an explicit payload limit.
+pub fn read_frame_header_bounded<R: Read>(
+    reader: &mut R,
+    max_payload: MaxPayloadBytes,
+) -> Result<IpcFrameHeader, IpcError> {
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    reader
+        .read_exact(&mut header_bytes)
+        .map_err(|_| IpcError::HeaderDecodeFailed)?;
+    IpcFrameHeader::decode(&header_bytes, max_payload)
+}
+
 /// Reads the payload bytes following a validated header from a Read trait object.
 pub fn read_frame_payload<R: Read>(
     reader: &mut R,
@@ -117,6 +129,16 @@ pub fn read_frame_payload<R: Read>(
         .read_exact(&mut payload)
         .map_err(|_| IpcError::HeaderDecodeFailed)?;
     Ok(payload)
+}
+
+/// Reads payload bytes after enforcing an explicit payload limit.
+pub fn read_frame_payload_bounded<R: Read>(
+    reader: &mut R,
+    header: &IpcFrameHeader,
+    max_payload: MaxPayloadBytes,
+) -> Result<Vec<u8>, IpcError> {
+    validate_frame_bounds(header, max_payload)?;
+    read_frame_payload(reader, header)
 }
 
 /// Writes a complete frame to a Write trait object.
@@ -261,10 +283,7 @@ mod tests {
 
         // Then: bytes 0..4 are IPC_MAGIC in little-endian
         let magic_slice = frame.get(..4);
-        assert_eq!(
-            magic_slice,
-            Some(crate::IPC_MAGIC.to_le_bytes().as_slice())
-        );
+        assert_eq!(magic_slice, Some(crate::IPC_MAGIC.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -297,10 +316,7 @@ mod tests {
 
         // Then: bytes 6..8 are command id 9 in little-endian
         let cmd_slice = frame.get(6..8);
-        assert_eq!(
-            cmd_slice,
-            Some(9u16.to_le_bytes().as_slice())
-        );
+        assert_eq!(cmd_slice, Some(9u16.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -317,10 +333,7 @@ mod tests {
 
         // Then: bytes 20..24 contain payload length 5 in little-endian
         let len_slice = frame.get(20..24);
-        assert_eq!(
-            len_slice,
-            Some(5u32.to_le_bytes().as_slice())
-        );
+        assert_eq!(len_slice, Some(5u32.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -583,7 +596,10 @@ mod tests {
 
         // Then: write succeeds and the output can be decoded
         assert!(result.is_ok(), "write_frame should succeed");
-        assert!(writer.len() > IPC_HEADER_LEN, "should contain header + payload");
+        assert!(
+            writer.len() > IPC_HEADER_LEN,
+            "should contain header + payload"
+        );
         let header_slice = match writer.get(..IPC_HEADER_LEN) {
             Some(s) => s,
             None => return,
@@ -640,10 +656,7 @@ mod tests {
 
         // Then: flags bytes at offset 8..10 match
         let flags_slice = frame.get(8..10);
-        assert_eq!(
-            flags_slice,
-            Some(0x1234u16.to_le_bytes().as_slice())
-        );
+        assert_eq!(flags_slice, Some(0x1234u16.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -660,10 +673,7 @@ mod tests {
 
         // Then: correlation bytes at offset 12..20 match
         let corr_slice = frame.get(12..20);
-        assert_eq!(
-            corr_slice,
-            Some(corr.to_le_bytes().as_slice())
-        );
+        assert_eq!(corr_slice, Some(corr.to_le_bytes().as_slice()));
     }
 
     #[test]
@@ -689,5 +699,414 @@ mod tests {
                 "magic {bad_magic:#010x} should be rejected"
             );
         }
+    }
+
+    // ══ Adversarial frame decode attacks ══
+
+    #[test]
+    fn adversarial_all_zero_bytes_header_rejected_as_bad_magic() {
+        // Given: a header made entirely of zero bytes
+        let zero_header: [u8; IPC_HEADER_LEN] = [0u8; IPC_HEADER_LEN];
+
+        // When: decoding
+        let result = decode_frame_header(&zero_header);
+
+        // Then: InvalidMagic with actual=0 (zero is not VBLT)
+        assert_eq!(result, Err(IpcError::InvalidMagic { actual: 0 }));
+    }
+
+    #[test]
+    fn adversarial_all_ff_bytes_header_rejected_as_bad_magic() {
+        // Given: a header made entirely of 0xFF bytes
+        let ff_header: [u8; IPC_HEADER_LEN] = [0xFF_u8; IPC_HEADER_LEN];
+
+        // When: decoding
+        let result = decode_frame_header(&ff_header);
+
+        // Then: InvalidMagic with actual=0xFFFFFFFF
+        assert_eq!(
+            result,
+            Err(IpcError::InvalidMagic {
+                actual: 0xFFFF_FFFF
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_valid_magic_garbage_rest_rejected_as_unsupported_version() {
+        // Given: valid magic but version field is garbage (0x1337)
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        // Everything after magic is 0xFF => version 0xFFFF
+        for byte in header_bytes.iter_mut().skip(4) {
+            *byte = 0xFF;
+        }
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: UnsupportedVersion (first field after magic)
+        assert_eq!(result, Err(IpcError::UnsupportedVersion { actual: 0xFFFF }));
+    }
+
+    #[test]
+    fn adversarial_unsupported_version_two_rejected() {
+        // Given: valid magic, version=2 (unsupported)
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        header_bytes[4..6].copy_from_slice(&2u16.to_le_bytes());
+        header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+        // reserved = 0
+        // payload_len = 0
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: UnsupportedVersion with actual=2
+        assert_eq!(result, Err(IpcError::UnsupportedVersion { actual: 2 }));
+    }
+
+    #[test]
+    fn adversarial_unknown_command_id_rejected() {
+        // Given: valid magic, version=1, command=200 (invalid)
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+        header_bytes[6..8].copy_from_slice(&200u16.to_le_bytes());
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: UnknownCommand(200)
+        assert_eq!(result, Err(IpcError::UnknownCommand(200)));
+    }
+
+    #[test]
+    fn adversarial_command_id_zero_rejected() {
+        // Given: valid magic, version=1, command=0 (invalid)
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+        // command bytes 6..8 already 0
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: UnknownCommand(0)
+        assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    }
+
+    #[test]
+    fn adversarial_command_id_max_u16_rejected() {
+        // Given: valid magic, version=1, command=u16::MAX
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+        header_bytes[6..8].copy_from_slice(&u16::MAX.to_le_bytes());
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: UnknownCommand(u16::MAX)
+        assert_eq!(result, Err(IpcError::UnknownCommand(u16::MAX)));
+    }
+
+    #[test]
+    fn adversarial_nonzero_reserved_field_rejected() {
+        // Given: valid magic, version, command, but reserved=1
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+        header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+        header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+        // flags 8..10 = 0
+        header_bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved = 1
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: ReservedNonZero
+        assert_eq!(result, Err(IpcError::ReservedNonZero { actual: 1 }));
+    }
+
+    #[test]
+    fn adversarial_payload_len_4gb_rejected_as_too_large() {
+        // Given: payload_len = u32::MAX (4GB+)
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, u32::MAX);
+
+        // When: validating bounds against default max (1 MiB)
+        let result = validate_frame_bounds(&header, MaxPayloadBytes::DEFAULT);
+
+        // Then: PayloadTooLarge
+        let expected_len = usize::try_from(u32::MAX).map_or(usize::MAX, |v| v);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: expected_len,
+                limit: MaxPayloadBytes::DEFAULT.get(),
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_payload_len_one_over_default_max_rejected() {
+        // Given: payload_len one byte over default max
+        let default_max = MaxPayloadBytes::DEFAULT.get();
+        let over_limit = match u32::try_from(default_max.saturating_add(1)) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, over_limit);
+
+        // When: validating bounds
+        let result = validate_frame_bounds(&header, MaxPayloadBytes::DEFAULT);
+
+        // Then: PayloadTooLarge
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: default_max.saturating_add(1),
+                limit: default_max,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_truncated_header_short_read_rejected() {
+        // Given: a reader with only 1 byte (way too short for header)
+        let data = [0x56u8; 1];
+        let mut cursor = std::io::Cursor::new(data);
+
+        // When: reading a frame header
+        let result = read_frame_header(&mut cursor);
+
+        // Then: HeaderDecodeFailed (short read)
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    #[test]
+    fn adversarial_truncated_header_23_bytes_rejected() {
+        // Given: a reader with 23 bytes (one short of full header)
+        let Some(short_len) = IPC_HEADER_LEN.checked_sub(1) else {
+            return;
+        };
+        let data = vec![0u8; short_len];
+        let mut cursor = std::io::Cursor::new(data);
+
+        // When: reading a frame header
+        let result = read_frame_header(&mut cursor);
+
+        // Then: HeaderDecodeFailed
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    #[test]
+    fn adversarial_payload_shorter_than_declared_rejected() {
+        // Given: a header declaring payload_len=100 but only 10 bytes available
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+        let short_data = vec![0u8; 10];
+        let mut cursor = std::io::Cursor::new(short_data.as_slice());
+
+        // When: reading the frame payload
+        let result = read_frame_payload(&mut cursor, &header);
+
+        // Then: HeaderDecodeFailed (short read)
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    #[test]
+    fn adversarial_payload_decode_length_mismatch_header_says_50_actual_10() {
+        // Given: a header with payload_len=50 and only 10 bytes of payload
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 50);
+        let short_payload = vec![0u8; 10];
+
+        // When: decoding the frame payload
+        let result = decode_frame_payload(&header, &short_payload);
+
+        // Then: PayloadLengthMismatch
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadLengthMismatch {
+                header: 50,
+                actual: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_payload_decode_length_mismatch_header_says_0_actual_10() {
+        // Given: a header with payload_len=0 but 10 bytes of payload supplied
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let extra_payload = vec![0u8; 10];
+
+        // When: decoding the frame payload
+        let result = decode_frame_payload(&header, &extra_payload);
+
+        // Then: PayloadLengthMismatch (header=0, actual=10)
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadLengthMismatch {
+                header: 0,
+                actual: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_garbage_postcard_payload_rejected() {
+        // Given: a header with payload_len=4 matching garbage bytes
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
+        let garbage = vec![0xFF, 0xFE, 0xFD, 0xFC];
+
+        // When: decoding the frame payload
+        let result = decode_frame_payload(&header, &garbage);
+
+        // Then: PayloadDecodeFailed (postcard can't decode garbage as IpcPayload)
+        assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_all_commands() {
+        // Given: all valid IpcCommand variants
+        let commands = [
+            IpcCommand::SubmitRun,
+            IpcCommand::SubmitRunInline,
+            IpcCommand::CancelRun,
+            IpcCommand::InspectRun,
+            IpcCommand::ListEvents,
+            IpcCommand::AnswerAsk,
+            IpcCommand::CompleteAction,
+            IpcCommand::FailAction,
+            IpcCommand::DrainTrace,
+            IpcCommand::Health,
+            IpcCommand::Shutdown,
+        ];
+
+        for cmd in commands {
+            // When: encoding then decoding each command
+            let payload = b"test";
+            let frame = encode_frame(cmd, 0, 42, payload);
+            assert!(frame.is_ok(), "encode should succeed for {cmd:?}");
+            let Ok(frame_bytes) = frame else { return };
+
+            let header_arr: [u8; IPC_HEADER_LEN] = match frame_bytes.get(..IPC_HEADER_LEN) {
+                Some(s) => match s.try_into() {
+                    Ok(a) => a,
+                    Err(_) => return,
+                },
+                None => return,
+            };
+            let decoded = decode_frame_header(&header_arr);
+
+            // Then: command roundtrips exactly
+            assert!(decoded.is_ok(), "decode should succeed for {cmd:?}");
+            let Ok(h) = decoded else { return };
+            assert_eq!(h.command, cmd, "command should roundtrip for {cmd:?}");
+            assert_eq!(h.correlation, 42);
+            let payload_len = match usize::try_from(h.payload_len) {
+                Ok(v) => v,
+                Err(_) => return,
+            };
+            assert_eq!(payload_len, 4);
+            assert_eq!(frame_bytes.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
+        }
+    }
+
+    #[test]
+    fn adversarial_encode_empty_payload_succeeds() {
+        // Given: an empty payload
+        let payload: &[u8] = b"";
+
+        // When: encoding
+        let result = encode_frame(IpcCommand::Health, 0, 1, payload);
+
+        // Then: encoding succeeds with header-only frame
+        assert!(result.is_ok(), "empty payload should encode");
+        let Ok(frame) = result else { return };
+        assert_eq!(frame.len(), IPC_HEADER_LEN);
+    }
+
+    #[test]
+    fn adversarial_encode_payload_at_max_boundary_succeeds() {
+        // Given: a payload exactly at the default max (1 MiB)
+        let max = MaxPayloadBytes::DEFAULT.get();
+        let payload = vec![0xAB_u8; max];
+
+        // When: encoding
+        let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
+
+        // Then: encoding succeeds
+        assert!(result.is_ok(), "max-size payload should encode");
+        let Ok(frame) = result else { return };
+        assert_eq!(
+            frame.len(),
+            IPC_HEADER_LEN.checked_add(max).map_or(0, |v| v)
+        );
+    }
+
+    #[test]
+    fn adversarial_read_frame_payload_bounded_enforces_limit() {
+        // Given: a header with payload_len=100 and a max of 10
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+        let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let payload_data = vec![0u8; 100];
+        let mut cursor = std::io::Cursor::new(payload_data.as_slice());
+
+        // When: reading with bounded max
+        let result = read_frame_payload_bounded(&mut cursor, &header, tiny_max);
+
+        // Then: PayloadTooLarge
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 100,
+                limit: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_read_frame_header_bounded_enforces_limit() {
+        // Given: a valid header with payload_len=50
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 50);
+        let encoded = header.encode();
+        assert!(encoded.is_ok());
+        let Ok(encoded) = encoded else { return };
+        let mut cursor = std::io::Cursor::new(encoded.as_slice());
+
+        // When: reading with a tiny max (1 byte)
+        let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let result = read_frame_header_bounded(&mut cursor, tiny_max);
+
+        // Then: PayloadTooLarge
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 50,
+                limit: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_byte_order_swap_magic_rejected() {
+        // Given: the magic bytes stored as big-endian (wrong endianness for LE protocol)
+        // 0x5642_4C54 in big-endian bytes = [0x56, 0x42, 0x4C, 0x54]
+        // When read as little-endian this becomes 0x544C_4256
+        let be_magic_bytes = 0x5642_4C54_u32.to_be_bytes(); // [0x56, 0x42, 0x4C, 0x54]
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&be_magic_bytes);
+        header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+        header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+
+        // When: decoding
+        let result = decode_frame_header(&header_bytes);
+
+        // Then: InvalidMagic - the bytes [0x56, 0x42, 0x4C, 0x54] read as LE = 0x544C_4256
+        assert_eq!(
+            result,
+            Err(IpcError::InvalidMagic {
+                actual: 0x544C_4256
+            })
+        );
     }
 }

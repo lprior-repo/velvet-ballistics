@@ -326,6 +326,7 @@ fn validate_helper_arity(helper: ExprHelper, actual: usize) -> ExprResult<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
 
@@ -519,8 +520,8 @@ mod tests {
         let (name, args) = as_helper(&expr)?;
         assert_eq!(name, ExprHelper::Contains);
         assert_eq!(args.len(), 2);
-        assert_eq!(args[0], ExprAst::Reference(Box::from("$x")));
-        assert_eq!(args[1], ExprAst::Reference(Box::from("$y")));
+        assert_eq!(args.first(), Some(&ExprAst::Reference(Box::from("$x"))));
+        assert_eq!(args.get(1), Some(&ExprAst::Reference(Box::from("$y"))));
         Ok(())
     }
 
@@ -633,5 +634,149 @@ mod tests {
                 token: format!("expected helper, got {other:?}"),
             }),
         }
+    }
+
+    // --- Adversarial BDD parser tests ---
+
+    #[test]
+    fn parse_expr_chained_unary_not_true() -> ExprResult<()> {
+        // Given: the expression "not not not not true"
+        // When: parse_expr is called
+        // Then: the result is a nested chain of 4 Unary(Not) operators around Bool(true)
+        let expr = parse("not not not not true")?;
+        // Unwrap 4 layers of Not
+        let (op1, inner1) = as_unary(&expr)?;
+        assert_eq!(op1, UnaryOp::Not);
+        let (op2, inner2) = as_unary(inner1)?;
+        assert_eq!(op2, UnaryOp::Not);
+        let (op3, inner3) = as_unary(inner2)?;
+        assert_eq!(op3, UnaryOp::Not);
+        let (op4, inner4) = as_unary(inner3)?;
+        assert_eq!(op4, UnaryOp::Not);
+        assert_eq!(*inner4, ExprAst::Literal(ExprLiteral::Bool(true)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_double_negation_parses_correctly() -> ExprResult<()> {
+        // Given: the expression "--5"
+        // When: parse_expr is called
+        // Then: the result is Unary(Neg, Unary(Neg, Literal(I64(5))))
+        let expr = parse("--5")?;
+        let (op1, inner1) = as_unary(&expr)?;
+        assert_eq!(op1, UnaryOp::Neg);
+        let (op2, inner2) = as_unary(inner1)?;
+        assert_eq!(op2, UnaryOp::Neg);
+        assert_eq!(*inner2, ExprAst::Literal(ExprLiteral::I64(5)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_trailing_operator() -> ExprResult<()> {
+        // Given: the expression "1 +"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken) because there is no right operand
+        let result = parse("1 +");
+        assert!(
+            matches!(result, Err(ExprError::UnexpectedToken { .. })),
+            "trailing operator should produce UnexpectedToken"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_double_operator() -> ExprResult<()> {
+        // Given: the expression "1 + * 2"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken) because * is not a valid prefix
+        let result = parse("1 + * 2");
+        assert!(
+            matches!(result, Err(ExprError::UnexpectedToken { .. })),
+            "double operator should produce UnexpectedToken"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_deeply_nested_parentheses_within_limit() -> ExprResult<()> {
+        // Given: the expression "(((((((1 + 2)))))))" (7 levels of nesting)
+        // When: parse_expr is called
+        // Then: the result is Binary(Add, I64(1), I64(2))
+        let expr = parse("(((((((1 + 2)))))))")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Add);
+        assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(1)));
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(2)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_empty_parentheses() -> ExprResult<()> {
+        // Given: the expression "()"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken) because empty parens have no expression
+        let result = parse("()");
+        assert!(
+            matches!(result, Err(ExprError::UnexpectedToken { .. })),
+            "empty parentheses should produce UnexpectedToken"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_extra_right_paren() -> ExprResult<()> {
+        // Given: the expression "1)"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken) because the trailing ) is unexpected
+        let result = parse("1)");
+        assert!(
+            matches!(result, Err(ExprError::UnexpectedToken { .. })),
+            "trailing right paren should produce UnexpectedToken"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_unknown_identifier_without_paren() -> ExprResult<()> {
+        // Given: the expression "foo"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken) mentioning "unknown identifier: foo"
+        let result = parse("foo");
+        let Err(ExprError::UnexpectedToken { token }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedToken".into(),
+            });
+        };
+        assert!(
+            token.contains("unknown identifier"),
+            "token should mention unknown identifier, got: {token}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_null_equality_parses_as_binary_eq() -> ExprResult<()> {
+        // Given: the expression "null == null"
+        // When: parse_expr is called
+        // Then: the AST is Binary(Eq, Literal(Null), Literal(Null))
+        let expr = parse("null == null")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Eq);
+        assert_eq!(*left, ExprAst::Literal(ExprLiteral::Null));
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::Null));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_rejects_helper_with_too_many_args() -> ExprResult<()> {
+        // Given: the expression "contains(1, 2, 3, 4, 5, 6, 7, 8, 9)"
+        // When: parse_expr is called
+        // Then: the result is Err(TooManyHelperArgs) because 9 exceeds MAX_HELPER_ARGS
+        let result = parse("contains(1, 2, 3, 4, 5, 6, 7, 8, 9)");
+        assert!(
+            matches!(result, Err(ExprError::TooManyHelperArgs { len: 9, max: 8 })),
+            "9 helper args should exceed the 8-arg limit"
+        );
+        Ok(())
     }
 }

@@ -11,7 +11,7 @@
 use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
@@ -91,6 +91,65 @@ pub enum RecoveryError {
 
 /// Result alias for recovery operations.
 pub type RecoveryResult<T> = Result<T, RecoveryError>;
+
+/// Terminal status recovered from durable journal events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecoveryTerminalState {
+    /// Run was cancelled before completion.
+    Cancelled,
+    /// Run completed and selected a result slot.
+    Finished {
+        /// Result slot selected by the finish event.
+        result: SlotIdx,
+    },
+    /// Run failed.
+    Failed,
+}
+
+/// Runtime summary that can be recovered without reconstructing a live `RunFrame`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveryRuntimeSummary {
+    /// Run identifier summarized by this recovery view.
+    pub run: RunId,
+    /// First sequence observed for the run.
+    pub first_seq: EventSeq,
+    /// Last sequence observed for the run.
+    pub last_seq: EventSeq,
+    /// Compiled workflow digest from the acceptance event, when present.
+    pub workflow: Option<WorkflowDigest>,
+    /// Number of step start events.
+    pub steps_started: u64,
+    /// Number of step success events.
+    pub steps_succeeded: u64,
+    /// Number of action schedule events.
+    pub actions_scheduled: u64,
+    /// Number of resolved action events.
+    pub actions_resolved: u64,
+    /// Number of boundary suspension events.
+    pub suspensions: u64,
+    /// Number of slot write events.
+    pub slots_written: u64,
+    /// Terminal status, when a terminal event exists.
+    pub terminal: Option<RecoveryTerminalState>,
+}
+
+/// Explicit recovery product. Today recovery hydrates summaries only; full frame
+/// hydration is intentionally not represented as a successful variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecoveryHydration {
+    /// Summary-only recovery product.
+    Summary(RecoveryRuntimeSummary),
+}
+
+impl RecoveryHydration {
+    /// Returns the summary carried by this hydration product.
+    #[must_use]
+    pub const fn summary(self) -> RecoveryRuntimeSummary {
+        match self {
+            Self::Summary(summary) => summary,
+        }
+    }
+}
 
 /// Snapshot of a run's runtime state at a specific event sequence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -335,6 +394,90 @@ pub fn replay_events(
     Ok(replayed)
 }
 
+/// Builds a summary-only recovery product from already ordered journal events.
+pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<RecoveryHydration> {
+    let Some(first) = events.first() else {
+        return Err(RecoveryError::NoRecoveryData { run: RunId::new(0) });
+    };
+    let run = first.run_id();
+    let mut summary = RecoveryRuntimeSummary {
+        run,
+        first_seq: first.seq(),
+        last_seq: first.seq(),
+        workflow: None,
+        steps_started: 0,
+        steps_succeeded: 0,
+        actions_scheduled: 0,
+        actions_resolved: 0,
+        suspensions: 0,
+        slots_written: 0,
+        terminal: None,
+    };
+
+    for event in events {
+        if event.run_id() != run {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: "recovery summary received events for multiple runs".to_owned(),
+            });
+        }
+        summary.last_seq = event.seq();
+        apply_summary_event(&mut summary, event);
+    }
+
+    Ok(RecoveryHydration::Summary(summary))
+}
+
+/// Recovers a summary-only runtime hydration product for a run.
+pub fn recover_runtime_summary(
+    journal: &FjallJournal,
+    run: RunId,
+) -> RecoveryResult<RecoveryHydration> {
+    let events = journal.events_for_run(run)?;
+    if events.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run });
+    }
+    summarize_recovery_events(&events)
+}
+
+fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEvent) {
+    match event {
+        JournalEvent::RunAccepted { workflow, .. } => {
+            summary.workflow = Some(*workflow);
+        }
+        JournalEvent::StepStarted { .. } => {
+            summary.steps_started = summary.steps_started.saturating_add(1);
+        }
+        JournalEvent::StepSucceeded { .. } => {
+            summary.steps_succeeded = summary.steps_succeeded.saturating_add(1);
+        }
+        JournalEvent::ActionScheduled { .. } => {
+            summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
+        }
+        JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionFailedEvent { .. } => {
+            summary.actions_resolved = summary.actions_resolved.saturating_add(1);
+        }
+        JournalEvent::SlotWrittenEvent { .. } => {
+            summary.slots_written = summary.slots_written.saturating_add(1);
+        }
+        JournalEvent::WaitScheduledEvent { .. }
+        | JournalEvent::AskScheduledEvent { .. }
+        | JournalEvent::RetryScheduledEvent { .. } => {
+            summary.suspensions = summary.suspensions.saturating_add(1);
+        }
+        JournalEvent::AskAnsweredEvent { .. } => {}
+        JournalEvent::RunCancelled { .. } => {
+            summary.terminal = Some(RecoveryTerminalState::Cancelled);
+        }
+        JournalEvent::RunFinished { result, .. } => {
+            summary.terminal = Some(RecoveryTerminalState::Finished { result: *result });
+        }
+        JournalEvent::RunFailedEvent { .. } => {
+            summary.terminal = Some(RecoveryTerminalState::Failed);
+        }
+    }
+}
+
 /// Checks whether a run has reached a terminal state.
 #[must_use]
 pub fn is_terminal_event(event: &JournalEvent) -> bool {
@@ -348,22 +491,257 @@ pub fn is_terminal_event(event: &JournalEvent) -> bool {
 
 /// Extracts the terminal event from a replay sequence, if any.
 pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
-    events.iter().find(|e| is_terminal_event(e))
+    events.iter().rev().find(|event| is_terminal_event(event))
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::assertions_on_constants,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
 mod tests {
     use super::{
-        ActionReplayTracker, DigestCheck, RecoveryError, RecoveryResult, RunSnapshot,
-        check_compiled_ir_digest, check_workflow_source_digest, extract_terminal,
-        is_terminal_event, recover_full_journal, recover_snapshot_plus_tail, replay_events,
-        verify_digests,
+        ActionReplayTracker, DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult,
+        RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, check_compiled_ir_digest,
+        check_workflow_source_digest, extract_terminal, is_terminal_event, recover_full_journal,
+        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
+        summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
     fn test_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    #[test]
+    fn summarize_recovery_events_returns_summary_hydration() {
+        let run = RunId::new(77);
+        let workflow = test_digest(9);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(2),
+                action: ActionId::new(5),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(2),
+                action: ActionId::new(5),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(4),
+                result: SlotIdx::new(3),
+            },
+        ];
+
+        let hydration = summarize_recovery_events(&events).expect("summary recovery succeeds");
+        let RecoveryHydration::Summary(summary) = hydration;
+
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.first_seq, EventSeq::new(0));
+        assert_eq!(summary.last_seq, EventSeq::new(4));
+        assert_eq!(summary.workflow, Some(workflow));
+        assert_eq!(summary.steps_started, 1);
+        assert_eq!(summary.actions_scheduled, 1);
+        assert_eq!(summary.actions_resolved, 1);
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(3),
+            })
+        );
+    }
+
+    #[test]
+    fn recover_runtime_summary_reads_summary_from_journal() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let run = RunId::new(79);
+        let workflow = test_digest(10);
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("accepted append succeeds");
+        journal
+            .append_journaled(&JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(1),
+            })
+            .expect("cancelled append succeeds");
+
+        let summary = recover_runtime_summary(&journal, run)
+            .expect("summary recovers")
+            .summary();
+
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.workflow, Some(workflow));
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum TerminalSummary {
+        Cancelled,
+        Finished(SlotIdx),
+        Failed,
+    }
+
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    struct ReplaySummary {
+        accepted: usize,
+        step_started: usize,
+        step_succeeded: usize,
+        action_scheduled: usize,
+        action_completed: usize,
+        action_failed: usize,
+        wait_scheduled: usize,
+        ask_scheduled: usize,
+        ask_answered: usize,
+        terminal: Option<TerminalSummary>,
+    }
+
+    fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
+        let mut summary = ReplaySummary::default();
+        for event in events {
+            match event {
+                JournalEvent::RunAccepted { .. } => {
+                    summary.accepted = summary.accepted.saturating_add(1);
+                }
+                JournalEvent::StepStarted { .. } => {
+                    summary.step_started = summary.step_started.saturating_add(1);
+                }
+                JournalEvent::StepSucceeded { .. } => {
+                    summary.step_succeeded = summary.step_succeeded.saturating_add(1);
+                }
+                JournalEvent::ActionScheduled { .. } => {
+                    summary.action_scheduled = summary.action_scheduled.saturating_add(1);
+                }
+                JournalEvent::ActionCompletedEvent { .. } => {
+                    summary.action_completed = summary.action_completed.saturating_add(1);
+                }
+                JournalEvent::ActionFailedEvent { .. } => {
+                    summary.action_failed = summary.action_failed.saturating_add(1);
+                }
+                JournalEvent::WaitScheduledEvent { .. } => {
+                    summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
+                }
+                JournalEvent::AskScheduledEvent { .. } => {
+                    summary.ask_scheduled = summary.ask_scheduled.saturating_add(1);
+                }
+                JournalEvent::AskAnsweredEvent { .. } => {
+                    summary.ask_answered = summary.ask_answered.saturating_add(1);
+                }
+                JournalEvent::RunCancelled { .. } => {
+                    summary.terminal = Some(TerminalSummary::Cancelled);
+                }
+                JournalEvent::RunFinished { result, .. } => {
+                    summary.terminal = Some(TerminalSummary::Finished(*result));
+                }
+                JournalEvent::RunFailedEvent { .. } => {
+                    summary.terminal = Some(TerminalSummary::Failed);
+                }
+                JournalEvent::SlotWrittenEvent { .. }
+                | JournalEvent::RetryScheduledEvent { .. } => {}
+            }
+        }
+        summary
+    }
+
+    fn combine_summaries(base: ReplaySummary, tail: ReplaySummary) -> ReplaySummary {
+        ReplaySummary {
+            accepted: base.accepted.saturating_add(tail.accepted),
+            step_started: base.step_started.saturating_add(tail.step_started),
+            step_succeeded: base.step_succeeded.saturating_add(tail.step_succeeded),
+            action_scheduled: base.action_scheduled.saturating_add(tail.action_scheduled),
+            action_completed: base.action_completed.saturating_add(tail.action_completed),
+            action_failed: base.action_failed.saturating_add(tail.action_failed),
+            wait_scheduled: base.wait_scheduled.saturating_add(tail.wait_scheduled),
+            ask_scheduled: base.ask_scheduled.saturating_add(tail.ask_scheduled),
+            ask_answered: base.ask_answered.saturating_add(tail.ask_answered),
+            terminal: tail.terminal.or(base.terminal),
+        }
+    }
+
+    fn summary_through(events: &[JournalEvent], seq: EventSeq) -> ReplaySummary {
+        let mut prefix = Vec::new();
+        for event in events {
+            if event.seq() <= seq {
+                prefix.push(event.clone());
+            }
+        }
+        summarize_events(&prefix)
+    }
+
+    fn tail_after(events: &[JournalEvent], seq: EventSeq) -> Vec<JournalEvent> {
+        let mut tail = Vec::new();
+        for event in events {
+            if event.seq() > seq {
+                tail.push(event.clone());
+            }
+        }
+        tail
+    }
+
+    fn append_events(
+        journal: &FjallJournal,
+        events: &[JournalEvent],
+    ) -> Result<(), crate::JournalError> {
+        for event in events {
+            journal.append_journaled(event)?;
+        }
+        Ok(())
+    }
+
+    fn assert_snapshot_tail_matches_full_summary(
+        run: RunId,
+        snapshot_seq: EventSeq,
+        events: &[JournalEvent],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = tempfile::tempdir()?;
+        let journal = FjallJournal::open(temp_dir.path())?;
+        append_events(&journal, events)?;
+
+        let mut full_tracker = ActionReplayTracker::new();
+        let full_replay = recover_full_journal(&journal, run, &mut full_tracker)?;
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: snapshot_seq,
+            workflow: test_digest(1),
+            slots: Vec::new(),
+        };
+        let tail = tail_after(events, snapshot_seq);
+        let mut tail_tracker = ActionReplayTracker::new();
+        let tail_replay = recover_snapshot_plus_tail(&snapshot, &tail, &mut tail_tracker)?;
+
+        let full_summary = summarize_events(&full_replay);
+        let snapshot_summary = summary_through(events, snapshot_seq);
+        let tail_summary = summarize_events(&tail_replay);
+        let combined_summary = combine_summaries(snapshot_summary, tail_summary);
+
+        assert_eq!(full_summary, combined_summary);
+        Ok(())
     }
 
     #[test]
@@ -422,6 +800,123 @@ mod tests {
         let result = replay_events(&events, &mut tracker);
         assert!(result.is_ok(), "first execution should succeed");
         assert!(tracker.is_resolved(action, step));
+    }
+
+    #[test]
+    fn snapshot_tail_matches_full_journal_lifecycle_summary()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(900);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(3),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(3),
+                result: SlotIdx::new(3),
+            },
+        ];
+
+        assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
+    }
+
+    #[test]
+    fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let run = RunId::new(901);
+        let action = ActionId::new(4);
+        let step = StepIdx::new(2);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(1),
+                step,
+                action,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(2),
+                step,
+                action,
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(3),
+                result: SlotIdx::new(0),
+            },
+        ];
+
+        assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
+    }
+
+    #[test]
+    fn snapshot_tail_matches_full_journal_wait_summary() -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(902);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(7),
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(2),
+            },
+        ];
+
+        assert_snapshot_tail_matches_full_summary(run, EventSeq::new(0), &events)
+    }
+
+    #[test]
+    fn snapshot_tail_matches_full_journal_ask_summary() -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(903);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(8),
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(8),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(3),
+                result: SlotIdx::new(1),
+            },
+        ];
+
+        assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
     }
 
     #[test]
@@ -701,8 +1196,8 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay of all event kinds should succeed");
+        let replayed =
+            replay_events(&events, &mut tracker).expect("replay of all event kinds should succeed");
         assert_eq!(replayed.len(), 11);
         assert!(tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
     }
@@ -1394,7 +1889,10 @@ mod tests {
         // Then the fields match exactly
         let expected = "RunFinished".to_string();
         let found = "RunFailed".to_string();
-        let err = RecoveryError::TerminalStateMismatch { expected: expected.clone(), found: found.clone() };
+        let err = RecoveryError::TerminalStateMismatch {
+            expected: expected.clone(),
+            found: found.clone(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("terminal state mismatch"));
     }
@@ -1436,9 +1934,21 @@ mod tests {
 
         let run = RunId::new(10);
         let events: Vec<crate::JournalEvent> = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-            crate::JournalEvent::StepStarted { run, seq: crate::EventSeq::new(1), step: StepIdx::new(0) },
-            crate::JournalEvent::RunFinished { run, seq: crate::EventSeq::new(2), result: vb_core::SlotIdx::new(0) },
+            crate::JournalEvent::RunAccepted {
+                run,
+                seq: crate::EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            crate::JournalEvent::StepStarted {
+                run,
+                seq: crate::EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            crate::JournalEvent::RunFinished {
+                run,
+                seq: crate::EventSeq::new(2),
+                result: vb_core::SlotIdx::new(0),
+            },
         ];
         for event in &events {
             assert!(journal.append_journaled(event).is_ok());
@@ -1467,18 +1977,29 @@ mod tests {
 
         let run = RunId::new(20);
         let events: Vec<crate::JournalEvent> = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-            crate::JournalEvent::StepStarted { run, seq: crate::EventSeq::new(1), step: StepIdx::new(0) },
+            crate::JournalEvent::RunAccepted {
+                run,
+                seq: crate::EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            crate::JournalEvent::StepStarted {
+                run,
+                seq: crate::EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
         ];
         for event in &events {
             assert!(journal.append_journaled(event).is_ok());
         }
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_full_journal(&journal, run, &mut tracker)
-            .expect("recovery should succeed");
+        let replayed =
+            recover_full_journal(&journal, run, &mut tracker).expect("recovery should succeed");
         let terminal = extract_terminal(&replayed);
-        assert!(terminal.is_none(), "active run should have no terminal event");
+        assert!(
+            terminal.is_none(),
+            "active run should have no terminal event"
+        );
     }
 
     #[test]
@@ -1495,16 +2016,24 @@ mod tests {
 
         let run = RunId::new(30);
         let events: Vec<crate::JournalEvent> = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-            crate::JournalEvent::RunFinished { run, seq: crate::EventSeq::new(1), result: vb_core::SlotIdx::new(0) },
+            crate::JournalEvent::RunAccepted {
+                run,
+                seq: crate::EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            crate::JournalEvent::RunFinished {
+                run,
+                seq: crate::EventSeq::new(1),
+                result: vb_core::SlotIdx::new(0),
+            },
         ];
         for event in &events {
             assert!(journal.append_journaled(event).is_ok());
         }
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_full_journal(&journal, run, &mut tracker)
-            .expect("recovery should succeed");
+        let replayed =
+            recover_full_journal(&journal, run, &mut tracker).expect("recovery should succeed");
         let terminal = extract_terminal(&replayed);
         assert!(terminal.is_some());
         let Some(crate::JournalEvent::RunFinished { result, .. }) = terminal else {
@@ -1527,16 +2056,23 @@ mod tests {
 
         let run = RunId::new(40);
         let events: Vec<crate::JournalEvent> = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-            crate::JournalEvent::RunFailedEvent { run, seq: crate::EventSeq::new(1) },
+            crate::JournalEvent::RunAccepted {
+                run,
+                seq: crate::EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            crate::JournalEvent::RunFailedEvent {
+                run,
+                seq: crate::EventSeq::new(1),
+            },
         ];
         for event in &events {
             assert!(journal.append_journaled(event).is_ok());
         }
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_full_journal(&journal, run, &mut tracker)
-            .expect("recovery should succeed");
+        let replayed =
+            recover_full_journal(&journal, run, &mut tracker).expect("recovery should succeed");
         let terminal = extract_terminal(&replayed);
         assert!(terminal.is_some());
         let Some(crate::JournalEvent::RunFailedEvent { .. }) = terminal else {
@@ -1556,8 +2092,17 @@ mod tests {
             slots: vec![],
         };
         let tail = vec![
-            crate::JournalEvent::StepStarted { run: RunId::new(1), seq: crate::EventSeq::new(1), step: StepIdx::new(0) },
-            crate::JournalEvent::StepSucceeded { run: RunId::new(1), seq: crate::EventSeq::new(2), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) },
+            crate::JournalEvent::StepStarted {
+                run: RunId::new(1),
+                seq: crate::EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            crate::JournalEvent::StepSucceeded {
+                run: RunId::new(1),
+                seq: crate::EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: vb_core::SlotIdx::new(1),
+            },
         ];
         let mut tracker = ActionReplayTracker::new();
 
@@ -1582,8 +2127,18 @@ mod tests {
         let action = ActionId::new(10);
         let step = StepIdx::new(1);
         let tail = vec![
-            crate::JournalEvent::ActionScheduled { run: RunId::new(2), seq: crate::EventSeq::new(6), step, action },
-            crate::JournalEvent::ActionCompletedEvent { run: RunId::new(2), seq: crate::EventSeq::new(7), step, action },
+            crate::JournalEvent::ActionScheduled {
+                run: RunId::new(2),
+                seq: crate::EventSeq::new(6),
+                step,
+                action,
+            },
+            crate::JournalEvent::ActionCompletedEvent {
+                run: RunId::new(2),
+                seq: crate::EventSeq::new(7),
+                step,
+                action,
+            },
         ];
         let mut tracker = ActionReplayTracker::new();
 
@@ -1598,12 +2153,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed without state change to tracker
         let run = RunId::new(1);
-        let events = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-        ];
+        let events = vec![crate::JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: test_digest(1),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1613,12 +2169,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed and last_step is updated internally
         let run = RunId::new(2);
-        let events = vec![
-            crate::JournalEvent::StepStarted { run, seq: crate::EventSeq::new(0), step: StepIdx::new(5) },
-        ];
+        let events = vec![crate::JournalEvent::StepStarted {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(5),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1628,12 +2185,14 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(3);
-        let events = vec![
-            crate::JournalEvent::StepSucceeded { run, seq: crate::EventSeq::new(0), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) },
-        ];
+        let events = vec![crate::JournalEvent::StepSucceeded {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(0),
+            output: vb_core::SlotIdx::new(1),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1643,12 +2202,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed and is identified as terminal
         let run = RunId::new(4);
-        let events = vec![
-            crate::JournalEvent::RunFinished { run, seq: crate::EventSeq::new(0), result: vb_core::SlotIdx::new(99) },
-        ];
+        let events = vec![crate::JournalEvent::RunFinished {
+            run,
+            seq: crate::EventSeq::new(0),
+            result: vb_core::SlotIdx::new(99),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
         assert!(is_terminal_event(&replayed[0]));
     }
@@ -1659,12 +2219,12 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed and is identified as terminal
         let run = RunId::new(5);
-        let events = vec![
-            crate::JournalEvent::RunFailedEvent { run, seq: crate::EventSeq::new(0) },
-        ];
+        let events = vec![crate::JournalEvent::RunFailedEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
         assert!(is_terminal_event(&replayed[0]));
     }
@@ -1683,7 +2243,11 @@ mod tests {
 
         let run = RunId::new(600);
         let digest = test_digest(5);
-        let event = crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: digest };
+        let event = crate::JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: digest,
+        };
         assert!(journal.append_journaled(&event).is_ok());
 
         let result = check_workflow_source_digest(&journal, run, digest);
@@ -1715,10 +2279,21 @@ mod tests {
         let run = RunId::new(700);
         let wf_digest = test_digest(10);
         let ir_digest = test_digest(20);
-        let event = crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: wf_digest };
+        let event = crate::JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: wf_digest,
+        };
         assert!(journal.append_journaled(&event).is_ok());
 
-        let result = verify_digests(&journal, run, wf_digest, ir_digest, ir_digest, DigestCheck::Full);
+        let result = verify_digests(
+            &journal,
+            run,
+            wf_digest,
+            ir_digest,
+            ir_digest,
+            DigestCheck::Full,
+        );
         assert!(result.is_ok());
     }
 
@@ -1816,7 +2391,11 @@ mod tests {
 
         let run = RunId::new(800);
         let wf_digest = test_digest(7);
-        let event = crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: wf_digest };
+        let event = crate::JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: wf_digest,
+        };
         assert!(journal.append_journaled(&event).is_ok());
 
         let result = verify_digests(
@@ -1897,12 +2476,14 @@ mod tests {
         let run = RunId::new(10);
         let action = ActionId::new(7);
         let step = StepIdx::new(2);
-        let events = vec![
-            crate::JournalEvent::ActionFailedEvent { run, seq: crate::EventSeq::new(0), step, action },
-        ];
+        let events = vec![crate::JournalEvent::ActionFailedEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            step,
+            action,
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
         assert!(tracker.is_resolved(action, step));
     }
@@ -1913,12 +2494,12 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed and identified as terminal
         let run = RunId::new(11);
-        let events = vec![
-            crate::JournalEvent::RunCancelled { run, seq: crate::EventSeq::new(0) },
-        ];
+        let events = vec![crate::JournalEvent::RunCancelled {
+            run,
+            seq: crate::EventSeq::new(0),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
         assert!(is_terminal_event(&replayed[0]));
     }
@@ -1929,12 +2510,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(12);
-        let events = vec![
-            crate::JournalEvent::SlotWrittenEvent { run, seq: crate::EventSeq::new(0), slot: vb_core::SlotIdx::new(3) },
-        ];
+        let events = vec![crate::JournalEvent::SlotWrittenEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            slot: vb_core::SlotIdx::new(3),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1944,12 +2526,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(13);
-        let events = vec![
-            crate::JournalEvent::WaitScheduledEvent { run, seq: crate::EventSeq::new(0), step: StepIdx::new(1) },
-        ];
+        let events = vec![crate::JournalEvent::WaitScheduledEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(1),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1959,12 +2542,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(14);
-        let events = vec![
-            crate::JournalEvent::AskScheduledEvent { run, seq: crate::EventSeq::new(0), step: StepIdx::new(2) },
-        ];
+        let events = vec![crate::JournalEvent::AskScheduledEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(2),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1974,12 +2558,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(15);
-        let events = vec![
-            crate::JournalEvent::AskAnsweredEvent { run, seq: crate::EventSeq::new(0), step: StepIdx::new(2) },
-        ];
+        let events = vec![crate::JournalEvent::AskAnsweredEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(2),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -1989,12 +2574,13 @@ mod tests {
         // When replay_events is called
         // Then the event is replayed successfully
         let run = RunId::new(16);
-        let events = vec![
-            crate::JournalEvent::RetryScheduledEvent { run, seq: crate::EventSeq::new(0), step: StepIdx::new(3) },
-        ];
+        let events = vec![crate::JournalEvent::RetryScheduledEvent {
+            run,
+            seq: crate::EventSeq::new(0),
+            step: StepIdx::new(3),
+        }];
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker)
-            .expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
     }
 
@@ -2012,16 +2598,23 @@ mod tests {
 
         let run = RunId::new(50);
         let events: Vec<crate::JournalEvent> = vec![
-            crate::JournalEvent::RunAccepted { run, seq: crate::EventSeq::new(0), workflow: test_digest(1) },
-            crate::JournalEvent::RunCancelled { run, seq: crate::EventSeq::new(1) },
+            crate::JournalEvent::RunAccepted {
+                run,
+                seq: crate::EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            crate::JournalEvent::RunCancelled {
+                run,
+                seq: crate::EventSeq::new(1),
+            },
         ];
         for event in &events {
             assert!(journal.append_journaled(event).is_ok());
         }
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_full_journal(&journal, run, &mut tracker)
-            .expect("recovery should succeed");
+        let replayed =
+            recover_full_journal(&journal, run, &mut tracker).expect("recovery should succeed");
         let terminal = extract_terminal(&replayed);
         assert!(terminal.is_some());
         let Some(crate::JournalEvent::RunCancelled { .. }) = terminal else {
@@ -2073,5 +2666,742 @@ mod tests {
             panic!("expected NoRecoveryData");
         };
         assert_eq!(run, RunId::new(1));
+    }
+
+    // =========================================================================
+    // Section: Adversarial Recovery BDD Tests
+    // =========================================================================
+
+    fn adv_digest(byte: u8) -> WorkflowDigest {
+        WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    // --- Adversarial: Corrupt Snapshot Recovery ---
+
+    #[test]
+    fn adversarial_corrupt_snapshot_missing_from_journal_returns_none() {
+        // Given a snapshot pointing to a run/seq pair not in the snapshot keyspace
+        // When FjallJournal::snapshot is called
+        // Then it returns None (no corrupt data, just missing)
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let result = journal.snapshot(RunId::new(9999), EventSeq::new(0));
+        assert!(result.is_ok());
+        let Ok(opt) = result else { return };
+        assert_eq!(opt, None);
+    }
+
+    #[test]
+    fn adversarial_recover_snapshot_with_corrupt_magic_returns_bad_magic() {
+        // Given a manually crafted record with corrupt magic bytes
+        // When decode_record is called with MAGIC_SNAPSHOT
+        // Then it returns BadMagic
+        let snapshot = RunSnapshot {
+            run: RunId::new(500),
+            seq: EventSeq::new(10),
+            workflow: adv_digest(1),
+            slots: vec![1, 2, 3],
+        };
+        let mut encoded = crate::encode_record(
+            crate::MAGIC_SNAPSHOT,
+            crate::RecordKind::Snapshot,
+            snapshot.seq.get(),
+            &snapshot,
+            crate::MAX_SNAPSHOT_BYTES,
+        )
+        .expect("encode snapshot");
+        // Corrupt the magic byte
+        if let Some(byte) = encoded.get_mut(0) {
+            *byte ^= 0xFF;
+        }
+        let result = crate::decode_record::<RunSnapshot>(
+            &encoded,
+            crate::MAGIC_SNAPSHOT,
+            crate::MAX_SNAPSHOT_BYTES,
+        );
+        assert!(
+            matches!(result, Err(crate::JournalError::BadMagic { .. })),
+            "corrupt snapshot magic should return BadMagic, got {:?}",
+            result
+        );
+    }
+
+    // --- Adversarial: Recovery with Snapshot but No Journal Tail ---
+
+    #[test]
+    fn adversarial_recover_snapshot_only_no_tail_events_produces_empty_replay() {
+        // Given a snapshot at seq 5 and an empty tail
+        // When recover_snapshot_plus_tail is called
+        // Then the replay is empty (zero events) and succeeds
+        let snapshot = RunSnapshot {
+            run: RunId::new(600),
+            seq: EventSeq::new(5),
+            workflow: adv_digest(2),
+            slots: vec![],
+        };
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &[], &mut tracker)
+            .expect("empty tail should succeed");
+        assert!(replayed.is_empty());
+    }
+
+    // --- Adversarial: Divergent Replay Detection ---
+
+    #[test]
+    fn adversarial_replay_divergence_out_of_order_step_returns_exact_step() {
+        // Given events where step 5 comes before step 3
+        // When replay_events processes them
+        // Then it returns ReplayDivergence at step 3
+        let run = RunId::new(700);
+        let events = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(5),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(3),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+        let result = replay_events(&events, &mut tracker);
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::new(3));
+        assert!(!detail.is_empty());
+    }
+
+    #[test]
+    fn adversarial_replay_divergence_summary_receives_events_for_multiple_runs() {
+        // Given events from two different runs mixed together
+        // When summarize_recovery_events is called
+        // Then it returns ReplayDivergence with a multi-run detail
+        let mixed = vec![
+            JournalEvent::RunAccepted {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::RunAccepted {
+                run: RunId::new(2),
+                seq: EventSeq::new(1),
+                workflow: adv_digest(2),
+            },
+        ];
+        let result = summarize_recovery_events(&mixed);
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence for mixed runs, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert!(
+            detail.contains("multiple runs"),
+            "detail should mention multiple runs: {}",
+            detail
+        );
+    }
+
+    // --- Adversarial: Workflow Digest Mismatch During Recovery ---
+
+    #[test]
+    fn adversarial_workflow_source_digest_mismatch_returns_exact_digests() {
+        // Given a journal with RunAccepted using digest [1;32]
+        // When check_workflow_source_digest is called with digest [2;32]
+        // Then it returns WorkflowSourceDigestMismatch with expected=[2;32], found=[1;32]
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(800);
+        let stored = adv_digest(1);
+        let wrong = adv_digest(2);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: stored,
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let result = check_workflow_source_digest(&journal, run, wrong);
+        let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
+            panic!("expected WorkflowSourceDigestMismatch, got {:?}", result);
+        };
+        assert_eq!(expected, wrong);
+        assert_eq!(found, stored);
+    }
+
+    #[test]
+    fn adversarial_compiled_ir_digest_mismatch_returns_exact_digests() {
+        // Given different expected and found IR digests
+        // When check_compiled_ir_digest is called
+        // Then it returns CompiledIrDigestMismatch with exact values
+        let expected = adv_digest(10);
+        let found = adv_digest(20);
+        let result = check_compiled_ir_digest(expected, found);
+        let Err(RecoveryError::CompiledIrDigestMismatch {
+            expected: exp,
+            found: fnd,
+        }) = result
+        else {
+            panic!("expected CompiledIrDigestMismatch, got {:?}", result);
+        };
+        assert_eq!(exp, expected);
+        assert_eq!(fnd, found);
+    }
+
+    // --- Adversarial: Full Journal Recovery Edge Cases ---
+
+    #[test]
+    fn adversarial_recover_full_journal_with_only_terminal_event_succeeds() {
+        // Given a journal with only a RunFinished event (no RunAccepted)
+        // When recover_full_journal is called
+        // Then it returns the single event
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(900);
+        let event = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(0),
+            result: vb_core::SlotIdx::new(0),
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_full_journal(&journal, run, &mut tracker)
+            .expect("recovery should succeed with terminal event");
+        assert_eq!(replayed.len(), 1);
+        assert!(is_terminal_event(&replayed[0]));
+    }
+
+    #[test]
+    fn adversarial_recover_full_journal_with_run_accepted_only_succeeds() {
+        // Given a journal with only a RunAccepted event
+        // When recover_full_journal is called
+        // Then it returns the single event with no terminal
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(901);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: adv_digest(5),
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_full_journal(&journal, run, &mut tracker)
+            .expect("recovery should succeed with just accepted");
+        assert_eq!(replayed.len(), 1);
+        assert!(extract_terminal(&replayed).is_none());
+    }
+
+    #[test]
+    fn adversarial_recover_summary_counts_suspensions_correctly() {
+        // Given events with WaitScheduled, AskScheduled, and RetryScheduled
+        // When summarize_recovery_events counts suspensions
+        // Then all three are counted (3 total)
+        let run = RunId::new(910);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(3),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary");
+        let RecoveryHydration::Summary(summary) = hydration;
+        assert_eq!(summary.suspensions, 3);
+    }
+
+    #[test]
+    fn adversarial_recover_summary_counts_slots_and_actions() {
+        // Given events with slot writes, action schedules, and action completions
+        // When summarize_recovery_events counts them
+        // Then exact counts are returned
+        let run = RunId::new(911);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot: vb_core::SlotIdx::new(0),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: vb_core::SlotIdx::new(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(1),
+                action: ActionId::new(2),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary");
+        let RecoveryHydration::Summary(summary) = hydration;
+        assert_eq!(summary.slots_written, 2);
+        assert_eq!(summary.actions_scheduled, 1);
+        assert_eq!(summary.actions_resolved, 2); // completed + failed
+    }
+
+    #[test]
+    fn adversarial_recover_summary_terminal_states_are_mutually_exclusive() {
+        // Given events ending with RunFinished (not Cancelled or Failed)
+        // When summarize_recovery_events is called
+        // Then the terminal state is Finished, not Cancelled or Failed
+        let run = RunId::new(912);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(1),
+                result: vb_core::SlotIdx::new(42),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary");
+        let RecoveryHydration::Summary(summary) = hydration;
+        let Some(RecoveryTerminalState::Finished { result }) = summary.terminal else {
+            panic!("expected Finished terminal state");
+        };
+        assert_eq!(result, vb_core::SlotIdx::new(42));
+    }
+
+    // --- Adversarial: NonIdempotent Action Blocking ---
+
+    #[test]
+    fn adversarial_non_idempotent_action_blocked_after_failed_then_completed() {
+        // Given an action first marked as failed, then encountered as scheduled again
+        // When replay_events processes it
+        // Then it returns NonIdempotentActionBlocked
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(99);
+        let step = StepIdx::new(1);
+        tracker.mark_failed(action, step);
+
+        let events = vec![JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            step,
+            action,
+        }];
+        let result = replay_events(&events, &mut tracker);
+        let Err(RecoveryError::NonIdempotentActionBlocked {
+            action: blocked_action,
+            step: blocked_step,
+        }) = result
+        else {
+            panic!("expected NonIdempotentActionBlocked, got {:?}", result);
+        };
+        assert_eq!(blocked_action, action);
+        assert_eq!(blocked_step, step);
+    }
+
+    #[test]
+    fn adversarial_non_idempotent_action_multiple_resolutions_blocked() {
+        // Given an action that was completed then scheduled again
+        // When replay_events encounters the second schedule
+        // Then it returns NonIdempotentActionBlocked with the correct action/step
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(50);
+        let step = StepIdx::new(5);
+
+        let events = vec![
+            JournalEvent::ActionScheduled {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+                step,
+                action,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run: RunId::new(1),
+                seq: EventSeq::new(1),
+                step,
+                action,
+            },
+            // Re-schedule of the same action -- should be blocked
+            JournalEvent::ActionScheduled {
+                run: RunId::new(1),
+                seq: EventSeq::new(2),
+                step,
+                action,
+            },
+        ];
+        let result = replay_events(&events, &mut tracker);
+        let Err(RecoveryError::NonIdempotentActionBlocked {
+            action: blocked_action,
+            step: blocked_step,
+        }) = result
+        else {
+            panic!("expected NonIdempotentActionBlocked, got {:?}", result);
+        };
+        assert_eq!(blocked_action, action);
+        assert_eq!(blocked_step, step);
+    }
+
+    // --- Adversarial: Snapshot + Tail Edge Cases ---
+
+    #[test]
+    fn adversarial_snapshot_plus_tail_with_many_events_succeeds() {
+        // Given a snapshot at seq 0 and 50 tail events
+        // When recover_snapshot_plus_tail is called
+        // Then all 50 events are replayed
+        let snapshot = RunSnapshot {
+            run: RunId::new(1000),
+            seq: EventSeq::new(0),
+            workflow: adv_digest(1),
+            slots: vec![],
+        };
+        let mut tail = Vec::new();
+        for i in 0..50u64 {
+            tail.push(JournalEvent::StepStarted {
+                run: RunId::new(1000),
+                seq: EventSeq::new(i.saturating_add(1)),
+                step: StepIdx::new(i as u16),
+            });
+        }
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("50 tail events should replay");
+        assert_eq!(replayed.len(), 50);
+    }
+
+    #[test]
+    fn adversarial_snapshot_plus_tail_events_from_different_run_injected() {
+        // Given a snapshot for run A and a tail event for run B
+        // When recover_snapshot_plus_tail replays them
+        // Then replay succeeds (cross-run validation is at a higher layer)
+        // but the returned events carry the different run id
+        let snapshot = RunSnapshot {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: adv_digest(1),
+            slots: vec![],
+        };
+        let tail = vec![JournalEvent::StepStarted {
+            run: RunId::new(2), // different run
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        }];
+        let mut tracker = ActionReplayTracker::new();
+        // recover_snapshot_plus_tail does not validate run_id consistency
+        // within the tail -- that is summarize_recovery_events' job
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("mixed-run tail events should replay");
+        assert_eq!(replayed.len(), 1);
+        assert_eq!(replayed[0].run_id(), RunId::new(2));
+    }
+
+    // --- Adversarial: Recovery Hydration Summary Edge Cases ---
+
+    #[test]
+    fn adversarial_summarize_empty_events_returns_no_recovery_data() {
+        // Given an empty event list
+        // When summarize_recovery_events is called
+        // Then it returns NoRecoveryData with run 0
+        let result = summarize_recovery_events(&[]);
+        let Err(RecoveryError::NoRecoveryData { run }) = result else {
+            panic!("expected NoRecoveryData, got {:?}", result);
+        };
+        assert_eq!(run, RunId::new(0));
+    }
+
+    #[test]
+    fn adversarial_summarize_single_run_finished_sets_terminal() {
+        // Given a single RunFinished event
+        // When summarize_recovery_events is called
+        // Then the terminal is Finished and steps are 0
+        let run = RunId::new(920);
+        let events = vec![JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(0),
+            result: vb_core::SlotIdx::new(5),
+        }];
+        let hydration = summarize_recovery_events(&events).expect("summary");
+        let RecoveryHydration::Summary(summary) = hydration;
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.steps_started, 0);
+        assert_eq!(summary.steps_succeeded, 0);
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: vb_core::SlotIdx::new(5),
+            })
+        );
+    }
+
+    // --- Adversarial: ActionReplayTracker Edge Cases ---
+
+    #[test]
+    fn adversarial_tracker_mark_completed_idempotent() {
+        // Given an action marked completed twice
+        // When is_resolved is called
+        // Then it still returns true
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(10);
+        let step = StepIdx::new(0);
+        tracker.mark_completed(action, step);
+        tracker.mark_completed(action, step);
+        assert!(tracker.is_resolved(action, step));
+    }
+
+    #[test]
+    fn adversarial_tracker_mark_failed_then_completed_both_resolve() {
+        // Given an action marked both failed and completed
+        // When is_resolved is called
+        // Then it returns true (the action is in both sets)
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(11);
+        let step = StepIdx::new(1);
+        tracker.mark_failed(action, step);
+        tracker.mark_completed(action, step);
+        assert!(tracker.is_resolved(action, step));
+    }
+
+    // --- Adversarial: DigestCheck Level Edge Cases ---
+
+    #[test]
+    fn adversarial_verify_digests_full_level_catches_ir_mismatch() {
+        // Given matching workflow digest but different IR digests
+        // When verify_digests is called with Full level
+        // Then it returns CompiledIrDigestMismatch
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let run = RunId::new(950);
+        let wf_digest = adv_digest(7);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: wf_digest,
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let result = verify_digests(
+            &journal,
+            run,
+            wf_digest,
+            adv_digest(8),
+            adv_digest(9), // mismatch
+            DigestCheck::Full,
+        );
+        let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+            panic!("expected CompiledIrDigestMismatch, got {:?}", result);
+        };
+        assert_eq!(expected, adv_digest(8));
+        assert_eq!(found, adv_digest(9));
+    }
+
+    // --- Adversarial: Recovery from Persisted Journal ---
+
+    #[test]
+    fn adversarial_recover_runtime_summary_from_persisted_journal() {
+        // Given a journal that is opened, written, closed, and reopened
+        // When recover_runtime_summary is called on the reopened journal
+        // Then it returns the correct summary
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let run = RunId::new(960);
+        let workflow = adv_digest(42);
+
+        {
+            let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+            journal
+                .append_journaled(&JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow,
+                })
+                .expect("append");
+            journal
+                .append_journaled(&JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(1),
+                    step: StepIdx::new(0),
+                })
+                .expect("append");
+            journal
+                .append_journaled(&JournalEvent::RunCancelled {
+                    run,
+                    seq: EventSeq::new(2),
+                })
+                .expect("append");
+            journal.persist_strict().expect("persist");
+        }
+
+        let journal2 = FjallJournal::open(temp_dir.path()).expect("reopen");
+        let hydration = recover_runtime_summary(&journal2, run).expect("recovery summary");
+        let RecoveryHydration::Summary(summary) = hydration;
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.workflow, Some(workflow));
+        assert_eq!(summary.steps_started, 1);
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    }
+
+    // --- Adversarial: is_terminal_event Edge Cases ---
+
+    #[test]
+    fn adversarial_all_non_terminal_events_identified_as_not_terminal() {
+        // Given every non-terminal JournalEvent variant
+        // When is_terminal_event is called
+        // Then it returns false for all of them
+        let run = RunId::new(1);
+        let non_terminals: Vec<JournalEvent> = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: vb_core::SlotIdx::new(0),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(6),
+                slot: vb_core::SlotIdx::new(0),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(7),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(8),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(10),
+                step: StepIdx::new(3),
+            },
+        ];
+        for event in &non_terminals {
+            assert!(
+                !is_terminal_event(event),
+                "event {:?} should not be terminal",
+                event
+            );
+        }
+    }
+
+    #[test]
+    fn adversarial_extract_terminal_finds_last_terminal_in_sequence_with_earlier_terminal() {
+        // Given events with RunCancelled at seq 1 and RunFinished at seq 2
+        // When extract_terminal is called
+        // Then it returns the RunFinished (last terminal, searching in reverse)
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(1),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(2),
+                result: vb_core::SlotIdx::new(0),
+            },
+        ];
+        let terminal = extract_terminal(&events);
+        assert!(terminal.is_some());
+        let Some(JournalEvent::RunFinished { result, .. }) = terminal else {
+            panic!("expected RunFinished as last terminal");
+        };
+        assert_eq!(*result, vb_core::SlotIdx::new(0));
+    }
+
+    // --- Adversarial: RecoveryHydration Accessor ---
+
+    #[test]
+    fn adversarial_hydration_summary_accessor_returns_inner_summary() {
+        // Given a RecoveryHydration::Summary
+        // When summary() is called
+        // Then it returns the inner RecoveryRuntimeSummary
+        let inner = RecoveryRuntimeSummary {
+            run: RunId::new(42),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(5),
+            workflow: Some(adv_digest(1)),
+            steps_started: 2,
+            steps_succeeded: 1,
+            actions_scheduled: 1,
+            actions_resolved: 1,
+            suspensions: 0,
+            slots_written: 3,
+            terminal: Some(RecoveryTerminalState::Failed),
+        };
+        let hydration = RecoveryHydration::Summary(inner);
+        let summary = hydration.summary();
+        assert_eq!(summary.run, RunId::new(42));
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
     }
 }

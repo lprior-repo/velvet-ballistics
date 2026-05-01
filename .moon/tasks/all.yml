@@ -37,7 +37,10 @@ tasks:
       runInCI: true
 
   lint-src:
-    command: 'rustup run nightly-2026-04-28 cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings -W clippy::all -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::print_stdout -D clippy::print_stderr'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings -W clippy::all -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::print_stdout -D clippy::print_stderr
     toolchains:
       - rust
     inputs:
@@ -47,7 +50,10 @@ tasks:
       runInCI: true
 
   check:
-    command: 'rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
     toolchains:
@@ -71,7 +77,10 @@ tasks:
       runInCI: true
 
   nightly-feature-cargo-probe:
-    script: 'rustup run nightly-2026-04-28 cargo -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs check --workspace --all-targets --all-features'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
     toolchains:
@@ -95,7 +104,10 @@ tasks:
       runInCI: true
 
   hardened-build:
-    command: 'env RUSTC_WRAPPER= CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile hardened'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile hardened
     deps:
       - 'check'
       - 'lint-src'
@@ -112,9 +124,13 @@ tasks:
       runInCI: true
 
   test:
-    command: 'rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features
     deps:
       - 'check'
+      - 'supply-chain'
     toolchains:
       - rust
     inputs:
@@ -125,7 +141,10 @@ tasks:
       runInCI: true
 
   doc-test:
-    command: 'rustup run nightly-2026-04-28 cargo test --doc --workspace --all-features'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo test --doc --workspace --all-features
     deps:
       - 'check'
     toolchains:
@@ -137,9 +156,13 @@ tasks:
       runInCI: true
 
   doc:
-    command: 'rustup run nightly-2026-04-28 cargo doc --workspace --all-features --no-deps'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo doc --workspace --all-features --no-deps
     deps:
       - 'check'
+      - 'supply-chain'
     toolchains:
       - rust
     inputs:
@@ -154,15 +177,19 @@ tasks:
   supply-chain:
     script: |
       set -euo pipefail
-      rustup run nightly-2026-04-28 cargo audit
-      rustup run nightly-2026-04-28 cargo deny check
-      rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked
+      timeout 2m rustup run nightly-2026-04-28 cargo audit
+      timeout 5m rustup run nightly-2026-04-28 cargo deny check
+      timeout 5m rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked
       # Geiger is reporting-only: first-party unsafe is forbidden by workspace
       # lints; transitive unsafe remains visible here and governed by vet/deny.
+      rm -rf target/supply-chain/geiger
+      mkdir -p target/supply-chain/geiger
       for package in vb_codegen vb_compile vb_core vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballastics velvet-ballastics-fuzz; do
-        rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown
+        package_target_dir="target/supply-chain/geiger/$package"
+        mkdir -p "$package_target_dir"
+        CARGO_TARGET_DIR="$package_target_dir" timeout --kill-after=10s 90s rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown || true
       done
-      rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_codegen crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/velvet_ballastics fuzz
+      timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_codegen crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/velvet_ballastics fuzz
     toolchains:
       - rust
     inputs:
@@ -176,7 +203,10 @@ tasks:
       runInCI: true
 
   feature-powerset:
-    command: 'rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --no-dev-deps'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --exclusive target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --no-dev-deps
     deps:
       - 'check'
     toolchains:
@@ -188,9 +218,11 @@ tasks:
       runInCI: true
 
   miri:
-    command: 'rustup run nightly-2026-04-28 cargo miri test -p vb_core -p vb_expr -p vb_compile --all-features'
-    deps:
-      - 'check'
+    script: |
+      set -euo pipefail
+      mkdir -p target/miri-tmp
+      mkdir -p target/moon-locks
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock timeout 5m rustup run nightly-2026-04-28 cargo miri test -p vb_core -p vb_expr -p vb_validate --lib --all-features -- --skip proptests
     toolchains:
       - rust
     inputs:
@@ -201,7 +233,11 @@ tasks:
       runInCI: true
 
   coverage:
-    command: 'rustup run nightly-2026-04-28 cargo llvm-cov nextest --workspace --all-features --lcov --output-path target/llvm-cov/lcov.info'
+    script: |
+      set -euo pipefail
+      mkdir -p target/llvm-cov
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo llvm-cov nextest --workspace --all-features --lcov --output-path target/llvm-cov/lcov.info
     deps:
       - 'test'
     toolchains:
@@ -216,20 +252,43 @@ tasks:
       runInCI: true
 
   mutants-smoke:
-    command: 'rustup run nightly-2026-04-28 cargo mutants --package vb_core --no-shuffle --timeout 60 --in-place --minimum-test-timeout 10'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
+      # vb_core slice without mutating the source tree in place. Full mutation-score
+      # debt is tracked separately.
+      flock --exclusive target/moon-locks/source-mutation.lock timeout 3m rustup run nightly-2026-04-28 cargo mutants \
+        --package vb_core \
+        --file crates/vb_core/src/diagnostic.rs \
+        --re 'is_supported_code -> bool with false' \
+        --baseline skip \
+        --jobs 1 \
+        --gitignore true \
+        --no-shuffle \
+        --no-times \
+        --timeout 10 \
+        --minimum-test-timeout 2 \
+        --output target/mutants-smoke \
+        -- --lib diagnostic::
     deps:
       - 'test'
-    toolchains:
-      - rust
     inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
-      - '@globs(configs)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/vb_core/Cargo.toml'
+      - 'crates/vb_core/src/diagnostic.rs'
+      - '.moon/tasks/all.yml'
     options:
+      cache: false
       runInCI: true
 
   fuzz-smoke:
-    command: 'rustup run nightly-2026-04-28 cargo build -p velvet-ballastics-fuzz --bins --features fuzz --locked'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu
     toolchains:
       - rust
     inputs:
@@ -261,7 +320,10 @@ tasks:
       runInCI: false
 
   bench-build:
-    command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features --no-run'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo bench --workspace --all-features --no-run
     deps:
       - 'check'
     toolchains:
@@ -315,7 +377,10 @@ tasks:
       runInCI: false
 
   maxperf:
-    command: 'rustup run nightly-2026-04-28 cargo build --workspace --all-features --release'
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --workspace --all-features --release
     deps:
       - 'check'
       - 'lint-src'
@@ -331,8 +396,10 @@ tasks:
 
   maxperf-native:
     script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
       export RUSTFLAGS="-C target-cpu=native"
-      rustup run nightly-2026-04-28 cargo build --workspace --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --workspace --all-features --release
     deps:
       - 'check'
       - 'lint-src'

@@ -216,32 +216,48 @@ mod tests {
     }
 
     #[test]
-    fn finite_f64_get_returns_inner_value() {
-        let value = match FiniteF64::new(3.14) {
-            Ok(v) => v,
-            Err(e) => panic!("finite f64 creation failed: {e}"),
-        };
+    fn finite_f64_get_returns_inner_value() -> Result<(), String> {
+        let value = FiniteF64::new(3.25).map_err(|error| error.to_string())?;
 
-        assert_eq!(value.get(), 3.14);
+        if value.get() != 3.25 {
+            return Err(String::from("unexpected finite f64 inner value"));
+        }
+        Ok(())
     }
 
     // -- SlotValue type_name tests --
 
     #[test]
-    fn slot_value_type_name_returns_correct_names() {
-        assert_eq!(SlotValue::Null.type_name(), "null");
-        assert_eq!(SlotValue::Bool(true).type_name(), "boolean");
-        assert_eq!(SlotValue::Bool(false).type_name(), "boolean");
-        assert_eq!(SlotValue::I64(0).type_name(), "number");
-        let f64_val = match FiniteF64::new(1.0) {
-            Ok(v) => v,
-            Err(e) => panic!("finite f64 creation failed: {e}"),
-        };
-        assert_eq!(SlotValue::F64(f64_val).type_name(), "number");
-        assert_eq!(SlotValue::Symbol(SymbolId::new(1)).type_name(), "symbol");
-        assert_eq!(SlotValue::List(ListId::new(1)).type_name(), "list");
-        assert_eq!(SlotValue::Object(ObjectId::new(1)).type_name(), "object");
-        assert_eq!(SlotValue::Blob(BlobId::new(1)).type_name(), "blob");
+    fn slot_value_type_name_returns_correct_names() -> Result<(), String> {
+        if SlotValue::Null.type_name() != "null" {
+            return Err(String::from("unexpected null type name"));
+        }
+        if SlotValue::Bool(true).type_name() != "boolean" {
+            return Err(String::from("unexpected true type name"));
+        }
+        if SlotValue::Bool(false).type_name() != "boolean" {
+            return Err(String::from("unexpected false type name"));
+        }
+        if SlotValue::I64(0).type_name() != "number" {
+            return Err(String::from("unexpected i64 type name"));
+        }
+        let f64_val = FiniteF64::new(1.0).map_err(|error| error.to_string())?;
+        if SlotValue::F64(f64_val).type_name() != "number" {
+            return Err(String::from("unexpected f64 type name"));
+        }
+        if SlotValue::Symbol(SymbolId::new(1)).type_name() != "symbol" {
+            return Err(String::from("unexpected symbol type name"));
+        }
+        if SlotValue::List(ListId::new(1)).type_name() != "list" {
+            return Err(String::from("unexpected list type name"));
+        }
+        if SlotValue::Object(ObjectId::new(1)).type_name() != "object" {
+            return Err(String::from("unexpected object type name"));
+        }
+        if SlotValue::Blob(BlobId::new(1)).type_name() != "blob" {
+            return Err(String::from("unexpected blob type name"));
+        }
+        Ok(())
     }
 
     // -- SlotValue is_true tests --
@@ -285,14 +301,14 @@ mod tests {
     }
 
     #[test]
-    fn const_value_to_slot_value_maps_f64_correctly() {
-        let finite = match FiniteF64::new(2.5) {
-            Ok(v) => v,
-            Err(e) => panic!("finite f64 creation failed: {e}"),
-        };
+    fn const_value_to_slot_value_maps_f64_correctly() -> Result<(), String> {
+        let finite = FiniteF64::new(2.5).map_err(|error| error.to_string())?;
         let result = ConstValue::F64(finite).to_slot_value();
 
-        assert_eq!(result, Ok(SlotValue::F64(finite)));
+        if result != Ok(SlotValue::F64(finite)) {
+            return Err(String::from("unexpected f64 slot value"));
+        }
+        Ok(())
     }
 
     #[test]
@@ -300,6 +316,342 @@ mod tests {
         let result = ConstValue::Symbol(SymbolId::new(7)).to_slot_value();
 
         assert_eq!(result, Ok(SlotValue::Symbol(SymbolId::new(7))));
+    }
+
+    // =========================================================================
+    // Adversarial BDD tests — FiniteF64 edge cases
+    // =========================================================================
+
+    #[test]
+    fn finite_f64_negative_zero_is_accepted_and_preserves_sign_bit() {
+        // -0.0 is finite and must be accepted; the sign bit must survive.
+        let result = FiniteF64::new(-0.0_f64);
+        assert!(result.is_ok(), "negative zero must be accepted as finite");
+        let inner = result.map_err(|_| String::new()).map(|v| v.get());
+        assert_eq!(inner, Ok(-0.0_f64));
+        // Confirm it is distinct from +0.0 at the bit-pattern level.
+        assert_eq!(inner.map(|v| v.to_bits()), Ok((-0.0_f64).to_bits()));
+    }
+
+    #[test]
+    fn finite_f64_positive_zero_is_accepted() {
+        let result = FiniteF64::new(0.0_f64);
+        assert!(result.is_ok());
+        let inner = result.map_err(|_| String::new()).map(|v| v.get());
+        assert_eq!(inner, Ok(0.0_f64));
+    }
+
+    #[test]
+    fn finite_f64_rejects_canonical_nan_quiet() {
+        let result = FiniteF64::new(f64::NAN);
+        assert_eq!(result, Err(CoreError::NonFiniteNumber));
+    }
+
+    #[test]
+    fn finite_f64_rejects_signaling_nan() {
+        // Signaling NaN: exponent all-ones, MSB of mantissa clear, non-zero mantissa.
+        let signaling_nan = f64::from_bits(0x7FF0_0000_0000_0001_u64);
+        assert!(signaling_nan.is_nan(), "must be NaN");
+        assert_eq!(
+            FiniteF64::new(signaling_nan),
+            Err(CoreError::NonFiniteNumber)
+        );
+    }
+
+    #[test]
+    fn finite_f64_rejects_negative_signaling_nan() {
+        let neg_signaling_nan = f64::from_bits(0xFFF0_0000_0000_0001_u64);
+        assert!(neg_signaling_nan.is_nan(), "must be NaN");
+        assert_eq!(
+            FiniteF64::new(neg_signaling_nan),
+            Err(CoreError::NonFiniteNumber)
+        );
+    }
+
+    #[test]
+    fn finite_f64_rejects_nan_payload_variants() {
+        // Try several NaN bit patterns to ensure no bypass.
+        let payloads: [u64; 4] = [
+            0x7FF8_0000_0000_0000,
+            0x7FFC_0000_0000_0000,
+            0xFFF8_0000_0000_0000,
+            0x7FFF_FFFF_FFFF_FFFF,
+        ];
+        for payload in payloads {
+            let nan_val = f64::from_bits(payload);
+            assert!(nan_val.is_nan(), "payload {payload:#018X} must be NaN");
+            assert_eq!(
+                FiniteF64::new(nan_val),
+                Err(CoreError::NonFiniteNumber),
+                "NaN payload {payload:#018X} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn finite_f64_accepts_smallest_positive_subnormal() {
+        let subnormal = f64::from_bits(1_u64); // smallest positive subnormal
+        assert!(subnormal.is_subnormal(), "must be subnormal");
+        let result = FiniteF64::new(subnormal);
+        assert!(result.is_ok(), "subnormals are finite and must be accepted");
+        assert_eq!(
+            result.map_err(|_| String::new()).map(|v| v.get()),
+            Ok(subnormal)
+        );
+    }
+
+    #[test]
+    fn finite_f64_accepts_largest_subnormal() {
+        let largest_subnormal = f64::from_bits(0x000F_FFFF_FFFF_FFFF_u64);
+        assert!(largest_subnormal.is_subnormal(), "must be subnormal");
+        assert!(largest_subnormal.is_finite(), "subnormals are finite");
+        let result = FiniteF64::new(largest_subnormal);
+        assert!(result.is_ok(), "subnormals must be accepted");
+    }
+
+    #[test]
+    fn finite_f64_accepts_smallest_negative_subnormal() {
+        let neg_subnormal = f64::from_bits(0x8000_0000_0000_0001_u64);
+        assert!(neg_subnormal.is_subnormal(), "must be negative subnormal");
+        assert!(neg_subnormal.is_finite());
+        let result = FiniteF64::new(neg_subnormal);
+        assert!(result.is_ok(), "negative subnormals must be accepted");
+    }
+
+    #[test]
+    fn finite_f64_accepts_min_positive_normal() {
+        let min_normal = f64::MIN_POSITIVE; // 2.2250738585072014e-308
+        assert!(!min_normal.is_subnormal());
+        assert!(min_normal.is_finite());
+        let result = FiniteF64::new(min_normal);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn finite_f64_accepts_f64_min() {
+        // f64::MIN is the most negative finite value
+        let result = FiniteF64::new(f64::MIN);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.map_err(|_| String::new()).map(|v| v.get()),
+            Ok(f64::MIN)
+        );
+    }
+
+    #[test]
+    fn finite_f64_accepts_f64_max() {
+        let result = FiniteF64::new(f64::MAX);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn finite_f64_rejects_positive_infinity() {
+        assert_eq!(
+            FiniteF64::new(f64::INFINITY),
+            Err(CoreError::NonFiniteNumber)
+        );
+    }
+
+    #[test]
+    fn finite_f64_rejects_negative_infinity() {
+        assert_eq!(
+            FiniteF64::new(f64::NEG_INFINITY),
+            Err(CoreError::NonFiniteNumber)
+        );
+    }
+
+    // =========================================================================
+    // Adversarial BDD tests — SlotValue type confusion and edge cases
+    // =========================================================================
+
+    #[test]
+    fn slot_value_i64_max_roundtrips() {
+        let val = SlotValue::I64(i64::MAX);
+        assert_eq!(val.type_name(), "number");
+        assert!(!val.is_true());
+    }
+
+    #[test]
+    fn slot_value_i64_min_roundtrips() {
+        let val = SlotValue::I64(i64::MIN);
+        assert_eq!(val.type_name(), "number");
+        assert!(!val.is_true());
+    }
+
+    #[test]
+    fn slot_value_i64_zero_roundtrips() {
+        let val = SlotValue::I64(0);
+        assert_eq!(val.type_name(), "number");
+        assert!(!val.is_true());
+    }
+
+    #[test]
+    fn slot_value_i64_negative_one_roundtrips() {
+        let val = SlotValue::I64(-1);
+        assert_eq!(val.type_name(), "number");
+    }
+
+    #[test]
+    fn slot_value_null_is_not_true() {
+        assert!(!SlotValue::Null.is_true());
+        assert_eq!(SlotValue::Null.type_name(), "null");
+    }
+
+    #[test]
+    fn slot_value_bool_false_is_not_true() {
+        assert!(!SlotValue::Bool(false).is_true());
+    }
+
+    #[test]
+    fn slot_value_symbol_zero_is_valid() {
+        let val = SlotValue::Symbol(SymbolId::new(0));
+        assert_eq!(val.type_name(), "symbol");
+        assert!(!val.is_true());
+    }
+
+    #[test]
+    fn slot_value_symbol_max_u32_is_valid() {
+        let val = SlotValue::Symbol(SymbolId::new(u32::MAX));
+        assert_eq!(val.type_name(), "symbol");
+    }
+
+    #[test]
+    fn slot_value_list_max_u32_is_valid() {
+        let val = SlotValue::List(ListId::new(u32::MAX));
+        assert_eq!(val.type_name(), "list");
+    }
+
+    #[test]
+    fn slot_value_object_max_u32_is_valid() {
+        let val = SlotValue::Object(ObjectId::new(u32::MAX));
+        assert_eq!(val.type_name(), "object");
+    }
+
+    #[test]
+    fn slot_value_blob_max_u64_is_valid() {
+        let val = SlotValue::Blob(BlobId::new(u64::MAX));
+        assert_eq!(val.type_name(), "blob");
+    }
+
+    #[test]
+    fn slot_value_f64_with_negative_zero_is_valid() {
+        let result = FiniteF64::new(-0.0_f64);
+        assert!(result.is_ok());
+        if let Ok(finite) = result {
+            let val = SlotValue::F64(finite);
+            assert_eq!(val.type_name(), "number");
+            assert!(!val.is_true());
+        }
+    }
+
+    // =========================================================================
+    // Adversarial BDD tests — Taint propagation and ordering
+    // =========================================================================
+
+    #[test]
+    fn taint_clean_is_zero_discriminant() {
+        assert_eq!(taint_discriminant(Taint::Clean), 0);
+    }
+
+    #[test]
+    fn taint_secret_is_one_discriminant() {
+        assert_eq!(taint_discriminant(Taint::Secret), 1);
+    }
+
+    #[test]
+    fn taint_derived_from_secret_is_two_discriminant() {
+        assert_eq!(taint_discriminant(Taint::DerivedFromSecret), 2);
+    }
+
+    fn taint_discriminant(taint: Taint) -> u8 {
+        match taint {
+            Taint::Clean => 0,
+            Taint::Secret => 1,
+            Taint::DerivedFromSecret => 2,
+        }
+    }
+
+    #[test]
+    fn taint_variants_are_distinct() {
+        let variants = [Taint::Clean, Taint::Secret, Taint::DerivedFromSecret];
+        for (i, a) in variants.iter().enumerate() {
+            for (j, b) in variants.iter().enumerate() {
+                if i == j {
+                    assert_eq!(a, b, "same index must be equal");
+                } else {
+                    assert_ne!(a, b, "different indices must be distinct");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn taint_copy_semantics_preserve_equality() {
+        let a = Taint::Secret;
+        let b = a; // copy
+        assert_eq!(a, b, "copy must preserve equality");
+    }
+
+    // =========================================================================
+    // Adversarial BDD tests — ConstValue edge cases
+    // =========================================================================
+
+    #[test]
+    fn const_value_to_slot_value_i64_max() {
+        let result = ConstValue::I64(i64::MAX).to_slot_value();
+        assert_eq!(result, Ok(SlotValue::I64(i64::MAX)));
+    }
+
+    #[test]
+    fn const_value_to_slot_value_i64_min() {
+        let result = ConstValue::I64(i64::MIN).to_slot_value();
+        assert_eq!(result, Ok(SlotValue::I64(i64::MIN)));
+    }
+
+    #[test]
+    fn const_value_to_slot_value_bool_false() {
+        let result = ConstValue::Bool(false).to_slot_value();
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+
+    #[test]
+    fn const_value_to_slot_value_symbol_zero() {
+        let result = ConstValue::Symbol(SymbolId::new(0)).to_slot_value();
+        assert_eq!(result, Ok(SlotValue::Symbol(SymbolId::new(0))));
+    }
+
+    #[test]
+    fn const_value_to_slot_value_symbol_max() {
+        let result = ConstValue::Symbol(SymbolId::new(u32::MAX)).to_slot_value();
+        assert_eq!(result, Ok(SlotValue::Symbol(SymbolId::new(u32::MAX))));
+    }
+
+    #[test]
+    fn slot_value_equality_is_reflexive_for_null() {
+        assert_eq!(SlotValue::Null, SlotValue::Null);
+    }
+
+    #[test]
+    fn slot_value_equality_distinguishes_null_from_bool_false() {
+        assert_ne!(SlotValue::Null, SlotValue::Bool(false));
+    }
+
+    #[test]
+    fn slot_value_equality_distinguishes_i64_zero_from_f64_zero() {
+        // SlotValue::I64(0) and SlotValue::F64(FiniteF64(0.0)) are different variants.
+        let result = FiniteF64::new(0.0);
+        assert!(result.is_ok());
+        if let Ok(finite) = result {
+            assert_ne!(SlotValue::I64(0), SlotValue::F64(finite));
+        }
+    }
+
+    #[test]
+    fn slot_value_equality_distinguishes_symbol_from_list() {
+        assert_ne!(
+            SlotValue::Symbol(SymbolId::new(0)),
+            SlotValue::List(ListId::new(0))
+        );
     }
 }
 

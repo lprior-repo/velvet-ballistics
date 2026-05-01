@@ -128,18 +128,18 @@ fn pack_digits(
     third: u16,
     fourth: u16,
 ) -> Result<u16, DiagnosticCodeParseError> {
-    let first = first
+    let first_shifted = first
         .checked_shl(12)
         .ok_or(DiagnosticCodeParseError::InvalidFormat)?;
-    let second = second
+    let second_shifted = second
         .checked_shl(8)
         .ok_or(DiagnosticCodeParseError::InvalidFormat)?;
-    let third = third
+    let third_shifted = third
         .checked_shl(4)
         .ok_or(DiagnosticCodeParseError::InvalidFormat)?;
-    first
-        .checked_add(second)
-        .and_then(|prefix| prefix.checked_add(third))
+    first_shifted
+        .checked_add(second_shifted)
+        .and_then(|prefix| prefix.checked_add(third_shifted))
         .and_then(|prefix| prefix.checked_add(fourth))
         .ok_or(DiagnosticCodeParseError::InvalidFormat)
 }
@@ -236,69 +236,48 @@ mod tests {
     fn diagnostic_code_parse_error_invalid_format_when_missing_prefix() {
         let result = DiagnosticCode::from_str("0101");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::InvalidFormat)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
     }
 
     #[test]
     fn diagnostic_code_parse_error_invalid_format_when_hex_digits() {
-        let result = DiagnosticCode::from_str("E010A");
+        let result = DiagnosticCode::from_str("E010G");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::InvalidFormat)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
     }
 
     #[test]
     fn diagnostic_code_parse_error_invalid_format_when_too_short() {
         let result = DiagnosticCode::from_str("E01");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::InvalidFormat)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
     }
 
     #[test]
     fn diagnostic_code_parse_error_invalid_format_when_too_long() {
         let result = DiagnosticCode::from_str("E010101");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::InvalidFormat)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
     }
 
     #[test]
     fn diagnostic_code_parse_error_invalid_format_when_empty() {
         let result = DiagnosticCode::from_str("");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::InvalidFormat)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
     }
 
     #[test]
     fn diagnostic_code_parse_error_unsupported_code_when_out_of_range() {
         let result = DiagnosticCode::from_str("E0410");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::UnsupportedCode)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
     }
 
     #[test]
     fn diagnostic_code_parse_error_unsupported_code_when_fully_outside_ranges() {
         let result = DiagnosticCode::from_str("E9999");
 
-        assert_eq!(
-            result,
-            Err(DiagnosticCodeParseError::UnsupportedCode)
-        );
+        assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
     }
 }

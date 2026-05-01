@@ -2,6 +2,21 @@
 #![deny(unused_must_use)]
 #![deny(unreachable_pub)]
 #![deny(rust_2018_idioms)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::as_conversions,
+        clippy::assertions_on_constants,
+        clippy::bool_assert_comparison,
+        clippy::clone_on_copy,
+        clippy::get_first,
+        clippy::manual_contains,
+        clippy::map_clone,
+        clippy::panic,
+        clippy::redundant_locals
+    )
+)]
 
 //! Hot-path runtime engine for velvet-ballastics.
 //!
@@ -12,7 +27,9 @@ pub mod action;
 pub mod counters;
 pub mod engine;
 pub mod frame_pool;
+pub mod journal;
 pub mod primitives;
+pub mod recovery;
 pub mod runtime;
 pub mod shard;
 pub mod trace;
@@ -53,10 +70,51 @@ pub enum RuntimeError {
     /// Shutdown is in progress.
     #[error("shutdown in progress")]
     ShutdownInProgress,
+
+    /// Runtime journal mutex was poisoned.
+    #[error("runtime journal lock poisoned")]
+    JournalPoisoned,
+
+    /// Durable storage journal append failed.
+    #[error("storage journal append failed")]
+    StorageJournalAppendFailed,
+
+    /// A run frame could not be taken from or returned to the frame pool.
+    #[error("frame pool unavailable")]
+    FramePoolUnavailable,
+
+    /// Action completion did not match the suspended Do step.
+    #[error("invalid action completion")]
+    InvalidActionCompletion,
+
+    /// Durable recovery can expose a summary, but cannot yet rebuild a live frame.
+    #[error("full run frame recovery hydration is unsupported")]
+    UnsupportedFullRecoveryHydration,
 }
 
 /// Result alias for runtime operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
+
+impl RuntimeError {
+    /// Runtime code for bounded queue capacity failures.
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+    /// Runtime code for durable storage failures.
+    pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
+
+    /// Returns the stable section 17 runtime code when this error has a direct mapping.
+    #[must_use]
+    pub const fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
+                Some(Self::QUEUE_FULL_RUNTIME_CODE)
+            }
+            Self::JournalPoisoned | Self::StorageJournalAppendFailed => {
+                Some(Self::STORAGE_ERROR_RUNTIME_CODE)
+            }
+            _ => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod bdd_runtime_error {
@@ -186,7 +244,7 @@ mod bdd_runtime_error {
         // When formatting with debug
         let debug = format!("{error:?}");
         // Then the debug output contains the variant name
-        assert_eq!(debug.contains("RunNotFound"), true);
+        assert!(debug.contains("RunNotFound"));
     }
 
     #[test]
@@ -260,12 +318,18 @@ mod bdd_runtime_error {
         ];
         // When cloning each variant
         // Then all clones are equal to originals
-        let cloned: Vec<RuntimeError> = errors.iter().map(|e| e.clone()).collect();
-        assert_eq!(cloned.get(0), Some(&RuntimeError::QueueFull));
+        let cloned: Vec<RuntimeError> = errors.to_vec();
+        assert_eq!(cloned.first(), Some(&RuntimeError::QueueFull));
         assert_eq!(cloned.get(1), Some(&RuntimeError::RunNotFound));
         assert_eq!(cloned.get(2), Some(&RuntimeError::RunAlreadyExists));
-        assert_eq!(cloned.get(3), Some(&RuntimeError::ActiveRunCapacityExceeded { capacity: 5 }));
-        assert_eq!(cloned.get(4), Some(&RuntimeError::UnsupportedOperation { operation: "test" }));
+        assert_eq!(
+            cloned.get(3),
+            Some(&RuntimeError::ActiveRunCapacityExceeded { capacity: 5 })
+        );
+        assert_eq!(
+            cloned.get(4),
+            Some(&RuntimeError::UnsupportedOperation { operation: "test" })
+        );
         assert_eq!(cloned.get(5), Some(&RuntimeError::ShutdownInProgress));
     }
 
@@ -274,12 +338,24 @@ mod bdd_runtime_error {
         // Given all variants
         // When formatting with debug
         // Then each debug output contains the variant name
-        assert_eq!(format!("{:?}", RuntimeError::QueueFull).contains("QueueFull"), true);
-        assert_eq!(format!("{:?}", RuntimeError::RunNotFound).contains("RunNotFound"), true);
-        assert_eq!(format!("{:?}", RuntimeError::RunAlreadyExists).contains("RunAlreadyExists"), true);
-        assert_eq!(format!("{:?}", RuntimeError::ActiveRunCapacityExceeded { capacity: 1 }).contains("ActiveRunCapacityExceeded"), true);
-        assert_eq!(format!("{:?}", RuntimeError::UnsupportedOperation { operation: "x" }).contains("UnsupportedOperation"), true);
-        assert_eq!(format!("{:?}", RuntimeError::ShutdownInProgress).contains("ShutdownInProgress"), true);
+        assert!(format!("{:?}", RuntimeError::QueueFull).contains("QueueFull"));
+        assert!(format!("{:?}", RuntimeError::RunNotFound).contains("RunNotFound"));
+        assert!(format!("{:?}", RuntimeError::RunAlreadyExists).contains("RunAlreadyExists"));
+        assert!(
+            format!(
+                "{:?}",
+                RuntimeError::ActiveRunCapacityExceeded { capacity: 1 }
+            )
+            .contains("ActiveRunCapacityExceeded")
+        );
+        assert!(
+            format!(
+                "{:?}",
+                RuntimeError::UnsupportedOperation { operation: "x" }
+            )
+            .contains("UnsupportedOperation")
+        );
+        assert!(format!("{:?}", RuntimeError::ShutdownInProgress).contains("ShutdownInProgress"));
     }
 
     #[test]
@@ -289,7 +365,53 @@ mod bdd_runtime_error {
         // Then each display output is correct
         assert_eq!(format!("{}", RuntimeError::QueueFull), "queue full");
         assert_eq!(format!("{}", RuntimeError::RunNotFound), "run not found");
-        assert_eq!(format!("{}", RuntimeError::RunAlreadyExists), "run already exists");
-        assert_eq!(format!("{}", RuntimeError::ShutdownInProgress), "shutdown in progress");
+        assert_eq!(
+            format!("{}", RuntimeError::RunAlreadyExists),
+            "run already exists"
+        );
+        assert_eq!(
+            format!("{}", RuntimeError::ShutdownInProgress),
+            "shutdown in progress"
+        );
+    }
+
+    #[test]
+    fn runtime_error_runtime_codes_cover_section_17_runtime_mappings() {
+        assert_eq!(RuntimeError::QueueFull.runtime_code(), Some("QUEUE_FULL"));
+        assert_eq!(
+            RuntimeError::ActiveRunCapacityExceeded { capacity: 1 }.runtime_code(),
+            Some("QUEUE_FULL")
+        );
+        assert_eq!(
+            RuntimeError::JournalPoisoned.runtime_code(),
+            Some("STORAGE_ERROR")
+        );
+        assert_eq!(
+            RuntimeError::StorageJournalAppendFailed.runtime_code(),
+            Some("STORAGE_ERROR")
+        );
+    }
+
+    #[test]
+    fn runtime_error_runtime_codes_are_unique() {
+        let codes = [
+            RuntimeError::QUEUE_FULL_RUNTIME_CODE,
+            RuntimeError::STORAGE_ERROR_RUNTIME_CODE,
+        ];
+        assert_eq!(codes.len(), 2);
+        assert_eq!(
+            codes
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn runtime_error_runtime_code_is_absent_without_section_17_equivalent() {
+        assert_eq!(RuntimeError::RunNotFound.runtime_code(), None);
+        assert_eq!(RuntimeError::FramePoolUnavailable.runtime_code(), None);
     }
 }

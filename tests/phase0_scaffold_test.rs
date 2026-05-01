@@ -1,9 +1,8 @@
 //! Phase 0 Scaffold Tests — vb-blq
 //!
 //! These tests verify the existence and validity of project infrastructure
-//! scaffolding files. Phase 0 deliverables do NOT exist yet, so ALL tests FAIL.
-//!
-//! Once the scaffold is created, these tests will PASS.
+//! scaffolding files. The scaffold should compile and carry enough metadata for
+//! later phase-specific tests to prove real behavior and performance.
 
 use std::fs;
 use std::path::PathBuf;
@@ -153,17 +152,72 @@ fn benches_velvet_ballastics_rs_exists() -> Result<(), String> {
 }
 
 #[test]
-fn benches_velvet_ballastics_has_27_bench_functions() -> Result<(), String> {
+fn benches_velvet_ballastics_has_required_criterion_groups() -> Result<(), String> {
     let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
-    let bench_count = contents.matches("_bench(c: &mut Criterion)").count();
 
-    ensure(
-        bench_count == 27,
-        format!(
-            "benches/velvet_ballastics.rs must have exactly 27 Criterion bench functions, found {}",
-            bench_count
-        ),
-    )
+    for group in [
+        "yaml_parse",
+        "compile_validate",
+        "expression",
+        "runtime_core",
+        "storage_ipc",
+        "generated_mode",
+    ] {
+        ensure(
+            contents.contains(group),
+            format!("benches/velvet_ballastics.rs must define {group} benchmark group"),
+        )?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn benches_velvet_ballastics_has_required_metadata_fields() -> Result<(), String> {
+    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
+
+    for field in [
+        "profile=bench",
+        "tool=criterion-0.8",
+        "durability=",
+        "latency=",
+        "allocations=",
+        "fixture_digest=",
+    ] {
+        ensure(
+            contents.contains(field),
+            format!("benches/velvet_ballastics.rs metadata must include {field}"),
+        )?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn benches_velvet_ballastics_has_master_traceable_benchmark_ids() -> Result<(), String> {
+    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
+
+    for id in [
+        "bench_engine_step_once_save_const_single_transition",
+        "bench_engine_run_save_chain_10_steps",
+        "bench_engine_run_save_chain_1000_steps",
+        "bench_engine_choose_true_branch",
+        "bench_engine_choose_false_branch",
+        "bench_engine_finish_no_observability",
+        "bench_engine_numeric_slots_read_write_i64",
+        "bench_memory_ingress_try_submit_capacity_1024",
+        "bench_memory_ingress_submit_recv_single_thread",
+        "bench_memory_ingress_backpressure_full_queue",
+        "bench_fjall_append_run_accepted_no_persist",
+        "bench_replay_ordered_journal_1000_events",
+    ] {
+        ensure(
+            contents.contains(id),
+            format!("benches/velvet_ballastics.rs must include benchmark id {id}"),
+        )?;
+    }
+
+    Ok(())
 }
 
 #[test]
@@ -180,15 +234,21 @@ fn benches_velvet_ballastics_uses_black_box() -> Result<(), String> {
 fn benches_velvet_ballastics_compiles() -> Result<(), String> {
     let manifest_path = workspace_path("Cargo.toml");
     let status = Command::new("cargo")
-        .args(["check", "--benches", "--manifest-path"])
+        .args(["check", "--benches", "--all-features", "--manifest-path"])
         .arg(&manifest_path)
         .current_dir(WORKSPACE_ROOT)
         .status()
-        .map_err(|error| format!("cargo check --benches must execute: {}", error))?;
+        .map_err(|error| {
+            format!(
+                "cargo check --benches --all-features must execute: {}",
+                error
+            )
+        })?;
 
     ensure(
         status.success(),
-        "benches/velvet_ballastics.rs must compile with cargo check --benches".to_string(),
+        "benches/velvet_ballastics.rs must compile with cargo check --benches --all-features"
+            .to_string(),
     )
 }
 
@@ -203,7 +263,7 @@ fn fuzz_fuzz_targets_has_5_no_mangle_extern_c_functions() -> Result<(), String> 
     let contents = read_workspace_file("fuzz/fuzz_targets.rs")?;
     let no_mangle_extern_count = contents
         .lines()
-        .filter(|line| line.contains("#[no_mangle]"))
+        .filter(|line| line.contains("#[no_mangle]") || line.contains("#[unsafe(no_mangle)]"))
         .count();
 
     ensure(
@@ -261,14 +321,14 @@ fn fixtures_valid_minimal_yaml_exists() -> Result<(), String> {
 
 #[test]
 fn fixtures_valid_yaml_files_parse() -> Result<(), String> {
-    use serde_yaml::Value;
+    use saphyr::LoadableYamlNode;
 
     for relative in [
         "tests/fixtures/valid/3step_choose.yaml",
         "tests/fixtures/valid/minimal.yaml",
     ] {
         let contents = read_workspace_file(relative)?;
-        let _: Value = serde_yaml::from_str(&contents)
+        let _ = saphyr::Yaml::load_from_str(&contents)
             .map_err(|error| format!("{} must be valid YAML: {}", relative, error))?;
     }
 
@@ -291,7 +351,7 @@ fn fixtures_invalid_yaml_files_exist() -> Result<(), String> {
 
 #[test]
 fn fixtures_invalid_yaml_files_parse_as_valid_yaml() -> Result<(), String> {
-    use serde_yaml::Value;
+    use saphyr::LoadableYamlNode;
 
     for filename in [
         "invalid_missing_when.yaml",
@@ -300,7 +360,7 @@ fn fixtures_invalid_yaml_files_parse_as_valid_yaml() -> Result<(), String> {
     ] {
         let relative = format!("tests/fixtures/invalid/{}", filename);
         let contents = read_workspace_file(&relative)?;
-        let _: Value = serde_yaml::from_str(&contents).map_err(|error| {
+        let _ = saphyr::Yaml::load_from_str(&contents).map_err(|error| {
             format!(
                 "{} must be valid YAML even if semantically invalid: {}",
                 filename, error
@@ -363,10 +423,10 @@ fn dependency_policy_has_exception_process_section() -> Result<(), String> {
 
 #[test]
 fn ci_workflow_yaml_is_valid_yaml() -> Result<(), String> {
-    use serde_yaml::Value;
+    use saphyr::LoadableYamlNode;
 
     let contents = read_workspace_file(".github/workflows/ci.yml")?;
-    let _: Value = serde_yaml::from_str(&contents)
+    let _ = saphyr::Yaml::load_from_str(&contents)
         .map_err(|error| format!(".github/workflows/ci.yml must be valid YAML: {}", error))?;
     Ok(())
 }
