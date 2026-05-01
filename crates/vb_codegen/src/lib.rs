@@ -6,7 +6,8 @@
 //! Generated Rust is a deliberately supported subset of the final workflow IR.
 //! The current subset accepts scalar constants, slot copies, expression math and
 //! boolean comparisons, action dispatch, waits, asks, jumps, choices, handlers,
-//! and finish nodes. Collection/object construction, fan-out/fan-in primitives,
+//! and finish nodes. Empty/root accessors are emitted as checked root-slot reads.
+//! Collection/object construction, fan-out/fan-in primitives,
 //! retry/repeat/collect/reduce internals, collection expression helpers, and
 //! nested accessor traversal are rejected by [`validate_generated_subset`] before
 //! [`emit_rust_workflow`] writes any generated source.
@@ -1215,8 +1216,8 @@ mod tests {
     };
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-        ConstValue, ExprProgram, PathSegment, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
-        WorkflowParts,
+        ConstValue, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId, SlotIdx,
+        SlotValue, StepIdx, ValueStore, WorkflowDigest, WorkflowParts, new_run_frame, step_once,
     };
 
     // --- Workflow helpers ---
@@ -1366,23 +1367,31 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
-    /// Workflow with a Do node that dispatches to ActionId 5.
-    fn do_action_workflow() -> Result<CompiledWorkflow, String> {
+    fn root_accessor_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![vb_core::ExprOp::LoadAccessor(vb_core::AccessorIdx::new(0))];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
         let parts = WorkflowParts {
-            name: Box::<str>::from("test_do_action"),
-            digest: WorkflowDigest::from_bytes([0xEF; 32]),
+            name: Box::<str>::from("test_root_accessor"),
+            digest: WorkflowDigest::from_bytes([0xB1; 32]),
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(1)),
+                    output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
-                    kind: CompiledNodeKind::Do {
-                        action: ActionId::new(5),
-                        input: SlotIdx::new(0),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
                     output: None,
                     next: None,
                     kind: CompiledNodeKind::Finish {
@@ -1391,14 +1400,123 @@ mod tests {
                 },
             ]
             .into_boxed_slice(),
-            expressions: Box::new([]),
-            accessors: Box::new([]),
-            constants: Box::new([]),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: vec![AccessorProgram {
+                root: SlotIdx::new(0),
+                path: Box::new([]),
+            }]
+            .into_boxed_slice(),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 2,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Workflow with a Do node that dispatches to ActionId 5.
+    fn do_action_workflow() -> Result<CompiledWorkflow, String> {
+        action_suspend_workflow(ActionId::new(5), SlotIdx::new(0))
+    }
+
+    fn action_suspend_workflow(
+        action: ActionId,
+        input: SlotIdx,
+    ) -> Result<CompiledWorkflow, String> {
+        let output = input
+            .checked_add(1)
+            .ok_or_else(|| String::from("input slot cannot allocate output slot"))?;
+        let slot_count = output
+            .checked_add(1)
+            .ok_or_else(|| String::from("output slot cannot allocate slot count"))?
+            .get();
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_do_action"),
+            digest: WorkflowDigest::from_bytes([0xEF; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(output),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Do { action, input },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish { result: output },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn generated_action_suspend_stdout(
+        workflow: &CompiledWorkflow,
+        action: ActionId,
+        input: SlotIdx,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let temp_dir = std::env::temp_dir().join(format!(
+            "vb_codegen_action_suspend_{}_{}_{}",
+            std::process::id(),
+            action.get(),
+            input.get()
+        ));
+        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+        let source_path = temp_dir.join("generated_action_suspend.rs");
+        let binary_path = temp_dir.join("generated_action_suspend_bin");
+        let harness = format!(
+            "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match slots.get_mut(usize::from({input}u16)) {{\n        Some(slot) => *slot = Some(SlotValue::I64(99)),\n        None => {{ println!(\"slot_out_of_bounds\"); std::process::exit(20); }}\n    }}\n    match drive(slots) {{\n        Err(DriveError::ActionSuspend {{ action_id, input_slot }}) if action_id == {action}u16 && input_slot == {input}u16 => println!(\"generated_action_suspend:{action}:{input}\"),\n        other => {{ println!(\"unexpected:{{other:?}}\"); std::process::exit(21); }}\n    }}\n}}\n",
+            action = action.get(),
+            input = input.get()
+        );
+        std::fs::write(&source_path, harness).map_err(|e| e.to_string())?;
+
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+
+        let run = std::process::Command::new(&binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated run failed: {stdout}{stderr}"));
+        }
+
+        let cleanup = std::fs::remove_dir_all(&temp_dir);
+        if let Err(e) = cleanup {
+            return Err(e.to_string());
+        }
+        Ok(stdout)
+    }
+
+    fn ir_action_suspend_signal(
+        workflow: &CompiledWorkflow,
+        input: SlotIdx,
+    ) -> Result<EngineSignal, String> {
+        let mut run = new_run_frame(RunId::new(1), workflow).map_err(|e| e.to_string())?;
+        run.write_slot(input, SlotValue::I64(99))
+            .map_err(|e| e.to_string())?;
+        let mut store = ValueStore::new();
+        step_once(workflow, &mut run, &mut store).map_err(|e| e.to_string())
     }
 
     // --- CodegenError exact-variant tests ---
@@ -2546,6 +2664,46 @@ mod tests {
     }
 
     #[test]
+    fn generated_action_suspend_matches_ir_awaiting_action_family() -> Result<(), String> {
+        let cases = [
+            (ActionId::new(1), SlotIdx::new(0)),
+            (ActionId::new(5), SlotIdx::new(1)),
+            (ActionId::new(9), SlotIdx::new(2)),
+        ];
+
+        let mut index = 0usize;
+        while index < cases.len() {
+            let (action, input) = cases
+                .get(index)
+                .copied()
+                .ok_or_else(|| String::from("case index checked by loop bound"))?;
+            let workflow = action_suspend_workflow(action, input)?;
+
+            let generated_stdout = generated_action_suspend_stdout(&workflow, action, input)?;
+            let expected_stdout = format!(
+                "generated_action_suspend:{}:{}\n",
+                action.get(),
+                input.get()
+            );
+            assert_eq!(
+                generated_stdout, expected_stdout,
+                "generated action suspend output must identify action and input slot"
+            );
+
+            let ir_signal = ir_action_suspend_signal(&workflow, input)?;
+            assert_eq!(
+                ir_signal,
+                EngineSignal::AwaitingAction,
+                "IR step_once must suspend on the same Do boundary"
+            );
+
+            index = index.saturating_add(1);
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn emit_trybuild_fixture_writes_file_to_disk() -> Result<(), String> {
         // Given a minimal workflow and a temp fixture path
         let workflow = minimal_workflow()?;
@@ -3627,6 +3785,38 @@ mod tests {
             }
         ));
         Ok(())
+    }
+
+    #[test]
+    fn root_accessor_codegen_preserves_root_slot_behavior() -> Result<(), String> {
+        let workflow = root_accessor_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("stack.push(read_slot(slots, 0)?)?;"),
+            "empty accessor must compile to the same checked root-slot read as LoadSlot"
+        );
+        assert!(
+            !source.contains("accessor traversal"),
+            "empty accessor must not emit traversal failure path"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn root_accessor_generated_source_compile_checks() -> Result<(), String> {
+        let workflow = root_accessor_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let temp_dir = std::env::temp_dir().join(format!(
+            "vb_codegen_root_accessor_test_{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+        let result = compile_check_generated_rust(&source, &temp_dir).map_err(|e| e.to_string());
+        let cleanup = std::fs::remove_dir_all(&temp_dir).map_err(|e| e.to_string());
+        cleanup?;
+        result
     }
 
     #[test]

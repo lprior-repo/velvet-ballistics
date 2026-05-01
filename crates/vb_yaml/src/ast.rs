@@ -86,6 +86,11 @@ pub enum StepPrimitive {
         /// Value expression.
         value: String,
     },
+    /// Save a constant value to slots (compile-layer alias for set).
+    Save {
+        /// Constant value expression.
+        value: ScalarValue,
+    },
     /// Execute an action.
     Do {
         /// Action identifier.
@@ -163,14 +168,23 @@ pub enum StepPrimitive {
     },
     /// Terminate the workflow with a result.
     Finish {
-        /// Result expression.
-        result: String,
+        /// Result expression or literal.
+        result: ScalarValue,
     },
 }
 
 // ---------------------------------------------------------------------------
 // Supporting types
 // ---------------------------------------------------------------------------
+
+/// A scalar YAML value used in step fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScalarValue {
+    /// A string value.
+    String(String),
+    /// An integer value.
+    Integer(i64),
+}
 
 /// A branch inside a `Choose` primitive.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -344,6 +358,27 @@ fn require_str_in(
                 field: context,
                 expected: "non-empty string",
             }),
+        },
+    }
+}
+
+/// Require a scalar string or integer from a sub-node, with a context label.
+fn require_scalar_in(
+    node: &saphyr::Yaml<'_>,
+    field: &str,
+    context: &'static str,
+) -> YamlResult<ScalarValue> {
+    match lookup(node, field) {
+        None => Err(YamlError::MissingField { field: context }),
+        Some(v) => match v.as_str() {
+            Some(s) if !s.is_empty() => Ok(ScalarValue::String(s.to_string())),
+            _ => match v.as_integer() {
+                Some(i) => Ok(ScalarValue::Integer(i)),
+                None => Err(YamlError::FieldShape {
+                    field: context,
+                    expected: "string or integer scalar",
+                }),
+            },
         },
     }
 }
@@ -544,6 +579,14 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         return Ok(StepPrimitive::Set { output, value });
     }
 
+    // Save (alias accepted by compile layer)
+    if let Some(sub) = lookup(node, "save")
+        && sub.is_mapping()
+    {
+        let value = require_scalar_in(sub, "value", "save.value")?;
+        return Ok(StepPrimitive::Save { value });
+    }
+
     // Do
     if let Some(sub) = lookup(node, "do")
         && sub.is_mapping()
@@ -617,12 +660,12 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     if let Some(sub) = lookup(node, "finish")
         && sub.is_mapping()
     {
-        let result = require_str_in(sub, "result", "finish.result")?;
+        let result = require_scalar_in(sub, "result", "finish.result")?;
         return Ok(StepPrimitive::Finish { result });
     }
 
     Err(YamlError::MissingField {
-        field: "step primitive (set/do/choose/foreach/together/collect/reduce/repeat/wait/ask/finish)",
+        field: "step primitive (set/save/do/choose/foreach/together/collect/reduce/repeat/wait/ask/finish)",
     })
 }
 
@@ -1293,7 +1336,7 @@ mod tests {
         let first_step = first_item!(wf.steps, "step");
         match &first_step.primitive {
             StepPrimitive::Finish { result } => {
-                assert_eq!(result, "output");
+                assert_eq!(result, &ScalarValue::String(String::from("output")));
             }
             other => fail_assert!("expected Finish, got {other:?}"),
         }
@@ -2121,7 +2164,7 @@ mod tests {
         let first_step = first_item!(wf.steps, "step");
         match &first_step.primitive {
             StepPrimitive::Finish { result } => {
-                assert_eq!(result, "done");
+                assert_eq!(result, &ScalarValue::String(String::from("done")));
             }
             other => fail_assert!("expected Finish, got {other:?}"),
         }

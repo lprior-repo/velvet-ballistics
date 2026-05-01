@@ -82,6 +82,10 @@ pub enum RuntimeError {
     #[error("storage journal append failed")]
     StorageJournalAppendFailed,
 
+    /// Queued strict mode cannot acknowledge before persistence.
+    #[error("queued strict journal ack is unsupported without persisted-before-ack proof")]
+    UnsupportedAsyncStrictAck,
+
     /// A run frame could not be taken from or returned to the frame pool.
     #[error("frame pool unavailable")]
     FramePoolUnavailable,
@@ -89,6 +93,10 @@ pub enum RuntimeError {
     /// Action completion did not match the suspended Do step.
     #[error("invalid action completion")]
     InvalidActionCompletion,
+
+    /// Timer fired for a run that is not suspended on a registered timer.
+    #[error("invalid timer fire")]
+    InvalidTimerFire,
 
     /// Durable recovery can expose a summary, but cannot yet rebuild a live frame.
     #[error("full run frame recovery hydration is unsupported")]
@@ -103,6 +111,8 @@ impl RuntimeError {
     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
     /// Runtime code for durable storage failures.
     pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
+    /// Runtime code for failed action completion/resume handshakes.
+    pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
 
     /// Returns the stable section 17 runtime code when this error has a direct mapping.
     #[must_use]
@@ -111,9 +121,10 @@ impl RuntimeError {
             Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
                 Some(Self::QUEUE_FULL_RUNTIME_CODE)
             }
-            Self::JournalPoisoned | Self::StorageJournalAppendFailed => {
-                Some(Self::STORAGE_ERROR_RUNTIME_CODE)
-            }
+            Self::JournalPoisoned
+            | Self::StorageJournalAppendFailed
+            | Self::UnsupportedAsyncStrictAck => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            Self::InvalidActionCompletion => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -393,6 +404,10 @@ mod bdd_runtime_error {
             RuntimeError::StorageJournalAppendFailed.runtime_code(),
             Some("STORAGE_ERROR")
         );
+        assert_eq!(
+            RuntimeError::InvalidActionCompletion.runtime_code(),
+            Some("ACTION_FAILED")
+        );
     }
 
     #[test]
@@ -400,15 +415,16 @@ mod bdd_runtime_error {
         let codes = [
             RuntimeError::QUEUE_FULL_RUNTIME_CODE,
             RuntimeError::STORAGE_ERROR_RUNTIME_CODE,
+            RuntimeError::ACTION_FAILED_RUNTIME_CODE,
         ];
-        assert_eq!(codes.len(), 2);
+        assert_eq!(codes.len(), 3);
         assert_eq!(
             codes
                 .iter()
                 .copied()
                 .collect::<std::collections::BTreeSet<_>>()
                 .len(),
-            2
+            3
         );
     }
 

@@ -256,7 +256,8 @@ fn parse_step_kind(
         return Err(CompileError::MissingStepPrimitive { step: index });
     };
     match field {
-        "save" => parse_save(body),
+        "run" | "do" => parse_run(body, index),
+        "set" | "save" => parse_save(body),
         "choose" => parse_choose(body, index),
         "wait" => parse_wait(body, index),
         "ask" => parse_ask(body, index),
@@ -284,7 +285,17 @@ fn primitive_entry<'map, 'input>(
 }
 
 fn is_supported_primitive(field: &str) -> bool {
-    matches!(field, "save" | "choose" | "wait" | "ask" | "finish")
+    matches!(
+        field,
+        "run" | "do" | "set" | "save" | "choose" | "wait" | "ask" | "finish"
+    )
+}
+
+fn parse_run(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Run {
+        action: parse_action_idx(step_field(body, index, "action")?, index)?,
+        input: parse_slot_idx(step_field(body, index, "input")?, index, "input")?,
+    })
 }
 
 fn parse_save(body: &Yaml<'_>) -> Result<StepKindAst, CompileError> {
@@ -430,6 +441,21 @@ fn parse_slot_idx(
     })?;
     let raw = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
     Ok(SlotIdx::new(raw))
+}
+
+fn parse_action_idx(node: &Yaml<'_>, step: usize) -> Result<vb_core::ActionId, CompileError> {
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "action",
+        expected: "an integer action id",
+    })?;
+    let raw = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive: "run",
+        field: "action",
+        value: usize::from(u16::MAX),
+        limit: usize::from(u16::MAX),
+    })?;
+    Ok(vb_core::ActionId::new(raw))
 }
 
 fn parse_expression(node: &Yaml<'_>) -> Result<AstExpression, CompileError> {

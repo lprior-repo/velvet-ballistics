@@ -19,6 +19,18 @@ use crate::{RuntimeError, RuntimeResult};
 
 type FramePoolKey = (u16, u16);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PendingTimerKind {
+    Wait,
+    Ask,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingTimer {
+    step: StepIdx,
+    kind: PendingTimerKind,
+}
+
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShardCommand {
@@ -149,6 +161,7 @@ pub enum InspectResponse {
 pub struct Shard {
     command_queue: ArrayQueue<ShardCommand>,
     runs: HashMap<RunId, RunState>,
+    pending_timers: HashMap<RunId, PendingTimer>,
     frame_pools: HashMap<FramePoolKey, FramePool>,
     trace_ring: TraceRing,
     counters: ShardCounters,
@@ -170,6 +183,7 @@ impl Shard {
         Self {
             command_queue: ArrayQueue::new(config.command_queue_capacity),
             runs: HashMap::new(),
+            pending_timers: HashMap::new(),
             frame_pools: HashMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
@@ -349,48 +363,80 @@ impl Shard {
         failure: ActionFailure,
     ) -> RuntimeResult<()> {
         let run = ticket.run;
-        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
-        validate_action_completion(state, ticket)?;
-        if failure.retryable && retry_metadata_exists(state, ticket.step) {
-            let policy = retry_policy_after_action(state, ticket.step)?;
+        let mut retry_now = false;
+        let mut fail_without_handler = false;
+        {
+            let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+            validate_action_completion(state, ticket)?;
+            if failure.retryable && retry_metadata_exists(state, ticket.step) {
+                let policy = retry_policy_after_action(state, ticket.step)?;
+                self.trace_ring.push(TraceEvent::ActionFailed {
+                    run,
+                    step: ticket.step,
+                    code: failure.code,
+                });
+                if record_retry_attempt(state, ticket, policy)? {
+                    state
+                        .frame
+                        .set_pc(ticket.step)
+                        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                    retry_now = true;
+                }
+            }
+            if !retry_now {
+                match find_error_handler_for_failure(&state.workflow, ticket.step) {
+                    Some(handler) => {
+                        state
+                            .frame
+                            .mark_failed(ticket.step)
+                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                        state
+                            .frame
+                            .set_pc(handler)
+                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                    }
+                    None => {
+                        fail_without_handler = true;
+                    }
+                }
+            }
+        }
+        if retry_now {
+            return self.drive_run(run);
+        }
+        if fail_without_handler {
             self.trace_ring.push(TraceEvent::ActionFailed {
                 run,
                 step: ticket.step,
                 code: failure.code,
             });
-            if record_retry_attempt(state, ticket, policy)? {
-                state
-                    .frame
-                    .set_pc(ticket.step)
-                    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-                return self.drive_run(run);
-            }
-            state
-                .frame
-                .mark_failed(ticket.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            self.fail_run(run);
+            let state = self.take_run_state(run)?;
+            self.fail_run_state(run, state);
             return Ok(());
         }
-        state
-            .frame
-            .mark_failed(ticket.step)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: ticket.step,
             code: failure.code,
         });
-        self.fail_run(run);
-        Ok(())
+        self.drive_run(run)
     }
 
     fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        if let Some(timer) = self.pending_timers.get(&run)
+            && timer.step == answer.ticket.ask_step
+        {
+            let _ = self.pending_timers.remove(&run);
+        }
         state
             .frame
             .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_running(answer.ticket.ask_step)
             .map_err(|_| RuntimeError::RunNotFound)?;
         state
             .frame
@@ -409,14 +455,41 @@ impl Shard {
     }
 
     fn handle_timer(&mut self, run: RunId) -> RuntimeResult<()> {
-        self.drive_run(run)
+        let mut state = self.take_run_state(run)?;
+        let timer = match self.pending_timers.remove(&run) {
+            Some(timer) => timer,
+            None => {
+                self.runs.insert(run, state);
+                return Err(RuntimeError::InvalidTimerFire);
+            }
+        };
+        advance_after_timer_fire(&mut state, timer)?;
+        match timer.kind {
+            PendingTimerKind::Wait => {
+                match self.journal.append(RuntimeJournalEvent::WaitResolved {
+                    run,
+                    step: timer.step,
+                }) {
+                    Ok(()) | Err(_) => {}
+                }
+            }
+            PendingTimerKind::Ask => {}
+        }
+        let result = Self::drive_state(&mut state, self.step_budget_per_tick);
+        self.apply_drive_result(run, state, result);
+        Ok(())
     }
 
     fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
+        let _ = self.pending_timers.remove(&run);
+        if self.runs.contains_key(&run) {
+            self.journal
+                .append(RuntimeJournalEvent::RunCancelled { run })?;
+        }
         if let Some(state) = self.runs.remove(&run) {
             self.release_frame(state.frame);
             self.counters.inc_failed();
-            self.trace_ring.push(TraceEvent::RunFailed { run });
+            self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
         Ok(())
     }
@@ -465,8 +538,8 @@ impl Shard {
             Ok(RuntimeSignal::Finished(_)) => self.finish_run(run, state),
             Ok(RuntimeSignal::StepBudgetExhausted) => self.keep_run(run, state),
             Ok(RuntimeSignal::AwaitingAction(ticket)) => self.await_action(run, state, ticket),
-            Ok(RuntimeSignal::AwaitingWait) => self.keep_run(run, state),
-            Ok(RuntimeSignal::AwaitingAsk) => self.keep_run(run, state),
+            Ok(RuntimeSignal::AwaitingWait) => self.await_timer(run, state, PendingTimerKind::Wait),
+            Ok(RuntimeSignal::AwaitingAsk) => self.await_timer(run, state, PendingTimerKind::Ask),
             Err(_) => self.fail_run_state(run, state),
         }
     }
@@ -477,6 +550,7 @@ impl Shard {
     }
 
     fn finish_run(&mut self, run: RunId, state: RunState) {
+        let _ = self.pending_timers.remove(&run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -509,19 +583,35 @@ impl Shard {
         self.runs.insert(run, state);
     }
 
-    fn fail_run(&mut self, run: RunId) {
-        if let Some(state) = self.runs.remove(&run) {
-            self.fail_run_state(run, state);
-        } else {
-            self.counters.inc_failed();
-            self.trace_ring.push(TraceEvent::RunFailed { run });
-            match self.journal.append(RuntimeJournalEvent::RunFailed { run }) {
-                Ok(()) | Err(_) => {}
+    fn await_timer(&mut self, run: RunId, state: RunState, kind: PendingTimerKind) {
+        self.counters.add_steps(state.frame.executed());
+        let step = state.frame.pc();
+        if timer_registration_required(&state, step) {
+            self.pending_timers.insert(run, PendingTimer { step, kind });
+            match kind {
+                PendingTimerKind::Wait => {
+                    match self
+                        .journal
+                        .append(RuntimeJournalEvent::WaitScheduled { run, step })
+                    {
+                        Ok(()) | Err(_) => {}
+                    }
+                }
+                PendingTimerKind::Ask => {
+                    match self
+                        .journal
+                        .append(RuntimeJournalEvent::AskScheduled { run, step })
+                    {
+                        Ok(()) | Err(_) => {}
+                    }
+                }
             }
         }
+        self.runs.insert(run, state);
     }
 
     fn fail_run_state(&mut self, run: RunId, state: RunState) {
+        let _ = self.pending_timers.remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         match self.journal.append(RuntimeJournalEvent::RunFailed { run }) {
@@ -586,6 +676,46 @@ fn advance_after_action_completion(state: &mut RunState, step: StepIdx) -> Runti
         }
         None => Ok(()),
     }
+}
+
+fn timer_registration_required(state: &RunState, step: StepIdx) -> bool {
+    let Some(node) = state.workflow.node(step) else {
+        return false;
+    };
+    match node.kind {
+        CompiledNodeKind::WaitUntil { .. } => true,
+        CompiledNodeKind::WaitEvent { timeout_slot, .. } => timeout_slot.is_some(),
+        CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
+        _ => false,
+    }
+}
+
+fn advance_after_timer_fire(state: &mut RunState, timer: PendingTimer) -> RuntimeResult<()> {
+    let Some(node) = state.workflow.node(timer.step) else {
+        return Err(RuntimeError::InvalidTimerFire);
+    };
+    match (timer.kind, &node.kind) {
+        (PendingTimerKind::Wait, CompiledNodeKind::WaitUntil { .. })
+        | (PendingTimerKind::Wait, CompiledNodeKind::WaitEvent { .. })
+        | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
+        _ => return Err(RuntimeError::InvalidTimerFire),
+    }
+    state
+        .frame
+        .mark_running(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_succeeded(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    let Some(next) = node.next else {
+        return Err(RuntimeError::InvalidTimerFire);
+    };
+    state
+        .frame
+        .set_pc(next)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    Ok(())
 }
 
 fn new_action_attempts(step_count: u16) -> Box<[u16]> {
@@ -681,6 +811,50 @@ fn record_retry_attempt(
     Ok(true)
 }
 
+fn find_error_handler_for_failure(workflow: &CompiledWorkflow, failed: StepIdx) -> Option<StepIdx> {
+    if let Some(handler) = error_handler_on_node(workflow, failed, failed) {
+        return Some(handler);
+    }
+
+    if failed.get() > 0 {
+        let previous = StepIdx::new(failed.get().saturating_sub(1));
+        if let Some(handler) = error_handler_on_node(workflow, previous, failed) {
+            return Some(handler);
+        }
+    }
+
+    let mut index = 0usize;
+    let count = usize::from(workflow.node_count());
+    while index < count {
+        let raw = match u16::try_from(index) {
+            Ok(value) => value,
+            Err(_) => return None,
+        };
+        if let Some(handler) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
+            return Some(handler);
+        }
+        index = index.checked_add(1)?;
+    }
+
+    None
+}
+
+fn error_handler_on_node(
+    workflow: &CompiledWorkflow,
+    candidate: StepIdx,
+    failed: StepIdx,
+) -> Option<StepIdx> {
+    let node = workflow.node(candidate)?;
+    match node.kind {
+        CompiledNodeKind::ErrorHandler { body, handler }
+            if candidate == failed || body == failed =>
+        {
+            Some(handler)
+        }
+        _ => None,
+    }
+}
+
 fn result_slot_for_finished_run(state: &RunState) -> Option<SlotIdx> {
     state
         .workflow
@@ -755,6 +929,76 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).ok()
     }
 
+    fn action_with_error_handler_workflow() -> Option<CompiledWorkflow> {
+        let guard = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+            },
+        };
+        let action = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        };
+        let handler = CompiledNode {
+            id: StepIdx::new(2),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(3)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("action_with_error_handler"),
+            digest: WorkflowDigest::from_bytes([3; 32]),
+            nodes: Box::from([guard, action, handler, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::Bool(false)]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn action_ticket(run: RunId, step: StepIdx) -> ActionTicket {
+        ActionTicket {
+            run,
+            step,
+            seq: vb_core::ids::SeqNo::ZERO,
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+        }
+    }
+
+    fn timeout_failure() -> ActionFailure {
+        ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retryable: false,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        }
+    }
+
     #[test]
     fn retry_attempt_counter_increments_until_policy_exhaustion() {
         let Some(workflow) = suspended_workflow() else {
@@ -786,6 +1030,59 @@ mod tests {
         assert_eq!(record_retry_attempt(&mut state, ticket, policy), Ok(true));
         assert_eq!(state.action_attempts.get(0).copied(), Some(2));
         assert_eq!(record_retry_attempt(&mut state, ticket, policy), Ok(false));
+    }
+
+    #[test]
+    fn action_failed_routes_to_nearby_error_handler() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = action_with_error_handler_workflow() else {
+            return;
+        };
+        let run = RunId::new(301);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket: action_ticket(run, StepIdx::new(1)),
+                failure: timeout_failure(),
+            }),
+            Ok(())
+        );
+
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    }
+
+    #[test]
+    fn action_failed_without_error_handler_fails_run() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(302);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket: action_ticket(run, StepIdx::ZERO),
+                failure: timeout_failure(),
+            }),
+            Ok(())
+        );
+
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
     }
 
     #[test]
@@ -966,6 +1263,104 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).ok()
     }
 
+    fn timed_wait_then_finish_workflow() -> Option<CompiledWorkflow> {
+        let set_deadline = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let wait = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO,
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("timed_wait_then_finish"),
+            digest: WorkflowDigest::from_bytes([4; 32]),
+            nodes: Box::from([set_deadline, wait, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn timed_ask_without_answer_workflow() -> Option<CompiledWorkflow> {
+        let set_prompt = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let set_timeout = CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
+            },
+        };
+        let ask = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: Some(SlotIdx::new(1)),
+            },
+        };
+        let resume = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(2),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("timed_ask_without_answer"),
+            digest: WorkflowDigest::from_bytes([5; 32]),
+            nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([
+                vb_core::value::ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
+                vb_core::value::ConstValue::I64(10),
+            ]),
+            slot_count: 3,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
     fn small_config() -> ShardConfig {
         ShardConfig {
             command_queue_capacity: 16,
@@ -1021,6 +1416,71 @@ mod tests {
             shard.frame_pools.get(&(1, 1)).map(FramePool::available),
             Some(1)
         );
+    }
+
+    #[test]
+    fn cancel_cleans_pending_timer() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = timed_wait_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(12);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timers.len(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        assert_eq!(shard.pending_timers.len(), 0);
+    }
+
+    #[test]
+    fn finish_cleans_pending_timer_after_timer_fire() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = timed_wait_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(13);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timers.len(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        assert_eq!(shard.pending_timers.len(), 0);
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn fail_cleans_pending_timer_after_ask_timeout_without_answer() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = timed_ask_without_answer_workflow() else {
+            return;
+        };
+        let run = RunId::new(14);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timers.len(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        assert_eq!(shard.pending_timers.len(), 0);
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
     }
 
     #[test]
@@ -1323,8 +1783,8 @@ mod tests {
     }
 
     #[test]
-    fn shard_timer_continues_suspended_run() {
-        // Given a shard with a suspended run (Do node)
+    fn shard_timer_rejects_run_without_pending_timer() {
+        // Given a shard with an action-suspended run, not a timed wait/ask
         let config = small_config();
         let mut shard = Shard::new(config);
         let Some(workflow) = suspended_workflow() else {
@@ -1338,8 +1798,51 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         // When timer fires for the run
         assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
-        // Then tick succeeds (run is re-driven)
+        // Then tick rejects it because no timer was registered
+        assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    }
+
+    #[test]
+    fn shard_wait_suspension_registers_pending_timer() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = timed_wait_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(61);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
+
+        assert_eq!(shard.pending_timers.len(), 1);
+        assert_eq!(
+            shard.pending_timers.get(&run).map(|timer| timer.step),
+            Some(StepIdx::new(1))
+        );
+    }
+
+    #[test]
+    fn shard_timer_fired_advances_timed_wait_to_finish() {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = timed_wait_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(62);
+
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        assert_eq!(shard.pending_timers.len(), 0);
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
     }
 
     #[test]
@@ -1394,7 +1897,7 @@ mod tests {
     }
 
     #[test]
-    fn shard_cancel_records_run_failed_trace_event() {
+    fn shard_cancel_records_run_cancelled_trace_event() {
         // Given a shard with an active run
         let config = small_config();
         let mut shard = Shard::new(config);
@@ -1410,10 +1913,48 @@ mod tests {
         // When cancelling the run
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
-        // Then the trace ring contains a RunFailed event
+        // Then the trace ring contains a RunCancelled event
         let events = shard.trace_ring_mut().drain();
-        let found = events.iter().any(|e| *e == TraceEvent::RunFailed { run });
+        let found = events
+            .iter()
+            .any(|e| *e == TraceEvent::RunCancelled { run });
         assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
+        // Given a shard with a volatile journal and an active suspended run
+        let config = small_config();
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: crate::journal::SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(config, shared);
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(73);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+
+        // When cancelling the active run
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        // Then cancellation is a distinct journal/trace event, while the legacy failed counter
+        // still counts the non-successful terminal lifecycle.
+        assert!(
+            matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::RunCancelled { run }))
+        );
+        assert!(
+            shard
+                .trace_ring_mut()
+                .drain()
+                .contains(&TraceEvent::RunCancelled { run })
+        );
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        assert_eq!(shard.counters().snapshot().runs_completed, 0);
     }
 
     #[test]

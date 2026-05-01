@@ -1,6 +1,6 @@
 use crate::SourceMark;
 use crate::expression::ParsedExpression;
-use vb_core::{SlotIdx, StepIdx};
+use vb_core::{ActionId, SlotIdx, StepIdx};
 
 /// A parsed workflow document before numeric IR lowering.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,6 +91,13 @@ pub struct StepAst {
 /// High-level primitive intent recognized by the compiler AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepKindAst {
+    /// Numeric action boundary primitive.
+    Run {
+        /// Resolved action identifier.
+        action: ActionId,
+        /// Input slot supplied to the action.
+        input: SlotIdx,
+    },
     /// Constant-producing `save` primitive.
     Save {
         /// Output fields declared by the save body.

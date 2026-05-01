@@ -7,6 +7,19 @@ use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+const CLI_WORKFLOW: &str = r"version: velvet-ballastics/v1
+name: cli_subprocess
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      value: 42
+  - id: done
+    finish:
+      result: 0
+";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -34,6 +47,48 @@ fn resolve_test_reference(reference: &str) -> Option<vb_core::ids::SlotIdx> {
 
 fn test_failed() -> bool {
     false
+}
+
+fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
+    match std::fs::write(path, contents) {
+        Ok(()) => true,
+        Err(err) => {
+            assert!(test_failed(), "failed to write {}: {err}", path.display());
+            false
+        }
+    }
+}
+
+fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet_ballastics"));
+    for arg in args {
+        command.arg(arg);
+    }
+
+    match command.output() {
+        Ok(output) => Some(output),
+        Err(err) => {
+            assert!(test_failed(), "failed to execute velvet_ballastics: {err}");
+            None
+        }
+    }
+}
+
+fn output_stdout(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+fn output_stderr(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn assert_cli_success(output: &std::process::Output, command: &str) {
+    assert!(
+        output.status.success(),
+        "{command} failed: stdout={} stderr={}",
+        output_stdout(output),
+        output_stderr(output)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +606,87 @@ fn codegen_emit_rust_produces_output() {
         }
         Err(err) => assert!(test_failed(), "codegen should succeed: {err:?}"),
     }
+}
+
+#[test]
+fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("fjall-db");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run --durability journaled --db");
+    let run_stdout = output_stdout(&run_output);
+    assert!(
+        run_stdout.contains("run completed"),
+        "run stdout should report completion: {run_stdout}"
+    );
+
+    let events_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&events_output, "events 1 --db");
+    let events_stdout = output_stdout(&events_output);
+    assert!(
+        events_stdout.contains("RunAccepted"),
+        "events stdout should include RunAccepted: {events_stdout}"
+    );
+    assert!(
+        events_stdout.contains("RunFinished"),
+        "events stdout should include RunFinished: {events_stdout}"
+    );
+    assert!(
+        events_stdout.contains("event(s) total"),
+        "events stdout should include total count: {events_stdout}"
+    );
+
+    let inspect_output = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect_output, "inspect 1 --db");
+    let inspect_stdout = output_stdout(&inspect_output);
+    assert!(
+        inspect_stdout.contains("status=finished"),
+        "inspect stdout should report finished run: {inspect_stdout}"
+    );
 }
 
 // ---------------------------------------------------------------------------

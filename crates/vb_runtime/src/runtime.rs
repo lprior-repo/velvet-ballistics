@@ -15,6 +15,7 @@ use crate::{RuntimeError, RuntimeResult};
 pub struct Runtime {
     shards: Vec<Shard>,
     shard_count: usize,
+    journal: SharedRuntimeJournal,
 }
 
 impl Runtime {
@@ -34,12 +35,16 @@ impl Runtime {
         journal: SharedRuntimeJournal,
     ) -> Self {
         let count = shard_count.get();
-        let shards = (0..count)
-            .map(|_| Shard::new_with_journal(config.clone(), journal.clone()))
-            .collect();
+        let mut shards = Vec::with_capacity(count);
+        let mut index = 0usize;
+        while index < count {
+            shards.push(Shard::new_with_journal(config.clone(), journal.clone()));
+            index = index.saturating_add(1);
+        }
         Self {
             shards,
             shard_count: count,
+            journal,
         }
     }
 
@@ -121,6 +126,12 @@ impl Runtime {
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
+    /// Advances a run whose registered wait or ask timer fired externally.
+    pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::TimerFired { run })
+    }
+
     /// Takes the latest inspect response from the run's shard.
     pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<InspectResponse>> {
         let shard_index = self.shard_index(run);
@@ -164,6 +175,7 @@ impl Runtime {
         for shard in &self.shards {
             shard.enqueue(ShardCommand::Shutdown)?;
         }
+        self.journal.drain_for_shutdown()?;
         Ok(())
     }
 
@@ -1310,7 +1322,7 @@ mod tests {
         };
         assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        // Then the run is failed
+        // Then the run is failed.
         let snap = runtime.counters_snapshot();
         assert_eq!(snap.runs_failed, 1);
     }

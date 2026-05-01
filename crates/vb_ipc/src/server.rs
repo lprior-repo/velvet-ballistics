@@ -15,10 +15,9 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
-use crate::frame::write_frame;
 use crate::{
-    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent, IpcTraceEventKind,
-    MaxPayloadBytes,
+    IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent,
+    IpcTraceEventKind, MaxPayloadBytes,
 };
 
 const SERVER_TOKEN: Token = Token(0);
@@ -44,8 +43,6 @@ struct ClientConnection {
 /// Response payload sent back to IPC clients after command processing.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IpcResponse {
-    /// Command accepted and dispatched.
-    Ok,
     /// Command accepted and dispatched with a run identifier acknowledgement.
     AcceptedRun {
         /// Run identifier from the request.
@@ -58,11 +55,6 @@ pub enum IpcResponse {
     /// Command completed with trace event count.
     TraceCount {
         /// Number of trace events drained.
-        count: u32,
-    },
-    /// Command completed with event count.
-    EventCount {
-        /// Number of events listed for the run.
         count: u32,
     },
     /// Command completed with typed run events.
@@ -81,6 +73,8 @@ pub enum IpcResponse {
     CommandPayloadMismatch,
     /// The IPC layer needs a workflow resolver before it can submit the run.
     WorkflowResolutionRequired,
+    /// The resolver could not provide a supported workflow artifact.
+    WorkflowResolutionUnsupported,
     /// Resolved workflow did not match the request digest.
     WorkflowDigestMismatch,
     /// A runtime count exceeded the response field width.
@@ -159,25 +153,46 @@ impl IpcServer {
         runtime: &mut Runtime,
         timeout: Option<std::time::Duration>,
     ) -> Result<bool, IpcServerError> {
+        self.poll_once_with_resolver(runtime, timeout, None)
+    }
+
+    /// Polls for events once with workflow resolution available for submit commands.
+    pub fn poll_once_with_resolver(
+        &mut self,
+        runtime: &mut Runtime,
+        timeout: Option<std::time::Duration>,
+        resolver: Option<&mut dyn WorkflowResolver>,
+    ) -> Result<bool, IpcServerError> {
         self.poll
             .poll(&mut self.events, timeout)
             .map_err(|source| IpcServerError::PollFailed { source })?;
 
-        let mut pending: ArrayVec<(Token, bool), MAX_CLIENTS> = ArrayVec::new();
+        let mut pending: ArrayVec<(Token, bool, bool), MAX_CLIENTS> = ArrayVec::new();
         for event in &self.events {
             pending
-                .try_push((event.token(), event.is_readable()))
+                .try_push((event.token(), event.is_readable(), event.is_writable()))
                 .map_err(|_| IpcServerError::TooManyClients)?;
         }
-        for (token, readable) in pending {
+        let mut resolver = resolver;
+        for (token, readable, writable) in pending {
             if token == SERVER_TOKEN {
                 self.accept_client()?;
                 continue;
             }
 
+            let token_index = token.0;
+
+            if writable {
+                let should_remove = self.handle_writable(token_index)?;
+                if should_remove {
+                    self.remove_client(token_index);
+                    continue;
+                }
+            }
+
             if readable {
-                let token_index = token.0;
-                let should_remove = self.handle_readable(token_index, runtime)?;
+                let resolver_ref = borrow_workflow_resolver(&mut resolver);
+                let should_remove = self.handle_readable(token_index, runtime, resolver_ref)?;
                 if should_remove {
                     self.remove_client(token_index);
                 }
@@ -223,10 +238,19 @@ impl IpcServer {
         &mut self,
         token_index: usize,
         runtime: &mut Runtime,
+        resolver: Option<&mut dyn WorkflowResolver>,
     ) -> Result<bool, IpcServerError> {
+        let registry = self
+            .poll
+            .registry()
+            .try_clone()
+            .map_err(|source| IpcServerError::PollFailed { source })?;
+        let token = Token(token_index);
+
         let Some(client) = self.clients.get_mut(&token_index) else {
             return Ok(true);
         };
+        let mut resolver = resolver;
 
         let mut temp_buf = [0u8; READ_CHUNK_BYTES];
         let bytes_read = match client.stream.read(&mut temp_buf) {
@@ -248,6 +272,8 @@ impl IpcServer {
                     send_response(
                         &mut client.stream,
                         &mut client.write_buffer,
+                        &registry,
+                        token,
                         &fallback_header,
                         &response,
                     )?;
@@ -260,16 +286,50 @@ impl IpcServer {
                 return Ok(false);
             }
 
-            let payload_bytes = extract_payload(&client.read_buffer, total_len)?;
-            client.read_buffer.drain(..total_len);
+            let payload_bytes = extract_payload(&mut client.read_buffer, total_len)?;
 
-            let response = dispatch_command(&header, &payload_bytes, runtime);
+            let response = dispatch_command_with_resolver(
+                &header,
+                &payload_bytes,
+                runtime,
+                borrow_workflow_resolver(&mut resolver),
+            );
             send_response(
                 &mut client.stream,
                 &mut client.write_buffer,
+                &registry,
+                token,
                 &header,
                 &response,
             )?;
+        }
+
+        Ok(false)
+    }
+
+    fn handle_writable(&mut self, token_index: usize) -> Result<bool, IpcServerError> {
+        let Some(client) = self.clients.get_mut(&token_index) else {
+            return Ok(true);
+        };
+
+        if client.write_buffer.is_empty() {
+            return Ok(false);
+        }
+
+        let written = match client.stream.write(&client.write_buffer) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => return Ok(false),
+            Err(_) => return Ok(true),
+        };
+
+        client.write_buffer.drain(..written);
+
+        if client.write_buffer.is_empty() {
+            let token = Token(token_index);
+            self.poll
+                .registry()
+                .reregister(&mut client.stream, token, Interest::READABLE)
+                .map_err(|source| IpcServerError::PollFailed { source })?;
         }
 
         Ok(false)
@@ -291,11 +351,22 @@ pub fn serve_ipc(
     server.poll_once(runtime, timeout)
 }
 
+/// Serves one IPC polling turn with workflow resolution for submit commands.
+pub fn serve_ipc_with_resolver(
+    server: &mut IpcServer,
+    runtime: &mut Runtime,
+    timeout: Option<std::time::Duration>,
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> Result<bool, IpcServerError> {
+    server.poll_once_with_resolver(runtime, timeout, resolver)
+}
+
 /// Decodes a postcard-encoded payload, returning `IpcResponse::BadRequest` on failure.
 fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
     postcard::from_bytes(payload).map_err(|_| IpcResponse::BadRequest)
 }
 
+#[cfg(test)]
 fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     dispatch_command_with_resolver(header, payload, runtime, None)
 }
@@ -318,7 +389,7 @@ fn dispatch_command_with_resolver(
         IpcCommand::AnswerAsk => handle_answer_ask(payload, runtime),
         IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
         IpcCommand::FailAction => handle_fail_action(payload, runtime),
-        IpcCommand::DrainTrace => handle_drain_trace(runtime),
+        IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
     }
 }
 
@@ -564,9 +635,26 @@ fn payload_len(len: usize) -> u32 {
 }
 
 /// Handles drain-trace.
-pub fn handle_drain_trace(runtime: &mut Runtime) -> IpcResponse {
-    let events = runtime.drain_trace();
-    count_response(events.len(), IpcResponseKind::Trace)
+pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    let Ok(crate::IpcPayload::DrainTrace {
+        run_id,
+        max_records,
+    }) = decode_payload::<crate::IpcPayload>(payload)
+    else {
+        return IpcResponse::BadRequest;
+    };
+
+    let all_events = runtime.drain_trace();
+    let max = match usize::try_from(max_records) {
+        Ok(value) => value,
+        Err(_) => usize::MAX,
+    };
+    let filtered: Vec<TraceEvent> = all_events
+        .into_iter()
+        .filter(|event| event.run_id() == run_id)
+        .take(max)
+        .collect();
+    count_response(filtered.len(), IpcResponseKind::Trace)
 }
 
 enum IpcResponseKind {
@@ -660,6 +748,16 @@ fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
         TraceEvent::RunSubmitted { run } => IpcTraceEventKind::RunSubmitted { run: *run },
         TraceEvent::RunFinished { run } => IpcTraceEventKind::RunFinished { run: *run },
         TraceEvent::RunFailed { run } => IpcTraceEventKind::RunFailed { run: *run },
+        TraceEvent::RunCancelled { run } => IpcTraceEventKind::RunCancelled { run: *run },
+    }
+}
+
+fn borrow_workflow_resolver<'a>(
+    resolver: &'a mut Option<&mut dyn WorkflowResolver>,
+) -> Option<&'a mut dyn WorkflowResolver> {
+    match resolver {
+        Some(inner) => Some(&mut **inner),
+        None => None,
     }
 }
 
@@ -675,10 +773,8 @@ fn submit_resolved_workflow(
     let workflow = match resolver.resolve_workflow(submit.workflow) {
         Ok(workflow) => workflow,
         Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
-        Err(error) => {
-            return IpcResponse::RuntimeError {
-                message: error.to_string(),
-            };
+        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
+            return IpcResponse::WorkflowResolutionUnsupported;
         }
     };
     if workflow.digest() != submit.workflow {
@@ -746,14 +842,14 @@ fn frame_total_len(header: &IpcFrameHeader) -> Result<usize, IpcServerError> {
     Ok(total_len)
 }
 
-fn extract_payload(read_buffer: &[u8], total_len: usize) -> Result<Vec<u8>, IpcServerError> {
+fn extract_payload(read_buffer: &mut Vec<u8>, total_len: usize) -> Result<Vec<u8>, IpcServerError> {
     if read_buffer.len() < total_len {
         return Err(IpcServerError::IncompleteFrame);
     }
-    let payload = read_buffer
-        .get(IPC_HEADER_LEN..total_len)
-        .ok_or(IpcServerError::IncompleteFrame)?;
-    Ok(payload.to_vec())
+    // Keep unread bytes in the connection buffer and return only the consumed payload.
+    let remaining = read_buffer.split_off(total_len);
+    let mut frame = std::mem::replace(read_buffer, remaining);
+    Ok(frame.split_off(IPC_HEADER_LEN))
 }
 
 fn frame_error_response(error: IpcError) -> IpcResponse {
@@ -765,6 +861,8 @@ fn frame_error_response(error: IpcError) -> IpcResponse {
 fn send_response(
     stream: &mut mio::net::UnixStream,
     write_buffer: &mut Vec<u8>,
+    registry: &mio::Registry,
+    token: Token,
     request_header: &IpcFrameHeader,
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
@@ -772,22 +870,36 @@ fn send_response(
         postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     write_buffer.clear();
-    write_frame(
-        &mut *write_buffer,
-        request_header.command,
-        0,
-        request_header.correlation,
-        &payload_bytes,
-    )
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let payload_len =
+        u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    write_buffer.extend_from_slice(&IPC_MAGIC.to_le_bytes());
+    write_buffer.extend_from_slice(&IPC_VERSION.to_le_bytes());
+    write_buffer.extend_from_slice(&request_header.command.as_u16().to_le_bytes());
+    write_buffer.extend_from_slice(&0u16.to_le_bytes());
+    write_buffer.extend_from_slice(&0u16.to_le_bytes());
+    write_buffer.extend_from_slice(&request_header.correlation.to_le_bytes());
+    write_buffer.extend_from_slice(&payload_len.to_le_bytes());
+    write_buffer.extend_from_slice(&payload_bytes);
 
-    stream
-        .write_all(write_buffer)
-        .map_err(|source| IpcServerError::ResponseWriteFailed { source })?;
-
-    stream
-        .flush()
-        .map_err(|source| IpcServerError::ResponseWriteFailed { source })?;
+    let written = match stream.write(write_buffer) {
+        Ok(count) => count,
+        Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => 0,
+        Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
+    };
+    if written > 0 {
+        drop(write_buffer.drain(..written));
+    }
+    if write_buffer.is_empty() {
+        match stream.flush() {
+            Ok(()) => {}
+            Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
+        }
+    } else {
+        registry
+            .reregister(stream, token, Interest::READABLE | Interest::WRITABLE)
+            .map_err(|source| IpcServerError::PollFailed { source })?;
+    }
 
     Ok(())
 }
@@ -839,11 +951,30 @@ pub enum IpcServerError {
     },
 }
 
+impl IpcServerError {
+    /// Returns the stable section 17 runtime code when this server error has a direct mapping.
+    #[must_use]
+    pub fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::IncompleteFrame => Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE),
+            Self::ReadBufferTooLarge => Some(IpcError::IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE),
+            Self::FrameInvalid { source } => source.runtime_code(),
+            Self::TooManyClients => Some(IpcError::QUEUE_FULL_RUNTIME_CODE),
+            Self::BindFailed { .. }
+            | Self::PollFailed { .. }
+            | Self::AcceptFailed { .. }
+            | Self::ResponseEncodeFailed
+            | Self::ResponseWriteFailed { .. } => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         IpcResponse, IpcResponseKind, IpcServer, IpcServerError, READ_CHUNK_BYTES,
-        append_read_bytes, count_response, dispatch_command, extract_payload, frame_error_response,
+        WorkflowResolutionError, WorkflowResolver, append_read_bytes, count_response,
+        dispatch_command, dispatch_command_with_resolver, extract_payload, frame_error_response,
         frame_total_len, handle_complete_action, handle_list_events, read_buffer_header, serve_ipc,
     };
     use crate::client::IpcClient;
@@ -939,6 +1070,30 @@ mod tests {
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
 
+    struct StaticWorkflowResolver {
+        workflow: Option<vb_core::workflow::CompiledWorkflow>,
+        error: Option<WorkflowResolutionError>,
+    }
+
+    impl WorkflowResolver for StaticWorkflowResolver {
+        fn resolve_workflow(
+            &mut self,
+            _digest: WorkflowDigest,
+        ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+            if let Some(error) = self.error.clone() {
+                return Err(error);
+            }
+            match self.workflow.clone() {
+                Some(workflow) => Ok(workflow),
+                None => Err(WorkflowResolutionError::NotFound),
+            }
+        }
+    }
+
+    fn encoded_submit_payload(payload: IpcPayload) -> Option<Vec<u8>> {
+        postcard::to_allocvec(&payload).ok()
+    }
+
     #[test]
     fn server_client_e2e_health_list_events_and_drain_trace() {
         let socket_path = ipc_test_socket("health_list_drain");
@@ -999,8 +1154,14 @@ mod tests {
         assert_eq!(listed_header.correlation, 101);
         assert_eq!(listed_response, IpcResponse::Events { events: Vec::new() });
 
+        let drain_payload = IpcPayload::DrainTrace {
+            run_id: RunId::new(44),
+            max_records: 100,
+        };
         assert!(
-            client.send_raw(IpcCommand::DrainTrace, 102, &[]).is_ok(),
+            client
+                .send_command(IpcCommand::DrainTrace, 102, &drain_payload)
+                .is_ok(),
             "drain-trace request sends"
         );
         assert!(
@@ -1043,13 +1204,14 @@ mod tests {
             return;
         };
 
-        let payload = extract_payload(&frame, total_len);
+        let payload = extract_payload(&mut frame, total_len);
         assert!(payload.is_ok(), "payload extracts");
         let Ok(payload) = payload else {
             return;
         };
         assert_eq!(payload, Vec::from(b"abc".as_ref()));
-        assert!(extract_payload(&frame, total_len.saturating_add(1)).is_err());
+        let mut short_frame = vec![0u8; total_len];
+        assert!(extract_payload(&mut short_frame, total_len.saturating_add(1)).is_err());
     }
 
     #[test]
@@ -1111,6 +1273,117 @@ mod tests {
             dispatch_command(&header, &encoded, &mut runtime),
             IpcResponse::WorkflowResolutionRequired
         );
+    }
+
+    #[test]
+    fn submit_run_resolves_workflow_and_accepts_run() {
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
+        };
+        let run_id = RunId::new(90);
+        let digest = workflow.digest();
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id,
+            workflow: digest,
+            input: Vec::new(),
+        });
+        let Some(encoded) = encoded_submit_payload(payload) else {
+            return;
+        };
+        let Ok(payload_len) = u32::try_from(encoded.len()) else {
+            return;
+        };
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 13, payload_len);
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let mut resolver = StaticWorkflowResolver {
+            workflow: Some(workflow),
+            error: None,
+        };
+
+        let response =
+            dispatch_command_with_resolver(&header, &encoded, &mut runtime, Some(&mut resolver));
+
+        assert_eq!(
+            response,
+            IpcResponse::AcceptedRun {
+                run_id: run_id.as_u64()
+            }
+        );
+    }
+
+    #[test]
+    fn submit_run_inline_resolves_workflow_and_accepts_run() {
+        let Some(workflow) = action_then_finish_workflow() else {
+            return;
+        };
+        let run_id = RunId::new(91);
+        let digest = workflow.digest();
+        let payload = IpcPayload::SubmitRunInline(SubmitRunPayload {
+            run_id,
+            workflow: digest,
+            input: Vec::new(),
+        });
+        let Some(encoded) = encoded_submit_payload(payload) else {
+            return;
+        };
+        let Ok(payload_len) = u32::try_from(encoded.len()) else {
+            return;
+        };
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 14, payload_len);
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let mut resolver = StaticWorkflowResolver {
+            workflow: Some(workflow),
+            error: None,
+        };
+
+        let response =
+            dispatch_command_with_resolver(&header, &encoded, &mut runtime, Some(&mut resolver));
+
+        assert_eq!(
+            response,
+            IpcResponse::AcceptedRun {
+                run_id: run_id.as_u64()
+            }
+        );
+    }
+
+    #[test]
+    fn submit_run_returns_stable_unsupported_when_resolver_cannot_supply_artifact() {
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id: RunId::new(92),
+            workflow: WorkflowDigest::from_bytes([6; 32]),
+            input: Vec::new(),
+        });
+        let Some(encoded) = encoded_submit_payload(payload) else {
+            return;
+        };
+        let Ok(payload_len) = u32::try_from(encoded.len()) else {
+            return;
+        };
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 15, payload_len);
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let mut resolver = StaticWorkflowResolver {
+            workflow: None,
+            error: Some(WorkflowResolutionError::NotFound),
+        };
+
+        let response =
+            dispatch_command_with_resolver(&header, &encoded, &mut runtime, Some(&mut resolver));
+
+        assert_eq!(response, IpcResponse::WorkflowResolutionUnsupported);
+    }
+
+    #[test]
+    fn workflow_resolution_unsupported_response_roundtrips() {
+        let encoded = postcard::to_allocvec(&IpcResponse::WorkflowResolutionUnsupported);
+        assert!(encoded.is_ok(), "response should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+
+        let decoded = postcard::from_bytes::<IpcResponse>(&encoded);
+
+        assert_eq!(decoded, Ok(IpcResponse::WorkflowResolutionUnsupported));
     }
 
     #[test]
@@ -1414,10 +1687,23 @@ mod tests {
     fn handle_drain_trace_returns_trace_count() {
         // Given: a runtime with no events
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
-        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 1, 0);
+        let payload = crate::IpcPayload::DrainTrace {
+            run_id: RunId::new(1),
+            max_records: 100,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 1, payload_len);
 
         // When: dispatching drain_trace
-        let response = dispatch_command(&header, &[], &mut runtime);
+        let response = dispatch_command(&header, &encoded, &mut runtime);
 
         // Then: TraceCount with 0
         assert_eq!(response, IpcResponse::TraceCount { count: 0 });
@@ -1581,15 +1867,46 @@ mod tests {
         );
     }
 
-    // ── IpcResponse variant equality tests ──
+    #[test]
+    fn ipc_server_error_runtime_codes_cover_ipc_mappings() {
+        assert_eq!(
+            IpcServerError::IncompleteFrame.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcServerError::ReadBufferTooLarge.runtime_code(),
+            Some("IPC_PAYLOAD_TOO_LARGE")
+        );
+        assert_eq!(
+            IpcServerError::FrameInvalid {
+                source: IpcError::InvalidMagic { actual: 0 },
+            }
+            .runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcServerError::FrameInvalid {
+                source: IpcError::PayloadTooLarge {
+                    actual: 2,
+                    limit: 1,
+                },
+            }
+            .runtime_code(),
+            Some("IPC_PAYLOAD_TOO_LARGE")
+        );
+        assert_eq!(
+            IpcServerError::TooManyClients.runtime_code(),
+            Some("QUEUE_FULL")
+        );
+    }
 
     #[test]
-    fn ipc_response_ok_is_distinct_from_healthy() {
-        // Given: IpcResponse::Ok and IpcResponse::Healthy
-        // When: comparing them
-        // Then: they are not equal
-        assert_ne!(IpcResponse::Ok, IpcResponse::Healthy);
+    fn ipc_server_error_runtime_code_is_absent_without_direct_mapping() {
+        let error = IpcServerError::ResponseEncodeFailed;
+        assert_eq!(error.runtime_code(), None);
     }
+
+    // ── IpcResponse variant equality tests ──
 
     #[test]
     fn ipc_response_accepted_run_carries_run_id() {
@@ -1611,17 +1928,6 @@ mod tests {
         // Then: they are equal only when count matches
         assert_eq!(response, IpcResponse::TraceCount { count: 7 });
         assert_ne!(response, IpcResponse::TraceCount { count: 0 });
-    }
-
-    #[test]
-    fn ipc_response_event_count_carries_count() {
-        // Given: an EventCount response with count=15
-        let response = IpcResponse::EventCount { count: 15 };
-
-        // When: comparing with another EventCount
-        // Then: they are equal only when count matches
-        assert_eq!(response, IpcResponse::EventCount { count: 15 });
-        assert_ne!(response, IpcResponse::EventCount { count: 1 });
     }
 
     #[test]
@@ -1825,10 +2131,23 @@ mod tests {
     fn handle_drain_trace_returns_trace_count_after_events() {
         // Given: a runtime that has processed events
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
-        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 1, 0);
+        let payload = crate::IpcPayload::DrainTrace {
+            run_id: RunId::new(1),
+            max_records: 100,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 1, payload_len);
 
         // When: dispatching drain_trace (empty runtime)
-        let response = dispatch_command(&header, &[], &mut runtime);
+        let response = dispatch_command(&header, &encoded, &mut runtime);
 
         // Then: TraceCount with 0
         assert_eq!(response, IpcResponse::TraceCount { count: 0 });
@@ -1974,7 +2293,7 @@ mod tests {
         };
 
         // When: extracting the payload
-        let payload = extract_payload(&frame, total_len);
+        let payload = extract_payload(&mut frame, total_len);
 
         // Then: the payload bytes match
         assert!(payload.is_ok(), "payload should extract");
@@ -2006,13 +2325,26 @@ mod tests {
     }
 
     #[test]
-    fn handle_drain_trace_dispatches_without_payload() {
-        // Given: a DrainTrace command with zero-length payload
+    fn handle_drain_trace_dispatches_with_typed_payload() {
+        // Given: a DrainTrace command with a typed payload
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
-        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 42, 0);
+        let payload = crate::IpcPayload::DrainTrace {
+            run_id: RunId::new(1),
+            max_records: 100,
+        };
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let payload_len = match u32::try_from(encoded.len()) {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 42, payload_len);
 
         // When: dispatching
-        let response = dispatch_command(&header, &[], &mut runtime);
+        let response = dispatch_command(&header, &encoded, &mut runtime);
 
         // Then: TraceCount response
         assert!(
@@ -2362,10 +2694,10 @@ mod tests {
     #[test]
     fn adversarial_extract_payload_returns_incomplete_for_short_buffer() {
         // Given: a total_len of 100 but buffer is only 50 bytes
-        let short_buffer = vec![0u8; 50];
+        let mut short_buffer = vec![0u8; 50];
 
         // When: extracting payload
-        let result = extract_payload(&short_buffer, 100);
+        let result = extract_payload(&mut short_buffer, 100);
 
         // Then: IncompleteFrame
         assert!(result.is_err());

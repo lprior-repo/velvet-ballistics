@@ -637,11 +637,13 @@ fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         vb_runtime::trace::TraceEvent::RunFailed { .. } => {
             outln!("  trace: RunFailed");
         }
+        vb_runtime::trace::TraceEvent::RunCancelled { .. } => {
+            outln!("  trace: RunCancelled");
+        }
     }
 }
 
 fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
-    // Open the storage journal to validate the path
     let journal = match vb_storage::FjallJournal::open(db) {
         Ok(j) => j,
         Err(e) => {
@@ -649,9 +651,21 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    // Journal is opened to validate the storage path. It will be used for
-    // durability writes once the runtime integrates the journal layer.
-    drop(journal);
+    let journal = Arc::new(journal);
+    let mut resolver = StorageWorkflowResolver {
+        journal: Arc::clone(&journal),
+    };
+    let queue =
+        match vb_storage::JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
+            Ok(q) => Arc::new(q),
+            Err(e) => {
+                errln!("error creating journal queue: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+    let runtime_journal =
+        vb_runtime::journal::RuntimeJournalConfig::new(vb_storage::DurabilityProfile::Journaled)
+            .shared_journal(journal, queue);
 
     // Create runtime
     let shard_count = match NonZeroUsize::new(1) {
@@ -659,7 +673,8 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
         None => NonZeroUsize::MIN,
     };
     let config = vb_runtime::shard::ShardConfig::default();
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, runtime_journal);
 
     // Bind the IPC server
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {
@@ -674,7 +689,11 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
 
     // Event loop
     loop {
-        match server.poll_once(&mut runtime, Some(std::time::Duration::from_millis(100))) {
+        match server.poll_once_with_resolver(
+            &mut runtime,
+            Some(std::time::Duration::from_millis(100)),
+            Some(&mut resolver),
+        ) {
             Ok(true) => {}
             Ok(false) => {
                 outln!("shutdown requested");
@@ -701,6 +720,30 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     }
 
     ExitCode::SUCCESS
+}
+
+struct StorageWorkflowResolver {
+    journal: Arc<vb_storage::FjallJournal>,
+}
+
+impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
+    fn resolve_workflow(
+        &mut self,
+        digest: vb_core::WorkflowDigest,
+    ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
+        let record = match self.journal.compiled_ir(digest) {
+            Ok(Some(record)) => record,
+            Ok(None) => return Err(vb_ipc::server::WorkflowResolutionError::NotFound),
+            Err(_) => return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact),
+        };
+        if record.digest != digest {
+            return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact);
+        }
+        let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&record.ir)
+            .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+        vb_core::CompiledWorkflow::try_from_parts(parts)
+            .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
+    }
 }
 
 fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
@@ -1105,17 +1148,18 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, INPUT_MAPPING_FAILED_MESSAGE, ParseError, parse_args,
-        run_compiled_workflow,
+        Command, DurabilityMode, INPUT_MAPPING_FAILED_MESSAGE, ParseError, StorageWorkflowResolver,
+        parse_args, run_compiled_workflow,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;
+    use std::sync::Arc;
     use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::ConstValue;
     use vb_core::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
     };
-    use vb_storage::{EventSeq, JournalEvent};
+    use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
 
     fn args(parts: &[&str]) -> Vec<OsString> {
         parts.iter().map(|part| OsString::from(*part)).collect()
@@ -1264,6 +1308,76 @@ mod tests {
                     }));
                 }
             }
+        }
+    }
+
+    #[test]
+    fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        let dir = tempfile::tempdir().ok();
+        assert!(dir.is_some(), "test directory should be available");
+
+        if let (Some(compiled), Some(dir)) = (compiled, dir) {
+            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            assert!(journal.is_some(), "journal should open");
+            let Some(journal) = journal else {
+                return;
+            };
+            let parts = compiled.to_parts();
+            let ir = postcard::to_allocvec(&parts).ok();
+            assert!(ir.is_some(), "workflow parts should encode");
+            let Some(ir) = ir else {
+                return;
+            };
+            let record = CompiledIrRecord {
+                digest: compiled.digest(),
+                ir,
+            };
+            assert!(journal.put_compiled_ir(&record).is_ok());
+            let mut resolver = StorageWorkflowResolver {
+                journal: Arc::new(journal),
+            };
+
+            let resolved = vb_ipc::server::WorkflowResolver::resolve_workflow(
+                &mut resolver,
+                compiled.digest(),
+            );
+
+            assert!(resolved.is_ok(), "resolver should load compiled IR");
+            let Ok(resolved) = resolved else {
+                return;
+            };
+            assert_eq!(resolved.digest(), compiled.digest());
+        }
+    }
+
+    #[test]
+    fn ipc_storage_resolver_returns_not_found_for_missing_digest() {
+        let dir = tempfile::tempdir().ok();
+        assert!(dir.is_some(), "test directory should be available");
+        if let Some(dir) = dir {
+            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            assert!(journal.is_some(), "journal should open");
+            let Some(journal) = journal else {
+                return;
+            };
+            let mut resolver = StorageWorkflowResolver {
+                journal: Arc::new(journal),
+            };
+
+            let result = vb_ipc::server::WorkflowResolver::resolve_workflow(
+                &mut resolver,
+                WorkflowDigest::from_bytes([5; 32]),
+            );
+
+            assert!(
+                matches!(
+                    result,
+                    Err(vb_ipc::server::WorkflowResolutionError::NotFound)
+                ),
+                "missing digest should return NotFound"
+            );
         }
     }
 }

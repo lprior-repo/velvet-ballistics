@@ -10,7 +10,7 @@ pub mod server;
 use bytes::Bytes;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
 use serde::{Deserialize, Serialize};
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Write};
 use std::num::NonZeroUsize;
 use thiserror::Error;
 use vb_core::action::ActionOutputReady;
@@ -118,19 +118,30 @@ impl IpcFrameHeader {
 
     /// Encodes the header using the §21 little-endian wire layout.
     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
-        let mut bytes = Vec::with_capacity(IPC_HEADER_LEN);
-        bytes.extend_from_slice(&IPC_MAGIC.to_le_bytes());
-        bytes.extend_from_slice(&IPC_VERSION.to_le_bytes());
-        bytes.extend_from_slice(&self.command.as_u16().to_le_bytes());
-        bytes.extend_from_slice(&self.flags.to_le_bytes());
-        bytes.extend_from_slice(&0_u16.to_le_bytes());
-        bytes.extend_from_slice(&self.correlation.to_le_bytes());
-        bytes.extend_from_slice(&self.payload_len.to_le_bytes());
-
-        match <[u8; IPC_HEADER_LEN]>::try_from(bytes.as_slice()) {
-            Ok(encoded) => Ok(encoded),
-            Err(_) => Err(IpcError::HeaderEncodeFailed),
-        }
+        let mut bytes = [0u8; IPC_HEADER_LEN];
+        let mut cursor = std::io::Cursor::new(&mut bytes[..]);
+        cursor
+            .write_all(&IPC_MAGIC.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&IPC_VERSION.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&self.command.as_u16().to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&self.flags.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&0_u16.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&self.correlation.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        cursor
+            .write_all(&self.payload_len.to_le_bytes())
+            .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        Ok(bytes)
     }
 
     /// Decodes and validates a fixed IPC header before payload allocation.
@@ -367,6 +378,8 @@ pub enum IpcTraceEventKind {
     RunFinished { run: RunId },
     /// A run failed.
     RunFailed { run: RunId },
+    /// A run was cancelled.
+    RunCancelled { run: RunId },
 }
 
 /// Encodes a typed IPC payload with Postcard.
@@ -596,6 +609,35 @@ pub enum IpcError {
     /// Typed response payload decoding failed.
     #[error("failed to decode IPC response")]
     ResponseDecodeFailed,
+}
+
+impl IpcError {
+    /// Runtime code for structurally invalid IPC frames.
+    pub const IPC_FRAME_INVALID_RUNTIME_CODE: &str = "IPC_FRAME_INVALID";
+    /// Runtime code for IPC payloads exceeding a configured bound.
+    pub const IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE: &str = "IPC_PAYLOAD_TOO_LARGE";
+    /// Runtime code for bounded IPC ingress queues at capacity.
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+
+    /// Returns the stable section 17 runtime code when this IPC error has a direct mapping.
+    #[must_use]
+    pub const fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::Full => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+            Self::PayloadTooLarge { .. } | Self::PayloadLengthOutOfRange { .. } => {
+                Some(Self::IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE)
+            }
+            Self::InvalidMagic { .. }
+            | Self::UnsupportedVersion { .. }
+            | Self::UnknownCommand(_)
+            | Self::ReservedNonZero { .. }
+            | Self::PayloadLengthMismatch { .. }
+            | Self::HeaderDecodeFailed
+            | Self::PayloadDecodeFailed
+            | Self::ResponseDecodeFailed => Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE),
+            Self::Disconnected | Self::HeaderEncodeFailed | Self::PayloadEncodeFailed => None,
+        }
+    }
 }
 
 fn read_u16_le(cursor: &mut Cursor<&[u8]>) -> Result<u16, IpcError> {
@@ -1815,6 +1857,84 @@ mod tests {
 
         // Then: message contains 7
         assert!(message.contains("7"), "expected '7' in '{message}'");
+    }
+
+    #[test]
+    fn ipc_error_runtime_codes_cover_ipc_mappings() {
+        assert_eq!(IpcError::Full.runtime_code(), Some("QUEUE_FULL"));
+        assert_eq!(
+            IpcError::InvalidMagic { actual: 0 }.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::UnsupportedVersion { actual: 2 }.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::UnknownCommand(99).runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::ReservedNonZero { actual: 7 }.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::PayloadLengthMismatch {
+                header: 4,
+                actual: 3
+            }
+            .runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::HeaderDecodeFailed.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::PayloadDecodeFailed.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::ResponseDecodeFailed.runtime_code(),
+            Some("IPC_FRAME_INVALID")
+        );
+        assert_eq!(
+            IpcError::PayloadTooLarge {
+                actual: 9,
+                limit: 8
+            }
+            .runtime_code(),
+            Some("IPC_PAYLOAD_TOO_LARGE")
+        );
+        assert_eq!(
+            IpcError::PayloadLengthOutOfRange { actual: u32::MAX }.runtime_code(),
+            Some("IPC_PAYLOAD_TOO_LARGE")
+        );
+    }
+
+    #[test]
+    fn ipc_error_runtime_codes_are_unique() {
+        let codes = [
+            IpcError::IPC_FRAME_INVALID_RUNTIME_CODE,
+            IpcError::IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE,
+            IpcError::QUEUE_FULL_RUNTIME_CODE,
+        ];
+        assert_eq!(codes.len(), 3);
+        assert_eq!(
+            codes
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            3
+        );
+    }
+
+    #[test]
+    fn ipc_error_runtime_code_is_absent_without_direct_mapping() {
+        assert_eq!(IpcError::Disconnected.runtime_code(), None);
+        assert_eq!(IpcError::HeaderEncodeFailed.runtime_code(), None);
+        assert_eq!(IpcError::PayloadEncodeFailed.runtime_code(), None);
     }
 }
 

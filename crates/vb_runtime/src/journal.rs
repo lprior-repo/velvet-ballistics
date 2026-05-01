@@ -128,6 +128,14 @@ impl RuntimeJournalEvent {
 pub trait RuntimeJournal: Send + Sync {
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
+
+    /// Drains queued durable writes during graceful shutdown.
+    fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+        Ok(JournalWriterFlushReport {
+            drained: 0,
+            written: 0,
+        })
+    }
 }
 
 /// Shared journal trait object.
@@ -455,10 +463,20 @@ impl QueuedStorageRuntimeJournal {
             .flush_batch(&self.journal)
             .map_err(|_| RuntimeError::StorageJournalAppendFailed)
     }
+
+    /// Drains all queued journal writes into Fjall.
+    pub fn drain_all(&self) -> RuntimeResult<JournalWriterFlushReport> {
+        self.queue
+            .drain_all(&self.journal)
+            .map_err(|_| RuntimeError::StorageJournalAppendFailed)
+    }
 }
 
 impl RuntimeJournal for QueuedStorageRuntimeJournal {
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        if self.profile == DurabilityProfile::Strict {
+            return Err(RuntimeError::UnsupportedAsyncStrictAck);
+        }
         let mut sequences = self
             .next_seq_by_run
             .lock()
@@ -466,14 +484,14 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         let seq = current_seq(&sequences, event.run_id());
         let next = next_seq(seq)?;
         let storage_event = StorageRuntimeJournal::storage_event(event, seq);
-        let result = if self.profile == DurabilityProfile::Strict {
-            self.queue.enqueue_strict(storage_event)
-        } else {
-            self.queue.enqueue_journaled(storage_event)
-        };
+        let result = self.queue.enqueue_journaled(storage_event);
         result.map_err(|_| RuntimeError::StorageJournalAppendFailed)?;
         sequences.insert(event.run_id(), next);
         Ok(())
+    }
+
+    fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+        self.drain_all()
     }
 }
 
@@ -497,11 +515,40 @@ mod tests {
         QueuedStorageRuntimeJournal, RuntimeJournal, RuntimeJournalConfig, RuntimeJournalEvent,
         StorageRuntimeJournal,
     };
+    use crate::runtime::Runtime;
+    use crate::shard::ShardConfig;
+    use std::num::NonZeroUsize;
     use std::sync::Arc;
     use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
     use vb_storage::{
         DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
     };
+
+    fn single_finish_workflow(workflow: WorkflowDigest) -> Option<CompiledWorkflow> {
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("single_finish"),
+            digest: workflow,
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
 
     #[test]
     fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
@@ -832,15 +879,104 @@ mod tests {
             return;
         };
         let strict = RuntimeJournalConfig::new(DurabilityProfile::Strict)
-            .shared_journal(journal, strict_queue.clone());
-        assert_eq!(
+            .shared_journal(journal.clone(), strict_queue.clone());
+        assert!(matches!(
             strict.append(RuntimeJournalEvent::RunFailed { run }),
+            Err(crate::RuntimeError::UnsupportedAsyncStrictAck)
+        ));
+        assert!(matches!(
+            strict_queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+    }
+
+    #[test]
+    fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
+        let Some(dir) = tempfile::tempdir().ok() else {
+            return;
+        };
+        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+            return;
+        };
+        let Ok(queue) = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT).map(Arc::new) else {
+            return;
+        };
+        let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
+        let run = RunId::new(48);
+        let workflow = WorkflowDigest::from_bytes([11; 32]);
+
+        assert_eq!(
+            adapter.append(RuntimeJournalEvent::RunSubmitted { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(
+            adapter.append(RuntimeJournalEvent::RunCancelled { run }),
+            Ok(())
+        );
+        assert_eq!(
+            adapter.append(RuntimeJournalEvent::RunFailed { run }),
             Ok(())
         );
         assert!(matches!(
-            strict_queue.pending_profile_counts(),
-            Ok(counts) if counts.journaled == 0 && counts.strict == 1
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 3 && counts.strict == 0
         ));
+
+        assert!(matches!(
+            adapter.drain_all(),
+            Ok(report) if report.drained == 3 && report.written == 3
+        ));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 3));
+    }
+
+    #[test]
+    fn runtime_shutdown_graceful_drains_owned_queued_journal() {
+        let Some(dir) = tempfile::tempdir().ok() else {
+            return;
+        };
+        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+            return;
+        };
+        let Ok(queue) = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).map(Arc::new) else {
+            return;
+        };
+        let runtime_journal = Arc::new(QueuedStorageRuntimeJournal::journaled(
+            journal.clone(),
+            queue.clone(),
+        ));
+        let run = RunId::new(49);
+        let workflow = WorkflowDigest::from_bytes([12; 32]);
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let runtime =
+            Runtime::new_with_journal(shard_count, ShardConfig::default(), runtime_journal);
+
+        let Some(compiled) = single_finish_workflow(workflow) else {
+            return;
+        };
+        assert_eq!(runtime.submit_direct(run, compiled), Ok(()));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+
+        let mut runtime = runtime;
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 2 && counts.strict == 0
+        ));
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
     }
 
     #[test]

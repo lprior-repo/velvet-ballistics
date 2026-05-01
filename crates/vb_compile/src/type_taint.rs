@@ -163,6 +163,12 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
     let mut errors = Vec::new();
     for (index, step) in ast.steps.iter().enumerate() {
         match &step.kind {
+            StepKindAst::Run { input, .. } => {
+                if let Err(e) = facts.read_slot(input.as_usize(), "run.input") {
+                    errors.push(e);
+                }
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
             StepKindAst::Save { fields } => facts.write_slot(index, save_fact(fields, facts)),
             StepKindAst::Choose { condition, .. } => {
                 if let Err(e) = validate_condition(condition, facts) {

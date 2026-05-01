@@ -440,6 +440,28 @@ pub fn recover_runtime_summary(
     summarize_recovery_events(&events)
 }
 
+/// Recovers summary hydration for every durable run header whose journal has no
+/// terminal event. The run header scan supplies candidates; journal events define
+/// incompleteness because the status byte/index has no stable terminal mapping.
+pub fn recover_all_incomplete_runs(
+    journal: &FjallJournal,
+) -> RecoveryResult<Vec<RecoveryHydration>> {
+    let headers = journal.run_headers()?;
+    let mut recovered = Vec::new();
+
+    for header in headers {
+        let events = journal.events_for_run(header.run)?;
+        if events.is_empty() {
+            return Err(RecoveryError::NoRecoveryData { run: header.run });
+        }
+        if extract_terminal(&events).is_none() {
+            recovered.push(summarize_recovery_events(&events)?);
+        }
+    }
+
+    Ok(recovered)
+}
+
 fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEvent) {
     match event {
         JournalEvent::RunAccepted { workflow, .. } => {
@@ -507,12 +529,12 @@ mod tests {
     use super::{
         ActionReplayTracker, DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult,
         RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, check_compiled_ir_digest,
-        check_workflow_source_digest, extract_terminal, is_terminal_event, recover_full_journal,
-        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
-        summarize_recovery_events, verify_digests,
+        check_workflow_source_digest, extract_terminal, is_terminal_event,
+        recover_all_incomplete_runs, recover_full_journal, recover_runtime_summary,
+        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
-    use crate::{EventSeq, FjallJournal, JournalEvent};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
+    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
     fn test_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
@@ -598,6 +620,83 @@ mod tests {
         assert_eq!(summary.run, run);
         assert_eq!(summary.workflow, Some(workflow));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    }
+
+    #[test]
+    fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let workflow = test_digest(11);
+        let incomplete = RunId::new(81);
+        let finished = RunId::new(82);
+
+        put_test_header(&journal, incomplete, workflow);
+        put_test_header(&journal, finished, workflow);
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run: incomplete,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("incomplete accepted append succeeds");
+        journal
+            .append_journaled(&JournalEvent::StepStarted {
+                run: incomplete,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(4),
+            })
+            .expect("incomplete step append succeeds");
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run: finished,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("finished accepted append succeeds");
+        journal
+            .append_journaled(&JournalEvent::RunFinished {
+                run: finished,
+                seq: EventSeq::new(1),
+                result: SlotIdx::new(2),
+            })
+            .expect("finished append succeeds");
+
+        let recovered =
+            recover_all_incomplete_runs(&journal).expect("incomplete recovery succeeds");
+
+        assert_eq!(recovered.len(), 1);
+        assert_eq!(
+            recovered.first().expect("one recovery").summary().run,
+            incomplete
+        );
+    }
+
+    #[test]
+    fn recover_all_incomplete_runs_rejects_header_without_journal() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let run = RunId::new(83);
+        let workflow = test_digest(12);
+
+        put_test_header(&journal, run, workflow);
+
+        let result = recover_all_incomplete_runs(&journal);
+
+        assert!(
+            matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run)
+        );
+    }
+
+    fn put_test_header(journal: &FjallJournal, run: RunId, digest: WorkflowDigest) {
+        journal
+            .put_run_header(&RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(1),
+                compiled_digest: digest,
+                status: 1,
+                accepted_at_ms: 123,
+            })
+            .expect("header write succeeds");
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

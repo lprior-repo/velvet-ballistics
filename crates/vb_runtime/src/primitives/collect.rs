@@ -8,8 +8,8 @@ use vb_core::value_store::ValueStore;
 
 use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
 
-/// Executes CollectStart: reads source list, writes first page,
-/// stores remaining items in collector slot, jumps to body.
+/// Executes CollectStart: reads source list, writes the first page,
+/// and jumps to body or done.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_start(
     run: &mut RunFrame,
@@ -22,7 +22,9 @@ pub fn collect_start(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let list_id = expect_list(*run.read_slot(source)?)?;
-    let items = store.list(list_id)?.to_vec();
+    let ps = page_size_from(page_size)?;
+    validate_page_bound(ps, limit)?;
+    let items = store.list(list_id)?;
     validate_item_limit(items.len(), limit)?;
     let collector = match output {
         Some(slot) => slot,
@@ -35,12 +37,7 @@ pub fn collect_start(
         )?;
         return jump_to(run, done);
     }
-    let ps = page_size_from(page_size)?;
-    let page = items
-        .get(..ps.min(items.len()))
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "collect page range within source list",
-        })?;
+    let page = copy_prefix(items, ps)?;
     write_collected_page(run, store, collector, page)?;
     jump_to(run, body)
 }
@@ -58,10 +55,11 @@ pub fn collect_page(
     jump_to(run, body)
 }
 
-/// Executes CollectNext: advances to next page from remaining items.
+/// Executes CollectNext.
 ///
-/// The collector slot stores remaining items after the current page.
-/// Takes the next page and updates the slot, or jumps to done.
+/// The current IR does not provide a cursor/source state slot to distinguish
+/// the current page from remaining items. Non-empty continuation is therefore
+/// unsupported instead of pretending to advance by repeating the same page.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_next(
     run: &mut RunFrame,
@@ -70,13 +68,15 @@ pub fn collect_next(
     body: StepIdx,
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let remaining_id = expect_list(*run.read_slot(collector_slot)?)?;
-    let remaining = store.list(remaining_id)?.to_vec();
-    if remaining.is_empty() {
+    let current_id = expect_list(*run.read_slot(collector_slot)?)?;
+    let current = store.list(current_id)?;
+    if current.is_empty() {
         return jump_to(run, done);
     }
-    write_collected_page(run, store, collector_slot, remaining.as_slice())?;
-    jump_to(run, body)
+    let _ = body;
+    Err(EngineError::UnsupportedPrimitive {
+        primitive: "CollectNext.pagination_state",
+    })
 }
 
 /// Executes CollectFinish: writes the collected result to output.
@@ -110,25 +110,44 @@ fn page_size_from(raw: u32) -> Result<usize, EngineError> {
     usize::try_from(raw).map_err(|_| EngineError::CollectPageLimitExceeded)
 }
 
+fn validate_page_bound(page_size: usize, limit: u32) -> Result<(), EngineError> {
+    let max = usize::try_from(limit).map_err(|_| EngineError::CollectPageLimitExceeded)?;
+    if page_size > max {
+        Err(EngineError::CollectPageLimitExceeded)
+    } else {
+        Ok(())
+    }
+}
+
 fn write_collected_page(
     run: &mut RunFrame,
     store: &mut ValueStore,
     collector: SlotIdx,
-    items: &[SlotValue],
+    items: Box<[SlotValue]>,
 ) -> Result<(), EngineError> {
-    let page_id = store.insert_list(copy_items(items)?)?;
+    let page_id = store.insert_list(items)?;
     run.write_slot(collector, SlotValue::List(page_id))?;
     Ok(())
 }
 
-fn copy_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
-    Ok(items
-        .get(..)
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "copy_items full range within bounds",
-        })?
-        .to_vec()
-        .into_boxed_slice())
+fn copy_prefix(items: &[SlotValue], page_size: usize) -> Result<Box<[SlotValue]>, EngineError> {
+    let count = page_size.min(items.len());
+    let mut page = Vec::with_capacity(count);
+    let mut index = 0usize;
+    while index < count {
+        let value = *items
+            .get(index)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect prefix index checked by loop bound",
+            })?;
+        page.push(value);
+        index = index
+            .checked_add(1)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect prefix index overflow",
+            })?;
+    }
+    Ok(page.into_boxed_slice())
 }
 #[cfg(test)]
 mod tests {
@@ -191,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_returns_continue_while_pages_remain() {
+    fn collect_next_returns_unsupported_while_page_has_items() {
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let collector = SlotIdx::new(1);
@@ -206,8 +225,13 @@ mod tests {
 
         let result = collect_next(&mut run, &mut store, collector, body, done);
 
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), body);
+        assert_eq!(
+            result,
+            Err(EngineError::UnsupportedPrimitive {
+                primitive: "CollectNext.pagination_state",
+            })
+        );
+        assert_eq!(run.pc(), StepIdx::ZERO);
     }
 
     #[test]
@@ -558,7 +582,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_increments_executed_counter() {
+    fn collect_next_does_not_increment_executed_without_state() {
         // Given a frame with remaining items
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -573,9 +597,13 @@ mod tests {
             StepIdx::new(1),
             StepIdx::new(2),
         );
-        // Then executed counter incremented
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.executed(), before + 1);
+        assert_eq!(
+            result,
+            Err(EngineError::UnsupportedPrimitive {
+                primitive: "CollectNext.pagination_state",
+            })
+        );
+        assert_eq!(run.executed(), before);
     }
 
     #[test]
@@ -623,7 +651,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_jumps_to_body_with_remaining_items() {
+    fn collect_next_rejects_nonempty_current_page_without_state() {
         // Given a frame with items in collector
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -642,8 +670,13 @@ mod tests {
             StepIdx::new(1),
             StepIdx::new(2),
         );
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), StepIdx::new(1));
+        assert_eq!(
+            result,
+            Err(EngineError::UnsupportedPrimitive {
+                primitive: "CollectNext.pagination_state",
+            })
+        );
+        assert_eq!(run.pc(), StepIdx::ZERO);
     }
 
     #[test]
@@ -721,12 +754,12 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then it still returns error (page_size=0 is rejected before empty check)
-        // Actually looking at the code: empty check happens before page_size check
-        // So with an empty list, page_size=0 succeeds (jumps to done)
-        // BUG: The empty list path bypasses page_size validation
-        // This test documents the actual behavior
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(
+            result,
+            Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect page_size must be nonzero",
+            })
+        );
     }
 
     #[test]
@@ -887,7 +920,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_jumps_to_body_when_items_remain() {
+    fn collect_next_does_not_fake_next_page_when_items_remain() {
         // Given a frame with remaining items in collector
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -902,9 +935,13 @@ mod tests {
         );
         // When calling collect_next with items remaining
         let result = collect_next(&mut run, &mut store, collector, body, done);
-        // Then it jumps to body since items remain
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), body);
+        assert_eq!(
+            result,
+            Err(EngineError::UnsupportedPrimitive {
+                primitive: "CollectNext.pagination_state",
+            })
+        );
+        assert_eq!(run.pc(), StepIdx::ZERO);
     }
 
     #[test]
@@ -979,5 +1016,32 @@ mod tests {
                 assert_eq!(other, SlotValue::I64(0));
             }
         }
+    }
+
+    #[test]
+    fn collect_start_rejects_page_size_above_limit() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(10), SlotValue::I64(20)],
+        );
+
+        let result = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            1,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+        );
+
+        assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
+        assert_eq!(run.pc(), StepIdx::ZERO);
     }
 }

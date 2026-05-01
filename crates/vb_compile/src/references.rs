@@ -94,6 +94,7 @@ fn validate_step_kind(
     errors: &mut Vec<CompileError>,
 ) {
     match kind {
+        StepKindAst::Run { .. } => {}
         StepKindAst::Save { fields } => validate_value_entries(fields, tables, errors),
         StepKindAst::Choose { condition, .. } => validate_expression(condition, tables, errors),
         StepKindAst::Wait { .. } | StepKindAst::Ask { .. } => {}

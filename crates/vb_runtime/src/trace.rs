@@ -201,6 +201,11 @@ pub enum TraceEvent {
         /// Run identifier.
         run: RunId,
     },
+    /// A run was cancelled.
+    RunCancelled {
+        /// Run identifier.
+        run: RunId,
+    },
 }
 
 impl TraceEvent {
@@ -217,7 +222,8 @@ impl TraceEvent {
             | Self::AskAnswered { run, .. }
             | Self::RunSubmitted { run }
             | Self::RunFinished { run }
-            | Self::RunFailed { run } => *run,
+            | Self::RunFailed { run }
+            | Self::RunCancelled { run } => *run,
         }
     }
 }
@@ -348,6 +354,7 @@ mod tests {
         assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
         assert_eq!(TraceEvent::RunFinished { run }.run_id(), run);
         assert_eq!(TraceEvent::RunFailed { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunCancelled { run }.run_id(), run);
     }
 
     #[test]
@@ -569,6 +576,7 @@ mod tests {
         assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
         assert_eq!(TraceEvent::RunFinished { run }.run_id(), run);
         assert_eq!(TraceEvent::RunFailed { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunCancelled { run }.run_id(), run);
     }
 
     #[test]
@@ -627,6 +635,14 @@ mod tests {
         let e1 = TraceEvent::RunFailed { run: RunId::new(1) };
         let e2 = TraceEvent::RunFailed { run: RunId::new(2) };
         assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_run_cancelled() {
+        // Given two identical RunCancelled events
+        let e1 = TraceEvent::RunCancelled { run: RunId::new(7) };
+        let e2 = TraceEvent::RunCancelled { run: RunId::new(7) };
+        assert_eq!(e1, e2);
     }
 
     #[test]

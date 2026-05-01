@@ -1829,6 +1829,36 @@ mod tests {
         new_run_frame(run_id, workflow).map_err(|error| error.to_string())
     }
 
+    fn eval_expr_value(
+        ops: Box<[ExprOp]>,
+        constants: Box<[ConstValue]>,
+    ) -> Result<SlotValue, String> {
+        let expression = ExprProgram::try_from_ops(ops).map_err(|error| error.to_string())?;
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("operator_expr"),
+            digest: WorkflowDigest::from_bytes([0x5A; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: vec![expression].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants,
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let run = test_frame(RunId::new(117), &workflow)?;
+
+        eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())
+    }
+
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
         T: core::fmt::Debug + PartialEq,
@@ -2367,6 +2397,221 @@ mod tests {
             }) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
+    }
+
+    #[test]
+    fn eval_expr_operator_truth_table_is_exact() -> Result<(), String> {
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::Eq,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(5)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::NotEq,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(5), ConstValue::I64(6)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::And,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::Bool(true), ConstValue::Bool(false)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(false),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Or,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::Bool(false), ConstValue::Bool(true)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not].into_boxed_slice(),
+                vec![ConstValue::Bool(false)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Add,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::I64(11),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Sub,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::I64(3),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Mul,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::I64(28),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Div,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(20), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::I64(5),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Gt,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Gte,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(4), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Lt,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(3), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        ensure_equal(
+            eval_expr_value(
+                vec![
+                    ExprOp::LoadConst(ConstIdx::new(0)),
+                    ExprOp::LoadConst(ConstIdx::new(1)),
+                    ExprOp::Lte,
+                ]
+                .into_boxed_slice(),
+                vec![ConstValue::I64(4), ConstValue::I64(4)].into_boxed_slice(),
+            )?,
+            SlotValue::Bool(true),
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_load_accessor_traverses_nested_object_list_path() -> Result<(), String> {
+        let workflow = accessor_workflow(
+            vec![
+                PathSegment::Field(SymbolId::new(1)),
+                PathSegment::Index(1),
+                PathSegment::Field(SymbolId::new(2)),
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(118), &workflow)?;
+        let mut store = test_store();
+        let nested = store
+            .insert_object(
+                vec![ObjectField {
+                    key: SymbolId::new(2),
+                    value: SlotValue::Bool(true),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
+        let list = store
+            .insert_list(vec![SlotValue::I64(7), SlotValue::Object(nested)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let root = store
+            .insert_object(
+                vec![ObjectField {
+                    key: SymbolId::new(1),
+                    value: SlotValue::List(list),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(root), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|error| error.to_string())?;
+
+        ensure_equal(result, EngineSignal::Finished(SlotValue::Bool(true)))?;
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_stack_len_reports_two_after_two_pushes() -> Result<(), String> {
+        let mut stack = super::ExprStack::new(2).map_err(|error| error.to_string())?;
+
+        stack
+            .push(SlotValue::I64(1))
+            .map_err(|error| error.to_string())?;
+        stack
+            .push(SlotValue::I64(2))
+            .map_err(|error| error.to_string())?;
+
+        ensure_equal(stack.len(), 2)?;
+        Ok(())
     }
 
     // --- Unsupported primitive attack vector ---

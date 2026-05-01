@@ -127,7 +127,7 @@ pub fn read_frame_payload<R: Read>(
     let mut payload = vec![0u8; payload_len];
     reader
         .read_exact(&mut payload)
-        .map_err(|_| IpcError::HeaderDecodeFailed)?;
+        .map_err(|_| IpcError::PayloadDecodeFailed)?;
     Ok(payload)
 }
 
@@ -582,8 +582,8 @@ mod tests {
         // When: reading the frame payload
         let result = read_frame_payload(&mut cursor, &header);
 
-        // Then: HeaderDecodeFailed is returned (short read)
-        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+        // Then: PayloadDecodeFailed is returned (short read)
+        assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
     }
 
     #[test]
@@ -909,8 +909,8 @@ mod tests {
         // When: reading the frame payload
         let result = read_frame_payload(&mut cursor, &header);
 
-        // Then: HeaderDecodeFailed (short read)
-        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+        // Then: PayloadDecodeFailed (short read)
+        assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
     }
 
     #[test]

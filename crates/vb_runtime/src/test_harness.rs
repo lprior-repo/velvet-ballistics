@@ -26,9 +26,3 @@ pub(crate) fn list_in_slot(
         .ok()
         .unwrap_or_else(|| panic!("write_slot list"));
 }
-
-pub(crate) fn i64_in_slot(run: &mut RunFrame, slot: SlotIdx, value: i64) {
-    run.write_slot(slot, SlotValue::I64(value))
-        .ok()
-        .unwrap_or_else(|| panic!("write_slot i64"));
-}

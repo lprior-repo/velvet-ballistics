@@ -124,6 +124,39 @@ pub enum DurabilityProfile {
     Strict,
 }
 
+/// Keyspace tuning profile for per-keyspace configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyspaceProfile {
+    /// Small values, bloom filters enabled, no KV separation.
+    /// Used for: run_event, index_status, index_workflow, index_action.
+    Hot,
+    /// Larger values, KV separation enabled.
+    /// Used for: workflow_source, compiled_ir, run_snapshot.
+    Cold,
+    /// Mandatory KV separation for large blob values.
+    /// Used for: blob.
+    Blob,
+}
+
+/// Returns `KeyspaceCreateOptions` tuned for the given profile.
+pub fn keyspace_options_for(kind: KeyspaceProfile) -> fjall::KeyspaceCreateOptions {
+    use fjall::config::{BloomConstructionPolicy, FilterPolicy, FilterPolicyEntry};
+
+    match kind {
+        KeyspaceProfile::Hot => fjall::KeyspaceCreateOptions::default()
+            .filter_policy(FilterPolicy::all(FilterPolicyEntry::Bloom(
+                BloomConstructionPolicy::BitsPerKey(10.0),
+            )))
+            .expect_point_read_hits(false),
+        KeyspaceProfile::Cold => fjall::KeyspaceCreateOptions::default().with_kv_separation(Some(
+            fjall::KvSeparationOptions::default().separation_threshold(4096),
+        )),
+        KeyspaceProfile::Blob => fjall::KeyspaceCreateOptions::default().with_kv_separation(Some(
+            fjall::KvSeparationOptions::default().separation_threshold(1024),
+        )),
+    }
+}
+
 /// Counts queued journal writes by durability profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JournalWriterQueueProfileCounts {
@@ -246,6 +279,62 @@ impl JournalWriterQueue {
             written = written.saturating_add(1);
         }
         Ok(JournalWriterFlushReport { drained, written })
+    }
+
+    /// Flushes queued journal writes until the queue is empty.
+    pub fn drain_all(
+        &self,
+        journal: &FjallJournal,
+    ) -> Result<JournalWriterFlushReport, JournalError> {
+        let mut total = JournalWriterFlushReport {
+            drained: 0,
+            written: 0,
+        };
+
+        loop {
+            let report = self.flush_batch(journal)?;
+            if report.drained == 0 {
+                return Ok(total);
+            }
+            total.drained = total.drained.saturating_add(report.drained);
+            total.written = total.written.saturating_add(report.written);
+        }
+    }
+}
+
+/// Ergonomic builder for batching journal events.
+#[derive(Debug, Default)]
+pub struct BatchBuilder {
+    events: Vec<JournalEvent>,
+}
+
+impl BatchBuilder {
+    /// Creates an empty batch builder.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds an event to the batch.
+    pub fn push(&mut self, event: JournalEvent) {
+        self.events.push(event);
+    }
+
+    /// Returns the number of events in the batch.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    /// Returns true if the batch contains no events.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    /// Returns the built event slice.
+    #[must_use]
+    pub fn as_slice(&self) -> &[JournalEvent] {
+        &self.events
     }
 }
 
@@ -598,6 +687,58 @@ pub struct BlobRecord {
     pub bytes: Vec<u8>,
 }
 
+/// Key variants supported by the durable storage contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageKey {
+    /// Workflow source bytes by digest.
+    WorkflowSource { digest: [u8; DIGEST_BYTES] },
+    /// Compiled IR bytes by digest.
+    CompiledIr { digest: [u8; DIGEST_BYTES] },
+    /// Run metadata by run id.
+    RunHeader { run: RunId },
+    /// Run event by run id and sequence.
+    RunEvent { run: RunId, seq: EventSeq },
+    /// Run snapshot by run id and sequence.
+    RunSnapshot { run: RunId, seq: EventSeq },
+    /// Blob bytes by digest.
+    Blob { digest: [u8; DIGEST_BYTES] },
+    /// Status index marker.
+    IndexStatus {
+        state: u8,
+        timestamp: u64,
+        run: RunId,
+    },
+    /// Workflow/run index marker.
+    IndexWorkflow { workflow: WorkflowId, run: RunId },
+    /// Pending action index marker.
+    IndexAction {
+        action: ActionId,
+        run: RunId,
+        step: StepIdx,
+    },
+}
+
+/// Decoded 60-byte record header fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RecordHeader {
+    /// Magic value identifying the record family.
+    pub magic: u32,
+    /// Schema version.
+    pub schema_version: u16,
+    /// Record kind identifier.
+    pub record_kind: u16,
+    /// Header length in bytes.
+    pub header_len: u32,
+    /// Payload length in bytes.
+    pub payload_len: u32,
+    /// Payload sequence number.
+    pub sequence: u64,
+    /// BLAKE3 digest of the payload bytes.
+    pub payload_digest: [u8; DIGEST_BYTES],
+    /// CRC32C of the header prefix before the checksum field.
+    pub header_checksum: u32,
+}
+
 /// Encodes a postcard payload behind the 60-byte storage envelope.
 pub fn encode_record<T: Serialize>(
     magic: u32,
@@ -621,6 +762,88 @@ pub fn decode_record<T: DeserializeOwned>(
     let (envelope, payload) = decode_record_payload(bytes, expected_magic, max_payload_len)?;
     let value = postcard::from_bytes(payload).map_err(|_| JournalError::PostcardDecodeFailed)?;
     Ok((envelope, value))
+}
+
+/// Encodes any supported storage key using the existing typed key encoders.
+pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
+    let encoded = match key {
+        StorageKey::WorkflowSource { digest } => workflow_source_key(digest)?.to_vec(),
+        StorageKey::CompiledIr { digest } => compiled_ir_key(digest)?.to_vec(),
+        StorageKey::RunHeader { run } => run_header_key(run)?.to_vec(),
+        StorageKey::RunEvent { run, seq } => run_event_key(run, seq)?.to_vec(),
+        StorageKey::RunSnapshot { run, seq } => run_snapshot_key(run, seq)?.to_vec(),
+        StorageKey::Blob { digest } => blob_key(digest)?.to_vec(),
+        StorageKey::IndexStatus {
+            state,
+            timestamp,
+            run,
+        } => index_status_key(state, timestamp, run)?.to_vec(),
+        StorageKey::IndexWorkflow { workflow, run } => index_workflow_key(workflow, run)?.to_vec(),
+        StorageKey::IndexAction { action, run, step } => {
+            index_action_key(action, run, step)?.to_vec()
+        }
+    };
+    Ok(encoded)
+}
+
+/// Encodes only the 60-byte storage record header for an existing payload.
+pub fn encode_record_header(
+    magic: u32,
+    kind: RecordKind,
+    sequence: u64,
+    payload: &[u8],
+    max_payload_len: u32,
+) -> Result<[u8; RECORD_HEADER_BYTES], JournalError> {
+    validate_kind_family(magic, kind.id())?;
+    let payload_len = payload_len_u32(payload.len(), max_payload_len)?;
+    build_record_header(magic, kind, sequence, payload, payload_len)
+}
+
+/// Decodes and validates only the 60-byte storage record header.
+pub fn decode_record_header(
+    header: &[u8],
+    expected_magic: u32,
+    max_payload_len: u32,
+) -> Result<RecordHeader, JournalError> {
+    let header = header
+        .get(..RECORD_HEADER_BYTES)
+        .ok_or(JournalError::UnexpectedEof)?;
+    let decoded = decode_record_header_unchecked_len(header)?;
+    if decoded.magic != expected_magic {
+        return Err(JournalError::BadMagic {
+            found: decoded.magic,
+        });
+    }
+    validate_schema_version(decoded.schema_version)?;
+    validate_known_kind(decoded.record_kind)?;
+    validate_kind_family(decoded.magic, decoded.record_kind)?;
+    if decoded.header_len != RECORD_HEADER_LEN {
+        return Err(JournalError::HeaderLengthMismatch {
+            found: decoded.header_len,
+        });
+    }
+    if decoded.payload_len > max_payload_len {
+        return Err(JournalError::PayloadTooLarge {
+            len: decoded.payload_len,
+            max: max_payload_len,
+        });
+    }
+    if crc32c::crc32c(header_prefix_for_crc(header)?) != decoded.header_checksum {
+        return Err(JournalError::HeaderChecksumMismatch);
+    }
+    Ok(decoded)
+}
+
+/// Verifies a payload against an expected BLAKE3 digest.
+pub fn verify_digest_match(
+    payload: &[u8],
+    expected_digest: [u8; DIGEST_BYTES],
+) -> Result<(), JournalError> {
+    if blake3::hash(payload).as_bytes() == &expected_digest {
+        Ok(())
+    } else {
+        Err(JournalError::PayloadDigestMismatch)
+    }
 }
 
 /// Encodes `[0x01][workflow_digest_32]`.
@@ -729,25 +952,25 @@ impl FjallJournal {
         let database = fjall::Database::builder(path).open()?;
         let workflow_source = database.keyspace(
             KEYSPACE_WORKFLOW_SOURCE,
-            fjall::KeyspaceCreateOptions::default,
+            || keyspace_options_for(KeyspaceProfile::Cold),
         )?;
         let compiled_ir =
-            database.keyspace(KEYSPACE_COMPILED_IR, fjall::KeyspaceCreateOptions::default)?;
+            database.keyspace(KEYSPACE_COMPILED_IR, || keyspace_options_for(KeyspaceProfile::Cold))?;
         let run_header =
             database.keyspace(KEYSPACE_RUN_HEADER, fjall::KeyspaceCreateOptions::default)?;
         let events =
-            database.keyspace(KEYSPACE_RUN_EVENT, fjall::KeyspaceCreateOptions::default)?;
+            database.keyspace(KEYSPACE_RUN_EVENT, || keyspace_options_for(KeyspaceProfile::Hot))?;
         let run_snapshot =
-            database.keyspace(KEYSPACE_RUN_SNAPSHOT, fjall::KeyspaceCreateOptions::default)?;
-        let blob = database.keyspace(KEYSPACE_BLOB, fjall::KeyspaceCreateOptions::default)?;
+            database.keyspace(KEYSPACE_RUN_SNAPSHOT, || keyspace_options_for(KeyspaceProfile::Cold))?;
+        let blob = database.keyspace(KEYSPACE_BLOB, || keyspace_options_for(KeyspaceProfile::Blob))?;
         let index_status =
-            database.keyspace(KEYSPACE_INDEX_STATUS, fjall::KeyspaceCreateOptions::default)?;
+            database.keyspace(KEYSPACE_INDEX_STATUS, || keyspace_options_for(KeyspaceProfile::Hot))?;
         let index_workflow = database.keyspace(
             KEYSPACE_INDEX_WORKFLOW,
-            fjall::KeyspaceCreateOptions::default,
+            || keyspace_options_for(KeyspaceProfile::Hot),
         )?;
         let index_action =
-            database.keyspace(KEYSPACE_INDEX_ACTION, fjall::KeyspaceCreateOptions::default)?;
+            database.keyspace(KEYSPACE_INDEX_ACTION, || keyspace_options_for(KeyspaceProfile::Hot))?;
         Ok(Self {
             database,
             workflow_source,
@@ -781,10 +1004,6 @@ impl FjallJournal {
 
     /// Stores immutable workflow source bytes by digest.
     pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
-        let _guard = self
-            .write_lock
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -813,10 +1032,6 @@ impl FjallJournal {
 
     /// Stores compiled IR bytes by digest.
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        let _guard = self
-            .write_lock
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = compiled_ir_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_COMPILED_ARTIFACT,
@@ -870,6 +1085,19 @@ impl FjallJournal {
             MAGIC_INDEX_RECORD,
             MAX_RUN_HEADER_BYTES,
         )
+    }
+
+    /// Loads all run metadata records in key order.
+    pub fn run_headers(&self) -> Result<Vec<RunHeaderRecord>, JournalError> {
+        let mut headers = Vec::new();
+        let prefix = [PREFIX_RUN_HEADER];
+        for item in self.run_header.prefix(prefix) {
+            let value = item.value()?;
+            let (_, header) =
+                decode_record(value.as_ref(), MAGIC_INDEX_RECORD, MAX_RUN_HEADER_BYTES)?;
+            headers.push(header);
+        }
+        Ok(headers)
     }
 
     /// Stores a compact run snapshot.
@@ -952,24 +1180,27 @@ impl FjallJournal {
 
     /// Appends one event without forcing a durability barrier.
     pub fn append_journaled(&self, event: &JournalEvent) -> Result<(), JournalError> {
-        let _guard = self
-            .write_lock
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
         self.append_unpersisted(event)
     }
 
     /// Appends one event and forces a strict durability barrier before returning.
     pub fn append_strict(&self, event: &JournalEvent) -> Result<(), JournalError> {
-        let _guard = self
-            .write_lock
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
         self.append_unpersisted(event)?;
         self.persist_strict()
     }
 
-    fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+    /// Appends multiple events with a single strict durability barrier.
+    pub fn append_strict_batch(&self, events: &[JournalEvent]) -> Result<(), JournalError> {
+        for event in events {
+            self.append_unpersisted(event)?;
+        }
+        if !events.is_empty() {
+            self.persist_strict()?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = journal_key(event.run_id(), event.seq())?;
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
@@ -1047,9 +1278,38 @@ pub fn append_journal_event(
     journal.append_journaled(event)
 }
 
+/// Stores immutable workflow source bytes by digest.
+pub fn put_workflow_source(
+    journal: &FjallJournal,
+    record: &WorkflowSourceRecord,
+) -> Result<(), JournalError> {
+    journal.put_workflow_source(record)
+}
+
+/// Stores compiled IR bytes by digest.
+pub fn put_compiled_ir(
+    journal: &FjallJournal,
+    record: &CompiledIrRecord,
+) -> Result<(), JournalError> {
+    journal.put_compiled_ir(record)
+}
+
+/// Stores run metadata by run id.
+pub fn put_run_header(
+    journal: &FjallJournal,
+    record: &RunHeaderRecord,
+) -> Result<(), JournalError> {
+    journal.put_run_header(record)
+}
+
 /// Writes a compact run snapshot.
 pub fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<(), JournalError> {
     journal.put_snapshot(snapshot)
+}
+
+/// Stores a bounded blob by digest.
+pub fn put_blob(journal: &FjallJournal, record: &BlobRecord) -> Result<(), JournalError> {
+    journal.put_blob(record)
 }
 
 /// Reads a stored blob by digest.
@@ -1075,6 +1335,13 @@ pub fn replay_journal(
     tracker: &mut recovery::ActionReplayTracker,
 ) -> recovery::RecoveryResult<Vec<JournalEvent>> {
     recovery::recover_full_journal(journal, run, tracker)
+}
+
+/// Recovers summary hydration for every durable run without a terminal event.
+pub fn recover_all_incomplete_runs(
+    journal: &FjallJournal,
+) -> recovery::RecoveryResult<Vec<recovery::RecoveryHydration>> {
+    recovery::recover_all_incomplete_runs(journal)
 }
 
 /// Flushes one queued writer batch using each event's durability profile.
@@ -1267,16 +1534,7 @@ fn encode_record_payload(
                 len: payload_len,
                 max: PAYLOAD_LEN_CONVERSION_MAX,
             })?;
-    let mut header = [0_u8; RECORD_HEADER_BYTES];
-    write_u32(&mut header, 0, magic)?;
-    write_u16(&mut header, 4, CURRENT_SCHEMA_VERSION)?;
-    write_u16(&mut header, 6, kind.id())?;
-    write_u32(&mut header, 8, RECORD_HEADER_LEN)?;
-    write_u32(&mut header, 12, payload_len)?;
-    write_u64(&mut header, 16, sequence)?;
-    write_digest(&mut header, blake3::hash(payload).as_bytes())?;
-    let checksum = crc32c::crc32c(header_prefix_for_crc(&header)?);
-    write_u32(&mut header, CRC_OFFSET, checksum)?;
+    let header = build_record_header(magic, kind, sequence, payload, payload_len)?;
 
     let mut encoded = Vec::with_capacity(capacity);
     encoded.extend_from_slice(&header);
@@ -1289,55 +1547,60 @@ fn decode_record_payload(
     expected_magic: u32,
     max_payload_len: u32,
 ) -> Result<(RecordEnvelope, &[u8]), JournalError> {
-    let header = bytes
-        .get(..RECORD_HEADER_BYTES)
-        .ok_or(JournalError::UnexpectedEof)?;
-    let magic = read_u32(header, 0)?;
-    if magic != expected_magic {
-        return Err(JournalError::BadMagic { found: magic });
-    }
-    let version = read_u16(header, 4)?;
-    validate_schema_version(version)?;
-    let kind = read_u16(header, 6)?;
-    validate_known_kind(kind)?;
-    validate_kind_family(magic, kind)?;
-    let header_len = read_u32(header, 8)?;
-    if header_len != RECORD_HEADER_LEN {
-        return Err(JournalError::HeaderLengthMismatch { found: header_len });
-    }
-    let payload_len = read_u32(header, 12)?;
-    if payload_len > max_payload_len {
-        return Err(JournalError::PayloadTooLarge {
-            len: payload_len,
-            max: max_payload_len,
-        });
-    }
-    let expected_crc = read_u32(header, CRC_OFFSET)?;
-    if crc32c::crc32c(header_prefix_for_crc(header)?) != expected_crc {
-        return Err(JournalError::HeaderChecksumMismatch);
-    }
-    let payload_start = usize::try_from(header_len).map_err(|_| JournalError::UnexpectedEof)?;
+    let header = decode_record_header(bytes, expected_magic, max_payload_len)?;
+    let payload_start =
+        usize::try_from(header.header_len).map_err(|_| JournalError::UnexpectedEof)?;
     let payload_len_usize =
-        usize::try_from(payload_len).map_err(|_| JournalError::UnexpectedEof)?;
+        usize::try_from(header.payload_len).map_err(|_| JournalError::UnexpectedEof)?;
     let payload_end = payload_start
         .checked_add(payload_len_usize)
         .ok_or(JournalError::UnexpectedEof)?;
     let payload = bytes
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
-    let digest = digest_from_header(header)?;
-    if blake3::hash(payload).as_bytes() != &digest {
-        return Err(JournalError::PayloadDigestMismatch);
-    }
+    verify_digest_match(payload, header.payload_digest)?;
     Ok((
         RecordEnvelope {
-            magic,
-            schema_version: version,
-            record_kind: kind,
-            sequence: read_u64(header, 16)?,
+            magic: header.magic,
+            schema_version: header.schema_version,
+            record_kind: header.record_kind,
+            sequence: header.sequence,
         },
         payload,
     ))
+}
+
+fn build_record_header(
+    magic: u32,
+    kind: RecordKind,
+    sequence: u64,
+    payload: &[u8],
+    payload_len: u32,
+) -> Result<[u8; RECORD_HEADER_BYTES], JournalError> {
+    let mut header = [0_u8; RECORD_HEADER_BYTES];
+    write_u32(&mut header, 0, magic)?;
+    write_u16(&mut header, 4, CURRENT_SCHEMA_VERSION)?;
+    write_u16(&mut header, 6, kind.id())?;
+    write_u32(&mut header, 8, RECORD_HEADER_LEN)?;
+    write_u32(&mut header, 12, payload_len)?;
+    write_u64(&mut header, 16, sequence)?;
+    write_digest(&mut header, blake3::hash(payload).as_bytes())?;
+    let checksum = crc32c::crc32c(header_prefix_for_crc(&header)?);
+    write_u32(&mut header, CRC_OFFSET, checksum)?;
+    Ok(header)
+}
+
+fn decode_record_header_unchecked_len(header: &[u8]) -> Result<RecordHeader, JournalError> {
+    Ok(RecordHeader {
+        magic: read_u32(header, 0)?,
+        schema_version: read_u16(header, 4)?,
+        record_kind: read_u16(header, 6)?,
+        header_len: read_u32(header, 8)?,
+        payload_len: read_u32(header, 12)?,
+        sequence: read_u64(header, 16)?,
+        payload_digest: digest_from_header(header)?,
+        header_checksum: read_u32(header, CRC_OFFSET)?,
+    })
 }
 
 fn validate_schema_version(version: u16) -> Result<(), JournalError> {
@@ -1493,11 +1756,13 @@ mod tests {
         MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB,
         PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW,
         PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE,
-        RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageLimits, WorkflowSourceRecord,
-        append_journal_event, blob_key, compiled_ir_key, decode_record, encode_record,
+        RECORD_HEADER_BYTES, RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageKey,
+        StorageLimits, WorkflowSourceRecord, append_journal_event, blob_key, compiled_ir_key,
+        decode_record, decode_record_header, encode_key, encode_record, encode_record_header,
         flush_profile, index_action_key, index_status_key, index_workflow_key, init_keyspaces,
-        journal_key, open_store, read_blob, read_run_events, replay_journal, run_event_key,
-        run_header_key, run_snapshot_key, workflow_source_key, write_snapshot,
+        journal_key, open_store, put_blob, put_compiled_ir, put_run_header, put_workflow_source,
+        read_blob, read_run_events, replay_journal, run_event_key, run_header_key,
+        run_snapshot_key, verify_digest_match, workflow_source_key, write_snapshot,
     };
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
@@ -1561,6 +1826,110 @@ mod tests {
         let ia = index_action_key(ActionId::new(8), RunId::new(9), StepIdx::new(10))
             .expect("index_action_key should succeed");
         assert_eq!(ia.len(), 13);
+    }
+
+    #[test]
+    fn encode_key_dispatches_to_existing_key_encoders() {
+        let digest = [9_u8; 32];
+
+        let run_event = encode_key(StorageKey::RunEvent {
+            run: RunId::new(0x0102_0304_0506_0708),
+            seq: EventSeq::new(9),
+        })
+        .expect("encode_key should encode run event key");
+        let expected_run_event = run_event_key(RunId::new(0x0102_0304_0506_0708), EventSeq::new(9))
+            .expect("run_event_key should succeed")
+            .to_vec();
+        assert_eq!(run_event, expected_run_event);
+
+        let blob =
+            encode_key(StorageKey::Blob { digest }).expect("encode_key should encode blob key");
+        let expected_blob = blob_key(digest).expect("blob_key should succeed").to_vec();
+        assert_eq!(blob, expected_blob);
+    }
+
+    #[test]
+    fn record_header_wrappers_encode_decode_and_verify_digest() {
+        let payload = b"compact payload";
+
+        let header = encode_record_header(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            7,
+            payload,
+            128,
+        )
+        .expect("record header encoding should succeed");
+        assert_eq!(header.len(), RECORD_HEADER_BYTES);
+
+        let decoded = decode_record_header(&header, MAGIC_JOURNAL_EVENT, 128)
+            .expect("record header decoding should succeed");
+        assert_eq!(decoded.magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(decoded.record_kind, RecordKind::RunAccepted.id());
+        assert_eq!(decoded.header_len, RECORD_HEADER_LEN);
+        assert_eq!(decoded.payload_len, 15);
+        assert_eq!(decoded.sequence, 7);
+        verify_digest_match(payload, decoded.payload_digest)
+            .expect("payload digest should match decoded header");
+    }
+
+    #[test]
+    fn verify_digest_match_rejects_mismatched_payload() {
+        let digest = *blake3::hash(b"original").as_bytes();
+
+        let result = verify_digest_match(b"changed", digest);
+
+        assert!(matches!(result, Err(JournalError::PayloadDigestMismatch)));
+    }
+
+    #[test]
+    fn free_put_wrappers_delegate_to_journal_methods() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let journal = open_store(temp.path()).expect("journal should open");
+        let workflow_digest = WorkflowDigest::from_bytes([1; 32]);
+        let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
+        let blob_digest = [3_u8; 32];
+
+        let source = WorkflowSourceRecord {
+            digest: workflow_digest,
+            source: vec![b'a'],
+        };
+        put_workflow_source(&journal, &source).expect("workflow source should store");
+        let stored_source = journal
+            .workflow_source(workflow_digest)
+            .expect("workflow source lookup should succeed");
+        assert_eq!(stored_source, Some(source));
+
+        let compiled = CompiledIrRecord {
+            digest: compiled_digest,
+            ir: vec![b'i'],
+        };
+        put_compiled_ir(&journal, &compiled).expect("compiled ir should store");
+        let stored_compiled = journal
+            .compiled_ir(compiled_digest)
+            .expect("compiled ir lookup should succeed");
+        assert_eq!(stored_compiled, Some(compiled));
+
+        let header = RunHeaderRecord {
+            run: RunId::new(11),
+            workflow_id: WorkflowId::new(12),
+            compiled_digest,
+            status: 1,
+            accepted_at_ms: 13,
+        };
+        put_run_header(&journal, &header).expect("run header should store");
+        let stored_header = journal
+            .run_header(RunId::new(11))
+            .expect("run header lookup should succeed");
+        assert_eq!(stored_header, Some(header));
+
+        let blob = BlobRecord {
+            digest: blob_digest,
+            bytes: vec![b'b'],
+        };
+        put_blob(&journal, &blob).expect("blob should store");
+        let stored_blob = read_blob(&journal, blob_digest).expect("blob lookup should succeed");
+        assert_eq!(stored_blob, Some(blob));
     }
 
     #[test]
@@ -5574,6 +5943,39 @@ mod tests {
             queue.enqueue_journaled(event),
             Err(JournalError::QueueFull)
         ));
+    }
+
+    #[test]
+    fn journal_writer_queue_drain_all_flushes_until_empty() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let queue = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(2);
+        let workflow = test_digest(2);
+
+        assert!(
+            queue
+                .enqueue_journaled(JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow,
+                })
+                .is_ok()
+        );
+        assert!(
+            queue
+                .enqueue_journaled(JournalEvent::RunCancelled {
+                    run,
+                    seq: EventSeq::new(1),
+                })
+                .is_ok()
+        );
+
+        assert!(matches!(
+            queue.drain_all(&journal),
+            Ok(report) if report.drained == 2 && report.written == 2
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
     }
 
     // =========================================================================

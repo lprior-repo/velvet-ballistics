@@ -1873,6 +1873,9 @@ fn validate_phase_zero_step_shape(
 ) -> Result<(), CompileError> {
     let StepSpec { primitive, body } = step_spec(step, index)?;
     match primitive {
+        StepPrimitive::Run | StepPrimitive::Do => {
+            validate_run_shape(body, index, last_step, primitive.as_str())
+        }
         StepPrimitive::Save => validate_save_shape(body, index, last_step),
         StepPrimitive::Choose => validate_choose_shape(body, index, last_step),
         StepPrimitive::Wait => validate_wait_shape(body, index, last_step),
@@ -1883,6 +1886,25 @@ fn validate_phase_zero_step_shape(
             primitive: value.as_str(),
         }),
     }
+}
+
+fn validate_run_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    primitive: &'static str,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    if !body.is_mapping() {
+        return Err(CompileError::UnsupportedStepPrimitive {
+            step: index,
+            primitive,
+        });
+    }
+    reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
+    let _ = required_action(body, index, primitive)?;
+    let _ = required_slot(body, index, "input")?;
+    Ok(())
 }
 
 fn validate_wait_shape(
@@ -2435,6 +2457,15 @@ fn compile_step(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     let StepSpec { primitive, body } = step_spec(step, index)?;
     let node = match primitive {
+        StepPrimitive::Run | StepPrimitive::Do => compile_run(
+            body,
+            index,
+            last_step,
+            id,
+            next,
+            primitive.as_str(),
+            builder,
+        ),
         StepPrimitive::Save => compile_save(body, index, last_step, id, next, builder),
         StepPrimitive::Choose => {
             compile_choose(body, index, last_step, id, source_ir_starts, builder)
@@ -2453,6 +2484,7 @@ fn compile_step(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StepPrimitive {
     Run,
+    Do,
     Save,
     Choose,
     ForEach,
@@ -2469,6 +2501,7 @@ impl StepPrimitive {
     fn from_field(field: &str) -> Option<Self> {
         match field {
             "run" => Some(Self::Run),
+            "do" => Some(Self::Do),
             "save" => Some(Self::Save),
             "choose" => Some(Self::Choose),
             "for_each" => Some(Self::ForEach),
@@ -2486,6 +2519,7 @@ impl StepPrimitive {
     const fn as_str(self) -> &'static str {
         match self {
             Self::Run => "run",
+            Self::Do => "do",
             Self::Save => "save",
             Self::Choose => "choose",
             Self::ForEach => "for_each",
@@ -2498,6 +2532,32 @@ impl StepPrimitive {
             Self::Finish => "finish",
         }
     }
+}
+
+fn compile_run(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    primitive: &'static str,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
+    let action = required_action(body, index, primitive)?;
+    let input = required_slot(body, index, "input")?;
+    let output = slot_idx_for_step(index)?;
+    builder.record_slot(input);
+    builder.record_slot(output);
+    Ok(lower_do(
+        id,
+        action,
+        input,
+        Some(output),
+        Some(required_next_step(next, index)?),
+        &mut SlotCompiler::new(),
+    ))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2948,6 +3008,26 @@ fn required_slot(
     })?;
     let value = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
     Ok(SlotIdx::new(value))
+}
+
+fn required_action(
+    body: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+) -> Result<vb_core::ActionId, CompileError> {
+    let node = required_step_field(body, step, "action")?;
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "action",
+        expected: "an integer action id",
+    })?;
+    let value = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive,
+        field: "action",
+        value: usize::from(u16::MAX),
+        limit: usize::from(u16::MAX),
+    })?;
+    Ok(vb_core::ActionId::new(value))
 }
 
 fn required_choose_condition(
@@ -4125,7 +4205,7 @@ steps:
 
     #[test]
     fn compiler_rejects_legacy_step_aliases() {
-        for alias in ["do", "set", "collect", "reduce", "copy"] {
+        for alias in ["set", "collect", "reduce", "copy"] {
             let source = format!(
                 "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
@@ -4164,14 +4244,7 @@ steps:
 
     #[test]
     fn compiler_rejects_phase_zero_unsupported_primitives() {
-        for primitive in [
-            "run",
-            "for_each",
-            "together",
-            "gather",
-            "summarize",
-            "repeat",
-        ] {
+        for primitive in ["for_each", "together", "gather", "summarize", "repeat"] {
             let source = format!(
                 "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
             );
@@ -4247,6 +4320,66 @@ steps:
             matches!(finish.kind, CompiledNodeKind::Finish { result } if result == SlotIdx::new(1))
         );
         Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_run_to_do_node() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: run_case\nwhen:\n  manual: {}\nsteps:\n  - id: source_slot\n    save:\n      value: 1\n  - id: call_action\n    run:\n      action: 7\n      input: 0\n  - id: done\n    finish:\n      result: 1\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let node = workflow.node(StepIdx::new(1)).ok_or("missing run node")?;
+
+        assert!(matches!(
+            node.kind,
+            CompiledNodeKind::Do { action, input }
+                if action == ActionId::new(7) && input == SlotIdx::ZERO
+        ));
+        assert_eq!(node.output, Some(SlotIdx::new(1)));
+        assert_eq!(node.next, Some(StepIdx::new(2)));
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_do_alias_to_do_node() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: do_case\nwhen:\n  manual: {}\nsteps:\n  - id: source_slot\n    save:\n      value: 1\n  - id: call_action\n    do:\n      action: 11\n      input: 0\n  - id: done\n    finish:\n      result: 1\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let node = workflow.node(StepIdx::new(1)).ok_or("missing do node")?;
+
+        assert!(matches!(
+            node.kind,
+            CompiledNodeKind::Do { action, input }
+                if action == ActionId::new(11) && input == SlotIdx::ZERO
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_preserves_action_name_run_rejection() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: action_name\nwhen:\n  manual: {}\nsteps:\n  - id: call_action\n    run: shell.run\n  - id: done\n    finish:\n      result: 0\n",
+        );
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "run" }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_action_schema_form_with_unknown_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: action_schema\nwhen:\n  manual: {}\nsteps:\n  - id: source_slot\n    save:\n      value: 1\n  - id: call_action\n    run:\n      action: 7\n      input: 0\n      with: {}\n  - id: done\n    finish:\n      result: 1\n",
+        );
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepPrimitiveField { step: 1, primitive: "run", field }) if field.as_ref() == "with")
+        ));
     }
 
     #[test]
