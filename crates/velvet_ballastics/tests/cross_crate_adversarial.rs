@@ -571,7 +571,7 @@ fn runtime_to_storage_fjall_journal_open_and_close_temp_dir() {
     };
 
     // When: opening a Fjall journal
-    let result = vb_storage::FjallJournal::open(dir.path());
+    let result = vb_storage::FjallJournal::open(dir.path(), None);
 
     // Then: journal opens successfully
     match result {

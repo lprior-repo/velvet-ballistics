@@ -555,7 +555,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -599,7 +599,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -655,7 +655,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -766,7 +766,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let Ok(queue) = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).map(Arc::new) else {
@@ -835,7 +835,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let Ok(volatile_queue) =
@@ -984,7 +984,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let Ok(queue) = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).map(Arc::new) else {

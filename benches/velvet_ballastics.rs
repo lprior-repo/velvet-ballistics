@@ -267,12 +267,12 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     let encoded_payload = vb_ipc::encode_payload(&payload, max_payload);
     let journal_dir = tempfile::tempdir();
     let journal = match journal_dir.as_ref() {
-        Ok(dir) => vb_storage::FjallJournal::open(dir.path()).ok(),
+        Ok(dir) => vb_storage::FjallJournal::open(dir.path(), None).ok(),
         Err(_) => None,
     };
     let replay_dir = tempfile::tempdir();
     let replay_journal = match replay_dir.as_ref() {
-        Ok(dir) => vb_storage::FjallJournal::open(dir.path()).ok(),
+        Ok(dir) => vb_storage::FjallJournal::open(dir.path(), None).ok(),
         Err(_) => None,
     };
     if let Some(journal) = replay_journal.as_ref() {
