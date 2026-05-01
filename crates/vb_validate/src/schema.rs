@@ -526,4 +526,684 @@ mod tests {
         let max_id = "a".repeat(64);
         assert!(is_valid_id(&max_id));
     }
+
+    // ---------------------------------------------------------------------------
+    // BDD exact-assertion tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn validate_workflow_schema_returns_unknown_top_level_field_for_invalid_field() {
+        // Given a workflow doc with a field not in ALLOWED_TOP_LEVEL_FIELDS
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+            ("bogus_field", FieldValue::Empty),
+        ]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns UnknownTopLevelField
+        assert_eq!(result, Err(ValidationError::UnknownTopLevelField));
+    }
+
+    #[test]
+    fn validate_workflow_schema_returns_unknown_step_field_for_invalid_step_field() {
+        // Given a workflow doc where a step has a field not in ALLOWED_STEP_FIELDS
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("finish", FieldValue::Empty),
+                ("nonsense", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns UnknownStepField
+        assert_eq!(result, Err(ValidationError::UnknownStepField));
+    }
+
+    #[test]
+    fn validate_workflow_schema_returns_missing_required_field_for_absent_name() {
+        // Given a workflow doc without "name"
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns MissingRequiredField with field "name"
+        assert_eq!(result, Err(ValidationError::MissingRequiredField {
+            field: "name".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_workflow_schema_returns_missing_required_field_for_absent_steps() {
+        // Given a workflow doc without "steps"
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+        ]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns MissingRequiredField with field "steps"
+        assert_eq!(result, Err(ValidationError::MissingRequiredField {
+            field: "steps".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_version_returns_invalid_version_for_bad_version() {
+        // Given a workflow doc with a wrong version string
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("2.0".to_owned())),
+        ]);
+        // When validate_version is called
+        let result = validate_version(&doc);
+        // Then it returns InvalidVersion with the exact version string
+        assert_eq!(result, Err(ValidationError::InvalidVersion {
+            version: "2.0".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_version_accepts_current_version() {
+        // Given a workflow doc with the canonical version
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+        ]);
+        // When validate_version is called
+        let result = validate_version(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_version_rejects_empty_version() {
+        // Given a workflow doc with an empty version string
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String(String::new())),
+        ]);
+        // When validate_version is called
+        let result = validate_version(&doc);
+        // Then it returns InvalidVersion with empty string
+        assert_eq!(result, Err(ValidationError::InvalidVersion {
+            version: String::new(),
+        }));
+    }
+
+    #[test]
+    fn validate_version_rejects_unknown_version() {
+        // Given a workflow doc with an unknown version string
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("other-language/v2".to_owned())),
+        ]);
+        // When validate_version is called
+        let result = validate_version(&doc);
+        // Then it returns InvalidVersion with the exact version
+        assert_eq!(result, Err(ValidationError::InvalidVersion {
+            version: "other-language/v2".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_version_returns_missing_required_field_when_absent() {
+        // Given a workflow doc with no version field
+        let doc = make_workflow(vec![
+            ("name", FieldValue::String("test".to_owned())),
+        ]);
+        // When validate_version is called
+        let result = validate_version(&doc);
+        // Then it returns MissingRequiredField for "version"
+        assert_eq!(result, Err(ValidationError::MissingRequiredField {
+            field: "version".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_ids_returns_invalid_id_for_malformed_id() {
+        // Given a workflow doc with a step whose id starts with a digit
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("1bad".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns InvalidId with the exact id
+        assert_eq!(result, Err(ValidationError::InvalidId {
+            id: "1bad".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_ids_returns_reserved_id_for_system_id() {
+        // Given a workflow doc with a step using a reserved id
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("runtime".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns ReservedId with the exact id
+        assert_eq!(result, Err(ValidationError::ReservedId {
+            id: "runtime".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_ids_returns_duplicate_id_for_same_step_id() {
+        // Given a single id check with "step1" already seen
+        let seen = vec!["step1"];
+        // When validate_single_id is called with "step1" again
+        let result = validate_single_id("step1", &seen);
+        // Then it returns DuplicateId with exact id
+        assert_eq!(result, Err(ValidationError::DuplicateId {
+            id: "step1".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_single_primitive_returns_multiple_step_primitives_for_two_primitives() {
+        // Given a step with both "save" and "finish"
+        let step = make_step(vec![
+            ("id", FieldValue::String("s1".to_owned())),
+            ("save", FieldValue::Empty),
+            ("finish", FieldValue::Empty),
+        ]);
+        // When validate_single_primitive is called
+        let result = validate_single_primitive(&step);
+        // Then it returns MultipleStepPrimitives
+        assert_eq!(result, Err(ValidationError::MultipleStepPrimitives));
+    }
+
+    #[test]
+    fn validate_ids_accepts_valid_step_ids() {
+        // Given a workflow doc with valid IDs
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("my_workflow".to_owned())),
+            ("when", FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![
+                make_step(vec![
+                    ("id", FieldValue::String("step_one".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ]),
+                make_step(vec![
+                    ("id", FieldValue::String("step_two".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ]),
+            ])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_ids_rejects_step_id_with_spaces() {
+        // Given a workflow doc with a step id containing spaces
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("has space".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns InvalidId
+        assert_eq!(result, Err(ValidationError::InvalidId {
+            id: "has space".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_ids_rejects_step_id_starting_with_digit() {
+        // Given a workflow doc with a step id starting with a digit
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("9lead".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns InvalidId with exact id
+        assert_eq!(result, Err(ValidationError::InvalidId {
+            id: "9lead".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_ids_rejects_step_id_with_special_chars() {
+        // Given a workflow doc with a step id containing a dash
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("bad-id".to_owned())),
+                ("finish", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_ids is called
+        let result = validate_ids(&doc);
+        // Then it returns InvalidId with exact id
+        assert_eq!(result, Err(ValidationError::InvalidId {
+            id: "bad-id".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_trigger_accepts_ipc_trigger() {
+        // Given a workflow doc with an ipc trigger
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)])),
+        ]);
+        // When validate_trigger is called
+        let result = validate_trigger(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_trigger_accepts_manual_trigger() {
+        // Given a workflow doc with a manual trigger
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+        ]);
+        // When validate_trigger is called
+        let result = validate_trigger(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_trigger_rejects_unsupported_trigger() {
+        // Given a workflow doc with a cron trigger
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![("cron".to_owned(), FieldValue::Empty)])),
+        ]);
+        // When validate_trigger is called
+        let result = validate_trigger(&doc);
+        // Then it returns UnsupportedTrigger with the exact trigger name
+        assert_eq!(result, Err(ValidationError::UnsupportedTrigger {
+            trigger: "cron".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_trigger_rejects_empty_when_mapping() {
+        // Given a workflow doc with an empty when mapping
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![])),
+        ]);
+        // When validate_trigger is called
+        let result = validate_trigger(&doc);
+        // Then it returns MissingRequiredField for "when"
+        assert_eq!(result, Err(ValidationError::MissingRequiredField {
+            field: "when".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_step_fields_accepts_valid_do_step() {
+        // Given a workflow doc with a step that has a "do" primitive
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("do", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_step_fields_accepts_valid_set_step() {
+        // Given a workflow doc with a step that has a "save" primitive (set)
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("save", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_step_fields_accepts_valid_branch_step() {
+        // Given a workflow doc with a step that has a "choose" primitive
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("choose", FieldValue::Empty),
+            ])])),
+        ]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_step_fields_rejects_step_without_kind() {
+        // Given a workflow doc with a step that has no primitive field
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+            ])])),
+        ]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns MissingStepPrimitive
+        assert_eq!(result, Err(ValidationError::MissingStepPrimitive));
+    }
+
+    #[test]
+    fn validate_workflow_schema_accepts_minimal_valid_workflow() {
+        // Given a minimal valid workflow document
+        let doc = valid_workflow_doc();
+        // When validate_workflow_schema is called end-to-end
+        let result = validate_workflow_schema(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_workflow_schema_rejects_empty_workflow() {
+        // Given a workflow doc with no fields at all
+        let doc = make_workflow(vec![]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns MissingRequiredField for the first required field ("version")
+        assert_eq!(result, Err(ValidationError::MissingRequiredField {
+            field: "version".to_owned(),
+        }));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Accessor and query tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn get_string_returns_some_for_existing_string_field() {
+        // Given a workflow doc with a string field "name"
+        let doc = make_workflow(vec![
+            ("name", FieldValue::String("hello".to_owned())),
+        ]);
+        // When get_string is called
+        let result = doc.get_string("name");
+        // Then it returns Some with the exact value
+        assert_eq!(result, Some("hello"));
+    }
+
+    #[test]
+    fn get_string_returns_none_for_missing_field() {
+        // Given a workflow doc without "name"
+        let doc = make_workflow(vec![]);
+        // When get_string is called for "name"
+        let result = doc.get_string("name");
+        // Then it returns None
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn get_string_returns_none_for_non_string_field() {
+        // Given a workflow doc where "name" is a mapping, not a string
+        let doc = make_workflow(vec![
+            ("name", FieldValue::Mapping(vec![])),
+        ]);
+        // When get_string is called for "name"
+        let result = doc.get_string("name");
+        // Then it returns None
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn get_mapping_returns_some_for_existing_mapping() {
+        // Given a workflow doc with a mapping field "when"
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)])),
+        ]);
+        // When get_mapping is called
+        let result = doc.get_mapping("when");
+        // Then it returns Some with the mapping entries
+        assert!(result.is_some());
+        let Some(mapping) = result else {
+            return;
+        };
+        assert_eq!(mapping.len(), 1);
+        assert_eq!(mapping[0].0, "manual");
+    }
+
+    #[test]
+    fn get_mapping_returns_none_for_missing_field() {
+        // Given a workflow doc without "when"
+        let doc = make_workflow(vec![]);
+        // When get_mapping is called for "when"
+        let result = doc.get_mapping("when");
+        // Then it returns None
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn get_sequence_returns_some_for_existing_sequence() {
+        // Given a workflow doc with a sequence field "steps"
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+            ])])),
+        ]);
+        // When get_sequence is called
+        let result = doc.get_sequence("steps");
+        // Then it returns Some with the steps
+        assert!(result.is_some());
+        let Some(seq) = result else {
+            return;
+        };
+        assert_eq!(seq.len(), 1);
+    }
+
+    #[test]
+    fn get_sequence_returns_none_for_missing_field() {
+        // Given a workflow doc without "steps"
+        let doc = make_workflow(vec![]);
+        // When get_sequence is called for "steps"
+        let result = doc.get_sequence("steps");
+        // Then it returns None
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn has_field_returns_true_for_existing_field() {
+        // Given a workflow doc with a "name" field
+        let doc = make_workflow(vec![
+            ("name", FieldValue::String("test".to_owned())),
+        ]);
+        // When has_field is called for "name"
+        let result = doc.has_field("name");
+        // Then it returns true
+        assert!(result);
+    }
+
+    #[test]
+    fn has_field_returns_false_for_missing_field() {
+        // Given a workflow doc without "name"
+        let doc = make_workflow(vec![]);
+        // When has_field is called for "name"
+        let result = doc.has_field("name");
+        // Then it returns false
+        assert!(!result);
+    }
+
+    #[test]
+    fn get_string_with_multiple_fields_returns_correct_one() {
+        // Given a workflow doc with multiple string fields
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("multi_test".to_owned())),
+        ]);
+        // When get_string is called for each
+        let version = doc.get_string("version");
+        let name = doc.get_string("name");
+        // Then each returns its exact value
+        assert_eq!(version, Some("velvet-ballastics/v1"));
+        assert_eq!(name, Some("multi_test"));
+    }
+
+    #[test]
+    fn get_mapping_with_nested_data_returns_correct_mapping() {
+        // Given a workflow doc with a mapping containing nested data
+        let doc = make_workflow(vec![
+            ("when", FieldValue::Mapping(vec![
+                ("manual".to_owned(), FieldValue::String("test".to_owned())),
+            ])),
+        ]);
+        // When get_mapping is called
+        let result = doc.get_mapping("when");
+        // Then it returns the mapping with the nested value
+        assert!(result.is_some());
+        let Some(mapping) = result else {
+            return;
+        };
+        assert_eq!(mapping.len(), 1);
+        assert_eq!(mapping[0].0, "manual");
+        let FieldValue::String(ref s) = mapping[0].1 else {
+            return;
+        };
+        assert_eq!(s, "test");
+    }
+
+    #[test]
+    fn get_sequence_with_multiple_entries_returns_correct_one() {
+        // Given a workflow doc with multiple steps in sequence
+        let doc = make_workflow(vec![
+            ("steps", FieldValue::Sequence(vec![
+                make_step(vec![("id", FieldValue::String("s1".to_owned()))]),
+                make_step(vec![("id", FieldValue::String("s2".to_owned()))]),
+            ])),
+        ]);
+        // When get_sequence is called
+        let result = doc.get_sequence("steps");
+        // Then it returns both steps in order
+        assert!(result.is_some());
+        let Some(seq) = result else {
+            return;
+        };
+        assert_eq!(seq.len(), 2);
+        assert_eq!(seq[0].get_string("id"), Some("s1"));
+        assert_eq!(seq[1].get_string("id"), Some("s2"));
+    }
+
+    #[test]
+    fn field_names_returns_correct_fields_for_workflow() {
+        // Given a workflow doc with known fields
+        let doc = make_workflow(vec![
+            ("version", FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name", FieldValue::String("test".to_owned())),
+        ]);
+        // When field_names is called
+        let names = doc.field_names();
+        // Then it returns exactly the field names
+        assert_eq!(names, vec!["version", "name"]);
+    }
+
+    #[test]
+    fn step_doc_get_string_returns_value_for_existing_field() {
+        // Given a step with an "id" string field
+        let step = make_step(vec![
+            ("id", FieldValue::String("my_step".to_owned())),
+        ]);
+        // When get_string is called
+        let result = step.get_string("id");
+        // Then it returns Some with exact value
+        assert_eq!(result, Some("my_step"));
+    }
+
+    #[test]
+    fn step_doc_get_string_returns_none_for_missing() {
+        // Given a step with no "id" field
+        let step = make_step(vec![
+            ("finish", FieldValue::Empty),
+        ]);
+        // When get_string is called for "id"
+        let result = step.get_string("id");
+        // Then it returns None
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn step_doc_field_names_returns_all_names() {
+        // Given a step with multiple fields
+        let step = make_step(vec![
+            ("id", FieldValue::String("s1".to_owned())),
+            ("finish", FieldValue::Empty),
+        ]);
+        // When field_names is called
+        let names = step.field_names();
+        // Then it returns both names
+        assert_eq!(names, vec!["id", "finish"]);
+    }
+
+    #[test]
+    fn from_pairs_creates_workflow_with_given_pairs() {
+        // Given a set of field pairs
+        let pairs = vec![
+            ("version".to_owned(), FieldValue::String("velvet-ballastics/v1".to_owned())),
+            ("name".to_owned(), FieldValue::String("roundtrip".to_owned())),
+        ];
+        // When WorkflowDoc::from_pairs is called
+        let doc = WorkflowDoc::from_pairs(pairs);
+        // Then the fields are accessible
+        assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
+        assert_eq!(doc.get_string("name"), Some("roundtrip"));
+    }
+
+    #[test]
+    fn from_pairs_creates_step_with_given_pairs() {
+        // Given a set of field pairs for a step
+        let pairs = vec![
+            ("id".to_owned(), FieldValue::String("s1".to_owned())),
+            ("do".to_owned(), FieldValue::Empty),
+        ];
+        // When StepDoc::from_pairs is called
+        let step = StepDoc::from_pairs(pairs);
+        // Then the fields are accessible
+        assert_eq!(step.get_string("id"), Some("s1"));
+        assert_eq!(step.field_names(), vec!["id", "do"]);
+    }
 }

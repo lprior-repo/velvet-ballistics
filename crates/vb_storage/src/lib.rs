@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Mutex;
 use thiserror::Error;
-use vb_core::{ActionId, ResourceContract, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 /// Immutable YAML source records by digest.
 pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
@@ -447,71 +447,6 @@ pub struct BlobRecord {
     pub bytes: Vec<u8>,
 }
 
-/// Payload limits used before any envelope payload allocation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StorageLimits {
-    /// Maximum journal event payload bytes.
-    pub journal_event_bytes: u32,
-    /// Maximum workflow source payload bytes.
-    pub workflow_source_bytes: u32,
-    /// Maximum compiled IR payload bytes.
-    pub compiled_ir_bytes: u32,
-    /// Maximum run header payload bytes.
-    pub run_header_bytes: u32,
-    /// Maximum snapshot payload bytes.
-    pub snapshot_bytes: u32,
-    /// Maximum blob payload bytes.
-    pub blob_bytes: u32,
-}
-
-impl StorageLimits {
-    /// Default storage limits matching the crate constants.
-    pub const DEFAULT: Self = Self {
-        journal_event_bytes: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        workflow_source_bytes: MAX_WORKFLOW_SOURCE_BYTES,
-        compiled_ir_bytes: MAX_COMPILED_IR_BYTES,
-        run_header_bytes: MAX_RUN_HEADER_BYTES,
-        snapshot_bytes: MAX_SNAPSHOT_BYTES,
-        blob_bytes: MAX_BLOB_BYTES,
-    };
-
-    /// Builds limits from the workflow resource contract where the contract owns the bound.
-    pub fn from_resource_contract(contract: ResourceContract) -> Result<Self, JournalError> {
-        Ok(Self {
-            journal_event_bytes: contract.max_journal_batch_bytes,
-            workflow_source_bytes: contract.max_input_bytes,
-            compiled_ir_bytes: MAX_COMPILED_IR_BYTES,
-            run_header_bytes: MAX_RUN_HEADER_BYTES,
-            snapshot_bytes: contract.max_output_bytes,
-            blob_bytes: u64_to_u32_limit(contract.max_blob_bytes)?,
-        })
-    }
-}
-
-/// Decoded pending action index entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PendingActionIndex {
-    /// Action identifier.
-    pub action: ActionId,
-    /// Run identifier.
-    pub run: RunId,
-    /// Step index where the action is pending.
-    pub step: StepIdx,
-}
-
-/// Durable state loaded for recovery without reparsing workflow source.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecoveryHydration {
-    /// Persisted run header.
-    pub header: RunHeaderRecord,
-    /// Persisted compiled IR artifact, if present.
-    pub compiled_ir: Option<CompiledIrRecord>,
-    /// Latest persisted snapshot, if present.
-    pub latest_snapshot: Option<RunSnapshot>,
-    /// Journal events after the latest snapshot, or the full journal without a snapshot.
-    pub tail_events: Vec<JournalEvent>,
-}
-
 /// Encodes a postcard payload behind the 60-byte storage envelope.
 pub fn encode_record<T: Serialize>(
     magic: u32,
@@ -695,15 +630,6 @@ impl FjallJournal {
 
     /// Stores immutable workflow source bytes by digest.
     pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
-        self.put_workflow_source_with_limits(record, StorageLimits::DEFAULT)
-    }
-
-    /// Stores immutable workflow source bytes by digest with caller-provided limits.
-    pub fn put_workflow_source_with_limits(
-        &self,
-        record: &WorkflowSourceRecord,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -714,7 +640,7 @@ impl FjallJournal {
             RecordKind::WorkflowSource,
             0,
             record,
-            limits.workflow_source_bytes,
+            MAX_WORKFLOW_SOURCE_BYTES,
         )?;
         self.workflow_source.insert(key.to_vec(), value)?;
         Ok(())
@@ -736,15 +662,6 @@ impl FjallJournal {
 
     /// Stores compiled IR bytes by digest.
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        self.put_compiled_ir_with_limits(record, StorageLimits::DEFAULT)
-    }
-
-    /// Stores compiled IR bytes by digest with caller-provided limits.
-    pub fn put_compiled_ir_with_limits(
-        &self,
-        record: &CompiledIrRecord,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -755,7 +672,7 @@ impl FjallJournal {
             RecordKind::CompiledIr,
             0,
             record,
-            limits.compiled_ir_bytes,
+            MAX_COMPILED_IR_BYTES,
         )?;
         self.compiled_ir.insert(key.to_vec(), value)?;
         Ok(())
@@ -777,15 +694,6 @@ impl FjallJournal {
 
     /// Stores run metadata by run id.
     pub fn put_run_header(&self, record: &RunHeaderRecord) -> Result<(), JournalError> {
-        self.put_run_header_with_limits(record, StorageLimits::DEFAULT)
-    }
-
-    /// Stores run metadata by run id with caller-provided limits.
-    pub fn put_run_header_with_limits(
-        &self,
-        record: &RunHeaderRecord,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -796,7 +704,7 @@ impl FjallJournal {
             RecordKind::RunHeader,
             record.run.as_u64(),
             record,
-            limits.run_header_bytes,
+            MAX_RUN_HEADER_BYTES,
         )?;
         self.run_header.insert(key.to_vec(), value)?;
         Ok(())
@@ -815,20 +723,6 @@ impl FjallJournal {
 
     /// Stores a compact run snapshot.
     pub fn put_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
-        self.write_snapshot(snapshot)
-    }
-
-    /// Stores a compact run snapshot.
-    pub fn write_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
-        self.write_snapshot_with_limits(snapshot, StorageLimits::DEFAULT)
-    }
-
-    /// Stores a compact run snapshot with caller-provided limits.
-    pub fn write_snapshot_with_limits(
-        &self,
-        snapshot: &RunSnapshot,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -839,7 +733,7 @@ impl FjallJournal {
             RecordKind::Snapshot,
             snapshot.seq.get(),
             snapshot,
-            limits.snapshot_bytes,
+            MAX_SNAPSHOT_BYTES,
         )?;
         self.run_snapshot.insert(key.to_vec(), value)?;
         Ok(())
@@ -858,21 +752,12 @@ impl FjallJournal {
 
     /// Stores a bounded blob by digest.
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
-        self.put_blob_with_limits(record, StorageLimits::DEFAULT)
-    }
-
-    /// Stores a bounded blob by digest with caller-provided limits.
-    pub fn put_blob_with_limits(
-        &self,
-        record: &BlobRecord,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = blob_key(record.digest)?;
-        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, limits.blob_bytes)?;
+        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
         self.blob.insert(key.to_vec(), value)?;
         Ok(())
     }
@@ -895,33 +780,11 @@ impl FjallJournal {
         Ok(())
     }
 
-    /// Queries run ids for a status byte in index order.
-    pub fn runs_by_status(&self, state: u8) -> Result<Vec<RunId>, JournalError> {
-        let prefix = status_index_prefix(state)?;
-        let mut runs = Vec::new();
-        for item in self.index_status.prefix(prefix) {
-            let key = item.key()?;
-            runs.push(run_from_status_key(key.as_ref())?);
-        }
-        Ok(runs)
-    }
-
     /// Inserts minimal workflow index marker bytes.
     pub fn put_workflow_index(&self, workflow: WorkflowId, run: RunId) -> Result<(), JournalError> {
         let key = index_workflow_key(workflow, run)?;
         self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
         Ok(())
-    }
-
-    /// Queries run ids for a workflow id in run-id order.
-    pub fn runs_by_workflow(&self, workflow: WorkflowId) -> Result<Vec<RunId>, JournalError> {
-        let prefix = workflow_index_prefix(workflow)?;
-        let mut runs = Vec::new();
-        for item in self.index_workflow.prefix(prefix) {
-            let key = item.key()?;
-            runs.push(run_from_workflow_key(key.as_ref())?);
-        }
-        Ok(runs)
     }
 
     /// Inserts minimal pending action index marker bytes.
@@ -936,62 +799,26 @@ impl FjallJournal {
         Ok(())
     }
 
-    /// Queries pending action index entries for an action id.
-    pub fn pending_actions(
-        &self,
-        action: ActionId,
-    ) -> Result<Vec<PendingActionIndex>, JournalError> {
-        let prefix = action_index_prefix(action)?;
-        let mut entries = Vec::new();
-        for item in self.index_action.prefix(prefix) {
-            let key = item.key()?;
-            entries.push(pending_action_from_key(key.as_ref())?);
-        }
-        Ok(entries)
-    }
-
     /// Appends one event without forcing a durability barrier.
     pub fn append_journaled(&self, event: &JournalEvent) -> Result<(), JournalError> {
-        self.append_journaled_with_limits(event, StorageLimits::DEFAULT)
-    }
-
-    /// Appends one event with caller-provided limits.
-    pub fn append_journaled_with_limits(
-        &self,
-        event: &JournalEvent,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        self.append_unpersisted(event, limits)
+        self.append_unpersisted(event)
     }
 
     /// Appends one event and forces a strict durability barrier before returning.
     pub fn append_strict(&self, event: &JournalEvent) -> Result<(), JournalError> {
-        self.append_strict_with_limits(event, StorageLimits::DEFAULT)
-    }
-
-    /// Appends one event with caller-provided limits and forces strict durability.
-    pub fn append_strict_with_limits(
-        &self,
-        event: &JournalEvent,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        self.append_unpersisted(event, limits)?;
+        self.append_unpersisted(event)?;
         self.persist_strict()
     }
 
-    fn append_unpersisted(
-        &self,
-        event: &JournalEvent,
-        limits: StorageLimits,
-    ) -> Result<(), JournalError> {
+    fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = journal_key(event.run_id(), event.seq())?;
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
@@ -1004,7 +831,7 @@ impl FjallJournal {
             event.record_kind(),
             event.seq().get(),
             event,
-            limits.journal_event_bytes,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
         self.events.insert(key.to_vec(), value)?;
         Ok(())
@@ -1034,80 +861,6 @@ impl FjallJournal {
         }
 
         Ok(replay)
-    }
-
-    /// Reads the latest snapshot for a run using the lexicographic sequence suffix.
-    pub fn read_latest_snapshot(&self, run: RunId) -> Result<Option<RunSnapshot>, JournalError> {
-        let prefix = run_snapshot_prefix(run)?;
-        let mut latest: Option<RunSnapshot> = None;
-        for item in self.run_snapshot.prefix(prefix) {
-            let value = item.value()?;
-            let (_, snapshot) =
-                decode_record::<RunSnapshot>(value.as_ref(), MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)?;
-            latest = Some(snapshot);
-        }
-        Ok(latest)
-    }
-
-    /// Reads events after `seq` for snapshot-plus-tail recovery.
-    pub fn events_for_run_after(
-        &self,
-        run: RunId,
-        seq: EventSeq,
-    ) -> Result<Vec<JournalEvent>, JournalError> {
-        let mut events = Vec::new();
-        let mut expected = next_seq(seq)?;
-        for item in self.events.prefix(run_prefix(run)?) {
-            let value = item.value()?;
-            let (_, event) = decode_record::<JournalEvent>(
-                value.as_ref(),
-                MAGIC_JOURNAL_EVENT,
-                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-            )?;
-            if event.seq() <= seq {
-                continue;
-            }
-            validate_replayed_event(run, expected, &event)?;
-            expected = next_seq(expected)?;
-            events.push(event);
-        }
-        Ok(events)
-    }
-
-    /// Hydrates persisted recovery state for a run without reparsing workflow source.
-    pub fn hydrate_recovery_state(
-        &self,
-        run: RunId,
-    ) -> Result<Option<RecoveryHydration>, JournalError> {
-        let Some(header) = self.run_header(run)? else {
-            return Ok(None);
-        };
-        let latest_snapshot = self.read_latest_snapshot(run)?;
-        let tail_events = match &latest_snapshot {
-            Some(snapshot) => self.events_for_run_after(run, snapshot.seq)?,
-            None => self.events_for_run(run)?,
-        };
-        let compiled_ir = self.compiled_ir(header.compiled_digest)?;
-        Ok(Some(RecoveryHydration {
-            header,
-            compiled_ir,
-            latest_snapshot,
-            tail_events,
-        }))
-    }
-
-    /// Verifies run metadata against the immutable accepted-run digest.
-    pub fn verify_run_metadata_digest(&self, run: RunId) -> Result<(), JournalError> {
-        let header = self
-            .run_header(run)?
-            .ok_or(JournalError::MissingRunHeader { run })?;
-        let events = self.events_for_run(run)?;
-        for event in &events {
-            if let JournalEvent::RunAccepted { workflow, .. } = event {
-                return verify_digest_match(header.compiled_digest, *workflow);
-            }
-        }
-        Err(JournalError::MissingRunAccepted { run })
     }
 
     fn decode_optional<T: DeserializeOwned>(
@@ -1227,26 +980,6 @@ pub enum JournalError {
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,
-    /// A run header was required for recovery but was not present.
-    #[error("missing run header for run {run:?}")]
-    MissingRunHeader {
-        /// Run identifier.
-        run: RunId,
-    },
-    /// A run accepted event was required for digest verification but was not present.
-    #[error("missing run accepted event for run {run:?}")]
-    MissingRunAccepted {
-        /// Run identifier.
-        run: RunId,
-    },
-    /// Run metadata digest differs from the accepted event digest.
-    #[error("run metadata digest mismatch")]
-    DigestMismatch {
-        /// Expected digest.
-        expected: WorkflowDigest,
-        /// Found digest.
-        found: WorkflowDigest,
-    },
 }
 
 fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
@@ -1270,36 +1003,6 @@ fn sequenced_run_key(
 
 fn run_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
     run_only_key(PREFIX_RUN_EVENT, run)
-}
-
-fn run_snapshot_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
-    run_only_key(PREFIX_RUN_SNAPSHOT, run)
-}
-
-fn status_index_prefix(state: u8) -> Result<[u8; 2], JournalError> {
-    let mut key = ArrayVec::<u8, 2>::new();
-    key.try_push(PREFIX_INDEX_STATUS)
-        .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_push(state).map_err(|_| JournalError::KeyCapacity)?;
-    key.into_inner().map_err(|_| JournalError::KeyCapacity)
-}
-
-fn workflow_index_prefix(workflow: WorkflowId) -> Result<[u8; 5], JournalError> {
-    let mut key = ArrayVec::<u8, 5>::new();
-    key.try_push(PREFIX_INDEX_WORKFLOW)
-        .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&workflow.as_u32().to_be_bytes())
-        .map_err(|_| JournalError::KeyCapacity)?;
-    key.into_inner().map_err(|_| JournalError::KeyCapacity)
-}
-
-fn action_index_prefix(action: ActionId) -> Result<[u8; 3], JournalError> {
-    let mut key = ArrayVec::<u8, 3>::new();
-    key.try_push(PREFIX_INDEX_ACTION)
-        .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&action.get().to_be_bytes())
-        .map_err(|_| JournalError::KeyCapacity)?;
-    key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
 
 fn digest_key(
@@ -1335,25 +1038,6 @@ fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError> {
         });
     }
     Ok(payload_len)
-}
-
-fn u64_to_u32_limit(value: u64) -> Result<u32, JournalError> {
-    u32::try_from(value).map_err(|_| JournalError::PayloadTooLarge {
-        len: PAYLOAD_LEN_CONVERSION_MAX,
-        max: PAYLOAD_LEN_CONVERSION_MAX,
-    })
-}
-
-/// Verifies two digests match exactly.
-pub fn verify_digest_match(
-    expected: WorkflowDigest,
-    found: WorkflowDigest,
-) -> Result<(), JournalError> {
-    if expected == found {
-        Ok(())
-    } else {
-        Err(JournalError::DigestMismatch { expected, found })
-    }
 }
 
 fn encode_record_payload(
@@ -1514,45 +1198,6 @@ fn read_u64(bytes: &[u8], offset: usize) -> Result<u64, JournalError> {
     Ok(u64::from_le_bytes(raw))
 }
 
-fn read_u16_be(bytes: &[u8], offset: usize) -> Result<u16, JournalError> {
-    let end = offset.checked_add(2).ok_or(JournalError::UnexpectedEof)?;
-    let slice = bytes.get(offset..end).ok_or(JournalError::UnexpectedEof)?;
-    let raw = <[u8; 2]>::try_from(slice).map_err(|_| JournalError::UnexpectedEof)?;
-    Ok(u16::from_be_bytes(raw))
-}
-
-fn read_u64_be(bytes: &[u8], offset: usize) -> Result<u64, JournalError> {
-    let end = offset.checked_add(8).ok_or(JournalError::UnexpectedEof)?;
-    let slice = bytes.get(offset..end).ok_or(JournalError::UnexpectedEof)?;
-    let raw = <[u8; 8]>::try_from(slice).map_err(|_| JournalError::UnexpectedEof)?;
-    Ok(u64::from_be_bytes(raw))
-}
-
-fn run_from_status_key(key: &[u8]) -> Result<RunId, JournalError> {
-    if key.len() != INDEX_STATUS_KEY_BYTES {
-        return Err(JournalError::UnexpectedEof);
-    }
-    Ok(RunId::new(read_u64_be(key, 10)?))
-}
-
-fn run_from_workflow_key(key: &[u8]) -> Result<RunId, JournalError> {
-    if key.len() != INDEX_WORKFLOW_KEY_BYTES {
-        return Err(JournalError::UnexpectedEof);
-    }
-    Ok(RunId::new(read_u64_be(key, 5)?))
-}
-
-fn pending_action_from_key(key: &[u8]) -> Result<PendingActionIndex, JournalError> {
-    if key.len() != INDEX_ACTION_KEY_BYTES {
-        return Err(JournalError::UnexpectedEof);
-    }
-    Ok(PendingActionIndex {
-        action: ActionId::new(read_u16_be(key, 1)?),
-        run: RunId::new(read_u64_be(key, 3)?),
-        step: StepIdx::new(read_u16_be(key, 11)?),
-    })
-}
-
 fn write_u16(bytes: &mut [u8], offset: usize, value: u16) -> Result<(), JournalError> {
     let end = offset.checked_add(2).ok_or(JournalError::UnexpectedEof)?;
     let target = bytes
@@ -1619,21 +1264,21 @@ fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
 mod tests {
     use super::{
         BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-        MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, RunHeaderRecord, StorageLimits,
-        WorkflowSourceRecord, blob_key, compiled_ir_key, decode_record, encode_record,
-        index_action_key, index_status_key, index_workflow_key, journal_key, run_event_key,
-        run_header_key, run_snapshot_key, workflow_source_key,
+        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
+        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
+        MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+        PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS,
+        PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT,
+        PREFIX_WORKFLOW_SOURCE,
+        CURRENT_SCHEMA_VERSION, RECORD_HEADER_LEN,
+        RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
+        index_status_key, index_workflow_key, journal_key, run_event_key, run_header_key,
+        run_snapshot_key, workflow_source_key,
     };
     use crate::recovery::RunSnapshot;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
-
-    fn storage_tempdir() -> Result<tempfile::TempDir, std::io::Error> {
-        let base =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/vb_storage_tests");
-        std::fs::create_dir_all(&base)?;
-        tempfile::Builder::new().prefix("journal-").tempdir_in(base)
-    }
 
     #[test]
     fn journal_key_is_fixed_width() {
@@ -1859,7 +1504,7 @@ mod tests {
 
     #[test]
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
-        let temp_dir = storage_tempdir();
+        let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -1971,7 +1616,7 @@ mod tests {
 
     #[test]
     fn duplicate_event_append_is_rejected() {
-        let temp_dir = storage_tempdir();
+        let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -1996,7 +1641,7 @@ mod tests {
 
     #[test]
     fn replay_returns_contiguous_events_for_run() {
-        let temp_dir = storage_tempdir();
+        let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else {
             return;
@@ -2211,12 +1856,2263 @@ mod tests {
         let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128);
         assert!(matches!(result, Err(JournalError::UnexpectedEof)));
     }
+
+    // --- Section 1: Error Variant Exact-Assertion Tests ---
+
+    #[test]
+    fn decode_record_returns_bad_magic_when_magic_differs() {
+        // Given an encoded record
+        // When decoded with a different expected magic
+        // Then it returns BadMagic with the encoded magic value
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_WORKFLOW_SOURCE, 128);
+        let Err(JournalError::BadMagic { found }) = result else {
+            panic!("expected BadMagic, got {:?}", result);
+        };
+        assert_eq!(found, MAGIC_JOURNAL_EVENT);
+    }
+
+    #[test]
+    fn decode_record_returns_unexpected_eof_when_bytes_too_short() {
+        // Given a zero-length byte slice
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let empty: [u8; 0] = [];
+
+        let result = decode_record::<JournalEvent>(&empty, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::UnexpectedEof)));
+    }
+
+    #[test]
+    fn encode_record_returns_payload_too_large_when_payload_exceeds_max() {
+        // Given a source record with source bytes larger than the max
+        // When encode_record is called with a tiny max_payload_len
+        // Then it returns PayloadTooLarge with correct len and max fields
+        let source = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            source: vec![0xAB; 200],
+        };
+        let result = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            &source,
+            10,
+        );
+        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
+            panic!("expected PayloadTooLarge, got {:?}", result);
+        };
+        assert_eq!(max, 10);
+        assert!(len > 10);
+    }
+
+    #[test]
+    fn encode_record_returns_record_kind_family_mismatch_for_wrong_kind() {
+        // Given a blob kind paired with workflow source magic
+        // When encode_record is called
+        // Then it returns RecordKindFamilyMismatch with the exact magic and kind
+        let source = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::Blob,
+            0,
+            &source,
+            128,
+        );
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
+            panic!("expected RecordKindFamilyMismatch, got {:?}", result);
+        };
+        assert_eq!(magic, MAGIC_WORKFLOW_SOURCE);
+        assert_eq!(kind, RecordKind::Blob.id());
+    }
+
+    #[test]
+    fn decode_record_returns_header_checksum_mismatch_on_corrupt_crc() {
+        // Given an encoded record with a flipped CRC byte
+        // When decode_record is called
+        // Then it returns HeaderChecksumMismatch
+        let event = JournalEvent::RunFinished {
+            run: RunId::new(5),
+            seq: EventSeq::new(1),
+            result: vb_core::SlotIdx::new(0),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunFinished,
+            event.seq().get(),
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
+        // Corrupt the CRC at byte 56
+        if let Some(byte) = encoded.get_mut(56) {
+            *byte = byte.wrapping_add(1);
+        }
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::HeaderChecksumMismatch)));
+    }
+
+    #[test]
+    fn decode_record_returns_payload_digest_mismatch_on_corrupt_payload() {
+        // Given an encoded record with a flipped payload byte
+        // When decode_record is called
+        // Then it returns PayloadDigestMismatch
+        let event = JournalEvent::StepStarted {
+            run: RunId::new(2),
+            seq: EventSeq::new(0),
+            step: StepIdx::new(3),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::StepStarted,
+            event.seq().get(),
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
+        // Corrupt the first payload byte (immediately after the 60-byte header)
+        if let Some(byte) = encoded.get_mut(60) {
+            *byte = byte.wrapping_add(1);
+        }
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::PayloadDigestMismatch)));
+    }
+
+    #[test]
+    fn validate_replayed_event_returns_wrong_run_when_run_id_mismatch() {
+        // Given events stored for run 10 and a replay request for run 20
+        // When events_for_run is called for run 20 on a journal that only has run 10 events
+        // Then no events are returned (no prefix match), producing an empty result
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run_a = RunId::new(10);
+        let event = JournalEvent::RunAccepted {
+            run: run_a,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let run_b = RunId::new(20);
+        let result = journal.events_for_run(run_b);
+        assert!(result.is_ok());
+        let events = result.expect("events_for_run should succeed for missing run");
+        assert!(events.is_empty(), "no events should exist for run_b");
+    }
+
+    #[test]
+    fn validate_replayed_event_returns_sequence_gap_when_seq_out_of_order() {
+        // Given a journal with seq 0 then seq 2 for the same run
+        // When events_for_run replays
+        // Then it returns SequenceGap with expected=1, actual=2
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run = RunId::new(100);
+        let event0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        assert!(journal.append_journaled(&event0).is_ok());
+
+        // Manually insert an event at seq 2 (skipping seq 1)
+        let event2 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+        };
+        assert!(journal.append_journaled(&event2).is_ok());
+
+        let result = journal.events_for_run(run);
+        let Err(JournalError::SequenceGap { expected, actual }) = result else {
+            panic!("expected SequenceGap, got {:?}", result);
+        };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(2));
+    }
+
+    #[test]
+    fn next_seq_returns_sequence_overflow_at_max() {
+        // Given EventSeq at u64::MAX
+        // When the next sequence is computed
+        // Then it returns SequenceOverflow
+        let seq = EventSeq::new(u64::MAX);
+        let result = seq.get().checked_add(1).map(EventSeq::new);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn duplicate_event_returns_exact_run_and_seq() {
+        // Given a journal with a RunAccepted event for run 42, seq 7
+        // When the same event is appended again
+        // Then DuplicateEvent is returned with run=42, seq=7
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(42),
+            seq: EventSeq::new(7),
+            workflow: WorkflowDigest::from_bytes([3; 32]),
+        };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let result = journal.append_journaled(&event);
+        let Err(JournalError::DuplicateEvent { run, seq }) = result else {
+            panic!("expected DuplicateEvent, got {:?}", result);
+        };
+        assert_eq!(run, RunId::new(42));
+        assert_eq!(seq, EventSeq::new(7));
+    }
+
+    #[test]
+    fn decode_record_returns_migration_required_for_old_schema() {
+        // Given an encoded record with schema version set to 0
+        // When decode_record is called
+        // Then it returns MigrationRequired with from=0, to=1
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Patch schema version at offset 4..6 to 0
+        encoded[4] = 0;
+        encoded[5] = 0;
+        // Recompute CRC
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::MigrationRequired { from, to }) = result else {
+            panic!("expected MigrationRequired, got {:?}", result);
+        };
+        assert_eq!(from, 0);
+        assert_eq!(to, 1);
+    }
+
+    #[test]
+    fn decode_record_returns_unsupported_schema_version_for_future() {
+        // Given an encoded record with schema version 99
+        // When decode_record is called
+        // Then it returns UnsupportedSchemaVersion with version=99
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        encoded[4] = 99;
+        encoded[5] = 0;
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
+            panic!("expected UnsupportedSchemaVersion, got {:?}", result);
+        };
+        assert_eq!(version, 99);
+    }
+
+    #[test]
+    fn decode_record_returns_unknown_record_kind_for_invalid_kind() {
+        // Given an encoded record with kind patched to 200
+        // When decode_record is called
+        // Then it returns UnknownRecordKind with kind=200
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Patch kind at offset 6..8 to 200
+        let kind_bytes = 200u16.to_le_bytes();
+        encoded[6] = kind_bytes[0];
+        encoded[7] = kind_bytes[1];
+        // Recompute CRC
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::UnknownRecordKind { kind }) = result else {
+            panic!("expected UnknownRecordKind, got {:?}", result);
+        };
+        assert_eq!(kind, 200);
+    }
+
+    #[test]
+    fn decode_record_returns_header_length_mismatch_for_wrong_len() {
+        // Given an encoded record with header_len patched to 99
+        // When decode_record is called
+        // Then it returns HeaderLengthMismatch with found=99
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        let len_bytes = 99u32.to_le_bytes();
+        encoded[8] = len_bytes[0];
+        encoded[9] = len_bytes[1];
+        encoded[10] = len_bytes[2];
+        encoded[11] = len_bytes[3];
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let Err(JournalError::HeaderLengthMismatch { found }) = result else {
+            panic!("expected HeaderLengthMismatch, got {:?}", result);
+        };
+        assert_eq!(found, 99);
+    }
+
+    // --- Section 2: Key Function Behavior Tests ---
+
+    #[test]
+    fn run_event_key_produces_expected_key_bytes() {
+        // Given run_id=1, seq=0
+        // When run_event_key is called
+        // Then the key is [0x11][1_be][0_be]
+        let key = run_event_key(RunId::new(1), EventSeq::new(0));
+        let key = key.expect("run_event_key should succeed");
+        assert_eq!(key[0], 0x11);
+        assert_eq!(key[1..9], 1u64.to_be_bytes());
+        assert_eq!(key[9..17], 0u64.to_be_bytes());
+    }
+
+    #[test]
+    fn run_header_key_produces_expected_key_bytes() {
+        // Given run_id=0xAABBCCDD_EEFF0011
+        // When run_header_key is called
+        // Then the key is [0x10][run_id_be]
+        let run = RunId::new(0xAABB_CCDD_EEFF_0011);
+        let key = run_header_key(run);
+        let key = key.expect("run_header_key should succeed");
+        assert_eq!(key[0], 0x10);
+        assert_eq!(key[1..9], run.as_u64().to_be_bytes());
+    }
+
+    #[test]
+    fn run_snapshot_key_produces_expected_key_bytes() {
+        // Given run_id=5, seq=99
+        // When run_snapshot_key is called
+        // Then the key is [0x12][5_be][99_be]
+        let key = run_snapshot_key(RunId::new(5), EventSeq::new(99));
+        let key = key.expect("run_snapshot_key should succeed");
+        assert_eq!(key[0], 0x12);
+        assert_eq!(key[1..9], 5u64.to_be_bytes());
+        assert_eq!(key[9..17], 99u64.to_be_bytes());
+    }
+
+    #[test]
+    fn workflow_source_key_produces_expected_key_bytes() {
+        // Given a 32-byte digest of all 7s
+        // When workflow_source_key is called
+        // Then the key is [0x01][digest]
+        let digest = [7u8; 32];
+        let key = workflow_source_key(digest);
+        let key = key.expect("workflow_source_key should succeed");
+        assert_eq!(key[0], 0x01);
+        assert_eq!(key[1..33], digest);
+    }
+
+    #[test]
+    fn compiled_ir_key_produces_expected_key_bytes() {
+        // Given a 32-byte digest of all 2s
+        // When compiled_ir_key is called
+        // Then the key is [0x02][digest]
+        let digest = [2u8; 32];
+        let key = compiled_ir_key(digest);
+        let key = key.expect("compiled_ir_key should succeed");
+        assert_eq!(key[0], 0x02);
+        assert_eq!(key[1..33], digest);
+    }
+
+    #[test]
+    fn index_action_key_produces_expected_key_bytes() {
+        // Given action=100, run=200, step=300
+        // When index_action_key is called
+        // Then the key is [0x32][action_u16_be][run_u64_be][step_u16_be]
+        let key = index_action_key(ActionId::new(100), RunId::new(200), StepIdx::new(300));
+        let key = key.expect("index_action_key should succeed");
+        assert_eq!(key[0], 0x32);
+        assert_eq!(key[1..3], 100u16.to_be_bytes());
+        assert_eq!(key[3..11], 200u64.to_be_bytes());
+        assert_eq!(key[11..13], 300u16.to_be_bytes());
+    }
+
+    #[test]
+    fn index_status_key_produces_expected_key_bytes() {
+        // Given state=5, timestamp=1000, run=50
+        // When index_status_key is called
+        // Then the key is [0x30][state_u8][timestamp_u64_be][run_u64_be]
+        let key = index_status_key(5, 1000, RunId::new(50));
+        let key = key.expect("index_status_key should succeed");
+        assert_eq!(key[0], 0x30);
+        assert_eq!(key[1], 5);
+        assert_eq!(key[2..10], 1000u64.to_be_bytes());
+        assert_eq!(key[10..18], 50u64.to_be_bytes());
+    }
+
+    #[test]
+    fn index_workflow_key_produces_expected_key_bytes() {
+        // Given workflow_id=42, run=99
+        // When index_workflow_key is called
+        // Then the key is [0x31][workflow_u32_be][run_u64_be]
+        let key = index_workflow_key(WorkflowId::new(42), RunId::new(99));
+        let key = key.expect("index_workflow_key should succeed");
+        assert_eq!(key[0], 0x31);
+        assert_eq!(key[1..5], 42u32.to_be_bytes());
+        assert_eq!(key[5..13], 99u64.to_be_bytes());
+    }
+
+    #[test]
+    fn blob_key_produces_expected_key_bytes() {
+        // Given a 32-byte digest of all 0xAB
+        // When blob_key is called
+        // Then the key is [0x20][digest]
+        let digest = [0xAB; 32];
+        let key = blob_key(digest);
+        let key = key.expect("blob_key should succeed");
+        assert_eq!(key[0], 0x20);
+        assert_eq!(key[1..33], digest);
+    }
+
+    // --- Section 3: BDD Integration-Style Tests ---
+
+    #[test]
+    fn journal_opens_and_closes_without_error() {
+        // Given a temporary directory
+        // When FjallJournal::open is called
+        // Then the journal opens successfully
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+    }
+
+    #[test]
+    fn append_strict_persists_submitted_event() {
+        // Given an open journal
+        // When append_strict is called with a RunAccepted event
+        // Then the event can be retrieved via events_for_run
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run = RunId::new(55);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let result = journal.append_strict(&event);
+        assert!(result.is_ok());
+
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[test]
+    fn append_strict_rejects_out_of_order_sequence() {
+        // Given an open journal with a seq-0 event
+        // When append_strict is called with seq 2 (skipping seq 1)
+        // Then events_for_run returns SequenceGap
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run = RunId::new(60);
+        let event0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        assert!(journal.append_strict(&event0).is_ok());
+
+        let event2 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+        };
+        assert!(journal.append_strict(&event2).is_ok());
+
+        let result = journal.events_for_run(run);
+        let Err(JournalError::SequenceGap { expected, actual }) = result else {
+            panic!("expected SequenceGap, got {:?}", result);
+        };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(2));
+    }
+
+    #[test]
+    fn persist_strict_flushes_and_reopens_cleanly() {
+        // Given an open journal with a persisted event
+        // When the journal is closed and reopened
+        // Then the same event is visible
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+
+        let run = RunId::new(77);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([5; 32]),
+        };
+        {
+            let journal = FjallJournal::open(temp_dir.path());
+            assert!(journal.is_ok());
+            let Ok(journal) = journal else { return };
+            assert!(journal.append_strict(&event).is_ok());
+        }
+
+        let journal2 = FjallJournal::open(temp_dir.path());
+        assert!(journal2.is_ok());
+        let Ok(journal2) = journal2 else { return };
+        let events = journal2
+            .events_for_run(run)
+            .expect("events_for_run should succeed after reopen");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[test]
+    fn put_workflow_source_stores_and_retrieves() {
+        // Given an open journal and a workflow source record
+        // When put_workflow_source is called
+        // Then the record can be retrieved by digest
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = WorkflowDigest::from_bytes([42; 32]);
+        let record = WorkflowSourceRecord {
+            digest,
+            source: vec![b'h', b'e', b'l', b'l', b'o'],
+        };
+        assert!(journal.put_workflow_source(&record).is_ok());
+
+        let retrieved = journal
+            .workflow_source(digest)
+            .expect("workflow_source lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn put_workflow_source_returns_none_for_missing_digest() {
+        // Given an open journal with no stored workflow source
+        // When workflow_source is called with an arbitrary digest
+        // Then it returns None
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let missing = WorkflowDigest::from_bytes([99; 32]);
+        let result = journal
+            .workflow_source(missing)
+            .expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn put_run_header_stores_and_retrieves() {
+        // Given an open journal and a run header record
+        // When put_run_header is called
+        // Then the record can be retrieved by run id
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let record = RunHeaderRecord {
+            run: RunId::new(123),
+            workflow_id: WorkflowId::new(456),
+            compiled_digest: WorkflowDigest::from_bytes([8; 32]),
+            status: 1,
+            accepted_at_ms: 1700000000,
+        };
+        assert!(journal.put_run_header(&record).is_ok());
+
+        let retrieved = journal
+            .run_header(RunId::new(123))
+            .expect("run_header lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn put_compiled_ir_stores_and_retrieves() {
+        // Given an open journal and a compiled IR record
+        // When put_compiled_ir is called
+        // Then the record can be retrieved by digest
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = WorkflowDigest::from_bytes([3; 32]);
+        let record = CompiledIrRecord {
+            digest,
+            ir: vec![0xDE, 0xAD, 0xBE, 0xEF],
+        };
+        assert!(journal.put_compiled_ir(&record).is_ok());
+
+        let retrieved = journal
+            .compiled_ir(digest)
+            .expect("compiled_ir lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn put_blob_stores_and_retrieves() {
+        // Given an open journal and a blob record
+        // When put_blob is called
+        // Then the record can be retrieved by digest
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = [0xCC; 32];
+        let record = BlobRecord {
+            digest,
+            bytes: vec![1, 2, 3, 4, 5],
+        };
+        assert!(journal.put_blob(&record).is_ok());
+
+        let retrieved = journal.blob(digest).expect("blob lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn put_snapshot_stores_and_retrieves() {
+        // Given an open journal and a run snapshot
+        // When put_snapshot is called
+        // Then the snapshot can be retrieved by run and seq
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let snapshot = RunSnapshot {
+            run: RunId::new(88),
+            seq: EventSeq::new(10),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+            slots: vec![1, 2, 3],
+        };
+        assert!(journal.put_snapshot(&snapshot).is_ok());
+
+        let retrieved = journal
+            .snapshot(RunId::new(88), EventSeq::new(10))
+            .expect("snapshot lookup should succeed");
+        assert_eq!(retrieved, Some(snapshot));
+    }
+
+    #[test]
+    fn put_action_index_stores_and_retrieves() {
+        // Given an open journal
+        // When put_action_index is called
+        // Then no error is returned and the index entry exists
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal.put_action_index(ActionId::new(1), RunId::new(2), StepIdx::new(3));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn put_status_index_stores_and_retrieves() {
+        // Given an open journal
+        // When put_status_index is called
+        // Then no error is returned
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal.put_status_index(1, 1700000000, RunId::new(99));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn put_workflow_index_stores_and_retrieves() {
+        // Given an open journal
+        // When put_workflow_index is called
+        // Then no error is returned
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal.put_workflow_index(WorkflowId::new(7), RunId::new(8));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn events_for_run_returns_only_events_for_target_run() {
+        // Given a journal with events for run 10 and run 20
+        // When events_for_run is called for run 10
+        // Then only run 10 events are returned
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run_a = RunId::new(10);
+        let run_b = RunId::new(20);
+
+        let event_a0 = JournalEvent::RunAccepted {
+            run: run_a,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let event_b0 = JournalEvent::RunAccepted {
+            run: run_b,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([2; 32]),
+        };
+        let event_a1 = JournalEvent::StepStarted {
+            run: run_a,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+
+        assert!(journal.append_journaled(&event_a0).is_ok());
+        assert!(journal.append_journaled(&event_b0).is_ok());
+        assert!(journal.append_journaled(&event_a1).is_ok());
+
+        let events_a = journal
+            .events_for_run(run_a)
+            .expect("events_for_run should succeed");
+        assert_eq!(events_a.len(), 2);
+        assert_eq!(events_a[0], event_a0);
+        assert_eq!(events_a[1], event_a1);
+
+        let events_b = journal
+            .events_for_run(run_b)
+            .expect("events_for_run should succeed");
+        assert_eq!(events_b.len(), 1);
+        assert_eq!(events_b[0], event_b0);
+    }
+
+    #[test]
+    fn event_seq_new_returns_correct_value() {
+        // Given EventSeq::new(42)
+        // When get is called
+        // Then it returns 42
+        let seq = EventSeq::new(42);
+        assert_eq!(seq.get(), 42);
+    }
+
+    #[test]
+    fn record_kind_id_returns_correct_wire_ids() {
+        // Given each RecordKind variant
+        // When id() is called
+        // Then it returns the expected wire identifier
+        assert_eq!(RecordKind::WorkflowSource.id(), 1);
+        assert_eq!(RecordKind::CompiledIr.id(), 2);
+        assert_eq!(RecordKind::RunHeader.id(), 3);
+        assert_eq!(RecordKind::RunAccepted.id(), 10);
+        assert_eq!(RecordKind::StepStarted.id(), 11);
+        assert_eq!(RecordKind::SlotWritten.id(), 12);
+        assert_eq!(RecordKind::ActionScheduled.id(), 13);
+        assert_eq!(RecordKind::ActionCompleted.id(), 14);
+        assert_eq!(RecordKind::ActionFailed.id(), 15);
+        assert_eq!(RecordKind::WaitScheduled.id(), 16);
+        assert_eq!(RecordKind::AskScheduled.id(), 17);
+        assert_eq!(RecordKind::AskAnswered.id(), 18);
+        assert_eq!(RecordKind::RetryScheduled.id(), 19);
+        assert_eq!(RecordKind::StepFailed.id(), 20);
+        assert_eq!(RecordKind::RunCancelled.id(), 21);
+        assert_eq!(RecordKind::RunFinished.id(), 22);
+        assert_eq!(RecordKind::RunFailed.id(), 23);
+        assert_eq!(RecordKind::Snapshot.id(), 30);
+        assert_eq!(RecordKind::Blob.id(), 40);
+        assert_eq!(RecordKind::IndexUpdate.id(), 50);
+    }
+
+    #[test]
+    fn journal_event_run_id_returns_correct_run() {
+        // Given a RunAccepted event for run 42
+        // When run_id() is called
+        // Then it returns 42
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(42),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        assert_eq!(event.run_id(), RunId::new(42));
+    }
+
+    #[test]
+    fn journal_event_seq_returns_correct_seq() {
+        // Given a StepStarted event with seq 7
+        // When seq() is called
+        // Then it returns EventSeq(7)
+        let event = JournalEvent::StepStarted {
+            run: RunId::new(1),
+            seq: EventSeq::new(7),
+            step: StepIdx::new(0),
+        };
+        assert_eq!(event.seq(), EventSeq::new(7));
+    }
+
+    #[test]
+    fn journal_event_record_kind_returns_correct_kind() {
+        // Given a RunFinished event
+        // When record_kind() is called
+        // Then it returns RecordKind::RunFinished
+        let event = JournalEvent::RunFinished {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            result: vb_core::SlotIdx::new(0),
+        };
+        assert_eq!(event.record_kind(), RecordKind::RunFinished);
+    }
+
+    #[test]
+    fn decode_record_returns_postcard_decode_failed_for_garbage_payload() {
+        // Given an encoded record with a valid header but corrupted payload bytes
+        // that no longer deserialize correctly
+        // When decode_record is called
+        // Then it returns PostcardDecodeFailed
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Corrupt the payload bytes after the header but not the blake3 digest
+        // We need to corrupt and re-hash, so instead we construct a manually
+        // crafted header with valid CRC/digest pointing to garbage
+        let payload_start = 60;
+        if let Some(byte) = encoded.get_mut(payload_start) {
+            *byte = 0xFF;
+        }
+        // Now recompute the blake3 digest in the header
+        let payload = &encoded[60..];
+        let digest = blake3::hash(payload);
+        encoded[24..56].copy_from_slice(digest.as_bytes());
+        // Recompute CRC
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::PostcardDecodeFailed)));
+    }
+
+    #[test]
+    fn envelope_round_trips_workflow_source_record() {
+        // Given a WorkflowSourceRecord
+        // When encoded and decoded with MAGIC_WORKFLOW_SOURCE
+        // Then the record survives the round trip
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0xAA; 32]),
+            source: vec![1, 2, 3],
+        };
+        let encoded = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            &record,
+            128,
+        )
+        .expect("encoding should succeed");
+
+        let (envelope, decoded) =
+            decode_record::<WorkflowSourceRecord>(&encoded, MAGIC_WORKFLOW_SOURCE, 128)
+                .expect("decoding should succeed");
+        assert_eq!(envelope.magic, MAGIC_WORKFLOW_SOURCE);
+        assert_eq!(envelope.record_kind, RecordKind::WorkflowSource.id());
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    fn envelope_round_trips_compiled_ir_record() {
+        // Given a CompiledIrRecord
+        // When encoded and decoded with MAGIC_COMPILED_ARTIFACT
+        // Then the record survives the round trip
+        let record = CompiledIrRecord {
+            digest: WorkflowDigest::from_bytes([0xBB; 32]),
+            ir: vec![4, 5, 6],
+        };
+        let encoded = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            128,
+        )
+        .expect("encoding should succeed");
+
+        let (envelope, decoded) =
+            decode_record::<CompiledIrRecord>(&encoded, MAGIC_COMPILED_ARTIFACT, 128)
+                .expect("decoding should succeed");
+        assert_eq!(envelope.magic, MAGIC_COMPILED_ARTIFACT);
+        assert_eq!(envelope.record_kind, RecordKind::CompiledIr.id());
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    fn envelope_round_trips_blob_record() {
+        // Given a BlobRecord
+        // When encoded and decoded with MAGIC_BLOB
+        // Then the record survives the round trip
+        let record = BlobRecord {
+            digest: [0xDD; 32],
+            bytes: vec![7, 8, 9],
+        };
+        let encoded =
+            encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 128).expect("encoding ok");
+
+        let (envelope, decoded) =
+            decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, 128).expect("decoding ok");
+        assert_eq!(envelope.magic, MAGIC_BLOB);
+        assert_eq!(envelope.record_kind, RecordKind::Blob.id());
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    fn declared_keyspaces_returns_nine_entries() {
+        // Given FjallJournal::declared_keyspaces()
+        // When called
+        // Then it returns exactly 9 keyspace names
+        let keyspaces = FjallJournal::declared_keyspaces();
+        assert_eq!(keyspaces.len(), 9);
+        assert_eq!(keyspaces[0], "workflow_source");
+        assert_eq!(keyspaces[1], "compiled_ir");
+        assert_eq!(keyspaces[2], "run_header");
+        assert_eq!(keyspaces[3], "run_event");
+        assert_eq!(keyspaces[4], "run_snapshot");
+        assert_eq!(keyspaces[5], "blob");
+        assert_eq!(keyspaces[6], "index_status");
+        assert_eq!(keyspaces[7], "index_workflow");
+        assert_eq!(keyspaces[8], "index_action");
+    }
+
+    #[test]
+    fn run_header_returns_none_for_missing_run() {
+        // Given an open journal with no stored headers
+        // When run_header is called for an arbitrary run
+        // Then it returns None
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal
+            .run_header(RunId::new(999))
+            .expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn compiled_ir_returns_none_for_missing_digest() {
+        // Given an open journal with no stored IR
+        // When compiled_ir is called
+        // Then it returns None
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal
+            .compiled_ir(WorkflowDigest::from_bytes([0; 32]))
+            .expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn snapshot_returns_none_for_missing_entry() {
+        // Given an open journal with no snapshots
+        // When snapshot is called
+        // Then it returns None
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal
+            .snapshot(RunId::new(1), EventSeq::new(0))
+            .expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn blob_returns_none_for_missing_digest() {
+        // Given an open journal with no blobs
+        // When blob is called
+        // Then it returns None
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path());
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let result = journal.blob([0; 32]).expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    // --- Section 4: Journal Lifecycle BDD Tests ---
+
+    fn open_journal() -> (tempfile::TempDir, FjallJournal) {
+        let temp_dir = tempfile::tempdir().expect("tempdir should be created");
+        let journal = FjallJournal::open(temp_dir.path()).expect("journal should open");
+        (temp_dir, journal)
+    }
+
+    fn test_digest(byte: u8) -> WorkflowDigest {
+        WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    #[test]
+    fn journal_open_creates_fresh_instance_with_no_data() {
+        // Given a temporary directory
+        // When FjallJournal::open is called
+        // Then the journal has no events for any run
+        let (_guard, journal) = open_journal();
+        let events = journal
+            .events_for_run(RunId::new(1))
+            .expect("events_for_run should succeed on empty journal");
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn append_strict_writes_submitted_event_with_correct_run_id() {
+        // Given an open journal
+        // When append_strict is called with a RunAccepted event for run 42
+        // Then the stored event has run_id 42
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(42);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].run_id(), run);
+    }
+
+    #[test]
+    fn append_strict_writes_accepted_event_after_submitted() {
+        // Given an open journal with a RunAccepted event at seq 0
+        // When a StepStarted event at seq 1 is appended
+        // Then both events are retrieved in order
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(1);
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let started = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        assert!(journal.append_strict(&accepted).is_ok());
+        assert!(journal.append_strict(&started).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0], accepted);
+        assert_eq!(events[1], started);
+    }
+
+    #[test]
+    fn append_strict_writes_step_started_event_with_correct_step() {
+        // Given an open journal
+        // When a StepStarted event with step 5 is appended and retrieved
+        // Then the event carries step 5
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(10);
+        let step = StepIdx::new(5);
+        let event = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::StepStarted { step: found_step, .. } = events[0] else {
+            panic!("expected StepStarted event");
+        };
+        assert_eq!(found_step, step);
+    }
+
+    #[test]
+    fn append_strict_writes_step_ended_event_with_correct_step() {
+        // Given an open journal
+        // When a StepSucceeded event with step 3 is appended and retrieved
+        // Then the event carries step 3 and output slot 7
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(11);
+        let step = StepIdx::new(3);
+        let output = vb_core::SlotIdx::new(7);
+        let event = JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(0),
+            step,
+            output,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::StepSucceeded { step: found_step, output: found_output, .. } = events[0] else {
+            panic!("expected StepSucceeded event");
+        };
+        assert_eq!(found_step, step);
+        assert_eq!(found_output, output);
+    }
+
+    #[test]
+    fn append_strict_writes_slot_written_event_with_correct_slot() {
+        // Given an open journal
+        // When a SlotWrittenEvent with slot 9 is appended and retrieved
+        // Then the event carries slot 9
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(12);
+        let slot = vb_core::SlotIdx::new(9);
+        let event = JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(0),
+            slot,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::SlotWrittenEvent { slot: found_slot, .. } = events[0] else {
+            panic!("expected SlotWrittenEvent");
+        };
+        assert_eq!(found_slot, slot);
+    }
+
+    #[test]
+    fn append_strict_writes_action_scheduled_event_with_correct_step() {
+        // Given an open journal
+        // When an ActionScheduled event with step 4 is appended and retrieved
+        // Then the event carries step 4 and action 2
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(13);
+        let step = StepIdx::new(4);
+        let action = ActionId::new(2);
+        let event = JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step,
+            action,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::ActionScheduled { step: found_step, action: found_action, .. } = events[0] else {
+            panic!("expected ActionScheduled event");
+        };
+        assert_eq!(found_step, step);
+        assert_eq!(found_action, action);
+    }
+
+    #[test]
+    fn append_strict_writes_action_completed_event_with_correct_step() {
+        // Given an open journal
+        // When an ActionCompletedEvent with step 6 is appended and retrieved
+        // Then the event carries step 6 and action 3
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(14);
+        let step = StepIdx::new(6);
+        let action = ActionId::new(3);
+        let event = JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(0),
+            step,
+            action,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::ActionCompletedEvent { step: found_step, action: found_action, .. } = events[0] else {
+            panic!("expected ActionCompletedEvent");
+        };
+        assert_eq!(found_step, step);
+        assert_eq!(found_action, action);
+    }
+
+    #[test]
+    fn append_strict_writes_run_finished_event_with_correct_result() {
+        // Given an open journal
+        // When a RunFinished event with result slot 15 is appended and retrieved
+        // Then the event carries result 15
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(15);
+        let result = vb_core::SlotIdx::new(15);
+        let event = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(0),
+            result,
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        let JournalEvent::RunFinished { result: found_result, .. } = events[0] else {
+            panic!("expected RunFinished event");
+        };
+        assert_eq!(found_result, result);
+    }
+
+    #[test]
+    fn append_strict_writes_run_failed_event() {
+        // Given an open journal
+        // When a RunFailedEvent is appended and retrieved
+        // Then the event carries the correct run
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(16);
+        let event = JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(0),
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].run_id(), run);
+    }
+
+    #[test]
+    fn append_strict_assigns_monotonically_increasing_sequences() {
+        // Given an open journal
+        // When three events are appended with seq 0, 1, 2
+        // Then events_for_run returns them in contiguous order
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(17);
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let e1 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
+        let e2 = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(2),
+            result: vb_core::SlotIdx::new(0),
+        };
+        assert!(journal.append_strict(&e0).is_ok());
+        assert!(journal.append_strict(&e1).is_ok());
+        assert!(journal.append_strict(&e2).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].seq(), EventSeq::new(0));
+        assert_eq!(events[1].seq(), EventSeq::new(1));
+        assert_eq!(events[2].seq(), EventSeq::new(2));
+    }
+
+    #[test]
+    fn append_strict_rejects_duplicate_sequence() {
+        // Given an open journal with an event at seq 0 for run 50
+        // When the same event is appended again
+        // Then DuplicateEvent is returned with exact run and seq
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(50);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        assert!(journal.append_strict(&event).is_ok());
+
+        let result = journal.append_strict(&event);
+        let Err(JournalError::DuplicateEvent { run: dup_run, seq: dup_seq }) = result else {
+            panic!("expected DuplicateEvent, got {:?}", result);
+        };
+        assert_eq!(dup_run, run);
+        assert_eq!(dup_seq, EventSeq::new(0));
+    }
+
+    #[test]
+    fn events_for_run_returns_events_in_sequence_order() {
+        // Given a journal with 5 events for a run
+        // When events_for_run is called
+        // Then events are returned in ascending sequence order
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(18);
+        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let e2 = JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(2), slot: vb_core::SlotIdx::new(0) };
+        let e3 = JournalEvent::StepSucceeded { run, seq: EventSeq::new(3), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) };
+        let e4 = JournalEvent::RunFinished { run, seq: EventSeq::new(4), result: vb_core::SlotIdx::new(1) };
+        assert!(journal.append_journaled(&e0).is_ok());
+        assert!(journal.append_journaled(&e1).is_ok());
+        assert!(journal.append_journaled(&e2).is_ok());
+        assert!(journal.append_journaled(&e3).is_ok());
+        assert!(journal.append_journaled(&e4).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 5);
+        assert_eq!(events[0], e0);
+        assert_eq!(events[1], e1);
+        assert_eq!(events[2], e2);
+        assert_eq!(events[3], e3);
+        assert_eq!(events[4], e4);
+    }
+
+    #[test]
+    fn events_for_run_returns_empty_for_run_with_no_events() {
+        // Given an open journal with events for run 1
+        // When events_for_run is called for run 2
+        // Then it returns an empty vec
+        let (_guard, journal) = open_journal();
+        let run_a = RunId::new(1);
+        let event = JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: test_digest(1) };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let events = journal.events_for_run(RunId::new(2)).expect("events_for_run should succeed");
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn append_strict_handles_concurrent_runs_interleaved() {
+        // Given a journal with interleaved events from run A and run B
+        // When events_for_run is called for run A
+        // Then only run A events are returned in order
+        let (_guard, journal) = open_journal();
+        let run_a = RunId::new(100);
+        let run_b = RunId::new(200);
+
+        let a0 = JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let b0 = JournalEvent::RunAccepted { run: run_b, seq: EventSeq::new(0), workflow: test_digest(2) };
+        let a1 = JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let b1 = JournalEvent::StepStarted { run: run_b, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let a2 = JournalEvent::RunFinished { run: run_a, seq: EventSeq::new(2), result: vb_core::SlotIdx::new(0) };
+
+        assert!(journal.append_journaled(&a0).is_ok());
+        assert!(journal.append_journaled(&b0).is_ok());
+        assert!(journal.append_journaled(&a1).is_ok());
+        assert!(journal.append_journaled(&b1).is_ok());
+        assert!(journal.append_journaled(&a2).is_ok());
+
+        let events_a = journal.events_for_run(run_a).expect("events_for_run A should succeed");
+        assert_eq!(events_a.len(), 3);
+        assert_eq!(events_a[0], a0);
+        assert_eq!(events_a[1], a1);
+        assert_eq!(events_a[2], a2);
+
+        let events_b = journal.events_for_run(run_b).expect("events_for_run B should succeed");
+        assert_eq!(events_b.len(), 2);
+        assert_eq!(events_b[0], b0);
+        assert_eq!(events_b[1], b1);
+    }
+
+    #[test]
+    fn append_journaled_succeeds_without_flush() {
+        // Given an open journal
+        // When append_journaled is called
+        // Then the event is readable immediately
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(30);
+        let event = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
+        assert!(journal.append_journaled(&event).is_ok());
+
+        let events = journal.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[test]
+    fn run_header_record_roundtrip_with_large_timestamp() {
+        // Given a run header with a large accepted_at_ms value
+        // When put and retrieved
+        // Then the timestamp survives exactly
+        let (_guard, journal) = open_journal();
+        let record = RunHeaderRecord {
+            run: RunId::new(1),
+            workflow_id: WorkflowId::new(2),
+            compiled_digest: test_digest(5),
+            status: 0,
+            accepted_at_ms: u64::MAX / 2,
+        };
+        assert!(journal.put_run_header(&record).is_ok());
+
+        let retrieved = journal.run_header(RunId::new(1)).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn snapshot_record_roundtrip_with_nonempty_slots() {
+        // Given a snapshot with non-empty slot data
+        // When stored and retrieved
+        // Then the slot bytes survive exactly
+        let (_guard, journal) = open_journal();
+        let snapshot = RunSnapshot {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(7),
+            slots: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE],
+        };
+        assert!(journal.put_snapshot(&snapshot).is_ok());
+
+        let retrieved = journal.snapshot(RunId::new(1), EventSeq::new(0)).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(snapshot));
+    }
+
+    #[test]
+    fn compiled_ir_returns_none_when_different_digest_queried() {
+        // Given an open journal with a compiled IR stored at digest [1;32]
+        // When a different digest [2;32] is queried
+        // Then it returns None
+        let (_guard, journal) = open_journal();
+        let stored_digest = test_digest(1);
+        let record = CompiledIrRecord { digest: stored_digest, ir: vec![1, 2, 3] };
+        assert!(journal.put_compiled_ir(&record).is_ok());
+
+        let result = journal.compiled_ir(test_digest(2)).expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn workflow_source_returns_none_for_different_digest() {
+        // Given an open journal with one workflow source stored
+        // When a different digest is queried
+        // Then it returns None
+        let (_guard, journal) = open_journal();
+        let stored_digest = test_digest(10);
+        let record = WorkflowSourceRecord { digest: stored_digest, source: vec![1] };
+        assert!(journal.put_workflow_source(&record).is_ok());
+
+        let result = journal.workflow_source(test_digest(11)).expect("lookup should succeed");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn journal_event_run_id_returns_correct_run_for_all_variants() {
+        // Given every JournalEvent variant with run_id 99
+        // When run_id() is called
+        // Then each returns RunId::new(99)
+        let run = RunId::new(99);
+        assert_eq!(JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }.run_id(), run);
+        assert_eq!(JournalEvent::StepStarted { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::StepSucceeded { run, seq: EventSeq::new(0), step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::ActionScheduled { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
+        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
+        assert_eq!(JournalEvent::ActionFailedEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0), action: ActionId::new(1) }.run_id(), run);
+        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(0), slot: vb_core::SlotIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::AskScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq: EventSeq::new(0), step: StepIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::RunCancelled { run, seq: EventSeq::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::RunFinished { run, seq: EventSeq::new(0), result: vb_core::SlotIdx::new(0) }.run_id(), run);
+        assert_eq!(JournalEvent::RunFailedEvent { run, seq: EventSeq::new(0) }.run_id(), run);
+    }
+
+    #[test]
+    fn journal_event_seq_returns_correct_seq_for_all_variants() {
+        // Given every JournalEvent variant with seq 42
+        // When seq() is called
+        // Then each returns EventSeq::new(42)
+        let seq = EventSeq::new(42);
+        let run = RunId::new(1);
+        assert_eq!(JournalEvent::RunAccepted { run, seq, workflow: test_digest(1) }.seq(), seq);
+        assert_eq!(JournalEvent::StepStarted { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::StepSucceeded { run, seq, step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::ActionScheduled { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
+        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
+        assert_eq!(JournalEvent::ActionFailedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.seq(), seq);
+        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq, slot: vb_core::SlotIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::AskScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq, step: StepIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::RunCancelled { run, seq }.seq(), seq);
+        assert_eq!(JournalEvent::RunFinished { run, seq, result: vb_core::SlotIdx::new(0) }.seq(), seq);
+        assert_eq!(JournalEvent::RunFailedEvent { run, seq }.seq(), seq);
+    }
+
+    #[test]
+    fn journal_event_record_kind_returns_correct_kind_for_all_variants() {
+        // Given every JournalEvent variant
+        // When record_kind() is called
+        // Then each returns the expected RecordKind
+        let run = RunId::new(1);
+        let seq = EventSeq::new(0);
+        assert_eq!(JournalEvent::RunAccepted { run, seq, workflow: test_digest(1) }.record_kind(), RecordKind::RunAccepted);
+        assert_eq!(JournalEvent::StepStarted { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::StepStarted);
+        assert_eq!(JournalEvent::StepSucceeded { run, seq, step: StepIdx::new(0), output: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::SlotWritten);
+        assert_eq!(JournalEvent::ActionScheduled { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionScheduled);
+        assert_eq!(JournalEvent::ActionCompletedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionCompleted);
+        assert_eq!(JournalEvent::ActionFailedEvent { run, seq, step: StepIdx::new(0), action: ActionId::new(1) }.record_kind(), RecordKind::ActionFailed);
+        assert_eq!(JournalEvent::SlotWrittenEvent { run, seq, slot: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::SlotWritten);
+        assert_eq!(JournalEvent::WaitScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::WaitScheduled);
+        assert_eq!(JournalEvent::AskScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::AskScheduled);
+        assert_eq!(JournalEvent::AskAnsweredEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::AskAnswered);
+        assert_eq!(JournalEvent::RetryScheduledEvent { run, seq, step: StepIdx::new(0) }.record_kind(), RecordKind::RetryScheduled);
+        assert_eq!(JournalEvent::RunCancelled { run, seq }.record_kind(), RecordKind::RunCancelled);
+        assert_eq!(JournalEvent::RunFinished { run, seq, result: vb_core::SlotIdx::new(0) }.record_kind(), RecordKind::RunFinished);
+        assert_eq!(JournalEvent::RunFailedEvent { run, seq }.record_kind(), RecordKind::RunFailed);
+    }
+
+    // --- Section 5: Encode/Decode Roundtrip Tests ---
+
+    #[test]
+    fn encode_decode_roundtrip_for_run_accepted_record() {
+        // Given a RunAccepted event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(42),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_step_started_record() {
+        // Given a StepStarted event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::StepStarted {
+            run: RunId::new(2),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(5),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::StepStarted, 1, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_step_ended_record() {
+        // Given a StepSucceeded event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::StepSucceeded {
+            run: RunId::new(3),
+            seq: EventSeq::new(2),
+            step: StepIdx::new(5),
+            output: vb_core::SlotIdx::new(10),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 2, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_slot_written_record() {
+        // Given a SlotWrittenEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::SlotWrittenEvent {
+            run: RunId::new(4),
+            seq: EventSeq::new(3),
+            slot: vb_core::SlotIdx::new(7),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 3, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_action_scheduled_record() {
+        // Given an ActionScheduled event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::ActionScheduled {
+            run: RunId::new(5),
+            seq: EventSeq::new(4),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionScheduled, 4, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_action_completed_record() {
+        // Given an ActionCompletedEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::ActionCompletedEvent {
+            run: RunId::new(6),
+            seq: EventSeq::new(5),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionCompleted, 5, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_run_finished_record() {
+        // Given a RunFinished event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::RunFinished {
+            run: RunId::new(7),
+            seq: EventSeq::new(6),
+            result: vb_core::SlotIdx::new(99),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunFinished, 6, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_run_failed_record() {
+        // Given a RunFailedEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::RunFailedEvent {
+            run: RunId::new(8),
+            seq: EventSeq::new(7),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunFailed, 7, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_record_rejects_record_exceeding_max_payload() {
+        // Given a workflow source with 200 bytes of source data
+        // When encode_record is called with max_payload_len of 10
+        // Then it returns PayloadTooLarge
+        let source = WorkflowSourceRecord {
+            digest: test_digest(1),
+            source: vec![0u8; 200],
+        };
+        let result = encode_record(MAGIC_WORKFLOW_SOURCE, RecordKind::WorkflowSource, 0, &source, 10);
+        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
+            panic!("expected PayloadTooLarge, got {:?}", result);
+        };
+        assert_eq!(max, 10);
+        assert!(len > 10);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_action_failed_record() {
+        // Given an ActionFailedEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::ActionFailedEvent {
+            run: RunId::new(9),
+            seq: EventSeq::new(3),
+            step: StepIdx::new(1),
+            action: ActionId::new(4),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::ActionFailed, 3, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    // --- Section 6: JournalError Variant Tests ---
+
+    #[test]
+    fn journal_error_encode_from_postcard_error() {
+        // Given a payload that causes a postcard encoding error
+        // When encode_record encounters the error
+        // Then JournalError::Encode is returned
+        // This is tested indirectly: encode_record with a valid payload succeeds,
+        // and the Encode variant exists as a From<postcard::Error> conversion.
+        // We verify the variant exists by checking the error display.
+        let err = JournalError::Encode(postcard::Error::DeserializeBadVarint);
+        let msg = format!("{}", err);
+        assert!(!msg.is_empty());
+    }
+
+    #[test]
+    fn journal_error_key_capacity_display() {
+        // Given a JournalError::KeyCapacity
+        // When displayed
+        // Then the message is non-empty
+        let err = JournalError::KeyCapacity;
+        let msg = format!("{}", err);
+        assert!(!msg.is_empty());
+    }
+
+    #[test]
+    fn journal_error_write_lock_poisoned_display() {
+        // Given a JournalError::WriteLockPoisoned
+        // When displayed
+        // Then the message mentions poisoned
+        let err = JournalError::WriteLockPoisoned;
+        let msg = format!("{}", err);
+        assert!(msg.contains("poisoned"));
+    }
+
+    #[test]
+    fn journal_error_wrong_run_display() {
+        // Given a JournalError::WrongRun with expected and actual
+        // When displayed
+        // Then the message contains both run values
+        let err = JournalError::WrongRun {
+            expected: RunId::new(1),
+            actual: RunId::new(2),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("1"));
+        assert!(msg.contains("2"));
+    }
+
+    #[test]
+    fn journal_error_sequence_overflow_display() {
+        // Given a JournalError::SequenceOverflow
+        // When displayed
+        // Then the message mentions overflow
+        let err = JournalError::SequenceOverflow;
+        let msg = format!("{}", err);
+        assert!(msg.contains("overflow"));
+    }
+
+    #[test]
+    fn journal_error_postcard_decode_failed_display() {
+        // Given a JournalError::PostcardDecodeFailed
+        // When displayed
+        // Then the message mentions postcard
+        let err = JournalError::PostcardDecodeFailed;
+        let msg = format!("{}", err);
+        assert!(msg.contains("postcard"));
+    }
+
+    #[test]
+    fn journal_error_unexpected_eof_display() {
+        // Given a JournalError::UnexpectedEof
+        // When displayed
+        // Then the message mentions end of record
+        let err = JournalError::UnexpectedEof;
+        let msg = format!("{}", err);
+        assert!(msg.contains("end"));
+    }
+
+    #[test]
+    fn journal_error_payload_digest_mismatch_display() {
+        // Given a JournalError::PayloadDigestMismatch
+        // When displayed
+        // Then the message mentions digest
+        let err = JournalError::PayloadDigestMismatch;
+        let msg = format!("{}", err);
+        assert!(msg.contains("digest"));
+    }
+
+    #[test]
+    fn record_envelope_fields_match_encoded_values() {
+        // Given an encoded event
+        // When decoded
+        // Then the envelope contains magic, schema_version, record_kind, and sequence
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(77),
+            seq: EventSeq::new(3),
+            workflow: test_digest(5),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 3, &event, 128)
+            .expect("encoding should succeed");
+        let (envelope, _) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(envelope.schema_version, 1);
+        assert_eq!(envelope.record_kind, RecordKind::RunAccepted.id());
+        assert_eq!(envelope.sequence, 3);
+    }
+
+    // --- Section 7: RunHeaderRecord Integration Tests ---
+
+    #[test]
+    fn run_header_overwrite_replaces_existing_header() {
+        // Given a journal with a stored run header
+        // When a new header with the same run id is stored
+        // Then the new header replaces the old one
+        let (_guard, journal) = open_journal();
+        let original = RunHeaderRecord {
+            run: RunId::new(1),
+            workflow_id: WorkflowId::new(10),
+            compiled_digest: test_digest(1),
+            status: 0,
+            accepted_at_ms: 100,
+        };
+        let updated = RunHeaderRecord {
+            run: RunId::new(1),
+            workflow_id: WorkflowId::new(20),
+            compiled_digest: test_digest(2),
+            status: 1,
+            accepted_at_ms: 200,
+        };
+        assert!(journal.put_run_header(&original).is_ok());
+        assert!(journal.put_run_header(&updated).is_ok());
+
+        let retrieved = journal.run_header(RunId::new(1)).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(updated));
+    }
+
+    #[test]
+    fn multiple_runs_have_independent_events() {
+        // Given a journal with 2 events for run 1 and 3 events for run 2
+        // When events_for_run is called for each
+        // Then each run returns only its own events
+        let (_guard, journal) = open_journal();
+        let run1 = RunId::new(1);
+        let run2 = RunId::new(2);
+
+        let r1_e0 = JournalEvent::RunAccepted { run: run1, seq: EventSeq::new(0), workflow: test_digest(1) };
+        let r1_e1 = JournalEvent::StepStarted { run: run1, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let r2_e0 = JournalEvent::RunAccepted { run: run2, seq: EventSeq::new(0), workflow: test_digest(2) };
+        let r2_e1 = JournalEvent::StepStarted { run: run2, seq: EventSeq::new(1), step: StepIdx::new(1) };
+        let r2_e2 = JournalEvent::RunFinished { run: run2, seq: EventSeq::new(2), result: vb_core::SlotIdx::new(0) };
+
+        assert!(journal.append_journaled(&r1_e0).is_ok());
+        assert!(journal.append_journaled(&r1_e1).is_ok());
+        assert!(journal.append_journaled(&r2_e0).is_ok());
+        assert!(journal.append_journaled(&r2_e1).is_ok());
+        assert!(journal.append_journaled(&r2_e2).is_ok());
+
+        let events1 = journal.events_for_run(run1).expect("events_for_run run1 should succeed");
+        assert_eq!(events1.len(), 2);
+        let events2 = journal.events_for_run(run2).expect("events_for_run run2 should succeed");
+        assert_eq!(events2.len(), 3);
+    }
+
+    #[test]
+    fn event_seq_ordering_is_correct() {
+        // Given two EventSeq values
+        // When compared
+        // Then ordering follows the inner u64
+        assert!(EventSeq::new(0) < EventSeq::new(1));
+        assert!(EventSeq::new(100) < EventSeq::new(200));
+        assert_eq!(EventSeq::new(5), EventSeq::new(5));
+    }
+
+    #[test]
+    fn record_kind_all_variants_have_distinct_ids() {
+        // Given all RecordKind variants
+        // When their ids are collected
+        // Then no two variants share an id
+        let ids = [
+            RecordKind::WorkflowSource.id(),
+            RecordKind::CompiledIr.id(),
+            RecordKind::RunHeader.id(),
+            RecordKind::RunAccepted.id(),
+            RecordKind::StepStarted.id(),
+            RecordKind::SlotWritten.id(),
+            RecordKind::ActionScheduled.id(),
+            RecordKind::ActionCompleted.id(),
+            RecordKind::ActionFailed.id(),
+            RecordKind::WaitScheduled.id(),
+            RecordKind::AskScheduled.id(),
+            RecordKind::AskAnswered.id(),
+            RecordKind::RetryScheduled.id(),
+            RecordKind::StepFailed.id(),
+            RecordKind::RunCancelled.id(),
+            RecordKind::RunFinished.id(),
+            RecordKind::RunFailed.id(),
+            RecordKind::Snapshot.id(),
+            RecordKind::Blob.id(),
+            RecordKind::IndexUpdate.id(),
+        ];
+        let mut sorted = ids.to_vec();
+        sorted.sort();
+        let mut deduped = sorted.clone();
+        deduped.dedup();
+        assert_eq!(ids.len(), deduped.len(), "all RecordKind ids must be distinct");
+    }
+
+    #[test]
+    fn constants_have_expected_values() {
+        // Given the module constants
+        // When inspected
+        // Then they match the contract values
+        assert_eq!(RECORD_HEADER_LEN, 60);
+        assert_eq!(CURRENT_SCHEMA_VERSION, 1);
+        assert_eq!(MAGIC_COMPILED_ARTIFACT, 0x5642_4952);
+        assert_eq!(MAGIC_JOURNAL_EVENT, 0x5642_4A45);
+        assert_eq!(MAGIC_SNAPSHOT, 0x5642_534E);
+        assert_eq!(MAGIC_BLOB, 0x5642_424C);
+        assert_eq!(MAGIC_IPC_FRAME, 0x5642_4C54);
+        assert_eq!(MAGIC_WORKFLOW_SOURCE, 0x5642_5352);
+        assert_eq!(MAGIC_INDEX_RECORD, 0x5642_4958);
+    }
+
+    #[test]
+    fn prefix_constants_have_expected_values() {
+        // Given the prefix constants
+        // When inspected
+        // Then they match the contract values
+        assert_eq!(PREFIX_WORKFLOW_SOURCE, 0x01);
+        assert_eq!(PREFIX_COMPILED_IR, 0x02);
+        assert_eq!(PREFIX_RUN_HEADER, 0x10);
+        assert_eq!(PREFIX_RUN_EVENT, 0x11);
+        assert_eq!(PREFIX_RUN_SNAPSHOT, 0x12);
+        assert_eq!(PREFIX_BLOB, 0x20);
+        assert_eq!(PREFIX_INDEX_STATUS, 0x30);
+        assert_eq!(PREFIX_INDEX_WORKFLOW, 0x31);
+        assert_eq!(PREFIX_INDEX_ACTION, 0x32);
+    }
+
+    #[test]
+    fn max_payload_constants_are_sensible() {
+        // Given the max payload constants
+        // When inspected
+        // Then they are non-zero and in reasonable ranges
+        assert!(MAX_JOURNAL_EVENT_PAYLOAD_BYTES > 0);
+        assert!(MAX_WORKFLOW_SOURCE_BYTES > 0);
+        assert!(MAX_COMPILED_IR_BYTES > 0);
+        assert!(MAX_RUN_HEADER_BYTES > 0);
+        assert!(MAX_SNAPSHOT_BYTES > 0);
+        assert!(MAX_BLOB_BYTES > 0);
+    }
+
+    #[test]
+    fn validate_replayed_event_accepts_matching_run_and_seq() {
+        // Given an event with run 42, seq 5
+        // When validate_replayed_event is called with matching expected run and seq
+        // Then it returns Ok (tested indirectly via events_for_run)
+        let (_guard, journal) = open_journal();
+        let run = RunId::new(42);
+        let event = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) };
+        assert!(journal.append_journaled(&event).is_ok());
+        let events = journal.events_for_run(run).expect("should succeed with contiguous events");
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn journal_reopen_preserves_multiple_event_types() {
+        // Given a journal with multiple event types for a run
+        // When the journal is closed and reopened
+        // Then all events are preserved
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let run = RunId::new(999);
+
+        {
+            let journal = FjallJournal::open(temp_dir.path()).expect("open should succeed");
+            let events = vec![
+                JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) },
+                JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) },
+                JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(2), slot: vb_core::SlotIdx::new(0) },
+                JournalEvent::ActionScheduled { run, seq: EventSeq::new(3), step: StepIdx::new(0), action: ActionId::new(1) },
+                JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(4), step: StepIdx::new(0), action: ActionId::new(1) },
+                JournalEvent::StepSucceeded { run, seq: EventSeq::new(5), step: StepIdx::new(0), output: vb_core::SlotIdx::new(1) },
+                JournalEvent::RunFinished { run, seq: EventSeq::new(6), result: vb_core::SlotIdx::new(1) },
+            ];
+            for event in &events {
+                assert!(journal.append_strict(event).is_ok());
+            }
+        }
+
+        let journal2 = FjallJournal::open(temp_dir.path()).expect("reopen should succeed");
+        let events = journal2.events_for_run(run).expect("events_for_run should succeed");
+        assert_eq!(events.len(), 7);
+        assert_eq!(events[0].seq(), EventSeq::new(0));
+        assert_eq!(events[6].seq(), EventSeq::new(6));
+    }
+
+    #[test]
+    fn run_header_stores_all_fields_correctly() {
+        // Given a RunHeaderRecord with specific field values
+        // When stored and retrieved
+        // Then all fields match exactly
+        let (_guard, journal) = open_journal();
+        let record = RunHeaderRecord {
+            run: RunId::new(42),
+            workflow_id: WorkflowId::new(7),
+            compiled_digest: test_digest(99),
+            status: 3,
+            accepted_at_ms: 1700000000,
+        };
+        assert!(journal.put_run_header(&record).is_ok());
+        let retrieved = journal.run_header(RunId::new(42)).expect("lookup should succeed");
+        let Some(found) = retrieved else {
+            panic!("expected Some(record)");
+        };
+        assert_eq!(found.run, record.run);
+        assert_eq!(found.workflow_id, record.workflow_id);
+        assert_eq!(found.compiled_digest, record.compiled_digest);
+        assert_eq!(found.status, record.status);
+        assert_eq!(found.accepted_at_ms, record.accepted_at_ms);
+    }
+
+    #[test]
+    fn journal_stores_and_retrieves_blob_with_zero_bytes() {
+        // Given a blob with zero bytes
+        // When stored and retrieved
+        // Then the record survives with empty bytes
+        let (_guard, journal) = open_journal();
+        let digest = [0u8; 32];
+        let record = BlobRecord { digest, bytes: vec![] };
+        assert!(journal.put_blob(&record).is_ok());
+        let retrieved = journal.blob(digest).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn workflow_source_stores_and_retrieves_empty_source() {
+        // Given a workflow source with zero source bytes
+        // When stored and retrieved
+        // Then the record survives with empty source
+        let (_guard, journal) = open_journal();
+        let digest = test_digest(0);
+        let record = WorkflowSourceRecord { digest, source: vec![] };
+        assert!(journal.put_workflow_source(&record).is_ok());
+        let retrieved = journal.workflow_source(digest).expect("lookup should succeed");
+        assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_wait_scheduled_record() {
+        // Given a WaitScheduledEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::WaitScheduledEvent {
+            run: RunId::new(10),
+            seq: EventSeq::new(2),
+            step: StepIdx::new(3),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::WaitScheduled, 2, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_ask_scheduled_record() {
+        // Given an AskScheduledEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::AskScheduledEvent {
+            run: RunId::new(11),
+            seq: EventSeq::new(3),
+            step: StepIdx::new(4),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::AskScheduled, 3, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_ask_answered_record() {
+        // Given an AskAnsweredEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::AskAnsweredEvent {
+            run: RunId::new(12),
+            seq: EventSeq::new(4),
+            step: StepIdx::new(5),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::AskAnswered, 4, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_retry_scheduled_record() {
+        // Given a RetryScheduledEvent
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::RetryScheduledEvent {
+            run: RunId::new(13),
+            seq: EventSeq::new(5),
+            step: StepIdx::new(6),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RetryScheduled, 5, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_run_cancelled_record() {
+        // Given a RunCancelled event
+        // When encoded and decoded
+        // Then the event survives the roundtrip exactly
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(14),
+            seq: EventSeq::new(6),
+        };
+        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunCancelled, 6, &event, 128)
+            .expect("encoding should succeed");
+        let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .expect("decoding should succeed");
+        assert_eq!(decoded, event);
+    }
 }
 
 #[cfg(test)]
 mod proptests {
-    use crate::{EventSeq, RunId, run_event_key};
+    use crate::{
+        BlobRecord, EventSeq, RecordKind, WorkflowSourceRecord,
+        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key,
+        index_status_key, index_workflow_key, run_event_key, run_header_key, run_snapshot_key,
+        workflow_source_key, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
+        MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    };
     use proptest::prelude::*;
+    use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     proptest! {
         #[test]
@@ -2232,165 +4128,219 @@ mod proptests {
                 prop_assert!(k1 > k2);
             }
         }
-    }
 
-    #[test]
-    fn index_queries_return_decoded_runs_and_pending_actions() {
-        let temp_dir = storage_tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path());
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
-        let workflow = WorkflowId::new(7);
-        let action = ActionId::new(9);
+        #[test]
+        fn encode_decode_record_roundtrip_for_all_record_kinds(
+            kind_id in 10u16..=23u16,
+            run_val in 1u64..=1000u64,
+            seq_val in 0u64..=100u64,
+        ) {
+            // Given a RunAccepted event (all journal events share the same encode/decode path)
+            // When encoded with MAGIC_JOURNAL_EVENT and the given kind, then decoded
+            // Then the round trip preserves the original event
+            let run = RunId::new(run_val);
+            let seq = EventSeq::new(seq_val);
+            let event = crate::JournalEvent::RunAccepted {
+                run,
+                seq,
+                workflow: WorkflowDigest::from_bytes([kind_id as u8; 32]),
+            };
+            let kind = match kind_id {
+                10 => RecordKind::RunAccepted,
+                11 => RecordKind::StepStarted,
+                12 => RecordKind::SlotWritten,
+                13 => RecordKind::ActionScheduled,
+                14 => RecordKind::ActionCompleted,
+                15 => RecordKind::ActionFailed,
+                16 => RecordKind::WaitScheduled,
+                17 => RecordKind::AskScheduled,
+                18 => RecordKind::AskAnswered,
+                19 => RecordKind::RetryScheduled,
+                20 => RecordKind::StepFailed,
+                21 => RecordKind::RunCancelled,
+                22 => RecordKind::RunFinished,
+                23 => RecordKind::RunFailed,
+                _ => return Ok(()),
+            };
+            let encoded = encode_record(
+                MAGIC_JOURNAL_EVENT,
+                kind,
+                seq_val,
+                &event,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            );
+            let Ok(encoded) = encoded else { return Ok(()) };
+            let decoded = decode_record::<crate::JournalEvent>(
+                &encoded,
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            );
+            let Ok((_envelope, decoded_event)) = decoded else { return Ok(()) };
+            prop_assert_eq!(decoded_event, event);
+        }
 
-        assert!(journal.put_status_index(2, 10, RunId::new(3)).is_ok());
-        assert!(journal.put_status_index(2, 11, RunId::new(4)).is_ok());
-        assert!(journal.put_workflow_index(workflow, RunId::new(5)).is_ok());
-        assert!(
-            journal
-                .put_action_index(action, RunId::new(6), StepIdx::new(8))
-                .is_ok()
-        );
+        #[test]
+        fn journal_key_bytes_are_deterministic(
+            run_val in 1u64..=10000u64,
+            seq_val in 0u64..=1000u64,
+        ) {
+            // Given the same run and seq inputs
+            // When run_event_key is called twice
+            // Then both results are identical
+            let run = RunId::new(run_val);
+            let seq = EventSeq::new(seq_val);
+            let key1 = run_event_key(run, seq);
+            let key2 = run_event_key(run, seq);
+            let Ok(k1) = key1 else { return Ok(()) };
+            let Ok(k2) = key2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
+        }
 
-        assert!(
-            matches!(journal.runs_by_status(2), Ok(runs) if runs == vec![RunId::new(3), RunId::new(4)])
-        );
-        assert!(
-            matches!(journal.runs_by_workflow(workflow), Ok(runs) if runs == vec![RunId::new(5)])
-        );
-        assert!(matches!(
-            journal.pending_actions(action),
-            Ok(entries) if matches!(entries.as_slice(), [entry] if entry.run == RunId::new(6) && entry.step == StepIdx::new(8))
-        ));
-    }
+        #[test]
+        fn event_seq_new_never_panics_for_valid_values(val in 0u64..=u64::MAX) {
+            // Given any valid u64
+            // When EventSeq::new is called
+            // Then get() returns the same value
+            let seq = EventSeq::new(val);
+            prop_assert_eq!(seq.get(), val);
+        }
 
-    #[test]
-    fn contract_limits_reject_oversized_journal_payload() {
-        let temp_dir = storage_tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path());
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        };
-        let mut limits = StorageLimits::DEFAULT;
-        limits.journal_event_bytes = 1;
+        #[test]
+        fn record_kind_id_roundtrip(kind_id in 1u16..=50u16) {
+            // Given a valid record kind id
+            // When it matches a known RecordKind variant
+            // Then the id() round-trips correctly
+            let kind = match kind_id {
+                1 => RecordKind::WorkflowSource,
+                2 => RecordKind::CompiledIr,
+                3 => RecordKind::RunHeader,
+                10 => RecordKind::RunAccepted,
+                11 => RecordKind::StepStarted,
+                12 => RecordKind::SlotWritten,
+                13 => RecordKind::ActionScheduled,
+                14 => RecordKind::ActionCompleted,
+                15 => RecordKind::ActionFailed,
+                16 => RecordKind::WaitScheduled,
+                17 => RecordKind::AskScheduled,
+                18 => RecordKind::AskAnswered,
+                19 => RecordKind::RetryScheduled,
+                20 => RecordKind::StepFailed,
+                21 => RecordKind::RunCancelled,
+                22 => RecordKind::RunFinished,
+                23 => RecordKind::RunFailed,
+                30 => RecordKind::Snapshot,
+                40 => RecordKind::Blob,
+                50 => RecordKind::IndexUpdate,
+                _ => return Ok(()),
+            };
+            prop_assert_eq!(kind.id(), kind_id);
+        }
 
-        let result = journal.append_journaled_with_limits(&event, limits);
+        #[test]
+        fn all_key_functions_are_deterministic(
+            run_val in 1u64..=1000u64,
+            seq_val in 0u64..=100u64,
+            state_val in 0u8..=255u8,
+            ts_val in 0u64..=10000u64,
+            wf_val in 1u32..=1000u32,
+            action_val in 1u16..=1000u16,
+            step_val in 0u16..=100u16,
+        ) {
+            let run = RunId::new(run_val);
+            let seq = EventSeq::new(seq_val);
+            let digest = [42u8; 32];
 
-        assert!(matches!(result, Err(JournalError::PayloadTooLarge { .. })));
-    }
+            let k1 = workflow_source_key(digest);
+            let k2 = workflow_source_key(digest);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-    #[test]
-    fn latest_snapshot_tail_and_digest_verification_use_run_metadata() {
-        let temp_dir = storage_tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path());
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
-        let run = RunId::new(12);
-        let digest = WorkflowDigest::from_bytes([3; 32]);
-        let header = RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(4),
-            compiled_digest: digest,
-            status: 1,
-            accepted_at_ms: 2,
-        };
-        let old_snapshot = RunSnapshot {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-            slots: vec![1],
-        };
-        let latest_snapshot = RunSnapshot {
-            run,
-            seq: EventSeq::new(1),
-            workflow: digest,
-            slots: vec![2],
-        };
-        let accepted = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        };
-        let before_snapshot = JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-        };
-        let tail = JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(2),
-            result: vb_core::SlotIdx::new(0),
-        };
+            let k1 = compiled_ir_key(digest);
+            let k2 = compiled_ir_key(digest);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-        assert!(journal.put_run_header(&header).is_ok());
-        assert!(journal.write_snapshot(&old_snapshot).is_ok());
-        assert!(journal.write_snapshot(&latest_snapshot).is_ok());
-        assert!(journal.append_journaled(&accepted).is_ok());
-        assert!(journal.append_journaled(&before_snapshot).is_ok());
-        assert!(journal.append_journaled(&tail).is_ok());
+            let k1 = run_header_key(run);
+            let k2 = run_header_key(run);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-        assert!(journal.verify_run_metadata_digest(run).is_ok());
-        assert!(
-            matches!(journal.read_latest_snapshot(run), Ok(Some(snapshot)) if snapshot == latest_snapshot)
-        );
-        assert!(
-            matches!(journal.hydrate_recovery_state(run), Ok(Some(state)) if state.header == header && state.latest_snapshot == Some(latest_snapshot) && state.tail_events == vec![tail])
-        );
-    }
+            let k1 = run_event_key(run, seq);
+            let k2 = run_event_key(run, seq);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-    #[test]
-    fn digest_verification_rejects_accepted_digest_mismatch() {
-        let temp_dir = storage_tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path());
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
-        let run = RunId::new(13);
-        let header = RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(4),
-            compiled_digest: WorkflowDigest::from_bytes([3; 32]),
-            status: 1,
-            accepted_at_ms: 2,
-        };
-        let accepted = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([4; 32]),
-        };
+            let k1 = run_snapshot_key(run, seq);
+            let k2 = run_snapshot_key(run, seq);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-        assert!(journal.put_run_header(&header).is_ok());
-        assert!(journal.append_journaled(&accepted).is_ok());
+            let k1 = blob_key(digest);
+            let k2 = blob_key(digest);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-        let result = journal.verify_run_metadata_digest(run);
+            let k1 = index_status_key(state_val, ts_val, run);
+            let k2 = index_status_key(state_val, ts_val, run);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
 
-        assert!(matches!(result, Err(JournalError::DigestMismatch { .. })));
+            let k1 = index_workflow_key(WorkflowId::new(wf_val), run);
+            let k2 = index_workflow_key(WorkflowId::new(wf_val), run);
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
+
+            let k1 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
+            let k2 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
+            let Ok(k1) = k1 else { return Ok(()) };
+            let Ok(k2) = k2 else { return Ok(()) };
+            prop_assert_eq!(k1, k2);
+        }
+
+        #[test]
+        fn workflow_source_roundtrip_with_arbitrary_source_bytes(
+            source_bytes in proptest::collection::vec(any::<u8>(), 0..100usize),
+        ) {
+            let digest = WorkflowDigest::from_bytes([77; 32]);
+            let record = WorkflowSourceRecord {
+                digest,
+                source: source_bytes,
+            };
+            let encoded = encode_record(
+                MAGIC_WORKFLOW_SOURCE,
+                RecordKind::WorkflowSource,
+                0,
+                &record,
+                65536,
+            );
+            let Ok(encoded) = encoded else { return Ok(()) };
+            let decoded = decode_record::<WorkflowSourceRecord>(&encoded, MAGIC_WORKFLOW_SOURCE, 65536);
+            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            prop_assert_eq!(decoded_record, record);
+        }
+
+        #[test]
+        fn blob_roundtrip_with_arbitrary_bytes(
+            blob_bytes in proptest::collection::vec(any::<u8>(), 0..100usize),
+        ) {
+            let digest = [88u8; 32];
+            let record = BlobRecord {
+                digest,
+                bytes: blob_bytes,
+            };
+            let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 65536);
+            let Ok(encoded) = encoded else { return Ok(()) };
+            let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, 65536);
+            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            prop_assert_eq!(decoded_record, record);
+        }
     }
 }

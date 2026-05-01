@@ -321,4 +321,368 @@ mod tests {
         };
         assert!(scalar.span().line > 0);
     }
+
+    // -----------------------------------------------------------------------
+    // AST Node Behavior Tests (YamlEvent accessors)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn typed_node_scalar_returns_value_via_as_scalar() {
+        // Given: YAML with a scalar value "hello"
+        let yaml = "hello\n";
+        let events = collect_ok!(yaml);
+        // When: finding the scalar event and calling as_scalar
+        let scalar_event = events.iter().find(|e| e.as_scalar().is_some());
+        let Some(evt) = scalar_event else {
+            assert!(false, "missing scalar event");
+            return;
+        };
+        // Then: as_scalar returns Some with exact value "hello"
+        assert_eq!(evt.as_scalar(), Some("hello"));
+    }
+
+    #[test]
+    fn typed_node_scalar_returns_none_for_non_scalar() {
+        // Given: a StreamStart event (non-scalar)
+        let yaml = "a: 1\n";
+        let events = collect_ok!(yaml);
+        let stream_start = events.iter().find(|e| matches!(e, YamlEvent::StreamStart { .. }));
+        let Some(evt) = stream_start else {
+            assert!(false, "missing stream start");
+            return;
+        };
+        // When: calling as_scalar on non-scalar event
+        // Then: returns None
+        assert_eq!(evt.as_scalar(), None);
+    }
+
+    #[test]
+    fn typed_node_mapping_start_anchor_id_returns_zero() {
+        // Given: YAML with an unanchored mapping
+        let yaml = "a: 1\n";
+        let events = collect_ok!(yaml);
+        let mapping_start = events.iter().find(|e| matches!(e, YamlEvent::MappingStart { .. }));
+        let Some(evt) = mapping_start else {
+            assert!(false, "missing mapping start");
+            return;
+        };
+        // When: calling anchor_id
+        // Then: returns 0
+        assert_eq!(evt.anchor_id(), 0);
+    }
+
+    #[test]
+    fn typed_node_is_document_start_for_doc_start_event() {
+        // Given: YAML with explicit document start
+        let yaml = "---\nkey: value\n";
+        let events = collect_ok!(yaml);
+        let doc_start = events.iter().find(|e| e.is_document_start());
+        // When: checking is_document_start
+        // Then: found a doc start and it returns true
+        let Some(evt) = doc_start else {
+            assert!(false, "missing document start");
+            return;
+        };
+        assert!(evt.is_document_start());
+    }
+
+    #[test]
+    fn typed_node_is_document_start_for_non_doc_start() {
+        // Given: a scalar event
+        let yaml = "hello\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find(|e| e.as_scalar().is_some());
+        let Some(evt) = scalar else {
+            assert!(false, "missing scalar");
+            return;
+        };
+        // When: calling is_document_start
+        // Then: returns false
+        assert!(!evt.is_document_start());
+    }
+
+    #[test]
+    fn typed_node_is_alias_returns_true_for_alias() {
+        // Given: YAML events produced from text with an alias
+        let yaml = "a: &anc value\nb: *anc\n";
+        let events = collect_ok!(yaml);
+        let alias_event = events.iter().find(|e| e.is_alias());
+        // When: checking is_alias
+        let Some(evt) = alias_event else {
+            assert!(false, "missing alias event");
+            return;
+        };
+        // Then: returns true
+        assert!(evt.is_alias());
+    }
+
+    #[test]
+    fn typed_node_is_alias_returns_false_for_scalar() {
+        // Given: YAML with only scalars
+        let yaml = "a: b\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find(|e| e.as_scalar().is_some());
+        let Some(evt) = scalar else {
+            assert!(false, "missing scalar");
+            return;
+        };
+        // When: checking is_alias
+        // Then: returns false
+        assert!(!evt.is_alias());
+    }
+
+    #[test]
+    fn typed_node_span_returns_correct_line_column() {
+        // Given: YAML on a single line
+        let yaml = "a: b\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find(|e| e.as_scalar() == Some("a"));
+        let Some(evt) = scalar else {
+            assert!(false, "missing scalar");
+            return;
+        };
+        // When: getting the span
+        let span = evt.span();
+        // Then: line > 0 (column may be 0 depending on parser)
+        assert!(span.line > 0);
+    }
+
+    #[test]
+    fn typed_node_tag_returns_none_for_untagged() {
+        // Given: YAML with no tags
+        let yaml = "a: b\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find(|e| e.as_scalar().is_some());
+        let Some(evt) = scalar else {
+            assert!(false, "missing scalar");
+            return;
+        };
+        // When: calling tag()
+        // Then: returns None
+        assert_eq!(evt.tag(), None);
+    }
+
+    #[test]
+    fn typed_node_tag_returns_some_for_tagged() {
+        // Given: YAML with a custom tag
+        let yaml = "a: !mytag b\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find_map(|e| match e {
+            YamlEvent::Scalar { tag: Some(_), .. } => Some(e.clone()),
+            _ => None,
+        });
+        let Some(evt) = scalar else {
+            assert!(false, "missing tagged scalar");
+            return;
+        };
+        // When: calling tag()
+        let tag = evt.tag();
+        // Then: returns Some with the tag string
+        let Some(tag_str) = tag else {
+            assert!(false, "expected Some tag");
+            return;
+        };
+        assert!(tag_str.contains("mytag"), "tag should contain 'mytag', got: {tag_str}");
+    }
+
+    #[test]
+    fn typed_node_anchor_id_returns_nonzero_for_anchored() {
+        // Given: YAML with an anchor on a scalar
+        let yaml = "a: &anc value\n";
+        let events = collect_ok!(yaml);
+        let anchored = events.iter().find(|e| e.anchor_id() != 0);
+        // When: checking anchor_id
+        let Some(evt) = anchored else {
+            assert!(false, "missing anchored event");
+            return;
+        };
+        // Then: anchor_id is non-zero
+        assert!(evt.anchor_id() > 0);
+    }
+
+    #[test]
+    fn typed_node_anchor_id_returns_zero_for_unanchored() {
+        // Given: YAML with no anchors
+        let yaml = "a: b\n";
+        let events = collect_ok!(yaml);
+        // When: checking all events
+        // Then: all anchor_id values are 0
+        let all_zero = events.iter().all(|e| e.anchor_id() == 0);
+        assert!(all_zero);
+    }
+
+    #[test]
+    fn event_span_fields_are_populated() {
+        // Given: a StreamStart event
+        let yaml = "a: b\n";
+        let events = collect_ok!(yaml);
+        let stream_start = events.iter().find(|e| matches!(e, YamlEvent::StreamStart { .. }));
+        let Some(YamlEvent::StreamStart { span }) = stream_start else {
+            assert!(false, "missing stream start");
+            return;
+        };
+        // When: inspecting the span
+        // Then: start < end (span has range)
+        assert!(span.end >= span.start);
+    }
+
+    #[test]
+    fn collect_events_produces_stream_lifecycle() {
+        // Given: valid YAML
+        let yaml = "a: 1\n";
+        let events = collect_ok!(yaml);
+        // When: inspecting the event stream
+        let has_stream_start = events.iter().any(|e| matches!(e, YamlEvent::StreamStart { .. }));
+        let has_stream_end = events.iter().any(|e| matches!(e, YamlEvent::StreamEnd { .. }));
+        // Then: both stream start and stream end present
+        assert!(has_stream_start, "missing StreamStart");
+        assert!(has_stream_end, "missing StreamEnd");
+    }
+
+    #[test]
+    fn document_start_carries_explicit_flag() {
+        // Given: YAML with explicit document marker
+        let yaml = "---\nkey: value\n";
+        let events = collect_ok!(yaml);
+        // When: finding the DocumentStart
+        let doc_start = events.iter().find_map(|e| match e {
+            YamlEvent::DocumentStart { explicit, .. } => Some(*explicit),
+            _ => None,
+        });
+        // Then: explicit = true
+        assert_eq!(doc_start, Some(true));
+    }
+
+    #[test]
+    fn implicit_document_start_is_not_explicit() {
+        // Given: YAML without explicit document marker
+        let yaml = "key: value\n";
+        let events = collect_ok!(yaml);
+        // When: finding the DocumentStart
+        let doc_start = events.iter().find_map(|e| match e {
+            YamlEvent::DocumentStart { explicit, .. } => Some(*explicit),
+            _ => None,
+        });
+        // Then: explicit = false
+        assert_eq!(doc_start, Some(false));
+    }
+
+    #[test]
+    fn sequence_events_have_start_and_end() {
+        // Given: YAML with a sequence
+        let yaml = "items:\n  - a\n  - b\n";
+        let events = collect_ok!(yaml);
+        let has_start = events.iter().any(|e| matches!(e, YamlEvent::SequenceStart { .. }));
+        let has_end = events.iter().any(|e| matches!(e, YamlEvent::SequenceEnd { .. }));
+        // When: checking for sequence events
+        // Then: both start and end present
+        assert!(has_start, "missing SequenceStart");
+        assert!(has_end, "missing SequenceEnd");
+    }
+
+    #[test]
+    fn mapping_events_have_start_and_end() {
+        // Given: YAML with a mapping
+        let yaml = "a: 1\n";
+        let events = collect_ok!(yaml);
+        let has_start = events.iter().any(|e| matches!(e, YamlEvent::MappingStart { .. }));
+        let has_end = events.iter().any(|e| matches!(e, YamlEvent::MappingEnd { .. }));
+        // When: checking for mapping events
+        // Then: both start and end present
+        assert!(has_start, "missing MappingStart");
+        assert!(has_end, "missing MappingEnd");
+    }
+
+    #[test]
+    fn scalar_style_plain_for_unquoted() {
+        // Given: YAML with plain scalar
+        let yaml = "key: value\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find_map(|e| match e {
+            YamlEvent::Scalar { value, style, .. } if value.as_ref() == "value" => Some(*style),
+            _ => None,
+        });
+        // When: checking style
+        // Then: Plain
+        assert_eq!(scalar, Some(ScalarStyle::Plain));
+    }
+
+    #[test]
+    fn scalar_style_single_quoted() {
+        // Given: YAML with single-quoted scalar
+        let yaml = "key: 'value'\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find_map(|e| match e {
+            YamlEvent::Scalar { value, style, .. } if value.as_ref() == "value" => Some(*style),
+            _ => None,
+        });
+        // When: checking style
+        // Then: SingleQuoted
+        assert_eq!(scalar, Some(ScalarStyle::SingleQuoted));
+    }
+
+    #[test]
+    fn scalar_style_double_quoted() {
+        // Given: YAML with double-quoted scalar
+        let yaml = "key: \"value\"\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find_map(|e| match e {
+            YamlEvent::Scalar { value, style, .. } if value.as_ref() == "value" => Some(*style),
+            _ => None,
+        });
+        // When: checking style
+        // Then: DoubleQuoted
+        assert_eq!(scalar, Some(ScalarStyle::DoubleQuoted));
+    }
+
+    #[test]
+    fn event_span_from_parser_span_fields() {
+        // Given: an EventSpan created manually
+        let span = EventSpan {
+            start: 0,
+            end: 10,
+            line: 1,
+            column: 1,
+        };
+        // When: inspecting fields
+        // Then: exact values
+        assert_eq!(span.start, 0);
+        assert_eq!(span.end, 10);
+        assert_eq!(span.line, 1);
+        assert_eq!(span.column, 1);
+    }
+
+    #[test]
+    fn scalar_event_has_zero_anchor_when_unanchored() {
+        // Given: a plain scalar without anchor
+        let yaml = "key: value\n";
+        let events = collect_ok!(yaml);
+        let scalar = events.iter().find_map(|e| match e {
+            YamlEvent::Scalar { value, anchor_id, .. } if value.as_ref() == "value" => {
+                Some(*anchor_id)
+            }
+            _ => None,
+        });
+        // When: checking anchor_id
+        // Then: 0
+        assert_eq!(scalar, Some(0));
+    }
+
+    #[test]
+    fn sequence_start_tag_returns_none_when_untagged() {
+        // Given: YAML with an untagged sequence
+        let yaml = "items:\n  - a\n";
+        let events = collect_ok!(yaml);
+        let seq_start = events.iter().find_map(|e| match e {
+            YamlEvent::SequenceStart { tag, .. } => Some(tag.clone()),
+            _ => None,
+        });
+        let Some(tag) = seq_start else {
+            assert!(false, "missing sequence start");
+            return;
+        };
+        // When: checking tag
+        // Then: None
+        assert_eq!(tag, None);
+    }
 }

@@ -645,4 +645,286 @@ mod tests {
         wf.vars.push(("label".to_owned(), ValueType::Boolean));
         assert!(validate_taint(&wf).is_ok());
     }
+
+    // ---------------------------------------------------------------------------
+    // BDD exact-assertion tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn validate_types_returns_type_mismatch_for_wrong_type() {
+        // Given a workflow with a choose step that has a number condition
+        let wf = make_workflow(vec![
+            save_step("val", TypedValue::Literal(ValueType::Number)),
+            choose_step("route", TypedValue::Slot(0)),
+        ]);
+        // When validate_types is called
+        let result = validate_types(&wf);
+        // Then it returns TypeMismatch with expected boolean, found number
+        assert_eq!(result, Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "number".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_taint_returns_secret_result_leak_for_secret_in_finish() {
+        // Given a workflow where finish references a secret
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$secrets.api_key".into()),
+        )]);
+        wf.secrets.push("api_key".to_owned());
+        // When validate_taint is called
+        let result = validate_taint(&wf);
+        // Then it returns SecretResultLeak
+        assert_eq!(result, Err(ValidationError::SecretResultLeak));
+    }
+
+    #[test]
+    fn validate_taint_returns_forbidden_reference_to_untrusted_slot() {
+        // Given a workflow where a secret is saved into a slot and then finished
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.token".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("token".to_owned());
+        // When validate_taint is called
+        let result = validate_taint(&wf);
+        // Then it returns SecretResultLeak (the slot is tainted)
+        assert_eq!(result, Err(ValidationError::SecretResultLeak));
+    }
+
+    #[test]
+    fn validate_resource_limits_accepts_within_limits() {
+        // Given a workflow with 1 step and default hard limits
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
+        let hard = ResourceLimits::default();
+        // When validate_resource_limits is called
+        let result = validate_resource_limits(&wf, &hard);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_resource_limits_rejects_too_many_steps() {
+        // Given a workflow with steps exceeding the declared limit
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
+        let hard = ResourceLimits {
+            max_steps: 0,
+            max_slots: 65_535,
+            max_constants: 65_535,
+        };
+        // When validate_resource_limits is called
+        let result = validate_resource_limits(&wf, &hard);
+        // Then it returns LimitExceeded for max_steps
+        assert_eq!(result, Err(ValidationError::LimitExceeded {
+            resource: "max_steps".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_resource_limits_rejects_declared_limit_exceeding_hard() {
+        // Given a workflow where declared max_steps exceeds hard limit
+        let wf = WorkflowTypes {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            steps: vec![],
+            resource_contract: ResourceLimits {
+                max_steps: 100,
+                max_slots: 65_535,
+                max_constants: 65_535,
+            },
+        };
+        let hard = ResourceLimits {
+            max_steps: 50,
+            max_slots: 65_535,
+            max_constants: 65_535,
+        };
+        // When validate_resource_limits is called
+        let result = validate_resource_limits(&wf, &hard);
+        // Then it returns LimitExceeded for max_steps
+        assert_eq!(result, Err(ValidationError::LimitExceeded {
+            resource: "max_steps".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn value_type_as_str_returns_correct_names() {
+        // Given all ValueType variants
+        // When as_str is called
+        // Then each returns the correct name
+        assert_eq!(ValueType::Null.as_str(), "null");
+        assert_eq!(ValueType::Boolean.as_str(), "boolean");
+        assert_eq!(ValueType::Number.as_str(), "number");
+        assert_eq!(ValueType::Text.as_str(), "text");
+        assert_eq!(ValueType::Object.as_str(), "object");
+        assert_eq!(ValueType::List.as_str(), "list");
+        assert_eq!(ValueType::Any.as_str(), "any");
+    }
+
+    #[test]
+    fn taint_merge_propagates_secret() {
+        // Given Clean and Secret taints
+        let clean = Taint::Clean;
+        let secret = Taint::Secret;
+        // When merge is called in both directions
+        let result1 = clean.merge(secret);
+        let result2 = secret.merge(clean);
+        let result3 = secret.merge(secret);
+        let result4 = clean.merge(clean);
+        // Then secret always propagates
+        assert_eq!(result1, Taint::Secret);
+        assert_eq!(result2, Taint::Secret);
+        assert_eq!(result3, Taint::Secret);
+        assert_eq!(result4, Taint::Clean);
+    }
+
+    #[test]
+    fn value_fact_clean_creates_clean_taint() {
+        // Given a ValueFact created with clean
+        let fact = ValueFact::clean(ValueType::Number);
+        // When examining fields
+        // Then taint is Clean and type is Number
+        assert_eq!(fact.value_type, ValueType::Number);
+        assert_eq!(fact.taint, Taint::Clean);
+    }
+
+    #[test]
+    fn value_fact_secret_creates_secret_taint() {
+        // Given a ValueFact created with secret
+        let fact = ValueFact::secret(ValueType::Text);
+        // When examining fields
+        // Then taint is Secret and type is Text
+        assert_eq!(fact.value_type, ValueType::Text);
+        assert_eq!(fact.taint, Taint::Secret);
+    }
+
+    #[test]
+    fn validate_types_accepts_any_type_choose() {
+        // Given a workflow with an Any-typed choose condition
+        let wf = make_workflow(vec![
+            save_step("val", TypedValue::Literal(ValueType::Any)),
+            choose_step("route", TypedValue::Slot(0)),
+        ]);
+        // When validate_types is called
+        let result = validate_types(&wf);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_types_rejects_null_choose_exact() {
+        // Given a workflow with a Null-typed choose condition
+        let wf = make_workflow(vec![
+            save_step("val", TypedValue::Literal(ValueType::Null)),
+            choose_step("route", TypedValue::Slot(0)),
+        ]);
+        // When validate_types is called
+        let result = validate_types(&wf);
+        // Then it returns TypeMismatch with expected boolean, found null
+        assert_eq!(result, Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "null".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_types_rejects_text_choose_exact() {
+        // Given a workflow with a Text-typed choose condition
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Text),
+        )]);
+        // When validate_types is called
+        let result = validate_types(&wf);
+        // Then it returns TypeMismatch with expected boolean, found text
+        assert_eq!(result, Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "text".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_types_accepts_literal_boolean_choose() {
+        // Given a workflow with a literal Boolean choose condition
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Boolean),
+        )]);
+        // When validate_types is called
+        let result = validate_types(&wf);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_taint_accepts_clean_input_finish() {
+        // Given a workflow that finishes with a clean input reference
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.user".into()),
+        )]);
+        wf.inputs.push(InputDecl {
+            name: "user".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: false,
+        });
+        // When validate_taint is called
+        let result = validate_taint(&wf);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_taint_rejects_secret_input_finish_exact() {
+        // Given a workflow that finishes with a secret input reference
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.key".into()),
+        )]);
+        wf.inputs.push(InputDecl {
+            name: "key".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        // When validate_taint is called
+        let result = validate_taint(&wf);
+        // Then it returns SecretResultLeak
+        assert_eq!(result, Err(ValidationError::SecretResultLeak));
+    }
+
+    #[test]
+    fn validate_taint_rejects_nested_secret_composite_exact() {
+        // Given a workflow where a composite value contains a secret reference
+        let mut wf = make_workflow(vec![
+            save_step(
+                "cap",
+                TypedValue::Composite(vec![TypedValue::Reference("$secrets.token".into())]),
+            ),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("token".to_owned());
+        // When validate_taint is called
+        let result = validate_taint(&wf);
+        // Then it returns SecretResultLeak
+        assert_eq!(result, Err(ValidationError::SecretResultLeak));
+    }
+
+    #[test]
+    fn resource_limits_default_values() {
+        // Given default ResourceLimits
+        let limits = ResourceLimits::default();
+        // When examining fields
+        // Then they are all 65_535
+        assert_eq!(limits.max_steps, 65_535);
+        assert_eq!(limits.max_slots, 65_535);
+        assert_eq!(limits.max_constants, 65_535);
+    }
 }

@@ -385,4 +385,193 @@ mod tests {
             ValidationError::HttpTriggerOutOfCore,
         ]
     }
+
+    // ---------------------------------------------------------------------------
+    // BDD exact-assertion tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn diagnostic_from_error_includes_error_code() {
+        // Given a ValidationError::DuplicateKey
+        let error = ValidationError::DuplicateKey;
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the diagnostic has code E0101
+        assert_eq!(diag.code.code(), 0x0101);
+    }
+
+    #[test]
+    fn diagnostic_from_error_includes_message() {
+        // Given a ValidationError::MissingRequiredField
+        let error = ValidationError::MissingRequiredField {
+            field: "steps".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message is non-empty and contains the field name
+        assert!(!diag.message.is_empty());
+        assert!(diag.message.contains("steps"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_includes_location() {
+        // Given any ValidationError
+        let error = ValidationError::ControlFlowCycle;
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the span is present (ZERO for now but always set)
+        assert_eq!(diag.span, Span::ZERO);
+    }
+
+    #[test]
+    fn error_code_returns_known_code_for_duplicate_key() {
+        // Given a ValidationError::DuplicateKey
+        let error = ValidationError::DuplicateKey;
+        // When error_code is called
+        let code = error_code(&error);
+        // Then it returns code E0101 (0x0101)
+        assert_eq!(code.code(), 0x0101);
+    }
+
+    #[test]
+    fn error_code_returns_known_code_for_missing_required_field() {
+        // Given a ValidationError::MissingRequiredField
+        let error = ValidationError::MissingRequiredField {
+            field: "version".to_owned(),
+        };
+        // When error_code is called
+        let code = error_code(&error);
+        // Then it returns code E0105 (0x0105)
+        assert_eq!(code.code(), 0x0105);
+    }
+
+    #[test]
+    fn error_code_is_non_empty_for_all_variants() {
+        // Given all ValidationError variants
+        let errors = all_variants();
+        // When error_code is called for each
+        // Then every variant produces a non-zero code
+        for error in &errors {
+            let code = error_code(error).code();
+            assert_ne!(code, 0, "error_code returned 0 for {error:?}");
+        }
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_invalid_id_includes_id() {
+        // Given a ValidationError::InvalidId
+        let error = ValidationError::InvalidId {
+            id: "bad-id".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the id
+        assert_eq!(diag.code.code(), 0x0107);
+        assert!(diag.message.contains("bad-id"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_reserved_id_includes_id() {
+        // Given a ValidationError::ReservedId
+        let error = ValidationError::ReservedId {
+            id: "runtime".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the id
+        assert_eq!(diag.code.code(), 0x0108);
+        assert!(diag.message.contains("runtime"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_duplicate_id_includes_id() {
+        // Given a ValidationError::DuplicateId
+        let error = ValidationError::DuplicateId {
+            id: "step1".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the id
+        assert_eq!(diag.code.code(), 0x0109);
+        assert!(diag.message.contains("step1"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_unknown_reference_includes_reference() {
+        // Given a ValidationError::UnknownReference
+        let error = ValidationError::UnknownReference {
+            reference: "$input.missing".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the reference
+        assert_eq!(diag.code.code(), 0x0201);
+        assert!(diag.message.contains("$input.missing"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_future_reference_includes_reference() {
+        // Given a ValidationError::FutureReference
+        let error = ValidationError::FutureReference {
+            reference: "$steps.build".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the reference
+        assert_eq!(diag.code.code(), 0x0202);
+        assert!(diag.message.contains("$steps.build"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_limit_exceeded_includes_resource() {
+        // Given a ValidationError::LimitExceeded
+        let error = ValidationError::LimitExceeded {
+            resource: "max_steps".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the resource
+        assert_eq!(diag.code.code(), 0x040A);
+        assert!(diag.message.contains("max_steps"));
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_unsupported_trigger_includes_trigger() {
+        // Given a ValidationError::UnsupportedTrigger
+        let error = ValidationError::UnsupportedTrigger {
+            trigger: "cron".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains the trigger
+        assert_eq!(diag.code.code(), 0x040B);
+        assert!(diag.message.contains("cron"));
+    }
+
+    #[test]
+    fn diagnostic_severity_is_always_error() {
+        // Given all ValidationError variants
+        let errors = all_variants();
+        // When diagnostic_from_error is called for each
+        // Then the severity is always Error
+        for error in &errors {
+            let diag = diagnostic_from_error(error);
+            assert_eq!(diag.severity, Severity::Error, "wrong severity for {error:?}");
+        }
+    }
+
+    #[test]
+    fn diagnostic_from_error_for_type_mismatch_includes_both_types() {
+        // Given a ValidationError::TypeMismatch
+        let error = ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "number".to_owned(),
+        };
+        // When diagnostic_from_error is called
+        let diag = diagnostic_from_error(&error);
+        // Then the message contains both type names
+        assert_eq!(diag.code.code(), 0x0407);
+        assert!(diag.message.contains("boolean"));
+        assert!(diag.message.contains("number"));
+    }
 }

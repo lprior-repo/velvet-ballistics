@@ -290,4 +290,124 @@ mod tests {
             Err(ValidationError::UnknownReference { .. })
         ));
     }
+
+    // ---------------------------------------------------------------------------
+    // BDD exact-assertion tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn validate_references_accepts_valid_forward_references() {
+        // Given a workflow with declared inputs, vars, secrets
+        let workflow = WorkflowRefs {
+            inputs: vec!["user".to_owned()],
+            vars: vec!["count".to_owned()],
+            secrets: vec!["token".to_owned()],
+            step_ids: vec!["done".to_owned()],
+            references: vec![
+                "$input.user".to_owned(),
+                "$vars.count".to_owned(),
+                "$secrets.token".to_owned(),
+            ],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_references_rejects_backward_then_reference_exact() {
+        // Given a workflow referencing a declared step (future reference)
+        let workflow = WorkflowRefs {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec!["build".to_owned()],
+            references: vec!["$steps.build.result".to_owned()],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns FutureReference with the exact reference
+        assert_eq!(result, Err(ValidationError::FutureReference {
+            reference: "$steps.build.result".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_references_rejects_unknown_input_reference_exact() {
+        // Given a workflow referencing an undeclared input
+        let workflow = WorkflowRefs {
+            inputs: vec!["user".to_owned()],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec![],
+            references: vec!["$input.nonexistent".to_owned()],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns UnknownReference with exact reference
+        assert_eq!(result, Err(ValidationError::UnknownReference {
+            reference: "$input.nonexistent".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_references_rejects_runtime_reference_exact() {
+        // Given a workflow referencing $runtime.something
+        let workflow = WorkflowRefs {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec![],
+            references: vec!["$runtime.memory".to_owned()],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns DirectRuntimeReference
+        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+    }
+
+    #[test]
+    fn validate_references_rejects_bare_now_exact() {
+        // Given a workflow referencing $now
+        let workflow = WorkflowRefs {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec![],
+            references: vec!["$now".to_owned()],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns DirectRuntimeReference
+        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+    }
+
+    #[test]
+    fn validate_references_rejects_unknown_root_exact() {
+        // Given a workflow referencing an unknown root like $env.HOME
+        let workflow = WorkflowRefs {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec![],
+            references: vec!["$env.HOME".to_owned()],
+        };
+        // When validate_references is called
+        let result = validate_references(&workflow);
+        // Then it returns UnknownReference with exact reference
+        assert_eq!(result, Err(ValidationError::UnknownReference {
+            reference: "$env.HOME".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_references_accepts_var_alias() {
+        // Given a workflow with declared var and a reference using "var" (alias for "vars")
+        let tables = make_tables(&[], &["count"], &[], &[]);
+        // When validate_single_reference is called with "$var.count"
+        let result = validate_single_reference("$var.count", &tables);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
 }

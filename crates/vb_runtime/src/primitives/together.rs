@@ -254,4 +254,169 @@ mod tests {
         let final_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
         assert!(matches!(final_val, SlotValue::List(_)));
     }
+
+    // BDD tests for together primitives
+
+    #[test]
+    fn together_start_returns_error_when_no_branches() {
+        // Given empty branches list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let output = SlotIdx::new(0);
+        // When calling together_start with empty branches
+        let result = together_start(&mut run, &mut store, &[], StepIdx::new(2), Some(output));
+        // Then it returns InvalidCompiledWorkflow
+        match result {
+            Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+                assert_eq!(reason, "together_start requires at least one branch");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn together_start_returns_error_when_output_missing() {
+        // Given valid branches but no output slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        // When calling together_start with output=None
+        let result = together_start(&mut run, &mut store, &[StepIdx::new(1)], StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn together_start_creates_empty_accumulator_list() {
+        // Given valid branches
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let output = SlotIdx::new(0);
+        // When calling together_start
+        let result = together_start(&mut run, &mut store, &[StepIdx::new(1)], StepIdx::new(2), Some(output));
+        // Then output slot has an empty list
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 0);
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
+
+    #[test]
+    fn together_branch_appends_previous_result_for_nonzero_branch() {
+        // Given a frame with accumulator list and previous result in output
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let entry = StepIdx::new(3);
+        list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+        run.write_slot(output, SlotValue::I64(20)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling together_branch with branch=1 (nonzero)
+        let result = together_branch(&mut run, &mut store, 1, entry, StepIdx::new(4), accumulator, Some(output));
+        // Then it succeeds and jumps to entry
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), entry);
+        // And the accumulator list now has 2 items
+        match *run.read_slot(accumulator).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 2);
+                assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
+                assert_eq!(items.get(1), Some(&SlotValue::I64(20)));
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
+
+    #[test]
+    fn together_branch_returns_error_when_output_missing_for_nonzero_branch() {
+        // Given a frame with accumulator list but no output for branch > 0
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+        // When calling together_branch with branch=1 and output=None
+        let result = together_branch(&mut run, &mut store, 1, StepIdx::new(3), StepIdx::new(4), accumulator, None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn together_join_returns_error_when_output_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+        // When calling together_join with output=None
+        let result = together_join(&mut run, &mut store, 1, accumulator, None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn together_join_returns_error_when_next_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        list_in_slot(&mut run, &mut store, accumulator, vec![]);
+        run.write_slot(output, SlotValue::I64(10)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling together_join with next=None
+        let result = together_join(&mut run, &mut store, 1, accumulator, Some(output), None, StepIdx::ZERO);
+        // Then it returns MissingNextStep
+        match result {
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn together_start_increments_executed_counter() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let output = SlotIdx::new(0);
+        let executed_before = run.executed();
+        // When calling together_start
+        let result = together_start(&mut run, &mut store, &[StepIdx::new(1)], StepIdx::new(2), Some(output));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), executed_before + 1);
+    }
 }

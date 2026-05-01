@@ -257,4 +257,264 @@ mod tests {
         assert_eq!(TraceEvent::RunFinished { run }.run_id(), run);
         assert_eq!(TraceEvent::RunFailed { run }.run_id(), run);
     }
+
+    #[test]
+    fn trace_ring_push_then_drain_preserves_order() {
+        // Given a trace ring with 8 slots
+        let mut ring = TraceRing::new(8);
+        let e1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let e2 = TraceEvent::StepStarted { run: RunId::new(1), step: StepIdx::new(0) };
+        let e3 = TraceEvent::StepEnded { run: RunId::new(1), step: StepIdx::new(0) };
+        let e4 = TraceEvent::RunFinished { run: RunId::new(1) };
+        // When pushing 4 events and draining
+        assert_eq!(ring.push(e1.clone()), true);
+        assert_eq!(ring.push(e2.clone()), true);
+        assert_eq!(ring.push(e3.clone()), true);
+        assert_eq!(ring.push(e4.clone()), true);
+        let events = ring.drain();
+        // Then the order is preserved (FIFO)
+        assert_eq!(events.len(), 4);
+        assert_eq!(events.get(0), Some(&e1));
+        assert_eq!(events.get(1), Some(&e2));
+        assert_eq!(events.get(2), Some(&e3));
+        assert_eq!(events.get(3), Some(&e4));
+    }
+
+    #[test]
+    fn trace_ring_dropped_increments_on_overflow() {
+        // Given a ring with capacity 2
+        let mut ring = TraceRing::new(2);
+        // When pushing 4 events
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(3) }), false);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(4) }), false);
+        // Then dropped count is 2
+        assert_eq!(ring.dropped(), 2);
+    }
+
+    #[test]
+    fn trace_ring_drain_returns_empty_after_drain() {
+        // Given a ring with one event
+        let mut ring = TraceRing::new(4);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        // When draining
+        let first = ring.drain();
+        assert_eq!(first.len(), 1);
+        // Then a second drain returns empty
+        let second = ring.drain();
+        assert_eq!(second.len(), 0);
+    }
+
+    #[test]
+    fn trace_event_equality_same_variant_same_fields() {
+        // Given two identical trace events
+        let e1 = TraceEvent::ActionScheduled { run: RunId::new(5), step: StepIdx::new(2) };
+        let e2 = TraceEvent::ActionScheduled { run: RunId::new(5), step: StepIdx::new(2) };
+        // Then they are equal
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_differs_for_different_fields() {
+        // Given two trace events with different run IDs
+        let e1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let e2 = TraceEvent::RunSubmitted { run: RunId::new(2) };
+        // Then they are not equal
+        assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_clone_preserves_all_fields() {
+        // Given a trace event
+        let original = TraceEvent::ActionCompleted { run: RunId::new(10), step: StepIdx::new(3) };
+        // When cloning
+        let cloned = original.clone();
+        // Then the clone is equal
+        assert_eq!(cloned, original);
+    }
+
+    #[test]
+    fn trace_ring_drain_into_appends_to_existing_vec() {
+        // Given a ring with 2 events and a vec with 1 existing event
+        let mut ring = TraceRing::new(4);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        let mut vec = vec![TraceEvent::RunSubmitted { run: RunId::new(0) }];
+        // When draining into the vec
+        ring.drain_into(10, &mut vec);
+        // Then the vec has 3 events (1 existing + 2 new)
+        assert_eq!(vec.len(), 3);
+        assert_eq!(vec.get(0), Some(&TraceEvent::RunSubmitted { run: RunId::new(0) }));
+        assert_eq!(vec.get(1), Some(&TraceEvent::RunSubmitted { run: RunId::new(1) }));
+        assert_eq!(vec.get(2), Some(&TraceEvent::RunSubmitted { run: RunId::new(2) }));
+    }
+
+    #[test]
+    fn trace_ring_new_capacity_is_correct() {
+        // Given a new trace ring with capacity 16
+        let ring = TraceRing::new(16);
+        // When checking capacity
+        // Then it is 16
+        assert_eq!(ring.capacity(), 16);
+    }
+
+    #[test]
+    fn trace_ring_dropped_starts_at_zero() {
+        // Given a new trace ring
+        let ring = TraceRing::new(4);
+        // When checking dropped count
+        // Then it is 0
+        assert_eq!(ring.dropped(), 0);
+    }
+
+    #[test]
+    fn trace_ring_push_many_events() {
+        // Given a ring with capacity 10
+        let mut ring = TraceRing::new(10);
+        // When pushing 8 events
+        let mut all_ok = true;
+        for i in 0..8u64 {
+            if !ring.push(TraceEvent::RunSubmitted { run: RunId::new(i) }) {
+                all_ok = false;
+            }
+        }
+        // Then all pushes succeed
+        assert_eq!(all_ok, true);
+        assert_eq!(ring.dropped(), 0);
+        // And draining returns 8 events
+        let events = ring.drain();
+        assert_eq!(events.len(), 8);
+    }
+
+    #[test]
+    fn trace_ring_drain_for_run_empty_ring_returns_empty() {
+        // Given an empty ring
+        let mut ring = TraceRing::new(8);
+        // When draining for a specific run
+        let events = ring.drain_for_run(RunId::new(1), 10);
+        // Then result is empty
+        assert_eq!(events.len(), 0);
+    }
+
+    #[test]
+    fn trace_ring_drain_into_with_zero_limit() {
+        // Given a ring with events
+        let mut ring = TraceRing::new(8);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        // When draining with limit 0
+        let mut vec = Vec::new();
+        ring.drain_into(0, &mut vec);
+        // Then no events are drained
+        assert_eq!(vec.len(), 0);
+    }
+
+    #[test]
+    fn trace_event_run_id_all_variants() {
+        // Given trace events for a specific run
+        let run = RunId::new(42);
+        let step = StepIdx::new(1);
+        let slot = SlotIdx::new(2);
+        // When checking run_id for each variant
+        // Then they all return the correct run
+        assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+        assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunFinished { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunFailed { run }.run_id(), run);
+    }
+
+    #[test]
+    fn trace_event_equality_step_started() {
+        // Given two identical StepStarted events
+        let e1 = TraceEvent::StepStarted { run: RunId::new(1), step: StepIdx::new(0) };
+        let e2 = TraceEvent::StepStarted { run: RunId::new(1), step: StepIdx::new(0) };
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_step_ended_differs_step() {
+        // Given two StepEnded events with different steps
+        let e1 = TraceEvent::StepEnded { run: RunId::new(1), step: StepIdx::new(0) };
+        let e2 = TraceEvent::StepEnded { run: RunId::new(1), step: StepIdx::new(1) };
+        assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_slot_written() {
+        // Given two identical SlotWritten events
+        let e1 = TraceEvent::SlotWritten { run: RunId::new(3), slot: SlotIdx::new(5) };
+        let e2 = TraceEvent::SlotWritten { run: RunId::new(3), slot: SlotIdx::new(5) };
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_run_finished() {
+        // Given two identical RunFinished events
+        let e1 = TraceEvent::RunFinished { run: RunId::new(7) };
+        let e2 = TraceEvent::RunFinished { run: RunId::new(7) };
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_equality_run_failed_differs_run() {
+        // Given two RunFailed events with different runs
+        let e1 = TraceEvent::RunFailed { run: RunId::new(1) };
+        let e2 = TraceEvent::RunFailed { run: RunId::new(2) };
+        assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn trace_event_different_variants_not_equal() {
+        // Given two events with same run but different variants
+        let run = RunId::new(1);
+        let e1 = TraceEvent::RunSubmitted { run };
+        let e2 = TraceEvent::RunFinished { run };
+        assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn trace_ring_push_returns_false_at_capacity_boundary() {
+        // Given a ring with capacity 3
+        let mut ring = TraceRing::new(3);
+        // When filling to capacity
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(3) }), true);
+        // Then the next push fails
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(4) }), false);
+        assert_eq!(ring.dropped(), 1);
+    }
+
+    #[test]
+    fn trace_ring_drain_for_run_filters_correctly() {
+        // Given a ring with events for runs 1, 2, 1
+        let mut ring = TraceRing::new(8);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        assert_eq!(ring.push(TraceEvent::RunFinished { run: RunId::new(1) }), true);
+        // When draining for run 1
+        let events = ring.drain_for_run(RunId::new(1), 10);
+        // Then only run 1 events are returned
+        assert_eq!(events.len(), 2);
+        assert_eq!(events.get(0), Some(&TraceEvent::RunSubmitted { run: RunId::new(1) }));
+        assert_eq!(events.get(1), Some(&TraceEvent::RunFinished { run: RunId::new(1) }));
+    }
+
+    #[test]
+    fn trace_ring_drain_for_run_respects_limit() {
+        // Given a ring with 5 events for run 1
+        let mut ring = TraceRing::new(10);
+        for i in 0..5u64 {
+            assert_eq!(ring.push(TraceEvent::StepStarted { run: RunId::new(1), step: StepIdx::new(i as u16) }), true);
+        }
+        // When draining with limit 3
+        let events = ring.drain_for_run(RunId::new(1), 3);
+        // Then only 3 events are returned
+        assert_eq!(events.len(), 3);
+    }
 }

@@ -272,4 +272,207 @@ mod tests {
         let result = registry.dispatch(&input, contract);
         assert_eq!(result, Err(ActionError::PayloadTooLarge { max_bytes: 0, actual_bytes: 0 }));
     }
+
+    #[test]
+    fn action_registry_resolve_returns_correct_contract() {
+        // Given a registry with one contract
+        let mut registry = ActionRegistry::new();
+        let contract = test_contract(5);
+        assert_eq!(registry.register(contract), Ok(()));
+        // When resolving the action
+        let result = registry.resolve_compile_time(ActionId::new(5));
+        // Then it returns the correct contract with matching id
+        match result {
+            Ok(c) => {
+                assert_eq!(c.id, ActionId::new(5));
+                assert_eq!(c.input_slot_count, 1);
+                assert_eq!(c.output_slot_count, 1);
+                assert_eq!(c.max_input_bytes, 1024);
+                assert_eq!(c.max_output_bytes, 1024);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn action_registry_register_fills_gaps() {
+        // Given a registry where action 10 is registered first
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(10)), Ok(()));
+        // Then len is 11 (slots 0..10)
+        assert_eq!(registry.len(), 11);
+        // And action 10 resolves correctly
+        let resolved = registry.resolve_compile_time(ActionId::new(10));
+        assert_eq!(resolved.map(|c| c.id), Ok(ActionId::new(10)));
+    }
+
+    #[test]
+    fn action_registry_dispatch_rejects_mismatched_contract() {
+        // Given a registry with action 5
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        // When dispatching with input for action 5 but a different contract
+        let input = test_input(5);
+        let wrong_contract = ActionContract {
+            id: ActionId::new(3),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let result = registry.dispatch(&input, &wrong_contract);
+        // Then it returns an UnknownAction error
+        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(5) }));
+    }
+
+    #[test]
+    fn action_registry_is_not_empty_after_register() {
+        // Given a registry with one action
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        // When checking is_empty
+        // Then it is not empty
+        assert_eq!(registry.is_empty(), false);
+    }
+
+    #[test]
+    fn action_registry_new_default_matches_new() {
+        // Given a default registry
+        let default = ActionRegistry::default();
+        let new = ActionRegistry::new();
+        // When comparing
+        // Then both are empty with same len
+        assert_eq!(default.is_empty(), true);
+        assert_eq!(new.is_empty(), true);
+        assert_eq!(default.len(), 0);
+        assert_eq!(new.len(), 0);
+    }
+
+    #[test]
+    fn action_registry_register_multiple_actions() {
+        // Given a registry
+        let mut registry = ActionRegistry::new();
+        // When registering actions 0, 1, 2
+        assert_eq!(registry.register(test_contract(0)), Ok(()));
+        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        assert_eq!(registry.register(test_contract(2)), Ok(()));
+        // Then all resolve correctly
+        assert_eq!(registry.resolve_compile_time(ActionId::new(0)).map(|c| c.id), Ok(ActionId::new(0)));
+        assert_eq!(registry.resolve_compile_time(ActionId::new(1)).map(|c| c.id), Ok(ActionId::new(1)));
+        assert_eq!(registry.resolve_compile_time(ActionId::new(2)).map(|c| c.id), Ok(ActionId::new(2)));
+        assert_eq!(registry.len(), 3);
+    }
+
+    #[test]
+    fn action_registry_resolve_unregistered_action_fails() {
+        // Given a registry with action 0
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(0)), Ok(()));
+        // When resolving unregistered action 5
+        let result = registry.resolve_compile_time(ActionId::new(5));
+        // Then it returns UnknownAction
+        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(5) }));
+    }
+
+    #[test]
+    fn action_registry_dispatch_with_correct_contract_succeeds() {
+        // Given a registry with action 0
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(0)), Ok(()));
+        let input = test_input(0);
+        let contract = test_contract(0);
+        // When dispatching with matching contract
+        let result = registry.dispatch(&input, &contract);
+        // Then it succeeds with Suspended outcome
+        match result {
+            Ok(ActionOutcome::Suspended(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(0));
+            }
+            other => {
+                assert_eq!(other, Ok(ActionOutcome::Suspended(ActionTicket {
+                    run: RunId::new(1),
+                    step: StepIdx::new(0),
+                    seq: SeqNo::new(0),
+                    action: ActionId::new(0),
+                    attempt: 1,
+                    idempotency_key: 0,
+                })));
+            }
+        }
+    }
+
+    #[test]
+    fn action_contract_fields_are_preserved() {
+        // Given a contract with specific fields
+        let contract = ActionContract {
+            id: ActionId::new(42),
+            input_slot_count: 3,
+            output_slot_count: 2,
+            max_input_bytes: 2048,
+            max_output_bytes: 4096,
+            timeout_ms: 10000,
+            idempotency: Idempotency::IdempotentExternal,
+        };
+        // When registering and resolving
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(contract), Ok(()));
+        let resolved = registry.resolve_compile_time(ActionId::new(42));
+        // Then all fields are preserved
+        match resolved {
+            Ok(c) => {
+                assert_eq!(c.id, ActionId::new(42));
+                assert_eq!(c.input_slot_count, 3);
+                assert_eq!(c.output_slot_count, 2);
+                assert_eq!(c.max_input_bytes, 2048);
+                assert_eq!(c.max_output_bytes, 4096);
+                assert_eq!(c.timeout_ms, 10000);
+                assert_eq!(c.idempotency, Idempotency::IdempotentExternal);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn action_registry_len_increases_with_gap() {
+        // Given a registry with action 5
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        // Then len is 6 (slots 0..5)
+        assert_eq!(registry.len(), 6);
+    }
+
+    #[test]
+    fn action_registry_gap_slot_resolves_for_default_id() {
+        // Given a registry with action 5
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        // When resolving action 0 (gap slot filled with default ActionId(0))
+        let result = registry.resolve_compile_time(ActionId::new(0));
+        // Then it resolves because gap slots have ActionId(0) which matches
+        match result {
+            Ok(c) => {
+                assert_eq!(c.id, ActionId::new(0));
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn action_registry_gap_slot_nondefault_id_fails() {
+        // Given a registry with action 5
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        // When resolving action 3 (gap slot with default id, not matching 3)
+        let result = registry.resolve_compile_time(ActionId::new(3));
+        // Then it returns UnknownAction
+        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(3) }));
+    }
 }
