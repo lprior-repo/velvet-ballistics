@@ -166,11 +166,86 @@ fn payload_len_u32(len: usize) -> Result<u32, IpcError> {
 mod tests {
     use super::*;
 
+    macro_rules! assert_ok {
+        ($result:expr $(, $($arg:tt)+)?) => {{
+            match &$result {
+                Ok(_) => (),
+                Err(_) => assert_eq!(Some("Err(..)"), None::<&str> $(, $($arg)+)?),
+            }
+        }};
+    }
+
+    fn assert_command_roundtrip(command: IpcCommand) {
+        let frame_result = encode_frame(command, 0, 7, b"");
+        assert_ok!(frame_result, "encode should succeed for {command:?}");
+        let Ok(frame_bytes) = frame_result else {
+            return;
+        };
+
+        let header_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
+            Some(s) => s,
+            None => return,
+        };
+        let header_arr: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let header = decode_frame_header(&header_arr);
+
+        assert_ok!(header, "header should decode for {command:?}");
+        let Ok(header) = header else {
+            return;
+        };
+        assert_eq!(header.command, command, "command should roundtrip");
+    }
+
+    fn assert_payload_roundtrip(command: IpcCommand) {
+        let payload = b"test";
+        let frame = encode_frame(command, 0, 42, payload);
+        assert_ok!(frame, "encode should succeed for {command:?}");
+        let Ok(frame_bytes) = frame else { return };
+
+        let header_arr: [u8; IPC_HEADER_LEN] = match frame_bytes.get(..IPC_HEADER_LEN) {
+            Some(s) => match s.try_into() {
+                Ok(a) => a,
+                Err(_) => return,
+            },
+            None => return,
+        };
+        let decoded = decode_frame_header(&header_arr);
+
+        assert_ok!(decoded, "decode should succeed for {command:?}");
+        let Ok(header) = decoded else { return };
+        assert_eq!(
+            header.command, command,
+            "command should roundtrip for {command:?}"
+        );
+        assert_eq!(header.correlation, 42);
+        let payload_len = match usize::try_from(header.payload_len) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        assert_eq!(payload_len, 4);
+        assert_eq!(frame_bytes.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
+    }
+
+    fn assert_bad_magic_rejected(bad_magic: u32) {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&bad_magic.to_le_bytes());
+        bytes.extend_from_slice(&[0u8; 20]);
+
+        assert_eq!(
+            validate_frame_magic(&bytes),
+            Err(IpcError::InvalidMagic { actual: bad_magic }),
+            "magic {bad_magic:#010x} should be rejected"
+        );
+    }
+
     #[test]
     fn encode_frame_produces_valid_header_and_payload() {
         let payload = b"test-data";
         let result = encode_frame(IpcCommand::Health, 0, 99, payload);
-        assert!(result.is_ok(), "encode_frame should succeed");
+        assert_ok!(result, "encode_frame should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -188,7 +263,7 @@ mod tests {
             Err(_) => return,
         };
         let header_result = decode_frame_header(&header_bytes);
-        assert!(header_result.is_ok(), "header should decode");
+        assert_ok!(header_result, "header should decode");
         let Ok(header) = header_result else {
             return;
         };
@@ -206,7 +281,7 @@ mod tests {
     fn fuzz_decode_frame_rejects_short_input() {
         let short: [u8; IPC_HEADER_LEN] = [0u8; IPC_HEADER_LEN];
         let result = decode_frame_header(&short);
-        assert!(result.is_err(), "zero-filled header should fail validation");
+        assert_eq!(result, Err(IpcError::InvalidMagic { actual: 0 }));
     }
 
     #[test]
@@ -223,7 +298,7 @@ mod tests {
     fn fuzz_decode_frame_rejects_oversized_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 9999);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+        assert_ok!(encoded, "header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -275,7 +350,7 @@ mod tests {
         // Given: a valid command and empty payload
         // When: encoding a frame
         let result = encode_frame(IpcCommand::Health, 0, 1, b"");
-        assert!(result.is_ok(), "encode_frame should succeed");
+        assert_ok!(result, "encode_frame should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -290,7 +365,7 @@ mod tests {
         // Given: a valid command and empty payload
         // When: encoding a frame
         let result = encode_frame(IpcCommand::Health, 0, 1, b"");
-        assert!(result.is_ok(), "encode_frame should succeed");
+        assert_ok!(result, "encode_frame should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -308,7 +383,7 @@ mod tests {
         // Given: a DrainTrace command (id=9)
         // When: encoding a frame
         let result = encode_frame(IpcCommand::DrainTrace, 0, 1, b"");
-        assert!(result.is_ok(), "encode_frame should succeed");
+        assert_ok!(result, "encode_frame should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -325,7 +400,7 @@ mod tests {
 
         // When: encoding a frame
         let result = encode_frame(IpcCommand::Health, 0, 1, payload);
-        assert!(result.is_ok(), "encode_frame should succeed");
+        assert_ok!(result, "encode_frame should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -342,7 +417,7 @@ mod tests {
 
         // When: encoding then decoding
         let frame_result = encode_frame(IpcCommand::Health, 0, 42, payload);
-        assert!(frame_result.is_ok(), "encode should succeed");
+        assert_ok!(frame_result, "encode should succeed");
         let Ok(frame_bytes) = frame_result else {
             return;
         };
@@ -356,7 +431,7 @@ mod tests {
             Err(_) => return,
         };
         let header = decode_frame_header(&header_arr);
-        assert!(header.is_ok(), "header should decode");
+        assert_ok!(header, "header should decode");
         let Ok(header) = header else {
             return;
         };
@@ -376,7 +451,7 @@ mod tests {
 
         // When: encoding then decoding
         let frame_result = encode_frame(IpcCommand::SubmitRun, 0, 99, &payload);
-        assert!(frame_result.is_ok(), "encode should succeed");
+        assert_ok!(frame_result, "encode should succeed");
         let Ok(frame_bytes) = frame_result else {
             return;
         };
@@ -390,7 +465,7 @@ mod tests {
             Err(_) => return,
         };
         let header = decode_frame_header(&header_arr);
-        assert!(header.is_ok(), "header should decode");
+        assert_ok!(header, "header should decode");
         let Ok(header) = header else {
             return;
         };
@@ -497,47 +572,58 @@ mod tests {
     }
 
     #[test]
-    fn decode_frame_roundtrip_preserves_all_command_variants() {
-        // Given: all IpcCommand variants
-        let commands = [
-            IpcCommand::SubmitRun,
-            IpcCommand::SubmitRunInline,
-            IpcCommand::CancelRun,
-            IpcCommand::InspectRun,
-            IpcCommand::ListEvents,
-            IpcCommand::AnswerAsk,
-            IpcCommand::CompleteAction,
-            IpcCommand::FailAction,
-            IpcCommand::DrainTrace,
-            IpcCommand::Health,
-            IpcCommand::Shutdown,
-        ];
+    fn decode_frame_roundtrip_preserves_submit_run_command() {
+        assert_command_roundtrip(IpcCommand::SubmitRun);
+    }
 
-        // When: encoding and decoding each command variant
-        for cmd in commands {
-            let frame_result = encode_frame(cmd, 0, 7, b"");
-            assert!(frame_result.is_ok(), "encode should succeed for {cmd:?}");
-            let Ok(frame_bytes) = frame_result else {
-                return;
-            };
+    #[test]
+    fn decode_frame_roundtrip_preserves_submit_run_inline_command() {
+        assert_command_roundtrip(IpcCommand::SubmitRunInline);
+    }
 
-            let header_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
-                Some(s) => s,
-                None => return,
-            };
-            let header_arr: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
-                Ok(h) => h,
-                Err(_) => return,
-            };
-            let header = decode_frame_header(&header_arr);
+    #[test]
+    fn decode_frame_roundtrip_preserves_cancel_run_command() {
+        assert_command_roundtrip(IpcCommand::CancelRun);
+    }
 
-            // Then: each command round-trips correctly
-            assert!(header.is_ok(), "header should decode for {cmd:?}");
-            let Ok(h) = header else {
-                return;
-            };
-            assert_eq!(h.command, cmd, "command should roundtrip");
-        }
+    #[test]
+    fn decode_frame_roundtrip_preserves_inspect_run_command() {
+        assert_command_roundtrip(IpcCommand::InspectRun);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_list_events_command() {
+        assert_command_roundtrip(IpcCommand::ListEvents);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_answer_ask_command() {
+        assert_command_roundtrip(IpcCommand::AnswerAsk);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_complete_action_command() {
+        assert_command_roundtrip(IpcCommand::CompleteAction);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_fail_action_command() {
+        assert_command_roundtrip(IpcCommand::FailAction);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_drain_trace_command() {
+        assert_command_roundtrip(IpcCommand::DrainTrace);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_health_command() {
+        assert_command_roundtrip(IpcCommand::Health);
+    }
+
+    #[test]
+    fn decode_frame_roundtrip_preserves_shutdown_command() {
+        assert_command_roundtrip(IpcCommand::Shutdown);
     }
 
     #[test]
@@ -564,7 +650,7 @@ mod tests {
         let result = read_frame_payload(&mut cursor, &header);
 
         // Then: the exact payload bytes are returned
-        assert!(result.is_ok(), "payload should read");
+        assert_ok!(result, "payload should read");
         let Ok(payload) = result else {
             return;
         };
@@ -594,7 +680,7 @@ mod tests {
         let result = write_frame(&mut writer, IpcCommand::Shutdown, 0, 55, b"bye");
 
         // Then: write succeeds and the output can be decoded
-        assert!(result.is_ok(), "write_frame should succeed");
+        assert_ok!(result, "write_frame should succeed");
         assert!(
             writer.len() > IPC_HEADER_LEN,
             "should contain header + payload"
@@ -608,7 +694,7 @@ mod tests {
             Err(_) => return,
         };
         let header = decode_frame_header(&header_arr);
-        assert!(header.is_ok(), "written header should decode");
+        assert_ok!(header, "written header should decode");
         let Ok(header) = header else {
             return;
         };
@@ -621,7 +707,7 @@ mod tests {
         // Given: a valid IpcPayload encoded as postcard bytes
         let payload = crate::IpcPayload::Health;
         let payload_bytes = postcard::to_allocvec(&payload);
-        assert!(payload_bytes.is_ok(), "payload should encode");
+        assert_ok!(payload_bytes, "payload should encode");
         let Ok(payload_bytes) = payload_bytes else {
             return;
         };
@@ -635,7 +721,7 @@ mod tests {
         let result = decode_frame_payload(&header, &payload_bytes);
 
         // Then: it decodes to the correct payload
-        assert!(result.is_ok(), "payload should decode");
+        assert_ok!(result, "payload should decode");
         let Ok(decoded) = result else {
             return;
         };
@@ -648,7 +734,7 @@ mod tests {
         let result = encode_frame(IpcCommand::Health, 0x1234, 1, b"");
 
         // When: encoding
-        assert!(result.is_ok(), "encode should succeed");
+        assert_ok!(result, "encode should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -665,7 +751,7 @@ mod tests {
         let result = encode_frame(IpcCommand::Health, 0, corr, b"");
 
         // When: encoding
-        assert!(result.is_ok(), "encode should succeed");
+        assert_ok!(result, "encode should succeed");
         let Ok(frame) = result else {
             return;
         };
@@ -676,28 +762,23 @@ mod tests {
     }
 
     #[test]
-    fn validate_frame_magic_rejects_various_bad_magic_values() {
-        // Given: several known-bad magic values
-        let bad_magics: Vec<u32> = vec![
-            0x0000_0000,
-            0xFFFF_FFFF,
-            0x5442_4C56, // reversed byte order
-            0x5642_4C55, // off by one
-        ];
+    fn validate_frame_magic_rejects_zero_magic() {
+        assert_bad_magic_rejected(0x0000_0000);
+    }
 
-        // When: validating each
-        for bad_magic in bad_magics {
-            let mut bytes = Vec::new();
-            bytes.extend_from_slice(&bad_magic.to_le_bytes());
-            bytes.extend_from_slice(&[0u8; 20]);
+    #[test]
+    fn validate_frame_magic_rejects_all_ones_magic() {
+        assert_bad_magic_rejected(0xFFFF_FFFF);
+    }
 
-            // Then: all are rejected
-            assert_eq!(
-                validate_frame_magic(&bytes),
-                Err(IpcError::InvalidMagic { actual: bad_magic }),
-                "magic {bad_magic:#010x} should be rejected"
-            );
-        }
+    #[test]
+    fn validate_frame_magic_rejects_reversed_magic() {
+        assert_bad_magic_rejected(0x5442_4C56);
+    }
+
+    #[test]
+    fn validate_frame_magic_rejects_off_by_one_magic() {
+        assert_bad_magic_rejected(0x5642_4C55);
     }
 
     // ══ Adversarial frame decode attacks ══
@@ -737,9 +818,7 @@ mod tests {
         let mut header_bytes = [0u8; IPC_HEADER_LEN];
         header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
         // Everything after magic is 0xFF => version 0xFFFF
-        for byte in header_bytes.iter_mut().skip(4) {
-            *byte = 0xFF;
-        }
+        header_bytes[4..].fill(0xFF);
 
         // When: decoding
         let result = decode_frame_header(&header_bytes);
@@ -964,50 +1043,58 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_encode_then_decode_roundtrip_all_commands() {
-        // Given: all valid IpcCommand variants
-        let commands = [
-            IpcCommand::SubmitRun,
-            IpcCommand::SubmitRunInline,
-            IpcCommand::CancelRun,
-            IpcCommand::InspectRun,
-            IpcCommand::ListEvents,
-            IpcCommand::AnswerAsk,
-            IpcCommand::CompleteAction,
-            IpcCommand::FailAction,
-            IpcCommand::DrainTrace,
-            IpcCommand::Health,
-            IpcCommand::Shutdown,
-        ];
+    fn adversarial_encode_then_decode_roundtrip_submit_run_command() {
+        assert_payload_roundtrip(IpcCommand::SubmitRun);
+    }
 
-        for cmd in commands {
-            // When: encoding then decoding each command
-            let payload = b"test";
-            let frame = encode_frame(cmd, 0, 42, payload);
-            assert!(frame.is_ok(), "encode should succeed for {cmd:?}");
-            let Ok(frame_bytes) = frame else { return };
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_submit_run_inline_command() {
+        assert_payload_roundtrip(IpcCommand::SubmitRunInline);
+    }
 
-            let header_arr: [u8; IPC_HEADER_LEN] = match frame_bytes.get(..IPC_HEADER_LEN) {
-                Some(s) => match s.try_into() {
-                    Ok(a) => a,
-                    Err(_) => return,
-                },
-                None => return,
-            };
-            let decoded = decode_frame_header(&header_arr);
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_cancel_run_command() {
+        assert_payload_roundtrip(IpcCommand::CancelRun);
+    }
 
-            // Then: command roundtrips exactly
-            assert!(decoded.is_ok(), "decode should succeed for {cmd:?}");
-            let Ok(h) = decoded else { return };
-            assert_eq!(h.command, cmd, "command should roundtrip for {cmd:?}");
-            assert_eq!(h.correlation, 42);
-            let payload_len = match usize::try_from(h.payload_len) {
-                Ok(v) => v,
-                Err(_) => return,
-            };
-            assert_eq!(payload_len, 4);
-            assert_eq!(frame_bytes.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
-        }
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_inspect_run_command() {
+        assert_payload_roundtrip(IpcCommand::InspectRun);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_list_events_command() {
+        assert_payload_roundtrip(IpcCommand::ListEvents);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_answer_ask_command() {
+        assert_payload_roundtrip(IpcCommand::AnswerAsk);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_complete_action_command() {
+        assert_payload_roundtrip(IpcCommand::CompleteAction);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_fail_action_command() {
+        assert_payload_roundtrip(IpcCommand::FailAction);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_drain_trace_command() {
+        assert_payload_roundtrip(IpcCommand::DrainTrace);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_health_command() {
+        assert_payload_roundtrip(IpcCommand::Health);
+    }
+
+    #[test]
+    fn adversarial_encode_then_decode_roundtrip_shutdown_command() {
+        assert_payload_roundtrip(IpcCommand::Shutdown);
     }
 
     #[test]
@@ -1019,7 +1106,7 @@ mod tests {
         let result = encode_frame(IpcCommand::Health, 0, 1, payload);
 
         // Then: encoding succeeds with header-only frame
-        assert!(result.is_ok(), "empty payload should encode");
+        assert_ok!(result, "empty payload should encode");
         let Ok(frame) = result else { return };
         assert_eq!(frame.len(), IPC_HEADER_LEN);
     }
@@ -1034,7 +1121,7 @@ mod tests {
         let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
 
         // Then: encoding succeeds
-        assert!(result.is_ok(), "max-size payload should encode");
+        assert_ok!(result, "max-size payload should encode");
         let Ok(frame) = result else { return };
         assert_eq!(
             frame.len(),
@@ -1068,7 +1155,7 @@ mod tests {
         // Given: a valid header with payload_len=50
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 50);
         let encoded = header.encode();
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let mut cursor = std::io::Cursor::new(encoded.as_slice());
 

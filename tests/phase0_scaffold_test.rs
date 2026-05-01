@@ -46,6 +46,23 @@ fn require_workspace_dir(relative: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+fn require_file_contains(relative: &str, needle: &str, reason: &str) -> Result<(), String> {
+    let contents = read_workspace_file(relative)?;
+    ensure(
+        contents.contains(needle),
+        format!("{} must contain '{}' for {}", relative, needle, reason),
+    )
+}
+
+fn require_valid_yaml_file(relative: &str, reason: &str) -> Result<(), String> {
+    use saphyr::LoadableYamlNode;
+
+    let contents = read_workspace_file(relative)?;
+    let _ = saphyr::Yaml::load_from_str(&contents)
+        .map_err(|error| format!("{} must be valid YAML for {}: {}", relative, reason, error))?;
+    Ok(())
+}
+
 #[test]
 fn deny_toml_exists() -> Result<(), String> {
     require_workspace_path("deny.toml")?;
@@ -111,38 +128,58 @@ fn geigerignore_has_content() -> Result<(), String> {
 }
 
 #[test]
-fn deny_toml_bans_required_licenses() -> Result<(), String> {
-    let contents = read_workspace_file("deny.toml")?;
-
-    for pattern in ["GPL", "LGPL", "AGPL", "SSPL", "Commons Clause"] {
-        ensure(
-            contents.contains(pattern),
-            format!("deny.toml must ban '{}' license pattern", pattern),
-        )?;
-    }
-
-    Ok(())
+fn deny_toml_bans_gpl_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "GPL", "banned license policy")
 }
 
 #[test]
-fn deny_toml_allows_required_licenses() -> Result<(), String> {
-    let contents = read_workspace_file("deny.toml")?;
+fn deny_toml_bans_lgpl_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "LGPL", "banned license policy")
+}
 
-    for pattern in [
-        "MIT",
-        "Apache-2.0",
-        "BSD-2-Clause",
-        "BSD-3-Clause",
-        "ISC",
-        "Zlib",
-    ] {
-        ensure(
-            contents.contains(pattern),
-            format!("deny.toml must allow '{}' license pattern", pattern),
-        )?;
-    }
+#[test]
+fn deny_toml_bans_agpl_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "AGPL", "banned license policy")
+}
 
-    Ok(())
+#[test]
+fn deny_toml_bans_sspl_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "SSPL", "banned license policy")
+}
+
+#[test]
+fn deny_toml_bans_commons_clause_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "Commons Clause", "banned license policy")
+}
+
+#[test]
+fn deny_toml_allows_mit_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "MIT", "allowed license policy")
+}
+
+#[test]
+fn deny_toml_allows_apache_2_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "Apache-2.0", "allowed license policy")
+}
+
+#[test]
+fn deny_toml_allows_bsd_2_clause_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "BSD-2-Clause", "allowed license policy")
+}
+
+#[test]
+fn deny_toml_allows_bsd_3_clause_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "BSD-3-Clause", "allowed license policy")
+}
+
+#[test]
+fn deny_toml_allows_isc_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "ISC", "allowed license policy")
+}
+
+#[test]
+fn deny_toml_allows_zlib_license_pattern() -> Result<(), String> {
+    require_file_contains("deny.toml", "Zlib", "allowed license policy")
 }
 
 #[test]
@@ -152,72 +189,203 @@ fn benches_velvet_ballastics_rs_exists() -> Result<(), String> {
 }
 
 #[test]
-fn benches_velvet_ballastics_has_required_criterion_groups() -> Result<(), String> {
-    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
-
-    for group in [
+fn benches_velvet_ballastics_has_yaml_parse_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "yaml_parse",
+        "benchmark group",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_compile_validate_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "compile_validate",
+        "benchmark group",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_expression_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "expression",
+        "benchmark group",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_runtime_core_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "runtime_core",
+        "benchmark group",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_storage_ipc_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "storage_ipc",
+        "benchmark group",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_generated_mode_group() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "generated_mode",
-    ] {
-        ensure(
-            contents.contains(group),
-            format!("benches/velvet_ballastics.rs must define {group} benchmark group"),
-        )?;
-    }
-
-    Ok(())
+        "benchmark group",
+    )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_required_metadata_fields() -> Result<(), String> {
-    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
+fn benches_velvet_ballastics_metadata_has_profile() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballastics.rs", "profile=bench", "metadata")
+}
 
-    for field in [
-        "profile=bench",
+#[test]
+fn benches_velvet_ballastics_metadata_has_criterion_tool() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "tool=criterion-0.8",
-        "durability=",
-        "latency=",
-        "allocations=",
-        "fixture_digest=",
-    ] {
-        ensure(
-            contents.contains(field),
-            format!("benches/velvet_ballastics.rs metadata must include {field}"),
-        )?;
-    }
-
-    Ok(())
+        "metadata",
+    )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_master_traceable_benchmark_ids() -> Result<(), String> {
-    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
+fn benches_velvet_ballastics_metadata_has_durability() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballastics.rs", "durability=", "metadata")
+}
 
-    for id in [
+#[test]
+fn benches_velvet_ballastics_metadata_has_latency() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballastics.rs", "latency=", "metadata")
+}
+
+#[test]
+fn benches_velvet_ballastics_metadata_has_allocations() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballastics.rs", "allocations=", "metadata")
+}
+
+#[test]
+fn benches_velvet_ballastics_metadata_has_fixture_digest() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "fixture_digest=",
+        "metadata",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_step_once_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
         "bench_engine_step_once_save_const_single_transition",
-        "bench_engine_run_save_chain_10_steps",
-        "bench_engine_run_save_chain_1000_steps",
-        "bench_engine_choose_true_branch",
-        "bench_engine_choose_false_branch",
-        "bench_engine_finish_no_observability",
-        "bench_engine_numeric_slots_read_write_i64",
-        "bench_memory_ingress_try_submit_capacity_1024",
-        "bench_memory_ingress_submit_recv_single_thread",
-        "bench_memory_ingress_backpressure_full_queue",
-        "bench_fjall_append_run_accepted_no_persist",
-        "bench_replay_ordered_journal_1000_events",
-    ] {
-        ensure(
-            contents.contains(id),
-            format!("benches/velvet_ballastics.rs must include benchmark id {id}"),
-        )?;
-    }
+        "master traceable benchmark id",
+    )
+}
 
-    Ok(())
+#[test]
+fn benches_velvet_ballastics_has_run_chain_10_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_run_save_chain_10_steps",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_run_chain_1000_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_run_save_chain_1000_steps",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_choose_true_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_choose_true_branch",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_choose_false_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_choose_false_branch",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_finish_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_finish_no_observability",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_numeric_slots_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_engine_numeric_slots_read_write_i64",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_ingress_capacity_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_memory_ingress_try_submit_capacity_1024",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_ingress_submit_recv_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_memory_ingress_submit_recv_single_thread",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_ingress_backpressure_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_memory_ingress_backpressure_full_queue",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_fjall_append_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_fjall_append_run_accepted_no_persist",
+        "master traceable benchmark id",
+    )
+}
+
+#[test]
+fn benches_velvet_ballastics_has_replay_journal_benchmark_id() -> Result<(), String> {
+    require_file_contains(
+        "benches/velvet_ballastics.rs",
+        "bench_replay_ordered_journal_1000_events",
+        "master traceable benchmark id",
+    )
 }
 
 #[test]
@@ -320,55 +488,55 @@ fn fixtures_valid_minimal_yaml_exists() -> Result<(), String> {
 }
 
 #[test]
-fn fixtures_valid_yaml_files_parse() -> Result<(), String> {
-    use saphyr::LoadableYamlNode;
+fn fixtures_valid_3step_choose_yaml_parses() -> Result<(), String> {
+    require_valid_yaml_file("tests/fixtures/valid/3step_choose.yaml", "valid fixture")
+}
 
-    for relative in [
-        "tests/fixtures/valid/3step_choose.yaml",
-        "tests/fixtures/valid/minimal.yaml",
-    ] {
-        let contents = read_workspace_file(relative)?;
-        let _ = saphyr::Yaml::load_from_str(&contents)
-            .map_err(|error| format!("{} must be valid YAML: {}", relative, error))?;
-    }
+#[test]
+fn fixtures_valid_minimal_yaml_parses() -> Result<(), String> {
+    require_valid_yaml_file("tests/fixtures/valid/minimal.yaml", "valid fixture")
+}
 
+#[test]
+fn fixtures_invalid_missing_when_yaml_exists() -> Result<(), String> {
+    require_workspace_path("tests/fixtures/invalid/invalid_missing_when.yaml")?;
     Ok(())
 }
 
 #[test]
-fn fixtures_invalid_yaml_files_exist() -> Result<(), String> {
-    for filename in [
-        "invalid_missing_when.yaml",
-        "invalid_cyclic_dep.yaml",
-        "invalid_invalid_step_type.yaml",
-    ] {
-        let relative = format!("tests/fixtures/invalid/{}", filename);
-        require_workspace_path(&relative)?;
-    }
-
+fn fixtures_invalid_cyclic_dep_yaml_exists() -> Result<(), String> {
+    require_workspace_path("tests/fixtures/invalid/invalid_cyclic_dep.yaml")?;
     Ok(())
 }
 
 #[test]
-fn fixtures_invalid_yaml_files_parse_as_valid_yaml() -> Result<(), String> {
-    use saphyr::LoadableYamlNode;
-
-    for filename in [
-        "invalid_missing_when.yaml",
-        "invalid_cyclic_dep.yaml",
-        "invalid_invalid_step_type.yaml",
-    ] {
-        let relative = format!("tests/fixtures/invalid/{}", filename);
-        let contents = read_workspace_file(&relative)?;
-        let _ = saphyr::Yaml::load_from_str(&contents).map_err(|error| {
-            format!(
-                "{} must be valid YAML even if semantically invalid: {}",
-                filename, error
-            )
-        })?;
-    }
-
+fn fixtures_invalid_step_type_yaml_exists() -> Result<(), String> {
+    require_workspace_path("tests/fixtures/invalid/invalid_invalid_step_type.yaml")?;
     Ok(())
+}
+
+#[test]
+fn fixtures_invalid_missing_when_yaml_parses() -> Result<(), String> {
+    require_valid_yaml_file(
+        "tests/fixtures/invalid/invalid_missing_when.yaml",
+        "semantically invalid fixture",
+    )
+}
+
+#[test]
+fn fixtures_invalid_cyclic_dep_yaml_parses() -> Result<(), String> {
+    require_valid_yaml_file(
+        "tests/fixtures/invalid/invalid_cyclic_dep.yaml",
+        "semantically invalid fixture",
+    )
+}
+
+#[test]
+fn fixtures_invalid_step_type_yaml_parses() -> Result<(), String> {
+    require_valid_yaml_file(
+        "tests/fixtures/invalid/invalid_invalid_step_type.yaml",
+        "semantically invalid fixture",
+    )
 }
 
 #[test]
@@ -378,36 +546,59 @@ fn dependency_policy_md_exists() -> Result<(), String> {
 }
 
 #[test]
-fn dependency_policy_lists_allowed_licenses() -> Result<(), String> {
-    let contents = read_workspace_file("docs/dependency-policy.md")?;
-    let allowed_count = ["MIT", "Apache", "Zlib", "BSD"]
-        .iter()
-        .filter(|license| contents.contains(**license))
-        .count();
+fn dependency_policy_lists_mit_allowed_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "MIT", "allowed license policy")
+}
 
-    ensure(
-        allowed_count >= 4,
-        format!(
-            "docs/dependency-policy.md must list at least 4 allowed license types, found {}",
-            allowed_count
-        ),
+#[test]
+fn dependency_policy_lists_apache_allowed_license() -> Result<(), String> {
+    require_file_contains(
+        "docs/dependency-policy.md",
+        "Apache",
+        "allowed license policy",
     )
 }
 
 #[test]
-fn dependency_policy_lists_banned_licenses() -> Result<(), String> {
-    let contents = read_workspace_file("docs/dependency-policy.md")?;
-    let banned_count = ["GPL", "LGPL", "AGPL", "SSPL", "Commons Clause"]
-        .iter()
-        .filter(|license| contents.contains(**license))
-        .count();
+fn dependency_policy_lists_zlib_allowed_license() -> Result<(), String> {
+    require_file_contains(
+        "docs/dependency-policy.md",
+        "Zlib",
+        "allowed license policy",
+    )
+}
 
-    ensure(
-        banned_count >= 5,
-        format!(
-            "docs/dependency-policy.md must list all 5 banned license types, found {}",
-            banned_count
-        ),
+#[test]
+fn dependency_policy_lists_bsd_allowed_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "BSD", "allowed license policy")
+}
+
+#[test]
+fn dependency_policy_lists_gpl_banned_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "GPL", "banned license policy")
+}
+
+#[test]
+fn dependency_policy_lists_lgpl_banned_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "LGPL", "banned license policy")
+}
+
+#[test]
+fn dependency_policy_lists_agpl_banned_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "AGPL", "banned license policy")
+}
+
+#[test]
+fn dependency_policy_lists_sspl_banned_license() -> Result<(), String> {
+    require_file_contains("docs/dependency-policy.md", "SSPL", "banned license policy")
+}
+
+#[test]
+fn dependency_policy_lists_commons_clause_banned_license() -> Result<(), String> {
+    require_file_contains(
+        "docs/dependency-policy.md",
+        "Commons Clause",
+        "banned license policy",
     )
 }
 
@@ -426,26 +617,29 @@ fn ci_workflow_yaml_is_valid_yaml() -> Result<(), String> {
     use saphyr::LoadableYamlNode;
 
     let contents = read_workspace_file(".github/workflows/ci.yml")?;
-    let _ = saphyr::Yaml::load_from_str(&contents)
+    saphyr::Yaml::load_from_str(&contents)
         .map_err(|error| format!(".github/workflows/ci.yml must be valid YAML: {}", error))?;
     Ok(())
 }
 
 #[test]
-fn ci_workflow_has_required_steps() -> Result<(), String> {
-    let contents = read_workspace_file(".github/workflows/ci.yml")?;
+fn ci_workflow_has_geiger_step() -> Result<(), String> {
+    require_file_contains(".github/workflows/ci.yml", "geiger", "CI safety gate")
+}
 
-    for step in ["geiger", "vet", "bench", "fuzz"] {
-        ensure(
-            contents.contains(step),
-            format!(
-                ".github/workflows/ci.yml must contain a step for '{}'",
-                step
-            ),
-        )?;
-    }
+#[test]
+fn ci_workflow_has_vet_step() -> Result<(), String> {
+    require_file_contains(".github/workflows/ci.yml", "vet", "CI safety gate")
+}
 
-    Ok(())
+#[test]
+fn ci_workflow_has_bench_step() -> Result<(), String> {
+    require_file_contains(".github/workflows/ci.yml", "bench", "CI performance gate")
+}
+
+#[test]
+fn ci_workflow_has_fuzz_step() -> Result<(), String> {
+    require_file_contains(".github/workflows/ci.yml", "fuzz", "CI robustness gate")
 }
 
 #[test]

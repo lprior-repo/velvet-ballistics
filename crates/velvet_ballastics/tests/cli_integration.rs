@@ -61,9 +61,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet_ballastics"));
-    for arg in args {
-        command.arg(arg);
-    }
+    command.args(args);
 
     match command.output() {
         Ok(output) => Some(output),

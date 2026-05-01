@@ -1,6 +1,7 @@
 use super::marks::AstMarks;
 use super::types::{
-    AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, TriggerAst, WorkflowAst,
+    AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, StepPrimitiveAst, TriggerAst,
+    WorkflowAst,
 };
 use crate::expression;
 use crate::{CompileError, SourceMark};
@@ -64,6 +65,11 @@ fn parse_trigger(
     mapping: &saphyr::Mapping<'_>,
     marks: &AstMarks,
 ) -> Result<TriggerAst, CompileError> {
+    if mapping.len() != 1 {
+        return Err(CompileError::InvalidTriggerCount {
+            count: mapping.len(),
+        });
+    }
     let Some((key, value)) = mapping.iter().next() else {
         return Err(CompileError::InvalidTriggerCount { count: 0 });
     };
@@ -164,14 +170,15 @@ fn parse_map<T, F>(
 where
     F: Fn(&Yaml<'_>) -> Result<T, CompileError>,
 {
-    node.as_mapping()
-        .ok_or(CompileError::FieldShape {
-            field,
-            expected: "a mapping",
-        })?
-        .iter()
-        .map(|(key, value)| parse_entry(key, value, field, marks, &parse))
-        .collect()
+    let mapping = node.as_mapping().ok_or(CompileError::FieldShape {
+        field,
+        expected: "a mapping",
+    })?;
+    let mut entries = Vec::with_capacity(mapping.len());
+    for (key, value) in mapping {
+        entries.push(parse_entry(key, value, field, marks, &parse)?);
+    }
+    Ok(entries)
 }
 
 fn parse_entry<T, F>(
@@ -214,25 +221,26 @@ fn parse_examples(doc: &Yaml<'_>) -> Result<Vec<AstValue>, CompileError> {
     let Some(node) = doc.as_mapping_get("examples") else {
         return Ok(Vec::new());
     };
-    node.as_sequence()
-        .ok_or(CompileError::FieldShape {
-            field: "examples",
-            expected: "a sequence",
-        })?
-        .iter()
-        .map(parse_value)
-        .collect()
+    let sequence = node.as_sequence().ok_or(CompileError::FieldShape {
+        field: "examples",
+        expected: "a sequence",
+    })?;
+    let mut examples = Vec::with_capacity(sequence.len());
+    for item in sequence {
+        examples.push(parse_value(item)?);
+    }
+    Ok(examples)
 }
 
 fn parse_steps(
     steps: &saphyr::Sequence<'_>,
     marks: &AstMarks,
 ) -> Result<Vec<StepAst>, CompileError> {
-    steps
-        .iter()
-        .enumerate()
-        .map(|(index, step)| parse_step(step, index, marks))
-        .collect()
+    let mut parsed = Vec::with_capacity(steps.len());
+    for (index, step) in steps.iter().enumerate() {
+        parsed.push(parse_step(step, index, marks)?);
+    }
+    Ok(parsed)
 }
 
 fn parse_step(step: &Yaml<'_>, index: usize, marks: &AstMarks) -> Result<StepAst, CompileError> {
@@ -240,10 +248,12 @@ fn parse_step(step: &Yaml<'_>, index: usize, marks: &AstMarks) -> Result<StepAst
         .as_mapping()
         .ok_or(CompileError::StepShape { step: index })?;
     let id = step_str(step, index, "id")?;
+    let (primitive, kind) = parse_step_kind(mapping, index)?;
     Ok(StepAst {
         id: id.into(),
         name: optional_str(step, "name").map(Box::<str>::from),
-        kind: parse_step_kind(mapping, index)?,
+        primitive,
+        kind,
         mark: marks.step(id),
     })
 }
@@ -251,17 +261,19 @@ fn parse_step(step: &Yaml<'_>, index: usize, marks: &AstMarks) -> Result<StepAst
 fn parse_step_kind(
     mapping: &saphyr::Mapping<'_>,
     index: usize,
-) -> Result<StepKindAst, CompileError> {
-    let Some((field, body)) = primitive_entry(mapping)? else {
+) -> Result<(StepPrimitiveAst, StepKindAst), CompileError> {
+    let Some((field, body)) = primitive_entry(mapping, index)? else {
         return Err(CompileError::MissingStepPrimitive { step: index });
     };
     match field {
-        "run" | "do" => parse_run(body, index),
-        "set" | "save" => parse_save(body),
-        "choose" => parse_choose(body, index),
-        "wait" => parse_wait(body, index),
-        "ask" => parse_ask(body, index),
-        "finish" => parse_finish(body, index),
+        "set" => parse_save(body).map(|kind| (StepPrimitiveAst::Set, kind)),
+        "run" => parse_run(body, index).map(|kind| (StepPrimitiveAst::Run, kind)),
+        "do" => parse_run(body, index).map(|kind| (StepPrimitiveAst::Do, kind)),
+        "save" => parse_save(body).map(|kind| (StepPrimitiveAst::Save, kind)),
+        "choose" => parse_choose(body, index).map(|kind| (StepPrimitiveAst::Choose, kind)),
+        "wait" => parse_wait(body, index).map(|kind| (StepPrimitiveAst::Wait, kind)),
+        "ask" => parse_ask(body, index).map(|kind| (StepPrimitiveAst::Ask, kind)),
+        "finish" => parse_finish(body, index).map(|kind| (StepPrimitiveAst::Finish, kind)),
         _ => Err(CompileError::UnknownStepField {
             step: index,
             field: field.into(),
@@ -271,23 +283,25 @@ fn parse_step_kind(
 
 fn primitive_entry<'map, 'input>(
     mapping: &'map saphyr::Mapping<'input>,
+    index: usize,
 ) -> Result<Option<(&'map str, &'map Yaml<'input>)>, CompileError> {
-    mapping.iter().try_fold(None, |selected, (key, body)| {
+    let mut selected = None;
+    for (key, body) in mapping {
         let field = key.as_str().ok_or_else(crate::non_string_key_error)?;
         if is_supported_primitive(field) {
-            selected.map_or(Ok(Some((field, body))), |_| {
-                Err(CompileError::MultipleStepPrimitives { step: 0 })
-            })
-        } else {
-            Ok(selected)
+            if selected.is_some() {
+                return Err(CompileError::MultipleStepPrimitives { step: index });
+            }
+            selected = Some((field, body));
         }
-    })
+    }
+    Ok(selected)
 }
 
 fn is_supported_primitive(field: &str) -> bool {
     matches!(
         field,
-        "run" | "do" | "set" | "save" | "choose" | "wait" | "ask" | "finish"
+        "set" | "run" | "do" | "save" | "choose" | "wait" | "ask" | "finish"
     )
 }
 
@@ -343,8 +357,12 @@ fn parse_ask(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError>
 }
 
 fn parse_finish(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    let result = match body.as_mapping_get("result") {
+        Some(node) => node,
+        None => body,
+    };
     Ok(StepKindAst::Finish {
-        result: parse_finish_expression(body.as_mapping_get("result").unwrap_or(body), index)?,
+        result: parse_finish_expression(result, index)?,
     })
 }
 
@@ -377,15 +395,16 @@ fn finish_integer_is_slot(value: i64, index: usize) -> bool {
 }
 
 fn parse_value_fields(body: &Yaml<'_>) -> Result<Vec<AstMapEntry<AstValue>>, CompileError> {
-    body.as_mapping()
-        .ok_or(CompileError::StepFieldShape {
-            step: 0,
-            field: "save",
-            expected: "an object",
-        })?
-        .iter()
-        .map(|(key, value)| value_field(key, value))
-        .collect()
+    let mapping = body.as_mapping().ok_or(CompileError::StepFieldShape {
+        step: 0,
+        field: "save",
+        expected: "an object",
+    })?;
+    let mut fields = Vec::with_capacity(mapping.len());
+    for (key, value) in mapping {
+        fields.push(value_field(key, value)?);
+    }
+    Ok(fields)
 }
 
 fn value_field(key: &Yaml<'_>, value: &Yaml<'_>) -> Result<AstMapEntry<AstValue>, CompileError> {
@@ -493,17 +512,17 @@ fn parse_non_scalar_value(node: &Yaml<'_>) -> Result<AstValue, CompileError> {
     if let Some(value) = node.as_str() {
         Ok(text_or_ref(value))
     } else if let Some(sequence) = node.as_sequence() {
-        sequence
-            .iter()
-            .map(parse_value)
-            .collect::<Result<_, _>>()
-            .map(AstValue::Sequence)
+        let mut values = Vec::with_capacity(sequence.len());
+        for value in sequence {
+            values.push(parse_value(value)?);
+        }
+        Ok(AstValue::Sequence(values))
     } else if let Some(mapping) = node.as_mapping() {
-        mapping
-            .iter()
-            .map(|(k, v)| value_field(k, v))
-            .collect::<Result<_, _>>()
-            .map(AstValue::Mapping)
+        let mut entries = Vec::with_capacity(mapping.len());
+        for (key, value) in mapping {
+            entries.push(value_field(key, value)?);
+        }
+        Ok(AstValue::Mapping(entries))
     } else {
         Err(CompileError::BadValue)
     }

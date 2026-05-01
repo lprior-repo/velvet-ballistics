@@ -1032,4 +1032,183 @@ mod tests {
             other => Err(format!("expected ObjectFieldNotFound, got {other:?}")),
         }
     }
+
+    #[test]
+    fn value_store_rejected_symbol_over_max_does_not_mutate_arena() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let baseline = store
+            .insert_symbol(Box::<str>::from("kept"))
+            .map_err(|e| e.to_string())?;
+        let too_large = "x".repeat(MAX_SYMBOL_BYTES_PER_VALUE.saturating_add(1));
+
+        match store.insert_symbol(too_large.into_boxed_str()) {
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "symbol_bytes",
+            }) => {}
+            other => return Err(format!("expected symbol_bytes limit, got {other:?}")),
+        }
+
+        if store.symbol_count() != 1 {
+            return Err(String::from("failed symbol insert must not change count"));
+        }
+        if store.symbol(baseline).map_err(|e| e.to_string())? != "kept" {
+            return Err(String::from(
+                "failed symbol insert must not corrupt payload",
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_rejected_list_over_max_does_not_mutate_arena() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let baseline = store
+            .insert_list(vec![SlotValue::I64(7)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let too_many = vec![SlotValue::Null; MAX_LIST_ITEMS_PER_VALUE.saturating_add(1)];
+
+        match store.insert_list(too_many.into_boxed_slice()) {
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "list_items",
+            }) => {}
+            other => return Err(format!("expected list_items limit, got {other:?}")),
+        }
+
+        if store.list_count() != 1 {
+            return Err(String::from("failed list insert must not change count"));
+        }
+        if store.list_item(baseline, 0).map_err(|e| e.to_string())? != SlotValue::I64(7) {
+            return Err(String::from("failed list insert must not corrupt payload"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_rejected_object_over_max_does_not_mutate_arena() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let key = SymbolId::new(11);
+        let field = ObjectField {
+            key,
+            value: SlotValue::Bool(true),
+        };
+        let baseline = store
+            .insert_object(vec![field].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let too_many = vec![field; MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)];
+
+        match store.insert_object(too_many.into_boxed_slice()) {
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "object_fields",
+            }) => {}
+            other => return Err(format!("expected object_fields limit, got {other:?}")),
+        }
+
+        if store.object_count() != 1 {
+            return Err(String::from("failed object insert must not change count"));
+        }
+        if store
+            .object_field(baseline, key)
+            .map_err(|e| e.to_string())?
+            != SlotValue::Bool(true)
+        {
+            return Err(String::from("failed object insert must not corrupt index"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_rejected_blob_over_max_does_not_mutate_arena() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let baseline = store
+            .insert_blob(Bytes::from_static(b"kept"))
+            .map_err(|e| e.to_string())?;
+        let too_large = vec![0u8; MAX_BLOB_BYTES_PER_VALUE.saturating_add(1)];
+
+        match store.insert_blob(Bytes::from(too_large)) {
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "blob_bytes",
+            }) => {}
+            other => return Err(format!("expected blob_bytes limit, got {other:?}")),
+        }
+
+        if store.blob_count() != 1 {
+            return Err(String::from("failed blob insert must not change count"));
+        }
+        if store.blob(baseline).map_err(|e| e.to_string())? != b"kept" {
+            return Err(String::from("failed blob insert must not corrupt payload"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_exact_max_list_accesses_edges_without_unchecked_indexing() -> Result<(), String>
+    {
+        let mut store = ValueStore::new();
+        let values = vec![SlotValue::I64(5); MAX_LIST_ITEMS_PER_VALUE];
+        let id = store
+            .insert_list(values.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let last_index =
+            u32::try_from(MAX_LIST_ITEMS_PER_VALUE.saturating_sub(1)).map_err(|e| e.to_string())?;
+        let end_index = u32::try_from(MAX_LIST_ITEMS_PER_VALUE).map_err(|e| e.to_string())?;
+
+        if store.list_item(id, 0).map_err(|e| e.to_string())? != SlotValue::I64(5) {
+            return Err(String::from("first max-list item mismatch"));
+        }
+        if store.list_item(id, last_index).map_err(|e| e.to_string())? != SlotValue::I64(5) {
+            return Err(String::from("last max-list item mismatch"));
+        }
+        if store.list_item(id, end_index)
+            != Err(CoreError::ListIndexOutOfBounds { index: end_index })
+        {
+            return Err(String::from("index exactly at max-list length must fail"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_exact_max_object_preserves_duplicate_first_wins_index() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let duplicate_key = SymbolId::new(77);
+        let unique_key = SymbolId::new(78);
+        let mut fields = vec![
+            ObjectField {
+                key: duplicate_key,
+                value: SlotValue::I64(1),
+            };
+            MAX_OBJECT_FIELDS_PER_VALUE
+        ];
+        let last = fields
+            .last_mut()
+            .ok_or_else(|| String::from("max object fixture must contain fields"))?;
+        *last = ObjectField {
+            key: unique_key,
+            value: SlotValue::I64(2),
+        };
+
+        let id = store
+            .insert_object(fields.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+
+        if store.object(id).map_err(|e| e.to_string())?.len() != MAX_OBJECT_FIELDS_PER_VALUE {
+            return Err(String::from("max object field count mismatch"));
+        }
+        if store
+            .object_field(id, duplicate_key)
+            .map_err(|e| e.to_string())?
+            != SlotValue::I64(1)
+        {
+            return Err(String::from(
+                "duplicate object key must resolve to first value",
+            ));
+        }
+        if store
+            .object_field(id, unique_key)
+            .map_err(|e| e.to_string())?
+            != SlotValue::I64(2)
+        {
+            return Err(String::from("unique field at max object edge must resolve"));
+        }
+        Ok(())
+    }
 }

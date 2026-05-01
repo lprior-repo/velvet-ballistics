@@ -39,7 +39,7 @@ impl RefTables {
 fn string_set(names: &[String]) -> HashSet<String> {
     let mut set = HashSet::with_capacity(names.len());
     for name in names {
-        let _ = set.insert(name.clone());
+        set.insert(name.clone());
     }
     set
 }

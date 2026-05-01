@@ -28,8 +28,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     }
 }
 
-fn fail_assert(message: std::fmt::Arguments<'_>) -> bool {
-    let _ = message;
+fn fail_assert(_message: std::fmt::Arguments<'_>) -> bool {
     false
 }
 
@@ -61,7 +60,7 @@ fn yaml_to_validate_parse_invalid_yaml_propagates_parse_error_code() {
     match result {
         Err(vb_yaml::YamlError::ParseError { line, reason }) => {
             assert!(line > 0, "parse error should report a line number");
-            let _ = reason;
+            assert!(!reason.is_empty(), "parse error should report a reason");
         }
         Err(other) => fail_assert!("expected ParseError, got {other:?}"),
         Ok(_) => fail_assert!("broken YAML should not parse successfully"),
@@ -739,32 +738,58 @@ fn runtime_to_ipc_memory_ingress_queue_full_returns_error() {
 }
 
 #[test]
-fn runtime_to_ipc_all_ipc_commands_have_unique_wire_codes() {
-    // Given: all known IPC commands
-    let commands = [
-        vb_ipc::IpcCommand::SubmitRun,
-        vb_ipc::IpcCommand::SubmitRunInline,
-        vb_ipc::IpcCommand::CancelRun,
-        vb_ipc::IpcCommand::InspectRun,
-        vb_ipc::IpcCommand::ListEvents,
-        vb_ipc::IpcCommand::AnswerAsk,
-        vb_ipc::IpcCommand::CompleteAction,
-        vb_ipc::IpcCommand::FailAction,
-        vb_ipc::IpcCommand::DrainTrace,
-        vb_ipc::IpcCommand::Health,
-        vb_ipc::IpcCommand::Shutdown,
-    ];
-    // When: collecting wire codes
-    let mut codes = std::collections::HashSet::new();
-    for cmd in &commands {
-        codes.insert(cmd.as_u16());
-    }
-    // Then: all codes are unique
-    assert_eq!(
-        codes.len(),
-        commands.len(),
-        "all commands must have unique codes"
-    );
+fn runtime_to_ipc_submit_run_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::SubmitRun.as_u16(), 1);
+}
+
+#[test]
+fn runtime_to_ipc_submit_run_inline_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::SubmitRunInline.as_u16(), 2);
+}
+
+#[test]
+fn runtime_to_ipc_cancel_run_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::CancelRun.as_u16(), 3);
+}
+
+#[test]
+fn runtime_to_ipc_inspect_run_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::InspectRun.as_u16(), 4);
+}
+
+#[test]
+fn runtime_to_ipc_list_events_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::ListEvents.as_u16(), 5);
+}
+
+#[test]
+fn runtime_to_ipc_answer_ask_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::AnswerAsk.as_u16(), 6);
+}
+
+#[test]
+fn runtime_to_ipc_complete_action_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::CompleteAction.as_u16(), 7);
+}
+
+#[test]
+fn runtime_to_ipc_fail_action_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::FailAction.as_u16(), 8);
+}
+
+#[test]
+fn runtime_to_ipc_drain_trace_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::DrainTrace.as_u16(), 9);
+}
+
+#[test]
+fn runtime_to_ipc_health_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::Health.as_u16(), 10);
+}
+
+#[test]
+fn runtime_to_ipc_shutdown_wire_code_is_stable() {
+    assert_eq!(vb_ipc::IpcCommand::Shutdown.as_u16(), 11);
 }
 
 // ===========================================================================
@@ -1414,11 +1439,18 @@ fn runtime_submit_and_tick_simple_workflow() {
     match runtime.snapshot_run(run_id, 1) {
         Ok(response) => {
             // The run should have finished since it's a simple set+finish
-            let _ = response;
+            match response {
+                vb_runtime::shard::InspectResponse::Found(snapshot) => {
+                    assert_eq!(snapshot.correlation, 1);
+                }
+                vb_runtime::shard::InspectResponse::NotFound { correlation, .. } => {
+                    assert_eq!(correlation, 1);
+                }
+            }
         }
         Err(err) => {
             // Even if inspect fails, the tick itself should have succeeded
-            let _ = err;
+            assert!(!err.to_string().is_empty());
         }
     }
 }

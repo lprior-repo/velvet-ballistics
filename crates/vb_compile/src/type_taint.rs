@@ -99,7 +99,14 @@ impl<'a> Facts<'a> {
 fn input_facts(entries: &[AstMapEntry<AstValue>]) -> HashMap<&str, ValueFact> {
     let mut facts = HashMap::with_capacity(entries.len());
     for entry in entries {
-        let _ = facts.insert(entry.name.as_ref(), input_schema_fact(&entry.value));
+        match facts.entry(entry.name.as_ref()) {
+            std::collections::hash_map::Entry::Occupied(mut fact) => {
+                fact.insert(input_schema_fact(&entry.value));
+            }
+            std::collections::hash_map::Entry::Vacant(fact) => {
+                fact.insert(input_schema_fact(&entry.value));
+            }
+        }
     }
     facts
 }
@@ -140,7 +147,14 @@ fn schema_type(name: &str) -> ValueType {
 fn value_facts(entries: &[AstMapEntry<AstValue>]) -> HashMap<&str, ValueFact> {
     let mut facts = HashMap::with_capacity(entries.len());
     for entry in entries {
-        let _ = facts.insert(entry.name.as_ref(), value_fact(&entry.value, None));
+        match facts.entry(entry.name.as_ref()) {
+            std::collections::hash_map::Entry::Occupied(mut fact) => {
+                fact.insert(value_fact(&entry.value, None));
+            }
+            std::collections::hash_map::Entry::Vacant(fact) => {
+                fact.insert(value_fact(&entry.value, None));
+            }
+        }
     }
     facts
 }
@@ -148,13 +162,20 @@ fn value_facts(entries: &[AstMapEntry<AstValue>]) -> HashMap<&str, ValueFact> {
 fn secret_facts<T>(entries: &[AstMapEntry<T>]) -> HashMap<&str, ValueFact> {
     let mut facts = HashMap::with_capacity(entries.len());
     for entry in entries {
-        let _ = facts.insert(
-            entry.name.as_ref(),
-            ValueFact {
-                value_type: ValueType::Any,
-                taint: Taint::Secret,
-            },
-        );
+        match facts.entry(entry.name.as_ref()) {
+            std::collections::hash_map::Entry::Occupied(mut fact) => {
+                fact.insert(ValueFact {
+                    value_type: ValueType::Any,
+                    taint: Taint::Secret,
+                });
+            }
+            std::collections::hash_map::Entry::Vacant(fact) => {
+                fact.insert(ValueFact {
+                    value_type: ValueType::Any,
+                    taint: Taint::Secret,
+                });
+            }
+        }
     }
     facts
 }

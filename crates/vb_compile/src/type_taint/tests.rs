@@ -1,6 +1,7 @@
 use super::validate_workflow_ast;
 use crate::ast::{
-    AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, TriggerAst, WorkflowAst,
+    AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, StepPrimitiveAst, TriggerAst,
+    WorkflowAst,
 };
 use crate::expression::{ExpressionLiteral, ParsedExpression};
 use crate::{CompileError, YamlCompiler, YamlLimits};
@@ -445,6 +446,7 @@ fn secret_tainted_finish_step() -> StepAst {
     StepAst {
         id: "done".into(),
         name: None,
+        primitive: StepPrimitiveAst::Finish,
         kind: StepKindAst::Finish {
             result: AstExpression::Reference("$secrets.token".into()),
         },

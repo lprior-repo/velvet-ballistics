@@ -723,6 +723,38 @@ fn map_try_send(error: TrySendError<IngressFrame>) -> IpcError {
 }
 
 #[cfg(test)]
+macro_rules! assert_ok {
+    ($result:expr $(, $($arg:tt)+)?) => {{
+        match &$result {
+            Ok(_) => (),
+            Err(_) => assert_eq!(Some("Err(..)"), None::<&str> $(, $($arg)+)?),
+        }
+    }};
+}
+
+#[cfg(test)]
+macro_rules! prop_assert_ok {
+    ($result:expr $(, $($arg:tt)+)?) => {{
+        let is_ok_result = match &$result {
+            Ok(_) => true,
+            Err(_) => false,
+        };
+        prop_assert!(is_ok_result $(, $($arg)+)?);
+    }};
+}
+
+#[cfg(test)]
+macro_rules! prop_assert_err {
+    ($result:expr $(, $($arg:tt)+)?) => {{
+        let is_err_result = match &$result {
+            Ok(_) => false,
+            Err(_) => true,
+        };
+        prop_assert!(is_err_result $(, $($arg)+)?);
+    }};
+}
+
+#[cfg(test)]
 mod tests {
     use super::{
         BoundedPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcCommand, IpcError,
@@ -766,7 +798,7 @@ mod tests {
             Bytes::from_static(b"{}"),
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(frame.is_ok(), "test frame should fit default payload bound");
+        assert_ok!(frame, "test frame should fit default payload bound");
         let Ok(frame) = frame else {
             return;
         };
@@ -816,7 +848,7 @@ mod tests {
     fn header_roundtrips_little_endian_fields() {
         let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 7, 42, 3);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode to fixed width");
+        assert_ok!(encoded, "header should encode to fixed width");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -828,7 +860,7 @@ mod tests {
     #[test]
     fn decoder_rejects_bad_magic_before_payload_use() {
         let encoded = header_bytes(0, IPC_VERSION, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -854,7 +886,7 @@ mod tests {
             1,
             payload_len_val,
         );
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -880,7 +912,7 @@ mod tests {
             1,
             0,
         );
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -893,7 +925,7 @@ mod tests {
     fn frame_decode_requires_payload_length_match() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode to fixed width");
+        assert_ok!(encoded, "header should encode to fixed width");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -922,7 +954,7 @@ mod tests {
         });
 
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode under default bound");
+        assert_ok!(encoded, "payload should encode under default bound");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -939,7 +971,7 @@ mod tests {
     #[test]
     fn unsupported_version_rejects_when_version_is_two() {
         let encoded = header_bytes(IPC_MAGIC, 2, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -968,7 +1000,7 @@ mod tests {
     fn bounded_payload_bytes_returns_inner_slice() {
         let data = Bytes::from_static(b"hello");
         let bounded = BoundedPayload::new(data.clone(), MaxPayloadBytes::DEFAULT);
-        assert!(bounded.is_ok(), "payload should fit default bound");
+        assert_ok!(bounded, "payload should fit default bound");
         let Ok(bounded) = bounded else {
             return;
         };
@@ -982,7 +1014,7 @@ mod tests {
         let workflow = WorkflowDigest::from_bytes([0xAB; 32]);
         let data = Bytes::from_static(b"payload");
         let frame = IngressFrame::new(run_id, workflow, data, MaxPayloadBytes::DEFAULT);
-        assert!(frame.is_ok(), "frame should construct");
+        assert_ok!(frame, "frame should construct");
         let Ok(frame) = frame else {
             return;
         };
@@ -1079,7 +1111,7 @@ mod tests {
         // Given: garbage bytes that cannot be decoded as IpcPayload
         let garbage = Bytes::from_static(b"\xff\xff\xff\xff");
         let bounded = BoundedPayload::new(garbage, MaxPayloadBytes::DEFAULT);
-        assert!(bounded.is_ok(), "garbage should fit in bound");
+        assert_ok!(bounded, "garbage should fit in bound");
         let Ok(bounded) = bounded else {
             return;
         };
@@ -1096,7 +1128,7 @@ mod tests {
 
         // When: encoding the header
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1112,7 +1144,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1129,7 +1161,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1146,7 +1178,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1163,7 +1195,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1180,7 +1212,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1198,7 +1230,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1215,7 +1247,7 @@ mod tests {
 
         // When: encoding
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encode should succeed");
+        assert_ok!(encoded, "header encode should succeed");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1230,7 +1262,7 @@ mod tests {
         // Given: a valid header with payload_len=3 and a 3-byte payload
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 3);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+        assert_ok!(encoded, "header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1240,7 +1272,7 @@ mod tests {
         let result = decode_frame(&encoded, payload, MaxPayloadBytes::DEFAULT);
 
         // Then: the frame header matches the original
-        assert!(result.is_ok(), "frame should decode");
+        assert_ok!(result, "frame should decode");
         let Ok(frame) = result else {
             return;
         };
@@ -1257,18 +1289,36 @@ mod tests {
         );
         let queue = MemoryIngress::bounded(capacity);
 
-        // When: submitting 3 frames
-        for i in 0..3u64 {
-            let frame = IngressFrame::new(
-                RunId::new(i),
-                WorkflowDigest::from_bytes([0; 32]),
-                Bytes::new(),
-                MaxPayloadBytes::DEFAULT,
-            );
-            assert!(frame.is_ok(), "frame {i} should construct");
-            let Ok(frame) = frame else { return };
-            assert_eq!(queue.try_submit(frame), Ok(()));
-        }
+        // When: submitting 3 named frames
+        let frame_zero = IngressFrame::new(
+            RunId::new(0),
+            WorkflowDigest::from_bytes([0; 32]),
+            Bytes::new(),
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert_ok!(frame_zero, "frame zero should construct");
+        let Ok(frame_zero) = frame_zero else { return };
+        assert_eq!(queue.try_submit(frame_zero), Ok(()));
+
+        let frame_one = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([0; 32]),
+            Bytes::new(),
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert_ok!(frame_one, "frame one should construct");
+        let Ok(frame_one) = frame_one else { return };
+        assert_eq!(queue.try_submit(frame_one), Ok(()));
+
+        let frame_two = IngressFrame::new(
+            RunId::new(2),
+            WorkflowDigest::from_bytes([0; 32]),
+            Bytes::new(),
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert_ok!(frame_two, "frame two should construct");
+        let Ok(frame_two) = frame_two else { return };
+        assert_eq!(queue.try_submit(frame_two), Ok(()));
 
         // Then: len is 3
         assert_eq!(queue.len(), 3);
@@ -1294,7 +1344,8 @@ mod tests {
             Bytes::new(),
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(frame1.is_ok() && frame2.is_ok(), "frames should construct");
+        assert_ok!(frame1, "first frame should construct");
+        assert_ok!(frame2, "second frame should construct");
         let Ok(frame1) = frame1 else { return };
         let Ok(frame2) = frame2 else { return };
         assert_eq!(queue.try_submit(frame1), Ok(()));
@@ -1305,8 +1356,8 @@ mod tests {
         let recv2 = queue.try_recv();
 
         // Then: they arrive in FIFO order
-        assert!(recv1.is_ok(), "first recv should succeed");
-        assert!(recv2.is_ok(), "second recv should succeed");
+        assert_ok!(recv1, "first recv should succeed");
+        assert_ok!(recv2, "second recv should succeed");
         let Ok(Some(f1)) = recv1 else { return };
         let Ok(Some(f2)) = recv2 else { return };
         assert_eq!(f1.run_id(), RunId::new(1));
@@ -1326,13 +1377,13 @@ mod tests {
             Bytes::new(),
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(frame.is_ok(), "frame should construct");
+        assert_ok!(frame, "frame should construct");
         let Ok(frame) = frame else { return };
         assert_eq!(queue.try_submit(frame), Ok(()));
 
         // When: receiving the frame
         let drained = queue.try_recv();
-        assert!(drained.is_ok(), "queued frame should drain");
+        assert_ok!(drained, "queued frame should drain");
 
         // Then: queue is empty
         assert!(queue.is_empty());
@@ -1348,7 +1399,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1368,7 +1419,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1389,7 +1440,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1410,7 +1461,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1431,7 +1482,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1451,7 +1502,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1468,7 +1519,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1485,7 +1536,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1504,7 +1555,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1525,7 +1576,7 @@ mod tests {
 
         // When: encoding then decoding
         let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1539,7 +1590,7 @@ mod tests {
     fn header_decode_rejects_unsupported_version_zero() {
         // Given: a header with version=0
         let encoded = header_bytes(IPC_MAGIC, 0, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1555,7 +1606,7 @@ mod tests {
     fn header_decode_rejects_unknown_command_id() {
         // Given: a header with an unknown command id (200)
         let encoded = header_bytes(IPC_MAGIC, IPC_VERSION, 200, 0, 0, 1, 0);
-        assert!(encoded.is_ok(), "test header should encode");
+        assert_ok!(encoded, "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1610,7 +1661,7 @@ mod tests {
         let result = BoundedPayload::new(data, max);
 
         // Then: it succeeds
-        assert!(result.is_ok(), "payload at exact max should succeed");
+        assert_ok!(result, "payload at exact max should succeed");
     }
 
     #[test]
@@ -1640,7 +1691,7 @@ mod tests {
         // Given: a bounded payload with 7 bytes
         let data = Bytes::from(vec![0u8; 7]);
         let bounded = BoundedPayload::new(data, MaxPayloadBytes::DEFAULT);
-        assert!(bounded.is_ok(), "should create bounded payload");
+        assert_ok!(bounded, "should create bounded payload");
         let Ok(bounded) = bounded else {
             return;
         };
@@ -1686,7 +1737,7 @@ mod tests {
         // Given: a header with non-zero flags
         let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 999, 10);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+        assert_ok!(encoded, "header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1695,7 +1746,7 @@ mod tests {
         let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
         // Then: flags are preserved
-        assert!(decoded.is_ok(), "header should decode");
+        assert_ok!(decoded, "header should decode");
         let Ok(decoded) = decoded else {
             return;
         };
@@ -1707,7 +1758,7 @@ mod tests {
         // Given: a header with payload_len=256
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 256);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+        assert_ok!(encoded, "header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1716,7 +1767,7 @@ mod tests {
         let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
         // Then: payload_len is preserved
-        assert!(decoded.is_ok(), "header should decode");
+        assert_ok!(decoded, "header should decode");
         let Ok(decoded) = decoded else {
             return;
         };
@@ -1740,10 +1791,7 @@ mod tests {
         );
 
         // Then: it succeeds (0 bytes is within max of 1)
-        assert!(
-            result.is_ok(),
-            "empty payload should fit within any non-zero max"
-        );
+        assert_ok!(result, "empty payload should fit within any non-zero max");
     }
 
     #[test]
@@ -1759,7 +1807,7 @@ mod tests {
             Bytes::from_static(b"data"),
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(frame.is_ok(), "frame should construct");
+        assert_ok!(frame, "frame should construct");
         let Ok(frame) = frame else {
             return;
         };
@@ -1769,7 +1817,7 @@ mod tests {
         let recv = queue.try_recv();
 
         // Then: the received frame has the correct run_id
-        assert!(recv.is_ok(), "recv should succeed");
+        assert_ok!(recv, "recv should succeed");
         let Ok(Some(f)) = recv else {
             return;
         };
@@ -1789,7 +1837,7 @@ mod tests {
             Bytes::new(),
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(frame.is_ok(), "frame should construct");
+        assert_ok!(frame, "frame should construct");
         let Ok(frame) = frame else { return };
         assert_eq!(queue.try_submit(frame.clone()), Ok(()));
 
@@ -1982,38 +2030,6 @@ mod tests {
     }
 
     #[test]
-    fn ipc_error_diagnostic_codes_are_unique() {
-        let errors = [
-            IpcError::Full,
-            IpcError::Disconnected,
-            IpcError::PayloadTooLarge {
-                actual: 1,
-                limit: 0,
-            },
-            IpcError::InvalidMagic { actual: 0 },
-            IpcError::UnsupportedVersion { actual: 0 },
-            IpcError::UnknownCommand(0),
-            IpcError::ReservedNonZero { actual: 0 },
-            IpcError::PayloadLengthMismatch {
-                header: 0,
-                actual: 0,
-            },
-            IpcError::HeaderEncodeFailed,
-            IpcError::HeaderDecodeFailed,
-            IpcError::PayloadLengthOutOfRange { actual: 0 },
-            IpcError::PayloadEncodeFailed,
-            IpcError::PayloadDecodeFailed,
-            IpcError::ResponseDecodeFailed,
-        ];
-        let mut seen = std::collections::BTreeSet::new();
-        for err in &errors {
-            let code = err.diagnostic_code();
-            assert!(seen.insert(code), "duplicate diagnostic code: {code}");
-        }
-        assert_eq!(seen.len(), errors.len());
-    }
-
-    #[test]
     fn ipc_error_diagnostic_code_full() {
         assert_eq!(
             IpcError::Full.diagnostic_code(),
@@ -2146,14 +2162,14 @@ fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
         run_id: RunId::new(0),
     };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
 
     // When: decoding the payload
     let decoded = decode_payload(&encoded);
 
     // Then: payload roundtrips (the protocol layer accepts it; runtime rejects later)
-    assert!(decoded.is_ok(), "CancelRun with run_id=0 should decode");
+    assert_ok!(decoded, "CancelRun with run_id=0 should decode");
     let Ok(decoded) = decoded else { return };
     assert_eq!(
         decoded,
@@ -2170,7 +2186,7 @@ fn adversarial_cancel_run_with_run_id_max_encoded_roundtrips() {
         run_id: RunId::new(u64::MAX),
     };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
 
     // When: decoding
@@ -2191,7 +2207,7 @@ fn adversarial_answer_ask_with_zero_ticket_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2210,7 +2226,7 @@ fn adversarial_answer_ask_with_max_u64_ticket_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2229,7 +2245,7 @@ fn adversarial_fail_action_with_unregistered_run_id_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2246,14 +2262,14 @@ fn adversarial_complete_action_with_mismatched_output_bytes_rejected() {
         output: Vec::from(&b"\xFF\xFF\xFF\xFF"[..]),
     };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
 
     // When: decoding the outer payload
     let decoded = decode_payload(&encoded);
 
     // Then: outer payload roundtrips (the inner output decode fails at dispatch, not protocol)
-    assert!(decoded.is_ok(), "outer IpcPayload should decode");
+    assert_ok!(decoded, "outer IpcPayload should decode");
 }
 
 #[test]
@@ -2267,7 +2283,7 @@ fn adversarial_submit_run_with_empty_input_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2286,7 +2302,7 @@ fn adversarial_submit_run_with_large_input_under_limit_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2304,7 +2320,7 @@ fn adversarial_list_events_with_from_sequence_max_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2322,7 +2338,7 @@ fn adversarial_drain_trace_with_max_records_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let decoded = decode_payload(&encoded);
 
@@ -2357,7 +2373,7 @@ fn adversarial_decode_frame_rejects_oversized_payload_bytes() {
     // Given: a valid header with payload_len=3 but we pass 1000 bytes
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 3);
     let encoded = header.encode();
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
     let oversized = Bytes::from(vec![0u8; 1000]);
 
@@ -2442,14 +2458,14 @@ fn adversarial_memory_ingress_full_then_drain_then_submit() {
         Bytes::new(),
         MaxPayloadBytes::DEFAULT,
     );
-    assert!(frame.is_ok());
+    assert_ok!(frame);
     let Ok(frame) = frame else { return };
 
     // When: filling, draining, then submitting again
     assert_eq!(queue.try_submit(frame.clone()), Ok(()));
     assert_eq!(queue.try_submit(frame.clone()), Err(IpcError::Full));
     let drained = queue.try_recv();
-    assert!(drained.is_ok());
+    assert_ok!(drained);
     assert_eq!(queue.try_submit(frame), Ok(()));
 
     // Then: the queue accepts after drain
@@ -2525,7 +2541,7 @@ fn adversarial_submit_run_payload_with_zero_workflow_roundtrips() {
 
     // When: encoding then decoding
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-    assert!(encoded.is_ok());
+    assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
 
     // Then: roundtrips (protocol doesn't validate semantic correctness)
@@ -2545,7 +2561,7 @@ mod proptests {
         #[test]
         fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
             let parsed = IpcCommand::from_u16(cmd);
-            prop_assert!(parsed.is_ok());
+            prop_assert_ok!(parsed);
             let Ok(command) = parsed else { return Ok(()) };
             prop_assert_eq!(command.as_u16(), cmd);
         }
@@ -2559,7 +2575,7 @@ mod proptests {
                 header_bytes[..4].copy_from_slice(&magic.to_le_bytes());
                 header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
                 let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-                prop_assert!(result.is_err());
+                prop_assert_err!(result);
                 if let Err(e) = result {
                     prop_assert!(
                         matches!(e, IpcError::InvalidMagic { .. }),
@@ -2581,12 +2597,12 @@ mod proptests {
             // When: encoding a header with this command then decoding
             let header = IpcFrameHeader::new(command, 0, 0, 0);
             let encoded = header.encode();
-            prop_assert!(encoded.is_ok());
+            prop_assert_ok!(encoded);
             let Ok(encoded) = encoded else { return Ok(()) };
             let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
             // Then: the command roundtrips exactly
-            prop_assert!(decoded.is_ok());
+            prop_assert_ok!(decoded);
             let Ok(decoded) = decoded else { return Ok(()) };
             prop_assert_eq!(decoded.command, command);
         }
@@ -2602,12 +2618,12 @@ mod proptests {
 
             // When: encoding then decoding the payload
             let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
-            prop_assert!(encoded.is_ok());
+            prop_assert_ok!(encoded);
             let Ok(encoded) = encoded else { return Ok(()) };
             let decoded = decode_payload(&encoded);
 
             // Then: the payload roundtrips exactly
-            prop_assert!(decoded.is_ok());
+            prop_assert_ok!(decoded);
             let Ok(decoded) = decoded else { return Ok(()) };
             prop_assert_eq!(decoded, payload);
         }
@@ -2626,7 +2642,7 @@ mod proptests {
 
             // Then: header encodes to exactly IPC_HEADER_LEN bytes
             let encoded = header.encode();
-            prop_assert!(encoded.is_ok());
+            prop_assert_ok!(encoded);
             let Ok(encoded) = encoded else { return Ok(()) };
             prop_assert_eq!(encoded.len(), IPC_HEADER_LEN);
         }

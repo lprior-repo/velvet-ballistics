@@ -267,13 +267,31 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     let encoded_payload = vb_ipc::encode_payload(&payload, max_payload);
     let journal_dir = tempfile::tempdir();
     let journal = match journal_dir.as_ref() {
-        Ok(dir) => vb_storage::FjallJournal::open(dir.path(), None).ok(),
-        Err(_) => None,
+        Ok(dir) => match vb_storage::FjallJournal::open(dir.path(), None) {
+            Ok(journal) => Some(journal),
+            Err(error) => {
+                eprintln!("journal bench disabled: {error}");
+                None
+            }
+        },
+        Err(error) => {
+            eprintln!("journal bench tempdir unavailable: {error}");
+            None
+        }
     };
     let replay_dir = tempfile::tempdir();
     let replay_journal = match replay_dir.as_ref() {
-        Ok(dir) => vb_storage::FjallJournal::open(dir.path(), None).ok(),
-        Err(_) => None,
+        Ok(dir) => match vb_storage::FjallJournal::open(dir.path(), None) {
+            Ok(journal) => Some(journal),
+            Err(error) => {
+                eprintln!("journal replay bench disabled: {error}");
+                None
+            }
+        },
+        Err(error) => {
+            eprintln!("journal replay bench tempdir unavailable: {error}");
+            None
+        }
     };
     if let Some(journal) = replay_journal.as_ref() {
         let _seeded = seed_journal(journal, RunId::new(43), JOURNAL_REPLAY_EVENTS);

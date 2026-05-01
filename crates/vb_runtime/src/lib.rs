@@ -102,6 +102,10 @@ pub enum RuntimeError {
     /// Durable recovery can expose a summary, but cannot yet rebuild a live frame.
     #[error("full run frame recovery hydration is unsupported")]
     UnsupportedFullRecoveryHydration,
+
+    /// Durable recovery frame seed was internally inconsistent.
+    #[error("invalid recovery frame hydration")]
+    InvalidRecoveryHydration,
 }
 
 /// Result alias for runtime operations.
@@ -142,6 +146,8 @@ impl RuntimeError {
     /// Diagnostic code for unsupported full recovery hydration.
     pub const UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE: DiagnosticCode =
         DiagnosticCode::new(0x200D);
+    /// Diagnostic code for invalid recovery hydration.
+    pub const INVALID_RECOVERY_HYDRATION_CODE: DiagnosticCode = DiagnosticCode::new(0x200E);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -162,6 +168,7 @@ impl RuntimeError {
             Self::UnsupportedFullRecoveryHydration => {
                 Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
             }
+            Self::InvalidRecoveryHydration => Self::INVALID_RECOVERY_HYDRATION_CODE,
         }
     }
 
@@ -502,13 +509,14 @@ mod bdd_runtime_error {
             RuntimeError::InvalidActionCompletion.diagnostic_code(),
             RuntimeError::InvalidTimerFire.diagnostic_code(),
             RuntimeError::UnsupportedFullRecoveryHydration.diagnostic_code(),
+            RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         ];
-        assert_eq!(codes.len(), 13);
+        assert_eq!(codes.len(), 14);
         let mut seen = std::collections::BTreeSet::new();
         for code in codes {
             assert!(seen.insert(code), "duplicate diagnostic code: {code}");
         }
-        assert_eq!(seen.len(), 13);
+        assert_eq!(seen.len(), 14);
     }
 
     #[test]
@@ -612,6 +620,14 @@ mod bdd_runtime_error {
         assert_eq!(
             RuntimeError::UnsupportedFullRecoveryHydration.diagnostic_code(),
             DiagnosticCode::new(0x200D)
+        );
+    }
+
+    #[test]
+    fn runtime_error_diagnostic_code_invalid_recovery_hydration() {
+        assert_eq!(
+            RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
+            DiagnosticCode::new(0x200E)
         );
     }
 }

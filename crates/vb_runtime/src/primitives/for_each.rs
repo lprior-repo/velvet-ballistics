@@ -91,7 +91,7 @@ pub fn for_each_join(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let output_slot = require_output(output, step)?;
     let value = *run.read_slot(materialized)?;
-    let _ = expect_list(value)?;
+    expect_list(value)?;
     run.write_slot(output_slot, value)?;
     jump_to_next(run, next, step)
 }

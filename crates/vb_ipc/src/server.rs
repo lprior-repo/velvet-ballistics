@@ -1012,6 +1012,15 @@ mod tests {
     use vb_runtime::shard::ShardConfig;
     use vb_runtime::trace::TraceEvent;
 
+    macro_rules! assert_ok {
+        ($result:expr $(, $($arg:tt)+)?) => {{
+            match &$result {
+                Ok(_) => (),
+                Err(_) => assert_eq!(Some("Err(..)"), None::<&str> $(, $($arg)+)?),
+            }
+        }};
+    }
+
     enum ServerStep {
         Serve,
         Stop,
@@ -1049,13 +1058,13 @@ mod tests {
         steps: &Sender<ServerStep>,
         results: &Receiver<Result<bool, String>>,
     ) -> bool {
-        assert!(steps.send(ServerStep::Serve).is_ok(), "server step sends");
+        assert_ok!(steps.send(ServerStep::Serve), "server step sends");
         let result = results.recv();
-        assert!(result.is_ok(), "server step returns");
+        assert_ok!(result, "server step returns");
         let Ok(result) = result else {
             return false;
         };
-        assert!(result.is_ok(), "server step succeeds: {result:?}");
+        assert_ok!(result, "server step succeeds: {result:?}");
         let Ok(keep_running) = result else {
             return false;
         };
@@ -1126,7 +1135,7 @@ mod tests {
     fn server_client_e2e_health_list_events_and_drain_trace() {
         let socket_path = ipc_test_socket("health_list_drain");
         let server = IpcServer::bind(&socket_path);
-        assert!(server.is_ok(), "server binds");
+        assert_ok!(server, "server binds");
         let Ok(server) = server else {
             return;
         };
@@ -1136,7 +1145,7 @@ mod tests {
         let handle = std::thread::spawn(move || server_loop(server, step_rx, result_tx));
 
         let client = IpcClient::connect(&socket_path);
-        assert!(client.is_ok(), "client connects");
+        assert_ok!(client, "client connects");
         let Ok(mut client) = client else {
             return;
         };
@@ -1145,13 +1154,13 @@ mod tests {
             "server accepts client"
         );
 
-        assert!(client.health(100).is_ok(), "health request sends");
+        assert_ok!(client.health(100), "health request sends");
         assert!(
             request_server_turn(&step_tx, &result_rx),
             "server handles health"
         );
         let health = client.recv_response(MaxPayloadBytes::DEFAULT);
-        assert!(health.is_ok(), "health response decodes: {health:?}");
+        assert_ok!(health, "health response decodes: {health:?}");
         let Ok((health_header, health_response)) = health else {
             return;
         };
@@ -1174,7 +1183,7 @@ mod tests {
             "server handles list-events"
         );
         let listed = client.recv_response(MaxPayloadBytes::DEFAULT);
-        assert!(listed.is_ok(), "list-events response decodes: {listed:?}");
+        assert_ok!(listed, "list-events response decodes: {listed:?}");
         let Ok((listed_header, listed_response)) = listed else {
             return;
         };
@@ -1197,7 +1206,7 @@ mod tests {
             "server handles drain-trace"
         );
         let drained = client.recv_response(MaxPayloadBytes::DEFAULT);
-        assert!(drained.is_ok(), "drain-trace response decodes: {drained:?}");
+        assert_ok!(drained, "drain-trace response decodes: {drained:?}");
         let Ok((drained_header, drained_response)) = drained else {
             return;
         };
@@ -1205,8 +1214,8 @@ mod tests {
         assert_eq!(drained_header.correlation, 102);
         assert_eq!(drained_response, IpcResponse::TraceCount { count: 0 });
 
-        assert!(step_tx.send(ServerStep::Stop).is_ok(), "server stops");
-        assert!(handle.join().is_ok(), "server thread joins");
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
         let remove_result = std::fs::remove_file(&socket_path);
         assert!(
             remove_result.is_ok() || !socket_path.exists(),
@@ -1218,7 +1227,7 @@ mod tests {
     fn extracts_payload_without_lossy_empty_fallback() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 7, 3);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header encodes");
+        assert_ok!(encoded, "header encodes");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1227,19 +1236,22 @@ mod tests {
         frame.extend_from_slice(&encoded);
         frame.extend_from_slice(b"abc");
         let total_len = frame_total_len(&header);
-        assert!(total_len.is_ok(), "total len is checked");
+        assert_ok!(total_len, "total len is checked");
         let Ok(total_len) = total_len else {
             return;
         };
 
         let payload = extract_payload(&mut frame, total_len);
-        assert!(payload.is_ok(), "payload extracts");
+        assert_ok!(payload, "payload extracts");
         let Ok(payload) = payload else {
             return;
         };
         assert_eq!(payload, Vec::from(b"abc".as_ref()));
         let mut short_frame = vec![0u8; total_len];
-        assert!(extract_payload(&mut short_frame, total_len.saturating_add(1)).is_err());
+        let payload_result = extract_payload(&mut short_frame, total_len.saturating_add(1));
+        let Err(IpcServerError::IncompleteFrame) = payload_result else {
+            return;
+        };
     }
 
     #[test]
@@ -1248,7 +1260,10 @@ mod tests {
             return;
         };
         let short = vec![0u8; short_len];
-        assert!(read_buffer_header(&short).is_err());
+        assert!(matches!(
+            read_buffer_header(&short),
+            Err(IpcServerError::IncompleteFrame)
+        ));
     }
 
     #[test]
@@ -1258,7 +1273,16 @@ mod tests {
         let Some(impossible_count) = READ_CHUNK_BYTES.checked_add(1) else {
             return;
         };
-        assert!(append_read_bytes(&mut read_buffer, &temp, impossible_count).is_err());
+        let result = append_read_bytes(&mut read_buffer, &temp, impossible_count);
+        assert!(matches!(
+            result,
+            Err(IpcServerError::FrameInvalid {
+                source: IpcError::PayloadLengthMismatch {
+                    header: READ_CHUNK_BYTES,
+                    actual
+                }
+            }) if actual == impossible_count
+        ));
     }
 
     #[test]
@@ -1284,12 +1308,12 @@ mod tests {
             input: Vec::from(b"input".as_ref()),
         });
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload encodes");
+        assert_ok!(encoded, "payload encodes");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits test header");
+        assert_ok!(payload_len, "payload len fits test header");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1404,7 +1428,7 @@ mod tests {
     #[test]
     fn workflow_resolution_unsupported_response_roundtrips() {
         let encoded = postcard::to_allocvec(&IpcResponse::WorkflowResolutionUnsupported);
-        assert!(encoded.is_ok(), "response should encode");
+        assert_ok!(encoded, "response should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1422,12 +1446,12 @@ mod tests {
             input: Vec::from(b"input".as_ref()),
         });
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload encodes");
+        assert_ok!(encoded, "payload encodes");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits test header");
+        assert_ok!(payload_len, "payload len fits test header");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1502,12 +1526,12 @@ mod tests {
 
         let payload = crate::IpcPayload::InspectRun { run_id };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1534,12 +1558,12 @@ mod tests {
             from_sequence: 0,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1567,7 +1591,7 @@ mod tests {
             from_sequence: 0,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1609,12 +1633,12 @@ mod tests {
 
         let payload = crate::IpcPayload::CancelRun { run_id };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1655,12 +1679,12 @@ mod tests {
             answer: Vec::from(&b"yes"[..]),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1688,12 +1712,12 @@ mod tests {
             error: Vec::from(&b"fail"[..]),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -1720,7 +1744,7 @@ mod tests {
             max_records: 100,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -1785,12 +1809,12 @@ mod tests {
             input: Vec::from(&b"input"[..]),
         });
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -2069,7 +2093,7 @@ mod tests {
             taint: Taint::Clean,
         };
         let output = postcard::to_allocvec(&output_payload);
-        assert!(output.is_ok(), "output payload should encode");
+        assert_ok!(output, "output payload should encode");
         let Ok(output) = output else {
             return;
         };
@@ -2079,12 +2103,12 @@ mod tests {
             output,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -2118,7 +2142,7 @@ mod tests {
             taint: Taint::Clean,
         };
         let output = postcard::to_allocvec(&output_payload);
-        assert!(output.is_ok(), "output payload should encode");
+        assert_ok!(output, "output payload should encode");
         let Ok(output) = output else {
             return;
         };
@@ -2128,7 +2152,7 @@ mod tests {
             output,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -2164,7 +2188,7 @@ mod tests {
             max_records: 100,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -2188,12 +2212,12 @@ mod tests {
             run_id: RunId::new(1),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
         let payload_len = u32::try_from(encoded.len());
-        assert!(payload_len.is_ok(), "payload len fits u32");
+        assert_ok!(payload_len, "payload len fits u32");
         let Ok(payload_len) = payload_len else {
             return;
         };
@@ -2298,8 +2322,8 @@ mod tests {
         // When: appending 2 more bytes would exceed the max
         let result = append_read_bytes(&mut read_buffer, &temp, 2);
 
-        // Then: error is returned
-        assert!(result.is_err(), "should reject buffer overflow");
+        // Then: the exact buffer bound error is returned.
+        assert!(matches!(result, Err(IpcServerError::ReadBufferTooLarge)));
     }
 
     #[test]
@@ -2307,7 +2331,7 @@ mod tests {
         // Given: a buffer with header + payload
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+        assert_ok!(encoded, "header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -2315,7 +2339,7 @@ mod tests {
         frame.extend_from_slice(&encoded);
         frame.extend_from_slice(b"abcd");
         let total_len = frame_total_len(&header);
-        assert!(total_len.is_ok(), "total len should compute");
+        assert_ok!(total_len, "total len should compute");
         let Ok(total_len) = total_len else {
             return;
         };
@@ -2324,7 +2348,7 @@ mod tests {
         let payload = extract_payload(&mut frame, total_len);
 
         // Then: the payload bytes match
-        assert!(payload.is_ok(), "payload should extract");
+        assert_ok!(payload, "payload should extract");
         let Ok(payload) = payload else {
             return;
         };
@@ -2361,7 +2385,7 @@ mod tests {
             max_records: 100,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "payload should encode");
+        assert_ok!(encoded, "payload should encode");
         let Ok(encoded) = encoded else {
             return;
         };
@@ -2394,7 +2418,7 @@ mod tests {
         let total = frame_total_len(&header);
 
         // Then: total is IPC_HEADER_LEN + 10
-        assert!(total.is_ok(), "total len should compute");
+        assert_ok!(total, "total len should compute");
         let Ok(total) = total else {
             return;
         };
@@ -2435,7 +2459,7 @@ mod tests {
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
         let payload = crate::IpcPayload::Health;
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2458,7 +2482,7 @@ mod tests {
             run_id: RunId::new(1),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2479,7 +2503,7 @@ mod tests {
         let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
         let payload = crate::IpcPayload::Health;
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2504,7 +2528,7 @@ mod tests {
             answer: Vec::new(),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2529,7 +2553,7 @@ mod tests {
             taint: Taint::Clean,
         };
         let output = postcard::to_allocvec(&output_payload);
-        assert!(output.is_ok());
+        assert_ok!(output);
         let Ok(output) = output else { return };
         let payload = crate::IpcPayload::CompleteAction {
             run_id: RunId::new(1),
@@ -2537,7 +2561,7 @@ mod tests {
             output,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2562,7 +2586,7 @@ mod tests {
             error: Vec::from(&b"overflow"[..]),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2587,7 +2611,7 @@ mod tests {
             input: Vec::new(),
         });
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2612,7 +2636,7 @@ mod tests {
             output: Vec::from(&b"\xFF\xFE\xFD\xFC\xFB\xFA"[..]),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2635,7 +2659,7 @@ mod tests {
             run_id: RunId::new(99991),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2661,7 +2685,7 @@ mod tests {
             run_id: RunId::new(88888),
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok());
+        assert_ok!(encoded);
         let Ok(encoded) = encoded else { return };
         let payload_len = match u32::try_from(encoded.len()) {
             Ok(v) => v,
@@ -2691,8 +2715,8 @@ mod tests {
         let result = append_read_bytes(&mut read_buffer, &temp, 1);
 
         // Then: ReadBufferTooLarge
-        assert!(result.is_err());
         let Err(error) = result else { return };
+        assert!(matches!(error, IpcServerError::ReadBufferTooLarge));
         let message = error.to_string();
         assert!(
             message.contains("buffer exceeded"),
@@ -2710,7 +2734,7 @@ mod tests {
         let result = frame_total_len(&header);
 
         // Then: it succeeds (u32::MAX fits in usize on 64-bit platforms)
-        assert!(result.is_ok(), "u32::MAX should fit in usize on 64-bit");
+        assert_ok!(result, "u32::MAX should fit in usize on 64-bit");
         let Ok(total) = result else { return };
         let max_payload_len = usize::try_from(u32::MAX).map_or(0, |v| v);
         assert_eq!(
@@ -2728,8 +2752,8 @@ mod tests {
         let result = extract_payload(&mut short_buffer, 100);
 
         // Then: IncompleteFrame
-        assert!(result.is_err());
         let Err(error) = result else { return };
+        assert!(matches!(error, IpcServerError::IncompleteFrame));
         let message = error.to_string();
         assert!(
             message.contains("incomplete"),
@@ -2737,34 +2761,49 @@ mod tests {
         );
     }
 
+    fn assert_frame_error_response_preserves_message(error: IpcError) {
+        let desc = format!("{error:?}");
+        let response = frame_error_response(error);
+
+        assert!(
+            matches!(&response, IpcResponse::FrameError { message } if !message.is_empty()),
+            "expected non-empty FrameError message for {desc}, got {response:?}"
+        );
+    }
+
     #[test]
-    fn adversarial_frame_error_response_preserves_error_message() {
-        // Given: various IpcError variants
-        let errors: Vec<IpcError> = vec![
-            IpcError::InvalidMagic { actual: 0xDEAD },
-            IpcError::UnsupportedVersion { actual: 99 },
-            IpcError::UnknownCommand(200),
-            IpcError::ReservedNonZero { actual: 7 },
-            IpcError::PayloadTooLarge {
-                actual: 9999,
-                limit: 100,
-            },
-            IpcError::PayloadLengthMismatch {
-                header: 100,
-                actual: 50,
-            },
-        ];
+    fn frame_error_response_preserves_invalid_magic_message() {
+        assert_frame_error_response_preserves_message(IpcError::InvalidMagic { actual: 0xDEAD });
+    }
 
-        for error in errors {
-            let desc = format!("{error:?}");
-            // When: converting to frame error response
-            let response = frame_error_response(error);
+    #[test]
+    fn frame_error_response_preserves_unsupported_version_message() {
+        assert_frame_error_response_preserves_message(IpcError::UnsupportedVersion { actual: 99 });
+    }
 
-            // Then: it's a FrameError with a non-empty message
-            assert!(
-                matches!(&response, IpcResponse::FrameError { message } if !message.is_empty()),
-                "expected non-empty FrameError message for {desc}, got {response:?}"
-            );
-        }
+    #[test]
+    fn frame_error_response_preserves_unknown_command_message() {
+        assert_frame_error_response_preserves_message(IpcError::UnknownCommand(200));
+    }
+
+    #[test]
+    fn frame_error_response_preserves_reserved_non_zero_message() {
+        assert_frame_error_response_preserves_message(IpcError::ReservedNonZero { actual: 7 });
+    }
+
+    #[test]
+    fn frame_error_response_preserves_payload_too_large_message() {
+        assert_frame_error_response_preserves_message(IpcError::PayloadTooLarge {
+            actual: 9999,
+            limit: 100,
+        });
+    }
+
+    #[test]
+    fn frame_error_response_preserves_payload_length_mismatch_message() {
+        assert_frame_error_response_preserves_message(IpcError::PayloadLengthMismatch {
+            header: 100,
+            actual: 50,
+        });
     }
 }

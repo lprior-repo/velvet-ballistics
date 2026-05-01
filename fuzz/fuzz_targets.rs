@@ -27,36 +27,31 @@ pub fn compiled_ir(data: &[u8]) {
 
 /// libFuzzer C ABI entrypoint for YAML events.
 #[unsafe(no_mangle)]
-pub extern "C" fn LLVMFuzzerTestOneInputYamlEvents(data: *const u8, len: usize) -> i32 {
-    let _ = (data, len);
+pub extern "C" fn LLVMFuzzerTestOneInputYamlEvents(_data: *const u8, _len: usize) -> i32 {
     0
 }
 
 /// libFuzzer C ABI entrypoint for IPC frames.
 #[unsafe(no_mangle)]
-pub extern "C" fn LLVMFuzzerTestOneInputIpcFrame(data: *const u8, len: usize) -> i32 {
-    let _ = (data, len);
+pub extern "C" fn LLVMFuzzerTestOneInputIpcFrame(_data: *const u8, _len: usize) -> i32 {
     0
 }
 
 /// libFuzzer C ABI entrypoint for journal events.
 #[unsafe(no_mangle)]
-pub extern "C" fn LLVMFuzzerTestOneInputJournalEvent(data: *const u8, len: usize) -> i32 {
-    let _ = (data, len);
+pub extern "C" fn LLVMFuzzerTestOneInputJournalEvent(_data: *const u8, _len: usize) -> i32 {
     0
 }
 
 /// libFuzzer C ABI entrypoint for expressions.
 #[unsafe(no_mangle)]
-pub extern "C" fn LLVMFuzzerTestOneInputExpression(data: *const u8, len: usize) -> i32 {
-    let _ = (data, len);
+pub extern "C" fn LLVMFuzzerTestOneInputExpression(_data: *const u8, _len: usize) -> i32 {
     0
 }
 
 /// libFuzzer C ABI entrypoint for compiled IR.
 #[unsafe(no_mangle)]
-pub extern "C" fn LLVMFuzzerTestOneInputCompiledIr(data: *const u8, len: usize) -> i32 {
-    let _ = (data, len);
+pub extern "C" fn LLVMFuzzerTestOneInputCompiledIr(_data: *const u8, _len: usize) -> i32 {
     0
 }
 

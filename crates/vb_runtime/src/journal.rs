@@ -527,7 +527,7 @@ mod tests {
         DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
     };
 
-    fn single_finish_workflow(workflow: WorkflowDigest) -> Option<CompiledWorkflow> {
+    fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, String> {
         let node = CompiledNode {
             id: StepIdx::ZERO,
             output: None,
@@ -547,15 +547,37 @@ mod tests {
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };
-        CompiledWorkflow::try_from_parts(parts).ok()
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
+    }
+
+    fn temp_journal() -> Result<(tempfile::TempDir, Arc<FjallJournal>), String> {
+        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let journal = FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?;
+        Ok((dir, Arc::new(journal)))
+    }
+
+    fn journal_queue(
+        capacity: usize,
+        batch_size: usize,
+    ) -> Result<Arc<JournalWriterQueue>, String> {
+        JournalWriterQueue::new(capacity, batch_size, StorageLimits::DEFAULT)
+            .map(Arc::new)
+            .map_err(|error| error.to_string())
+    }
+
+    fn require_ok<T>(result: Result<T, String>, context: &'static str) -> Option<T> {
+        match result {
+            Ok(value) => Some(value),
+            Err(error) => {
+                assert!(false, "{context}: {error}");
+                None
+            }
+        }
     }
 
     #[test]
     fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
-        let Some(dir) = tempfile::tempdir().ok() else {
-            return;
-        };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -574,7 +596,12 @@ mod tests {
             Ok(())
         );
 
-        let Some(events) = journal.events_for_run(run).ok() else {
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "events read",
+        ) else {
             return;
         };
         assert_eq!(
@@ -596,10 +623,7 @@ mod tests {
 
     #[test]
     fn storage_runtime_journal_maps_cancelled_and_failed_events() {
-        let Some(dir) = tempfile::tempdir().ok() else {
-            return;
-        };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -615,7 +639,12 @@ mod tests {
             Ok(())
         );
 
-        let Some(events) = journal.events_for_run(run).ok() else {
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "cancelled events read",
+        ) else {
             return;
         };
         assert_eq!(
@@ -638,7 +667,12 @@ mod tests {
             adapter.append(RuntimeJournalEvent::RunFailed { run: failed_run }),
             Ok(())
         );
-        let Some(failed_events) = journal.events_for_run(failed_run).ok() else {
+        let Some(failed_events) = require_ok(
+            journal
+                .events_for_run(failed_run)
+                .map_err(|error| error.to_string()),
+            "failed events read",
+        ) else {
             return;
         };
         assert_eq!(
@@ -652,10 +686,7 @@ mod tests {
 
     #[test]
     fn storage_runtime_journal_maps_action_wait_and_ask_events() {
-        let Some(dir) = tempfile::tempdir().ok() else {
-            return;
-        };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
         let adapter = StorageRuntimeJournal::journaled(journal.clone());
@@ -714,7 +745,12 @@ mod tests {
             Ok(())
         );
 
-        let Some(events) = journal.events_for_run(run).ok() else {
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "action/wait/ask events read",
+        ) else {
             return;
         };
         assert_eq!(
@@ -763,13 +799,10 @@ mod tests {
 
     #[test]
     fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
-        let Some(dir) = tempfile::tempdir().ok() else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
-            return;
-        };
-        let Ok(queue) = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).map(Arc::new) else {
+        let Some(queue) = require_ok(journal_queue(4, 2), "journal queue opens") else {
             return;
         };
         let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
@@ -804,7 +837,12 @@ mod tests {
             matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
         );
 
-        let Some(events) = journal.events_for_run(run).ok() else {
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "queued events read",
+        ) else {
             return;
         };
         assert_eq!(
@@ -832,15 +870,10 @@ mod tests {
 
     #[test]
     fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavior() {
-        let Some(dir) = tempfile::tempdir().ok() else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
-            return;
-        };
-        let Ok(volatile_queue) =
-            JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT).map(Arc::new)
-        else {
+        let Some(volatile_queue) = require_ok(journal_queue(4, 4), "volatile queue opens") else {
             return;
         };
         let run = RunId::new(47);
@@ -858,9 +891,7 @@ mod tests {
             Ok(counts) if counts.journaled == 0 && counts.strict == 0
         ));
 
-        let Ok(journaled_queue) =
-            JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT).map(Arc::new)
-        else {
+        let Some(journaled_queue) = require_ok(journal_queue(4, 4), "journaled queue opens") else {
             return;
         };
         let journaled = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
@@ -874,8 +905,7 @@ mod tests {
             Ok(counts) if counts.journaled == 1 && counts.strict == 0
         ));
 
-        let Ok(strict_queue) = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT).map(Arc::new)
-        else {
+        let Some(strict_queue) = require_ok(journal_queue(4, 4), "strict queue opens") else {
             return;
         };
         let strict_run = RunId::new(48);
@@ -897,13 +927,10 @@ mod tests {
 
     #[test]
     fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
-        let Some(dir) = tempfile::tempdir().ok() else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
-            return;
-        };
-        let Ok(queue) = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT).map(Arc::new) else {
+        let Some(queue) = require_ok(journal_queue(8, 2), "journal queue opens") else {
             return;
         };
         let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
@@ -940,13 +967,10 @@ mod tests {
 
     #[test]
     fn runtime_shutdown_graceful_drains_owned_queued_journal() {
-        let Some(dir) = tempfile::tempdir().ok() else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
-            return;
-        };
-        let Ok(queue) = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).map(Arc::new) else {
+        let Some(queue) = require_ok(journal_queue(4, 1), "journal queue opens") else {
             return;
         };
         let runtime_journal = Arc::new(QueuedStorageRuntimeJournal::journaled(
@@ -956,12 +980,14 @@ mod tests {
         let run = RunId::new(49);
         let workflow = WorkflowDigest::from_bytes([12; 32]);
         let Some(shard_count) = NonZeroUsize::new(1) else {
+            assert!(false, "invalid shard count");
             return;
         };
         let runtime =
             Runtime::new_with_journal(shard_count, ShardConfig::default(), runtime_journal);
 
-        let Some(compiled) = single_finish_workflow(workflow) else {
+        let Some(compiled) = require_ok(single_finish_workflow(workflow), "workflow compiles")
+        else {
             return;
         };
         assert_eq!(runtime.submit_direct(run, compiled), Ok(()));
@@ -986,13 +1012,10 @@ mod tests {
 
     #[test]
     fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
-        let Some(dir) = tempfile::tempdir().ok() else {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
-            return;
-        };
-        let Ok(queue) = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).map(Arc::new) else {
+        let Some(queue) = require_ok(journal_queue(1, 1), "journal queue opens") else {
             return;
         };
         let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
@@ -1017,7 +1040,12 @@ mod tests {
             matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
         );
 
-        let Some(events) = journal.events_for_run(run).ok() else {
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "queue-full events read",
+        ) else {
             return;
         };
         assert_eq!(

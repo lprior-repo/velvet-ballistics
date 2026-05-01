@@ -82,10 +82,33 @@ pub struct StepAst {
     pub id: Box<str>,
     /// Optional display name.
     pub name: Option<Box<str>>,
+    /// Exact source primitive spelling before semantic lowering.
+    pub primitive: StepPrimitiveAst,
     /// Parsed high-level primitive.
     pub kind: StepKindAst,
     /// Best available step source mark.
     pub mark: Option<SourceMark>,
+}
+
+/// Exact high-level primitive spelling retained from the source document.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepPrimitiveAst {
+    /// `set` constant-producing primitive.
+    Set,
+    /// `run` action boundary primitive.
+    Run,
+    /// `do` action boundary primitive alias.
+    Do,
+    /// `save` legacy constant-producing primitive.
+    Save,
+    /// `choose` branch primitive.
+    Choose,
+    /// `wait` boundary primitive.
+    Wait,
+    /// `ask` boundary primitive.
+    Ask,
+    /// `finish` terminal primitive.
+    Finish,
 }
 
 /// High-level primitive intent recognized by the compiler AST.

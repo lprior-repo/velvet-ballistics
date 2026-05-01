@@ -174,6 +174,12 @@ struct QueuedJournalEvent {
     profile: DurabilityProfile,
 }
 
+#[derive(Debug)]
+struct JournalWriterQueueState {
+    pending: VecDeque<QueuedJournalEvent>,
+    shutdown: bool,
+}
+
 /// Result of flushing a bounded writer queue batch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JournalWriterFlushReport {
@@ -186,7 +192,7 @@ pub struct JournalWriterFlushReport {
 /// Bounded in-memory queue for journal writer batching.
 #[derive(Debug)]
 pub struct JournalWriterQueue {
-    pending: Mutex<VecDeque<QueuedJournalEvent>>,
+    state: Mutex<JournalWriterQueueState>,
     capacity: usize,
     batch_size: usize,
 }
@@ -202,7 +208,10 @@ impl JournalWriterQueue {
             return Err(JournalError::QueueCapacity);
         }
         Ok(Self {
-            pending: Mutex::new(VecDeque::with_capacity(capacity)),
+            state: Mutex::new(JournalWriterQueueState {
+                pending: VecDeque::with_capacity(capacity),
+                shutdown: false,
+            }),
             capacity,
             batch_size,
         })
@@ -219,28 +228,33 @@ impl JournalWriterQueue {
     }
 
     fn enqueue(&self, event: JournalEvent, profile: DurabilityProfile) -> Result<(), JournalError> {
-        let mut pending = self
-            .pending
+        let mut state = self
+            .state
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        if pending.len() >= self.capacity {
+        if state.shutdown {
+            return Err(JournalError::QueueShutdown);
+        }
+        if state.pending.len() >= self.capacity {
             return Err(JournalError::QueueFull);
         }
-        pending.push_back(QueuedJournalEvent { event, profile });
+        state
+            .pending
+            .push_back(QueuedJournalEvent { event, profile });
         Ok(())
     }
 
     /// Returns pending write counts split by durability profile.
     pub fn pending_profile_counts(&self) -> Result<JournalWriterQueueProfileCounts, JournalError> {
-        let pending = self
-            .pending
+        let state = self
+            .state
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         let mut counts = JournalWriterQueueProfileCounts {
             journaled: 0,
             strict: 0,
         };
-        for item in &*pending {
+        for item in &state.pending {
             match item.profile {
                 DurabilityProfile::Journaled => {
                     counts.journaled = counts.journaled.saturating_add(1);
@@ -259,15 +273,15 @@ impl JournalWriterQueue {
         &self,
         journal: &FjallJournal,
     ) -> Result<JournalWriterFlushReport, JournalError> {
-        let mut pending = self
-            .pending
+        let mut state = self
+            .state
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         let mut batch_len = 0usize;
         let mut has_strict = false;
 
         while batch_len < self.batch_size {
-            let Some(item) = pending.get(batch_len) else {
+            let Some(item) = state.pending.get(batch_len) else {
                 break;
             };
             if item.profile == DurabilityProfile::Strict {
@@ -286,16 +300,16 @@ impl JournalWriterQueue {
         if has_strict {
             let mut written = 0usize;
             while written < batch_len {
-                let Some(item) = pending.get(written) else {
+                let Some(item) = state.pending.get(written) else {
                     break;
                 };
-                journal.append_unpersisted(&item.event)?;
+                journal.append_queued_unpersisted(&item.event)?;
                 written = written.saturating_add(1);
             }
             journal.persist_strict()?;
             let mut drained = 0usize;
             while drained < written {
-                match pending.pop_front() {
+                match state.pending.pop_front() {
                     Some(_) => {
                         drained = drained.saturating_add(1);
                     }
@@ -307,22 +321,25 @@ impl JournalWriterQueue {
 
         let mut written = 0usize;
         while written < batch_len {
-            let Some(item) = pending.front().cloned() else {
+            let Some(item) = state.pending.get(written) else {
                 break;
             };
-            journal.append_unpersisted(&item.event)?;
-            match pending.pop_front() {
+            journal.append_queued_unpersisted(&item.event)?;
+            written = written.saturating_add(1);
+        }
+
+        journal.persist_strict()?;
+        let mut drained = 0usize;
+        while drained < written {
+            match state.pending.pop_front() {
                 Some(_) => {
-                    written = written.saturating_add(1);
+                    drained = drained.saturating_add(1);
                 }
                 None => return Err(JournalError::WriteLockPoisoned),
             }
         }
 
-        Ok(JournalWriterFlushReport {
-            drained: written,
-            written,
-        })
+        Ok(JournalWriterFlushReport { drained, written })
     }
 
     /// Flushes queued journal writes until the queue is empty.
@@ -343,6 +360,21 @@ impl JournalWriterQueue {
             total.drained = total.drained.saturating_add(report.drained);
             total.written = total.written.saturating_add(report.written);
         }
+    }
+
+    /// Closes the queue to new writes and drains all accepted writes durably.
+    pub fn shutdown(
+        &self,
+        journal: &FjallJournal,
+    ) -> Result<JournalWriterFlushReport, JournalError> {
+        {
+            let mut state = self
+                .state
+                .lock()
+                .map_err(|_| JournalError::WriteLockPoisoned)?;
+            state.shutdown = true;
+        }
+        self.drain_all(journal)
     }
 }
 
@@ -1279,6 +1311,29 @@ impl FjallJournal {
         Ok(())
     }
 
+    fn append_queued_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+        match self.append_unpersisted(event) {
+            Ok(()) => Ok(()),
+            Err(JournalError::DuplicateEvent { run, seq }) => {
+                let key = journal_key(run, seq)?;
+                let Some(value) = self.events.get(key)? else {
+                    return Err(JournalError::DuplicateEvent { run, seq });
+                };
+                let (_, existing) = decode_record::<JournalEvent>(
+                    value.as_ref(),
+                    MAGIC_JOURNAL_EVENT,
+                    MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+                )?;
+                if existing == *event {
+                    Ok(())
+                } else {
+                    Err(JournalError::DuplicateEvent { run, seq })
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Forces a strict durability barrier.
     pub fn persist_strict(&self) -> Result<(), JournalError> {
         self.database.persist(fjall::PersistMode::SyncAll)?;
@@ -1450,6 +1505,9 @@ pub enum JournalError {
     /// Queue has no room for another event.
     #[error("journal writer queue is full")]
     QueueFull,
+    /// Queue has started deterministic shutdown and rejects new writes.
+    #[error("journal writer queue is shut down")]
+    QueueShutdown,
     /// Replay returned an event for a different run than requested.
     #[error("journal replay returned run {actual:?}, expected {expected:?}")]
     WrongRun {
@@ -1546,6 +1604,8 @@ impl JournalError {
     pub const QUEUE_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x4006);
     /// Diagnostic code for queue full.
     pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x4007);
+    /// Diagnostic code for queue shutdown.
+    pub const QUEUE_SHUTDOWN_CODE: DiagnosticCode = DiagnosticCode::new(0x4016);
     /// Diagnostic code for wrong run.
     pub const WRONG_RUN_CODE: DiagnosticCode = DiagnosticCode::new(0x4008);
     /// Diagnostic code for sequence gap.
@@ -1586,6 +1646,7 @@ impl JournalError {
             Self::WriteLockPoisoned => Self::WRITE_LOCK_POISONED_CODE,
             Self::QueueCapacity => Self::QUEUE_CAPACITY_CODE,
             Self::QueueFull => Self::QUEUE_FULL_CODE,
+            Self::QueueShutdown => Self::QUEUE_SHUTDOWN_CODE,
             Self::WrongRun { .. } => Self::WRONG_RUN_CODE,
             Self::SequenceGap { .. } => Self::SEQUENCE_GAP_CODE,
             Self::SequenceOverflow => Self::SEQUENCE_OVERFLOW_CODE,
@@ -6311,13 +6372,21 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(3),
         };
+        let conflicting_duplicate = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(33),
+        };
         let next = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
         };
 
         assert!(matches!(journal.append_journaled(&duplicate), Ok(())));
-        assert!(matches!(queue.enqueue_journaled(duplicate), Ok(())));
+        assert!(matches!(
+            queue.enqueue_journaled(conflicting_duplicate),
+            Ok(())
+        ));
         assert!(matches!(queue.enqueue_journaled(next), Ok(())));
 
         assert!(matches!(
@@ -6329,6 +6398,97 @@ mod tests {
             queue.pending_profile_counts(),
             Ok(counts) if counts.journaled == 2 && counts.strict == 0
         ));
+    }
+
+    #[test]
+    fn journal_writer_queue_flush_persists_journaled_events_before_drain() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let path = temp_dir.path().to_path_buf();
+        let journal = FjallJournal::open(&path, None).expect("opens");
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(4);
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(4),
+        };
+        let cancelled = JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+        };
+
+        assert!(queue.enqueue_journaled(accepted).is_ok());
+        assert!(queue.enqueue_journaled(cancelled).is_ok());
+        assert!(matches!(
+            queue.flush_batch(&journal),
+            Ok(report) if report.drained == 2 && report.written == 2
+        ));
+        drop(journal);
+
+        let reopened = FjallJournal::open(&path, None).expect("reopen");
+        assert!(matches!(reopened.events_for_run(run), Ok(events) if events.len() == 2));
+    }
+
+    #[test]
+    fn journal_writer_queue_shutdown_rejects_new_writes_after_durable_drain() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let queue = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(5);
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(5),
+        };
+        let cancelled = JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+        };
+
+        assert!(queue.enqueue_journaled(accepted.clone()).is_ok());
+        assert!(queue.enqueue_strict(cancelled).is_ok());
+        assert!(matches!(
+            queue.shutdown(&journal),
+            Ok(report) if report.drained == 2 && report.written == 2
+        ));
+        assert!(matches!(
+            queue.enqueue_journaled(accepted),
+            Err(JournalError::QueueShutdown)
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
+    }
+
+    #[test]
+    fn journal_writer_queue_crash_window_retry_drains_already_written_same_event() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(6);
+        let accepted = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(6),
+        };
+        let cancelled = JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+        };
+
+        assert!(journal.append_journaled(&accepted).is_ok());
+        assert!(queue.enqueue_journaled(accepted).is_ok());
+        assert!(queue.enqueue_journaled(cancelled).is_ok());
+
+        // This models the crash window where a prior attempt reached Fjall before
+        // the queue could durably drain. Retrying accepts the identical event only.
+        assert!(matches!(
+            queue.flush_batch(&journal),
+            Ok(report) if report.drained == 2 && report.written == 2
+        ));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
     }
 
     // =========================================================================

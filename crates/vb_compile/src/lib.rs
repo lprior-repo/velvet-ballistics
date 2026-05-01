@@ -370,11 +370,6 @@ pub fn lower_together(
             join,
         },
     }];
-    for (i, entry) in (0..branch_count).zip(nodes.iter().map(|_| StepIdx::new(0))) {
-        // placeholder branch nodes; real entries are filled by the caller
-        let _ = i;
-        let _ = entry;
-    }
     nodes.push(CompiledNode {
         id: join,
         output: Some(accumulator),
@@ -1876,7 +1871,9 @@ fn validate_phase_zero_step_shape(
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_run_shape(body, index, last_step, primitive.as_str())
         }
-        StepPrimitive::Save => validate_save_shape(body, index, last_step),
+        StepPrimitive::Set | StepPrimitive::Save => {
+            validate_save_shape(body, index, last_step, primitive.as_str())
+        }
         StepPrimitive::Choose => validate_choose_shape(body, index, last_step),
         StepPrimitive::Wait => validate_wait_shape(body, index, last_step),
         StepPrimitive::Ask => validate_ask_shape(body, index, last_step),
@@ -1902,8 +1899,8 @@ fn validate_run_shape(
         });
     }
     reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
-    let _ = required_action(body, index, primitive)?;
-    let _ = required_slot(body, index, "input")?;
+    required_action(body, index, primitive)?;
+    required_slot(body, index, "input")?;
     Ok(())
 }
 
@@ -1930,9 +1927,9 @@ fn validate_wait_shape(
 fn validate_ask_shape(body: &Yaml<'_>, index: usize, last_step: usize) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
-    let _ = required_slot(body, index, "prompt")?;
-    let _ = required_slot(body, index, "answer")?;
-    let _ = optional_slot_field(body, index, "timeout")?;
+    required_slot(body, index, "prompt")?;
+    required_slot(body, index, "answer")?;
+    optional_slot_field(body, index, "timeout")?;
     Ok(())
 }
 
@@ -1940,6 +1937,7 @@ fn validate_save_shape(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
+    primitive: &'static str,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     if body.is_mapping() {
@@ -1947,7 +1945,7 @@ fn validate_save_shape(
     } else {
         Err(CompileError::StepFieldShape {
             step: index,
-            field: "save",
+            field: primitive,
             expected: "an object",
         })
     }
@@ -1960,9 +1958,9 @@ fn validate_choose_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "choose", &["condition", "on_true", "on_false"])?;
-    let _ = required_step_field(body, index, "condition")?;
-    let _ = required_branch_target(body, index, "on_true")?;
-    let _ = required_branch_target(body, index, "on_false")?;
+    required_step_field(body, index, "condition")?;
+    required_branch_target(body, index, "on_true")?;
+    required_branch_target(body, index, "on_false")?;
     Ok(())
 }
 
@@ -1979,7 +1977,7 @@ fn validate_finish_shape(
         });
     }
     reject_unknown_primitive_fields(body, index, "finish", &["result"])?;
-    let _ = required_step_field(body, index, "result")?;
+    required_step_field(body, index, "result")?;
     Ok(())
 }
 
@@ -2035,7 +2033,7 @@ fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
             return Err(non_string_key_error());
         };
         validate_public_name("vars", name)?;
-        let _ = slot_value(value, 0)?;
+        slot_value(value, 0)?;
     }
     Ok(())
 }
@@ -2166,12 +2164,14 @@ const RESERVED_NAMES: &[&str] = &[
     "false",
     "null",
     "run",
+    "do",
+    "set",
     "save",
     "choose",
     "for_each",
     "together",
-    "gather",
-    "summarize",
+    "collect",
+    "reduce",
     "repeat",
     "wait",
     "ask",
@@ -2466,7 +2466,15 @@ fn compile_step(
             primitive.as_str(),
             builder,
         ),
-        StepPrimitive::Save => compile_save(body, index, last_step, id, next, builder),
+        StepPrimitive::Set | StepPrimitive::Save => compile_save(
+            body,
+            index,
+            last_step,
+            id,
+            next,
+            primitive.as_str(),
+            builder,
+        ),
         StepPrimitive::Choose => {
             compile_choose(body, index, last_step, id, source_ir_starts, builder)
         }
@@ -2483,14 +2491,15 @@ fn compile_step(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StepPrimitive {
+    Set,
     Run,
     Do,
     Save,
     Choose,
     ForEach,
     Together,
-    Gather,
-    Summarize,
+    Collect,
+    Reduce,
     Repeat,
     Wait,
     Ask,
@@ -2500,14 +2509,15 @@ enum StepPrimitive {
 impl StepPrimitive {
     fn from_field(field: &str) -> Option<Self> {
         match field {
+            "set" => Some(Self::Set),
             "run" => Some(Self::Run),
             "do" => Some(Self::Do),
             "save" => Some(Self::Save),
             "choose" => Some(Self::Choose),
             "for_each" => Some(Self::ForEach),
             "together" => Some(Self::Together),
-            "gather" => Some(Self::Gather),
-            "summarize" => Some(Self::Summarize),
+            "collect" => Some(Self::Collect),
+            "reduce" => Some(Self::Reduce),
             "repeat" => Some(Self::Repeat),
             "wait" => Some(Self::Wait),
             "ask" => Some(Self::Ask),
@@ -2518,14 +2528,15 @@ impl StepPrimitive {
 
     const fn as_str(self) -> &'static str {
         match self {
+            Self::Set => "set",
             Self::Run => "run",
             Self::Do => "do",
             Self::Save => "save",
             Self::Choose => "choose",
             Self::ForEach => "for_each",
             Self::Together => "together",
-            Self::Gather => "gather",
-            Self::Summarize => "summarize",
+            Self::Collect => "collect",
+            Self::Reduce => "reduce",
             Self::Repeat => "repeat",
             Self::Wait => "wait",
             Self::Ask => "ask",
@@ -2634,12 +2645,13 @@ fn compile_save(
     last_step: usize,
     id: StepIdx,
     next: Option<StepIdx>,
+    primitive: &'static str,
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_non_mapping_step_body(body, index, "save", "an object")?;
+    reject_non_mapping_step_body(body, index, primitive, "an object")?;
     let output = slot_idx_for_step(index)?;
-    let constant = save_slot_value(body, index)?;
+    let constant = save_slot_value(body, index, primitive)?;
     let constant = builder.push_constant(constant)?;
     builder.record_slot(output);
     set_const_node(id, output, constant, required_next_step(next, index)?)
@@ -2676,11 +2688,15 @@ fn set_const_node(
     })
 }
 
-fn save_slot_value(body: &Yaml<'_>, step: usize) -> Result<ConstValue, CompileError> {
+fn save_slot_value(
+    body: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+) -> Result<ConstValue, CompileError> {
     let Some(mapping) = body.as_mapping() else {
         return Err(CompileError::StepFieldShape {
             step,
-            field: "save",
+            field: primitive,
             expected: "an object",
         });
     };
@@ -4205,7 +4221,7 @@ steps:
 
     #[test]
     fn compiler_rejects_legacy_step_aliases() {
-        for alias in ["set", "collect", "reduce", "copy"] {
+        for alias in ["gather", "summarize", "copy"] {
             let source = format!(
                 "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
             );
@@ -4243,16 +4259,30 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_phase_zero_unsupported_primitives() {
-        for primitive in ["for_each", "together", "gather", "summarize", "repeat"] {
+    fn compiler_rejects_unsupported_master_primitives_with_exact_diagnostic() {
+        for (primitive, code) in [
+            ("for_each", "INVALID_FOR_EACH"),
+            ("together", "INVALID_TOGETHER"),
+            ("collect", "INVALID_COLLECT"),
+            ("reduce", "INVALID_REDUCE"),
+            ("repeat", "INVALID_REPEAT"),
+        ] {
             let source = format!(
                 "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
             );
             let result = YamlCompiler::default().compile(source.as_bytes());
 
             assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepPrimitive { .. }))),
-                "primitive {primitive} should be recognized but unsupported in Phase 0"
+                matches!(
+                    result,
+                    Err(ref errors)
+                        if matches!(
+                            errors.first(),
+                            Some(CompileError::UnsupportedStepPrimitive { step: 0, primitive: found })
+                                if *found == primitive && errors.first().map(CompileError::code) == Some(code)
+                        )
+                ),
+                "primitive {primitive} should be recognized with exact unsupported diagnostic"
             );
         }
     }
@@ -4277,6 +4307,21 @@ steps:
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "strict_minimal"));
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_set_to_set_const_node() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: set_case\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    set:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("missing set node")?;
+
+        assert!(matches!(node.kind, CompiledNodeKind::SetConst { .. }));
+        assert_eq!(node.output, Some(SlotIdx::ZERO));
+        assert_eq!(node.next, Some(StepIdx::new(1)));
+        Ok(())
     }
 
     #[test]

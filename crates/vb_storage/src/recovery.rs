@@ -87,6 +87,12 @@ pub enum RecoveryError {
         /// Found terminal event kind.
         found: String,
     },
+    /// Durable event indexes exceed the runtime frame dimensions that can be represented.
+    #[error("recovery frame dimension overflow for run {run:?}")]
+    FrameDimensionOverflow {
+        /// Run identifier.
+        run: RunId,
+    },
 }
 
 /// Result alias for recovery operations.
@@ -139,6 +145,60 @@ pub struct RecoveryRuntimeSummary {
 pub enum RecoveryHydration {
     /// Summary-only recovery product.
     Summary(RecoveryRuntimeSummary),
+}
+
+/// Step state recovered from durable lifecycle events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecoveredStepState {
+    /// Step has started or is waiting on action completion.
+    Running,
+    /// Step completed successfully.
+    Succeeded,
+    /// Step failed.
+    Failed,
+    /// Step is suspended on a wait primitive.
+    Waiting,
+    /// Step is suspended on an ask primitive.
+    Asking,
+}
+
+/// One recovered step-state entry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveredStepEntry {
+    /// Step index.
+    pub step: StepIdx,
+    /// Durable state inferred for this step.
+    pub state: RecoveredStepState,
+}
+
+/// State that durable headers/events still cannot reconstruct into a live frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnsupportedRecoveryState {
+    /// Slot values are not present in current slot-written records.
+    pub slot_values: bool,
+    /// Slot taint is not present in current slot-written records.
+    pub slot_taint: bool,
+    /// Action payload/result bodies are not present in current action records.
+    pub action_payloads: bool,
+}
+
+/// Minimal live-frame seed recovered from durable journal headers/events.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveryFrameSeed {
+    /// Runtime summary for the same event set.
+    pub summary: RecoveryRuntimeSummary,
+    /// First program-counter step for the rebuilt frame.
+    pub first_step: StepIdx,
+    /// Minimum step-state capacity needed for observed events.
+    pub step_count: u16,
+    /// Minimum slot capacity needed for observed slot/result references.
+    pub slot_count: u16,
+    /// Program counter inferred from the latest observed step event.
+    pub pc: StepIdx,
+    /// Final step states inferred from durable lifecycle events.
+    pub steps: Vec<RecoveredStepEntry>,
+    /// Exact pieces of live runtime state not represented by durable events yet.
+    pub unsupported: UnsupportedRecoveryState,
 }
 
 impl RecoveryHydration {
@@ -341,9 +401,8 @@ pub fn replay_events(
                 }
                 last_step = Some(*step);
             }
-            JournalEvent::StepSucceeded { step, .. } => {
+            JournalEvent::StepSucceeded { .. } => {
                 // Step completed successfully
-                let _ = step;
             }
             JournalEvent::ActionScheduled { action, step, .. } => {
                 // Check if this action was already resolved
@@ -362,22 +421,13 @@ pub fn replay_events(
                 // Mark action as failed to prevent re-execution
                 tracker.mark_failed(*action, *step);
             }
-            JournalEvent::SlotWrittenEvent { slot, .. } => {
+            JournalEvent::SlotWrittenEvent { .. } => {
                 // Slot write during replay
-                let _ = slot;
             }
-            JournalEvent::WaitScheduledEvent { step, .. } => {
-                let _ = step;
-            }
-            JournalEvent::AskScheduledEvent { step, .. } => {
-                let _ = step;
-            }
-            JournalEvent::AskAnsweredEvent { step, .. } => {
-                let _ = step;
-            }
-            JournalEvent::RetryScheduledEvent { step, .. } => {
-                let _ = step;
-            }
+            JournalEvent::WaitScheduledEvent { .. } => {}
+            JournalEvent::AskScheduledEvent { .. } => {}
+            JournalEvent::AskAnsweredEvent { .. } => {}
+            JournalEvent::RetryScheduledEvent { .. } => {}
             JournalEvent::RunCancelled { .. } => {
                 // Terminal state
             }
@@ -440,6 +490,39 @@ pub fn recover_runtime_summary(
     summarize_recovery_events(&events)
 }
 
+/// Recovers a minimal live-frame seed from durable journal events for a run.
+pub fn recover_runtime_frame_seed(
+    journal: &FjallJournal,
+    run: RunId,
+) -> RecoveryResult<RecoveryFrameSeed> {
+    let events = journal.events_for_run(run)?;
+    if events.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run });
+    }
+    recover_runtime_frame_seed_from_events(&events)
+}
+
+/// Recovers a minimal live-frame seed from already ordered journal events.
+pub fn recover_runtime_frame_seed_from_events(
+    events: &[JournalEvent],
+) -> RecoveryResult<RecoveryFrameSeed> {
+    let hydration = summarize_recovery_events(events)?;
+    let summary = hydration.summary();
+    let mut builder = RecoveryFrameSeedBuilder::new(summary);
+
+    for event in events {
+        if event.run_id() != summary.run {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: "recovery frame seed received events for multiple runs".to_owned(),
+            });
+        }
+        builder.observe_event(event)?;
+    }
+
+    builder.finish()
+}
+
 /// Recovers summary hydration for every durable run header whose journal has no
 /// terminal event. The run header scan supplies candidates; journal events define
 /// incompleteness because the status byte/index has no stable terminal mapping.
@@ -500,6 +583,147 @@ fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEven
     }
 }
 
+struct RecoveryFrameSeedBuilder {
+    summary: RecoveryRuntimeSummary,
+    max_step: Option<StepIdx>,
+    max_slot: Option<SlotIdx>,
+    pc: StepIdx,
+    steps: Vec<RecoveredStepEntry>,
+    unsupported: UnsupportedRecoveryState,
+}
+
+impl RecoveryFrameSeedBuilder {
+    fn new(summary: RecoveryRuntimeSummary) -> Self {
+        Self {
+            summary,
+            max_step: None,
+            max_slot: None,
+            pc: StepIdx::ZERO,
+            steps: Vec::new(),
+            unsupported: UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: false,
+            },
+        }
+    }
+
+    fn observe_event(&mut self, event: &JournalEvent) -> RecoveryResult<()> {
+        match event {
+            JournalEvent::RunAccepted { .. }
+            | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunFailedEvent { .. } => Ok(()),
+            JournalEvent::StepStarted { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Running);
+                Ok(())
+            }
+            JournalEvent::StepSucceeded { step, output, .. } => {
+                self.observe_step(*step, RecoveredStepState::Succeeded);
+                self.observe_slot(*output);
+                self.unsupported.slot_values = true;
+                self.unsupported.slot_taint = true;
+                Ok(())
+            }
+            JournalEvent::ActionScheduled { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Running);
+                self.unsupported.action_payloads = true;
+                Ok(())
+            }
+            JournalEvent::ActionCompletedEvent { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Succeeded);
+                self.unsupported.action_payloads = true;
+                Ok(())
+            }
+            JournalEvent::ActionFailedEvent { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Failed);
+                self.unsupported.action_payloads = true;
+                Ok(())
+            }
+            JournalEvent::SlotWrittenEvent { slot, .. } => {
+                self.observe_slot(*slot);
+                self.unsupported.slot_values = true;
+                self.unsupported.slot_taint = true;
+                Ok(())
+            }
+            JournalEvent::WaitScheduledEvent { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Waiting);
+                Ok(())
+            }
+            JournalEvent::AskScheduledEvent { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Asking);
+                Ok(())
+            }
+            JournalEvent::AskAnsweredEvent { step, .. }
+            | JournalEvent::RetryScheduledEvent { step, .. } => {
+                self.observe_step(*step, RecoveredStepState::Running);
+                Ok(())
+            }
+            JournalEvent::RunFinished { result, .. } => {
+                self.observe_slot(*result);
+                Ok(())
+            }
+        }
+    }
+
+    fn observe_step(&mut self, step: StepIdx, state: RecoveredStepState) {
+        self.pc = step;
+        self.max_step = Some(match self.max_step {
+            Some(current) if current >= step => current,
+            _ => step,
+        });
+        let mut index = 0usize;
+        while index < self.steps.len() {
+            if let Some(entry) = self.steps.get_mut(index)
+                && entry.step == step
+            {
+                entry.state = state;
+                return;
+            }
+            index = index.saturating_add(1);
+        }
+        self.steps.push(RecoveredStepEntry { step, state });
+    }
+
+    fn observe_slot(&mut self, slot: SlotIdx) {
+        self.max_slot = Some(match self.max_slot {
+            Some(current) if current >= slot => current,
+            _ => slot,
+        });
+    }
+
+    fn finish(self) -> RecoveryResult<RecoveryFrameSeed> {
+        let step_count = count_from_max_step(self.max_step, self.summary.run)?;
+        let slot_count = count_from_max_slot(self.max_slot, self.summary.run)?;
+        Ok(RecoveryFrameSeed {
+            summary: self.summary,
+            first_step: StepIdx::ZERO,
+            step_count,
+            slot_count,
+            pc: self.pc,
+            steps: self.steps,
+            unsupported: self.unsupported,
+        })
+    }
+}
+
+fn count_from_max_step(max_step: Option<StepIdx>, run: RunId) -> RecoveryResult<u16> {
+    let Some(step) = max_step else {
+        return Ok(1);
+    };
+    step.get()
+        .checked_add(1)
+        .ok_or(RecoveryError::FrameDimensionOverflow { run })
+}
+
+fn count_from_max_slot(max_slot: Option<SlotIdx>, run: RunId) -> RecoveryResult<u16> {
+    let Some(slot) = max_slot else {
+        return Ok(0);
+    };
+    slot.get()
+        .checked_add(1)
+        .ok_or(RecoveryError::FrameDimensionOverflow { run })
+}
+
 /// Checks whether a run has reached a terminal state.
 #[must_use]
 pub fn is_terminal_event(event: &JournalEvent) -> bool {
@@ -527,11 +751,13 @@ pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
 )]
 mod tests {
     use super::{
-        ActionReplayTracker, DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult,
-        RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, check_compiled_ir_digest,
-        check_workflow_source_digest, extract_terminal, is_terminal_event,
-        recover_all_incomplete_runs, recover_full_journal, recover_runtime_summary,
-        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
+        RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
+        UnsupportedRecoveryState, check_compiled_ir_digest, check_workflow_source_digest,
+        extract_terminal, is_terminal_event, recover_all_incomplete_runs, recover_full_journal,
+        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
+        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
+        summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -620,6 +846,111 @@ mod tests {
         assert_eq!(summary.run, run);
         assert_eq!(summary.workflow, Some(workflow));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() {
+        let run = RunId::new(91);
+        let workflow = test_digest(13);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(3),
+                output: SlotIdx::new(4),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(4),
+                result: SlotIdx::new(5),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events).expect("seed recovers");
+
+        assert_eq!(seed.summary.run, run);
+        assert_eq!(seed.summary.workflow, Some(workflow));
+        assert_eq!(seed.step_count, 4);
+        assert_eq!(seed.slot_count, 6);
+        assert_eq!(seed.pc, StepIdx::new(3));
+        assert!(seed.steps.iter().any(
+            |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
+        ));
+        assert!(
+            seed.steps.iter().any(|entry| entry.step == StepIdx::new(3)
+                && entry.state == RecoveredStepState::Succeeded)
+        );
+        assert_eq!(
+            seed.unsupported,
+            UnsupportedRecoveryState {
+                slot_values: true,
+                slot_taint: true,
+                action_payloads: false,
+            }
+        );
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_rejects_dimension_overflow() {
+        let run = RunId::new(92);
+        let events = vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::MAX,
+        }];
+
+        let result = recover_runtime_frame_seed_from_events(&events);
+
+        assert!(
+            matches!(result, Err(RecoveryError::FrameDimensionOverflow { run: found }) if found == run)
+        );
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_reads_events_from_journal() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+        let run = RunId::new(93);
+        let workflow = test_digest(14);
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("accepted append succeeds");
+        journal
+            .append_journaled(&JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(2),
+            })
+            .expect("ask append succeeds");
+
+        let seed = recover_runtime_frame_seed(&journal, run).expect("seed recovers");
+
+        assert_eq!(seed.step_count, 3);
+        assert_eq!(seed.slot_count, 0);
+        assert_eq!(seed.pc, StepIdx::new(2));
+        assert!(seed.steps.iter().any(
+            |entry| entry.step == StepIdx::new(2) && entry.state == RecoveredStepState::Asking
+        ));
     }
 
     #[test]

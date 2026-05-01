@@ -1281,22 +1281,22 @@ mod tests {
     fn journaled_run_writes_storage_events() {
         let compiled = finish_workflow();
         assert!(compiled.is_some(), "test workflow should compile");
-        let dir = tempfile::tempdir().ok();
-        assert!(dir.is_some(), "test directory should be available");
+        let dir = tempfile::tempdir();
+        assert!(dir.is_ok(), "test directory should be available: {dir:?}");
 
-        if let (Some(compiled), Some(dir)) = (compiled, dir) {
+        if let (Some(compiled), Ok(dir)) = (compiled, dir) {
             let code =
                 run_compiled_workflow(&compiled, &[], DurabilityMode::Journaled, Some(dir.path()));
             assert_eq!(code, std::process::ExitCode::SUCCESS);
 
-            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
-            assert!(journal.is_some(), "journal should reopen");
-            if let Some(journal) = journal {
+            let journal = vb_storage::FjallJournal::open(dir.path(), None);
+            assert!(journal.is_ok(), "journal should reopen");
+            if let Ok(journal) = journal {
                 let run = vb_core::RunId::new(1);
-                let events = journal.events_for_run(run).ok();
-                assert!(events.is_some(), "events should be readable");
+                let events = journal.events_for_run(run);
+                assert!(events.is_ok(), "events should be readable: {events:?}");
 
-                if let Some(events) = events {
+                if let Ok(events) = events {
                     assert!(events.contains(&JournalEvent::RunAccepted {
                         run,
                         seq: EventSeq::new(0),
@@ -1316,19 +1316,19 @@ mod tests {
     fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
         let compiled = finish_workflow();
         assert!(compiled.is_some(), "test workflow should compile");
-        let dir = tempfile::tempdir().ok();
-        assert!(dir.is_some(), "test directory should be available");
+        let dir = tempfile::tempdir();
+        assert!(dir.is_ok(), "test directory should be available: {dir:?}");
 
-        if let (Some(compiled), Some(dir)) = (compiled, dir) {
-            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
-            assert!(journal.is_some(), "journal should open");
-            let Some(journal) = journal else {
+        if let (Some(compiled), Ok(dir)) = (compiled, dir) {
+            let journal = vb_storage::FjallJournal::open(dir.path(), None);
+            assert!(journal.is_ok(), "journal should open");
+            let Ok(journal) = journal else {
                 return;
             };
             let parts = compiled.to_parts();
-            let ir = postcard::to_allocvec(&parts).ok();
-            assert!(ir.is_some(), "workflow parts should encode");
-            let Some(ir) = ir else {
+            let ir = postcard::to_allocvec(&parts);
+            assert!(ir.is_ok(), "workflow parts should encode: {ir:?}");
+            let Ok(ir) = ir else {
                 return;
             };
             let record = CompiledIrRecord {
@@ -1355,12 +1355,12 @@ mod tests {
 
     #[test]
     fn ipc_storage_resolver_returns_not_found_for_missing_digest() {
-        let dir = tempfile::tempdir().ok();
-        assert!(dir.is_some(), "test directory should be available");
-        if let Some(dir) = dir {
-            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
-            assert!(journal.is_some(), "journal should open");
-            let Some(journal) = journal else {
+        let dir = tempfile::tempdir();
+        assert!(dir.is_ok(), "test directory should be available: {dir:?}");
+        if let Ok(dir) = dir {
+            let journal = vb_storage::FjallJournal::open(dir.path(), None);
+            assert!(journal.is_ok(), "journal should open");
+            let Ok(journal) = journal else {
                 return;
             };
             let mut resolver = StorageWorkflowResolver {

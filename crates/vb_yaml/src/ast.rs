@@ -868,8 +868,7 @@ fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleAst>> {
 mod tests {
     use super::*;
 
-    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
-        let _ = message;
+    fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
         false
     }
 

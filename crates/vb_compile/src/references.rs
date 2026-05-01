@@ -39,7 +39,7 @@ impl<'a> ReferenceTables<'a> {
 fn entry_names<T>(entries: &[AstMapEntry<T>]) -> HashSet<&str> {
     let mut names = HashSet::with_capacity(entries.len());
     for entry in entries {
-        let _ = names.insert(entry.name.as_ref());
+        names.insert(entry.name.as_ref());
     }
     names
 }
@@ -47,7 +47,7 @@ fn entry_names<T>(entries: &[AstMapEntry<T>]) -> HashSet<&str> {
 fn step_names(steps: &[StepAst]) -> HashSet<&str> {
     let mut names = HashSet::with_capacity(steps.len());
     for step in steps {
-        let _ = names.insert(step.id.as_ref());
+        names.insert(step.id.as_ref());
     }
     names
 }

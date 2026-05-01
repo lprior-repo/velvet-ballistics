@@ -19,10 +19,11 @@ pub fn compile_expr_to_bytecode(
 }
 
 /// Lowers an expression and appends slot-rooted accessor programs for direct
-/// slot references and numeric nested path references.
+/// slot references and list-index nested path references.
 ///
-/// Field-name segments require a compiler-owned symbol table. Until that table
-/// exists in `vb_compile`, they are rejected instead of guessing `SymbolId`s.
+/// Object field segments require a compiler-owned symbol table. Until that
+/// table exists in `vb_compile`, they are rejected instead of guessing
+/// `SymbolId`s.
 pub fn compile_expr_to_bytecode_with_accessors(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
@@ -152,17 +153,35 @@ fn numeric_path_segments(
 ) -> Result<Vec<PathSegment>, CompileError> {
     let mut segments = Vec::new();
     for segment in path.split('.') {
-        let index =
-            segment
-                .parse::<u32>()
-                .map_err(|_| CompileError::UnsupportedAccessorReference {
-                    reference: Box::<str>::from(reference),
-                    root: Box::<str>::from(format!("{root}.{slot}")),
-                    path: Box::<str>::from(path),
-                })?;
+        let index = parse_list_index_segment(reference, root, slot, path, segment)?;
         segments.push(PathSegment::Index(index));
     }
     Ok(segments)
+}
+
+fn parse_list_index_segment(
+    reference: &str,
+    root: &str,
+    slot: &str,
+    path: &str,
+    segment: &str,
+) -> Result<u32, CompileError> {
+    segment
+        .parse::<u32>()
+        .map_err(|_| unsupported_accessor_reference(reference, root, slot, path))
+}
+
+fn unsupported_accessor_reference(
+    reference: &str,
+    root: &str,
+    slot: &str,
+    path: &str,
+) -> CompileError {
+    CompileError::UnsupportedAccessorReference {
+        reference: Box::<str>::from(reference),
+        root: Box::<str>::from(format!("{root}.{slot}")),
+        path: Box::<str>::from(path),
+    }
 }
 
 fn lower_expr(
@@ -523,6 +542,30 @@ mod tests {
     }
 
     #[test]
+    fn lowers_single_list_index_accessor_to_table() -> Result<(), String> {
+        let (ops, constants, accessors) = lower_with_accessors("$slot.4.12")?;
+        let expected_ops = vec![ExprOp::LoadAccessor(AccessorIdx::new(0))];
+        let expected_accessors = vec![AccessorProgram {
+            root: SlotIdx::new(4),
+            path: vec![PathSegment::Index(12)].into_boxed_slice(),
+        }];
+        if ops != expected_ops {
+            return Err(format!(
+                "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+            ));
+        }
+        if !constants.is_empty() {
+            return Err(format!("list accessor created constants: {constants:?}"));
+        }
+        if accessors != expected_accessors {
+            return Err(format!(
+                "accessors mismatch: expected {expected_accessors:?}, got {accessors:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
     fn rejects_field_accessor_without_symbol_table() -> Result<(), String> {
         let expr = parse_expression("$slot.1.name").map_err(|error| error.to_string())?;
         let mut constants = Vec::new();
@@ -534,6 +577,47 @@ mod tests {
             {
                 Ok(())
             }
+            other => Err(format!("unexpected lowering result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn rejects_field_accessor_after_list_index_without_mutating_table() -> Result<(), String> {
+        let expr = parse_expression("$slots.1.0.name").map_err(|error| error.to_string())?;
+        let mut constants = Vec::new();
+        let mut accessors = Vec::new();
+
+        match compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors) {
+            Err(CompileError::UnsupportedAccessorReference { root, path, .. })
+                if root.as_ref() == "slots.1" && path.as_ref() == "0.name" =>
+            {
+                if !accessors.is_empty() {
+                    return Err(format!("unsupported accessor mutated table: {accessors:?}"));
+                }
+                Ok(())
+            }
+            other => Err(format!("unexpected lowering result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn rejects_empty_accessor_segment_with_exact_diagnostic_code() -> Result<(), String> {
+        let expr = parse_expression("$slot.1..0").map_err(|error| error.to_string())?;
+        let mut constants = Vec::new();
+        let mut accessors = Vec::new();
+
+        match compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors) {
+            Err(error @ CompileError::UnsupportedAccessorReference { .. }) => match error {
+                CompileError::UnsupportedAccessorReference {
+                    ref root, ref path, ..
+                } if root.as_ref() == "slot.1"
+                    && path.as_ref() == ".0"
+                    && error.diagnostic_code() == "UNSUPPORTED_ACCESSOR_REFERENCE" =>
+                {
+                    Ok(())
+                }
+                other => Err(format!("unexpected lowering result: {other:?}")),
+            },
             other => Err(format!("unexpected lowering result: {other:?}")),
         }
     }

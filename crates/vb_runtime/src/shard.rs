@@ -441,7 +441,7 @@ impl Shard {
         if let Some(timer) = self.pending_timers.get(&run)
             && timer.step == answer.ticket.ask_step
         {
-            let _ = self.pending_timers.swap_remove(&run);
+            self.pending_timers.swap_remove(&run);
         }
         state
             .frame
@@ -494,7 +494,7 @@ impl Shard {
     }
 
     fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
-        let _ = self.pending_timers.swap_remove(&run);
+        self.pending_timers.swap_remove(&run);
         if self.runs.contains_key(&run) {
             self.journal
                 .append(RuntimeJournalEvent::RunCancelled { run })?;
@@ -563,7 +563,7 @@ impl Shard {
     }
 
     fn finish_run(&mut self, run: RunId, state: RunState) {
-        let _ = self.pending_timers.swap_remove(&run);
+        self.pending_timers.swap_remove(&run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -624,7 +624,7 @@ impl Shard {
     }
 
     fn fail_run_state(&mut self, run: RunId, state: RunState) {
-        let _ = self.pending_timers.swap_remove(&run);
+        self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         match self.journal.append(RuntimeJournalEvent::RunFailed { run }) {

@@ -14,18 +14,63 @@ const ALLOWED_TOP_LEVEL_FIELDS: &[&str] = &[
 ];
 
 const ALLOWED_STEP_FIELDS: &[&str] = &[
-    "id", "name", "then", "save", "choose", "for_each", "together", "collect", "reduce", "repeat",
-    "wait", "ask", "finish", "do", "on_error", "retry",
+    "id",
+    "name",
+    "if",
+    "with",
+    "then",
+    "set",
+    "choose",
+    "for_each",
+    "together",
+    "collect",
+    "reduce",
+    "repeat",
+    "wait",
+    "ask",
+    "finish",
+    "do",
+    "on_error",
+    "try_again",
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "save", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
-    "finish", "do",
+    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+    "finish",
 ];
 
 const RESERVED_IDS: &[&str] = &[
-    "now", "random", "runtime", "null", "true", "false", "input", "vars", "secrets", "steps",
-    "error", "attempt", "total", "result", "when", "item",
+    "now",
+    "random",
+    "runtime",
+    "null",
+    "true",
+    "false",
+    "input",
+    "inputs",
+    "vars",
+    "secrets",
+    "steps",
+    "error",
+    "attempt",
+    "total",
+    "result",
+    "when",
+    "item",
+    "do",
+    "set",
+    "choose",
+    "for_each",
+    "together",
+    "collect",
+    "reduce",
+    "repeat",
+    "wait",
+    "ask",
+    "try_again",
+    "on_error",
+    "then",
+    "finish",
 ];
 
 /// Validates a workflow document against the v1 schema.
@@ -33,12 +78,35 @@ const RESERVED_IDS: &[&str] = &[
 /// Checks required fields, unknown fields, version, trigger, IDs,
 /// step fields, and single-primitive rules.
 pub fn validate_workflow_schema(doc: &WorkflowDoc) -> ValidationResult<()> {
+    validate_duplicate_fields(doc)?;
     validate_required_fields(doc)?;
     validate_unknown_fields(doc)?;
     validate_version(doc)?;
     validate_trigger(doc)?;
     validate_ids(doc)?;
     validate_step_fields(doc)?;
+    Ok(())
+}
+
+fn validate_duplicate_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
+    validate_no_duplicate_names(&doc.fields)?;
+    let Some(steps) = doc.get_sequence("steps") else {
+        return Ok(());
+    };
+    for step in steps {
+        validate_no_duplicate_names(&step.fields)?;
+    }
+    Ok(())
+}
+
+fn validate_no_duplicate_names(fields: &[(String, FieldValue)]) -> ValidationResult<()> {
+    let mut seen: Vec<&str> = Vec::with_capacity(fields.len());
+    for (name, _) in fields {
+        if seen.contains(&name.as_str()) {
+            return Err(ValidationError::DuplicateKey);
+        }
+        seen.push(name.as_str());
+    }
     Ok(())
 }
 
@@ -162,11 +230,12 @@ fn validate_step_unknown_fields(step: &StepDoc) -> ValidationResult<()> {
 
 /// Ensures exactly one primitive field per step.
 pub fn validate_single_primitive(step: &StepDoc) -> ValidationResult<()> {
-    let count = step
-        .field_names()
-        .iter()
-        .filter(|field| STEP_PRIMITIVES.contains(field))
-        .count();
+    let mut count = 0_usize;
+    for (field, _) in &step.fields {
+        if STEP_PRIMITIVES.contains(&field.as_str()) {
+            count = count.saturating_add(1);
+        }
+    }
     if count == 0 {
         return Err(ValidationError::MissingStepPrimitive);
     }
@@ -489,7 +558,7 @@ mod tests {
     fn rejects_step_with_multiple_primitives() {
         let step = make_step(vec![
             ("id", FieldValue::String("s1".to_owned())),
-            ("save", FieldValue::Empty),
+            ("set", FieldValue::Empty),
             ("finish", FieldValue::Empty),
         ]);
         assert!(matches!(
@@ -557,6 +626,62 @@ mod tests {
         let result = validate_workflow_schema(&doc);
         // Then it returns UnknownTopLevelField
         assert_eq!(result, Err(ValidationError::UnknownTopLevelField));
+    }
+
+    #[test]
+    fn validate_workflow_schema_returns_duplicate_key_for_duplicate_top_level_field() {
+        // Given a workflow doc with duplicate top-level "name" keys
+        let doc = make_workflow(vec![
+            (
+                "version",
+                FieldValue::String("velvet-ballastics/v1".to_owned()),
+            ),
+            ("name", FieldValue::String("first".to_owned())),
+            ("name", FieldValue::String("second".to_owned())),
+            (
+                "when",
+                FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
+                    ("id", FieldValue::String("s1".to_owned())),
+                    ("finish", FieldValue::Empty),
+                ])]),
+            ),
+        ]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns DuplicateKey exactly.
+        assert_eq!(result, Err(ValidationError::DuplicateKey));
+    }
+
+    #[test]
+    fn validate_workflow_schema_returns_duplicate_key_for_duplicate_step_field() {
+        // Given a step with duplicate primitive keys
+        let doc = make_workflow(vec![
+            (
+                "version",
+                FieldValue::String("velvet-ballastics/v1".to_owned()),
+            ),
+            ("name", FieldValue::String("test".to_owned())),
+            (
+                "when",
+                FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            ),
+            (
+                "steps",
+                FieldValue::Sequence(vec![make_step(vec![
+                    ("id", FieldValue::String("s1".to_owned())),
+                    ("set", FieldValue::Empty),
+                    ("set", FieldValue::Empty),
+                ])]),
+            ),
+        ]);
+        // When validate_workflow_schema is called
+        let result = validate_workflow_schema(&doc);
+        // Then it returns DuplicateKey before primitive counting.
+        assert_eq!(result, Err(ValidationError::DuplicateKey));
     }
 
     #[test]
@@ -800,10 +925,10 @@ mod tests {
 
     #[test]
     fn validate_single_primitive_returns_multiple_step_primitives_for_two_primitives() {
-        // Given a step with both "save" and "finish"
+        // Given a step with both "set" and "finish"
         let step = make_step(vec![
             ("id", FieldValue::String("s1".to_owned())),
-            ("save", FieldValue::Empty),
+            ("set", FieldValue::Empty),
             ("finish", FieldValue::Empty),
         ]);
         // When validate_single_primitive is called
@@ -1018,7 +1143,45 @@ mod tests {
 
     #[test]
     fn validate_step_fields_accepts_valid_set_step() {
-        // Given a workflow doc with a step that has a "save" primitive (set)
+        // Given a workflow doc with a step that has a "set" primitive
+        let doc = make_workflow(vec![(
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("set", FieldValue::Empty),
+            ])]),
+        )]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_step_fields_accepts_master_metadata_fields() {
+        // Given a step using the master v1 metadata fields around one primitive
+        let doc = make_workflow(vec![(
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("s1".to_owned())),
+                ("name", FieldValue::String("Step One".to_owned())),
+                ("if", FieldValue::String("$input.enabled".to_owned())),
+                ("with", FieldValue::Mapping(vec![])),
+                ("try_again", FieldValue::Mapping(vec![])),
+                ("on_error", FieldValue::String("fail".to_owned())),
+                ("then", FieldValue::String("done".to_owned())),
+                ("set", FieldValue::Empty),
+            ])]),
+        )]);
+        // When validate_step_fields is called
+        let result = validate_step_fields(&doc);
+        // Then the metadata fields are accepted and not counted as primitives.
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_step_fields_rejects_legacy_save_field() {
+        // Given a step using the obsolete "save" field instead of master v1 "set"
         let doc = make_workflow(vec![(
             "steps",
             FieldValue::Sequence(vec![make_step(vec![
@@ -1028,8 +1191,8 @@ mod tests {
         )]);
         // When validate_step_fields is called
         let result = validate_step_fields(&doc);
-        // Then it returns Ok
-        assert_eq!(result, Ok(()));
+        // Then it returns UnknownStepField exactly.
+        assert_eq!(result, Err(ValidationError::UnknownStepField));
     }
 
     #[test]
@@ -1577,10 +1740,10 @@ mod tests {
 
     #[test]
     fn adversarial_step_with_set_and_do_primitives_is_rejected() {
-        // Given a step with BOTH "save" (set) and "do" primitives
+        // Given a step with BOTH "set" and "do" primitives
         let step = make_step(vec![
             ("id", FieldValue::String("sneaky".to_owned())),
-            ("save", FieldValue::Empty),
+            ("set", FieldValue::Empty),
             ("do", FieldValue::Empty),
         ]);
         // When validate_single_primitive is called
@@ -1608,7 +1771,7 @@ mod tests {
         // Given a step with ALL primitives at once
         let step = make_step(vec![
             ("id", FieldValue::String("greedy".to_owned())),
-            ("save", FieldValue::Empty),
+            ("set", FieldValue::Empty),
             ("choose", FieldValue::Empty),
             ("for_each", FieldValue::Empty),
             ("together", FieldValue::Empty),
@@ -1673,7 +1836,7 @@ mod tests {
                 FieldValue::Sequence(vec![
                     make_step(vec![
                         ("id", FieldValue::String("clone".to_owned())),
-                        ("save", FieldValue::Empty),
+                        ("set", FieldValue::Empty),
                     ]),
                     make_step(vec![
                         ("id", FieldValue::String("clone".to_owned())),

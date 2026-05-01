@@ -167,6 +167,108 @@ fn parse_ast_keeps_available_source_marks() -> Result<(), String> {
 }
 
 #[test]
+fn parse_ast_retains_source_primitive_identity() -> Result<(), String> {
+    let ast = parse(
+        br#"version: velvet-ballastics/v1
+name: ast_primitives
+when:
+  manual: {}
+steps:
+  - id: seed
+    save:
+      value: 0
+  - id: call_run
+    run:
+      action: 1
+      input: 0
+  - id: call_do
+    do:
+      action: 2
+      input: 0
+  - id: write_save
+    save:
+      value: 4
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+
+    let run_step = ast
+        .steps
+        .get(1)
+        .ok_or_else(|| "missing run step".to_owned())?;
+    let do_step = ast
+        .steps
+        .get(2)
+        .ok_or_else(|| "missing do step".to_owned())?;
+    let save_step = ast
+        .steps
+        .get(3)
+        .ok_or_else(|| "missing save step".to_owned())?;
+
+    ensure(
+        run_step.primitive == StepPrimitiveAst::Run,
+        "run source primitive was not retained",
+    )?;
+    ensure(
+        do_step.primitive == StepPrimitiveAst::Do,
+        "do source primitive was not retained",
+    )?;
+    ensure(
+        save_step.primitive == StepPrimitiveAst::Save,
+        "save source primitive was not retained",
+    )
+}
+
+#[test]
+fn parse_ast_rejects_multiple_triggers_before_lowering() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: ast_surface
+when:
+  manual: {}
+  event:
+    name: ready
+steps:
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+
+    ensure(
+        matches!(error, CompileError::InvalidTriggerCount { count: 2 }),
+        "multiple triggers did not fail with InvalidTriggerCount",
+    )
+}
+
+#[test]
+fn parse_ast_reports_multiple_primitive_step_index() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: ast_surface
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 1
+  - id: broken
+    save:
+      value: 2
+    finish:
+      result: 1
+"#,
+    )?;
+
+    ensure(
+        matches!(error, CompileError::MultipleStepPrimitives { step: 1 }),
+        "multiple primitives did not report the malformed step index",
+    )
+}
+
+#[test]
 fn parse_ast_exposes_parsed_expression_public_surface() -> Result<(), String> {
     let expression = first_choose_condition(
         br#"version: velvet-ballastics/v1

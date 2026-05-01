@@ -90,6 +90,7 @@ impl Default for SourceMap {
 
 /// Build a source map from YAML text by parsing the event stream.
 pub fn build_source_map(text: &str) -> YamlResult<SourceMap> {
+    crate::profile::validate_yaml_profile(text)?;
     let events = crate::events::collect_events(text)?;
     Ok(source_map_from_events(&events))
 }
@@ -122,8 +123,7 @@ fn event_span_to_source_span(span: EventSpan) -> SourceSpan {
 mod tests {
     use super::*;
 
-    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
-        let _ = message;
+    fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
         false
     }
 
@@ -347,20 +347,12 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn adversarial_source_map_empty_input_returns_empty_map() {
+    fn adversarial_source_map_empty_input_is_rejected_by_profile() {
         // Given: empty string
         // When: building source map
         let result = build_source_map("");
-        // Then: Ok with empty map (collect_events succeeds with empty stream)
-        match result {
-            Ok(map) => {
-                assert!(map.is_empty(), "expected empty source map for empty input");
-            }
-            Err(e) => {
-                // Also acceptable if the parser rejects empty input
-                let _ = e;
-            }
-        }
+        // Then: Err(YamlError::EmptySource) from the strict profile gate.
+        assert_eq!(result, Err(crate::YamlError::EmptySource));
     }
 
     #[test]
@@ -398,18 +390,28 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_source_map_null_byte_accepted_as_known_gap() {
+    fn adversarial_source_map_null_byte_rejected_by_profile() {
         // Given: YAML with a null byte
         let yaml = "key: \x00value\n";
         // When: building source map
         let result = build_source_map(yaml);
-        // Then: Ok - BUG GAP: null bytes pass through just like in events.
-        // Source maps built from null-byte-contaminated YAML are valid
-        // but track positions of potentially dangerous content.
-        assert!(
-            result.is_ok(),
-            "null bytes pass through source map build (known gap matching events layer)"
+        // Then: Err from the strict profile gate before source-map nodes exist.
+        assert_eq!(
+            result,
+            Err(crate::YamlError::ForbiddenFeature {
+                detail: "null_byte_in_source"
+            })
         );
+    }
+
+    #[test]
+    fn adversarial_source_map_anchor_rejected_by_profile() {
+        // Given: YAML with anchors and aliases, which are outside the strict profile.
+        let yaml = "a: &anchor value\nb: *anchor\n";
+        // When: building source map
+        let result = build_source_map(yaml);
+        // Then: Err(YamlError::AnchorAliasMerge), matching event parsing behavior.
+        assert_eq!(result, Err(crate::YamlError::AnchorAliasMerge));
     }
 
     #[test]

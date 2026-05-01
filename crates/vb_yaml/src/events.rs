@@ -260,8 +260,7 @@ fn format_tag(tag: &saphyr_parser::Tag) -> Box<str> {
 mod tests {
     use super::*;
 
-    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
-        let _ = message;
+    fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
         false
     }
 
@@ -755,7 +754,7 @@ mod tests {
             }
             Err(e) => {
                 // If saphyr rejects it in a future version, that's also fine
-                let _ = e;
+                assert!(!e.to_string().is_empty());
             }
         }
     }

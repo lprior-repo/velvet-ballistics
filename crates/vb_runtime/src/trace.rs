@@ -118,7 +118,9 @@ impl TraceRing {
 
     fn remember(&mut self, event: TraceEvent) {
         while self.history.len() >= self.capacity {
-            let _ = self.history.pop_front();
+            if self.history.pop_front().is_none() {
+                return;
+            }
         }
         self.history.push_back(event);
     }
@@ -759,7 +761,11 @@ mod tests {
         let mut ring = TraceRing::new(4);
         // When pushing 10 events (6 overflow)
         for i in 0..10u64 {
-            let _ = ring.push(TraceEvent::RunSubmitted { run: RunId::new(i) });
+            if i < 4 {
+                assert!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(i) }));
+            } else {
+                assert!(!ring.push(TraceEvent::RunSubmitted { run: RunId::new(i) }));
+            }
         }
         // Then dropped count is exactly 6 (not silently lost)
         assert_eq!(ring.dropped(), 6);
@@ -801,7 +807,11 @@ mod tests {
         let mut ring = TraceRing::new(3);
         // When pushing 5 events (3 succeed, 2 overflow)
         for i in 0..5u64 {
-            let _ = ring.push(TraceEvent::RunFinished { run: RunId::new(i) });
+            if i < 3 {
+                assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(i) }));
+            } else {
+                assert!(!ring.push(TraceEvent::RunFinished { run: RunId::new(i) }));
+            }
         }
         // Then history contains the 3 successfully pushed events (0, 1, 2)
         assert_eq!(ring.dropped(), 2);
@@ -827,7 +837,7 @@ mod tests {
             ring.push(TraceEvent::RunFinished { run: RunId::new(1) }),
             true
         );
-        let _ = ring.drain();
+        assert_eq!(ring.drain().len(), 2);
         assert_eq!(
             ring.push(TraceEvent::RunFinished { run: RunId::new(2) }),
             true
@@ -969,7 +979,7 @@ mod tests {
             true
         );
         // When draining the ring completely
-        let _ = ring.drain();
+        assert_eq!(ring.drain().len(), 2);
         // Then history still allows snapshot queries
         let snap = ring.snapshot_for_run(RunId::new(1), 10);
         assert_eq!(snap.len(), 1);

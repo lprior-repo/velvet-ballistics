@@ -78,7 +78,7 @@ pub fn together_branch(
 pub fn together_join(
     run: &mut RunFrame,
     store: &mut ValueStore,
-    branch_count: u16,
+    _branch_count: u16,
     accumulator: SlotIdx,
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
@@ -105,7 +105,6 @@ pub fn together_join(
             acc_value
         }
     };
-    let _ = branch_count;
     run.write_slot(out, final_list)?;
     jump_to_next(run, next, step)
 }

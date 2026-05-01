@@ -107,7 +107,7 @@ impl MarkBuilder {
     }
 
     fn end_node(&mut self) {
-        let _ = self.stack.pop();
+        self.stack.pop();
     }
 
     fn scalar(&mut self, value: &str, mark: SourceMark) {

@@ -323,14 +323,14 @@ fn reject_duplicate_mapping_keys(events: &[YamlEvent]) -> YamlResult<()> {
                 }));
             }
             YamlEvent::MappingEnd { .. } => {
-                let _ = stack.pop();
+                pop_container(&mut stack, "mapping end without matching start")?;
             }
             YamlEvent::SequenceStart { .. } => {
                 finish_mapping_value_if_needed(&mut stack);
                 stack.push(Container::Sequence);
             }
             YamlEvent::SequenceEnd { .. } => {
-                let _ = stack.pop();
+                pop_container(&mut stack, "sequence end without matching start")?;
             }
             YamlEvent::Scalar { value, .. } => {
                 handle_scalar_for_duplicate_key(value, &mut stack)?;
@@ -339,6 +339,16 @@ fn reject_duplicate_mapping_keys(events: &[YamlEvent]) -> YamlResult<()> {
         }
     }
     Ok(())
+}
+
+fn pop_container(stack: &mut Vec<Container<'_>>, reason: &'static str) -> YamlResult<()> {
+    match stack.pop() {
+        Some(_) => Ok(()),
+        None => Err(YamlError::ParseError {
+            line: 0,
+            reason: reason.into(),
+        }),
+    }
 }
 
 fn finish_mapping_value_if_needed(stack: &mut [Container<'_>]) {
@@ -377,8 +387,7 @@ fn handle_scalar_for_duplicate_key<'a>(
 mod tests {
     use super::*;
 
-    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
-        let _ = message;
+    fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
         false
     }
 

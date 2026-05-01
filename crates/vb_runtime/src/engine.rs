@@ -1957,8 +1957,6 @@ mod tests {
             SeqNo::new(u64::MAX),
             ActionId::new(65535),
         );
-        // Then the key is a valid u128 (no panic from overflow)
-        let _ = key;
         // And the same inputs produce the same key
         let key2 = compute_idempotency_key(
             RunId::new(u64::MAX),

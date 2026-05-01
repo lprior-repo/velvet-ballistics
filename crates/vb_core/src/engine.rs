@@ -992,14 +992,14 @@ fn finish_run(run: &mut RunFrame, result: SlotIdx) -> Result<EngineSignal, Engin
 #[cfg(test)]
 mod tests {
     use super::{
-        EngineError, EngineSignal, RunFrame, StepBudget, eval_accessor, eval_accessor_with_store,
-        eval_expr, new_run_frame, run_until_blocked, step_once,
+        EngineError, EngineSignal, RunFrame, StepBudget, build_list, build_object, eval_accessor,
+        eval_accessor_with_store, eval_expr, new_run_frame, run_until_blocked, step_once,
     };
     use crate::errors::CoreError;
     use crate::frame::StepState;
     use crate::ids::{
-        AccessorIdx, ActionId, ConstIdx, ExprIdx, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
-        WorkflowDigest,
+        AccessorIdx, ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
+        SymbolId, WorkflowDigest,
     };
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::value_store::{ObjectField, ValueStore};
@@ -1370,6 +1370,24 @@ mod tests {
     }
 
     #[test]
+    fn eval_accessor_identity_path_returns_root_handle_without_store() -> Result<(), String> {
+        let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(120), &workflow)?;
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::Object(ObjectId::new(42)),
+            Taint::Clean,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
+            .map_err(|error| error.to_string())?;
+
+        ensure_equal(value, SlotValue::Object(ObjectId::new(42)))?;
+        Ok(())
+    }
+
+    #[test]
     fn public_eval_accessor_rejects_invalid_accessor_index() -> Result<(), String> {
         let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
         let run = test_frame(RunId::new(27), &workflow)?;
@@ -1518,6 +1536,203 @@ mod tests {
             Err(EngineError::ListIndexOutOfBounds { index: 4 }) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
+    }
+
+    #[test]
+    fn eval_accessor_rejects_field_traversal_on_scalar_value() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(121), &workflow)?;
+        let store = test_store();
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::Clean)
+            .map_err(|error| error.to_string())?;
+
+        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+            Err(EngineError::UnsupportedAccessorTraversal {
+                segment: "field",
+                found: "number",
+            }) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn eval_accessor_reports_object_handle_bounds() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(122), &workflow)?;
+        let store = test_store();
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::Object(ObjectId::new(99)),
+            Taint::Clean,
+        )
+        .map_err(|error| error.to_string())?;
+
+        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+            Err(EngineError::ObjectOutOfBounds { object }) if object == ObjectId::new(99) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn eval_accessor_reports_list_handle_bounds() -> Result<(), String> {
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(123), &workflow)?;
+        let store = test_store();
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::List(ListId::new(88)),
+            Taint::Clean,
+        )
+        .map_err(|error| error.to_string())?;
+
+        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+            Err(EngineError::ListOutOfBounds { list }) if list == ListId::new(88) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_list_copies_slot_values_in_exact_item_order() -> Result<(), String> {
+        let mut store = test_store();
+        let mut run = RunFrame::new(RunId::new(32), StepIdx::new(0), 1, 3)
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(1), SlotValue::Bool(true))
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(2), SlotValue::Null)
+            .map_err(|error| error.to_string())?;
+
+        let list = build_list(
+            &mut store,
+            &run,
+            &[SlotIdx::new(1), SlotIdx::new(0), SlotIdx::new(2)],
+        )
+        .map_err(|error| error.to_string())?;
+        let items = store.list(list).map_err(|error| error.to_string())?;
+
+        ensure_equal(items.len(), 3)?;
+        ensure_equal(items.first().copied(), Some(SlotValue::Bool(true)))?;
+        ensure_equal(items.get(1).copied(), Some(SlotValue::I64(10)))?;
+        ensure_equal(items.get(2).copied(), Some(SlotValue::Null))?;
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(), String> {
+        let mut store = test_store();
+        let mut run = RunFrame::new(RunId::new(33), StepIdx::new(0), 1, 3)
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(100))
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(1), SlotValue::I64(200))
+            .map_err(|error| error.to_string())?;
+        run.write_slot(SlotIdx::new(2), SlotValue::Bool(false))
+            .map_err(|error| error.to_string())?;
+        let duplicate_key = SymbolId::new(7);
+        let tail_key = SymbolId::new(9);
+
+        let object = build_object(
+            &mut store,
+            &run,
+            &[
+                (duplicate_key, SlotIdx::new(0)),
+                (duplicate_key, SlotIdx::new(1)),
+                (tail_key, SlotIdx::new(2)),
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+        let fields = store.object(object).map_err(|error| error.to_string())?;
+
+        ensure_equal(fields.len(), 3)?;
+        ensure_equal(
+            fields.first().copied(),
+            Some(ObjectField {
+                key: duplicate_key,
+                value: SlotValue::I64(100),
+            }),
+        )?;
+        ensure_equal(
+            fields.get(1).copied(),
+            Some(ObjectField {
+                key: duplicate_key,
+                value: SlotValue::I64(200),
+            }),
+        )?;
+        ensure_equal(
+            fields.get(2).copied(),
+            Some(ObjectField {
+                key: tail_key,
+                value: SlotValue::Bool(false),
+            }),
+        )?;
+        ensure_equal(
+            store
+                .object_field(object, duplicate_key)
+                .map_err(|error| error.to_string())?,
+            SlotValue::I64(100),
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_rejects_unreadable_item_slot_without_inserting() -> Result<(), String> {
+        let mut store = test_store();
+        let run = RunFrame::new(RunId::new(34), StepIdx::new(0), 1, 1)
+            .map_err(|error| error.to_string())?;
+
+        match build_list(&mut store, &run, &[SlotIdx::new(1)]) {
+            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(1) => {
+                ensure_equal(store.list_count(), 0)
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_object_rejects_unreadable_field_slot_without_inserting() -> Result<(), String> {
+        let mut store = test_store();
+        let run = RunFrame::new(RunId::new(35), StepIdx::new(0), 1, 1)
+            .map_err(|error| error.to_string())?;
+
+        match build_object(&mut store, &run, &[(SymbolId::new(1), SlotIdx::new(1))]) {
+            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(1) => {
+                ensure_equal(store.object_count(), 0)
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_nodes_finish_with_constructed_handles() -> Result<(), String> {
+        let workflow = construction_workflow().map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(36), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|error| error.to_string())?;
+        let object = match result {
+            EngineSignal::Finished(SlotValue::Object(object)) => object,
+            other => return Err(format!("unexpected result: {other:?}")),
+        };
+        let list = match store.object_field(object, SymbolId::new(1)) {
+            Ok(SlotValue::List(list)) => list,
+            other => return Err(format!("unexpected object field: {other:?}")),
+        };
+        let items = store.list(list).map_err(|error| error.to_string())?;
+
+        ensure_equal(items.first().copied(), Some(SlotValue::I64(11)))?;
+        ensure_equal(items.get(1).copied(), Some(SlotValue::I64(22)))?;
+        ensure_equal(
+            store.object_field(object, SymbolId::new(2)),
+            Ok(SlotValue::I64(11)),
+        )?;
+        Ok(())
     }
 
     fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
@@ -1809,6 +2024,66 @@ mod tests {
             .into_boxed_slice(),
             constants: Box::new([]),
             slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+    }
+
+    fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+        CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("construction"),
+            digest: WorkflowDigest::from_bytes([0x36; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(3)),
+                    next: Some(StepIdx::new(4)),
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![
+                            (SymbolId::new(1), SlotIdx::new(2)),
+                            (SymbolId::new(2), SlotIdx::new(0)),
+                        ]
+                        .into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(3),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(11), ConstValue::I64(22)].into_boxed_slice(),
+            slot_count: 4,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
         })

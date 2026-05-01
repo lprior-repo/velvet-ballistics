@@ -1152,6 +1152,7 @@ mod tests {
     };
     use crate::errors::CoreError;
     use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
     use crate::value::ConstValue;
 
     #[test]
@@ -1534,8 +1535,147 @@ mod tests {
         expect_step_out_of_bounds(parts, StepIdx::new(3))
     }
 
+    #[test]
+    fn workflow_parts_accept_build_list_at_exact_item_limit() -> Result<(), String> {
+        let items = vec![SlotIdx::new(0); MAX_LIST_ITEMS_PER_VALUE].into_boxed_slice();
+        let parts = construction_parts(CompiledNodeKind::BuildList { items }, 1, 1);
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn workflow_parts_reject_build_list_over_item_limit() -> Result<(), String> {
+        let items =
+            vec![SlotIdx::new(0); MAX_LIST_ITEMS_PER_VALUE.saturating_add(1)].into_boxed_slice();
+        let parts = construction_parts(CompiledNodeKind::BuildList { items }, 1, 1);
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::ResourceContractExceeded {
+                resource: "list_items",
+            }) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn workflow_parts_reject_build_list_item_slot_out_of_bounds() -> Result<(), String> {
+        let parts = construction_parts(
+            CompiledNodeKind::BuildList {
+                items: vec![SlotIdx::new(0), SlotIdx::new(2)].into_boxed_slice(),
+            },
+            2,
+            2,
+        );
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(2) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn workflow_parts_accept_build_object_at_exact_field_limit() -> Result<(), String> {
+        let fields =
+            vec![(crate::ids::SymbolId::new(0), SlotIdx::new(0)); MAX_OBJECT_FIELDS_PER_VALUE]
+                .into_boxed_slice();
+        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 1, 1);
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn workflow_parts_reject_build_object_over_field_limit() -> Result<(), String> {
+        let fields = vec![
+            (crate::ids::SymbolId::new(0), SlotIdx::new(0));
+            MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)
+        ]
+        .into_boxed_slice();
+        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 1, 1);
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::ResourceContractExceeded {
+                resource: "object_fields",
+            }) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn workflow_parts_reject_build_object_field_slot_out_of_bounds() -> Result<(), String> {
+        let parts = construction_parts(
+            CompiledNodeKind::BuildObject {
+                fields: vec![
+                    (crate::ids::SymbolId::new(1), SlotIdx::new(0)),
+                    (crate::ids::SymbolId::new(2), SlotIdx::new(3)),
+                ]
+                .into_boxed_slice(),
+            },
+            2,
+            2,
+        );
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(3) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn workflow_parts_preserve_build_object_duplicate_field_order() -> Result<(), String> {
+        let key = crate::ids::SymbolId::new(5);
+        let fields = vec![(key, SlotIdx::new(0)), (key, SlotIdx::new(1))].into_boxed_slice();
+        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 2, 2);
+
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        let copied = workflow.to_parts();
+        let node = copied
+            .nodes
+            .first()
+            .ok_or(String::from("missing construction node"))?;
+
+        match &node.kind {
+            CompiledNodeKind::BuildObject { fields } => {
+                if fields.as_ref() == [(key, SlotIdx::new(0)), (key, SlotIdx::new(1))] {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected fields: {fields:?}"))
+                }
+            }
+            other => Err(format!("unexpected node kind: {other:?}")),
+        }
+    }
+
     fn load(index: u16) -> ExprOp {
         ExprOp::LoadConst(ConstIdx::new(index))
+    }
+
+    fn construction_parts(
+        kind: CompiledNodeKind,
+        slot_count: u16,
+        max_slots: u16,
+    ) -> WorkflowParts {
+        WorkflowParts {
+            name: Box::<str>::from("construction_validation"),
+            digest: WorkflowDigest::from_bytes([0x42; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, max_slots, 0, 0, 0),
+        }
     }
 
     fn expect_resource_error(

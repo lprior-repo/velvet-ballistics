@@ -1,12 +1,31 @@
 //! Collect pagination primitive handlers.
 
+use std::sync::{Mutex, MutexGuard};
+
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{ListId, RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
 use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
+
+const MAX_COLLECT_PAGINATION_STATES: usize = 1024;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CollectPaginationState {
+    frame_key: usize,
+    run_id: RunId,
+    collector_slot: SlotIdx,
+    source: ListId,
+    current_page: ListId,
+    cursor: usize,
+    page_size: usize,
+    item_count: usize,
+    limit: usize,
+}
+
+static COLLECT_PAGINATION_STATES: Mutex<Vec<CollectPaginationState>> = Mutex::new(Vec::new());
 
 /// Executes CollectStart: reads source list, writes the first page,
 /// and jumps to body or done.
@@ -25,7 +44,8 @@ pub fn collect_start(
     let ps = page_size_from(page_size)?;
     validate_page_bound(ps, limit)?;
     let items = store.list(list_id)?;
-    validate_item_limit(items.len(), limit)?;
+    let item_count = items.len();
+    validate_item_limit(item_count, limit)?;
     let collector = match output {
         Some(slot) => slot,
         None => source,
@@ -35,10 +55,24 @@ pub fn collect_start(
             collector,
             SlotValue::List(store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?),
         )?;
+        remove_collect_state(run, collector);
         return jump_to(run, done);
     }
     let page = copy_prefix(items, ps)?;
-    write_collected_page(run, store, collector, page)?;
+    let page_len = page.len();
+    let current_page = write_collected_page(run, store, collector, page)?;
+    let cursor = checked_add_usize(0, page_len, "collect cursor overflow")?;
+    upsert_collect_state(CollectPaginationState {
+        frame_key: collect_frame_key(run),
+        run_id: run.run_id(),
+        collector_slot: collector,
+        source: list_id,
+        current_page,
+        cursor,
+        page_size: ps,
+        item_count,
+        limit: usize::try_from(limit).map_err(|_| EngineError::CollectItemLimitExceeded)?,
+    })?;
     jump_to(run, body)
 }
 
@@ -51,15 +85,12 @@ pub fn collect_page(
     body: StepIdx,
     _done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let _ = expect_list(*run.read_slot(collector_slot)?)?;
+    expect_list(*run.read_slot(collector_slot)?)?;
     jump_to(run, body)
 }
 
-/// Executes CollectNext.
-///
-/// The current IR does not provide a cursor/source state slot to distinguish
-/// the current page from remaining items. Non-empty continuation is therefore
-/// unsupported instead of pretending to advance by repeating the same page.
+/// Executes CollectNext by advancing the bounded pagination cursor recorded by
+/// CollectStart for the visible page in `collector_slot`.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_next(
     run: &mut RunFrame,
@@ -71,12 +102,28 @@ pub fn collect_next(
     let current_id = expect_list(*run.read_slot(collector_slot)?)?;
     let current = store.list(current_id)?;
     if current.is_empty() {
+        remove_collect_state(run, collector_slot);
         return jump_to(run, done);
     }
-    let _ = body;
-    Err(EngineError::UnsupportedPrimitive {
-        primitive: "CollectNext.pagination_state",
-    })
+    let state = find_collect_state(run, collector_slot, current_id)?;
+    let source_items = store.list(state.source)?;
+    validate_collect_state(&state, source_items.len())?;
+    if state.cursor >= state.item_count {
+        let empty_page = Vec::<SlotValue>::new().into_boxed_slice();
+        let _ = write_collected_page(run, store, collector_slot, empty_page)?;
+        remove_collect_state(run, collector_slot);
+        return jump_to(run, done);
+    }
+    let page = copy_page_range(source_items, state.cursor, state.page_size)?;
+    let page_len = page.len();
+    let current_page = write_collected_page(run, store, collector_slot, page)?;
+    let cursor = checked_add_usize(state.cursor, page_len, "collect cursor overflow")?;
+    upsert_collect_state(CollectPaginationState {
+        current_page,
+        cursor,
+        ..state
+    })?;
+    jump_to(run, body)
 }
 
 /// Executes CollectFinish: writes the collected result to output.
@@ -90,6 +137,7 @@ pub fn collect_finish(
     let final_value = *run.read_slot(collector_slot)?;
     let out = require_output(output, step)?;
     run.write_slot(out, final_value)?;
+    remove_collect_state(run, collector_slot);
     jump_to_next(run, next, step)
 }
 
@@ -124,10 +172,10 @@ fn write_collected_page(
     store: &mut ValueStore,
     collector: SlotIdx,
     items: Box<[SlotValue]>,
-) -> Result<(), EngineError> {
+) -> Result<ListId, EngineError> {
     let page_id = store.insert_list(items)?;
     run.write_slot(collector, SlotValue::List(page_id))?;
-    Ok(())
+    Ok(page_id)
 }
 
 fn copy_prefix(items: &[SlotValue], page_size: usize) -> Result<Box<[SlotValue]>, EngineError> {
@@ -149,6 +197,165 @@ fn copy_prefix(items: &[SlotValue], page_size: usize) -> Result<Box<[SlotValue]>
     }
     Ok(page.into_boxed_slice())
 }
+
+fn copy_page_range(
+    items: &[SlotValue],
+    start: usize,
+    page_size: usize,
+) -> Result<Box<[SlotValue]>, EngineError> {
+    let remaining =
+        items
+            .len()
+            .checked_sub(start)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect cursor beyond item count",
+            })?;
+    let count = page_size.min(remaining);
+    let mut page = Vec::with_capacity(count);
+    let mut offset = 0usize;
+    while offset < count {
+        let index = checked_add_usize(start, offset, "collect page index overflow")?;
+        let value = *items
+            .get(index)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect page index checked by loop bound",
+            })?;
+        page.push(value);
+        offset = checked_add_usize(offset, 1, "collect page offset overflow")?;
+    }
+    Ok(page.into_boxed_slice())
+}
+
+fn validate_collect_state(
+    state: &CollectPaginationState,
+    source_len: usize,
+) -> Result<(), EngineError> {
+    if state.page_size > state.limit {
+        return Err(EngineError::CollectPageLimitExceeded);
+    }
+    if state.item_count > state.limit {
+        return Err(EngineError::CollectItemLimitExceeded);
+    }
+    if source_len != state.item_count {
+        return Err(EngineError::InvalidCompiledWorkflow {
+            reason: "collect source length changed",
+        });
+    }
+    Ok(())
+}
+
+fn checked_add_usize(
+    left: usize,
+    right: usize,
+    reason: &'static str,
+) -> Result<usize, EngineError> {
+    left.checked_add(right)
+        .ok_or(EngineError::InternalInvariantViolation { reason })
+}
+
+fn collect_frame_key(run: &RunFrame) -> usize {
+    std::ptr::from_ref(run).addr()
+}
+
+fn lock_collect_states() -> Result<MutexGuard<'static, Vec<CollectPaginationState>>, EngineError> {
+    COLLECT_PAGINATION_STATES
+        .lock()
+        .map_err(|_| EngineError::InternalInvariantViolation {
+            reason: "collect pagination state lock poisoned",
+        })
+}
+
+fn upsert_collect_state(state: CollectPaginationState) -> Result<(), EngineError> {
+    let mut states = lock_collect_states()?;
+    let mut index = 0usize;
+    while index < states.len() {
+        let existing = states
+            .get_mut(index)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect state index checked by loop bound",
+            })?;
+        if existing.frame_key == state.frame_key
+            && existing.run_id == state.run_id
+            && existing.collector_slot == state.collector_slot
+        {
+            *existing = state;
+            return Ok(());
+        }
+        index = checked_add_usize(index, 1, "collect state index overflow")?;
+    }
+    if states.len() >= MAX_COLLECT_PAGINATION_STATES {
+        return Err(EngineError::ResourceLimitExceeded {
+            resource: "collect_pagination_states",
+        });
+    }
+    states.push(state);
+    Ok(())
+}
+
+fn find_collect_state(
+    run: &RunFrame,
+    collector_slot: SlotIdx,
+    current_page: ListId,
+) -> Result<CollectPaginationState, EngineError> {
+    let frame_key = collect_frame_key(run);
+    let run_id = run.run_id();
+    let states = lock_collect_states()?;
+    let mut index = 0usize;
+    while index < states.len() {
+        let state = states
+            .get(index)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect state index checked by loop bound",
+            })?;
+        if state.frame_key == frame_key
+            && state.run_id == run_id
+            && state.collector_slot == collector_slot
+            && state.current_page == current_page
+        {
+            return Ok(*state);
+        }
+        index = checked_add_usize(index, 1, "collect state index overflow")?;
+    }
+    Err(EngineError::InvalidCompiledWorkflow {
+        reason: "collect pagination state missing",
+    })
+}
+
+fn remove_collect_state(run: &RunFrame, collector_slot: SlotIdx) {
+    let frame_key = collect_frame_key(run);
+    let run_id = run.run_id();
+    let Ok(mut states) = COLLECT_PAGINATION_STATES.lock() else {
+        return;
+    };
+    let mut read = 0usize;
+    let mut write = 0usize;
+    while read < states.len() {
+        let Some(state) = states.get(read).copied() else {
+            return;
+        };
+        if state.frame_key != frame_key
+            || state.run_id != run_id
+            || state.collector_slot != collector_slot
+        {
+            if write != read {
+                if let Some(target) = states.get_mut(write) {
+                    *target = state;
+                } else {
+                    return;
+                }
+            }
+            let Some(next_write) = write.checked_add(1) else {
+                return;
+            };
+            write = next_write;
+        }
+        let Some(next_read) = read.checked_add(1) else {
+            return;
+        };
+        read = next_read;
+    }
+    states.truncate(write);
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,6 +364,30 @@ mod tests {
 
     fn fresh_frame() -> RunFrame {
         crate::test_harness::fresh_frame(8, 8)
+    }
+
+    fn assert_slot_list_items(
+        run: &RunFrame,
+        store: &ValueStore,
+        slot: SlotIdx,
+        expected: &[SlotValue],
+    ) {
+        match *run
+            .read_slot(slot)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
+            SlotValue::List(id) => {
+                let items = store
+                    .list(id)
+                    .ok()
+                    .unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items, expected);
+            }
+            other => {
+                assert_eq!(other, SlotValue::Null);
+            }
+        }
     }
 
     #[test]
@@ -210,28 +441,42 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_returns_unsupported_while_page_has_items() {
+    fn collect_next_advances_to_next_page_while_page_has_items() {
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
         let collector = SlotIdx::new(1);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
         list_in_slot(
             &mut run,
             &mut store,
+            source,
+            vec![SlotValue::I64(5), SlotValue::I64(6), SlotValue::I64(7)],
+        );
+        let start = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
+        );
+        assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
+        assert_slot_list_items(
+            &run,
+            &store,
             collector,
-            vec![SlotValue::I64(5), SlotValue::I64(6)],
+            &[SlotValue::I64(5), SlotValue::I64(6)],
         );
 
         let result = collect_next(&mut run, &mut store, collector, body, done);
 
-        assert_eq!(
-            result,
-            Err(EngineError::UnsupportedPrimitive {
-                primitive: "CollectNext.pagination_state",
-            })
-        );
-        assert_eq!(run.pc(), StepIdx::ZERO);
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(7)]);
     }
 
     #[test]
@@ -582,12 +827,29 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_does_not_increment_executed_without_state() {
-        // Given a frame with remaining items
+    fn collect_next_increments_executed_with_pagination_state() {
+        // Given a started collection with remaining items
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
-        let collector = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(1)]);
+        let source = SlotIdx::new(0);
+        let collector = SlotIdx::new(1);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
+        let start = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            1,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(collector),
+        );
+        assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
         let before = run.executed();
         // When calling collect_next
         let result = collect_next(
@@ -597,13 +859,8 @@ mod tests {
             StepIdx::new(1),
             StepIdx::new(2),
         );
-        assert_eq!(
-            result,
-            Err(EngineError::UnsupportedPrimitive {
-                primitive: "CollectNext.pagination_state",
-            })
-        );
-        assert_eq!(run.executed(), before);
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
     }
 
     #[test]
@@ -672,8 +929,8 @@ mod tests {
         );
         assert_eq!(
             result,
-            Err(EngineError::UnsupportedPrimitive {
-                primitive: "CollectNext.pagination_state",
+            Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect pagination state missing",
             })
         );
         assert_eq!(run.pc(), StepIdx::ZERO);
@@ -920,28 +1177,47 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_does_not_fake_next_page_when_items_remain() {
-        // Given a frame with remaining items in collector
+    fn collect_next_progresses_pages_then_jumps_done() {
+        // Given a started collection with one remainder page after the first page
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
-        let collector = SlotIdx::new(0);
+        let source = SlotIdx::new(0);
+        let collector = SlotIdx::new(1);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
         list_in_slot(
             &mut run,
             &mut store,
-            collector,
+            source,
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
         );
-        // When calling collect_next with items remaining
-        let result = collect_next(&mut run, &mut store, collector, body, done);
-        assert_eq!(
-            result,
-            Err(EngineError::UnsupportedPrimitive {
-                primitive: "CollectNext.pagination_state",
-            })
+        let start = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
         );
-        assert_eq!(run.pc(), StepIdx::ZERO);
+        assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
+        assert_slot_list_items(
+            &run,
+            &store,
+            collector,
+            &[SlotValue::I64(1), SlotValue::I64(2)],
+        );
+
+        let next = collect_next(&mut run, &mut store, collector, body, done);
+        assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(3)]);
+
+        let finished = collect_next(&mut run, &mut store, collector, body, done);
+        assert_eq!(finished, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+        assert_slot_list_items(&run, &store, collector, &[]);
     }
 
     #[test]
