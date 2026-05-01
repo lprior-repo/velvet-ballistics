@@ -114,6 +114,8 @@ pub struct RunState {
     pub workflow: CompiledWorkflow,
     /// Cold value store for list, object, and blob handles.
     pub store: ValueStore,
+    /// Per-Do-step attempt counters owned with the live frame.
+    action_attempts: Box<[u16]>,
 }
 
 /// Diagnostic snapshot returned by the Inspect command.
@@ -277,10 +279,12 @@ impl Shard {
             workflow: workflow.digest(),
         })?;
         self.counters.inc_submitted();
+        let frame_step_count = frame.step_count();
         let state = RunState {
             frame,
             workflow,
             store: ValueStore::new(),
+            action_attempts: new_action_attempts(frame_step_count),
         };
         self.runs.insert(run, state);
         self.drive_run(run)?;
@@ -346,10 +350,32 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        validate_action_completion(state, ticket)?;
+        if failure.retryable && retry_metadata_exists(state, ticket.step) {
+            let policy = retry_policy_after_action(state, ticket.step)?;
+            self.trace_ring.push(TraceEvent::ActionFailed {
+                run,
+                step: ticket.step,
+                code: failure.code,
+            });
+            if record_retry_attempt(state, ticket, policy)? {
+                state
+                    .frame
+                    .set_pc(ticket.step)
+                    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                return self.drive_run(run);
+            }
+            state
+                .frame
+                .mark_failed(ticket.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            self.fail_run(run);
+            return Ok(());
+        }
         state
             .frame
             .mark_failed(ticket.step)
-            .map_err(|_| RuntimeError::RunNotFound)?;
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: ticket.step,
@@ -467,9 +493,10 @@ impl Shard {
         self.release_frame(state.frame);
     }
 
-    fn await_action(&mut self, run: RunId, state: RunState, ticket: ActionTicket) {
+    fn await_action(&mut self, run: RunId, mut state: RunState, ticket: ActionTicket) {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
+        record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
         match self.journal.append(RuntimeJournalEvent::ActionScheduled {
@@ -561,6 +588,99 @@ fn advance_after_action_completion(state: &mut RunState, step: StepIdx) -> Runti
     }
 }
 
+fn new_action_attempts(step_count: u16) -> Box<[u16]> {
+    vec![0; usize::from(step_count)].into_boxed_slice()
+}
+
+fn record_scheduled_attempt(state: &mut RunState, ticket: ActionTicket) {
+    if let Some(attempt) = state.action_attempts.get_mut(ticket.step.as_usize())
+        && (*attempt == 0 || *attempt < ticket.attempt)
+    {
+        *attempt = ticket.attempt;
+    }
+}
+
+fn retry_metadata_exists(state: &RunState, step: StepIdx) -> bool {
+    let Some(node) = state.workflow.node(step) else {
+        return false;
+    };
+    let Some(next) = node.next else {
+        return false;
+    };
+    matches!(
+        state.workflow.node(next).map(|next_node| &next_node.kind),
+        Some(CompiledNodeKind::RetryCheck { .. })
+    )
+}
+
+fn retry_policy_after_action(state: &RunState, step: StepIdx) -> RuntimeResult<RetryPolicy> {
+    let Some(node) = state.workflow.node(step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    let Some(next) = node.next else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
+    };
+    let Some(retry_node) = state.workflow.node(next) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    let CompiledNodeKind::RetryCheck { policy_slot, .. } = retry_node.kind else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
+    };
+    let SlotValue::I64(max_attempts) =
+        *state
+            .frame
+            .read_slot(policy_slot)
+            .map_err(|_| RuntimeError::UnsupportedOperation {
+                operation: "retry_policy_slot_unreadable",
+            })?
+    else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_slot_not_i64",
+        });
+    };
+    let max_attempts =
+        u16::try_from(max_attempts).map_err(|_| RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_attempts_out_of_range",
+        })?;
+    if max_attempts == 0 {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_attempts_zero",
+        });
+    }
+    Ok(RetryPolicy {
+        max_attempts,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    })
+}
+
+fn record_retry_attempt(
+    state: &mut RunState,
+    ticket: ActionTicket,
+    policy: RetryPolicy,
+) -> RuntimeResult<bool> {
+    let attempt = state
+        .action_attempts
+        .get_mut(ticket.step.as_usize())
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    if *attempt == 0 || *attempt < ticket.attempt {
+        *attempt = ticket.attempt;
+    }
+    if *attempt >= policy.max_attempts {
+        return Ok(false);
+    }
+    *attempt = attempt
+        .checked_add(1)
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "retry_attempt_overflow",
+        })?;
+    Ok(true)
+}
+
 fn result_slot_for_finished_run(state: &RunState) -> Option<SlotIdx> {
     state
         .workflow
@@ -633,6 +753,39 @@ mod tests {
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    #[test]
+    fn retry_attempt_counter_increments_until_policy_exhaustion() {
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let frame = match RunFrame::new(RunId::new(9), StepIdx::ZERO, 1, 1) {
+            Ok(frame) => frame,
+            Err(_) => return,
+        };
+        let mut state = RunState {
+            frame,
+            workflow,
+            store: ValueStore::new(),
+            action_attempts: new_action_attempts(1),
+        };
+        let ticket = ActionTicket {
+            run: RunId::new(9),
+            step: StepIdx::ZERO,
+            seq: vb_core::ids::SeqNo::new(1),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        let policy = RetryPolicy {
+            max_attempts: 2,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
+        assert_eq!(record_retry_attempt(&mut state, ticket, policy), Ok(true));
+        assert_eq!(state.action_attempts.get(0).copied(), Some(2));
+        assert_eq!(record_retry_attempt(&mut state, ticket, policy), Ok(false));
     }
 
     #[test]
@@ -1728,6 +1881,7 @@ mod tests {
             frame,
             workflow: wf.clone(),
             store: ValueStore::new(),
+            action_attempts: new_action_attempts(4),
         };
         let frame2 = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1) {
             Ok(f) => f,
@@ -1737,6 +1891,7 @@ mod tests {
             frame: frame2,
             workflow: wf,
             store: ValueStore::new(),
+            action_attempts: new_action_attempts(4),
         };
         assert_eq!(state, state2);
     }

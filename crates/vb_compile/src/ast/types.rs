@@ -105,6 +105,24 @@ pub enum StepKindAst {
         /// Target step when the condition is false.
         on_false: StepIdx,
     },
+    /// Wait boundary primitive.
+    Wait {
+        /// Deadline or event slot.
+        slot: SlotIdx,
+        /// Optional timeout slot for event waits.
+        timeout: Option<SlotIdx>,
+        /// Whether the slot names an event instead of a deadline.
+        is_event: bool,
+    },
+    /// Ask boundary primitive.
+    Ask {
+        /// Prompt slot supplied to the asker.
+        prompt: SlotIdx,
+        /// Answer slot filled on resume.
+        answer: SlotIdx,
+        /// Optional timeout slot.
+        timeout: Option<SlotIdx>,
+    },
     /// Finish primitive.
     Finish {
         /// Final result expression.

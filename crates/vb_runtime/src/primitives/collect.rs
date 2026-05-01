@@ -6,6 +6,8 @@ use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
+use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
+
 /// Executes CollectStart: reads source list, writes first page,
 /// stores remaining items in collector slot, jumps to body.
 #[allow(clippy::too_many_arguments)]
@@ -86,7 +88,7 @@ pub fn collect_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let final_value = *run.read_slot(collector_slot)?;
-    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = require_output(output, step)?;
     run.write_slot(out, final_value)?;
     jump_to_next(run, next, step)
 }
@@ -99,17 +101,6 @@ fn validate_item_limit(count: usize, limit: u32) -> Result<(), EngineError> {
         Ok(())
     }
 }
-
-fn expect_list(value: SlotValue) -> Result<vb_core::ids::ListId, EngineError> {
-    match value {
-        SlotValue::List(id) => Ok(id),
-        other => Err(EngineError::TypeMismatch {
-            expected: "list",
-            found: other.type_name(),
-        }),
-    }
-}
-
 fn page_size_from(raw: u32) -> Result<usize, EngineError> {
     if raw == 0 {
         return Err(EngineError::InvalidCompiledWorkflow {
@@ -139,47 +130,14 @@ fn copy_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
         .to_vec()
         .into_boxed_slice())
 }
-
-fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target)?;
-    run.increment_executed()?;
-    Ok(vb_core::EngineSignal::Continue)
-}
-
-fn jump_to_next(
-    run: &mut RunFrame,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    jump_to(run, target)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
+    use crate::test_harness::list_in_slot;
     use vb_core::value_store::ValueStore;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
-    }
-
-    fn list_in_slot(
-        run: &mut RunFrame,
-        store: &mut ValueStore,
-        slot: SlotIdx,
-        items: Vec<SlotValue>,
-    ) {
-        let id = store
-            .insert_list(items.into_boxed_slice())
-            .ok()
-            .unwrap_or_else(|| panic!("list insertion must succeed"));
-        run.write_slot(slot, SlotValue::List(id))
-            .ok()
-            .unwrap_or_else(|| panic!("slot write must succeed"));
+        crate::test_harness::fresh_frame(8, 8)
     }
 
     #[test]

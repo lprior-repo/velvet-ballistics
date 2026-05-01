@@ -103,13 +103,10 @@ fn validate_symbol(value: SlotValue, expected: &'static str) -> Result<(), Engin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
     use vb_core::value::SlotValue;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
+        crate::test_harness::fresh_frame(4, 8)
     }
 
     #[test]

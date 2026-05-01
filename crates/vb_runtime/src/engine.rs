@@ -156,9 +156,9 @@ pub fn execute_node_full(
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
 
-        CompiledNodeKind::ForEachJoin { output: _ } => {
+        CompiledNodeKind::ForEachJoin { output } => {
             let step = node.id;
-            match primitives::for_each::for_each_join(run, node.output, node.next, step) {
+            match primitives::for_each::for_each_join(run, *output, node.output, node.next, step) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }

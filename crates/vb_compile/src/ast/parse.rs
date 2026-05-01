@@ -258,6 +258,8 @@ fn parse_step_kind(
     match field {
         "save" => parse_save(body),
         "choose" => parse_choose(body, index),
+        "wait" => parse_wait(body, index),
+        "ask" => parse_ask(body, index),
         "finish" => parse_finish(body, index),
         _ => Err(CompileError::UnknownStepField {
             step: index,
@@ -282,7 +284,7 @@ fn primitive_entry<'map, 'input>(
 }
 
 fn is_supported_primitive(field: &str) -> bool {
-    matches!(field, "save" | "choose" | "finish")
+    matches!(field, "save" | "choose" | "wait" | "ask" | "finish")
 }
 
 fn parse_save(body: &Yaml<'_>) -> Result<StepKindAst, CompileError> {
@@ -296,6 +298,36 @@ fn parse_choose(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileErr
         condition: parse_expression(step_field(body, index, "condition")?)?,
         on_true: parse_step_idx(step_field(body, index, "on_true")?)?,
         on_false: parse_step_idx(step_field(body, index, "on_false")?)?,
+    })
+}
+
+fn parse_wait(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    let until = optional_slot(body, index, "until")?;
+    let event = optional_slot(body, index, "event")?;
+    match (until, event) {
+        (Some(slot), None) => Ok(StepKindAst::Wait {
+            slot,
+            timeout: None,
+            is_event: false,
+        }),
+        (None, Some(slot)) => Ok(StepKindAst::Wait {
+            slot,
+            timeout: optional_slot(body, index, "timeout")?,
+            is_event: true,
+        }),
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field: "wait",
+            expected: "exactly one of until or event",
+        }),
+    }
+}
+
+fn parse_ask(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Ask {
+        prompt: parse_slot_idx(step_field(body, index, "prompt")?, index, "prompt")?,
+        answer: parse_slot_idx(step_field(body, index, "answer")?, index, "answer")?,
+        timeout: optional_slot(body, index, "timeout")?,
     })
 }
 
@@ -313,6 +345,17 @@ fn parse_finish_expression(node: &Yaml<'_>, index: usize) -> Result<AstExpressio
         return Ok(AstExpression::Literal(AstValue::I64(value)));
     }
     parse_expression(node)
+}
+
+fn optional_slot(
+    body: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+) -> Result<Option<SlotIdx>, CompileError> {
+    match body.as_mapping_get(field) {
+        Some(node) => parse_slot_idx(node, step, field).map(Some),
+        None => Ok(None),
+    }
 }
 
 fn finish_integer_is_slot(value: i64, index: usize) -> bool {
@@ -373,6 +416,20 @@ fn parse_step_idx(node: &Yaml<'_>) -> Result<StepIdx, CompileError> {
         .ok_or(CompileError::BranchTargetOutOfRange { value: -1 })?;
     let raw = u16::try_from(value).map_err(|_| CompileError::BranchTargetOutOfRange { value })?;
     Ok(StepIdx::new(raw))
+}
+
+fn parse_slot_idx(
+    node: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+) -> Result<SlotIdx, CompileError> {
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step,
+        field,
+        expected: "an integer slot index",
+    })?;
+    let raw = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
+    Ok(SlotIdx::new(raw))
 }
 
 fn parse_expression(node: &Yaml<'_>) -> Result<AstExpression, CompileError> {

@@ -102,7 +102,9 @@ fn mark_seen(reachable: &mut [bool], index: usize) -> Result<bool, CompileError>
 
 fn push_successors(table: &StepTable<'_>, index: usize, stack: &mut Vec<usize>) {
     match table.kind(index) {
-        Some(StepKindAst::Save { .. }) => push_next(table, index, stack),
+        Some(StepKindAst::Save { .. } | StepKindAst::Wait { .. } | StepKindAst::Ask { .. }) => {
+            push_next(table, index, stack);
+        }
         Some(StepKindAst::Choose {
             on_true, on_false, ..
         }) => {

@@ -28,12 +28,7 @@ impl IpcClient {
         payload: &IpcPayload,
     ) -> Result<(), IpcClientError> {
         let encoded = postcard::to_allocvec(payload).map_err(|_| IpcClientError::EncodeFailed)?;
-        write_frame(&mut self.stream, command, 0, correlation, &encoded)
-            .map_err(|source| IpcClientError::FrameError { source })?;
-        self.stream
-            .flush()
-            .map_err(|source| IpcClientError::IoError { source })?;
-        Ok(())
+        self.send_raw(command, correlation, &encoded)
     }
 
     /// Sends a raw command with pre-encoded payload bytes.

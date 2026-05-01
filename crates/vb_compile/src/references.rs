@@ -96,6 +96,7 @@ fn validate_step_kind(
     match kind {
         StepKindAst::Save { fields } => validate_value_entries(fields, tables, errors),
         StepKindAst::Choose { condition, .. } => validate_expression(condition, tables, errors),
+        StepKindAst::Wait { .. } | StepKindAst::Ask { .. } => {}
         StepKindAst::Finish { result } => validate_expression(result, tables, errors),
     }
 }

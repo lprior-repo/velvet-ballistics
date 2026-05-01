@@ -2,9 +2,11 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{ListId, SlotIdx, StepIdx};
+use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
+
+use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
 
 /// Executes TogetherStart: forks into the first branch.
 ///
@@ -26,7 +28,7 @@ pub fn together_start(
             reason: "together_start requires at least one branch",
         });
     }
-    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let iter_output = require_output(output, run.pc())?;
     let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
     run.write_slot(iter_output, SlotValue::List(state))?;
     let first_branch =
@@ -60,7 +62,7 @@ pub fn together_branch(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     if branch > 0 {
-        let branch_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+        let branch_output = require_output(output, run.pc())?;
         let previous_result = *run.read_slot(branch_output)?;
         append_to_accumulator(run, store, accumulator, previous_result)?;
     }
@@ -82,7 +84,7 @@ pub fn together_join(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = require_output(output, step)?;
     // Read the accumulator list built by together_branch invocations.
     let acc_value = *run.read_slot(accumulator)?;
     let final_list = match acc_value {
@@ -131,56 +133,14 @@ fn append_to_accumulator(
     Ok(())
 }
 
-fn expect_list(value: SlotValue) -> Result<ListId, EngineError> {
-    match value {
-        SlotValue::List(id) => Ok(id),
-        other => Err(EngineError::TypeMismatch {
-            expected: "list",
-            found: other.type_name(),
-        }),
-    }
-}
-
-fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target)?;
-    run.increment_executed()?;
-    Ok(vb_core::EngineSignal::Continue)
-}
-
-fn jump_to_next(
-    run: &mut RunFrame,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    jump_to(run, target)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
+    use crate::test_harness::list_in_slot;
     use vb_core::value_store::ValueStore;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
-    }
-
-    fn list_in_slot(
-        run: &mut RunFrame,
-        store: &mut ValueStore,
-        slot: SlotIdx,
-        items: Vec<SlotValue>,
-    ) {
-        let id = store
-            .insert_list(items.into_boxed_slice())
-            .ok()
-            .unwrap_or_else(|| panic!("list insertion must succeed"));
-        run.write_slot(slot, SlotValue::List(id))
-            .ok()
-            .unwrap_or_else(|| panic!("slot write must succeed"));
+        crate::test_harness::fresh_frame(8, 8)
     }
 
     #[test]

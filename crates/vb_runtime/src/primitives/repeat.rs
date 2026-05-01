@@ -5,6 +5,8 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 
+use super::helpers::{jump_to, jump_to_next, require_output};
+
 /// Shift used to encode `max_attempts` in the high 32 bits of the
 /// attempt-slot I64 value.  Low 32 bits hold the current attempt index.
 const REPEAT_SHIFT: u32 = 32;
@@ -40,7 +42,7 @@ pub fn repeat_start(
     _done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let attempt_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let attempt_output = require_output(output, run.pc())?;
     let state = encode_repeat_state(max_attempts, 0);
     run.write_slot(attempt_output, SlotValue::I64(state))?;
     jump_to(run, body)
@@ -98,7 +100,7 @@ pub fn repeat_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let value = *run.read_slot(result)?;
-    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = require_output(output, step)?;
     run.write_slot(out, value)?;
     jump_to_next(run, next, step)
 }
@@ -113,30 +115,12 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
     }
 }
 
-fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target)?;
-    run.increment_executed()?;
-    Ok(vb_core::EngineSignal::Continue)
-}
-
-fn jump_to_next(
-    run: &mut RunFrame,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    jump_to(run, target)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
+        crate::test_harness::fresh_frame(8, 8)
     }
 
     #[test]

@@ -291,6 +291,11 @@ pub fn serve_ipc(
     server.poll_once(runtime, timeout)
 }
 
+/// Decodes a postcard-encoded payload, returning `IpcResponse::BadRequest` on failure.
+fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
+    postcard::from_bytes(payload).map_err(|_| IpcResponse::BadRequest)
+}
+
 fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     dispatch_command_with_resolver(header, payload, runtime, None)
 }
@@ -344,9 +349,9 @@ pub fn handle_submit_run(
     runtime: &mut Runtime,
     resolver: Option<&mut dyn WorkflowResolver>,
 ) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(decoded) = decoded else {
-        return IpcResponse::BadRequest;
+    let decoded = match decode_payload::<crate::IpcPayload>(payload) {
+        Ok(d) => d,
+        Err(response) => return response,
     };
 
     match (header.command, decoded) {
@@ -370,8 +375,8 @@ pub fn handle_submit_run_inline(
 
 /// Handles cancel-run.
 pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::CancelRun { run_id }) = decoded else {
+    let Ok(crate::IpcPayload::CancelRun { run_id }) = decode_payload::<crate::IpcPayload>(payload)
+    else {
         return IpcResponse::BadRequest;
     };
 
@@ -401,8 +406,8 @@ pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
 /// Handles inspect-run.
 pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::InspectRun { run_id }) = decoded else {
+    let Ok(crate::IpcPayload::InspectRun { run_id }) = decode_payload::<crate::IpcPayload>(payload)
+    else {
         return IpcResponse::BadRequest;
     };
 
@@ -421,11 +426,10 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
 /// Handles list-events.
 pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::ListEvents {
         run_id,
         from_sequence,
-    }) = decoded
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
@@ -440,8 +444,9 @@ pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
 /// Handles answer-ask.
 pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
-    let Ok(crate::IpcPayload::AnswerAsk { run_id, ticket, .. }) = decoded else {
+    let Ok(crate::IpcPayload::AnswerAsk { run_id, ticket, .. }) =
+        decode_payload::<crate::IpcPayload>(payload)
+    else {
         return IpcResponse::BadRequest;
     };
 
@@ -472,12 +477,11 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
 /// Handles complete-action.
 pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::CompleteAction {
         run_id,
         ticket,
         output,
-    }) = decoded
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
@@ -487,9 +491,9 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
         None => return IpcResponse::BadRequest,
     };
     let output_len = payload_len(output.len());
-    let decoded_output: Result<crate::IpcActionOutputPayload, _> = postcard::from_bytes(&output);
-    let Ok(decoded_output) = decoded_output else {
-        return IpcResponse::BadRequest;
+    let decoded_output = match decode_payload::<crate::IpcActionOutputPayload>(&output) {
+        Ok(d) => d,
+        Err(response) => return response,
     };
     match runtime
         .complete_action_with_output(action_ticket, decoded_output.into_action_output(output_len))
@@ -505,12 +509,11 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
 
 /// Handles fail-action.
 pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let decoded: Result<crate::IpcPayload, _> = postcard::from_bytes(payload);
     let Ok(crate::IpcPayload::FailAction {
         run_id,
         ticket,
         error,
-    }) = decoded
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };

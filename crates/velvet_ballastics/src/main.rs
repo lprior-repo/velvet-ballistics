@@ -9,6 +9,8 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const INPUT_MAPPING_FAILED_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input-bin must be empty until workflow input decoding is wired";
 
 macro_rules! outln {
     ($($arg:tt)*) => {{
@@ -465,9 +467,7 @@ fn cmd_run(
     };
 
     if !input_data.is_empty() {
-        errln!(
-            "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
-        );
+        errln!("{}", INPUT_MAPPING_FAILED_MESSAGE);
         return ExitCode::FAILURE;
     }
 
@@ -506,9 +506,7 @@ fn cmd_run_compiled(
         };
 
     if !input_data.is_empty() {
-        errln!(
-            "unsupported runtime input mapping: input-bin must be empty until workflow input decoding is wired"
-        );
+        errln!("{}", INPUT_MAPPING_FAILED_MESSAGE);
         return ExitCode::FAILURE;
     }
 
@@ -1106,7 +1104,10 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Command, DurabilityMode, ParseError, parse_args, run_compiled_workflow};
+    use super::{
+        Command, DurabilityMode, INPUT_MAPPING_FAILED_MESSAGE, ParseError, parse_args,
+        run_compiled_workflow,
+    };
     use std::ffi::OsString;
     use std::path::PathBuf;
     use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
@@ -1221,6 +1222,14 @@ mod tests {
             assert_eq!(durability, DurabilityMode::None);
             assert_eq!(db, None);
         }
+    }
+
+    #[test]
+    fn input_mapping_failure_message_uses_stable_code() {
+        assert_eq!(
+            INPUT_MAPPING_FAILED_MESSAGE,
+            "INPUT_MAPPING_FAILED: input-bin must be empty until workflow input decoding is wired"
+        );
     }
 
     #[test]

@@ -6,6 +6,8 @@ use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
+use super::helpers::{empty_list, expect_list, jump_to, jump_to_next, require_output, tail_items};
+
 /// Executes ForEachStart: validates input list, binds first item, sets up
 /// iterator state in the output slot as the remaining tail list.
 #[allow(clippy::too_many_arguments)]
@@ -30,7 +32,7 @@ pub fn for_each_start(
             resource: "for_each_limit",
         });
     }
-    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let iter_output = require_output(output, run.pc())?;
     if item_count == 0 {
         run.write_slot(
             iter_output,
@@ -65,7 +67,7 @@ pub fn for_each_next(
     if items.is_empty() {
         return jump_to(run, done);
     }
-    let item_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let item_output = require_output(output, run.pc())?;
     let first = items
         .first()
         .copied()
@@ -79,88 +81,29 @@ pub fn for_each_next(
     jump_to(run, body)
 }
 
-/// Executes ForEachJoin: writes the collected results to the output slot.
+/// Executes ForEachJoin: materializes ordered loop results to the output slot.
 pub fn for_each_join(
     run: &mut RunFrame,
+    materialized: SlotIdx,
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let output_slot = output.ok_or(EngineError::MissingOutputSlot { step })?;
-    let value = *run.read_slot(output_slot)?;
-    let join_output = output_slot;
-    let _ = (join_output, value);
+    let output_slot = require_output(output, step)?;
+    let value = *run.read_slot(materialized)?;
+    let _ = expect_list(value)?;
+    run.write_slot(output_slot, value)?;
     jump_to_next(run, next, step)
-}
-
-fn expect_list(value: SlotValue) -> Result<vb_core::ids::ListId, EngineError> {
-    match value {
-        SlotValue::List(id) => Ok(id),
-        other => Err(EngineError::TypeMismatch {
-            expected: "list",
-            found: other.type_name(),
-        }),
-    }
-}
-
-fn tail_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
-    if items.len() <= 1 {
-        return Ok(empty_list());
-    }
-    let start = 1usize;
-    Ok(items
-        .get(start..)
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "tail_items start index checked",
-        })?
-        .to_vec()
-        .into_boxed_slice())
-}
-
-fn empty_list() -> Box<[SlotValue]> {
-    Vec::<SlotValue>::new().into_boxed_slice()
-}
-
-fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target)?;
-    run.increment_executed()?;
-    Ok(vb_core::EngineSignal::Continue)
-}
-
-fn jump_to_next(
-    run: &mut RunFrame,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    jump_to(run, target)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
+    use crate::test_harness::list_in_slot;
     use vb_core::value_store::ValueStore;
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
-    }
-
-    fn list_in_slot(
-        run: &mut RunFrame,
-        store: &mut ValueStore,
-        slot: SlotIdx,
-        items: Vec<SlotValue>,
-    ) {
-        let id = store
-            .insert_list(items.into_boxed_slice())
-            .ok()
-            .unwrap_or_else(|| panic!("list insertion must succeed"));
-        run.write_slot(slot, SlotValue::List(id))
-            .ok()
-            .unwrap_or_else(|| panic!("slot write must succeed"));
+        crate::test_harness::fresh_frame(4, 8)
     }
 
     #[test]
@@ -263,16 +206,66 @@ mod tests {
     #[test]
     fn for_each_join_returns_done_signal() {
         let mut run = fresh_frame();
-        let output_slot = SlotIdx::new(0);
+        let mut store = ValueStore::new();
+        let materialized_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
         let next_step = StepIdx::new(1);
-        run.write_slot(output_slot, SlotValue::I64(42))
-            .ok()
-            .unwrap_or_else(|| panic!("slot write must succeed"));
+        list_in_slot(
+            &mut run,
+            &mut store,
+            materialized_slot,
+            vec![SlotValue::I64(42)],
+        );
 
-        let result = for_each_join(&mut run, Some(output_slot), Some(next_step), StepIdx::ZERO);
+        let result = for_each_join(
+            &mut run,
+            materialized_slot,
+            Some(output_slot),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
 
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
+    }
+
+    #[test]
+    fn for_each_join_materializes_ordered_results() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let materialized_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            materialized_slot,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        );
+
+        let result = for_each_join(
+            &mut run,
+            materialized_slot,
+            Some(output_slot),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        let output_value = *run
+            .read_slot(output_slot)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"));
+        let SlotValue::List(list_id) = output_value else {
+            panic!("output must be list");
+        };
+        let items = store
+            .list(list_id)
+            .ok()
+            .unwrap_or_else(|| panic!("list read must succeed"));
+        assert_eq!(
+            items,
+            [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
+        );
     }
 
     // BDD tests for for_each primitives
@@ -537,7 +530,13 @@ mod tests {
         // Given a frame
         let mut run = fresh_frame();
         // When calling for_each_join with output=None
-        let result = for_each_join(&mut run, None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        let result = for_each_join(
+            &mut run,
+            SlotIdx::new(0),
+            None,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
         // Then it returns MissingOutputSlot
         match result {
             Err(EngineError::MissingOutputSlot { step }) => {
@@ -553,12 +552,23 @@ mod tests {
     fn for_each_join_returns_error_when_next_missing() {
         // Given a frame
         let mut run = fresh_frame();
-        let output_slot = SlotIdx::new(0);
-        run.write_slot(output_slot, SlotValue::I64(1))
-            .ok()
-            .unwrap_or_else(|| panic!("write must succeed"));
+        let mut store = ValueStore::new();
+        let materialized_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            materialized_slot,
+            vec![SlotValue::I64(1)],
+        );
         // When calling for_each_join with next=None
-        let result = for_each_join(&mut run, Some(output_slot), None, StepIdx::ZERO);
+        let result = for_each_join(
+            &mut run,
+            materialized_slot,
+            Some(output_slot),
+            None,
+            StepIdx::ZERO,
+        );
         // Then it returns MissingNextStep
         match result {
             Err(EngineError::MissingNextStep { step }) => {

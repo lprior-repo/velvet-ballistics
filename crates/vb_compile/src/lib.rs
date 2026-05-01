@@ -1768,9 +1768,20 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
     let digest = WorkflowDigest::from_bytes(blake3::hash(text.as_bytes()).into());
     let mut builder = WorkflowBuilder::new();
     let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
+    let source_ir_starts = build_source_ir_starts(steps)?;
 
     for (index, step) in steps.iter().enumerate() {
-        let nodes = compile_step(step, index, last_step, &mut builder)?;
+        let id = source_ir_start(&source_ir_starts, index)?;
+        let next = optional_source_ir_start(&source_ir_starts, index)?;
+        let nodes = compile_step(
+            step,
+            index,
+            last_step,
+            id,
+            next,
+            &source_ir_starts,
+            &mut builder,
+        )?;
         builder.nodes.extend(nodes);
     }
     Ok(WorkflowParts {
@@ -1784,6 +1795,51 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     })
+}
+
+fn build_source_ir_starts(steps: &saphyr::Sequence<'_>) -> Result<Vec<StepIdx>, CompileError> {
+    let mut starts = Vec::with_capacity(steps.len());
+    let mut cursor = 0usize;
+    for (index, step) in steps.iter().enumerate() {
+        starts.push(step_idx(cursor)?);
+        cursor = cursor
+            .checked_add(compiled_step_width(step, index)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
+    }
+    Ok(starts)
+}
+
+fn compiled_step_width(step: &Yaml<'_>, index: usize) -> Result<usize, CompileError> {
+    let StepSpec { primitive, body } = step_spec(step, index)?;
+    match primitive {
+        StepPrimitive::Ask => Ok(2),
+        StepPrimitive::Finish => {
+            let result = required_step_field(body, index, "result")?;
+            if finish_result_slot(result, index)?.is_some() {
+                Ok(1)
+            } else {
+                Ok(2)
+            }
+        }
+        _ => Ok(1),
+    }
+}
+
+fn source_ir_start(starts: &[StepIdx], index: usize) -> Result<StepIdx, CompileError> {
+    starts
+        .get(index)
+        .copied()
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn optional_source_ir_start(
+    starts: &[StepIdx],
+    index: usize,
+) -> Result<Option<StepIdx>, CompileError> {
+    let next = index
+        .checked_add(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+    Ok(starts.get(next).copied())
 }
 
 fn validate_workflow_document_shape(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -1819,12 +1875,43 @@ fn validate_phase_zero_step_shape(
     match primitive {
         StepPrimitive::Save => validate_save_shape(body, index, last_step),
         StepPrimitive::Choose => validate_choose_shape(body, index, last_step),
+        StepPrimitive::Wait => validate_wait_shape(body, index, last_step),
+        StepPrimitive::Ask => validate_ask_shape(body, index, last_step),
         StepPrimitive::Finish => validate_finish_shape(body, index, last_step),
         value => Err(CompileError::UnsupportedStepPrimitive {
             step: index,
             primitive: value.as_str(),
         }),
     }
+}
+
+fn validate_wait_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "wait", &["until", "event", "timeout"])?;
+    let until = optional_slot_field(body, index, "until")?;
+    let event = optional_slot_field(body, index, "event")?;
+    let timeout = optional_slot_field(body, index, "timeout")?;
+    match (until, event, timeout) {
+        (Some(_), None, None) | (None, Some(_), _) => Ok(()),
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field: "wait",
+            expected: "until without timeout or event with optional timeout",
+        }),
+    }
+}
+
+fn validate_ask_shape(body: &Yaml<'_>, index: usize, last_step: usize) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
+    let _ = required_slot(body, index, "prompt")?;
+    let _ = required_slot(body, index, "answer")?;
+    let _ = optional_slot_field(body, index, "timeout")?;
+    Ok(())
 }
 
 fn validate_save_shape(
@@ -2341,13 +2428,20 @@ fn compile_step(
     step: &Yaml<'_>,
     index: usize,
     last_step: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    source_ir_starts: &[StepIdx],
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     let StepSpec { primitive, body } = step_spec(step, index)?;
     let node = match primitive {
-        StepPrimitive::Save => compile_save(body, index, last_step, builder),
-        StepPrimitive::Choose => compile_choose(body, index, last_step, builder),
-        StepPrimitive::Finish => return compile_finish(body, index, last_step, builder),
+        StepPrimitive::Save => compile_save(body, index, last_step, id, next, builder),
+        StepPrimitive::Choose => {
+            compile_choose(body, index, last_step, id, source_ir_starts, builder)
+        }
+        StepPrimitive::Wait => compile_wait(body, index, last_step, id, builder),
+        StepPrimitive::Ask => return compile_ask(body, index, last_step, id, builder),
+        StepPrimitive::Finish => return compile_finish(body, index, last_step, id, builder),
         value => Err(CompileError::UnsupportedStepPrimitive {
             step: index,
             primitive: value.as_str(),
@@ -2478,6 +2572,8 @@ fn compile_save(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -2486,7 +2582,7 @@ fn compile_save(
     let constant = save_slot_value(body, index)?;
     let constant = builder.push_constant(constant)?;
     builder.record_slot(output);
-    set_const_node(step_idx(index)?, output, constant, next_step(index)?)
+    set_const_node(id, output, constant, required_next_step(next, index)?)
 }
 
 fn reject_non_mapping_step_body(
@@ -2542,19 +2638,21 @@ fn compile_choose(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
+    id: StepIdx,
+    source_ir_starts: &[StepIdx],
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "choose", &["condition", "on_true", "on_false"])?;
     let condition = required_choose_condition(body, index)?;
-    let on_true = required_branch_target(body, index, "on_true")?;
-    let on_false = required_branch_target(body, index, "on_false")?;
+    let on_true = mapped_branch_target(body, index, "on_true", source_ir_starts)?;
+    let on_false = mapped_branch_target(body, index, "on_false", source_ir_starts)?;
     match condition {
         ChooseCondition::Slot(condition) => {
-            compile_slot_choose(step_idx(index)?, condition, on_true, on_false, builder)
+            compile_slot_choose(id, condition, on_true, on_false, builder)
         }
         ChooseCondition::Literal(value) => {
-            compile_literal_choose(index, value, on_true, on_false, builder)
+            compile_literal_choose(index, id, value, on_true, on_false, builder)
         }
     }
 }
@@ -2584,6 +2682,7 @@ fn compile_slot_choose(
 
 fn compile_literal_choose(
     index: usize,
+    id: StepIdx,
     value: bool,
     on_true: StepIdx,
     on_false: StepIdx,
@@ -2593,17 +2692,82 @@ fn compile_literal_choose(
     let constant = builder.push_constant(ConstValue::Bool(value))?;
     builder.record_slot(output);
     Ok(CompiledNode {
-        id: step_idx(index)?,
+        id,
         output: Some(output),
         next: Some(if value { on_true } else { on_false }),
         kind: CompiledNodeKind::SetConst { value: constant },
     })
 }
 
+fn compile_wait(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "wait", &["until", "event", "timeout"])?;
+    let until = optional_slot_field(body, index, "until")?;
+    let event = optional_slot_field(body, index, "event")?;
+    let timeout = optional_slot_field(body, index, "timeout")?;
+    match (until, event, timeout) {
+        (Some(deadline), None, None) => {
+            builder.record_slot(deadline);
+            Ok(lower_wait(
+                id,
+                deadline,
+                None,
+                false,
+                &mut SlotCompiler::new(),
+            ))
+        }
+        (None, Some(event_slot), timeout_slot) => {
+            builder.record_slot(event_slot);
+            if let Some(slot) = timeout_slot {
+                builder.record_slot(slot);
+            }
+            Ok(lower_wait(
+                id,
+                event_slot,
+                timeout_slot,
+                true,
+                &mut SlotCompiler::new(),
+            ))
+        }
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field: "wait",
+            expected: "until without timeout or event with optional timeout",
+        }),
+    }
+}
+
+fn compile_ask(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
+    let prompt = required_slot(body, index, "prompt")?;
+    let answer = required_slot(body, index, "answer")?;
+    let timeout = optional_slot_field(body, index, "timeout")?;
+    builder.record_slot(prompt);
+    builder.record_slot(answer);
+    if let Some(slot) = timeout {
+        builder.record_slot(slot);
+    }
+    lower_ask(id, prompt, answer, timeout, &mut SlotCompiler::new())
+}
+
 fn compile_finish(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
+    id: StepIdx,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     if index != last_step {
@@ -2615,18 +2779,19 @@ fn compile_finish(
     }
     reject_unknown_primitive_fields(body, index, "finish", &["result"])?;
     let result = required_step_field(body, index, "result")?;
-    compile_finish_result(result, index, builder)
+    compile_finish_result(result, index, id, builder)
 }
 
 fn compile_finish_result(
     result: &Yaml<'_>,
     index: usize,
+    id: StepIdx,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     if let Some(slot) = finish_result_slot(result, index)? {
         builder.record_slot(slot);
         return Ok(vec![CompiledNode {
-            id: step_idx(index)?,
+            id,
             output: None,
             next: None,
             kind: CompiledNodeKind::Finish { result: slot },
@@ -2636,10 +2801,12 @@ fn compile_finish_result(
     let value = builder.push_constant(value)?;
     let output = slot_idx_for_step(index)?;
     builder.record_slot(output);
-    let finish_id = next_step(index)?;
+    let finish_id = id.checked_add(1).ok_or(CompileError::StepIndexOutOfRange {
+        value: id.as_usize(),
+    })?;
     Ok(vec![
         CompiledNode {
-            id: step_idx(index)?,
+            id,
             output: Some(output),
             next: Some(finish_id),
             kind: CompiledNodeKind::SetConst { value },
@@ -2679,13 +2846,6 @@ fn reject_last_non_finish(index: usize, last_step: usize) -> Result<(), CompileE
     }
 }
 
-fn next_step(index: usize) -> Result<StepIdx, CompileError> {
-    let value = index
-        .checked_add(1)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
-    step_idx(value)
-}
-
 fn step_idx(value: usize) -> Result<StepIdx, CompileError> {
     let value = u16::try_from(value).map_err(|_| CompileError::StepIndexOutOfRange { value })?;
     Ok(StepIdx::new(value))
@@ -2703,6 +2863,31 @@ fn required_step_field<'a>(
 ) -> Result<&'a Yaml<'a>, CompileError> {
     body.as_mapping_get(field)
         .ok_or(CompileError::MissingStepField { step, field })
+}
+
+fn optional_slot_field(
+    body: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+) -> Result<Option<SlotIdx>, CompileError> {
+    match body.as_mapping_get(field) {
+        Some(_) => required_slot(body, step, field).map(Some),
+        None => Ok(None),
+    }
+}
+
+fn required_next_step(next: Option<StepIdx>, index: usize) -> Result<StepIdx, CompileError> {
+    next.ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn mapped_branch_target(
+    body: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+    source_ir_starts: &[StepIdx],
+) -> Result<StepIdx, CompileError> {
+    let source = required_branch_target(body, step, field)?;
+    source_ir_start(source_ir_starts, source.as_usize())
 }
 
 fn reject_unknown_primitive_fields(
@@ -3986,8 +4171,6 @@ steps:
             "gather",
             "summarize",
             "repeat",
-            "wait",
-            "ask",
         ] {
             let source = format!(
                 "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
@@ -4021,6 +4204,49 @@ steps:
         );
 
         assert!(matches!(result, Ok(ref workflow) if workflow.name() == "strict_minimal"));
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_wait_until_to_wait_until_node() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: deadline\n    save:\n      value: 1\n  - id: wait_for_deadline\n    wait:\n      until: 0\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let node = workflow.node(StepIdx::new(1)).ok_or("missing wait node")?;
+
+        assert!(matches!(
+            node.kind,
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO
+            }
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_ask_to_ask_and_resume_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: ask_case\nwhen:\n  manual: {}\nsteps:\n  - id: prompt\n    save:\n      value: 1\n  - id: ask_user\n    ask:\n      prompt: 0\n      answer: 1\n  - id: done\n    finish:\n      result: 1\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let ask = workflow.node(StepIdx::new(1)).ok_or("missing ask node")?;
+        let resume = workflow
+            .node(StepIdx::new(2))
+            .ok_or("missing resume node")?;
+        let finish = workflow
+            .node(StepIdx::new(3))
+            .ok_or("missing finish node")?;
+
+        assert!(matches!(ask.kind, CompiledNodeKind::Ask { .. }));
+        assert!(
+            matches!(resume.kind, CompiledNodeKind::AskResume { answer } if answer == SlotIdx::new(1))
+        );
+        assert!(
+            matches!(finish.kind, CompiledNodeKind::Finish { result } if result == SlotIdx::new(1))
+        );
+        Ok(())
     }
 
     #[test]

@@ -7,6 +7,8 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
+use super::helpers::{expect_list, jump_to, jump_to_next, require_output, tail_items};
+
 /// Executes ReduceStart: initializes accumulator from constant pool,
 /// reads input list, binds first item, writes remaining tail to
 /// iterator slot.
@@ -33,7 +35,7 @@ pub fn reduce_start(
     if items.is_empty() {
         return jump_to(run, done);
     }
-    let iter_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let iter_output = require_output(output, run.pc())?;
     let first = items
         .first()
         .copied()
@@ -63,7 +65,7 @@ pub fn reduce_next(
     if remaining.is_empty() {
         return jump_to(run, done);
     }
-    let item_output = output.ok_or(EngineError::MissingOutputSlot { step: run.pc() })?;
+    let item_output = require_output(output, run.pc())?;
     let first = remaining
         .first()
         .copied()
@@ -86,53 +88,15 @@ pub fn reduce_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let value = *run.read_slot(accumulator)?;
-    let out = output.ok_or(EngineError::MissingOutputSlot { step })?;
+    let out = require_output(output, step)?;
     run.write_slot(out, value)?;
     jump_to_next(run, next, step)
-}
-
-fn expect_list(value: SlotValue) -> Result<vb_core::ids::ListId, EngineError> {
-    match value {
-        SlotValue::List(id) => Ok(id),
-        other => Err(EngineError::TypeMismatch {
-            expected: "list",
-            found: other.type_name(),
-        }),
-    }
-}
-
-fn tail_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
-    if items.len() <= 1 {
-        return Ok(Vec::<SlotValue>::new().into_boxed_slice());
-    }
-    Ok(items
-        .get(1..)
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "tail_items start index checked",
-        })?
-        .to_vec()
-        .into_boxed_slice())
-}
-
-fn jump_to(run: &mut RunFrame, target: StepIdx) -> Result<vb_core::EngineSignal, EngineError> {
-    run.set_pc(target)?;
-    run.increment_executed()?;
-    Ok(vb_core::EngineSignal::Continue)
-}
-
-fn jump_to_next(
-    run: &mut RunFrame,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
-    jump_to(run, target)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::RunId;
+    use crate::test_harness::list_in_slot;
     use vb_core::value::{ConstValue, SlotValue};
     use vb_core::value_store::ValueStore;
     use vb_core::workflow::{
@@ -140,9 +104,7 @@ mod tests {
     };
 
     fn fresh_frame() -> RunFrame {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8)
-            .ok()
-            .unwrap_or_else(|| panic!("frame creation must succeed"))
+        crate::test_harness::fresh_frame(4, 8)
     }
 
     fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
@@ -166,21 +128,6 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts)
             .ok()
             .unwrap_or_else(|| panic!("workflow must compile"))
-    }
-
-    fn list_in_slot(
-        run: &mut RunFrame,
-        store: &mut ValueStore,
-        slot: SlotIdx,
-        items: Vec<SlotValue>,
-    ) {
-        let id = store
-            .insert_list(items.into_boxed_slice())
-            .ok()
-            .unwrap_or_else(|| panic!("list insertion must succeed"));
-        run.write_slot(slot, SlotValue::List(id))
-            .ok()
-            .unwrap_or_else(|| panic!("slot write must succeed"));
     }
 
     #[test]

@@ -36,6 +36,9 @@ pub mod trace;
 
 pub use shard::{AskAnswer, AskTicket};
 
+#[cfg(test)]
+mod test_harness;
+
 use thiserror::Error;
 
 /// Runtime error type.

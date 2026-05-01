@@ -169,6 +169,11 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                     errors.push(e);
                 }
             }
+            StepKindAst::Wait { .. } => facts.write_slot(index, ValueFact::clean(ValueType::Any)),
+            StepKindAst::Ask { answer, .. } => {
+                facts.write_slot(answer.as_usize(), ValueFact::clean(ValueType::Any));
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
             StepKindAst::Finish { result } => {
                 if let Err(e) = validate_public_result(result, facts) {
                     errors.push(e);
