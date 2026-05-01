@@ -514,4 +514,191 @@ mod tests {
         assert_eq!(result, SlotValue::I64(11));
         Ok(())
     }
+
+    // --- BDD evaluator tests ---
+
+    #[test]
+    fn eval_binary_op_adds_two_numbers() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (10, 32)
+        // When: eval_binary_op is called with Add
+        // Then: the result is SlotValue::I64(42)
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(10), SlotValue::I64(32))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_subtracts_two_numbers() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (100, 58)
+        // When: eval_binary_op is called with Sub
+        // Then: the result is SlotValue::I64(42)
+        let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(100), SlotValue::I64(58))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_multiplies_two_numbers() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (6, 7)
+        // When: eval_binary_op is called with Mul
+        // Then: the result is SlotValue::I64(42)
+        let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(6), SlotValue::I64(7))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_divides_two_numbers() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (84, 2)
+        // When: eval_binary_op is called with Div
+        // Then: the result is SlotValue::I64(42)
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(84), SlotValue::I64(2))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_compares_equality() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (7, 7)
+        // When: eval_binary_op is called with Eq
+        // Then: the result is SlotValue::Bool(true)
+        let result = eval_binary_op(BinaryOp::Eq, SlotValue::I64(7), SlotValue::I64(7))?;
+        assert_eq!(result, SlotValue::Bool(true));
+
+        let result_ne = eval_binary_op(BinaryOp::Eq, SlotValue::I64(7), SlotValue::I64(8))?;
+        assert_eq!(result_ne, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_compares_less_than() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (3, 5)
+        // When: eval_binary_op is called with Lt
+        // Then: the result is SlotValue::Bool(true)
+        let result = eval_binary_op(BinaryOp::Lt, SlotValue::I64(3), SlotValue::I64(5))?;
+        assert_eq!(result, SlotValue::Bool(true));
+
+        let result_false = eval_binary_op(BinaryOp::Lt, SlotValue::I64(5), SlotValue::I64(3))?;
+        assert_eq!(result_false, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_unary_op_negates_number() -> ExprResult<()> {
+        // Given: a SlotValue::I64(42)
+        // When: eval_unary_op is called with Neg
+        // Then: the result is SlotValue::I64(-42)
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(42))?;
+        assert_eq!(result, SlotValue::I64(-42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_unary_op_not_negates_boolean() -> ExprResult<()> {
+        // Given: a SlotValue::Bool(true)
+        // When: eval_unary_op is called with Not
+        // Then: the result is SlotValue::Bool(false)
+        let result = eval_unary_op(UnaryOp::Not, SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(false));
+
+        let result_false = eval_unary_op(UnaryOp::Not, SlotValue::Bool(false))?;
+        assert_eq!(result_false, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_applies_known_helper_exists() -> ExprResult<()> {
+        // Given: a SlotValue::Null argument
+        // When: eval_helper is called with Exists
+        // Then: the result is SlotValue::Bool(false)
+        let args = [SlotValue::Null];
+        let result = eval_helper(ExprHelper::Exists, &args)?;
+        assert_eq!(result, SlotValue::Bool(false));
+
+        let args_non_null = [SlotValue::I64(1)];
+        let result_non_null = eval_helper(ExprHelper::Exists, &args_non_null)?;
+        assert_eq!(result_non_null, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_evaluates_simple_expression() -> ExprResult<()> {
+        // Given: the source "2 * 3 + 4"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is SlotValue::I64(10)
+        let tokens = crate::lexer::lex_expr("2 * 3 + 4")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::I64(10));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_returns_type_mismatch_for_string_in_arithmetic() -> ExprResult<()> {
+        // Given: a Bool and an I64 value
+        // When: eval_binary_op is called with Add
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "boolean" })
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::Bool(true), SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "boolean");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_returns_stack_overflow_for_deep_nesting() -> ExprResult<()> {
+        // Given: a program with more than MAX_EXPRESSION_STACK values on stack
+        // When: program construction is attempted
+        // Then: the result is Err(StackOverflow { max: 64 })
+        let mut ops = Vec::new();
+        for i in 0..65u16 {
+            ops.push(ExprOp::LoadConst(ConstIdx::new(i)));
+        }
+        let result = make_program(ops);
+        let Err(ExprError::StackOverflow { max }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected StackOverflow".into(),
+            });
+        };
+        assert_eq!(max, vb_core::limits::MAX_EXPRESSION_STACK);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_returns_stack_underflow_for_empty_stack_op() -> ExprResult<()> {
+        // Given: a program with a single binary op and no operands
+        // When: eval_expr_program is called
+        // Then: the result is Err(StackUnderflow)
+        let program = ExprProgram {
+            ops: vec![ExprOp::Add].into_boxed_slice(),
+            max_stack: 0,
+        };
+        let result = eval_expr_program(&program, &[], &[]);
+        let Err(ExprError::StackUnderflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected StackUnderflow".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_returns_division_by_zero() -> ExprResult<()> {
+        // Given: two SlotValue::I64 values (10, 0)
+        // When: eval_binary_op is called with Div
+        // Then: the result is Err(DivisionByZero)
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(10), SlotValue::I64(0));
+        let Err(ExprError::DivisionByZero) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected DivisionByZero".into(),
+            });
+        };
+        Ok(())
+    }
 }

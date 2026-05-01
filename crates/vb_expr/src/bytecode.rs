@@ -548,4 +548,107 @@ mod tests {
             Err(ExprError::UnsupportedLiteral { literal }) if literal == "text"
         ));
     }
+
+    // --- BDD bytecode tests ---
+
+    #[test]
+    fn compile_expr_to_bytecode_produces_non_empty_bytecode() -> ExprResult<()> {
+        // Given: the expression "1 + 2"
+        // When: compile_expr_to_bytecode is called
+        // Then: the resulting program has non-empty ops
+        let tokens = crate::lexer::lex_expr("1 + 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let program = compile_expr_to_bytecode(&ast)?;
+        assert!(
+            !program.ops.is_empty(),
+            "bytecode should contain at least one op"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_to_bytecode_roundtrips_with_eval() -> ExprResult<()> {
+        // Given: the expression "3 + 4 * 2"
+        // When: compile then eval
+        // Then: the result equals 11
+        let tokens = crate::lexer::lex_expr("3 + 4 * 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = compile_expr_with_pool(&ast, &mut constants)?;
+        let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, vb_core::SlotValue::I64(11));
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_with_pool_uses_constant_pool() -> ExprResult<()> {
+        // Given: the expression "10 + 20"
+        // When: compile_expr_with_pool is called
+        // Then: the constant pool contains two I64 constants [10, 20]
+        let tokens = crate::lexer::lex_expr("10 + 20")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let _program = compile_expr_with_pool(&ast, &mut constants)?;
+        assert_eq!(constants.len(), 2);
+        assert_eq!(constants[0], ConstValue::I64(10));
+        assert_eq!(constants[1], ConstValue::I64(20));
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_with_resolver_resolves_variables() -> ExprResult<()> {
+        // Given: the expression "$a + 1" and a resolver that maps "$a" -> slot 0
+        // When: compile_expr is called with the resolver
+        // Then: the bytecode contains LoadSlot(0) instead of LoadConst for $a
+        let (program, constants) = super::compile_expr("$a + 1", &resolve_test_reference)?;
+        assert_eq!(constants, vec![ConstValue::I64(1)]);
+        let ops = program.ops.as_ref();
+        let first_is_load_slot = ops
+            .first()
+            .is_some_and(|op| matches!(op, ExprOp::LoadSlot(idx) if idx.get() == 0));
+        assert!(first_is_load_slot, "first op should be LoadSlot(0)");
+        Ok(())
+    }
+
+    #[test]
+    fn check_expr_stack_bound_returns_ok_within_limit() -> ExprResult<()> {
+        // Given: a valid program [LoadConst(0), LoadConst(1), Add]
+        // When: check_expr_stack_bound is called
+        // Then: the result is Ok with max stack usage
+        let ops = vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Add,
+        ];
+        let max_stack = check_expr_stack_bound(&ops)?;
+        assert!(max_stack > 0, "max_stack should be positive");
+        Ok(())
+    }
+
+    #[test]
+    fn const_fold_expr_folds_arithmetic() -> ExprResult<()> {
+        // Given: the expression "10 * 4"
+        // When: const_fold_expr is called
+        // Then: the result is Some(ConstValue::I64(40))
+        let tokens = crate::lexer::lex_expr("10 * 4")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let folded = const_fold_expr(&ast);
+        assert_eq!(folded, Some(ConstValue::I64(40)));
+        Ok(())
+    }
+
+    #[test]
+    fn compile_expr_returns_invalid_reference_for_unknown_ref() -> ExprResult<()> {
+        // Given: the expression "$missing + 1"
+        // When: compile_expr is called with a resolver that does not know $missing
+        // Then: the result is Err(InvalidReference { reference: "$missing" })
+        let result = super::compile_expr("$missing + 1", &resolve_test_reference);
+        let Err(ExprError::InvalidReference { reference }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected InvalidReference".into(),
+            });
+        };
+        assert_eq!(reference, "$missing");
+        Ok(())
+    }
 }

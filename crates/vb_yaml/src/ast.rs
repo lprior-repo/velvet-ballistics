@@ -1386,4 +1386,830 @@ mod tests {
         let result = parse_workflow_ast("");
         assert!(result.is_err());
     }
+
+    // -----------------------------------------------------------------------
+    // AST BDD tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn parse_workflow_ast_produces_typed_nodes_for_valid_input() {
+        // Given: valid workflow YAML
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: typed
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing the AST
+        let result = parse_workflow_ast(yaml);
+        // Then: Ok with correct structure
+        match result {
+            Ok(wf) => {
+                assert_eq!(wf.version, "velvet-ballastics/v1");
+                assert_eq!(wf.name, "typed");
+                assert_eq!(wf.steps.len(), 1);
+            }
+            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+        }
+    }
+
+    #[test]
+    fn parse_workflow_ast_returns_scalar_kind_for_scalar_nodes() {
+        // Given: workflow with a set step producing a string value
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: scalar-test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                set:
+                  output: x
+                  value: \"hello\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: the Set primitive has the exact value
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Set { output, value } => {
+                assert_eq!(output, "x");
+                assert_eq!(value, "hello");
+            }
+            other => assert!(false, "expected Set, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_workflow_ast_returns_mapping_for_mapping_nodes() {
+        // Given: workflow with nested mapping (retry, on_error)
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: mapping-test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                retry:
+                  max_attempts: 5
+                set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: retry is parsed as a mapping with correct fields
+        let first_step = first_item!(wf.steps, "step");
+        let Some(retry) = first_step.retry.as_ref() else {
+            assert!(false, "missing retry");
+            return;
+        };
+        assert_eq!(retry.max_attempts, 5);
+        assert_eq!(retry.delay, None);
+    }
+
+    #[test]
+    fn parse_workflow_ast_returns_sequence_for_sequence_nodes() {
+        // Given: workflow with a sequence of steps
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: seq-test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                set:
+                  output: x
+                  value: \"1\"
+              - id: s2
+                set:
+                  output: y
+                  value: \"2\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: steps is a sequence with correct length and IDs
+        assert_eq!(wf.steps.len(), 2);
+        assert_eq!(wf.steps[0].id, "s1");
+        assert_eq!(wf.steps[1].id, "s2");
+    }
+
+    #[test]
+    fn parse_preserves_span_information_in_nodes() {
+        // Given: a source map built from valid workflow YAML
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: span-test
+            when:
+              manual: {}
+            steps: []
+        "};
+        // When: building source map
+        let result = crate::source_map::build_source_map(yaml);
+        // Then: Ok with non-empty map containing valid spans
+        match result {
+            Ok(map) => {
+                assert!(!map.is_empty());
+                let first_span = map.span_for_node(0);
+                let Some(span) = first_span else {
+                    assert!(false, "expected Some span for node 0");
+                    return;
+                };
+                assert!(span.start_line > 0);
+            }
+            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+        }
+    }
+
+    #[test]
+    fn missing_version_returns_missing_field_exact() {
+        // Given: YAML without version
+        let yaml = "name: test\nwhen:\n  manual: {}\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "version" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField { field: "version" })
+        );
+    }
+
+    #[test]
+    fn missing_name_returns_missing_field_exact() {
+        // Given: YAML without name
+        let yaml = "version: velvet-ballastics/v1\nwhen:\n  manual: {}\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "name" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField { field: "name" })
+        );
+    }
+
+    #[test]
+    fn missing_when_returns_missing_field_exact() {
+        // Given: YAML without when
+        let yaml = "version: velvet-ballastics/v1\nname: test\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField { field: "when" })
+        assert_eq!(
+            result,
+            Err(YamlError::MissingField { field: "when" })
+        );
+    }
+
+    #[test]
+    fn missing_step_primitive_returns_error_exact() {
+        // Given: step without a primitive
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::MissingField) for step primitive
+        match result {
+            Err(YamlError::MissingField { field }) => {
+                assert!(
+                    field.contains("step primitive"),
+                    "expected step primitive field, got: {field}"
+                );
+            }
+            other => assert!(false, "expected MissingField, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_version_returns_field_shape_error() {
+        // Given: YAML with empty version string
+        let yaml = "version: ''\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "version", expected: "non-empty string" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "version",
+                expected: "non-empty string"
+            })
+        );
+    }
+
+    #[test]
+    fn empty_name_returns_field_shape_error() {
+        // Given: YAML with empty name string
+        let yaml = "version: velvet-ballastics/v1\nname: ''\nwhen:\n  manual: {}\nsteps: []\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "name", expected: "non-empty string" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "name",
+                expected: "non-empty string"
+            })
+        );
+    }
+
+    #[test]
+    fn non_mapping_root_returns_field_shape_error() {
+        // Given: YAML with scalar root
+        let yaml = "just a string\n";
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape { field: "workflow", expected: "mapping" })
+        assert_eq!(
+            result,
+            Err(YamlError::FieldShape {
+                field: "workflow",
+                expected: "mapping"
+            })
+        );
+    }
+
+    #[test]
+    fn http_trigger_returns_unsupported_feature_exact() {
+        // Given: YAML with http trigger
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: t
+            when:
+              http: {}
+            steps: []
+        "};
+        // When: parsing
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::UnsupportedFeature { feature: "http trigger" })
+        assert_eq!(
+            result,
+            Err(YamlError::UnsupportedFeature {
+                feature: "http trigger"
+            })
+        );
+    }
+
+    #[test]
+    fn parse_wait_step_with_only_timeout() {
+        // Given: wait step with only timeout
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: wait-only
+            when:
+              manual: {}
+            steps:
+              - id: w1
+                wait:
+                  timeout: 10s
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        // Then: Wait with event=None, timeout=Some("10s")
+        match &first_step.primitive {
+            StepPrimitive::Wait { event, timeout } => {
+                assert_eq!(*event, None);
+                assert_eq!(timeout.as_deref(), Some("10s"));
+            }
+            other => assert!(false, "expected Wait, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_ask_step_without_timeout() {
+        // Given: ask step without timeout
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: ask-simple
+            when:
+              manual: {}
+            steps:
+              - id: a1
+                ask:
+                  prompt: What?
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        // Then: Ask with prompt="What?", timeout=None
+        match &first_step.primitive {
+            StepPrimitive::Ask { prompt, timeout } => {
+                assert_eq!(prompt, "What?");
+                assert_eq!(*timeout, None);
+            }
+            other => assert!(false, "expected Ask, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_step_with_condition() {
+        // Given: step with an "if" condition
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: cond
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                if: x > 10
+                set:
+                  output: y
+                  value: \"1\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let step = first_item!(wf.steps, "step");
+        // Then: condition is Some("x > 10")
+        assert_eq!(step.condition.as_deref(), Some("x > 10"));
+    }
+
+    #[test]
+    fn parse_step_with_then() {
+        // Given: step with a "then" field
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: then-test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                then: next_step
+                set:
+                  output: y
+                  value: \"1\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let step = first_item!(wf.steps, "step");
+        // Then: then is Some("next_step")
+        assert_eq!(step.then.as_deref(), Some("next_step"));
+    }
+
+    #[test]
+    fn parse_workflow_with_inputs_and_defaults() {
+        // Given: workflow with input having type and default
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: inputs-test
+            when:
+              manual: {}
+            inputs:
+              - name: count
+                type: u32
+                default: \"10\"
+              - name: name
+                type: string
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: two inputs with correct fields
+        assert_eq!(wf.inputs.len(), 2);
+        assert_eq!(wf.inputs[0].name, "count");
+        assert_eq!(wf.inputs[0].field_type.as_deref(), Some("u32"));
+        assert_eq!(wf.inputs[0].default.as_deref(), Some("10"));
+        assert_eq!(wf.inputs[1].name, "name");
+        assert_eq!(wf.inputs[1].field_type.as_deref(), Some("string"));
+        assert_eq!(wf.inputs[1].default, None);
+    }
+
+    #[test]
+    fn parse_workflow_with_vars() {
+        // Given: workflow with vars
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: vars-test
+            when:
+              manual: {}
+            vars:
+              - name: acc
+                value: \"0\"
+              - name: buf
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: two vars with correct fields
+        assert_eq!(wf.vars.len(), 2);
+        assert_eq!(wf.vars[0].name, "acc");
+        assert_eq!(wf.vars[0].value.as_deref(), Some("0"));
+        assert_eq!(wf.vars[1].name, "buf");
+        assert_eq!(wf.vars[1].value, None);
+    }
+
+    #[test]
+    fn parse_workflow_with_secrets() {
+        // Given: workflow with secrets
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: secrets-test
+            when:
+              manual: {}
+            secrets:
+              - name: api_key
+                key: vault/api_key
+              - name: db_pass
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: two secrets with correct fields
+        assert_eq!(wf.secrets.len(), 2);
+        assert_eq!(wf.secrets[0].name, "api_key");
+        assert_eq!(wf.secrets[0].key.as_deref(), Some("vault/api_key"));
+        assert_eq!(wf.secrets[1].name, "db_pass");
+        assert_eq!(wf.secrets[1].key, None);
+    }
+
+    #[test]
+    fn parse_workflow_with_result() {
+        // Given: workflow with result mapping
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: result-test
+            when:
+              manual: {}
+            steps: []
+            result:
+              value: final_output
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: result is Some with exact value
+        let Some(ref result) = wf.result else {
+            assert!(false, "missing result");
+            return;
+        };
+        assert_eq!(result.value, "final_output");
+    }
+
+    #[test]
+    fn parse_workflow_without_result() {
+        // Given: workflow without result mapping
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-result
+            when:
+              manual: {}
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: result is None
+        assert_eq!(wf.result, None);
+    }
+
+    #[test]
+    fn parse_workflow_with_examples() {
+        // Given: workflow with examples
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: ex-test
+            when:
+              manual: {}
+            steps: []
+            examples:
+              - description: basic
+                input: '{\"x\": 1}'
+                expected: \"2\"
+              - description: empty
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: two examples with correct fields
+        assert_eq!(wf.examples.len(), 2);
+        assert_eq!(wf.examples[0].description.as_deref(), Some("basic"));
+        assert_eq!(wf.examples[0].input.as_deref(), Some("{\"x\": 1}"));
+        assert_eq!(wf.examples[0].expected.as_deref(), Some("2"));
+        assert_eq!(wf.examples[1].description.as_deref(), Some("empty"));
+        assert_eq!(wf.examples[1].input, None);
+        assert_eq!(wf.examples[1].expected, None);
+    }
+
+    #[test]
+    fn parse_workflow_without_examples() {
+        // Given: workflow without examples
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: no-ex
+            when:
+              manual: {}
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: examples is empty
+        assert!(wf.examples.is_empty());
+    }
+
+    #[test]
+    fn parse_foreach_without_at_once() {
+        // Given: foreach step without at_once
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: foreach-simple
+            when:
+              manual: {}
+            steps:
+              - id: fe1
+                foreach:
+                  variable: item
+                  input: items
+                  steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::ForEach {
+                variable,
+                input,
+                at_once,
+                body,
+            } => {
+                assert_eq!(variable, "item");
+                assert_eq!(input, "items");
+                assert_eq!(*at_once, None);
+                assert!(body.is_empty());
+            }
+            other => assert!(false, "expected ForEach, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_collect_without_optional_fields() {
+        // Given: collect step without pages/items
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: collect-simple
+            when:
+              manual: {}
+            steps:
+              - id: c1
+                collect:
+                  variable: page
+                  source: api.list
+                  steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Collect {
+                variable,
+                source,
+                pages,
+                items,
+                body,
+            } => {
+                assert_eq!(variable, "page");
+                assert_eq!(source, "api.list");
+                assert_eq!(*pages, None);
+                assert_eq!(*items, None);
+                assert!(body.is_empty());
+            }
+            other => assert!(false, "expected Collect, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_repeat_with_max_attempts() {
+        // Given: repeat step with max_attempts
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: repeat-simple
+            when:
+              manual: {}
+            steps:
+              - id: r1
+                repeat:
+                  max_attempts: 5
+                  steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Repeat { max_attempts, body } => {
+                assert_eq!(*max_attempts, 5);
+                assert!(body.is_empty());
+            }
+            other => assert!(false, "expected Repeat, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_do_step_with_input() {
+        // Given: do step with action and input
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: do-test
+            when:
+              manual: {}
+            steps:
+              - id: d1
+                do:
+                  action: http.post
+                  input: payload
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Do { action, input } => {
+                assert_eq!(action, "http.post");
+                assert_eq!(input, "payload");
+            }
+            other => assert!(false, "expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_finish_step_with_result() {
+        // Given: finish step with result expression
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: finish-simple
+            when:
+              manual: {}
+            steps:
+              - id: f1
+                finish:
+                  result: done
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Finish { result } => {
+                assert_eq!(result, "done");
+            }
+            other => assert!(false, "expected Finish, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_choose_with_multiple_branches() {
+        // Given: choose with two branches
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: choose-multi
+            when:
+              manual: {}
+            steps:
+              - id: c1
+                choose:
+                  branches:
+                    - when: x > 0
+                      steps: []
+                    - when: x < 0
+                      steps: []
+                  otherwise: zero
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Choose {
+                branches,
+                otherwise,
+            } => {
+                assert_eq!(branches.len(), 2);
+                assert_eq!(branches[0].when, "x > 0");
+                assert_eq!(branches[1].when, "x < 0");
+                assert_eq!(otherwise.as_deref(), Some("zero"));
+            }
+            other => assert!(false, "expected Choose, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_together_with_multiple_branches() {
+        // Given: together with two branches
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: together-multi
+            when:
+              manual: {}
+            steps:
+              - id: t1
+                together:
+                  branches:
+                    - label: first
+                      steps: []
+                    - label: second
+                      steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let first_step = first_item!(wf.steps, "step");
+        match &first_step.primitive {
+            StepPrimitive::Together { branches } => {
+                assert_eq!(branches.len(), 2);
+                assert_eq!(branches[0].label, "first");
+                assert_eq!(branches[1].label, "second");
+            }
+            other => assert!(false, "expected Together, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_step_with_on_error_handler() {
+        // Given: step with on_error handler
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: error-handler
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                on_error:
+                  handler: fallback
+                set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let step = first_item!(wf.steps, "step");
+        let Some(ref on_error) = step.on_error else {
+            assert!(false, "missing on_error");
+            return;
+        };
+        assert_eq!(on_error.handler, "fallback");
+    }
+
+    #[test]
+    fn parse_step_without_optional_fields() {
+        // Given: minimal step with no optional fields
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: minimal-step
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                set:
+                  output: x
+                  value: \"1\"
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        let step = first_item!(wf.steps, "step");
+        // Then: all optional fields are None
+        assert_eq!(step.name, None);
+        assert_eq!(step.condition, None);
+        assert_eq!(step.with, None);
+        assert_eq!(step.retry, None);
+        assert_eq!(step.on_error, None);
+        assert_eq!(step.then, None);
+    }
+
+    #[test]
+    fn parse_ipc_trigger_exact_fields() {
+        // Given: IPC trigger with specific channel name
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: ipc-exact
+            when:
+              ipc:
+                name: my-channel
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: TriggerAst::Ipc with exact name
+        assert_eq!(
+            wf.trigger,
+            TriggerAst::Ipc {
+                name: "my-channel".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn parse_empty_steps_list() {
+        // Given: workflow with empty steps
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: empty-steps
+            when:
+              manual: {}
+            steps: []
+        "};
+        // When: parsing
+        let wf = parse_ok!(yaml);
+        // Then: steps is empty vec
+        assert!(wf.steps.is_empty());
+    }
 }

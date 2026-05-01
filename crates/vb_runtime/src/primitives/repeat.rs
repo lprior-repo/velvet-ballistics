@@ -25,7 +25,7 @@ fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> i64 {
 fn decode_repeat_state(packed: i64) -> (u16, u16) {
     let bits = u64::try_from(packed).unwrap_or(0);
     let max_attempts = u16::try_from(bits >> REPEAT_SHIFT).unwrap_or(u16::MAX);
-    let current_attempt = u16::try_from(bits).unwrap_or(u16::MAX);
+    let current_attempt = u16::try_from(bits & 0xFFFF).unwrap_or(u16::MAX);
     (max_attempts, current_attempt)
 }
 
@@ -189,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn repeat_check_routes_to_done_when_attempts_remain() {
+    fn repeat_check_routes_to_body_when_attempts_remain() {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(2);
@@ -207,10 +207,10 @@ mod tests {
             StepIdx::ZERO,
         );
 
-        // Due to how decode_repeat_state interprets the packed state,
-        // repeat_check always routes to done when max_attempts > 0.
+        // current_attempt=2 is incremented to 3, which is still < max_attempts=5,
+        // so the loop routes back to the body entry point.
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), done);
+        assert_eq!(run.pc(), next_body);
     }
 
     #[test]
@@ -257,5 +257,351 @@ mod tests {
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
         assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(77));
+    }
+
+    #[test]
+    fn decode_repeat_state_roundtrips_with_encode() {
+        let max_attempts: u16 = 7;
+        let current_attempt: u16 = 3;
+        let packed = encode_repeat_state(max_attempts, current_attempt);
+        let (decoded_max, decoded_current) = decode_repeat_state(packed);
+        assert_eq!(decoded_max, max_attempts);
+        assert_eq!(decoded_current, current_attempt);
+    }
+
+    // BDD tests for repeat primitives
+
+    #[test]
+    fn repeat_start_returns_error_when_output_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        // When calling repeat_start with output=None
+        let result = repeat_start(&mut run, 5, StepIdx::new(1), StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_start_encodes_max_attempts_in_output() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        // When calling repeat_start with max_attempts=10
+        let result = repeat_start(&mut run, 10, StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then the output slot encodes max_attempts=10, current=0
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        let packed = match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(packed);
+        assert_eq!(max, 10);
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn repeat_attempt_returns_error_when_slot_is_not_i64() {
+        // Given a frame with a non-I64 in attempt slot
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        run.write_slot(attempt_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_attempt
+        let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "number");
+                assert_eq!(found, "boolean");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_check_returns_error_when_slot_is_not_i64() {
+        // Given a frame with a non-I64 in attempt slot
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        run.write_slot(attempt_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "number");
+                assert_eq!(found, "boolean");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_check_returns_error_when_next_missing_and_attempts_remain() {
+        // Given a frame with attempts remaining
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let packed = encode_repeat_state(5, 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_check with next=None and attempts remain
+        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), None, StepIdx::ZERO);
+        // Then it returns MissingNextStep
+        match result {
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_finish_returns_error_when_output_missing() {
+        // Given a frame with a result
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_finish with output=None
+        let result = repeat_finish(&mut run, SlotIdx::new(0), None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_finish_returns_error_when_next_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_finish with next=None
+        let result = repeat_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), None, StepIdx::ZERO);
+        // Then it returns MissingNextStep
+        match result {
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn repeat_check_increments_attempt_counter() {
+        // Given a frame with max_attempts=5, current=2
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let packed = encode_repeat_state(5, 2);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then the attempt counter is incremented to 3
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        let updated = match *run.read_slot(attempt_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(updated);
+        assert_eq!(max, 5);
+        assert_eq!(current, 3);
+    }
+
+    #[test]
+    fn repeat_check_routes_to_done_at_exact_boundary() {
+        // Given a frame with max_attempts=3, current=2 (next increment = 3)
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(5);
+        let packed = encode_repeat_state(3, 2);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, done, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it routes to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn repeat_finish_copies_result_to_output_slot() {
+        // Given a frame with result value in slot 0
+        let mut run = fresh_frame();
+        let result_slot = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(result_slot, SlotValue::I64(77)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_finish
+        let result = repeat_finish(&mut run, result_slot, Some(output), Some(next_step), StepIdx::ZERO);
+        // Then output slot has the result value
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(77));
+    }
+
+    #[test]
+    fn encode_decode_repeat_state_zero_values() {
+        // Given zero values
+        let packed = encode_repeat_state(0, 0);
+        let (max, current) = decode_repeat_state(packed);
+        // Then both decode to 0
+        assert_eq!(max, 0);
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn encode_decode_repeat_state_max_values() {
+        // Given max values
+        let packed = encode_repeat_state(u16::MAX, u16::MAX);
+        let (max, current) = decode_repeat_state(packed);
+        // Then both decode to max
+        assert_eq!(max, u16::MAX);
+        assert_eq!(current, u16::MAX);
+    }
+
+    #[test]
+    fn repeat_start_increments_executed_counter() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        let before = run.executed();
+        // When calling repeat_start
+        let result = repeat_start(&mut run, 5, StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn repeat_attempt_increments_executed_counter() {
+        // Given a frame with packed state
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let packed = encode_repeat_state(3, 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        let before = run.executed();
+        // When calling repeat_attempt
+        let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn repeat_check_increments_executed_counter_when_routing_to_body() {
+        // Given a frame with attempts remaining
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let packed = encode_repeat_state(5, 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        let before = run.executed();
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn repeat_check_increments_executed_counter_when_routing_to_done() {
+        // Given a frame with exhausted attempts
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let packed = encode_repeat_state(3, 2);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        let before = run.executed();
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, StepIdx::new(2), Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn repeat_finish_increments_executed_counter() {
+        // Given a frame with result
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        let before = run.executed();
+        // When calling repeat_finish
+        let result = repeat_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), Some(StepIdx::new(3)), StepIdx::ZERO);
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn repeat_check_updates_slot_value_even_when_routing_to_done() {
+        // Given a frame at the boundary
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(5);
+        let packed = encode_repeat_state(2, 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling repeat_check
+        let result = repeat_check(&mut run, attempt_slot, done, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then the slot value is updated to attempt=2
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+        let updated = match *run.read_slot(attempt_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(updated);
+        assert_eq!(max, 2);
+        assert_eq!(current, 2);
+    }
+
+    #[test]
+    fn encode_repeat_state_one_zero() {
+        // Given max_attempts=1, current=0
+        let packed = encode_repeat_state(1, 0);
+        let (max, current) = decode_repeat_state(packed);
+        assert_eq!(max, 1);
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn repeat_start_with_max_attempts_one() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        // When calling repeat_start with max_attempts=1
+        let result = repeat_start(&mut run, 1, StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then it encodes max=1, current=0
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        let packed = match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::I64(v) => v,
+            _ => return,
+        };
+        let (max, current) = decode_repeat_state(packed);
+        assert_eq!(max, 1);
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn repeat_start_jumps_to_body() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        let body = StepIdx::new(3);
+        // When calling repeat_start
+        let result = repeat_start(&mut run, 5, body, StepIdx::new(2), Some(output));
+        // Then pc is at body
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
     }
 }

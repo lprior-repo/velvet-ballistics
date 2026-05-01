@@ -301,4 +301,141 @@ mod tests {
         assert_eq!(ty, ExprType::I64);
         Ok(())
     }
+
+    // --- BDD typecheck tests ---
+
+    #[test]
+    fn typecheck_expr_validates_numeric_operands() -> ExprResult<()> {
+        // Given: the expression "1 + 2"
+        // When: typecheck_expr is called
+        // Then: the result is Ok(ExprType::I64)
+        let tokens = crate::lexer::lex_expr("1 + 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let ty = typecheck_expr(&ast, &TypeContext::new())?;
+        assert_eq!(ty, ExprType::I64);
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_string_in_arithmetic() -> ExprResult<()> {
+        // Given: the expression "\"hello\" + 1"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "text" })
+        let tokens = crate::lexer::lex_expr("\"hello\" + 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let result = typecheck_expr(&ast, &TypeContext::new());
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "text");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_validates_boolean_operands_for_logical_ops() -> ExprResult<()> {
+        // Given: the expression "true and false"
+        // When: typecheck_expr is called
+        // Then: the result is Ok(ExprType::Bool)
+        let tokens = crate::lexer::lex_expr("true and false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let ty = typecheck_expr(&ast, &TypeContext::new())?;
+        assert_eq!(ty, ExprType::Bool);
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_number_in_logical_op() -> ExprResult<()> {
+        // Given: the expression "1 and 2"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "i64" })
+        let tokens = crate::lexer::lex_expr("1 and 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let result = typecheck_expr(&ast, &TypeContext::new());
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "i64");
+        Ok(())
+    }
+
+    #[test]
+    fn infix_binding_power_returns_correct_precedence_for_operators() {
+        // Given: binary operators Or, And, Add, Mul
+        // When: infix_binding_power is called for each
+        // Then: the left binding power increases from Or to Mul
+        let (or_bp, _) = crate::lexer::infix_binding_power(crate::lexer::BinaryOp::Or);
+        let (and_bp, _) = crate::lexer::infix_binding_power(crate::lexer::BinaryOp::And);
+        let (add_bp, _) = crate::lexer::infix_binding_power(crate::lexer::BinaryOp::Add);
+        let (mul_bp, _) = crate::lexer::infix_binding_power(crate::lexer::BinaryOp::Mul);
+        assert!(
+            or_bp < and_bp,
+            "or bp ({or_bp}) should be less than and bp ({and_bp})"
+        );
+        assert!(
+            and_bp < add_bp,
+            "and bp ({and_bp}) should be less than add bp ({add_bp})"
+        );
+        assert!(
+            add_bp < mul_bp,
+            "add bp ({add_bp}) should be less than mul bp ({mul_bp})"
+        );
+    }
+
+    #[test]
+    fn typecheck_expr_validates_negation_on_number() -> ExprResult<()> {
+        // Given: the expression "-42"
+        // When: typecheck_expr is called
+        // Then: the result is Ok(ExprType::I64)
+        let tokens = crate::lexer::lex_expr("-42")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let ty = typecheck_expr(&ast, &TypeContext::new())?;
+        assert_eq!(ty, ExprType::I64);
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_rejects_negation_on_boolean() -> ExprResult<()> {
+        // Given: the expression "-true"
+        // When: typecheck_expr is called
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "boolean" })
+        let tokens = crate::lexer::lex_expr("-true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let result = typecheck_expr(&ast, &TypeContext::new());
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "boolean");
+        Ok(())
+    }
+
+    #[test]
+    fn typecheck_expr_infers_helper_return_types() -> ExprResult<()> {
+        // Given: various helper calls
+        // When: typecheck_expr is called
+        // Then: the return types match the helper declarations
+        let ty_len = check("length($x)")?;
+        assert_eq!(ty_len, ExprType::I64);
+
+        let ty_empty = check("empty($x)")?;
+        assert_eq!(ty_empty, ExprType::Bool);
+
+        let ty_contains = check("contains($x, $y)")?;
+        assert_eq!(ty_contains, ExprType::Bool);
+
+        let ty_sum = check("sum($x)")?;
+        assert_eq!(ty_sum, ExprType::I64);
+
+        let ty_unique = check("unique($x)")?;
+        assert_eq!(ty_unique, ExprType::List);
+        Ok(())
+    }
 }

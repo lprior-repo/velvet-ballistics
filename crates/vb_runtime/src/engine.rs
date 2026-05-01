@@ -603,6 +603,7 @@ mod tests {
     use vb_core::engine::EngineSignal;
     use vb_core::errors::EngineError;
     use vb_core::value::SlotValue;
+    use vb_core::workflow::CompiledNode;
 
     #[test]
     fn retry_check_routes_to_body_when_attempts_remain() {
@@ -917,6 +918,295 @@ mod tests {
         assert_eq!(RetryPolicy::DEFAULT.max_attempts, 3);
     }
 
+    #[test]
+    fn runtime_engine_error_core_wraps_core_error() {
+        // Given a core EngineError
+        let core_err = EngineError::UnsupportedPrimitive {
+            primitive: "test_prim",
+        };
+        // When wrapping in RuntimeEngineError::Core
+        let engine_err = RuntimeEngineError::Core(core_err.clone());
+        // Then the inner error matches exactly
+        assert_eq!(
+            engine_err,
+            RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
+                primitive: "test_prim",
+            })
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_action_wraps_action_error() {
+        // Given an ActionError
+        let action_err = ActionError::UnknownAction {
+            action: ActionId::new(7),
+        };
+        // When wrapping in RuntimeEngineError::Action
+        let engine_err = RuntimeEngineError::Action(action_err.clone());
+        // Then the inner error matches exactly
+        assert_eq!(
+            engine_err,
+            RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(7),
+            })
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_retry_exhausted_reports_action_and_attempts() {
+        // Given a RetryExhausted error
+        let err = RuntimeEngineError::RetryExhausted {
+            action: ActionId::new(3),
+            attempts: 5,
+        };
+        // Then the fields match exactly
+        match err {
+            RuntimeEngineError::RetryExhausted { action, attempts } => {
+                assert_eq!(action, ActionId::new(3));
+                assert_eq!(attempts, 5);
+            }
+            other => assert_eq!(other, RuntimeEngineError::RetryExhausted {
+                action: ActionId::new(0),
+                attempts: 0,
+            }),
+        }
+    }
+
+    #[test]
+    fn runtime_engine_error_taint_violation_reports_step() {
+        // Given a TaintViolation error
+        let err = RuntimeEngineError::TaintViolation {
+            step: StepIdx::new(42),
+        };
+        // Then the step value matches exactly
+        match err {
+            RuntimeEngineError::TaintViolation { step } => {
+                assert_eq!(step, StepIdx::new(42));
+            }
+            other => assert_eq!(other, RuntimeEngineError::TaintViolation {
+                step: StepIdx::new(0),
+            }),
+        }
+    }
+
+    #[test]
+    fn execute_node_full_returns_error_for_missing_node() {
+        // Given a workflow with no nodes at a given step
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let parts = vb_core::workflow::WorkflowParts {
+            name: Box::from("empty"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        };
+        let workflow = match CompiledWorkflow::try_from_parts(parts) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(10);
+        let contracts: Vec<ActionContract> = Vec::new();
+        // When driving with an out-of-bounds pc
+        run.set_pc(StepIdx::new(5));
+        let result = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &contracts,
+            RetryPolicy::NEVER,
+        );
+        // Then it returns a Core error with InvalidProgramCounter
+        match result {
+            Err(RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step })) => {
+                assert_eq!(step, StepIdx::new(5));
+            }
+            other => {
+                // Wrong: expected InvalidProgramCounter
+                assert_eq!(other, Ok(RuntimeSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn step_budget_new_with_zero_allows_no_steps() {
+        // Given a step budget with 0 steps
+        let mut budget = StepBudget::new(0);
+        // When trying to take a step
+        let result = budget.try_take();
+        // Then it returns Ok(false) — no steps allowed
+        assert_eq!(result, Ok(false));
+    }
+
+    #[test]
+    fn step_budget_remaining_decreases_after_each_step() {
+        // Given a step budget with 3 steps
+        let mut budget = StepBudget::new(3);
+        // When taking steps
+        assert_eq!(budget.try_take(), Ok(true));
+        assert_eq!(budget.try_take(), Ok(true));
+        assert_eq!(budget.try_take(), Ok(true));
+        // Then the fourth step is denied
+        assert_eq!(budget.try_take(), Ok(false));
+    }
+
+    #[test]
+    fn retry_check_returns_done_when_attempts_equal_max() {
+        // Given a retry policy with max_attempts = 3
+        let policy = RetryPolicy::DEFAULT;
+        // When current attempt equals max_attempts
+        let target = execute_retry_check(3, policy, StepIdx::new(1), StepIdx::new(10));
+        // Then it routes to the exhausted step
+        assert_eq!(target, StepIdx::new(10));
+    }
+
+    #[test]
+    fn execute_do_returns_ticket_with_correct_attempt_field() {
+        // Given a run and action
+        let run = match RunFrame::new(RunId::new(5), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        // When executing a Do node
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(3),
+            contract_ref,
+            &registry_contracts,
+        );
+        // Then it returns AwaitingAction with attempt=1 and seq=3
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.attempt, 1);
+                assert_eq!(ticket.seq, SeqNo::new(3));
+                assert_eq!(ticket.run, RunId::new(5));
+            }
+            other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
+        }
+    }
+
+    #[test]
+    fn error_handler_routes_to_handler_on_unknown_retryable() {
+        // Given a failure that is retryable with unknown code
+        let failure = ActionFailure {
+            code: ActionFailureCode::Unknown,
+            retryable: true,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        // When executing error handler
+        let target = execute_error_handler(&failure, StepIdx::new(8), StepIdx::new(3));
+        // Then it routes to handler because retryable
+        assert_eq!(target, StepIdx::new(8));
+    }
+
+    #[test]
+    fn error_handler_routes_to_handler_on_non_unknown_non_retryable() {
+        // Given a failure that is not retryable but code is Timeout (not Unknown)
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retryable: false,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        // When executing error handler
+        let target = execute_error_handler(&failure, StepIdx::new(8), StepIdx::new(3));
+        // Then it routes to handler because code != Unknown
+        assert_eq!(target, StepIdx::new(8));
+    }
+
+    #[test]
+    fn compute_idempotency_key_is_unique_for_different_seq() {
+        // Given same run and action but different sequence numbers
+        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(0));
+        // Then the keys differ
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn compute_idempotency_key_is_unique_for_different_action() {
+        // Given same run and seq but different action
+        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(1));
+        // Then the keys differ
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn resume_action_outcome_failed_retryable_returns_awaiting_action() {
+        // Given a run and a retryable failure outcome
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retryable: true,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        // When resuming with the retryable failure
+        let result = resume_action_outcome(&mut run, &outcome);
+        // Then it returns AwaitingAction
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.run, RunId::new(1));
+                assert_eq!(ticket.step, StepIdx::new(0));
+            }
+            other => {
+                // Wrong: expected AwaitingAction
+                assert_eq!(other, Ok(RuntimeSignal::Continue));
+            }
+        }
+    }
+
     mod proptests {
         use super::*;
         use proptest::prelude::*;
@@ -955,5 +1245,335 @@ mod tests {
                 prop_assert_ne!(key1, key2);
             }
         }
+    }
+
+    // Additional engine BDD tests
+
+    #[test]
+    fn runtime_engine_error_from_engine_error() {
+        // Given a core EngineError
+        let core = EngineError::UnsupportedPrimitive { primitive: "test" };
+        // When converting to RuntimeEngineError via From
+        let engine_err: RuntimeEngineError = core.into();
+        // Then it is wrapped in Core variant
+        assert_eq!(
+            engine_err,
+            RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" })
+        );
+    }
+
+    #[test]
+    fn runtime_engine_error_from_action_error() {
+        // Given an ActionError
+        let action = ActionError::UnknownAction { action: ActionId::new(5) };
+        // When converting to RuntimeEngineError via From
+        let engine_err: RuntimeEngineError = action.into();
+        // Then it is wrapped in Action variant
+        assert_eq!(
+            engine_err,
+            RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(5) })
+        );
+    }
+
+    #[test]
+    fn retry_policy_never_has_base_delay_zero() {
+        // Given NEVER retry policy
+        assert_eq!(RetryPolicy::NEVER.base_delay_ms, 0);
+        assert_eq!(RetryPolicy::NEVER.exponential_backoff, false);
+    }
+
+    #[test]
+    fn retry_policy_default_has_base_delay_100() {
+        // Given DEFAULT retry policy
+        assert_eq!(RetryPolicy::DEFAULT.base_delay_ms, 100);
+        assert_eq!(RetryPolicy::DEFAULT.exponential_backoff, false);
+    }
+
+    #[test]
+    fn retry_check_routes_to_body_below_max() {
+        // Given a policy with max_attempts = 3
+        let policy = RetryPolicy { max_attempts: 3, base_delay_ms: 0, exponential_backoff: false };
+        // When current attempt is 0
+        let target = execute_retry_check(0, policy, StepIdx::new(5), StepIdx::new(10));
+        // Then routes to body
+        assert_eq!(target, StepIdx::new(5));
+    }
+
+    #[test]
+    fn retry_check_routes_to_body_at_max_minus_one() {
+        // Given a policy with max_attempts = 3
+        let policy = RetryPolicy { max_attempts: 3, base_delay_ms: 0, exponential_backoff: false };
+        // When current attempt is 2 (max - 1)
+        let target = execute_retry_check(2, policy, StepIdx::new(5), StepIdx::new(10));
+        // Then routes to body
+        assert_eq!(target, StepIdx::new(5));
+    }
+
+    #[test]
+    fn execute_do_returns_unknown_action_error_for_empty_registry() {
+        // Given a run with no registered actions
+        let run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let empty_contracts: Vec<ActionContract> = Vec::new();
+        let dummy = ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        // When executing with an empty registry
+        let result = execute_do(&run, StepIdx::new(0), ActionId::new(0), SlotIdx::new(0), SeqNo::new(0), &dummy, &empty_contracts);
+        // Then it returns UnknownAction
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(0) }))
+        );
+    }
+
+    #[test]
+    fn runtime_signal_debug_output() {
+        // Given runtime signals
+        let cont = RuntimeSignal::Continue;
+        let exhausted = RuntimeSignal::StepBudgetExhausted;
+        let wait = RuntimeSignal::AwaitingWait;
+        let ask = RuntimeSignal::AwaitingAsk;
+        // When formatting with debug
+        let cont_debug = format!("{cont:?}");
+        let ex_debug = format!("{exhausted:?}");
+        let wait_debug = format!("{wait:?}");
+        let ask_debug = format!("{ask:?}");
+        // Then debug output contains variant names
+        assert_eq!(cont_debug.contains("Continue"), true);
+        assert_eq!(ex_debug.contains("StepBudgetExhausted"), true);
+        assert_eq!(wait_debug.contains("AwaitingWait"), true);
+        assert_eq!(ask_debug.contains("AwaitingAsk"), true);
+    }
+
+    #[test]
+    fn runtime_engine_error_equality_retry_exhausted() {
+        // Given two identical RetryExhausted errors
+        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn runtime_engine_error_equality_taint_violation() {
+        // Given two identical TaintViolation errors
+        let a = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        let b = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn runtime_engine_error_equality_differs_attempts() {
+        // Given two RetryExhausted with different attempts
+        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 5 };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn runtime_engine_error_equality_differs_action() {
+        // Given two RetryExhausted with different actions
+        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(2), attempts: 3 };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn error_handler_routes_to_body_when_failure_is_unknown_and_non_retryable() {
+        // Given a failure that is not retryable with Unknown code
+        let failure = ActionFailure {
+            code: ActionFailureCode::Unknown,
+            retryable: false,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        // When executing error handler
+        let target = execute_error_handler(&failure, StepIdx::new(8), StepIdx::new(3));
+        // Then it routes to body because non-retryable AND unknown
+        assert_eq!(target, StepIdx::new(3));
+    }
+
+    #[test]
+    fn resume_action_outcome_suspended_preserves_ticket() {
+        // Given a run and a suspended outcome with specific ticket
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let ticket = ActionTicket {
+            run: RunId::new(99),
+            step: StepIdx::new(7),
+            seq: SeqNo::new(42),
+            action: ActionId::new(13),
+            attempt: 4,
+            idempotency_key: 12345,
+        };
+        let outcome = ActionOutcome::Suspended(ticket);
+        // When resuming with suspended
+        let result = resume_action_outcome(&mut run, &outcome);
+        // Then it returns AwaitingAction with exact ticket
+        assert_eq!(
+            result,
+            Ok(RuntimeSignal::AwaitingAction(ActionTicket {
+                run: RunId::new(99),
+                step: StepIdx::new(7),
+                seq: SeqNo::new(42),
+                action: ActionId::new(13),
+                attempt: 4,
+                idempotency_key: 12345,
+            }))
+        );
+    }
+
+    #[test]
+    fn execute_do_idempotency_key_computation() {
+        // Given a run and action
+        let run = match RunFrame::new(RunId::new(42), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        // When executing Do node
+        let result = execute_do(&run, StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), SeqNo::new(10), contract_ref, &registry_contracts);
+        // Then the idempotency key is deterministic
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                let expected_key = compute_idempotency_key(RunId::new(42), SeqNo::new(10), ActionId::new(1));
+                assert_eq!(ticket.idempotency_key, expected_key);
+            }
+            other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
+        }
+    }
+
+    #[test]
+    fn execute_do_with_clean_input_and_pure_idempotency_succeeds() {
+        // Given a run with clean input slot
+        let run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        // When executing Do with clean input
+        let result = execute_do(&run, StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), SeqNo::new(0), contract_ref, &registry_contracts);
+        // Then it returns AwaitingAction (no taint violation)
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(1));
+            }
+            other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
+        }
+    }
+
+    #[test]
+    fn runtime_engine_error_debug_output() {
+        // Given engine errors
+        let core = RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" });
+        let action = RuntimeEngineError::Action(ActionError::UnknownAction { action: ActionId::new(1) });
+        let retry = RuntimeEngineError::RetryExhausted { action: ActionId::new(2), attempts: 3 };
+        let taint = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        // When formatting with debug
+        // Then debug output contains relevant variant names
+        assert_eq!(format!("{core:?}").contains("Core"), true);
+        assert_eq!(format!("{action:?}").contains("Action"), true);
+        assert_eq!(format!("{retry:?}").contains("RetryExhausted"), true);
+        assert_eq!(format!("{taint:?}").contains("TaintViolation"), true);
+    }
+
+    #[test]
+    fn runtime_signal_equality_continue() {
+        // Given two Continue signals
+        assert_eq!(RuntimeSignal::Continue, RuntimeSignal::Continue);
+    }
+
+    #[test]
+    fn runtime_signal_equality_exhausted() {
+        // Given two StepBudgetExhausted signals
+        assert_eq!(RuntimeSignal::StepBudgetExhausted, RuntimeSignal::StepBudgetExhausted);
+    }
+
+    #[test]
+    fn runtime_signal_equality_awaiting_wait() {
+        // Given two AwaitingWait signals
+        assert_eq!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingWait);
+    }
+
+    #[test]
+    fn runtime_signal_equality_awaiting_ask() {
+        // Given two AwaitingAsk signals
+        assert_eq!(RuntimeSignal::AwaitingAsk, RuntimeSignal::AwaitingAsk);
+    }
+
+    #[test]
+    fn runtime_signal_differs_awaiting_wait_from_awaiting_ask() {
+        assert_ne!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingAsk);
+    }
+
+    #[test]
+    fn retry_policy_clone_preserves_values() {
+        // Given a retry policy
+        let policy = RetryPolicy { max_attempts: 5, base_delay_ms: 200, exponential_backoff: true };
+        // When cloning
+        let cloned = policy.clone();
+        // Then values match
+        assert_eq!(cloned.max_attempts, 5);
+        assert_eq!(cloned.base_delay_ms, 200);
+        assert_eq!(cloned.exponential_backoff, true);
     }
 }

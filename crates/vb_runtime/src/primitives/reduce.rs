@@ -251,4 +251,294 @@ mod tests {
         assert_eq!(run.pc(), next_step);
         assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
     }
+
+    // BDD tests for reduce primitives
+
+    #[test]
+    fn reduce_start_returns_error_when_input_is_not_list() {
+        // Given a frame with a non-list in input slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(0));
+        run.write_slot(SlotIdx::new(0), SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling reduce_start
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "list");
+                assert_eq!(found, "boolean");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_start_returns_error_when_output_missing() {
+        // Given a frame with a list but no output slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(0));
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![SlotValue::I64(1)]);
+        // When calling reduce_start with output=None
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_start_jumps_to_done_when_list_empty() {
+        // Given a frame with an empty list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(100));
+        let done = StepIdx::new(3);
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![]);
+        // When calling reduce_start
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(0), StepIdx::new(1), done, Some(SlotIdx::new(2)));
+        // Then it jumps to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn reduce_start_returns_error_when_constant_missing() {
+        // Given a frame with a list but invalid constant index
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(0));
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![SlotValue::I64(1)]);
+        // When calling reduce_start with ConstIdx out of bounds
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(99), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then it returns ConstOutOfBounds
+        match result {
+            Err(EngineError::ConstOutOfBounds { index }) => {
+                assert_eq!(index, ConstIdx::new(99));
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_next_binds_first_remaining_item() {
+        // Given a frame with remaining items in iterator
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output = SlotIdx::new(2);
+        let body = StepIdx::new(1);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(42), SlotValue::I64(99)]);
+        // When calling reduce_next
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), body, StepIdx::new(2), Some(output));
+        // Then output has first remaining item
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
+    }
+
+    #[test]
+    fn reduce_next_jumps_to_done_when_remaining_empty() {
+        // Given a frame with empty remaining items
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let done = StepIdx::new(3);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![]);
+        // When calling reduce_next
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), StepIdx::new(1), done, Some(SlotIdx::new(2)));
+        // Then it jumps to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn reduce_finish_returns_error_when_output_missing() {
+        // Given a frame with accumulator
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling reduce_finish with output=None
+        let result = reduce_finish(&mut run, SlotIdx::new(0), None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_finish_returns_error_when_next_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling reduce_finish with next=None
+        let result = reduce_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), None, StepIdx::ZERO);
+        // Then it returns MissingNextStep
+        match result {
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_start_writes_initial_accumulator_from_constant() {
+        // Given a frame with a list and constant value 100
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(100));
+        let accumulator = SlotIdx::new(1);
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![SlotValue::I64(1), SlotValue::I64(2)]);
+        // When calling reduce_start
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), accumulator, ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then accumulator has the initial constant value
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(accumulator).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(100));
+    }
+
+    #[test]
+    fn reduce_next_returns_error_when_output_missing() {
+        // Given a frame with items but no output
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        // When calling reduce_next with output=None
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), StepIdx::new(1), StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_start_increments_executed_counter() {
+        // Given a frame with a list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(0));
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![SlotValue::I64(1)]);
+        let before = run.executed();
+        // When calling reduce_start
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn reduce_next_increments_executed_counter() {
+        // Given a frame with remaining items
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        let before = run.executed();
+        // When calling reduce_next
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn reduce_finish_increments_executed_counter() {
+        // Given a frame with accumulator
+        let mut run = fresh_frame();
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        let before = run.executed();
+        // When calling reduce_finish
+        let result = reduce_finish(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)), Some(StepIdx::new(3)), StepIdx::ZERO);
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), before + 1);
+    }
+
+    #[test]
+    fn reduce_next_returns_error_when_not_list() {
+        // Given a frame with non-list in iterator slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        run.write_slot(iterator_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling reduce_next
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "list");
+                assert_eq!(found, "boolean");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_start_writes_tail_to_iterator_slot() {
+        // Given a frame with a 3-item list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(0));
+        let output = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, SlotIdx::new(0), vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]);
+        // When calling reduce_start
+        let result = reduce_start(&plan, &mut run, &mut store, SlotIdx::new(0), SlotIdx::new(1), ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then the output slot has a tail list with 2 remaining items
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 2);
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
+
+    #[test]
+    fn reduce_next_writes_tail_to_iterator_slot() {
+        // Given a frame with 3 remaining items
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        // When calling reduce_next
+        let result = reduce_next(&mut run, &mut store, iterator_slot, SlotIdx::new(1), StepIdx::new(1), StepIdx::new(2), Some(output));
+        // Then the iterator slot has a tail list with 2 remaining items
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        match *run.read_slot(iterator_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 2);
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
 }

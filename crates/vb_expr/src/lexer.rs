@@ -429,4 +429,184 @@ mod tests {
         let result = lex_expr("@");
         assert!(matches!(result, Err(ExprError::UnexpectedChar { ch: '@' })));
     }
+
+    // --- BDD lexer tests ---
+
+    #[test]
+    fn lex_expr_tokenizes_addition_expression() -> ExprResult<()> {
+        // Given: the expression "3 + 5"
+        // When: lex_expr is called
+        // Then: the token sequence is [I64(3), Add, I64(5), End]
+        let tokens = lex_expr("3 + 5")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::I64(3)),
+            Token::Operator(BinaryOp::Add),
+            Token::Literal(LiteralToken::I64(5)),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_subtraction_expression() -> ExprResult<()> {
+        // Given: the expression "10 - 4"
+        // When: lex_expr is called
+        // Then: the token sequence is [I64(10), Sub, I64(4), End]
+        let tokens = lex_expr("10 - 4")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::I64(10)),
+            Token::Operator(BinaryOp::Sub),
+            Token::Literal(LiteralToken::I64(4)),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_multiplication_expression() -> ExprResult<()> {
+        // Given: the expression "6 * 7"
+        // When: lex_expr is called
+        // Then: the token sequence is [I64(6), Mul, I64(7), End]
+        let tokens = lex_expr("6 * 7")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::I64(6)),
+            Token::Operator(BinaryOp::Mul),
+            Token::Literal(LiteralToken::I64(7)),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_division_expression() -> ExprResult<()> {
+        // Given: the expression "20 / 4"
+        // When: lex_expr is called
+        // Then: the token sequence is [I64(20), Div, I64(4), End]
+        let tokens = lex_expr("20 / 4")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::I64(20)),
+            Token::Operator(BinaryOp::Div),
+            Token::Literal(LiteralToken::I64(4)),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_parenthesized_expression() -> ExprResult<()> {
+        // Given: the expression "(1 + 2)"
+        // When: lex_expr is called
+        // Then: the token sequence includes LParen and RParen tokens
+        let tokens = lex_expr("(1 + 2)")?;
+        let expected = vec![
+            Token::LParen,
+            Token::Literal(LiteralToken::I64(1)),
+            Token::Operator(BinaryOp::Add),
+            Token::Literal(LiteralToken::I64(2)),
+            Token::RParen,
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_string_literal() -> ExprResult<()> {
+        // Given: the expression "\"hello world\""
+        // When: lex_expr is called
+        // Then: the token is Text("hello world")
+        let tokens = lex_expr("\"hello world\"")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::Text(Box::from("hello world"))),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_variable_reference() -> ExprResult<()> {
+        // Given: the expression "$my_var"
+        // When: lex_expr is called
+        // Then: the token is Reference("$my_var")
+        let tokens = lex_expr("$my_var")?;
+        let expected = vec![Token::Reference(Box::from("$my_var")), Token::End];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_boolean_literals() -> ExprResult<()> {
+        // Given: the expression "true false"
+        // When: lex_expr is called
+        // Then: tokens are [Bool(true), Bool(false), End]
+        let tokens = lex_expr("true false")?;
+        let expected = vec![
+            Token::Literal(LiteralToken::Bool(true)),
+            Token::Literal(LiteralToken::Bool(false)),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_returns_error_for_unrecognized_character() -> ExprResult<()> {
+        // Given: the expression "#"
+        // When: lex_expr is called
+        // Then: the result is Err(UnexpectedChar { ch: '#' })
+        let result = lex_expr("#");
+        let Err(ExprError::UnexpectedChar { ch }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedChar".into(),
+            });
+        };
+        assert_eq!(ch, '#');
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_comparison_operators() -> ExprResult<()> {
+        // Given: the expression "== != < <= > >="
+        // When: lex_expr is called
+        // Then: all six comparison operator tokens are produced
+        let tokens = lex_expr("== != < <= > >=")?;
+        let expected = vec![
+            Token::Operator(BinaryOp::Eq),
+            Token::Operator(BinaryOp::NotEq),
+            Token::Operator(BinaryOp::Lt),
+            Token::Operator(BinaryOp::Lte),
+            Token::Operator(BinaryOp::Gt),
+            Token::Operator(BinaryOp::Gte),
+            Token::End,
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_null_literal() -> ExprResult<()> {
+        // Given: the expression "null"
+        // When: lex_expr is called
+        // Then: the token is Literal(Null)
+        let tokens = lex_expr("null")?;
+        let expected = vec![Token::Literal(LiteralToken::Null), Token::End];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_tokenizes_not_keyword() -> ExprResult<()> {
+        // Given: the expression "not"
+        // When: lex_expr is called
+        // Then: the token is Unary(Not)
+        let tokens = lex_expr("not")?;
+        let expected = vec![Token::Unary(UnaryOp::Not), Token::End];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
 }

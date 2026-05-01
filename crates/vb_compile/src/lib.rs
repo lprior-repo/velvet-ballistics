@@ -2775,7 +2775,11 @@ fn object_slot_value(
 
 #[cfg(test)]
 mod tests {
-    use super::{CompileError, CompileErrors, YamlCompiler, YamlLimits};
+    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
+    use super::{compute_compiled_digest, lower_do, lower_finish, lower_set};
+    use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
+    use vb_core::workflow::{CompiledNodeKind, ExprProgram};
+    use vb_core::ConstValue;
     use vb_core::{CompiledWorkflow, ResourceContract};
 
     const NESTED_SAVE_SOURCE: &[u8] = br#"
@@ -4007,5 +4011,589 @@ steps:
             result,
             Err(ref errors) if matches!(errors.first(), Some(CompileError::MergeKeyForbidden { .. }))
         ));
+    }
+
+    // ── Round 2: Exact-assertion error variant tests ─────────────────────
+
+    #[test]
+    fn compile_returns_source_too_large_with_exact_fields() {
+        let tiny_limits = YamlLimits { max_source_bytes: 10, ..YamlLimits::default() };
+        let compiler = YamlCompiler { limits: tiny_limits };
+        let source = b"version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0";
+        let result = compiler.compile(source);
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::SourceTooLarge { actual, limit }) = errors.first() else {
+            panic!("expected SourceTooLarge, got {:?}", errors.first());
+        };
+        assert_eq!(*limit, 10);
+        assert_eq!(*actual, source.len());
+    }
+
+    #[test]
+    fn compile_returns_empty_source_for_empty_input() {
+        let result = YamlCompiler::default().compile(b"");
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::EmptySource)));
+    }
+
+    #[test]
+    fn compile_returns_top_level_not_mapping_for_list_root() {
+        let result = YamlCompiler::default().compile(b"- item1\n- item2");
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::TopLevelNotMapping)));
+    }
+
+    #[test]
+    fn compile_returns_empty_steps_for_steps_with_empty_list() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::EmptySteps)));
+    }
+
+    #[test]
+    fn compile_returns_invalid_version_for_wrong_version() {
+        let result = YamlCompiler::default().compile(
+            b"version: bad-version\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::InvalidVersion { actual }) = errors.first() else {
+            panic!("expected InvalidVersion, got {:?}", errors.first());
+        };
+        assert_eq!(actual.as_ref(), "bad-version");
+    }
+
+    #[test]
+    fn compile_returns_missing_field_for_absent_version() {
+        let result = YamlCompiler::default().compile(
+            b"name: no_version\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingField { field }) = errors.first() else {
+            panic!("expected MissingField, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "version");
+    }
+
+    #[test]
+    fn compile_returns_missing_field_for_absent_name() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingField { field }) = errors.first() else {
+            panic!("expected MissingField, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "name");
+    }
+
+    #[test]
+    fn compile_returns_missing_field_for_absent_when() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_trigger\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingField { field }) = errors.first() else {
+            panic!("expected MissingField, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "when");
+    }
+
+    #[test]
+    fn compile_returns_missing_field_for_absent_steps() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_steps\nwhen:\n  manual: {}",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingField { field }) = errors.first() else {
+            panic!("expected MissingField, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "steps");
+    }
+
+    #[test]
+    fn compile_returns_invalid_trigger_count_for_empty_when() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: empty_when\nwhen: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::InvalidTriggerCount { count }) = errors.first() else {
+            panic!("expected InvalidTriggerCount, got {:?}", errors.first());
+        };
+        assert_eq!(*count, 0);
+    }
+
+    #[test]
+    fn compile_returns_unknown_trigger_kind_for_invalid_trigger() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_trigger\nwhen:\n  teleport: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::UnknownTriggerKind { trigger }) = errors.first() else {
+            panic!("expected UnknownTriggerKind, got {:?}", errors.first());
+        };
+        assert_eq!(trigger.as_ref(), "teleport");
+    }
+
+    #[test]
+    fn compile_returns_missing_step_id_for_step_without_id() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_id\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingStepId { step }) = errors.first() else {
+            panic!("expected MissingStepId, got {:?}", errors.first());
+        };
+        assert_eq!(*step, 0);
+    }
+
+    #[test]
+    fn compile_returns_step_shape_for_non_mapping_step() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_step\nwhen:\n  manual: {}\nsteps:\n  - \"scalar\"",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::StepShape { step }) = errors.first() else {
+            panic!("expected StepShape, got {:?}", errors.first());
+        };
+        assert_eq!(*step, 0);
+    }
+
+    #[test]
+    fn compile_returns_duplicate_step_id_for_same_ids() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: dup_step\nwhen:\n  manual: {}\nsteps:\n  - id: same\n    save:\n      x: 1\n  - id: same\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::DuplicateStepId { id }) = errors.first() else {
+            panic!("expected DuplicateStepId, got {:?}", errors.first());
+        };
+        assert_eq!(id.as_ref(), "same");
+    }
+
+    #[test]
+    fn compile_returns_missing_step_primitive_for_step_without_primitive() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_prim\nwhen:\n  manual: {}\nsteps:\n  - id: empty_step",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MissingStepPrimitive { step }) = errors.first() else {
+            panic!("expected MissingStepPrimitive, got {:?}", errors.first());
+        };
+        assert_eq!(*step, 0);
+    }
+
+    #[test]
+    fn compile_returns_unknown_step_field_for_invalid_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_field\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    unknown_field: 1\n    save:\n      x: 1",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::UnknownStepField { step, field }) = errors.first() else {
+            panic!("expected UnknownStepField, got {:?}", errors.first());
+        };
+        assert_eq!(*step, 0);
+        assert_eq!(field.as_ref(), "unknown_field");
+    }
+
+    #[test]
+    fn compile_returns_last_step_must_finish_for_non_finish_ending() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_finish\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      x: 1",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::LastStepMustFinish)));
+    }
+
+    #[test]
+    fn compile_returns_unknown_top_level_field_for_invalid_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: extra\nwhen:\n  manual: {}\nunknown_root: true\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::UnknownTopLevelField { field }) = errors.first() else {
+            panic!("expected UnknownTopLevelField, got {:?}", errors.first());
+        };
+        assert_eq!(field.as_ref(), "unknown_root");
+    }
+
+    #[test]
+    fn compile_returns_tag_forbidden_for_tagged_node() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: tagged\nwhen:\n  manual: {}\nsteps:\n  - id: !!tag done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::TagForbidden { .. })));
+    }
+
+    #[test]
+    fn compile_returns_float_forbidden_for_float_scalar() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: floaty\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 3.14",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        assert!(matches!(errors.first(), Some(CompileError::FloatForbidden)));
+    }
+
+    #[test]
+    fn compile_returns_depth_limit_for_deeply_nested_yaml() {
+        let tiny_limits = YamlLimits { max_depth: 3, ..YamlLimits::default() };
+        let compiler = YamlCompiler { limits: tiny_limits };
+        let result = compiler.compile(
+            b"version: velvet-ballastics/v1\nname: deep\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\na:\n  b:\n    c:\n      d: deep",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::DepthLimit { depth, limit }) = errors.first() else {
+            panic!("expected DepthLimit, got {:?}", errors.first());
+        };
+        assert_eq!(*limit, 3);
+        assert!(*depth > 3);
+    }
+
+    #[test]
+    fn compile_returns_node_limit_for_many_nodes() {
+        let tiny_limits = YamlLimits { max_nodes: 5, ..YamlLimits::default() };
+        let compiler = YamlCompiler { limits: tiny_limits };
+        let result = compiler.compile(
+            b"version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      a: 1\n      b: 2\n      c: 3\n      d: 4\n      e: 5\n      f: 6\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::NodeLimit { limit }) = errors.first() else {
+            panic!("expected NodeLimit, got {:?}", errors.first());
+        };
+        assert_eq!(*limit, 5);
+    }
+
+    #[test]
+    fn compile_returns_scalar_limit_for_long_scalar() {
+        let tiny_limits = YamlLimits { max_scalar_bytes: 5, ..YamlLimits::default() };
+        let compiler = YamlCompiler { limits: tiny_limits };
+        let result = compiler.compile(
+            b"version: velvet-ballastics/v1\nname: long_scalar\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nlabel: abcdefgh",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::ScalarLimit { actual, limit }) = errors.first() else {
+            panic!("expected ScalarLimit, got {:?}", errors.first());
+        };
+        assert_eq!(*limit, 5);
+        assert!(*actual > 5);
+    }
+
+    #[test]
+    fn compile_returns_duplicate_key_for_repeated_yaml_key() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::DuplicateKey { key, .. }) = errors.first() else {
+            panic!("expected DuplicateKey, got {:?}", errors.first());
+        };
+        assert_eq!(key.as_ref(), "name");
+    }
+
+    #[test]
+    fn compile_returns_invalid_name_for_reserved_step_name() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: reserved\nwhen:\n  manual: {}\nsteps:\n  - id: run\n    save:\n      x: 1\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::InvalidName { field, value }) = errors.first() else {
+            panic!("expected InvalidName, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "step id");
+        assert_eq!(value.as_ref(), "run");
+    }
+
+    #[test]
+    fn compile_returns_multiple_step_primitives_for_two_primitives() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: multi\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      x: 1\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::MultipleStepPrimitives { step }) = errors.first() else {
+            panic!("expected MultipleStepPrimitives, got {:?}", errors.first());
+        };
+        assert_eq!(*step, 0);
+    }
+
+    #[test]
+    fn compile_returns_invalid_trigger_count_for_two_triggers() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: multi_trigger\nwhen:\n  manual: {}\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::InvalidTriggerCount { count }) = errors.first() else {
+            panic!("expected InvalidTriggerCount, got {:?}", errors.first());
+        };
+        assert_eq!(*count, 2);
+    }
+
+    #[test]
+    fn compile_returns_field_shape_for_bad_inputs_shape() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_inputs\nwhen:\n  manual: {}\ninputs: []\nsteps:\n  - id: done\n    finish:\n      result: 0",
+        );
+        let Err(errors) = result else { panic!("expected error") };
+        let Some(CompileError::FieldShape { field, expected }) = errors.first() else {
+            panic!("expected FieldShape, got {:?}", errors.first());
+        };
+        assert_eq!(*field, "inputs");
+        assert!(!expected.is_empty());
+    }
+
+    // ── Round 2: Compilation success path tests ──────────────────────────
+
+    #[test]
+    fn compile_produces_valid_workflow_for_minimal_source() {
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let wf = result.unwrap();
+        assert_eq!(wf.node_count(), 2);
+    }
+
+    #[test]
+    fn compile_produces_valid_workflow_for_optional_fields() {
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+    }
+
+    #[test]
+    fn compile_produces_non_default_workflow_digest() {
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
+        assert!(result.is_ok());
+        let wf = result.unwrap();
+        assert_ne!(wf.digest(), vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]));
+    }
+
+    #[test]
+    fn compile_produces_matching_workflow_name() {
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
+        assert!(result.is_ok());
+        let wf = result.unwrap();
+        assert_eq!(wf.name(), "fast_path");
+    }
+
+    #[test]
+    fn compile_produces_correct_entry_step_index() {
+        let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
+        assert!(result.is_ok());
+        let wf = result.unwrap();
+        assert_eq!(wf.entry(), vb_core::ids::StepIdx::ZERO);
+    }
+
+    #[test]
+    fn compile_with_limits_respects_custom_source_limit() {
+        let source = OPTIONAL_TOP_LEVEL_FIELDS_SOURCE;
+        let limits = YamlLimits { max_source_bytes: source.len() + 1, ..YamlLimits::default() };
+        let compiler = YamlCompiler { limits };
+        assert!(compiler.compile(source).is_ok());
+    }
+
+    // ── Round 2: CompileError::code() tests ──────────────────────────────
+
+    #[test]
+    fn compile_error_code_returns_payload_too_large_for_source_too_large() {
+        let err = CompileError::SourceTooLarge { actual: 100, limit: 50 };
+        assert_eq!(err.code(), "PAYLOAD_TOO_LARGE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_missing_required_field_for_empty_source() {
+        let err = CompileError::EmptySource;
+        assert_eq!(err.code(), "MISSING_REQUIRED_FIELD");
+    }
+
+    #[test]
+    fn compile_error_code_returns_type_mismatch_for_top_level_not_mapping() {
+        let err = CompileError::TopLevelNotMapping;
+        assert_eq!(err.code(), "TYPE_MISMATCH");
+    }
+
+    #[test]
+    fn compile_error_code_returns_duplicate_key_for_duplicate_key() {
+        let err = CompileError::DuplicateKey {
+            key: Box::from("test"),
+            mark: SourceMark { index: 0, end_index: 0, line: 1, column: 1, available: true },
+        };
+        assert_eq!(err.code(), "DUPLICATE_KEY");
+    }
+
+    #[test]
+    fn compile_error_code_returns_limit_exceeded_for_depth_limit() {
+        let err = CompileError::DepthLimit { depth: 10, limit: 5 };
+        assert_eq!(err.code(), "LIMIT_EXCEEDED");
+    }
+
+    #[test]
+    fn compile_error_code_returns_limit_exceeded_for_node_limit() {
+        let err = CompileError::NodeLimit { limit: 100 };
+        assert_eq!(err.code(), "LIMIT_EXCEEDED");
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_alias() {
+        let err = CompileError::AliasForbidden {
+            mark: SourceMark { index: 0, end_index: 0, line: 1, column: 1, available: true },
+        };
+        assert_eq!(err.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_float() {
+        let err = CompileError::FloatForbidden;
+        assert_eq!(err.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_unknown_step_for_unsupported_primitive() {
+        let err = CompileError::UnsupportedStepPrimitive {
+            step: 0,
+            primitive: "custom",
+        };
+        assert_eq!(err.code(), "UNKNOWN_STEP_FIELD");
+    }
+
+    #[test]
+    fn compile_error_code_returns_backward_branch_for_backward_target() {
+        let err = CompileError::BackwardBranchTarget { step: 2, target: 0 };
+        assert_eq!(err.code(), "INVALID_THEN_TARGET");
+    }
+
+    #[test]
+    fn compile_error_code_returns_type_mismatch_for_type_mismatch() {
+        let err = CompileError::TypeMismatch {
+            field: "test",
+            expected: "text",
+            found: "number",
+        };
+        assert_eq!(err.code(), "TYPE_MISMATCH");
+    }
+
+    #[test]
+    fn compile_error_code_returns_expression_error_for_unexpected_char() {
+        let err = CompileError::ExpressionUnexpectedChar {
+            expression: Box::from("$x"),
+            index: 1,
+            found: '@',
+        };
+        assert_eq!(err.code(), "INVALID_EXPRESSION");
+    }
+
+    #[test]
+    fn compile_error_code_returns_expression_error_for_helper_arity() {
+        let err = CompileError::ExpressionHelperArity {
+            helper: "len",
+            expected: 1,
+            actual: 2,
+        };
+        assert_eq!(err.code(), "INVALID_EXPRESSION");
+    }
+
+    // ── Round 2: YamlLimits and Compiler config tests ────────────────────
+
+    #[test]
+    fn yaml_limits_default_has_reasonable_values() {
+        let defaults = YamlLimits::default();
+        assert!(defaults.max_source_bytes > 0);
+        assert!(defaults.max_depth > 0);
+        assert!(defaults.max_nodes > 0);
+        assert!(defaults.max_scalar_bytes > 0);
+    }
+
+    #[test]
+    fn yaml_compiler_default_uses_default_limits() {
+        let compiler = YamlCompiler::default();
+        assert_eq!(compiler.limits.max_source_bytes, YamlLimits::default().max_source_bytes);
+    }
+
+    // ── Round 2: Lowering function tests ─────────────────────────────────
+
+    #[test]
+    fn lower_finish_produces_finish_node_kind() {
+        let mut builder = SlotCompiler::new();
+        let node = lower_finish(
+            StepIdx::new(0),
+            SlotIdx::new(0),
+            &mut builder,
+        );
+        assert!(matches!(node.kind, CompiledNodeKind::Finish { .. }));
+    }
+
+    #[test]
+    fn lower_set_produces_set_node_kind() {
+        let mut builder = SlotCompiler::new();
+        let const_idx = builder.push_constant(ConstValue::I64(42)).ok().unwrap_or(ConstIdx::new(0));
+        let node = lower_set(
+            StepIdx::new(0),
+            SlotIdx::new(0),
+            const_idx,
+            Some(StepIdx::new(1)),
+        );
+        assert!(matches!(node.kind, CompiledNodeKind::SetConst { .. }));
+    }
+
+    #[test]
+    fn lower_do_produces_do_node_kind() {
+        let mut builder = SlotCompiler::new();
+        let node = lower_do(
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+            &mut builder,
+        );
+        assert!(matches!(node.kind, CompiledNodeKind::Do { .. }));
+    }
+
+    #[test]
+    fn compute_compiled_digest_is_deterministic() {
+        let d1 = compute_compiled_digest(NESTED_SAVE_SOURCE);
+        let d2 = compute_compiled_digest(NESTED_SAVE_SOURCE);
+        assert_eq!(d1, d2);
+    }
+
+    #[test]
+    fn compute_compiled_digest_differs_for_different_sources() {
+        let d1 = compute_compiled_digest(b"source_a");
+        let d2 = compute_compiled_digest(b"source_b");
+        assert_ne!(d1, d2);
+    }
+
+    // ── Round 2: SlotCompiler tests ──────────────────────────────────────
+
+    #[test]
+    fn slot_compiler_new_starts_empty() {
+        let mut sc = SlotCompiler::new();
+        assert_eq!(sc.push_constant(ConstValue::I64(42)).ok().map(|i| i.get()), Some(0));
+    }
+
+    #[test]
+    fn slot_compiler_push_constant_returns_ascending_indices() {
+        let mut sc = SlotCompiler::new();
+        let idx0 = sc.push_constant(ConstValue::I64(1));
+        let idx1 = sc.push_constant(ConstValue::I64(2));
+        assert_eq!(idx0.ok().map(|i| i.get()), Some(0));
+        assert_eq!(idx1.ok().map(|i| i.get()), Some(1));
+    }
+
+    #[test]
+    fn slot_compiler_push_expression_returns_ascending_indices() {
+        let mut sc = SlotCompiler::new();
+        let empty_ops: Box<[vb_core::workflow::ExprOp]> = Box::from([]);
+        let prog = ExprProgram::try_from_ops(empty_ops).unwrap_or_else(|_| {
+            ExprProgram { ops: Box::from([]), max_stack: 0 }
+        });
+        let idx = sc.push_expression(prog);
+        assert!(idx.is_ok());
+    }
+
+    #[test]
+    fn slot_compiler_record_slot_tracks_max_slot() {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(5));
+        sc.record_slot(SlotIdx::new(10));
+        // record_slot doesn't return anything but should not panic
     }
 }

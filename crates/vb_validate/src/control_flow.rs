@@ -324,4 +324,175 @@ mod tests {
             Err(ValidationError::UnreachableStep { .. })
         ));
     }
+
+    // ---------------------------------------------------------------------------
+    // BDD exact-assertion tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn validate_control_flow_accepts_linear_chain() {
+        // Given a linear flow of 3 steps
+        let flow = linear_flow(3);
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_control_flow_accepts_branch_and_merge() {
+        // Given a branching flow with merge
+        let flow = branching_flow();
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_control_flow_rejects_invalid_merge_without_branch() {
+        // Given a flow with a backward branch (cycle)
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("first".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("loop_back".to_owned()),
+                    branch_targets: vec![0],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns ControlFlowCycle
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn validate_reachability_returns_ok_for_connected_graph() {
+        // Given a linear flow where all steps are reachable
+        let flow = linear_flow(4);
+        // When validate_reachability is called
+        let result = validate_reachability(&flow);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_reachability_returns_error_for_orphan_step() {
+        // Given a flow where step 1 is orphaned (step 0 branches to 2 and 3, skipping 1)
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("start".to_owned()),
+                    branch_targets: vec![2, 3],
+                    then_target: Some(2),
+                },
+                StepFlow {
+                    id: Some("orphaned".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("target".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("done".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_reachability is called
+        let result = validate_reachability(&flow);
+        // Then it returns UnreachableStep with the orphan id
+        assert_eq!(result, Err(ValidationError::UnreachableStep {
+            step: "orphaned".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn validate_forward_only_then_rejects_backward_branch() {
+        // Given a flow where a step has a backward branch target
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("a".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("b".to_owned()),
+                    branch_targets: vec![0],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_forward_only_then is called
+        let result = validate_forward_only_then(&flow);
+        // Then it returns ControlFlowCycle
+        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+    }
+
+    #[test]
+    fn validate_forward_only_then_accepts_forward_branch() {
+        // Given a flow where all targets point forward
+        let flow = WorkflowFlow {
+            steps: vec![
+                StepFlow {
+                    id: Some("choose".to_owned()),
+                    branch_targets: vec![1, 2],
+                    then_target: None,
+                },
+                StepFlow {
+                    id: Some("left".to_owned()),
+                    branch_targets: vec![],
+                    then_target: Some(2),
+                },
+                StepFlow {
+                    id: Some("done".to_owned()),
+                    branch_targets: vec![],
+                    then_target: None,
+                },
+            ],
+        };
+        // When validate_forward_only_then is called
+        let result = validate_forward_only_then(&flow);
+        // Then it returns Ok
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_control_flow_rejects_out_of_bounds_target_exact() {
+        // Given a flow with a branch target beyond step count
+        let flow = WorkflowFlow {
+            steps: vec![StepFlow {
+                id: Some("start".to_owned()),
+                branch_targets: vec![99],
+                then_target: None,
+            }],
+        };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns InvalidThenTarget
+        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+    }
+
+    #[test]
+    fn validate_control_flow_rejects_empty_steps_exact() {
+        // Given a flow with no steps
+        let flow = WorkflowFlow { steps: vec![] };
+        // When validate_control_flow is called
+        let result = validate_control_flow(&flow);
+        // Then it returns UnreachableStep with message about no steps
+        assert_eq!(result, Err(ValidationError::UnreachableStep {
+            step: "workflow has no steps".to_owned(),
+        }));
+    }
 }

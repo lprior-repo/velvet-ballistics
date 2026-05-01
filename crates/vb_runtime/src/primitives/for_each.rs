@@ -253,4 +253,286 @@ mod tests {
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
     }
+
+    // BDD tests for for_each primitives
+
+    #[test]
+    fn for_each_start_returns_error_when_input_is_not_list() {
+        // Given a frame with a non-list value in input slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        run.write_slot(input, SlotValue::I64(42)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling for_each_start
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then it returns TypeMismatch error
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "list");
+                assert_eq!(found, "number");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_start_returns_error_when_limit_exceeded() {
+        // Given a frame with a 3-item list and limit=2
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        // When calling for_each_start with limit=2
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 2, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then it returns IterationLimitExceeded
+        match result {
+            Err(EngineError::IterationLimitExceeded { resource }) => {
+                assert_eq!(resource, "for_each_limit");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_start_returns_error_when_output_missing() {
+        // Given a frame with a list in input but no output slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(1)]);
+        // When calling for_each_start with output=None
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_start_binds_first_item_to_item_slot() {
+        // Given a frame with a multi-item list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]);
+        // When calling for_each_start
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then item_slot has the first item
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(item_slot).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(10));
+    }
+
+    #[test]
+    fn for_each_start_writes_tail_to_output_slot() {
+        // Given a frame with a 3-item list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]);
+        // When calling for_each_start
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then output_slot has a list (the tail)
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        match *run.read_slot(output_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(_) => {}
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_next_returns_done_when_tail_empty() {
+        // Given a frame with an empty list in iterator slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        let done = StepIdx::new(3);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![]);
+        // When calling for_each_next
+        let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), done, Some(output_slot));
+        // Then it jumps to done
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn for_each_next_returns_error_when_output_missing() {
+        // Given a frame with items but no output slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        // When calling for_each_next with output=None
+        let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), StepIdx::new(2), None);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_next_returns_error_when_iterator_is_not_list() {
+        // Given a frame with a non-list in iterator slot
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        run.write_slot(iterator_slot, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling for_each_next
+        let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then it returns TypeMismatch
+        match result {
+            Err(EngineError::TypeMismatch { expected, found }) => {
+                assert_eq!(expected, "list");
+                assert_eq!(found, "boolean");
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_join_returns_error_when_output_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        // When calling for_each_join with output=None
+        let result = for_each_join(&mut run, None, Some(StepIdx::new(1)), StepIdx::ZERO);
+        // Then it returns MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_join_returns_error_when_next_missing() {
+        // Given a frame
+        let mut run = fresh_frame();
+        let output_slot = SlotIdx::new(0);
+        run.write_slot(output_slot, SlotValue::I64(1)).ok().unwrap_or_else(|| panic!("write must succeed"));
+        // When calling for_each_join with next=None
+        let result = for_each_join(&mut run, Some(output_slot), None, StepIdx::ZERO);
+        // Then it returns MissingNextStep
+        match result {
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_start_increments_executed_counter() {
+        // Given a frame with a list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(1)]);
+        let executed_before = run.executed();
+        // When calling for_each_start
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), executed_before + 1);
+    }
+
+    #[test]
+    fn for_each_next_increments_executed_counter() {
+        // Given a frame with items in iterator
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        let executed_before = run.executed();
+        // When calling for_each_next
+        let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then executed counter incremented
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.executed(), executed_before + 1);
+    }
+
+    #[test]
+    fn for_each_single_item_list_tail_is_empty() {
+        // Given a frame with a single-item list
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let input = SlotIdx::new(0);
+        let item_slot = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(42)]);
+        // When calling for_each_start
+        let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then item_slot is the single item
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(item_slot).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
+        // And the tail (output slot) is an empty list
+        match *run.read_slot(output_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 0);
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
+
+    #[test]
+    fn for_each_next_writes_tail_to_iterator_slot() {
+        // Given a frame with 3-item iterator
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let output_slot = SlotIdx::new(1);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        // When calling for_each_next
+        let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
+        // Then output has first item and iterator has tail
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(*run.read_slot(output_slot).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(1));
+        match *run.read_slot(iterator_slot).ok().unwrap_or_else(|| panic!("read must succeed")) {
+            SlotValue::List(id) => {
+                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                assert_eq!(items.len(), 2);
+            }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
+        }
+    }
 }

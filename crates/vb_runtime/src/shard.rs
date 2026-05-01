@@ -312,7 +312,7 @@ impl Default for ShardConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::{ActionId, SlotIdx, WorkflowDigest};
+    use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
     fn suspended_workflow() -> Option<CompiledWorkflow> {
@@ -481,5 +481,878 @@ mod tests {
                 correlation: 42,
             })
         );
+    }
+
+    // Helper: workflow that finishes immediately (SetConst -> Finish).
+    fn finished_workflow() -> Option<CompiledWorkflow> {
+        let set_const = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("finished"),
+            digest: WorkflowDigest::from_bytes([2; 32]),
+            nodes: Box::from([set_const, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn small_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+        }
+    }
+
+    #[test]
+    fn enqueue_returns_queue_full_when_capacity_exceeded() {
+        // Given a shard with very small command queue
+        let config = ShardConfig {
+            command_queue_capacity: 2,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+        };
+        let shard = Shard::new(config);
+        // When enqueuing more commands than capacity allows
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        // Then the third enqueue returns QueueFull
+        assert_eq!(
+            shard.enqueue(ShardCommand::Shutdown),
+            Err(RuntimeError::QueueFull)
+        );
+    }
+
+    #[test]
+    fn tick_after_shutdown_returns_false() {
+        // Given a shard that has received a shutdown command
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        // When ticking after shutdown
+        assert_eq!(shard.tick(), Ok(false));
+        // Then subsequent tick also returns false (shutting_down flag is set)
+        assert_eq!(shard.tick(), Ok(false));
+    }
+
+    #[test]
+    fn submit_returns_run_already_exists_for_duplicate() {
+        // Given a shard with an active run
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(42);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: workflow.clone(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When submitting the same run ID again
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        // Then tick returns RunAlreadyExists
+        assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    }
+
+    #[test]
+    fn submit_returns_active_run_capacity_exceeded_at_limit() {
+        // Given a shard with max_active_runs = 1 and one active run
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+        };
+        let mut shard = Shard::new(config);
+        let Some(wf) = suspended_workflow() else { return };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(1),
+                workflow: wf,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When submitting a second run
+        let Some(wf2) = suspended_workflow() else { return };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(2),
+                workflow: wf2,
+            }),
+            Ok(())
+        );
+        // Then tick returns ActiveRunCapacityExceeded with capacity 1
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
+        );
+    }
+
+    #[test]
+    fn shard_submit_creates_run_state_in_runs_map() {
+        // Given a shard and a workflow
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(10);
+        // When submitting a run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then inspecting the run returns Found (proving it's in the runs map)
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 1,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let response = shard.take_inspect_response();
+        match response {
+            Some(InspectResponse::Found(snapshot)) => {
+                assert_eq!(snapshot.run, run);
+                assert_eq!(snapshot.correlation, 1);
+            }
+            other => {
+                // Wrong: expected Found
+                assert_eq!(other, None);
+            }
+        }
+    }
+
+    #[test]
+    fn shard_submit_records_run_submitted_trace_event() {
+        // Given a shard and a workflow
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(20);
+        // When submitting a run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the trace ring contains a RunSubmitted event
+        let events = shard.trace_ring_mut().drain();
+        let found = events
+            .iter()
+            .any(|e| *e == TraceEvent::RunSubmitted { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_submit_drives_run_immediately_for_finished_workflow() {
+        // Given a shard and a finished workflow
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = finished_workflow() else { return };
+        let run = RunId::new(30);
+        // When submitting a run with a finishing workflow
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the run is completed (not in runs map anymore) and counter shows completed
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+        // And inspect returns NotFound since the run finished
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 2,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.take_inspect_response(),
+            Some(InspectResponse::NotFound { run, correlation: 2 })
+        );
+    }
+
+    #[test]
+    fn shard_resume_returns_error_for_unknown_run() {
+        // Given a shard with no runs
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When resuming a non-existent run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Resume {
+                run: RunId::new(999),
+            }),
+            Ok(())
+        );
+        // Then tick returns RunNotFound
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn shard_action_completed_returns_error_for_unknown_run() {
+        // Given a shard with no runs
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When completing an action for a non-existent run
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                run: RunId::new(888),
+                step: StepIdx::new(0),
+            }),
+            Ok(())
+        );
+        // Then tick returns RunNotFound
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn shard_action_completed_marks_step_succeeded() {
+        // Given a shard with a suspended run (Do node at step 0)
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(55);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        let tick1 = shard.tick();
+        // Then first tick succeeds (Do node suspends)
+        assert_eq!(tick1, Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+        // When completing the action at step 0
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                run,
+                step: StepIdx::new(0),
+            }),
+            Ok(())
+        );
+        let tick2 = shard.tick();
+        // Then second tick succeeds
+        assert_eq!(tick2, Ok(true));
+        // And the trace ring has an ActionCompleted event
+        let events = shard.trace_ring_mut().drain();
+        let found = events
+            .iter()
+            .any(|e| *e == TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::new(0),
+            });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_action_completed_records_trace_event() {
+        // Given a shard with a suspended run
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(56);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When completing the action
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                run,
+                step: StepIdx::new(0),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the trace ring contains an ActionCompleted event
+        let events = shard.trace_ring_mut().drain();
+        let found = events
+            .iter()
+            .any(|e| *e == TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::new(0),
+            });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_timer_continues_suspended_run() {
+        // Given a shard with a suspended run (Do node)
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(60);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When timer fires for the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::TimerFired { run }),
+            Ok(())
+        );
+        // Then tick succeeds (run is re-driven)
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    #[test]
+    fn shard_timer_returns_error_for_unknown_run() {
+        // Given a shard with no runs
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When timer fires for a non-existent run
+        assert_eq!(
+            shard.enqueue(ShardCommand::TimerFired {
+                run: RunId::new(777),
+            }),
+            Ok(())
+        );
+        // Then tick returns RunNotFound
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn shard_cancel_removes_run_from_runs_map() {
+        // Given a shard with an active run
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(70);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When cancelling the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then inspect returns NotFound (run removed from map)
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 5,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.take_inspect_response(),
+            Some(InspectResponse::NotFound { run, correlation: 5 })
+        );
+    }
+
+    #[test]
+    fn shard_cancel_records_run_failed_trace_event() {
+        // Given a shard with an active run
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(71);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When cancelling the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the trace ring contains a RunFailed event
+        let events = shard.trace_ring_mut().drain();
+        let found = events
+            .iter()
+            .any(|e| *e == TraceEvent::RunFailed { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_cancel_increments_failed_counter() {
+        // Given a shard with an active run
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(72);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When cancelling the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the failed counter is incremented
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    }
+
+    #[test]
+    fn shard_inspect_captures_current_pc() {
+        // Given a shard with an active suspended run at step 0
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(80);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When inspecting the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 10,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the snapshot pc matches the expected program counter
+        match shard.take_inspect_response() {
+            Some(InspectResponse::Found(snapshot)) => {
+                assert_eq!(snapshot.pc, StepIdx::new(0));
+                assert_eq!(snapshot.run, run);
+                assert_eq!(snapshot.correlation, 10);
+            }
+            other => assert_eq!(other, None),
+        }
+    }
+
+    #[test]
+    fn shard_inspect_captures_executed_count() {
+        // Given a shard with a finished workflow (executes 1 step)
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = finished_workflow() else { return };
+        let run = RunId::new(81);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the steps_executed counter reflects execution
+        assert_eq!(shard.counters().snapshot().steps_executed, 1);
+    }
+
+    #[test]
+    fn shard_tick_processes_commands_in_fifo_order() {
+        // Given a shard with two submits enqueued
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(wf1) = finished_workflow() else { return };
+        let Some(wf2) = suspended_workflow() else { return };
+        // When submitting two runs
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(100),
+                workflow: wf1,
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(101),
+                workflow: wf2,
+            }),
+            Ok(())
+        );
+        // Then both ticks succeed in FIFO order
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.tick(), Ok(true));
+        // And counters show both submitted
+        assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+        // And the first run (finished workflow) is completed
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn shard_resume_continues_suspended_run() {
+        // Given a shard with a suspended run (Do node at step 0)
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(90);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When resuming the suspended run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Resume { run }),
+            Ok(())
+        );
+        // Then tick succeeds (run re-enters drive, suspends again on Do)
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    #[test]
+    fn shard_take_inspect_response_returns_none_initially() {
+        // Given a fresh shard
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When taking inspect response without any inspect command
+        let response = shard.take_inspect_response();
+        // Then response is None
+        assert_eq!(response, None);
+    }
+
+    #[test]
+    fn shard_take_inspect_response_clears_after_take() {
+        // Given a shard with an inspect response available
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else { return };
+        let run = RunId::new(95);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 1,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When taking the response
+        let first = shard.take_inspect_response();
+        assert_eq!(first.is_some(), true);
+        // Then a second take returns None
+        let second = shard.take_inspect_response();
+        assert_eq!(second, None);
+    }
+
+    #[test]
+    fn shard_is_shutting_down_defaults_to_false() {
+        // Given a fresh shard
+        let config = small_config();
+        let shard = Shard::new(config);
+        // Then is_shutting_down is false
+        assert_eq!(shard.is_shutting_down(), false);
+    }
+
+    #[test]
+    fn shard_config_default_values() {
+        // Given a default ShardConfig
+        let config = ShardConfig::default();
+        // Then it has reasonable defaults
+        assert_eq!(config.command_queue_capacity, 1024);
+        assert_eq!(config.trace_capacity, 4096);
+        assert_eq!(config.step_budget_per_tick, 1000);
+        assert_eq!(config.max_active_runs, 1024);
+    }
+
+    #[test]
+    fn shard_config_equality_same_values() {
+        // Given two identical configs
+        let a = ShardConfig::default();
+        let b = ShardConfig::default();
+        // Then they are equal
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_config_equality_differs() {
+        // Given two different configs
+        let a = ShardConfig::default();
+        let b = ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 1,
+            step_budget_per_tick: 1,
+            max_active_runs: 1,
+        };
+        // Then they are not equal
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn shard_config_clone_preserves_values() {
+        // Given a config
+        let original = small_config();
+        // When cloning
+        let cloned = original.clone();
+        // Then clone matches original
+        assert_eq!(cloned, original);
+    }
+
+    #[test]
+    fn shard_command_equality_submit() {
+        // Given two identical Submit commands
+        let Some(wf) = suspended_workflow() else { return };
+        let a = ShardCommand::Submit { run: RunId::new(1), workflow: wf.clone() };
+        let b = ShardCommand::Submit { run: RunId::new(1), workflow: wf };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_cancel() {
+        // Given two identical Cancel commands
+        let a = ShardCommand::Cancel { run: RunId::new(1) };
+        let b = ShardCommand::Cancel { run: RunId::new(1) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_differs_run_id() {
+        // Given two Cancel commands with different run IDs
+        let a = ShardCommand::Cancel { run: RunId::new(1) };
+        let b = ShardCommand::Cancel { run: RunId::new(2) };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_shutdown() {
+        // Given two Shutdown commands
+        let a = ShardCommand::Shutdown;
+        let b = ShardCommand::Shutdown;
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_inspect() {
+        // Given two identical Inspect commands
+        let a = ShardCommand::Inspect { run: RunId::new(1), correlation: 42 };
+        let b = ShardCommand::Inspect { run: RunId::new(1), correlation: 42 };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_inspect_differs_correlation() {
+        // Given two Inspect commands with different correlation
+        let a = ShardCommand::Inspect { run: RunId::new(1), correlation: 1 };
+        let b = ShardCommand::Inspect { run: RunId::new(1), correlation: 2 };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_action_completed() {
+        // Given two identical ActionCompleted commands
+        let a = ShardCommand::ActionCompleted { run: RunId::new(1), step: StepIdx::new(0) };
+        let b = ShardCommand::ActionCompleted { run: RunId::new(1), step: StepIdx::new(0) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_timer_fired() {
+        // Given two identical TimerFired commands
+        let a = ShardCommand::TimerFired { run: RunId::new(1) };
+        let b = ShardCommand::TimerFired { run: RunId::new(1) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_command_equality_resume() {
+        // Given two identical Resume commands
+        let a = ShardCommand::Resume { run: RunId::new(1) };
+        let b = ShardCommand::Resume { run: RunId::new(1) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn shard_cancel_nonexistent_does_not_increment_failed() {
+        // Given a shard
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When cancelling a non-existent run
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run: RunId::new(999) }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the failed counter is NOT incremented (run didn't exist)
+        assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    }
+
+    #[test]
+    fn shard_finished_workflow_sets_completed_counter() {
+        // Given a shard with a finished workflow
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(wf) = finished_workflow() else { return };
+        let run = RunId::new(50);
+        assert_eq!(shard.enqueue(ShardCommand::Submit { run, workflow: wf }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        // Then completed counter is 1
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    }
+
+    #[test]
+    fn shard_finished_workflow_produces_run_finished_trace() {
+        // Given a shard with a finished workflow
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        let Some(wf) = finished_workflow() else { return };
+        let run = RunId::new(51);
+        assert_eq!(shard.enqueue(ShardCommand::Submit { run, workflow: wf }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the trace contains RunFinished
+        let events = shard.trace_ring_mut().drain();
+        let found = events.iter().any(|e| *e == TraceEvent::RunFinished { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn shard_inspect_response_not_found_for_unknown_run() {
+        // Given a shard with no runs
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        // When inspecting a non-existent run
+        assert_eq!(shard.enqueue(ShardCommand::Inspect { run: RunId::new(999), correlation: 1 }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        // Then response is NotFound
+        assert_eq!(
+            shard.take_inspect_response(),
+            Some(InspectResponse::NotFound { run: RunId::new(999), correlation: 1 })
+        );
+    }
+
+    #[test]
+    fn inspect_response_found_equality() {
+        // Given two identical Found responses
+        let a = InspectResponse::Found(InspectSnapshot {
+            run: RunId::new(1),
+            correlation: 42,
+            pc: StepIdx::new(0),
+            executed: 5,
+        });
+        let b = InspectResponse::Found(InspectSnapshot {
+            run: RunId::new(1),
+            correlation: 42,
+            pc: StepIdx::new(0),
+            executed: 5,
+        });
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn inspect_response_found_differs_executed() {
+        // Given two Found responses with different executed counts
+        let a = InspectResponse::Found(InspectSnapshot {
+            run: RunId::new(1),
+            correlation: 1,
+            pc: StepIdx::new(0),
+            executed: 5,
+        });
+        let b = InspectResponse::Found(InspectSnapshot {
+            run: RunId::new(1),
+            correlation: 1,
+            pc: StepIdx::new(0),
+            executed: 10,
+        });
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn inspect_response_not_found_equality() {
+        // Given two identical NotFound responses
+        let a = InspectResponse::NotFound { run: RunId::new(1), correlation: 42 };
+        let b = InspectResponse::NotFound { run: RunId::new(1), correlation: 42 };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn run_state_equality() {
+        // Given a suspended workflow and run frame
+        let Some(wf) = suspended_workflow() else { return };
+        let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let state = RunState {
+            frame,
+            workflow: wf.clone(),
+            store: ValueStore::new(),
+        };
+        let frame2 = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let state2 = RunState {
+            frame: frame2,
+            workflow: wf,
+            store: ValueStore::new(),
+        };
+        assert_eq!(state, state2);
     }
 }

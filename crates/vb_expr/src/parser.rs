@@ -396,6 +396,218 @@ mod tests {
         assert!(matches!(result, Err(ExprError::ParseDepthExceeded { .. })));
     }
 
+    // --- BDD parser tests ---
+
+    #[test]
+    fn parse_expr_parses_simple_addition() -> ExprResult<()> {
+        // Given: the expression "5 + 3"
+        // When: parse_expr is called
+        // Then: the AST is Binary(Add, Literal(I64(5)), Literal(I64(3)))
+        let expr = parse("5 + 3")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Add);
+        assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(5)));
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(3)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_operator_precedence_correctly() -> ExprResult<()> {
+        // Given: the expression "1 + 2 * 3"
+        // When: parse_expr is called
+        // Then: multiplication binds tighter than addition
+        let expr = parse("1 + 2 * 3")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Add);
+        assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(1)));
+        let (inner_op, _, _) = as_binary(right)?;
+        assert_eq!(inner_op, BinaryOp::Mul);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_parenthesized_grouping() -> ExprResult<()> {
+        // Given: the expression "(1 + 2) * 3"
+        // When: parse_expr is called
+        // Then: addition is grouped inside the multiplication
+        let expr = parse("(1 + 2) * 3")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Mul);
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(3)));
+        let (inner_op, _, _) = as_binary(left)?;
+        assert_eq!(inner_op, BinaryOp::Add);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_unary_negation() -> ExprResult<()> {
+        // Given: the expression "-5"
+        // When: parse_expr is called
+        // Then: the AST is Unary(Neg, Literal(I64(5)))
+        let expr = parse("-5")?;
+        let (op, inner) = as_unary(&expr)?;
+        assert_eq!(op, UnaryOp::Neg);
+        assert_eq!(*inner, ExprAst::Literal(ExprLiteral::I64(5)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_boolean_not() -> ExprResult<()> {
+        // Given: the expression "not true"
+        // When: parse_expr is called
+        // Then: the AST is Unary(Not, Literal(Bool(true)))
+        let expr = parse("not true")?;
+        let (op, inner) = as_unary(&expr)?;
+        assert_eq!(op, UnaryOp::Not);
+        assert_eq!(*inner, ExprAst::Literal(ExprLiteral::Bool(true)));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_comparison_operators() -> ExprResult<()> {
+        // Given: the expression "5 == 5"
+        // When: parse_expr is called
+        // Then: the AST is Binary(Eq, Literal(I64(5)), Literal(I64(5)))
+        let expr = parse("5 == 5")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Eq);
+        assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(5)));
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(5)));
+
+        let expr_ne = parse("5 != 3")?;
+        let (op_ne, _, _) = as_binary(&expr_ne)?;
+        assert_eq!(op_ne, BinaryOp::NotEq);
+
+        let expr_lt = parse("1 < 2")?;
+        let (op_lt, _, _) = as_binary(&expr_lt)?;
+        assert_eq!(op_lt, BinaryOp::Lt);
+
+        let expr_gt = parse("2 > 1")?;
+        let (op_gt, _, _) = as_binary(&expr_gt)?;
+        assert_eq!(op_gt, BinaryOp::Gt);
+
+        let expr_lte = parse("1 <= 2")?;
+        let (op_lte, _, _) = as_binary(&expr_lte)?;
+        assert_eq!(op_lte, BinaryOp::Lte);
+
+        let expr_gte = parse("2 >= 1")?;
+        let (op_gte, _, _) = as_binary(&expr_gte)?;
+        assert_eq!(op_gte, BinaryOp::Gte);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_logical_and_or() -> ExprResult<()> {
+        // Given: the expression "true and false or true"
+        // When: parse_expr is called
+        // Then: 'or' is the top-level op and 'and' binds tighter
+        let expr = parse("true and false or true")?;
+        let (op, left, right) = as_binary(&expr)?;
+        assert_eq!(op, BinaryOp::Or);
+        assert_eq!(*right, ExprAst::Literal(ExprLiteral::Bool(true)));
+        let (left_op, _, _) = as_binary(left)?;
+        assert_eq!(left_op, BinaryOp::And);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_helper_call_with_arguments() -> ExprResult<()> {
+        // Given: the expression "contains($x, $y)"
+        // When: parse_expr is called
+        // Then: the AST is Helper(Contains, [Reference("$x"), Reference("$y")])
+        let expr = parse("contains($x, $y)")?;
+        let (name, args) = as_helper(&expr)?;
+        assert_eq!(name, ExprHelper::Contains);
+        assert_eq!(args.len(), 2);
+        assert_eq!(args[0], ExprAst::Reference(Box::from("$x")));
+        assert_eq!(args[1], ExprAst::Reference(Box::from("$y")));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_parses_variable_reference() -> ExprResult<()> {
+        // Given: the expression "$data.field"
+        // When: parse_expr is called
+        // Then: the AST is Reference("$data.field")
+        let expr = parse("$data.field")?;
+        assert_eq!(expr, ExprAst::Reference(Box::from("$data.field")));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_returns_error_for_empty_input() -> ExprResult<()> {
+        // Given: an empty token stream (only End)
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken { token }) containing "End"
+        let tokens = crate::lexer::lex_expr("")?;
+        let result = parse_expr(&tokens);
+        let Err(ExprError::UnexpectedToken { token }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedToken".into(),
+            });
+        };
+        assert!(
+            token.contains("End"),
+            "token should contain 'End', got: {token}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_returns_unknown_helper_for_bad_helper() -> ExprResult<()> {
+        // Given: the expression "bogus_func(1)"
+        // When: parse_expr is called
+        // Then: the result is Err(UnknownHelper { helper: "bogus_func" })
+        let result = parse("bogus_func(1)");
+        let Err(ExprError::UnknownHelper { helper }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnknownHelper".into(),
+            });
+        };
+        assert_eq!(helper, "bogus_func");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_returns_wrong_arity_error_for_contains_with_one_arg() -> ExprResult<()> {
+        // Given: the expression "contains(1)" (wrong arity)
+        // When: parse_expr is called
+        // Then: the result is Err(HelperArityMismatch { helper: "contains", expected: 2, actual: 1 })
+        let result = parse("contains(1)");
+        let Err(ExprError::HelperArityMismatch {
+            helper,
+            expected,
+            actual,
+        }) = result
+        else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected HelperArityMismatch".into(),
+            });
+        };
+        assert_eq!(helper, "contains");
+        assert_eq!(expected, 2);
+        assert_eq!(actual, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_returns_error_for_missing_right_paren() -> ExprResult<()> {
+        // Given: the expression "(1 + 2"
+        // When: parse_expr is called
+        // Then: the result is Err(UnexpectedToken { token }) where token mentions right parenthesis
+        let result = parse("(1 + 2");
+        let Err(ExprError::UnexpectedToken { token }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedToken".into(),
+            });
+        };
+        assert!(
+            token.contains("right parenthesis"),
+            "token should mention right parenthesis, got: {token}"
+        );
+        Ok(())
+    }
+
     fn as_binary(expr: &ExprAst) -> ExprResult<(BinaryOp, &ExprAst, &ExprAst)> {
         match expr {
             ExprAst::Binary { op, left, right } => Ok((*op, left, right)),
