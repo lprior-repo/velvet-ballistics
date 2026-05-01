@@ -8,6 +8,7 @@ use crate::limits::{
 };
 use crate::value::SlotValue;
 use bytes::Bytes;
+use indexmap::IndexMap;
 
 /// Deterministic object field stored in insertion order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,6 +25,7 @@ pub struct ValueStore {
     symbols: Vec<Box<str>>,
     lists: Vec<Box<[SlotValue]>>,
     objects: Vec<Box<[ObjectField]>>,
+    object_field_index: Vec<IndexMap<SymbolId, SlotValue>>,
     blobs: Vec<Bytes>,
 }
 
@@ -35,6 +37,7 @@ impl ValueStore {
             symbols: Vec::new(),
             lists: Vec::new(),
             objects: Vec::new(),
+            object_field_index: Vec::new(),
             blobs: Vec::new(),
         }
     }
@@ -62,6 +65,11 @@ impl ValueStore {
         let fields = fields.into();
         validate_object_len(fields.len())?;
         let id = next_object_id(self.objects.len())?;
+        let mut index = IndexMap::new();
+        for field in fields.iter() {
+            index.entry(field.key).or_insert(field.value);
+        }
+        self.object_field_index.push(index);
         self.objects.push(fields);
         Ok(id)
     }
@@ -119,24 +127,15 @@ impl ValueStore {
 
     /// Resolves one object field from an object arena handle.
     pub fn object_field(&self, id: ObjectId, key: SymbolId) -> CoreResult<SlotValue> {
-        let fields = self.object(id)?;
-        let mut index = 0usize;
-        while index < fields.len() {
-            let field = fields
-                .get(index)
-                .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index checked by loop bound",
-                })?;
-            if field.key == key {
-                return Ok(field.value);
-            }
-            index = index
-                .checked_add(1)
-                .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index overflow",
-                })?;
-        }
-        Err(CoreError::ObjectFieldNotFound { field: key })
+        let idx = object_index(id)?;
+        let index = self
+            .object_field_index
+            .get(idx)
+            .ok_or(CoreError::ObjectOutOfBounds { object: id })?;
+        index
+            .get(&key)
+            .copied()
+            .ok_or(CoreError::ObjectFieldNotFound { field: key })
     }
 
     /// Number of stored symbols.
