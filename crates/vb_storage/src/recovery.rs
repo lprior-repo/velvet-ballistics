@@ -3088,11 +3088,11 @@ mod tests {
             slots: vec![],
         };
         let mut tail = Vec::new();
-        for i in 0..50u64 {
+        for i in 0..50u16 {
             tail.push(JournalEvent::StepStarted {
                 run: RunId::new(1000),
-                seq: EventSeq::new(i.saturating_add(1)),
-                step: StepIdx::new(i as u16),
+                seq: EventSeq::new(u64::from(i).saturating_add(1)),
+                step: StepIdx::new(i),
             });
         }
         let mut tracker = ActionReplayTracker::new();

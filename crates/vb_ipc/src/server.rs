@@ -2349,11 +2349,10 @@ mod tests {
         // Then: it succeeds (u32::MAX fits in usize on 64-bit platforms)
         assert!(result.is_ok(), "u32::MAX should fit in usize on 64-bit");
         let Ok(total) = result else { return };
+        let max_payload_len = usize::try_from(u32::MAX).map_or(0, |v| v);
         assert_eq!(
             total,
-            IPC_HEADER_LEN
-                .checked_add(u32::MAX as usize)
-                .map_or(0, |v| v)
+            IPC_HEADER_LEN.checked_add(max_payload_len).map_or(0, |v| v)
         );
     }
 
@@ -2399,12 +2398,9 @@ mod tests {
             let response = frame_error_response(error);
 
             // Then: it's a FrameError with a non-empty message
-            let IpcResponse::FrameError { message } = &response else {
-                panic!("expected FrameError, got {response:?}");
-            };
             assert!(
-                !message.is_empty(),
-                "message should not be empty for {desc}"
+                matches!(&response, IpcResponse::FrameError { message } if !message.is_empty()),
+                "expected non-empty FrameError message for {desc}, got {response:?}"
             );
         }
     }

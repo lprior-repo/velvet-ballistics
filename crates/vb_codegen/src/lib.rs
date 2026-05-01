@@ -4142,7 +4142,7 @@ mod tests {
     #[test]
     fn constant_pool_handles_all_const_value_variants() -> Result<(), String> {
         // Given a workflow with all 5 ConstValue variants
-        let f64_val = vb_core::FiniteF64::new(3.14).map_err(|e| e.to_string())?;
+        let f64_val = vb_core::FiniteF64::new(3.25).map_err(|e| e.to_string())?;
         let parts = WorkflowParts {
             name: Box::<str>::from("test_all_consts"),
             digest: WorkflowDigest::from_bytes([0xB1; 32]),
@@ -4197,7 +4197,7 @@ mod tests {
             "I64 constant must appear"
         );
         assert!(
-            source.contains("SlotValue::F64(3.14"),
+            source.contains("SlotValue::F64(3.25"),
             "F64 constant must appear"
         );
         assert!(
@@ -4744,7 +4744,7 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then SlotValue has PartialEq derived (needed for Eq expression comparison)
-        let slot_value_line = source
+        let _slot_value_line = source
             .lines()
             .find(|l| l.contains("pub enum SlotValue"))
             .ok_or("SlotValue enum line not found")?;

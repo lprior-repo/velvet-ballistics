@@ -5598,7 +5598,7 @@ mod tests {
         if let Some(b) = enc.get_mut(60) {
             *b = 0xFF;
         }
-        let digest_bytes = blake3::hash(&enc[60..]).as_bytes().clone();
+        let digest_bytes = *blake3::hash(&enc[60..]).as_bytes();
         enc.get_mut(24..56)
             .expect("digest")
             .copy_from_slice(&digest_bytes);
@@ -5699,7 +5699,6 @@ mod tests {
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 mod proptests {
-    use super::*;
     use crate::{
         BlobRecord, EventSeq, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord, blob_key,
@@ -5708,10 +5707,6 @@ mod proptests {
     };
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
-
-    fn test_digest(byte: u8) -> WorkflowDigest {
-        WorkflowDigest::from_bytes([byte; 32])
-    }
 
     proptest! {
         #[test]

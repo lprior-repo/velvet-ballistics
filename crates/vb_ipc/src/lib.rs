@@ -2067,17 +2067,10 @@ fn adversarial_encode_payload_exceeding_bound_rejected() {
 
     // Then: either it fits (if Health serializes to 0 or 1 bytes) or PayloadTooLarge
     // Health serializes to a small postcard encoding - check it succeeds or fails correctly
-    match result {
-        Ok(_) => {
-            // Health is small enough even for 1 byte
-        }
-        Err(IpcError::PayloadTooLarge { .. }) => {
-            // Also acceptable
-        }
-        Err(other) => {
-            panic!("unexpected error: {other:?}");
-        }
-    }
+    assert!(
+        matches!(result, Ok(_) | Err(IpcError::PayloadTooLarge { .. })),
+        "expected success or PayloadTooLarge for tiny health frame"
+    );
 }
 
 #[test]

@@ -600,7 +600,7 @@ fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
         }
     };
     let max_payload = vb_ipc::MaxPayloadBytes::new(
-        std::num::NonZeroUsize::new(4096).unwrap_or_else(|| std::num::NonZeroUsize::MIN),
+        std::num::NonZeroUsize::new(4096).unwrap_or(std::num::NonZeroUsize::MIN),
     );
     match vb_ipc::IpcFrameHeader::decode(&encoded, max_payload) {
         Ok(decoded) => {
@@ -628,7 +628,7 @@ fn runtime_to_ipc_payload_too_large_returns_typed_error() {
     // Given: a payload exceeding the limit
     let large_bytes = bytes::Bytes::from(vec![0u8; 2048]);
     let max = vb_ipc::MaxPayloadBytes::new(
-        std::num::NonZeroUsize::new(1024).unwrap_or_else(|| std::num::NonZeroUsize::MIN),
+        std::num::NonZeroUsize::new(1024).unwrap_or(std::num::NonZeroUsize::MIN),
     );
     // When: creating a bounded payload
     let result = vb_ipc::BoundedPayload::new(large_bytes.clone(), max);
@@ -645,7 +645,7 @@ fn runtime_to_ipc_payload_too_large_returns_typed_error() {
 #[test]
 fn runtime_to_ipc_memory_ingress_submit_and_receive_roundtrip() {
     let capacity = vb_ipc::QueueCapacity::new(
-        std::num::NonZeroUsize::new(4).unwrap_or_else(|| std::num::NonZeroUsize::MIN),
+        std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN),
     );
     let max_payload = vb_ipc::MaxPayloadBytes::DEFAULT;
     let ingress = vb_ipc::MemoryIngress::bounded(capacity);
@@ -690,7 +690,7 @@ fn runtime_to_ipc_memory_ingress_submit_and_receive_roundtrip() {
 #[test]
 fn runtime_to_ipc_memory_ingress_queue_full_returns_error() {
     let capacity = vb_ipc::QueueCapacity::new(
-        std::num::NonZeroUsize::new(1).unwrap_or_else(|| std::num::NonZeroUsize::MIN),
+        std::num::NonZeroUsize::new(1).unwrap_or(std::num::NonZeroUsize::MIN),
     );
     let max_payload = vb_ipc::MaxPayloadBytes::DEFAULT;
     let ingress = vb_ipc::MemoryIngress::bounded(capacity);
@@ -1365,7 +1365,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         }
     };
 
-    let shard_count = NonZeroUsize::new(1).unwrap_or_else(|| NonZeroUsize::MIN);
+    let shard_count = NonZeroUsize::new(1).unwrap_or(NonZeroUsize::MIN);
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 256,
@@ -1425,7 +1425,7 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         }
     };
 
-    let shard_count = NonZeroUsize::new(1).unwrap_or_else(|| NonZeroUsize::MIN);
+    let shard_count = NonZeroUsize::new(1).unwrap_or(NonZeroUsize::MIN);
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 256,
@@ -1437,7 +1437,8 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
 
     // When: submitting the same run ID twice, then ticking
     let first = runtime.submit_direct(run_id, workflow.clone());
-    let _ = runtime.tick_all(); // First submission processes
+    let first_tick = runtime.tick_all(); // First submission processes
+    assert!(first_tick.is_ok(), "first tick should succeed");
     let second = runtime.submit_direct(run_id, workflow);
     // The second submission overwrites the first run (current behavior)
     let tick_result = runtime.tick_all();
@@ -1445,5 +1446,8 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
     // Then: both submits succeed and the second overwrites the first
     assert!(first.is_ok(), "first submit should succeed");
     assert!(second.is_ok(), "second submit enqueues to command queue");
-    assert!(tick_result.is_ok(), "second submit overwrites the first run");
+    assert!(
+        tick_result.is_ok(),
+        "second submit overwrites the first run"
+    );
 }
