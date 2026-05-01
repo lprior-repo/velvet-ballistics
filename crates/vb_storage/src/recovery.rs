@@ -573,7 +573,7 @@ mod tests {
     #[test]
     fn recover_runtime_summary_reads_summary_from_journal() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(79);
         let workflow = test_digest(10);
 
@@ -719,7 +719,7 @@ mod tests {
         events: &[JournalEvent],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let temp_dir = tempfile::tempdir()?;
-        let journal = FjallJournal::open(temp_dir.path())?;
+        let journal = FjallJournal::open(temp_dir.path(), None)?;
         append_events(&journal, events)?;
 
         let mut full_tracker = ActionReplayTracker::new();
@@ -1071,7 +1071,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else {
             assert!(false, "journal should open");
@@ -1094,7 +1094,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else {
             assert!(false, "journal should open");
@@ -1270,7 +1270,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1300,7 +1300,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1344,7 +1344,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1376,7 +1376,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1411,7 +1411,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1630,7 +1630,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1732,7 +1732,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1764,7 +1764,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1907,7 +1907,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1928,7 +1928,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -1971,7 +1971,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2010,7 +2010,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2050,7 +2050,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2237,7 +2237,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2272,7 +2272,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2385,7 +2385,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2592,7 +2592,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path());
+        let journal = crate::FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2684,7 +2684,7 @@ mod tests {
         // When FjallJournal::snapshot is called
         // Then it returns None (no corrupt data, just missing)
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let result = journal.snapshot(RunId::new(9999), EventSeq::new(0));
         assert!(result.is_ok());
         let Ok(opt) = result else { return };
@@ -2811,7 +2811,7 @@ mod tests {
         // When check_workflow_source_digest is called with digest [2;32]
         // Then it returns WorkflowSourceDigestMismatch with expected=[2;32], found=[1;32]
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let run = RunId::new(800);
         let stored = adv_digest(1);
         let wrong = adv_digest(2);
@@ -2857,7 +2857,7 @@ mod tests {
         // When recover_full_journal is called
         // Then it returns the single event
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let run = RunId::new(900);
         let event = JournalEvent::RunFinished {
             run,
@@ -2879,7 +2879,7 @@ mod tests {
         // When recover_full_journal is called
         // Then it returns the single event with no terminal
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let run = RunId::new(901);
         let event = JournalEvent::RunAccepted {
             run,
@@ -3201,7 +3201,7 @@ mod tests {
         // When verify_digests is called with Full level
         // Then it returns CompiledIrDigestMismatch
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let run = RunId::new(950);
         let wf_digest = adv_digest(7);
         let event = JournalEvent::RunAccepted {
@@ -3238,7 +3238,7 @@ mod tests {
         let workflow = adv_digest(42);
 
         {
-            let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
+            let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
             journal
                 .append_journaled(&JournalEvent::RunAccepted {
                     run,
@@ -3262,7 +3262,7 @@ mod tests {
             journal.persist_strict().expect("persist");
         }
 
-        let journal2 = FjallJournal::open(temp_dir.path()).expect("reopen");
+        let journal2 = FjallJournal::open(temp_dir.path(), None).expect("reopen");
         let hydration = recover_runtime_summary(&journal2, run).expect("recovery summary");
         let RecoveryHydration::Summary(summary) = hydration;
         assert_eq!(summary.run, run);

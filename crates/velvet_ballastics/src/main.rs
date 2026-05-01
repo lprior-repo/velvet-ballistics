@@ -532,7 +532,7 @@ fn open_storage_runtime_journal(
         errln!("--db is required when --durability is strict or journaled");
         return Err(ExitCode::FAILURE);
     };
-    let journal = match vb_storage::FjallJournal::open(path) {
+    let journal = match vb_storage::FjallJournal::open(path, None) {
         Ok(journal) => Arc::new(journal),
         Err(e) => {
             errln!("error opening journal at {}: {e}", path.display());
@@ -642,7 +642,7 @@ fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
 
 fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     // Open the storage journal to validate the path
-    let journal = match vb_storage::FjallJournal::open(db) {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
             errln!("error opening journal at {}: {e}", db.display());
@@ -709,7 +709,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
         Err(code) => return code,
     };
 
-    let journal = match vb_storage::FjallJournal::open(db) {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
             errln!("error opening journal at {}: {e}", db.display());
@@ -747,7 +747,7 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
         Err(code) => return code,
     };
 
-    let journal = match vb_storage::FjallJournal::open(db) {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
             errln!("error opening journal at {}: {e}", db.display());
@@ -856,7 +856,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
         Err(code) => return code,
     };
 
-    let journal = match vb_storage::FjallJournal::open(db) {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
             errln!("error opening journal at {}: {e}", db.display());
@@ -951,7 +951,7 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
 
 fn cmd_doctor(db: &std::path::Path) -> ExitCode {
     // Check 1: can we open the journal?
-    let journal = match vb_storage::FjallJournal::open(db) {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
             errln!("FAIL: cannot open journal at {}: {e}", db.display());
@@ -1244,7 +1244,7 @@ mod tests {
                 run_compiled_workflow(&compiled, &[], DurabilityMode::Journaled, Some(dir.path()));
             assert_eq!(code, std::process::ExitCode::SUCCESS);
 
-            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
             assert!(journal.is_some(), "journal should reopen");
             if let Some(journal) = journal {
                 let run = vb_core::RunId::new(1);
