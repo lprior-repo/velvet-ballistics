@@ -147,13 +147,20 @@ fn pack_digits(
 const fn is_supported_code(code: u16) -> bool {
     matches!(
         code,
-        0x0101..=0x0109
-            | 0x0111..=0x0119
-            | 0x0201..=0x0209
+        0x0101..=0x010B
+            | 0x0201..=0x0204
             | 0x0301..=0x0309
-            | 0x0401..=0x040D
-            | 0x0411..=0x0414
-            | 0x0501..=0x0505
+            | 0x0401..=0x040C
+            | 0x1001..=0x1002
+            | 0x1011..=0x1013
+            | 0x1101..=0x1104
+            | 0x1201..=0x1202
+            | 0x1301..=0x130D
+            | 0x1311..=0x1314
+            | 0x1401..=0x1405
+            | 0x2001..=0x200F
+            | 0x3001..=0x300E
+            | 0x4001..=0x4015
     )
 }
 
@@ -178,24 +185,24 @@ mod tests {
             Ok(DiagnosticCode::new(0x0101))
         );
         assert_eq!(
-            DiagnosticCode::from_str("E0119"),
-            Ok(DiagnosticCode::new(0x0119))
+            DiagnosticCode::from_str("E010B"),
+            Ok(DiagnosticCode::new(0x010B))
         );
         assert_eq!(
             DiagnosticCode::from_str("E0409"),
             Ok(DiagnosticCode::new(0x0409))
         );
         assert_eq!(
-            DiagnosticCode::from_str("E040D"),
-            Ok(DiagnosticCode::new(0x040D))
+            DiagnosticCode::from_str("E040C"),
+            Ok(DiagnosticCode::new(0x040C))
         );
         assert_eq!(
-            DiagnosticCode::from_str("E0414"),
-            Ok(DiagnosticCode::new(0x0414))
+            DiagnosticCode::from_str("E1314"),
+            Ok(DiagnosticCode::new(0x1314))
         );
         assert_eq!(
-            DiagnosticCode::from_str("E0505"),
-            Ok(DiagnosticCode::new(0x0505))
+            DiagnosticCode::from_str("E4015"),
+            Ok(DiagnosticCode::new(0x4015))
         );
     }
 
@@ -206,7 +213,7 @@ mod tests {
             Err(DiagnosticCodeParseError::InvalidFormat)
         );
         assert_eq!(
-            DiagnosticCode::from_str("E010A"),
+            DiagnosticCode::from_str("E010C"),
             Err(DiagnosticCodeParseError::UnsupportedCode)
         );
         assert_eq!(

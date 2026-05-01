@@ -135,7 +135,7 @@ fn spans_locations_and_source_map_are_constructible() {
 
 #[test]
 fn diagnostics_parse_display_and_own_messages() {
-    let code = DiagnosticCode::new(0x0101);
+    let code = DiagnosticCode::new(0x1001);
     let diagnostic = Diagnostic {
         code,
         message: Box::<str>::from("invalid program counter"),
@@ -143,9 +143,9 @@ fn diagnostics_parse_display_and_own_messages() {
         span: Span::ZERO,
     };
 
-    assert_eq!(code.code(), 0x0101);
-    assert_eq!(code.to_string(), "E0101");
-    assert_eq!(DiagnosticCode::from_str("E0101"), Ok(code));
+    assert_eq!(code.code(), 0x1001);
+    assert_eq!(code.to_string(), "E1001");
+    assert_eq!(DiagnosticCode::from_str("E1001"), Ok(code));
     assert!(DiagnosticCode::from_str("E9999").is_err());
     assert_eq!(diagnostic.severity, Severity::Error);
     assert_eq!(Severity::Warning, Severity::Warning);
@@ -171,9 +171,9 @@ fn core_errors_display_codes_and_engine_alias_convert() {
             step: StepIdx::ZERO
         }
         .diagnostic_code(),
-        DiagnosticCode::new(0x0101)
+        DiagnosticCode::new(0x1001)
     );
-    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x0111));
+    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x1011));
     assert_eq!(engine_to_core(err.clone()), err);
     assert_eq!(err.to_string(), "slot index out of bounds: SlotIdx(0)");
     assert_eq!(

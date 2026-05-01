@@ -171,9 +171,12 @@ impl Runtime {
     }
 
     /// Shuts down all shards gracefully.
-    pub fn shutdown_graceful(&self) -> RuntimeResult<()> {
+    pub fn shutdown_graceful(&mut self) -> RuntimeResult<()> {
         for shard in &self.shards {
             shard.enqueue(ShardCommand::Shutdown)?;
+        }
+        for shard in &mut self.shards {
+            shard.drain_for_shutdown()?;
         }
         self.journal.drain_for_shutdown()?;
         Ok(())
@@ -329,6 +332,36 @@ mod tests {
         let mut runtime = Runtime::new(shard_count, test_config());
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
+    }
+
+    #[test]
+    fn shutdown_graceful_processes_shards_before_journal_drain() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(31);
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+
+        assert_eq!(
+            journal.snapshot(),
+            Ok(vec![
+                RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: WorkflowDigest::from_bytes([2; 32]),
+                },
+                RuntimeJournalEvent::RunFinished {
+                    run,
+                    result: SlotIdx::ZERO,
+                },
+            ])
+        );
     }
 
     #[test]

@@ -638,33 +638,33 @@ impl IpcError {
     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
 
     /// Diagnostic code for queue full.
-    pub const FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0301);
+    pub const FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x3001);
     /// Diagnostic code for disconnected.
-    pub const DISCONNECTED_CODE: DiagnosticCode = DiagnosticCode::new(0x0302);
+    pub const DISCONNECTED_CODE: DiagnosticCode = DiagnosticCode::new(0x3002);
     /// Diagnostic code for payload too large.
-    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x0303);
+    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x3003);
     /// Diagnostic code for invalid magic.
-    pub const INVALID_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x0304);
+    pub const INVALID_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x3004);
     /// Diagnostic code for unsupported version.
-    pub const UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x0305);
+    pub const UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x3005);
     /// Diagnostic code for unknown command.
-    pub const UNKNOWN_COMMAND_CODE: DiagnosticCode = DiagnosticCode::new(0x0306);
+    pub const UNKNOWN_COMMAND_CODE: DiagnosticCode = DiagnosticCode::new(0x3006);
     /// Diagnostic code for reserved non-zero.
-    pub const RESERVED_NON_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x0307);
+    pub const RESERVED_NON_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x3007);
     /// Diagnostic code for payload length mismatch.
-    pub const PAYLOAD_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0308);
+    pub const PAYLOAD_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x3008);
     /// Diagnostic code for header encode failed.
-    pub const HEADER_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0309);
+    pub const HEADER_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x3009);
     /// Diagnostic code for header decode failed.
-    pub const HEADER_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030A);
+    pub const HEADER_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300A);
     /// Diagnostic code for payload length out of range.
-    pub const PAYLOAD_LENGTH_OUT_OF_RANGE_CODE: DiagnosticCode = DiagnosticCode::new(0x030B);
+    pub const PAYLOAD_LENGTH_OUT_OF_RANGE_CODE: DiagnosticCode = DiagnosticCode::new(0x300B);
     /// Diagnostic code for payload encode failed.
-    pub const PAYLOAD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030C);
+    pub const PAYLOAD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300C);
     /// Diagnostic code for payload decode failed.
-    pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030D);
+    pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300D);
     /// Diagnostic code for response decode failed.
-    pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x030E);
+    pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -1986,12 +1986,18 @@ mod tests {
         let errors = [
             IpcError::Full,
             IpcError::Disconnected,
-            IpcError::PayloadTooLarge { actual: 1, limit: 0 },
+            IpcError::PayloadTooLarge {
+                actual: 1,
+                limit: 0,
+            },
             IpcError::InvalidMagic { actual: 0 },
             IpcError::UnsupportedVersion { actual: 0 },
             IpcError::UnknownCommand(0),
             IpcError::ReservedNonZero { actual: 0 },
-            IpcError::PayloadLengthMismatch { header: 0, actual: 0 },
+            IpcError::PayloadLengthMismatch {
+                header: 0,
+                actual: 0,
+            },
             IpcError::HeaderEncodeFailed,
             IpcError::HeaderDecodeFailed,
             IpcError::PayloadLengthOutOfRange { actual: 0 },
@@ -2009,27 +2015,40 @@ mod tests {
 
     #[test]
     fn ipc_error_diagnostic_code_full() {
-        assert_eq!(IpcError::Full.diagnostic_code(), DiagnosticCode::new(0x0301));
+        assert_eq!(
+            IpcError::Full.diagnostic_code(),
+            DiagnosticCode::new(0x3001)
+        );
     }
 
     #[test]
     fn ipc_error_diagnostic_code_disconnected() {
-        assert_eq!(IpcError::Disconnected.diagnostic_code(), DiagnosticCode::new(0x0302));
+        assert_eq!(
+            IpcError::Disconnected.diagnostic_code(),
+            DiagnosticCode::new(0x3002)
+        );
     }
 
     #[test]
     fn ipc_error_diagnostic_code_payload_too_large() {
         assert_eq!(
-            IpcError::PayloadTooLarge { actual: 100, limit: 10 }.diagnostic_code(),
-            DiagnosticCode::new(0x0303)
+            IpcError::PayloadTooLarge {
+                actual: 100,
+                limit: 10
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x3003)
         );
     }
 
     #[test]
     fn ipc_error_diagnostic_code_invalid_magic() {
         assert_eq!(
-            IpcError::InvalidMagic { actual: 0xDEAD_BEEF }.diagnostic_code(),
-            DiagnosticCode::new(0x0304)
+            IpcError::InvalidMagic {
+                actual: 0xDEAD_BEEF
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x3004)
         );
     }
 
@@ -2037,7 +2056,7 @@ mod tests {
     fn ipc_error_diagnostic_code_unsupported_version() {
         assert_eq!(
             IpcError::UnsupportedVersion { actual: 99 }.diagnostic_code(),
-            DiagnosticCode::new(0x0305)
+            DiagnosticCode::new(0x3005)
         );
     }
 
@@ -2045,7 +2064,7 @@ mod tests {
     fn ipc_error_diagnostic_code_unknown_command() {
         assert_eq!(
             IpcError::UnknownCommand(200).diagnostic_code(),
-            DiagnosticCode::new(0x0306)
+            DiagnosticCode::new(0x3006)
         );
     }
 
@@ -2053,15 +2072,19 @@ mod tests {
     fn ipc_error_diagnostic_code_reserved_non_zero() {
         assert_eq!(
             IpcError::ReservedNonZero { actual: 7 }.diagnostic_code(),
-            DiagnosticCode::new(0x0307)
+            DiagnosticCode::new(0x3007)
         );
     }
 
     #[test]
     fn ipc_error_diagnostic_code_payload_length_mismatch() {
         assert_eq!(
-            IpcError::PayloadLengthMismatch { header: 4, actual: 3 }.diagnostic_code(),
-            DiagnosticCode::new(0x0308)
+            IpcError::PayloadLengthMismatch {
+                header: 4,
+                actual: 3
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x3008)
         );
     }
 
@@ -2069,7 +2092,7 @@ mod tests {
     fn ipc_error_diagnostic_code_header_encode_failed() {
         assert_eq!(
             IpcError::HeaderEncodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x0309)
+            DiagnosticCode::new(0x3009)
         );
     }
 
@@ -2077,7 +2100,7 @@ mod tests {
     fn ipc_error_diagnostic_code_header_decode_failed() {
         assert_eq!(
             IpcError::HeaderDecodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x030A)
+            DiagnosticCode::new(0x300A)
         );
     }
 
@@ -2085,7 +2108,7 @@ mod tests {
     fn ipc_error_diagnostic_code_payload_length_out_of_range() {
         assert_eq!(
             IpcError::PayloadLengthOutOfRange { actual: u32::MAX }.diagnostic_code(),
-            DiagnosticCode::new(0x030B)
+            DiagnosticCode::new(0x300B)
         );
     }
 
@@ -2093,7 +2116,7 @@ mod tests {
     fn ipc_error_diagnostic_code_payload_encode_failed() {
         assert_eq!(
             IpcError::PayloadEncodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x030C)
+            DiagnosticCode::new(0x300C)
         );
     }
 
@@ -2101,7 +2124,7 @@ mod tests {
     fn ipc_error_diagnostic_code_payload_decode_failed() {
         assert_eq!(
             IpcError::PayloadDecodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x030D)
+            DiagnosticCode::new(0x300D)
         );
     }
 
@@ -2109,7 +2132,7 @@ mod tests {
     fn ipc_error_diagnostic_code_response_decode_failed() {
         assert_eq!(
             IpcError::ResponseDecodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x030E)
+            DiagnosticCode::new(0x300E)
         );
     }
 }

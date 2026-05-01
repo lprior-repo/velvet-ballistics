@@ -16,8 +16,8 @@ use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
 use crate::{
-    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent,
-    IpcTraceEventKind, MaxPayloadBytes,
+    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent, IpcTraceEventKind,
+    MaxPayloadBytes,
 };
 
 const SERVER_TOKEN: Token = Token(0);
@@ -69,6 +69,13 @@ pub enum IpcResponse {
     },
     /// Payload decode failed.
     BadRequest,
+    /// Typed IPC payload error.
+    PayloadError {
+        /// Stable diagnostic code for the IPC failure.
+        diagnostic: u16,
+        /// Error description.
+        message: String,
+    },
     /// The request payload variant did not match the frame command.
     CommandPayloadMismatch,
     /// The IPC layer needs a workflow resolver before it can submit the run.
@@ -361,9 +368,16 @@ pub fn serve_ipc_with_resolver(
     server.poll_once_with_resolver(runtime, timeout, resolver)
 }
 
-/// Decodes a postcard-encoded payload, returning `IpcResponse::BadRequest` on failure.
+/// Decodes a postcard-encoded payload and preserves the typed IPC decode error.
 fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
-    postcard::from_bytes(payload).map_err(|_| IpcResponse::BadRequest)
+    postcard::from_bytes(payload).map_err(|_| ipc_error_response(IpcError::PayloadDecodeFailed))
+}
+
+fn ipc_error_response(error: IpcError) -> IpcResponse {
+    IpcResponse::PayloadError {
+        diagnostic: error.diagnostic_code().code(),
+        message: error.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -873,8 +887,15 @@ fn send_response(
         u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     // Build the response frame header via IpcFrameHeader::encode (uses byteorder internally).
-    let header = IpcFrameHeader::new(request_header.command, 0, request_header.correlation, payload_len);
-    let header_bytes = header.encode().map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let header = IpcFrameHeader::new(
+        request_header.command,
+        0,
+        request_header.correlation,
+        payload_len,
+    );
+    let header_bytes = header
+        .encode()
+        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     write_buffer.clear();
     write_buffer.extend_from_slice(&header_bytes);
@@ -1013,6 +1034,14 @@ mod tests {
                 }
                 ServerStep::Stop => return,
             }
+        }
+    }
+
+    fn payload_decode_failed_response() -> IpcResponse {
+        let error = IpcError::PayloadDecodeFailed;
+        IpcResponse::PayloadError {
+            diagnostic: error.diagnostic_code().code(),
+            message: error.to_string(),
         }
     }
 
@@ -1612,7 +1641,7 @@ mod tests {
         // When: dispatching with bad payload
         let response = dispatch_command(&header, b"bad", &mut runtime);
 
-        // Then: BadRequest
+        // Then: the syntactically valid but mismatched payload is rejected.
         assert_eq!(response, IpcResponse::BadRequest);
     }
 
@@ -1717,7 +1746,7 @@ mod tests {
         // When: dispatching with bad payload
         let response = dispatch_command(&header, b"bad", &mut runtime);
 
-        // Then: BadRequest
+        // Then: the syntactically valid but mismatched payload is rejected.
         assert_eq!(response, IpcResponse::BadRequest);
     }
 
@@ -1730,7 +1759,7 @@ mod tests {
         // When: dispatching with bad payload
         let response = dispatch_command(&header, b"bad", &mut runtime);
 
-        // Then: BadRequest
+        // Then: the syntactically valid but mismatched payload is rejected.
         assert_eq!(response, IpcResponse::BadRequest);
     }
 
@@ -1784,8 +1813,8 @@ mod tests {
         // When: dispatching with garbage
         let response = dispatch_command(&header, b"\xff\xff\xff\xff", &mut runtime);
 
-        // Then: BadRequest
-        assert_eq!(response, IpcResponse::BadRequest);
+        // Then: the exact IPC payload decode error is preserved.
+        assert_eq!(response, payload_decode_failed_response());
     }
 
     // ── IpcServerError construction tests ──
@@ -2383,8 +2412,8 @@ mod tests {
         // When: dispatching with garbage
         let response = dispatch_command(&header, b"\x00\x01\x02\x03", &mut runtime);
 
-        // Then: BadRequest (postcard decode fails)
-        assert_eq!(response, IpcResponse::BadRequest);
+        // Then: the exact IPC payload decode error is preserved.
+        assert_eq!(response, payload_decode_failed_response());
     }
 
     #[test]
@@ -2594,8 +2623,8 @@ mod tests {
         // When: dispatching
         let response = dispatch_command(&header, &encoded, &mut runtime);
 
-        // Then: BadRequest (inner output postcard decode fails)
-        assert_eq!(response, IpcResponse::BadRequest);
+        // Then: the exact IPC payload decode error is preserved.
+        assert_eq!(response, payload_decode_failed_response());
     }
 
     #[test]

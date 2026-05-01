@@ -1320,7 +1320,7 @@ mod tests {
         assert!(dir.is_some(), "test directory should be available");
 
         if let (Some(compiled), Some(dir)) = (compiled, dir) {
-            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
             assert!(journal.is_some(), "journal should open");
             let Some(journal) = journal else {
                 return;
@@ -1358,7 +1358,7 @@ mod tests {
         let dir = tempfile::tempdir().ok();
         assert!(dir.is_some(), "test directory should be available");
         if let Some(dir) = dir {
-            let journal = vb_storage::FjallJournal::open(dir.path()).ok();
+            let journal = vb_storage::FjallJournal::open(dir.path(), None).ok();
             assert!(journal.is_some(), "journal should open");
             let Some(journal) = journal else {
                 return;

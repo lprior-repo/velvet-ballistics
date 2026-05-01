@@ -625,7 +625,7 @@ mod tests {
     #[test]
     fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let workflow = test_digest(11);
         let incomplete = RunId::new(81);
         let finished = RunId::new(82);
@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn recover_all_incomplete_runs_rejects_header_without_journal() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let journal = FjallJournal::open(dir.path()).expect("journal opens");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(83);
         let workflow = test_digest(12);
 

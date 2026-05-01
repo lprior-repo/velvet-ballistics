@@ -38,6 +38,24 @@ pub enum Token {
     End,
 }
 
+/// Byte span for a token in the expression source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TokenSpan {
+    /// Inclusive start byte offset.
+    pub start: usize,
+    /// Exclusive end byte offset.
+    pub end: usize,
+}
+
+/// Token plus exact source span.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpannedToken {
+    /// Public token.
+    pub token: Token,
+    /// Source byte span.
+    pub span: TokenSpan,
+}
+
 /// Literal value token.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiteralToken {
@@ -91,6 +109,16 @@ pub enum UnaryOp {
 
 /// Tokenizes an expression source string into a bounded token vector.
 pub fn lex_expr(input: &str) -> ExprResult<Vec<Token>> {
+    let spanned = lex_expr_spanned(input)?;
+    let mut tokens = Vec::with_capacity(spanned.len());
+    for token in spanned {
+        tokens.push(token.token);
+    }
+    Ok(tokens)
+}
+
+/// Tokenizes an expression source string into bounded tokens with byte spans.
+pub fn lex_expr_spanned(input: &str) -> ExprResult<Vec<SpannedToken>> {
     if input.len() > MAX_SOURCE_BYTES {
         return Err(ExprError::ExpressionTooLong {
             len: input.len(),
@@ -102,10 +130,11 @@ pub fn lex_expr(input: &str) -> ExprResult<Vec<Token>> {
     let mut lexer = LogosToken::lexer(input);
 
     while let Some(result) = lexer.next() {
+        let span = lexer.span();
         match result {
             Ok(logos_tok) => {
                 let tok = convert_logos_token(logos_tok, lexer.slice())?;
-                push_token(&mut tokens, tok)?;
+                push_spanned_token(&mut tokens, tok, span.start, span.end)?;
             }
             Err(()) => {
                 // Logos reports an error for unrecognized input.
@@ -114,16 +143,13 @@ pub fn lex_expr(input: &str) -> ExprResult<Vec<Token>> {
                 if slice.starts_with('"') {
                     return Err(ExprError::UnterminatedString);
                 }
-                let ch = slice
-                    .chars()
-                    .next()
-                    .ok_or(ExprError::UnexpectedEof)?;
+                let ch = slice.chars().next().ok_or(ExprError::UnexpectedEof)?;
                 return Err(ExprError::UnexpectedChar { ch });
             }
         }
     }
 
-    push_token(&mut tokens, Token::End)?;
+    push_spanned_token(&mut tokens, Token::End, input.len(), input.len())?;
     Ok(tokens)
 }
 
@@ -216,7 +242,7 @@ fn convert_logos_token(tok: LogosToken, slice: &str) -> ExprResult<Token> {
         LogosToken::StringLiteral => {
             // Slice includes the surrounding quotes. Validate termination
             // (guaranteed by the regex) then strip delimiters.
-            let inner = strip_quotes(slice);
+            let inner = strip_quotes(slice)?;
             Ok(Token::Literal(LiteralToken::Text(Box::from(inner))))
         }
         LogosToken::UnterminatedString => Err(ExprError::UnterminatedString),
@@ -247,21 +273,28 @@ fn classify_ident(text: &str) -> Token {
 /// Strips the leading and trailing double-quote from a string literal.
 ///
 /// The caller guarantees `s` starts and ends with `"`.
-fn strip_quotes(s: &str) -> &str {
+fn strip_quotes(s: &str) -> ExprResult<&str> {
     // Length is at least 2 (opening + closing quote).
     let end = s.len().saturating_sub(1);
-    s.get(1..end).unwrap_or("")
+    s.get(1..end).ok_or(ExprError::UnterminatedString)
 }
 
-/// Pushes a token, enforcing the maximum token count.
-fn push_token(tokens: &mut Vec<Token>, token: Token) -> ExprResult<()> {
-    if tokens.len() >= MAX_TOKENS {
+fn push_spanned_token(
+    tokens: &mut Vec<SpannedToken>,
+    token: Token,
+    start: usize,
+    end: usize,
+) -> ExprResult<()> {
+    if token != Token::End && tokens.len() >= MAX_TOKENS {
         return Err(ExprError::ExpressionTooLong {
             len: tokens.len().saturating_add(1),
             max: MAX_TOKENS,
         });
     }
-    tokens.push(token);
+    tokens.push(SpannedToken {
+        token,
+        span: TokenSpan { start, end },
+    });
     Ok(())
 }
 
@@ -366,6 +399,41 @@ mod tests {
             Token::End,
         ];
         assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_spanned_preserves_exact_byte_spans() -> ExprResult<()> {
+        let tokens = lex_expr_spanned("$foo + 12")?;
+        let expected = vec![
+            SpannedToken {
+                token: Token::Reference(Box::from("$foo")),
+                span: TokenSpan { start: 0, end: 4 },
+            },
+            SpannedToken {
+                token: Token::Operator(BinaryOp::Add),
+                span: TokenSpan { start: 5, end: 6 },
+            },
+            SpannedToken {
+                token: Token::Literal(LiteralToken::I64(12)),
+                span: TokenSpan { start: 7, end: 9 },
+            },
+            SpannedToken {
+                token: Token::End,
+                span: TokenSpan { start: 9, end: 9 },
+            },
+        ];
+        assert_eq!(tokens, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn lex_expr_accepts_max_tokens_plus_end_sentinel() -> ExprResult<()> {
+        let source = "1 ".repeat(MAX_TOKENS);
+        let tokens = lex_expr(&source)?;
+        let last = tokens.last().ok_or(ExprError::UnexpectedEof)?;
+        assert_eq!(tokens.len(), MAX_TOKENS.saturating_add(1));
+        assert_eq!(last, &Token::End);
         Ok(())
     }
 

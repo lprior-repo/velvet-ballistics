@@ -1200,31 +1200,50 @@ fn compile_pipeline_uppercase_step_id_rejected() {
 
 #[test]
 fn diagnostic_code_supported_ranges_are_parseable() {
-    // Given: known valid diagnostic codes
-    let codes = [
-        "E0101", "E0201", "E0301", "E0401", "E040D", "E0501", "E0505",
-    ];
-    for code_str in codes {
-        // When: parsing
-        let result = vb_core::diagnostic::DiagnosticCode::from_str(code_str);
-        // Then: parsing succeeds
-        match result {
-            Ok(code) => assert_eq!(code.to_string(), code_str),
-            Err(err) => fail_assert!("code {code_str} should parse, got: {err:?}"),
-        }
-    }
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E0101"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x0101))
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E040C"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x040C))
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E1001"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x1001))
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E200D"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x200D))
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E300E"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x300E))
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E4015"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x4015))
+    );
 }
 
 #[test]
 fn diagnostic_code_unsupported_codes_are_rejected() {
-    // Given: codes outside supported ranges
-    let invalid_codes = ["E010A", "E0410", "E9999", "E0000"];
-    for code_str in invalid_codes {
-        // When: parsing
-        let result = vb_core::diagnostic::DiagnosticCode::from_str(code_str);
-        // Then: parsing fails
-        assert!(result.is_err(), "code {code_str} should be rejected");
-    }
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E010C"),
+        Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E040D"),
+        Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E9999"),
+        Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)
+    );
+    assert_eq!(
+        vb_core::diagnostic::DiagnosticCode::from_str("E0000"),
+        Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)
+    );
 }
 
 // ===========================================================================

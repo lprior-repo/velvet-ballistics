@@ -116,31 +116,32 @@ impl RuntimeError {
     pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
 
     /// Diagnostic code for queue full.
-    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0201);
+    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2001);
     /// Diagnostic code for run not found.
-    pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x0202);
+    pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2002);
     /// Diagnostic code for active run capacity exceeded.
-    pub const ACTIVE_RUN_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x0203);
+    pub const ACTIVE_RUN_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2003);
     /// Diagnostic code for run already exists.
-    pub const RUN_ALREADY_EXISTS_CODE: DiagnosticCode = DiagnosticCode::new(0x0204);
+    pub const RUN_ALREADY_EXISTS_CODE: DiagnosticCode = DiagnosticCode::new(0x2004);
     /// Diagnostic code for unsupported operation.
-    pub const UNSUPPORTED_OPERATION_CODE: DiagnosticCode = DiagnosticCode::new(0x0205);
+    pub const UNSUPPORTED_OPERATION_CODE: DiagnosticCode = DiagnosticCode::new(0x2005);
     /// Diagnostic code for shutdown in progress.
-    pub const SHUTDOWN_IN_PROGRESS_CODE: DiagnosticCode = DiagnosticCode::new(0x0206);
+    pub const SHUTDOWN_IN_PROGRESS_CODE: DiagnosticCode = DiagnosticCode::new(0x2006);
     /// Diagnostic code for journal poisoned.
-    pub const JOURNAL_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x0207);
+    pub const JOURNAL_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x2007);
     /// Diagnostic code for storage journal append failed.
-    pub const STORAGE_JOURNAL_APPEND_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0208);
+    pub const STORAGE_JOURNAL_APPEND_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2008);
     /// Diagnostic code for unsupported async strict ack.
-    pub const UNSUPPORTED_ASYNC_STRICT_ACK_CODE: DiagnosticCode = DiagnosticCode::new(0x0209);
+    pub const UNSUPPORTED_ASYNC_STRICT_ACK_CODE: DiagnosticCode = DiagnosticCode::new(0x2009);
     /// Diagnostic code for frame pool unavailable.
-    pub const FRAME_POOL_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x020A);
+    pub const FRAME_POOL_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x200A);
     /// Diagnostic code for invalid action completion.
-    pub const INVALID_ACTION_COMPLETION_CODE: DiagnosticCode = DiagnosticCode::new(0x020B);
+    pub const INVALID_ACTION_COMPLETION_CODE: DiagnosticCode = DiagnosticCode::new(0x200B);
     /// Diagnostic code for invalid timer fire.
-    pub const INVALID_TIMER_FIRE_CODE: DiagnosticCode = DiagnosticCode::new(0x020C);
+    pub const INVALID_TIMER_FIRE_CODE: DiagnosticCode = DiagnosticCode::new(0x200C);
     /// Diagnostic code for unsupported full recovery hydration.
-    pub const UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE: DiagnosticCode = DiagnosticCode::new(0x020D);
+    pub const UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x200D);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -158,7 +159,9 @@ impl RuntimeError {
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion => Self::INVALID_ACTION_COMPLETION_CODE,
             Self::InvalidTimerFire => Self::INVALID_TIMER_FIRE_CODE,
-            Self::UnsupportedFullRecoveryHydration => Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE,
+            Self::UnsupportedFullRecoveryHydration => {
+                Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
+            }
         }
     }
 
@@ -512,7 +515,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_queue_full() {
         assert_eq!(
             RuntimeError::QueueFull.diagnostic_code(),
-            DiagnosticCode::new(0x0201)
+            DiagnosticCode::new(0x2001)
         );
     }
 
@@ -520,7 +523,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_run_not_found() {
         assert_eq!(
             RuntimeError::RunNotFound.diagnostic_code(),
-            DiagnosticCode::new(0x0202)
+            DiagnosticCode::new(0x2002)
         );
     }
 
@@ -528,7 +531,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_active_run_capacity_exceeded() {
         assert_eq!(
             RuntimeError::ActiveRunCapacityExceeded { capacity: 8 }.diagnostic_code(),
-            DiagnosticCode::new(0x0203)
+            DiagnosticCode::new(0x2003)
         );
     }
 
@@ -536,7 +539,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_run_already_exists() {
         assert_eq!(
             RuntimeError::RunAlreadyExists.diagnostic_code(),
-            DiagnosticCode::new(0x0204)
+            DiagnosticCode::new(0x2004)
         );
     }
 
@@ -544,7 +547,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_unsupported_operation() {
         assert_eq!(
             RuntimeError::UnsupportedOperation { operation: "op" }.diagnostic_code(),
-            DiagnosticCode::new(0x0205)
+            DiagnosticCode::new(0x2005)
         );
     }
 
@@ -552,7 +555,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_shutdown_in_progress() {
         assert_eq!(
             RuntimeError::ShutdownInProgress.diagnostic_code(),
-            DiagnosticCode::new(0x0206)
+            DiagnosticCode::new(0x2006)
         );
     }
 
@@ -560,7 +563,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_journal_poisoned() {
         assert_eq!(
             RuntimeError::JournalPoisoned.diagnostic_code(),
-            DiagnosticCode::new(0x0207)
+            DiagnosticCode::new(0x2007)
         );
     }
 
@@ -568,7 +571,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_storage_journal_append_failed() {
         assert_eq!(
             RuntimeError::StorageJournalAppendFailed.diagnostic_code(),
-            DiagnosticCode::new(0x0208)
+            DiagnosticCode::new(0x2008)
         );
     }
 
@@ -576,7 +579,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_unsupported_async_strict_ack() {
         assert_eq!(
             RuntimeError::UnsupportedAsyncStrictAck.diagnostic_code(),
-            DiagnosticCode::new(0x0209)
+            DiagnosticCode::new(0x2009)
         );
     }
 
@@ -584,7 +587,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_frame_pool_unavailable() {
         assert_eq!(
             RuntimeError::FramePoolUnavailable.diagnostic_code(),
-            DiagnosticCode::new(0x020A)
+            DiagnosticCode::new(0x200A)
         );
     }
 
@@ -592,7 +595,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_invalid_action_completion() {
         assert_eq!(
             RuntimeError::InvalidActionCompletion.diagnostic_code(),
-            DiagnosticCode::new(0x020B)
+            DiagnosticCode::new(0x200B)
         );
     }
 
@@ -600,7 +603,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_invalid_timer_fire() {
         assert_eq!(
             RuntimeError::InvalidTimerFire.diagnostic_code(),
-            DiagnosticCode::new(0x020C)
+            DiagnosticCode::new(0x200C)
         );
     }
 
@@ -608,7 +611,7 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_unsupported_full_recovery_hydration() {
         assert_eq!(
             RuntimeError::UnsupportedFullRecoveryHydration.diagnostic_code(),
-            DiagnosticCode::new(0x020D)
+            DiagnosticCode::new(0x200D)
         );
     }
 }

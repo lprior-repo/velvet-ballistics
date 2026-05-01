@@ -221,7 +221,7 @@ impl RuntimeJournalConfig {
             DurabilityProfile::Journaled => {
                 QueuedStorageRuntimeJournal::shared_journaled(journal, queue)
             }
-            DurabilityProfile::Strict => QueuedStorageRuntimeJournal::shared_strict(journal, queue),
+            DurabilityProfile::Strict => StorageRuntimeJournal::shared_strict(journal),
         }
     }
 }
@@ -878,15 +878,20 @@ mod tests {
         else {
             return;
         };
+        let strict_run = RunId::new(48);
         let strict = RuntimeJournalConfig::new(DurabilityProfile::Strict)
             .shared_journal(journal.clone(), strict_queue.clone());
-        assert!(matches!(
-            strict.append(RuntimeJournalEvent::RunFailed { run }),
-            Err(crate::RuntimeError::UnsupportedAsyncStrictAck)
-        ));
+        assert_eq!(
+            strict.append(RuntimeJournalEvent::RunFailed { run: strict_run }),
+            Ok(())
+        );
         assert!(matches!(
             strict_queue.pending_profile_counts(),
             Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+        assert!(matches!(
+            journal.events_for_run(strict_run),
+            Ok(events) if matches!(events.as_slice(), [JournalEvent::RunFailedEvent { seq, .. }] if *seq == EventSeq::new(0))
         ));
     }
 
@@ -895,7 +900,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let Ok(queue) = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT).map(Arc::new) else {
@@ -938,7 +943,7 @@ mod tests {
         let Some(dir) = tempfile::tempdir().ok() else {
             return;
         };
-        let Some(journal) = FjallJournal::open(dir.path()).ok().map(Arc::new) else {
+        let Some(journal) = FjallJournal::open(dir.path(), None).ok().map(Arc::new) else {
             return;
         };
         let Ok(queue) = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).map(Arc::new) else {

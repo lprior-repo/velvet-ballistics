@@ -194,73 +194,73 @@ pub enum CoreError {
 
 impl CoreError {
     /// Historical invalid program-counter code.
-    pub const DIAGNOSTIC_CODE: u16 = 0x0101;
+    pub const DIAGNOSTIC_CODE: u16 = 0x1001;
     /// Invalid program counter diagnostic code.
-    pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = DiagnosticCode::new(0x0101);
+    pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = DiagnosticCode::new(0x1001);
     /// Missing next step diagnostic code.
-    pub const MISSING_NEXT_STEP_CODE: DiagnosticCode = DiagnosticCode::new(0x0102);
+    pub const MISSING_NEXT_STEP_CODE: DiagnosticCode = DiagnosticCode::new(0x1002);
     /// Slot out-of-bounds diagnostic code.
-    pub const SLOT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0111);
+    pub const SLOT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1011);
     /// Expression out-of-bounds diagnostic code.
-    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0112);
+    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
     /// Constant out-of-bounds diagnostic code.
-    pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0113);
+    pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1013);
     /// Type mismatch diagnostic code.
-    pub const TYPE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0201);
+    pub const TYPE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x1101);
     /// Non-boolean condition diagnostic code.
-    pub const NON_BOOL_CONDITION_CODE: DiagnosticCode = DiagnosticCode::new(0x0204);
+    pub const NON_BOOL_CONDITION_CODE: DiagnosticCode = DiagnosticCode::new(0x1104);
     /// Non-finite number diagnostic code.
-    pub const NON_FINITE_NUMBER_CODE: DiagnosticCode = DiagnosticCode::new(0x0202);
+    pub const NON_FINITE_NUMBER_CODE: DiagnosticCode = DiagnosticCode::new(0x1102);
     /// Division by zero diagnostic code.
-    pub const DIVISION_BY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x0203);
+    pub const DIVISION_BY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x1103);
     /// Step budget exhausted diagnostic code.
-    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x0301);
+    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1201);
     /// Step counter overflow diagnostic code.
-    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x0302);
+    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1202);
     /// Queue full diagnostic code.
-    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0401);
+    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x1301);
     /// Resource limit exceeded diagnostic code.
-    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x0402);
+    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1302);
     /// Allocation failed diagnostic code.
-    pub const ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0403);
+    pub const ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x1303);
     /// Expression stack overflow diagnostic code.
-    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x0404);
+    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1304);
     /// Missing output slot diagnostic code.
-    pub const MISSING_OUTPUT_SLOT_CODE: DiagnosticCode = DiagnosticCode::new(0x0405);
+    pub const MISSING_OUTPUT_SLOT_CODE: DiagnosticCode = DiagnosticCode::new(0x1305);
     /// Step state out-of-bounds diagnostic code.
-    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0406);
+    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1306);
     /// Invalid compiled workflow diagnostic code.
-    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x0407);
+    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1307);
     /// Unsupported primitive diagnostic code.
-    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode = DiagnosticCode::new(0x0408);
+    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode = DiagnosticCode::new(0x1308);
     /// Internal invariant diagnostic code.
-    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x0409);
+    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x1309);
     /// Unsupported accessor traversal diagnostic code.
-    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = DiagnosticCode::new(0x040A);
+    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = DiagnosticCode::new(0x130A);
     /// Object accessor field not found diagnostic code.
-    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x040C);
+    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x130C);
     /// List accessor index out-of-bounds diagnostic code.
-    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x040D);
+    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x130D);
     /// Expression stack underflow diagnostic code.
-    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x040B);
+    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x130B);
     /// Symbol handle out-of-bounds diagnostic code.
-    pub const SYMBOL_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0411);
+    pub const SYMBOL_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1311);
     /// List handle out-of-bounds diagnostic code.
-    pub const LIST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0412);
+    pub const LIST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1312);
     /// Object handle out-of-bounds diagnostic code.
-    pub const OBJECT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0413);
+    pub const OBJECT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1313);
     /// Blob handle out-of-bounds diagnostic code.
-    pub const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x0414);
+    pub const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1314);
     /// Iteration limit exceeded diagnostic code.
-    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x0501);
+    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1401);
     /// Repeat exhausted diagnostic code.
-    pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x0502);
+    pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1402);
     /// Collect page limit exceeded diagnostic code.
-    pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x0503);
+    pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1403);
     /// Collect item limit exceeded diagnostic code.
-    pub const COLLECT_ITEM_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x0504);
+    pub const COLLECT_ITEM_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1404);
     /// Together branch limit exceeded diagnostic code.
-    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x0505);
+    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1405);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -370,7 +370,7 @@ mod tests {
         let error = CoreError::InvalidProgramCounter {
             step: StepIdx::new(5),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0101));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1001));
         assert_eq!(error.to_string(), "invalid program counter: StepIdx(5)");
     }
 
@@ -379,7 +379,7 @@ mod tests {
         let error = CoreError::MissingNextStep {
             step: StepIdx::new(3),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0102));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1002));
         assert_eq!(error.to_string(), "missing next step for StepIdx(3)");
     }
 
@@ -388,7 +388,7 @@ mod tests {
         let error = CoreError::SlotOutOfBounds {
             slot: SlotIdx::new(99),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0111));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1011));
         assert_eq!(error.to_string(), "slot index out of bounds: SlotIdx(99)");
     }
 
@@ -397,7 +397,7 @@ mod tests {
         let error = CoreError::ExprOutOfBounds {
             expr: ExprIdx::new(7),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0112));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1012));
         assert_eq!(
             error.to_string(),
             "expression index out of bounds: ExprIdx(7)"
@@ -409,7 +409,7 @@ mod tests {
         let error = CoreError::ConstOutOfBounds {
             index: ConstIdx::new(12),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0113));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1013));
         assert_eq!(
             error.to_string(),
             "constant index out of bounds: ConstIdx(12)"
@@ -421,7 +421,7 @@ mod tests {
         let error = CoreError::MissingOutputSlot {
             step: StepIdx::new(2),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0405));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1305));
         assert_eq!(error.to_string(), "missing output slot for StepIdx(2)");
     }
 
@@ -430,7 +430,7 @@ mod tests {
         let error = CoreError::StepStateOutOfBounds {
             step: StepIdx::new(200),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0406));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1306));
         assert_eq!(
             error.to_string(),
             "step state index out of bounds: StepIdx(200)"
@@ -443,7 +443,7 @@ mod tests {
             expected: "number",
             found: "boolean",
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0201));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1101));
         assert_eq!(
             error.to_string(),
             "type mismatch: expected number, found boolean"
@@ -455,7 +455,7 @@ mod tests {
         let error = CoreError::NonBoolCondition {
             slot: SlotIdx::new(4),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0204));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1104));
         assert_eq!(
             error.to_string(),
             "type mismatch: expected boolean, found slot SlotIdx(4)"
@@ -465,70 +465,70 @@ mod tests {
     #[test]
     fn core_error_diagnostic_code_division_by_zero() {
         let error = CoreError::DivisionByZero;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0203));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1103));
         assert_eq!(error.to_string(), "division by zero");
     }
 
     #[test]
     fn core_error_diagnostic_code_non_finite_number() {
         let error = CoreError::NonFiniteNumber;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0202));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1102));
         assert_eq!(error.to_string(), "non-finite number is not allowed");
     }
 
     #[test]
     fn core_error_diagnostic_code_step_budget_exhausted() {
         let error = CoreError::StepBudgetExhausted;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0301));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1201));
         assert_eq!(error.to_string(), "step budget exhausted");
     }
 
     #[test]
     fn core_error_diagnostic_code_step_counter_overflow() {
         let error = CoreError::StepCounterOverflow;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0302));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1202));
         assert_eq!(error.to_string(), "step counter overflow");
     }
 
     #[test]
     fn core_error_diagnostic_code_queue_full() {
         let error = CoreError::QueueFull;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0401));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1301));
         assert_eq!(error.to_string(), "queue full");
     }
 
     #[test]
     fn core_error_diagnostic_code_resource_limit_exceeded() {
         let error = CoreError::ResourceLimitExceeded { resource: "memory" };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0402));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1302));
         assert_eq!(error.to_string(), "resource limit exceeded: memory");
     }
 
     #[test]
     fn core_error_diagnostic_code_allocation_failed() {
         let error = CoreError::AllocationFailed;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0403));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1303));
         assert_eq!(error.to_string(), "allocation failed");
     }
 
     #[test]
     fn core_error_diagnostic_code_expression_stack_overflow() {
         let error = CoreError::ExpressionStackOverflow { max: 64 };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0404));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1304));
         assert_eq!(error.to_string(), "expression stack overflow: max 64");
     }
 
     #[test]
     fn core_error_diagnostic_code_expression_stack_underflow() {
         let error = CoreError::ExpressionStackUnderflow;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040B));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x130B));
         assert_eq!(error.to_string(), "expression stack underflow");
     }
 
     #[test]
     fn core_error_diagnostic_code_invalid_compiled_workflow() {
         let error = CoreError::InvalidCompiledWorkflow { reason: "bad node" };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0407));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1307));
         assert_eq!(error.to_string(), "invalid compiled workflow: bad node");
     }
 
@@ -537,7 +537,7 @@ mod tests {
         let error = CoreError::UnsupportedPrimitive {
             primitive: "fancy_op",
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0408));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1308));
         assert_eq!(error.to_string(), "unsupported primitive: fancy_op");
     }
 
@@ -547,7 +547,7 @@ mod tests {
             segment: "field",
             found: "list",
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040A));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x130A));
         assert_eq!(
             error.to_string(),
             "unsupported accessor traversal: field on list"
@@ -559,14 +559,14 @@ mod tests {
         let error = CoreError::ObjectFieldNotFound {
             field: SymbolId::new(42),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040C));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x130C));
         assert_eq!(error.to_string(), "object field not found: SymbolId(42)");
     }
 
     #[test]
     fn core_error_diagnostic_code_list_index_out_of_bounds() {
         let error = CoreError::ListIndexOutOfBounds { index: 10 };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x040D));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x130D));
         assert_eq!(error.to_string(), "list index out of bounds: 10");
     }
 
@@ -575,7 +575,7 @@ mod tests {
         let error = CoreError::InternalInvariantViolation {
             reason: "impossible",
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0409));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1309));
         assert_eq!(
             error.to_string(),
             "internal invariant violation: impossible"
@@ -587,7 +587,7 @@ mod tests {
         let error = CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(100),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0411));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1311));
         assert_eq!(error.to_string(), "symbol id out of bounds: SymbolId(100)");
     }
 
@@ -596,7 +596,7 @@ mod tests {
         let error = CoreError::ListOutOfBounds {
             list: ListId::new(7),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0412));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1312));
         assert_eq!(error.to_string(), "list id out of bounds: ListId(7)");
     }
 
@@ -605,7 +605,7 @@ mod tests {
         let error = CoreError::ObjectOutOfBounds {
             object: ObjectId::new(3),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0413));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1313));
         assert_eq!(error.to_string(), "object id out of bounds: ObjectId(3)");
     }
 
@@ -614,7 +614,7 @@ mod tests {
         let error = CoreError::BlobOutOfBounds {
             blob: BlobId::new(9),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0414));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1314));
         assert_eq!(error.to_string(), "blob id out of bounds: BlobId(9)");
     }
 
@@ -623,35 +623,35 @@ mod tests {
         let error = CoreError::IterationLimitExceeded {
             resource: "for_each",
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0501));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1401));
         assert_eq!(error.to_string(), "iteration limit exceeded: for_each");
     }
 
     #[test]
     fn core_error_diagnostic_code_repeat_exhausted() {
         let error = CoreError::RepeatExhausted { max: 5 };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0502));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1402));
         assert_eq!(error.to_string(), "repeat exhausted max attempts: 5");
     }
 
     #[test]
     fn core_error_diagnostic_code_collect_page_limit_exceeded() {
         let error = CoreError::CollectPageLimitExceeded;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0503));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1403));
         assert_eq!(error.to_string(), "collect page limit exceeded");
     }
 
     #[test]
     fn core_error_diagnostic_code_collect_item_limit_exceeded() {
         let error = CoreError::CollectItemLimitExceeded;
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0504));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1404));
         assert_eq!(error.to_string(), "collect item limit exceeded");
     }
 
     #[test]
     fn core_error_diagnostic_code_together_branch_limit_exceeded() {
         let error = CoreError::TogetherBranchLimitExceeded { max: 32 };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x0505));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1405));
         assert_eq!(error.to_string(), "together branch limit exceeded: 32");
     }
 

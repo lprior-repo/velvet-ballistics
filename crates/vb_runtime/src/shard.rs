@@ -240,6 +240,19 @@ impl Shard {
         Ok(true)
     }
 
+    /// Processes queued commands through the shutdown marker.
+    pub fn drain_for_shutdown(&mut self) -> RuntimeResult<()> {
+        let limit = self.command_queue.capacity();
+        let mut processed = 0usize;
+        while processed < limit {
+            if !self.tick()? {
+                return Ok(());
+            }
+            processed = processed.saturating_add(1);
+        }
+        Err(RuntimeError::ShutdownInProgress)
+    }
+
     /// Returns a reference to the shard counters.
     #[must_use]
     pub const fn counters(&self) -> &ShardCounters {

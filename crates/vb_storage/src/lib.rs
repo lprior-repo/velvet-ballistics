@@ -259,40 +259,69 @@ impl JournalWriterQueue {
         &self,
         journal: &FjallJournal,
     ) -> Result<JournalWriterFlushReport, JournalError> {
-        let mut drained = 0usize;
+        let mut pending = self
+            .pending
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let mut batch_len = 0usize;
         let mut has_strict = false;
-        let mut batch = Vec::new();
 
-        while drained < self.batch_size {
-            let item = {
-                let mut pending = self
-                    .pending
-                    .lock()
-                    .map_err(|_| JournalError::WriteLockPoisoned)?;
-                pending.pop_front()
-            };
-            let Some(item) = item else {
+        while batch_len < self.batch_size {
+            let Some(item) = pending.get(batch_len) else {
                 break;
             };
-            drained = drained.saturating_add(1);
             if item.profile == DurabilityProfile::Strict {
                 has_strict = true;
             }
-            batch.push(item.event);
+            batch_len = batch_len.saturating_add(1);
         }
 
-        if !batch.is_empty() {
-            for event in &batch {
-                journal.append_unpersisted(event)?;
+        if batch_len == 0 {
+            return Ok(JournalWriterFlushReport {
+                drained: 0,
+                written: 0,
+            });
+        }
+
+        if has_strict {
+            let mut written = 0usize;
+            while written < batch_len {
+                let Some(item) = pending.get(written) else {
+                    break;
+                };
+                journal.append_unpersisted(&item.event)?;
+                written = written.saturating_add(1);
             }
-            if has_strict {
-                journal.persist_strict()?;
+            journal.persist_strict()?;
+            let mut drained = 0usize;
+            while drained < written {
+                match pending.pop_front() {
+                    Some(_) => {
+                        drained = drained.saturating_add(1);
+                    }
+                    None => return Err(JournalError::WriteLockPoisoned),
+                }
+            }
+            return Ok(JournalWriterFlushReport { drained, written });
+        }
+
+        let mut written = 0usize;
+        while written < batch_len {
+            let Some(item) = pending.front().cloned() else {
+                break;
+            };
+            journal.append_unpersisted(&item.event)?;
+            match pending.pop_front() {
+                Some(_) => {
+                    written = written.saturating_add(1);
+                }
+                None => return Err(JournalError::WriteLockPoisoned),
             }
         }
 
         Ok(JournalWriterFlushReport {
-            drained,
-            written: batch.len(),
+            drained: written,
+            written,
         })
     }
 
@@ -979,10 +1008,7 @@ pub struct FjallJournal {
 
 impl FjallJournal {
     /// Opens or creates the journal at `path`.
-    pub fn open(
-        path: impl AsRef<Path>,
-        config: Option<FjallConfig>,
-    ) -> Result<Self, JournalError> {
+    pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
         let config = config.unwrap_or_default();
         let database = fjall::Database::builder(path)
             .cache_size(config.cache_size_bytes)
@@ -1231,6 +1257,10 @@ impl FjallJournal {
     }
 
     pub(crate) fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = journal_key(event.run_id(), event.seq())?;
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
@@ -1503,47 +1533,47 @@ pub enum JournalError {
 
 impl JournalError {
     /// Diagnostic code for fjall operation failure.
-    pub const FJALL_CODE: DiagnosticCode = DiagnosticCode::new(0x0401);
+    pub const FJALL_CODE: DiagnosticCode = DiagnosticCode::new(0x4001);
     /// Diagnostic code for binary encoding failure.
-    pub const ENCODE_CODE: DiagnosticCode = DiagnosticCode::new(0x0402);
+    pub const ENCODE_CODE: DiagnosticCode = DiagnosticCode::new(0x4002);
     /// Diagnostic code for key capacity exceeded.
-    pub const KEY_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x0403);
+    pub const KEY_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x4003);
     /// Diagnostic code for duplicate event.
-    pub const DUPLICATE_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x0404);
+    pub const DUPLICATE_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x4004);
     /// Diagnostic code for write lock poisoned.
-    pub const WRITE_LOCK_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x0405);
+    pub const WRITE_LOCK_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x4005);
     /// Diagnostic code for queue capacity zero.
-    pub const QUEUE_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x0406);
+    pub const QUEUE_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x4006);
     /// Diagnostic code for queue full.
-    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x0407);
+    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x4007);
     /// Diagnostic code for wrong run.
-    pub const WRONG_RUN_CODE: DiagnosticCode = DiagnosticCode::new(0x0408);
+    pub const WRONG_RUN_CODE: DiagnosticCode = DiagnosticCode::new(0x4008);
     /// Diagnostic code for sequence gap.
-    pub const SEQUENCE_GAP_CODE: DiagnosticCode = DiagnosticCode::new(0x0409);
+    pub const SEQUENCE_GAP_CODE: DiagnosticCode = DiagnosticCode::new(0x4009);
     /// Diagnostic code for sequence overflow.
-    pub const SEQUENCE_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x040A);
+    pub const SEQUENCE_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x400A);
     /// Diagnostic code for bad magic.
-    pub const BAD_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x040B);
+    pub const BAD_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x400B);
     /// Diagnostic code for unsupported schema version.
-    pub const UNSUPPORTED_SCHEMA_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x040C);
+    pub const UNSUPPORTED_SCHEMA_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x400C);
     /// Diagnostic code for migration required.
-    pub const MIGRATION_REQUIRED_CODE: DiagnosticCode = DiagnosticCode::new(0x040D);
+    pub const MIGRATION_REQUIRED_CODE: DiagnosticCode = DiagnosticCode::new(0x400D);
     /// Diagnostic code for unknown record kind.
-    pub const UNKNOWN_RECORD_KIND_CODE: DiagnosticCode = DiagnosticCode::new(0x040E);
+    pub const UNKNOWN_RECORD_KIND_CODE: DiagnosticCode = DiagnosticCode::new(0x400E);
     /// Diagnostic code for record kind family mismatch.
-    pub const RECORD_KIND_FAMILY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x040F);
+    pub const RECORD_KIND_FAMILY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x400F);
     /// Diagnostic code for header length mismatch.
-    pub const HEADER_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0410);
+    pub const HEADER_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4010);
     /// Diagnostic code for payload too large.
-    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x0411);
+    pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x4011);
     /// Diagnostic code for header checksum mismatch.
-    pub const HEADER_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0412);
+    pub const HEADER_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4012);
     /// Diagnostic code for payload digest mismatch.
-    pub const PAYLOAD_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x0413);
+    pub const PAYLOAD_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4013);
     /// Diagnostic code for unexpected eof.
-    pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x0414);
+    pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x4014);
     /// Diagnostic code for postcard decode failed.
-    pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x0415);
+    pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4015);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -2211,7 +2241,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok(), "tempdir should be created");
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok(), "journal should open");
         let Ok(journal) = journal else { return };
 
@@ -2249,7 +2279,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2298,7 +2328,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok());
         let Ok(journal) = journal else { return };
 
@@ -2381,7 +2411,7 @@ mod tests {
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path());
+        let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok(), "journal should open with tuned keyspaces");
     }
 
@@ -6240,7 +6270,7 @@ mod tests {
     #[test]
     fn journal_writer_queue_drain_all_flushes_until_empty() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("opens");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
         let queue = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT).expect("q");
         let run = RunId::new(2);
         let workflow = test_digest(2);
@@ -6268,6 +6298,37 @@ mod tests {
             Ok(report) if report.drained == 2 && report.written == 2
         ));
         assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
+    }
+
+    #[test]
+    fn journal_writer_queue_retains_events_when_append_fails() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(3);
+        let duplicate = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(3),
+        };
+        let next = JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+        };
+
+        assert!(matches!(journal.append_journaled(&duplicate), Ok(())));
+        assert!(matches!(queue.enqueue_journaled(duplicate), Ok(())));
+        assert!(matches!(queue.enqueue_journaled(next), Ok(())));
+
+        assert!(matches!(
+            queue.flush_batch(&journal),
+            Err(JournalError::DuplicateEvent { run: found, seq })
+                if found == run && seq == EventSeq::new(0)
+        ));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 2 && counts.strict == 0
+        ));
     }
 
     // =========================================================================
@@ -6417,10 +6478,7 @@ mod tests {
             JournalError::UnsupportedSchemaVersion { version: 0 },
             JournalError::MigrationRequired { from: 0, to: 1 },
             JournalError::UnknownRecordKind { kind: 0 },
-            JournalError::RecordKindFamilyMismatch {
-                magic: 0,
-                kind: 0,
-            },
+            JournalError::RecordKindFamilyMismatch { magic: 0, kind: 0 },
             JournalError::HeaderLengthMismatch { found: 0 },
             JournalError::PayloadTooLarge { len: 0, max: 0 },
         ];
@@ -6437,7 +6495,7 @@ mod tests {
         // Fjall and Encode variants hold external errors; we verify via KeyCapacity
         assert_eq!(
             JournalError::KeyCapacity.diagnostic_code(),
-            DiagnosticCode::new(0x0403)
+            DiagnosticCode::new(0x4003)
         );
     }
 
@@ -6449,7 +6507,7 @@ mod tests {
                 seq: EventSeq::new(7),
             }
             .diagnostic_code(),
-            DiagnosticCode::new(0x0404)
+            DiagnosticCode::new(0x4004)
         );
     }
 
@@ -6457,7 +6515,7 @@ mod tests {
     fn journal_error_diagnostic_code_write_lock_poisoned() {
         assert_eq!(
             JournalError::WriteLockPoisoned.diagnostic_code(),
-            DiagnosticCode::new(0x0405)
+            DiagnosticCode::new(0x4005)
         );
     }
 
@@ -6465,7 +6523,7 @@ mod tests {
     fn journal_error_diagnostic_code_queue_capacity() {
         assert_eq!(
             JournalError::QueueCapacity.diagnostic_code(),
-            DiagnosticCode::new(0x0406)
+            DiagnosticCode::new(0x4006)
         );
     }
 
@@ -6473,7 +6531,7 @@ mod tests {
     fn journal_error_diagnostic_code_queue_full() {
         assert_eq!(
             JournalError::QueueFull.diagnostic_code(),
-            DiagnosticCode::new(0x0407)
+            DiagnosticCode::new(0x4007)
         );
     }
 
@@ -6485,7 +6543,7 @@ mod tests {
                 actual: RunId::new(2),
             }
             .diagnostic_code(),
-            DiagnosticCode::new(0x0408)
+            DiagnosticCode::new(0x4008)
         );
     }
 
@@ -6497,7 +6555,7 @@ mod tests {
                 actual: EventSeq::new(1),
             }
             .diagnostic_code(),
-            DiagnosticCode::new(0x0409)
+            DiagnosticCode::new(0x4009)
         );
     }
 
@@ -6505,7 +6563,7 @@ mod tests {
     fn journal_error_diagnostic_code_sequence_overflow() {
         assert_eq!(
             JournalError::SequenceOverflow.diagnostic_code(),
-            DiagnosticCode::new(0x040A)
+            DiagnosticCode::new(0x400A)
         );
     }
 
@@ -6513,7 +6571,7 @@ mod tests {
     fn journal_error_diagnostic_code_bad_magic() {
         assert_eq!(
             JournalError::BadMagic { found: 0xDEAD_BEEF }.diagnostic_code(),
-            DiagnosticCode::new(0x040B)
+            DiagnosticCode::new(0x400B)
         );
     }
 
@@ -6521,7 +6579,7 @@ mod tests {
     fn journal_error_diagnostic_code_unsupported_schema_version() {
         assert_eq!(
             JournalError::UnsupportedSchemaVersion { version: 99 }.diagnostic_code(),
-            DiagnosticCode::new(0x040C)
+            DiagnosticCode::new(0x400C)
         );
     }
 
@@ -6529,7 +6587,7 @@ mod tests {
     fn journal_error_diagnostic_code_migration_required() {
         assert_eq!(
             JournalError::MigrationRequired { from: 0, to: 1 }.diagnostic_code(),
-            DiagnosticCode::new(0x040D)
+            DiagnosticCode::new(0x400D)
         );
     }
 
@@ -6537,7 +6595,7 @@ mod tests {
     fn journal_error_diagnostic_code_unknown_record_kind() {
         assert_eq!(
             JournalError::UnknownRecordKind { kind: 200 }.diagnostic_code(),
-            DiagnosticCode::new(0x040E)
+            DiagnosticCode::new(0x400E)
         );
     }
 
@@ -6549,7 +6607,7 @@ mod tests {
                 kind: 1,
             }
             .diagnostic_code(),
-            DiagnosticCode::new(0x040F)
+            DiagnosticCode::new(0x400F)
         );
     }
 
@@ -6557,7 +6615,7 @@ mod tests {
     fn journal_error_diagnostic_code_header_length_mismatch() {
         assert_eq!(
             JournalError::HeaderLengthMismatch { found: 99 }.diagnostic_code(),
-            DiagnosticCode::new(0x0410)
+            DiagnosticCode::new(0x4010)
         );
     }
 
@@ -6565,7 +6623,7 @@ mod tests {
     fn journal_error_diagnostic_code_payload_too_large() {
         assert_eq!(
             JournalError::PayloadTooLarge { len: 200, max: 10 }.diagnostic_code(),
-            DiagnosticCode::new(0x0411)
+            DiagnosticCode::new(0x4011)
         );
     }
 
@@ -6573,7 +6631,7 @@ mod tests {
     fn journal_error_diagnostic_code_header_checksum_mismatch() {
         assert_eq!(
             JournalError::HeaderChecksumMismatch.diagnostic_code(),
-            DiagnosticCode::new(0x0412)
+            DiagnosticCode::new(0x4012)
         );
     }
 
@@ -6581,7 +6639,7 @@ mod tests {
     fn journal_error_diagnostic_code_payload_digest_mismatch() {
         assert_eq!(
             JournalError::PayloadDigestMismatch.diagnostic_code(),
-            DiagnosticCode::new(0x0413)
+            DiagnosticCode::new(0x4013)
         );
     }
 
@@ -6589,7 +6647,7 @@ mod tests {
     fn journal_error_diagnostic_code_unexpected_eof() {
         assert_eq!(
             JournalError::UnexpectedEof.diagnostic_code(),
-            DiagnosticCode::new(0x0414)
+            DiagnosticCode::new(0x4014)
         );
     }
 
@@ -6597,7 +6655,7 @@ mod tests {
     fn journal_error_diagnostic_code_postcard_decode_failed() {
         assert_eq!(
             JournalError::PostcardDecodeFailed.diagnostic_code(),
-            DiagnosticCode::new(0x0415)
+            DiagnosticCode::new(0x4015)
         );
     }
 }
@@ -6846,37 +6904,40 @@ mod proptests {
 }
 
 #[test]
-fn drop_persists_without_panic() {
+fn drop_persists_without_panic() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{EventSeq, FjallJournal, JournalEvent};
     use vb_core::{RunId, WorkflowDigest};
     // Given a journal with one appended event
     // When the journal is dropped
     // Then it should not panic (persist is best-effort)
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = tempfile::tempdir()?;
     {
-        let journal = FjallJournal::open(temp_dir.path(), None).expect("open");
+        let journal = FjallJournal::open(temp_dir.path(), None)?;
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1u8; 32]),
         };
-        journal.append_journaled(&event).expect("append");
+        journal.append_journaled(&event)?;
     }
     // reopen to verify data survived drop persist
-    let reopened = FjallJournal::open(temp_dir.path(), None).expect("reopen");
-    let events = reopened.events_for_run(RunId::new(1)).expect("replay");
-    assert_eq!(events.len(), 1);
+    let reopened = FjallJournal::open(temp_dir.path(), None)?;
+    let events = reopened.events_for_run(RunId::new(1))?;
+    if events.len() != 1 {
+        return Err("expected one replayed event".into());
+    }
+    Ok(())
 }
 
 #[test]
-fn events_for_run_uses_snapshot_isolation() {
+fn events_for_run_uses_snapshot_isolation() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{EventSeq, FjallJournal, JournalEvent};
     use vb_core::{RunId, StepIdx, WorkflowDigest};
     // Given a journal with two events
     // When events_for_run is called
     // Then it should return a consistent snapshot even if writes interleave
-    let temp_dir = tempfile::tempdir().expect("tempdir");
-    let journal = FjallJournal::open(temp_dir.path(), None).expect("open");
+    let temp_dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(temp_dir.path(), None)?;
     let event0 = JournalEvent::RunAccepted {
         run: RunId::new(1),
         seq: EventSeq::new(0),
@@ -6887,51 +6948,64 @@ fn events_for_run_uses_snapshot_isolation() {
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
     };
-    journal.append_journaled(&event0).expect("append 0");
-    journal.append_journaled(&event1).expect("append 1");
-    let replay = journal.events_for_run(RunId::new(1)).expect("replay");
-    assert_eq!(replay.len(), 2);
-    assert_eq!(replay[0], event0);
-    assert_eq!(replay[1], event1);
+    journal.append_journaled(&event0)?;
+    journal.append_journaled(&event1)?;
+    let replay = journal.events_for_run(RunId::new(1))?;
+    if replay.len() != 2 {
+        return Err("expected two replayed events".into());
+    }
+    if replay.first() != Some(&event0) {
+        return Err("first replayed event mismatch".into());
+    }
+    if replay.get(1) != Some(&event1) {
+        return Err("second replayed event mismatch".into());
+    }
+    Ok(())
 }
 
 #[test]
-fn open_with_custom_cache_size() {
+fn open_with_custom_cache_size() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
     use vb_core::{RunId, WorkflowDigest};
     // Given a custom FjallConfig with 512 MiB cache
     // When the journal is opened with that config
     // Then it should open successfully
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = tempfile::tempdir()?;
     let config = FjallConfig {
         cache_size_bytes: 536_870_912, // 512 MiB
     };
-    let journal = FjallJournal::open(temp_dir.path(), Some(config)).expect("open with config");
+    let journal = FjallJournal::open(temp_dir.path(), Some(config))?;
     let event = JournalEvent::RunAccepted {
         run: RunId::new(1),
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1u8; 32]),
     };
-    journal.append_journaled(&event).expect("append");
-    let replay = journal.events_for_run(RunId::new(1)).expect("replay");
-    assert_eq!(replay.len(), 1);
+    journal.append_journaled(&event)?;
+    let replay = journal.events_for_run(RunId::new(1))?;
+    if replay.len() != 1 {
+        return Err("expected one replayed event".into());
+    }
+    Ok(())
 }
 
 #[test]
-fn open_store_uses_default_config() {
+fn open_store_uses_default_config() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{EventSeq, JournalEvent, open_store};
     use vb_core::{RunId, WorkflowDigest};
     // Given no explicit config
     // When open_store is called
     // Then it should open with the default 256 MiB cache
-    let temp_dir = tempfile::tempdir().expect("tempdir");
-    let journal = open_store(temp_dir.path()).expect("open_store");
+    let temp_dir = tempfile::tempdir()?;
+    let journal = open_store(temp_dir.path())?;
     let event = JournalEvent::RunAccepted {
         run: RunId::new(1),
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1u8; 32]),
     };
-    journal.append_journaled(&event).expect("append");
-    let replay = journal.events_for_run(RunId::new(1)).expect("replay");
-    assert_eq!(replay.len(), 1);
+    journal.append_journaled(&event)?;
+    let replay = journal.events_for_run(RunId::new(1))?;
+    if replay.len() != 1 {
+        return Err("expected one replayed event".into());
+    }
+    Ok(())
 }
