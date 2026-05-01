@@ -27,6 +27,7 @@ pub fn validate_yaml_profile(text: &str) -> YamlResult<()> {
 /// Validate with explicit limits.
 pub(crate) fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
     check_source_size(text, limits.max_source_bytes)?;
+    check_null_bytes_in_source(text)?;
     let events = collect_and_validate_events(text, limits)?;
     reject_forbidden_features(&events)?;
     reject_multiple_documents(&events)?;
@@ -90,6 +91,7 @@ fn collect_and_validate_events(text: &str, limits: &YamlLimits) -> YamlResult<Ve
             }
             saphyr_parser::Event::Scalar(value, _, _, _) => {
                 check_scalar_length(value, limits.max_scalar_bytes)?;
+                check_null_bytes(value)?;
                 found_content = true;
             }
             saphyr_parser::Event::Alias(_) => {}
@@ -135,14 +137,42 @@ fn check_scalar_length(value: &str, max_bytes: usize) -> YamlResult<()> {
     Ok(())
 }
 
+/// Check that a scalar value does not contain null bytes.
+///
+/// Null bytes (\x00) are not valid in YAML 1.2 scalar content and can cause
+/// issues in downstream processing (C string termination, protocol injection).
+fn check_null_bytes(value: &str) -> YamlResult<()> {
+    if value.contains('\x00') {
+        return Err(YamlError::ForbiddenFeature {
+            detail: "null_byte_in_scalar",
+        });
+    }
+    Ok(())
+}
+
+/// Check that the source text does not contain null bytes.
+///
+/// Null bytes may be silently stripped or reinterpreted by the parser, so
+/// we check the raw source text before parsing begins. This prevents null
+/// bytes from reaching any downstream consumer via any path.
+fn check_null_bytes_in_source(text: &str) -> YamlResult<()> {
+    if text.contains('\x00') {
+        return Err(YamlError::ForbiddenFeature {
+            detail: "null_byte_in_source",
+        });
+    }
+    Ok(())
+}
+
 /// Reject forbidden features from a pre-collected event list.
 ///
-/// Checks for custom tags and binary scalars.
+/// Checks for custom tags and binary scalars. Only the seven YAML core schema
+/// types are allowed: str, int, float, bool, null, seq, map. Any other `!!`
+/// tag (e.g. `!!timestamp`, `!!binary`, `!!set`, `!!omap`) is rejected.
 pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
     for event in events {
         if let Some(tag) = event.tag() {
-            // Allow YAML core schema tags (the !! tags).
-            if !tag.starts_with("tag:yaml.org,2002:") && !tag.starts_with("!!") {
+            if !is_allowed_tag(tag) {
                 return Err(YamlError::CustomTag { tag: tag.into() });
             }
         }
@@ -151,6 +181,35 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
         }
     }
     Ok(())
+}
+
+/// The set of allowed YAML core schema tag suffixes.
+const ALLOWED_CORE_TAG_SUFFIXES: &[&str] = &[
+    "str",
+    "int",
+    "float",
+    "bool",
+    "null",
+    "seq",
+    "map",
+];
+
+/// Check whether a tag string is one of the allowed YAML core schema types.
+///
+/// Accepts both shorthand forms (`!!str`, `!!int`, ...) and full URI forms
+/// (`tag:yaml.org,2002:str`, ...). Everything else is rejected.
+fn is_allowed_tag(tag: &str) -> bool {
+    // Full URI form: tag:yaml.org,2002:<suffix>
+    if let Some(suffix) = tag.strip_prefix("tag:yaml.org,2002:") {
+        return ALLOWED_CORE_TAG_SUFFIXES.contains(&suffix);
+    }
+    // Shorthand form: !!<suffix>
+    if let Some(suffix) = tag.strip_prefix("!!") {
+        return ALLOWED_CORE_TAG_SUFFIXES.contains(&suffix);
+    }
+    // Tags without !! or tag:yaml.org,2002: prefix are handled by the
+    // caller — they are custom tags and should be rejected.
+    false
 }
 
 /// Reject binary scalars (indicated by a tag like `!!binary`).
@@ -326,6 +385,17 @@ fn handle_scalar_for_duplicate_key<'a>(
 mod tests {
     use super::*;
 
+    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
+        let _ = message;
+        false
+    }
+
+    macro_rules! fail_assert {
+        ($($arg:tt)*) => {
+            assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        };
+    }
+
     #[test]
     fn empty_source_rejected() {
         let result = validate_yaml_profile("");
@@ -489,7 +559,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "yes".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "yes".into()
+            })
         );
     }
 
@@ -502,7 +574,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "no".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "no".into()
+            })
         );
     }
 
@@ -515,7 +589,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "on".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "on".into()
+            })
         );
     }
 
@@ -528,7 +604,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "off".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "off".into()
+            })
         );
     }
 
@@ -572,7 +650,7 @@ mod tests {
                 assert!(depth > 10);
                 assert_eq!(max, 10);
             }
-            other => assert!(false, "expected NestingTooDeep, got {other:?}"),
+            other => fail_assert!("expected NestingTooDeep, got {other:?}"),
         }
     }
 
@@ -613,7 +691,7 @@ mod tests {
                 assert!(len > 50);
                 assert_eq!(max, 50);
             }
-            other => assert!(false, "expected ScalarTooLong, got {other:?}"),
+            other => fail_assert!("expected ScalarTooLong, got {other:?}"),
         }
     }
 
@@ -636,7 +714,7 @@ mod tests {
                 assert!(count > 5);
                 assert_eq!(max, 5);
             }
-            other => assert!(false, "expected NodeLimitExceeded, got {other:?}"),
+            other => fail_assert!("expected NodeLimitExceeded, got {other:?}"),
         }
     }
 
@@ -665,7 +743,7 @@ mod tests {
         // Given: events from YAML with a custom tag
         let yaml = "key: !mytag value\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting forbidden features
@@ -675,7 +753,7 @@ mod tests {
             Err(YamlError::CustomTag { tag }) => {
                 assert!(tag.contains("mytag"), "expected 'mytag' in tag, got: {tag}");
             }
-            other => assert!(false, "expected CustomTag, got {other:?}"),
+            other => fail_assert!("expected CustomTag, got {other:?}"),
         }
     }
 
@@ -684,7 +762,7 @@ mod tests {
         // Given: events from YAML with only core schema tags (no custom)
         let yaml = "key: value\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting forbidden features
@@ -698,7 +776,7 @@ mod tests {
         // Given: events from YAML with anchor
         let yaml = "a: &anc value\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting
@@ -712,7 +790,7 @@ mod tests {
         // Given: events from clean YAML
         let yaml = "a: 1\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting
@@ -726,7 +804,7 @@ mod tests {
         // Given: events from YAML with two documents
         let yaml = "---\na: 1\n---\nb: 2\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting
@@ -740,7 +818,7 @@ mod tests {
         // Given: events from single-document YAML
         let yaml = "a: 1\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting
@@ -758,7 +836,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "yes".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "yes".into()
+            })
         );
     }
 
@@ -805,10 +885,7 @@ mod tests {
         // When: validating
         let result = validate_yaml_profile(yaml);
         // Then: Err with exact key
-        assert_eq!(
-            result,
-            Err(YamlError::DuplicateKey { key: "name".into() })
-        );
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
     }
 
     #[test]
@@ -818,10 +895,7 @@ mod tests {
         // When: validating
         let result = validate_yaml_profile(yaml);
         // Then: Err with exact key
-        assert_eq!(
-            result,
-            Err(YamlError::DuplicateKey { key: "name".into() })
-        );
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
     }
 
     #[test]
@@ -841,10 +915,7 @@ mod tests {
         // When: checking size
         let result = check_source_size(text, 4);
         // Then: Err with exact values
-        assert_eq!(
-            result,
-            Err(YamlError::SourceTooLarge { size: 5, max: 4 })
-        );
+        assert_eq!(result, Err(YamlError::SourceTooLarge { size: 5, max: 4 }));
     }
 
     #[test]
@@ -886,9 +957,380 @@ mod tests {
         // Then: Err(YamlError::CustomTag)
         match result {
             Err(YamlError::CustomTag { tag }) => {
-                assert!(tag.contains("custom"), "tag should contain 'custom', got: {tag}");
+                assert!(
+                    tag.contains("custom"),
+                    "tag should contain 'custom', got: {tag}"
+                );
             }
-            other => assert!(false, "expected CustomTag, got {other:?}"),
+            other => fail_assert!("expected CustomTag, got {other:?}"),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial BDD tests - attack vector validation
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn adversarial_duplicate_keys_nested_deep_mapping_rejected() {
+        // Given: YAML with duplicate keys in a deeply nested mapping
+        let yaml = "a:\n  b:\n    c: 1\n    c: 2\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::DuplicateKey { key: "c" })
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "c".into() }));
+    }
+
+    #[test]
+    fn adversarial_duplicate_keys_top_level_rejected() {
+        // Given: YAML with duplicate top-level keys
+        let yaml = "x: 1\nx: 2\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::DuplicateKey { key: "x" })
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "x".into() }));
+    }
+
+    #[test]
+    fn adversarial_alias_without_anchor_rejected() {
+        // Given: YAML with an alias reference (saphyr may reject this at parse,
+        // but we verify our rejection layer also catches it)
+        let yaml = "a: &anc value\nb: *anc\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AnchorAliasMerge)
+        assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    }
+
+    #[test]
+    fn adversarial_anchor_on_sequence_rejected() {
+        // Given: YAML with anchor on a sequence node
+        let yaml = "items: &seq\n  - a\n  - b\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AnchorAliasMerge)
+        assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    }
+
+    #[test]
+    fn adversarial_anchor_on_mapping_rejected() {
+        // Given: YAML with anchor on a mapping node
+        let yaml = "base: &map\n  k: v\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AnchorAliasMerge)
+        assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    }
+
+    #[test]
+    fn adversarial_custom_tag_double_bang_timestamp_rejected() {
+        // Given: YAML with !!timestamp tag (not a core schema type)
+        let yaml = "date: !!timestamp 2024-01-01\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::CustomTag) - only the seven core schema types
+        // (str, int, float, bool, null, seq, map) are allowed.
+        match result {
+            Err(YamlError::CustomTag { tag }) => {
+                assert!(
+                    tag.contains("timestamp"),
+                    "expected 'timestamp' in tag, got: {tag}"
+                );
+            }
+            other => fail_assert!("expected CustomTag, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_custom_tag_local_bang_rejected() {
+        // Given: YAML with a local tag !myapp/special
+        let yaml = "val: !myapp/special data\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::CustomTag)
+        match result {
+            Err(YamlError::CustomTag { tag }) => {
+                assert!(tag.contains("myapp"), "expected 'myapp' in tag, got: {tag}");
+            }
+            other => fail_assert!("expected CustomTag, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_multi_document_with_explicit_markers_rejected() {
+        // Given: YAML with explicit --- separators for two documents
+        let yaml = "---\na: 1\n...\n---\nb: 2\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::MultipleDocuments)
+        assert!(
+            matches!(result, Err(YamlError::MultipleDocuments { count }) if count >= 2),
+            "expected MultipleDocuments, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_yes_mixed_case_rejected() {
+        // Given: YAML with mixed-case "Yes" (YAML 1.1 boolean)
+        let yaml = "flag: Yes\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar { scalar: "Yes" })
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar {
+                scalar: "Yes".into()
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_NO_uppercase_rejected() {
+        // Given: YAML with uppercase "NO"
+        let yaml = "flag: NO\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar { scalar: "NO" })
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar {
+                scalar: "NO".into()
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_ON_uppercase_rejected() {
+        // Given: YAML with uppercase "ON"
+        let yaml = "flag: ON\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar { scalar: "ON" })
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar {
+                scalar: "ON".into()
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_Off_mixed_case_rejected() {
+        // Given: YAML with mixed-case "Off"
+        let yaml = "flag: Off\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar { scalar: "Off" })
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar {
+                scalar: "Off".into()
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_y_lowercase_rejected() {
+        // Given: YAML with single-letter "y" (YAML 1.1 boolean)
+        let yaml = "flag: y\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar)
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar { scalar: "y".into() })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_n_lowercase_rejected() {
+        // Given: YAML with single-letter "n"
+        let yaml = "flag: n\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::AmbiguousScalar)
+        assert_eq!(
+            result,
+            Err(YamlError::AmbiguousScalar { scalar: "n".into() })
+        );
+    }
+
+    #[test]
+    fn adversarial_yaml_11_boolean_quoted_accepted() {
+        // Given: YAML with quoted "yes" (not ambiguous when quoted)
+        let yaml = "flag: 'yes'\nother: \"no\"\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Ok(()) - quoted values are not ambiguous
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_comments_only_rejected_as_empty() {
+        // Given: YAML with only comments, no content
+        let yaml = "# just a comment\n# another comment\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err - no actual content
+        assert!(result.is_err(), "expected error for comments-only YAML");
+    }
+
+    #[test]
+    fn adversarial_empty_string_rejected() {
+        // Given: empty string
+        // When: validating profile
+        let result = validate_yaml_profile("");
+        // Then: Err(YamlError::EmptySource)
+        assert_eq!(result, Err(YamlError::EmptySource));
+    }
+
+    #[test]
+    fn adversarial_scalar_over_limit_rejected() {
+        // Given: YAML with a scalar exceeding the 65KB default limit
+        let long_val = "x".repeat(70_000);
+        let yaml = format!("key: \"{long_val}\"\n");
+        // When: validating profile with default limits
+        let result = validate_yaml_profile(&yaml);
+        // Then: Err(YamlError::ScalarTooLong)
+        match result {
+            Err(YamlError::ScalarTooLong { len, max }) => {
+                assert!(len > 65_536, "expected len > 65536, got {len}");
+                assert_eq!(max, 65_536);
+            }
+            other => fail_assert!("expected ScalarTooLong, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_node_limit_exceeded() {
+        // Given: YAML with many nodes exceeding default limit
+        let mut yaml = String::from("root:\n");
+        for i in 0..5_000 {
+            yaml.push_str(&format!("  k{i}: v{i}\n"));
+        }
+        let limits = YamlLimits {
+            max_nodes: 100,
+            ..YamlLimits::default()
+        };
+        // When: validating with low node limit
+        let result = validate_yaml_profile_with_limits(&yaml, &limits);
+        // Then: Err(YamlError::NodeLimitExceeded)
+        match result {
+            Err(YamlError::NodeLimitExceeded { count, max }) => {
+                assert!(count > 100);
+                assert_eq!(max, 100);
+            }
+            other => fail_assert!("expected NodeLimitExceeded, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_duplicate_key_in_sequence_context_rejected() {
+        // Given: YAML with duplicate keys inside a mapping within a sequence
+        let yaml = "items:\n  - name: a\n    name: b\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::DuplicateKey { key: "name" })
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    }
+
+    #[test]
+    fn adversarial_depth_limit_exact_boundary_accepted() {
+        // Given: YAML nested exactly to the depth limit
+        let mut yaml = String::from("a:\n");
+        for i in 0..9 {
+            let indent = "  ".repeat(i);
+            yaml.push_str(&format!("{indent}b:\n"));
+        }
+        let limits = YamlLimits {
+            max_depth: 10,
+            ..YamlLimits::default()
+        };
+        // When: validating
+        let result = validate_yaml_profile_with_limits(&yaml, &limits);
+        // Then: Ok(()) - exactly at the limit is fine
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_depth_limit_one_over_rejected() {
+        // Given: YAML nested one level deeper than the limit
+        // Each nested mapping increases indentation by 2 spaces
+        let mut yaml = String::new();
+        for i in 0..11 {
+            let indent = "  ".repeat(i);
+            yaml.push_str(&format!("{indent}a:\n"));
+        }
+        let limits = YamlLimits {
+            max_depth: 10,
+            ..YamlLimits::default()
+        };
+        // When: validating
+        let result = validate_yaml_profile_with_limits(&yaml, &limits);
+        // Then: Err(YamlError::NestingTooDeep) - 11 levels > max 10
+        assert!(
+            matches!(result, Err(YamlError::NestingTooDeep { depth, max }) if depth > 10 && max == 10),
+            "expected NestingTooDeep, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_tag_on_sequence_rejected() {
+        // Given: YAML with a custom tag on a sequence
+        let yaml = "items: !seq\n  - a\n  - b\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::CustomTag)
+        match result {
+            Err(YamlError::CustomTag { tag }) => {
+                assert!(tag.contains("seq"), "expected 'seq' in tag, got: {tag}");
+            }
+            other => fail_assert!("expected CustomTag, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_tag_on_mapping_rejected() {
+        // Given: YAML with a custom tag on a mapping
+        let yaml = "data: !map\n  k: v\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::CustomTag)
+        match result {
+            Err(YamlError::CustomTag { tag }) => {
+                assert!(tag.contains("map"), "expected 'map' in tag, got: {tag}");
+            }
+            other => fail_assert!("expected CustomTag, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adversarial_source_exactly_at_size_limit_accepted() {
+        // Given: YAML source exactly at the size limit
+        let base = "a: b\n"; // 6 bytes
+        let max = base.len();
+        // When: validating
+        let result = check_source_size(base, max);
+        // Then: Ok(())
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_source_one_byte_over_limit_rejected() {
+        // Given: YAML source one byte over the limit
+        let text = "a: bcd\n"; // 7 bytes
+        // When: checking size with max=6
+        let result = check_source_size(text, 6);
+        // Then: Err(YamlError::SourceTooLarge { size: 7, max: 6 })
+        assert_eq!(result, Err(YamlError::SourceTooLarge { size: 7, max: 6 }));
+    }
+
+    #[test]
+    fn adversarial_three_documents_rejected_with_count() {
+        // Given: YAML with three document separators
+        let yaml = "---\na: 1\n---\nb: 2\n---\nc: 3\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err(YamlError::MultipleDocuments { count: 3 })
+        assert_eq!(result, Err(YamlError::MultipleDocuments { count: 3 }));
     }
 }

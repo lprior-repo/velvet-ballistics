@@ -76,6 +76,9 @@ pub enum YamlError {
 
     #[error("parse error at line {line}: {reason}")]
     ParseError { line: usize, reason: Box<str> },
+
+    #[error("forbidden YAML feature: {detail}")]
+    ForbiddenFeature { detail: &'static str },
 }
 
 /// Alias for results using [`YamlError`].
@@ -191,6 +194,17 @@ pub fn load_fixture_source(text: &str) -> YamlResult<ast::WorkflowSource> {
 mod tests {
     use super::*;
 
+    fn assertion_failed(message: std::fmt::Arguments<'_>) -> bool {
+        let _ = message;
+        false
+    }
+
+    macro_rules! fail_assert {
+        ($($arg:tt)*) => {
+            assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        };
+    }
+
     #[test]
     fn validate_rejects_empty_source() {
         let result = validate_yaml_profile("");
@@ -208,7 +222,7 @@ mod tests {
     fn parse_events_returns_typed_events() {
         let yaml = "a: 1\n";
         let Ok(events) = parse_yaml_events(yaml) else {
-            assert!(false, "parse events failed");
+            fail_assert!("parse events failed");
             return;
         };
         assert!(!events.is_empty());
@@ -251,7 +265,7 @@ mod tests {
         // Given: YAML events produced from text containing an anchor
         let yaml = "a: &anc value\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: we reject anchors/aliases/merges
@@ -265,7 +279,7 @@ mod tests {
         // Given: YAML events produced from text containing an alias
         let yaml = "a: &anc value\nb: *anc\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: we reject anchors/aliases/merges
@@ -281,7 +295,12 @@ mod tests {
         // When: rejecting duplicate keys
         let result = reject_duplicate_keys(&keys);
         // Then: Err with exact key field "alpha"
-        assert_eq!(result, Err(YamlError::DuplicateKey { key: "alpha".into() }));
+        assert_eq!(
+            result,
+            Err(YamlError::DuplicateKey {
+                key: "alpha".into()
+            })
+        );
     }
 
     #[test]
@@ -311,7 +330,7 @@ mod tests {
         // Given: YAML with multiple document separators
         let yaml = "---\na: 1\n---\nb: 2\n";
         let Ok(events) = crate::events::collect_events(yaml) else {
-            assert!(false, "collect_events failed");
+            fail_assert!("collect_events failed");
             return;
         };
         // When: rejecting multiple documents
@@ -368,7 +387,7 @@ mod tests {
                 assert!(depth > 5);
                 assert_eq!(max, 5);
             }
-            other => assert!(false, "expected NestingTooDeep, got {other:?}"),
+            other => fail_assert!("expected NestingTooDeep, got {other:?}"),
         }
     }
 
@@ -395,7 +414,7 @@ mod tests {
                 assert!(count > 10);
                 assert_eq!(max, 10);
             }
-            other => assert!(false, "expected NodeLimitExceeded, got {other:?}"),
+            other => fail_assert!("expected NodeLimitExceeded, got {other:?}"),
         }
     }
 
@@ -408,9 +427,12 @@ mod tests {
         // Then: Err(YamlError::CustomTag) with exact tag string
         match result {
             Err(YamlError::CustomTag { tag }) => {
-                assert!(tag.contains("custom"), "tag should contain 'custom', got: {tag}");
+                assert!(
+                    tag.contains("custom"),
+                    "tag should contain 'custom', got: {tag}"
+                );
             }
-            other => assert!(false, "expected CustomTag, got {other:?}"),
+            other => fail_assert!("expected CustomTag, got {other:?}"),
         }
     }
 
@@ -465,7 +487,7 @@ mod tests {
                 assert_eq!(wf.name, "minimal");
                 assert_eq!(wf.steps.len(), 1);
             }
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -486,7 +508,7 @@ mod tests {
             Ok(wf) => {
                 assert_eq!(wf.version, "velvet-ballastics/v1");
             }
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -519,7 +541,7 @@ mod tests {
             Ok(wf) => {
                 assert_eq!(wf.steps.len(), 3);
             }
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -587,7 +609,9 @@ mod tests {
         // Then: Err(YamlError::AmbiguousScalar { scalar: "no" })
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "no".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "no".into()
+            })
         );
     }
 
@@ -652,7 +676,7 @@ mod tests {
         // Then: Ok with correct name
         match result {
             Ok(wf) => assert_eq!(wf.name, "fixture"),
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -674,7 +698,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "no".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "no".into()
+            })
         );
     }
 
@@ -687,7 +713,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "on".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "on".into()
+            })
         );
     }
 
@@ -700,7 +728,9 @@ mod tests {
         // Then: Err with exact scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "off".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "off".into()
+            })
         );
     }
 
@@ -739,7 +769,9 @@ mod tests {
         // Then: Err with exact original scalar
         assert_eq!(
             result,
-            Err(YamlError::AmbiguousScalar { scalar: "YES".into() })
+            Err(YamlError::AmbiguousScalar {
+                scalar: "YES".into()
+            })
         );
     }
 
@@ -762,7 +794,7 @@ mod tests {
         // Then: Ok with non-empty vec
         match result {
             Ok(events) => assert!(!events.is_empty()),
-            Err(e) => assert!(false, "expected Ok, got Err: {e}"),
+            Err(e) => fail_assert!("expected Ok, got Err: {e}"),
         }
     }
 
@@ -784,7 +816,9 @@ mod tests {
         // Then: Err with exact key field
         assert_eq!(
             result,
-            Err(YamlError::DuplicateKey { key: "repeat".into() })
+            Err(YamlError::DuplicateKey {
+                key: "repeat".into()
+            })
         );
     }
 
@@ -808,10 +842,7 @@ mod tests {
         // When: parsing
         let result = parse_workflow_source(yaml);
         // Then: Err(YamlError::DuplicateKey { key: "name" })
-        assert_eq!(
-            result,
-            Err(YamlError::DuplicateKey { key: "name".into() })
-        );
+        assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
     }
 
     #[test]
@@ -819,12 +850,142 @@ mod tests {
         // Given: an empty source map
         let yaml = "a: 1\n";
         let Ok(map) = build_source_map(yaml) else {
-            assert!(false, "build_source_map failed");
+            fail_assert!("build_source_map failed");
             return;
         };
         // When: looking up an out-of-range node
         let result = span_for_node(&map, 999);
         // Then: None
         assert_eq!(result, None);
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial BDD tests - top-level API attack vectors
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn adversarial_api_null_byte_in_source_rejected() {
+        // Given: YAML source containing a null byte
+        let yaml = "key: \x00value\n";
+        // When: parsing via the top-level API
+        let result = parse_yaml_events(yaml);
+        // Then: Err(YamlError::ForbiddenFeature { detail: "null_byte_in_source" })
+        // Null bytes are rejected by the profile validation layer to prevent
+        // C-string termination issues and protocol injection in downstream
+        // consumers.
+        assert!(
+            matches!(
+                result,
+                Err(YamlError::ForbiddenFeature { detail: "null_byte_in_source" })
+            ),
+            "expected ForbiddenFeature for null byte, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_api_null_byte_workflow_rejected() {
+        // Given: workflow source containing a null byte
+        let yaml = "version: velvet-ballastics/v1\nname: \x00bad\nwhen:\n  manual: {}\nsteps: []\n";
+        // When: parsing via parse_workflow_source
+        let result = parse_workflow_source(yaml);
+        // Then: Err - null bytes cause parse failure
+        assert!(result.is_err(), "expected error for null byte in workflow");
+    }
+
+    #[test]
+    fn adversarial_api_unicode_emoji_accepted() {
+        // Given: YAML with emoji characters in values
+        let yaml = "name: test_emoji\nvalue: \"hello world\"\n";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Ok(()) - Unicode emoji in values is fine
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_api_scalar_near_limit_accepted() {
+        // Given: YAML with a scalar value at exactly 64KB (under default 65KB limit)
+        let val = "x".repeat(65_535);
+        let yaml = format!("key: \"{val}\"\n");
+        // When: validating profile
+        let result = validate_yaml_profile(&yaml);
+        // Then: Ok(()) - under the limit
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn adversarial_api_scalar_one_over_limit_rejected() {
+        // Given: YAML with a scalar value one byte over the 65KB limit
+        let val = "x".repeat(65_537);
+        let yaml = format!("key: \"{val}\"\n");
+        // When: validating profile
+        let result = validate_yaml_profile(&yaml);
+        // Then: Err(YamlError::ScalarTooLong)
+        assert!(
+            matches!(result, Err(YamlError::ScalarTooLong { .. })),
+            "expected ScalarTooLong, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_api_workflow_with_unknown_trigger_field_rejected() {
+        // Given: workflow YAML with an unrecognized trigger type
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: bad-trigger
+            when:
+              webhook: {}
+            steps: []
+        "};
+        // When: parsing workflow
+        let result = parse_workflow_source(yaml);
+        // Then: Err(YamlError::FieldShape) - webhook is not a recognized trigger
+        assert!(
+            matches!(result, Err(YamlError::FieldShape { .. })),
+            "expected FieldShape for unknown trigger, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_api_workflow_with_missing_when_rejected() {
+        // Given: workflow YAML without a when field
+        let yaml = "version: velvet-ballastics/v1\nname: no-when\nsteps: []\n";
+        // When: parsing workflow
+        let result = parse_workflow_source(yaml);
+        // Then: Err(YamlError::MissingField { field: "when" })
+        assert_eq!(result, Err(YamlError::MissingField { field: "when" }));
+    }
+
+    #[test]
+    fn adversarial_api_workflow_with_non_mapping_when_rejected() {
+        // Given: workflow YAML where when is a string, not a mapping
+        let yaml = "version: velvet-ballastics/v1\nname: bad\nwhen: manual\nsteps: []\n";
+        // When: parsing workflow
+        let result = parse_workflow_source(yaml);
+        // Then: Err(YamlError::FieldShape)
+        assert!(result.is_err(), "expected error for non-mapping when");
+    }
+
+    #[test]
+    fn adversarial_api_oversized_source_rejected_immediately() {
+        // Given: a 2MB source string
+        let big = "x".repeat(2_000_000);
+        // When: validating profile
+        let result = validate_yaml_profile(&big);
+        // Then: Err(YamlError::SourceTooLarge) - rejected before parsing
+        assert!(
+            matches!(result, Err(YamlError::SourceTooLarge { .. })),
+            "expected SourceTooLarge, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn adversarial_api_only_whitespace_rejected() {
+        // Given: YAML that is only whitespace
+        let yaml = "   \t  \n  \n  ";
+        // When: validating profile
+        let result = validate_yaml_profile(yaml);
+        // Then: Err - no content
+        assert!(result.is_err(), "expected error for whitespace-only YAML");
     }
 }

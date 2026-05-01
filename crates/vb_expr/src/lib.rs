@@ -49,6 +49,9 @@ pub enum ExprError {
     #[error("division by zero")]
     DivisionByZero,
 
+    #[error("integer overflow")]
+    IntegerOverflow,
+
     #[error("invalid reference: {reference}")]
     InvalidReference { reference: String },
 

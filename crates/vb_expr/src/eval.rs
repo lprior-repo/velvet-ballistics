@@ -151,7 +151,7 @@ pub fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
         UnaryOp::Not => Ok(SlotValue::Bool(!expect_bool(value)?)),
         UnaryOp::Neg => {
             let number = expect_i64(value)?;
-            let negated = number.checked_neg().ok_or(ExprError::UnexpectedEof)?;
+            let negated = number.checked_neg().ok_or(ExprError::IntegerOverflow)?;
             Ok(SlotValue::I64(negated))
         }
     }
@@ -162,7 +162,7 @@ fn eval_i64_values(
     right: SlotValue,
     op: fn(i64, i64) -> Option<i64>,
 ) -> ExprResult<SlotValue> {
-    let value = op(expect_i64(left)?, expect_i64(right)?).ok_or(ExprError::UnexpectedEof)?;
+    let value = op(expect_i64(left)?, expect_i64(right)?).ok_or(ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(value))
 }
 
@@ -244,15 +244,27 @@ fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Length)?;
     let len = match value {
         SlotValue::List(id) => id.get(),
-        _ => 0u32,
+        SlotValue::Null => 0u32,
+        other => {
+            return Err(ExprError::TypeMismatch {
+                expected: "list".into(),
+                found: other.type_name().into(),
+            })
+        }
     };
     Ok(SlotValue::I64(i64::from(len)))
 }
 
 fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Empty)?;
-    let result = matches!(*value, SlotValue::Null | SlotValue::List(_));
-    Ok(SlotValue::Bool(result))
+    match *value {
+        SlotValue::Null => Ok(SlotValue::Bool(true)),
+        SlotValue::List(_) => Ok(SlotValue::Bool(true)),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list or null".into(),
+            found: other.type_name().into(),
+        }),
+    }
 }
 
 fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
@@ -308,6 +320,7 @@ fn expect_i64(value: SlotValue) -> ExprResult<i64> {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
     use vb_core::{ConstIdx, ExprOp, SlotIdx};
@@ -699,6 +712,471 @@ mod tests {
                 token: "expected DivisionByZero".into(),
             });
         };
+        Ok(())
+    }
+
+    // --- Adversarial BDD evaluator tests ---
+
+    #[test]
+    fn eval_binary_op_i64_max_plus_one_is_error() -> ExprResult<()> {
+        // Given: i64::MAX and 1 as SlotValue::I64
+        // When: eval_binary_op is called with Add
+        // Then: the result is Err(IntegerOverflow) (overflow from checked_add)
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MAX + 1".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_i64_min_minus_one_is_error() -> ExprResult<()> {
+        // Given: i64::MIN and 1 as SlotValue::I64
+        // When: eval_binary_op is called with Sub
+        // Then: the result is Err(IntegerOverflow) (underflow from checked_sub)
+        let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MIN - 1".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_i64_max_times_two_is_error() -> ExprResult<()> {
+        // Given: i64::MAX and 2 as SlotValue::I64
+        // When: eval_binary_op is called with Mul
+        // Then: the result is Err(IntegerOverflow) (overflow from checked_mul)
+        let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MAX * 2".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_negation_of_i64_min_is_error() -> ExprResult<()> {
+        // Given: SlotValue::I64(i64::MIN)
+        // When: eval_unary_op is called with Neg
+        // Then: the result is Err(IntegerOverflow) (checked_neg fails for MIN)
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for -i64::MIN".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_rejects_null_in_addition() -> ExprResult<()> {
+        // Given: SlotValue::Null and SlotValue::I64(1)
+        // When: eval_binary_op is called with Add
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "null" })
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::Null, SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null + 1".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_rejects_bool_in_multiplication() -> ExprResult<()> {
+        // Given: SlotValue::Bool(true) and SlotValue::I64(3)
+        // When: eval_binary_op is called with Mul
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "boolean" })
+        let result = eval_binary_op(BinaryOp::Mul, SlotValue::Bool(true), SlotValue::I64(3));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for bool * int".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "boolean");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_rejects_number_in_and() -> ExprResult<()> {
+        // Given: SlotValue::I64(1) and SlotValue::I64(2)
+        // When: eval_binary_op is called with And
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+        let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for i64 and i64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_rejects_null_in_or() -> ExprResult<()> {
+        // Given: SlotValue::Null and SlotValue::Bool(true)
+        // When: eval_binary_op is called with Or
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "null" })
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Null, SlotValue::Bool(true));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null or true".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_unary_op_not_rejects_i64() -> ExprResult<()> {
+        // Given: SlotValue::I64(1)
+        // When: eval_unary_op is called with Not
+        // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+        let result = eval_unary_op(UnaryOp::Not, SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for not 1".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_unary_op_neg_rejects_bool() -> ExprResult<()> {
+        // Given: SlotValue::Bool(true)
+        // When: eval_unary_op is called with Neg
+        // Then: the result is Err(TypeMismatch { expected: "number", found: "boolean" })
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::Bool(true));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for -true".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "boolean");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_end_to_end_division_by_zero() -> ExprResult<()> {
+        // Given: the source "10 / 0"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is Err(DivisionByZero)
+        let tokens = crate::lexer::lex_expr("10 / 0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::DivisionByZero) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected DivisionByZero for 10 / 0".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_end_to_end_overflow() -> ExprResult<()> {
+        // Given: the source "9223372036854775807 + 1"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is Err(IntegerOverflow) (overflow)
+        let tokens = crate::lexer::lex_expr("9223372036854775807 + 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MAX + 1".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_equality_null_vs_null() -> ExprResult<()> {
+        // Given: the source "null == null"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is SlotValue::Bool(true)
+        let tokens = crate::lexer::lex_expr("null == null")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_inequality_null_vs_i64() -> ExprResult<()> {
+        // Given: the source "null != 1"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is SlotValue::Bool(true)
+        let tokens = crate::lexer::lex_expr("null != 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_boolean_and_type_mismatch() -> ExprResult<()> {
+        // Given: the source "true and 1"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is Err(TypeMismatch)
+        // Note: typecheck would catch this, but if someone bypasses typecheck
+        // the eval layer still enforces it
+        let tokens = crate::lexer::lex_expr("true and 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        assert!(
+            matches!(result, Err(ExprError::TypeMismatch { .. })),
+            "true and 1 should fail with TypeMismatch at eval"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_chained_not_true() -> ExprResult<()> {
+        // Given: the source "not not true"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is SlotValue::Bool(true)
+        let tokens = crate::lexer::lex_expr("not not true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_double_negation() -> ExprResult<()> {
+        // Given: the source "--5"
+        // When: lex -> parse -> compile with pool -> eval
+        // Then: the result is SlotValue::I64(5) (double negation returns original)
+        let tokens = crate::lexer::lex_expr("--5")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::I64(5));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_load_const_out_of_bounds_returns_error() -> ExprResult<()> {
+        // Given: a program with LoadConst(ConstIdx::new(99)) and empty constants
+        // When: eval_expr_program is called
+        // Then: the result is Err(UnexpectedEof) (constant index out of bounds)
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadConst(ConstIdx::new(99))].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let result = eval_expr_program(&program, &[], &[]);
+        assert!(
+            result.is_err(),
+            "LoadConst with out-of-bounds index should fail"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_load_slot_out_of_bounds_returns_error() -> ExprResult<()> {
+        // Given: a program with LoadSlot(SlotIdx::new(99)) and empty slots
+        // When: eval_expr_program is called
+        // Then: the result is Err(StackUnderflow) (slot index out of bounds)
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadSlot(SlotIdx::new(99))].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let slots: Vec<Option<SlotValue>> = vec![];
+        let result = eval_expr_program(&program, &slots, &[]);
+        assert!(
+            result.is_err(),
+            "LoadSlot with out-of-bounds index should fail"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_unique_rejects_non_list() -> ExprResult<()> {
+        // Given: a SlotValue::I64(42) argument
+        // When: eval_helper is called with Unique
+        // Then: the result is Err(TypeMismatch { expected: "list", found: "number" })
+        let args = [SlotValue::I64(42)];
+        let result = eval_helper(ExprHelper::Unique, &args);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for unique(42)".into(),
+            });
+        };
+        assert_eq!(expected, "list");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_length_returns_type_mismatch_for_non_list() -> ExprResult<()> {
+        // Given: a SlotValue::I64(42) argument
+        // When: eval_helper is called with Length
+        // Then: the result is Err(TypeMismatch { expected: "list", found: "number" })
+        let args = [SlotValue::I64(42)];
+        let result = eval_helper(ExprHelper::Length, &args);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for length(42)".into(),
+            });
+        };
+        assert_eq!(expected, "list");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_empty_returns_true_for_null() -> ExprResult<()> {
+        // Given: a SlotValue::Null argument
+        // When: eval_helper is called with Empty
+        // Then: the result is Ok(SlotValue::Bool(true))
+        let args = [SlotValue::Null];
+        let result = eval_helper(ExprHelper::Empty, &args)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_empty_returns_type_mismatch_for_i64() -> ExprResult<()> {
+        // Given: a SlotValue::I64(42) argument
+        // When: eval_helper is called with Empty
+        // Then: the result is Err(TypeMismatch) (non-null, non-list => type error)
+        let args = [SlotValue::I64(42)];
+        let result = eval_helper(ExprHelper::Empty, &args);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for empty(42)".into(),
+            });
+        };
+        assert_eq!(expected, "list or null");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_contains_returns_unknown_operator() -> ExprResult<()> {
+        // Given: Contains is a multi-arg helper not handled in eval_helper_op
+        // When: eval_expr_op encounters ExprOp::Contains
+        // Then: the result is Err(UnknownOperator) via the helper dispatch
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Contains,
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::UnknownOperator { op }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnknownOperator for Contains".into(),
+            });
+        };
+        assert!(
+            op.contains("Contains"),
+            "op should mention Contains, got: {op}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_append_returns_unknown_operator() -> ExprResult<()> {
+        // Given: Append is a multi-arg helper not handled in eval_helper_op
+        // When: eval_expr_op encounters ExprOp::Append
+        // Then: the result is Err(UnknownOperator)
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Append,
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::UnknownOperator { op }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnknownOperator for Append".into(),
+            });
+        };
+        assert!(op.contains("Append"), "op should mention Append, got: {op}");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_merge_returns_unknown_operator() -> ExprResult<()> {
+        // Given: Merge is a multi-arg helper not handled in eval_helper_op
+        // When: eval_expr_op encounters ExprOp::Merge
+        // Then: the result is Err(UnknownOperator)
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Merge,
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::UnknownOperator { op }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnknownOperator for Merge".into(),
+            });
+        };
+        assert!(op.contains("Merge"), "op should mention Merge, got: {op}");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_program_with_only_load_const_no_ops_returns_stack_overflow() -> ExprResult<()> {
+        // Given: a program with two LoadConst ops but no binary op to consume them
+        // When: eval_expr_program is called
+        // Then: the result is Err(StackOverflow) because 2 values remain on the stack
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
+        let result = eval_expr_program(&program, &[], &constants);
+        // finish_stack checks stack.len() == 1, else StackOverflow
+        let Err(ExprError::StackOverflow { max }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected StackOverflow for extra values".into(),
+            });
+        };
+        assert_eq!(max, vb_core::limits::MAX_EXPRESSION_STACK);
         Ok(())
     }
 }
