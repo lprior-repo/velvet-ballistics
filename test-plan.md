@@ -379,13 +379,15 @@ cargo mutants --workspace --minimum-test-timeout 20 --timeout-multiplier 4
 Benchmarks:
 
 ```bash
-cargo +nightly bench --workspace
-cargo +nightly bench -p vb-core --bench engine_hot_loop
-cargo +nightly bench -p vb-ipc --bench memory_ingress
-cargo +nightly bench -p vb-storage --bench fjall_journal
-RUSTFLAGS="-C target-cpu=native" cargo +nightly bench --workspace --profile maxperf
-perf stat -d cargo +nightly bench -p vb-core --bench engine_hot_loop
+rustup run nightly-2026-04-28 cargo check --benches --all-features
+moon run :bench-build
+rustup run nightly-2026-04-28 cargo bench --all-features --bench velvet_ballastics slot_read -- --sample-size 10 --measurement-time 1 --warm-up-time 1
+rustup run nightly-2026-04-28 cargo bench --workspace --all-features -- --save-baseline vb-current
+RUSTFLAGS="-C target-cpu=native" rustup run nightly-2026-04-28 cargo bench --workspace --all-features --profile maxperf
+perf stat -d rustup run nightly-2026-04-28 cargo bench --bench velvet_ballastics bench_engine_run_save_chain_1000_steps --all-features
 ```
+
+The filtered `slot_read` command is the minimal real Criterion evidence lane for smoke capture. Do not publish performance claims from it alone; publish the exact Criterion output, CPU model, governor, rustc nightly, and before/after baselines for any claimed speedup.
 
 Architecture guardrails:
 
