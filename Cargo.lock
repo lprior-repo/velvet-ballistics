@@ -1445,6 +1445,7 @@ name = "vb_runtime"
 version = "0.1.0"
 dependencies = [
  "crossbeam-queue",
+ "indexmap",
  "proptest",
  "rtrb",
  "tempfile",

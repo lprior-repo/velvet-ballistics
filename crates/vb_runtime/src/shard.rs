@@ -1,7 +1,7 @@
 //! Single-threaded shard owning mutable run state directly.
 
 use crossbeam_queue::ArrayQueue;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::engine::StepBudget;
 use vb_core::frame::{RunFrame, StepState};
@@ -160,9 +160,9 @@ pub enum InspectResponse {
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
     command_queue: ArrayQueue<ShardCommand>,
-    runs: HashMap<RunId, RunState>,
-    pending_timers: HashMap<RunId, PendingTimer>,
-    frame_pools: HashMap<FramePoolKey, FramePool>,
+    runs: IndexMap<RunId, RunState>,
+    pending_timers: IndexMap<RunId, PendingTimer>,
+    frame_pools: IndexMap<FramePoolKey, FramePool>,
     trace_ring: TraceRing,
     counters: ShardCounters,
     step_budget_per_tick: u64,
@@ -182,9 +182,9 @@ impl Shard {
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
         Self {
             command_queue: ArrayQueue::new(config.command_queue_capacity),
-            runs: HashMap::new(),
-            pending_timers: HashMap::new(),
-            frame_pools: HashMap::new(),
+            runs: IndexMap::new(),
+            pending_timers: IndexMap::new(),
+            frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
@@ -428,7 +428,7 @@ impl Shard {
         if let Some(timer) = self.pending_timers.get(&run)
             && timer.step == answer.ticket.ask_step
         {
-            let _ = self.pending_timers.remove(&run);
+            let _ = self.pending_timers.swap_remove(&run);
         }
         state
             .frame
@@ -456,7 +456,7 @@ impl Shard {
 
     fn handle_timer(&mut self, run: RunId) -> RuntimeResult<()> {
         let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timers.remove(&run) {
+        let timer = match self.pending_timers.swap_remove(&run) {
             Some(timer) => timer,
             None => {
                 self.runs.insert(run, state);
@@ -481,12 +481,12 @@ impl Shard {
     }
 
     fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
-        let _ = self.pending_timers.remove(&run);
+        let _ = self.pending_timers.swap_remove(&run);
         if self.runs.contains_key(&run) {
             self.journal
                 .append(RuntimeJournalEvent::RunCancelled { run })?;
         }
-        if let Some(state) = self.runs.remove(&run) {
+        if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
@@ -506,7 +506,7 @@ impl Shard {
     }
 
     fn take_run_state(&mut self, run: RunId) -> RuntimeResult<RunState> {
-        match self.runs.remove(&run) {
+        match self.runs.swap_remove(&run) {
             Some(state) => Ok(state),
             None => Err(RuntimeError::RunNotFound),
         }
@@ -550,7 +550,7 @@ impl Shard {
     }
 
     fn finish_run(&mut self, run: RunId, state: RunState) {
-        let _ = self.pending_timers.remove(&run);
+        let _ = self.pending_timers.swap_remove(&run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -611,7 +611,7 @@ impl Shard {
     }
 
     fn fail_run_state(&mut self, run: RunId, state: RunState) {
-        let _ = self.pending_timers.remove(&run);
+        let _ = self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         match self.journal.append(RuntimeJournalEvent::RunFailed { run }) {
