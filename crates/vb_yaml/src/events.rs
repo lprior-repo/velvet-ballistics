@@ -740,13 +740,15 @@ mod tests {
                     }
                     _ => None,
                 });
-                assert!(events.len() > 0, "events should not be empty");
+                assert!(!events.is_empty(), "events should not be empty");
                 // Verify the profile layer catches the null byte at source level
                 let profile_result = crate::profile::validate_yaml_profile(yaml);
                 assert!(
                     matches!(
                         profile_result,
-                        Err(crate::YamlError::ForbiddenFeature { detail: "null_byte_in_source" })
+                        Err(crate::YamlError::ForbiddenFeature {
+                            detail: "null_byte_in_source"
+                        })
                     ),
                     "profile validation must reject null bytes, got: {profile_result:?}"
                 );

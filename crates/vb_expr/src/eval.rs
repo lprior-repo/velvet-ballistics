@@ -249,7 +249,7 @@ fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
             return Err(ExprError::TypeMismatch {
                 expected: "list".into(),
                 found: other.type_name().into(),
-            })
+            });
         }
     };
     Ok(SlotValue::I64(i64::from(len)))

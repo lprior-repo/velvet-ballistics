@@ -5047,11 +5047,19 @@ mod tests {
         new_bytes: &[u8],
     ) -> Vec<u8> {
         let mut encoded = encode_record(
-            MAGIC_JOURNAL_EVENT, kind, event.seq().get(), event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        ).expect("encoding should succeed");
+            MAGIC_JOURNAL_EVENT,
+            kind,
+            event.seq().get(),
+            event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
         let end = offset.saturating_add(new_bytes.len());
         assert!(end <= 56, "patch must be within CRC-protected region");
-        encoded.get_mut(offset..end).expect("patch range valid").copy_from_slice(new_bytes);
+        encoded
+            .get_mut(offset..end)
+            .expect("patch range valid")
+            .copy_from_slice(new_bytes);
         let header_prefix = &encoded[..56];
         let checksum = crc32c::crc32c(header_prefix);
         encoded[56] = (checksum & 0xFF) as u8;
@@ -5063,106 +5071,227 @@ mod tests {
 
     #[test]
     fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: test_digest(1) };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("ok");
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_SNAPSHOT, 128);
-        let Err(JournalError::BadMagic { found }) = result else { panic!("expected BadMagic, got {:?}", result) };
+        let Err(JournalError::BadMagic { found }) = result else {
+            panic!("expected BadMagic, got {:?}", result)
+        };
         assert_eq!(found, MAGIC_JOURNAL_EVENT);
     }
 
     #[test]
     fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
-        let record = CompiledIrRecord { digest: test_digest(1), ir: vec![1, 2, 3] };
-        let encoded = encode_record(MAGIC_COMPILED_ARTIFACT, RecordKind::CompiledIr, 0, &record, MAX_COMPILED_IR_BYTES).expect("ok");
+        let record = CompiledIrRecord {
+            digest: test_digest(1),
+            ir: vec![1, 2, 3],
+        };
+        let encoded = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            MAX_COMPILED_IR_BYTES,
+        )
+        .expect("ok");
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::BadMagic { found }) = result else { panic!("expected BadMagic, got {:?}", result) };
+        let Err(JournalError::BadMagic { found }) = result else {
+            panic!("expected BadMagic, got {:?}", result)
+        };
         assert_eq!(found, MAGIC_COMPILED_ARTIFACT);
     }
 
     #[test]
     fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(2), seq: EventSeq::new(0), workflow: test_digest(2) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(2),
+            seq: EventSeq::new(0),
+            workflow: test_digest(2),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else { panic!("expected UnsupportedSchemaVersion, got {:?}", result) };
+        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
+            panic!("expected UnsupportedSchemaVersion, got {:?}", result)
+        };
         assert_eq!(version, 5);
     }
 
     #[test]
     fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(3), seq: EventSeq::new(0), workflow: test_digest(3) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(3),
+            seq: EventSeq::new(0),
+            workflow: test_digest(3),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::UnknownRecordKind { kind }) = result else { panic!("expected UnknownRecordKind, got {:?}", result) };
+        let Err(JournalError::UnknownRecordKind { kind }) = result else {
+            panic!("expected UnknownRecordKind, got {:?}", result)
+        };
         assert_eq!(kind, 99);
     }
 
     #[test]
     fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(4), seq: EventSeq::new(0), workflow: test_digest(4) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(4),
+            seq: EventSeq::new(0),
+            workflow: test_digest(4),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else { panic!("expected mismatch, got {:?}", result) };
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
+            panic!("expected mismatch, got {:?}", result)
+        };
         assert_eq!(magic, MAGIC_JOURNAL_EVENT);
         assert_eq!(kind, 30);
     }
 
     #[test]
     fn adversarial_decode_kind_family_mismatch_blob_in_snapshot() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(5), seq: EventSeq::new(0), workflow: test_digest(5) };
-        let result = encode_record(MAGIC_SNAPSHOT, RecordKind::Blob, event.seq().get(), &event, MAX_SNAPSHOT_BYTES);
-        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else { panic!("expected mismatch, got {:?}", result) };
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(5),
+            seq: EventSeq::new(0),
+            workflow: test_digest(5),
+        };
+        let result = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Blob,
+            event.seq().get(),
+            &event,
+            MAX_SNAPSHOT_BYTES,
+        );
+        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
+            panic!("expected mismatch, got {:?}", result)
+        };
         assert_eq!(magic, MAGIC_SNAPSHOT);
         assert_eq!(kind, RecordKind::Blob.id());
     }
 
     #[test]
     fn adversarial_decode_header_len_not_60_returns_mismatch() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(6), seq: EventSeq::new(0), workflow: test_digest(6) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(6),
+            seq: EventSeq::new(0),
+            workflow: test_digest(6),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::HeaderLengthMismatch { found }) = result else { panic!("expected mismatch, got {:?}", result) };
+        let Err(JournalError::HeaderLengthMismatch { found }) = result else {
+            panic!("expected mismatch, got {:?}", result)
+        };
         assert_eq!(found, 48);
     }
 
     #[test]
     fn adversarial_decode_payload_len_above_limit_returns_too_large() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(7), seq: EventSeq::new(0), workflow: test_digest(7) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 12, &9999u32.to_le_bytes());
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(7),
+            seq: EventSeq::new(0),
+            workflow: test_digest(7),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 12, &9999u32.to_le_bytes());
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 100);
-        let Err(JournalError::PayloadTooLarge { len, max }) = result else { panic!("expected PayloadTooLarge, got {:?}", result) };
+        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
+            panic!("expected PayloadTooLarge, got {:?}", result)
+        };
         assert_eq!(len, 9999);
         assert_eq!(max, 100);
     }
 
     #[test]
     fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(8), seq: EventSeq::new(0), workflow: test_digest(8) };
-        let mut encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
-        if let Some(b) = encoded.get_mut(57) { *b ^= 0x80; }
-        assert!(matches!(decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::HeaderChecksumMismatch)));
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(8),
+            seq: EventSeq::new(0),
+            workflow: test_digest(8),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("ok");
+        if let Some(b) = encoded.get_mut(57) {
+            *b ^= 0x80;
+        }
+        assert!(matches!(
+            decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::HeaderChecksumMismatch)
+        ));
     }
 
     #[test]
     fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(9), seq: EventSeq::new(0), workflow: test_digest(9) };
-        let mut encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
-        if let Some(b) = encoded.get_mut(61) { *b ^= 0xFF; }
-        assert!(matches!(decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::PayloadDigestMismatch)));
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(9),
+            seq: EventSeq::new(0),
+            workflow: test_digest(9),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("ok");
+        if let Some(b) = encoded.get_mut(61) {
+            *b ^= 0xFF;
+        }
+        assert!(matches!(
+            decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::PayloadDigestMismatch)
+        ));
     }
 
     #[test]
     fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
         let truncated = [0u8; 45];
-        assert!(matches!(decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+        assert!(matches!(
+            decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::UnexpectedEof)
+        ));
     }
 
     #[test]
     fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(10), seq: EventSeq::new(0), workflow: test_digest(10) };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(10),
+            seq: EventSeq::new(0),
+            workflow: test_digest(10),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("ok");
         let truncated = encoded.get(..62).expect("slice");
-        assert!(matches!(decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+        assert!(matches!(
+            decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::UnexpectedEof)
+        ));
     }
 
     // =========================================================================
@@ -5207,7 +5336,10 @@ mod tests {
 
     #[test]
     fn adversarial_key_no_collision_different_digests() {
-        assert_ne!(blob_key([1u8; 32]).expect("k1").as_slice(), blob_key([2u8; 32]).expect("k2").as_slice());
+        assert_ne!(
+            blob_key([1u8; 32]).expect("k1").as_slice(),
+            blob_key([2u8; 32]).expect("k2").as_slice()
+        );
     }
 
     // =========================================================================
@@ -5219,9 +5351,23 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
         let run = RunId::new(50);
-        assert!(journal.append_journaled(&JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }).is_ok());
-        let result = journal.append_journaled(&JournalEvent::StepStarted { run, seq: EventSeq::new(0), step: StepIdx::new(0) });
-        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else { panic!("expected DuplicateEvent, got {:?}", result) };
+        assert!(
+            journal
+                .append_journaled(&JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow: test_digest(1)
+                })
+                .is_ok()
+        );
+        let result = journal.append_journaled(&JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+        });
+        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
+            panic!("expected DuplicateEvent, got {:?}", result)
+        };
         assert_eq!(r, run);
         assert_eq!(s, EventSeq::new(0));
     }
@@ -5231,9 +5377,28 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
         let run = RunId::new(777);
-        assert!(journal.append_journaled(&JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: test_digest(1) }).is_ok());
-        assert!(journal.append_journaled(&JournalEvent::RunFinished { run, seq: EventSeq::new(5), result: vb_core::SlotIdx::new(0) }).is_ok());
-        let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run) else { panic!("expected SequenceGap") };
+        assert!(
+            journal
+                .append_journaled(&JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow: test_digest(1)
+                })
+                .is_ok()
+        );
+        assert!(
+            journal
+                .append_journaled(&JournalEvent::RunFinished {
+                    run,
+                    seq: EventSeq::new(5),
+                    result: vb_core::SlotIdx::new(0)
+                })
+                .is_ok()
+        );
+        let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run)
+        else {
+            panic!("expected SequenceGap")
+        };
         assert_eq!(expected, EventSeq::new(1));
         assert_eq!(actual, EventSeq::new(5));
     }
@@ -5246,15 +5411,24 @@ mod tests {
     fn adversarial_put_blob_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
-        let record = BlobRecord { digest: [0xFF; 32], bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)] };
-        assert!(matches!(journal.put_blob(&record), Err(JournalError::PayloadTooLarge { .. })));
+        let record = BlobRecord {
+            digest: [0xFF; 32],
+            bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)],
+        };
+        assert!(matches!(
+            journal.put_blob(&record),
+            Err(JournalError::PayloadTooLarge { .. })
+        ));
     }
 
     #[test]
     fn adversarial_blob_zero_length_round_trips() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
-        let record = BlobRecord { digest: [0x42; 32], bytes: vec![] };
+        let record = BlobRecord {
+            digest: [0x42; 32],
+            bytes: vec![],
+        };
         assert!(journal.put_blob(&record).is_ok());
         assert_eq!(journal.blob([0x42; 32]).expect("ok"), Some(record));
     }
@@ -5263,32 +5437,69 @@ mod tests {
     fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
-        let snap = RunSnapshot { run: RunId::new(888), seq: EventSeq::new(0), workflow: test_digest(1), slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)] };
-        assert!(matches!(journal.put_snapshot(&snap), Err(JournalError::PayloadTooLarge { .. })));
+        let snap = RunSnapshot {
+            run: RunId::new(888),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)],
+        };
+        assert!(matches!(
+            journal.put_snapshot(&snap),
+            Err(JournalError::PayloadTooLarge { .. })
+        ));
     }
 
     #[test]
     fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
-        let snap = RunSnapshot { run: RunId::new(889), seq: EventSeq::new(0), workflow: test_digest(1), slots: vec![1, 2, 3] };
-        let mut enc = encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, snap.seq.get(), &snap, MAX_SNAPSHOT_BYTES).expect("ok");
-        if let Some(b) = enc.get_mut(0) { *b ^= 0xFF; }
-        assert!(matches!(decode_record::<RunSnapshot>(&enc, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES), Err(JournalError::BadMagic { .. })));
+        let snap = RunSnapshot {
+            run: RunId::new(889),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![1, 2, 3],
+        };
+        let mut enc = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Snapshot,
+            snap.seq.get(),
+            &snap,
+            MAX_SNAPSHOT_BYTES,
+        )
+        .expect("ok");
+        if let Some(b) = enc.get_mut(0) {
+            *b ^= 0xFF;
+        }
+        assert!(matches!(
+            decode_record::<RunSnapshot>(&enc, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES),
+            Err(JournalError::BadMagic { .. })
+        ));
     }
 
     #[test]
     fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
-        let record = WorkflowSourceRecord { digest: test_digest(0xEE), source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)] };
-        assert!(matches!(journal.put_workflow_source(&record), Err(JournalError::PayloadTooLarge { .. })));
+        let record = WorkflowSourceRecord {
+            digest: test_digest(0xEE),
+            source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)],
+        };
+        assert!(matches!(
+            journal.put_workflow_source(&record),
+            Err(JournalError::PayloadTooLarge { .. })
+        ));
     }
 
     #[test]
     fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path()).expect("opens");
-        let record = CompiledIrRecord { digest: test_digest(0xCC), ir: vec![0u8; (MAX_COMPILED_IR_BYTES as usize).saturating_add(1)] };
-        assert!(matches!(journal.put_compiled_ir(&record), Err(JournalError::PayloadTooLarge { .. })));
+        let record = CompiledIrRecord {
+            digest: test_digest(0xCC),
+            ir: vec![0u8; (MAX_COMPILED_IR_BYTES as usize).saturating_add(1)],
+        };
+        assert!(matches!(
+            journal.put_compiled_ir(&record),
+            Err(JournalError::PayloadTooLarge { .. })
+        ));
     }
 
     // =========================================================================
@@ -5297,18 +5508,36 @@ mod tests {
 
     #[test]
     fn adversarial_schema_migration_from_zero_exact_fields() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(11), seq: EventSeq::new(0), workflow: test_digest(11) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
-        let Err(JournalError::MigrationRequired { from, to }) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128) else { panic!("expected MigrationRequired") };
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(11),
+            seq: EventSeq::new(0),
+            workflow: test_digest(11),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
+        let Err(JournalError::MigrationRequired { from, to }) =
+            decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+        else {
+            panic!("expected MigrationRequired")
+        };
         assert_eq!(from, 0);
         assert_eq!(to, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
     fn adversarial_schema_future_version_max_unsupported() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(12), seq: EventSeq::new(0), workflow: test_digest(12) };
-        let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &u16::MAX.to_le_bytes());
-        let Err(JournalError::UnsupportedSchemaVersion { version }) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128) else { panic!("expected UnsupportedSchemaVersion") };
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(12),
+            seq: EventSeq::new(0),
+            workflow: test_digest(12),
+        };
+        let encoded =
+            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &u16::MAX.to_le_bytes());
+        let Err(JournalError::UnsupportedSchemaVersion { version }) =
+            decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+        else {
+            panic!("expected UnsupportedSchemaVersion")
+        };
         assert_eq!(version, u16::MAX);
     }
 
@@ -5318,20 +5547,33 @@ mod tests {
 
     #[test]
     fn adversarial_queue_zero_capacity_returns_queue_capacity() {
-        assert!(matches!(JournalWriterQueue::new(0, 1, StorageLimits::DEFAULT), Err(JournalError::QueueCapacity)));
+        assert!(matches!(
+            JournalWriterQueue::new(0, 1, StorageLimits::DEFAULT),
+            Err(JournalError::QueueCapacity)
+        ));
     }
 
     #[test]
     fn adversarial_queue_zero_batch_returns_queue_capacity() {
-        assert!(matches!(JournalWriterQueue::new(1, 0, StorageLimits::DEFAULT), Err(JournalError::QueueCapacity)));
+        assert!(matches!(
+            JournalWriterQueue::new(1, 0, StorageLimits::DEFAULT),
+            Err(JournalError::QueueCapacity)
+        ));
     }
 
     #[test]
     fn adversarial_queue_full_returns_queue_full() {
         let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("q");
-        let event = JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: test_digest(1) };
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        };
         assert!(queue.enqueue_journaled(event.clone()).is_ok());
-        assert!(matches!(queue.enqueue_journaled(event), Err(JournalError::QueueFull)));
+        assert!(matches!(
+            queue.enqueue_journaled(event),
+            Err(JournalError::QueueFull)
+        ));
     }
 
     // =========================================================================
@@ -5340,42 +5582,117 @@ mod tests {
 
     #[test]
     fn adversarial_valid_header_garbage_postcard_returns_decode_failed() {
-        let event = JournalEvent::RunAccepted { run: RunId::new(13), seq: EventSeq::new(0), workflow: test_digest(13) };
-        let mut enc = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, event.seq().get(), &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).expect("ok");
-        if let Some(b) = enc.get_mut(60) { *b = 0xFF; }
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(13),
+            seq: EventSeq::new(0),
+            workflow: test_digest(13),
+        };
+        let mut enc = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("ok");
+        if let Some(b) = enc.get_mut(60) {
+            *b = 0xFF;
+        }
         let digest_bytes = blake3::hash(&enc[60..]).as_bytes().clone();
-        enc.get_mut(24..56).expect("digest").copy_from_slice(&digest_bytes);
+        enc.get_mut(24..56)
+            .expect("digest")
+            .copy_from_slice(&digest_bytes);
         let cs = crc32c::crc32c(&enc[..56]);
-        enc[56] = (cs & 0xFF) as u8; enc[57] = ((cs >> 8) & 0xFF) as u8;
-        enc[58] = ((cs >> 16) & 0xFF) as u8; enc[59] = ((cs >> 24) & 0xFF) as u8;
-        assert!(matches!(decode_record::<JournalEvent>(&enc, MAGIC_JOURNAL_EVENT, 128), Err(JournalError::PostcardDecodeFailed)));
+        enc[56] = (cs & 0xFF) as u8;
+        enc[57] = ((cs >> 8) & 0xFF) as u8;
+        enc[58] = ((cs >> 16) & 0xFF) as u8;
+        enc[59] = ((cs >> 24) & 0xFF) as u8;
+        assert!(matches!(
+            decode_record::<JournalEvent>(&enc, MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::PostcardDecodeFailed)
+        ));
     }
 
     #[test]
     fn adversarial_run_header_wrong_magic_returns_bad_magic() {
-        let record = RunHeaderRecord { run: RunId::new(123), workflow_id: WorkflowId::new(456), compiled_digest: test_digest(8), status: 1, accepted_at_ms: 1700000000 };
-        let enc = encode_record(MAGIC_INDEX_RECORD, RecordKind::RunHeader, record.run.as_u64(), &record, MAX_RUN_HEADER_BYTES).expect("ok");
-        assert!(matches!(decode_record::<RunHeaderRecord>(&enc, MAGIC_BLOB, MAX_RUN_HEADER_BYTES), Err(JournalError::BadMagic { .. })));
+        let record = RunHeaderRecord {
+            run: RunId::new(123),
+            workflow_id: WorkflowId::new(456),
+            compiled_digest: test_digest(8),
+            status: 1,
+            accepted_at_ms: 1700000000,
+        };
+        let enc = encode_record(
+            MAGIC_INDEX_RECORD,
+            RecordKind::RunHeader,
+            record.run.as_u64(),
+            &record,
+            MAX_RUN_HEADER_BYTES,
+        )
+        .expect("ok");
+        assert!(matches!(
+            decode_record::<RunHeaderRecord>(&enc, MAGIC_BLOB, MAX_RUN_HEADER_BYTES),
+            Err(JournalError::BadMagic { .. })
+        ));
     }
 
     #[test]
     fn adversarial_decode_empty_returns_unexpected_eof() {
-        assert!(matches!(decode_record::<JournalEvent>(&[][..], MAGIC_JOURNAL_EVENT, 128), Err(JournalError::UnexpectedEof)));
+        assert!(matches!(
+            decode_record::<JournalEvent>(&[][..], MAGIC_JOURNAL_EVENT, 128),
+            Err(JournalError::UnexpectedEof)
+        ));
     }
 
     #[test]
     fn adversarial_encode_empty_blob_succeeds() {
-        assert!(encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &BlobRecord { digest: [0; 32], bytes: vec![] }, MAX_BLOB_BYTES).is_ok());
+        assert!(
+            encode_record(
+                MAGIC_BLOB,
+                RecordKind::Blob,
+                0,
+                &BlobRecord {
+                    digest: [0; 32],
+                    bytes: vec![]
+                },
+                MAX_BLOB_BYTES
+            )
+            .is_ok()
+        );
     }
 
     #[test]
     fn adversarial_encode_empty_source_succeeds() {
-        assert!(encode_record(MAGIC_WORKFLOW_SOURCE, RecordKind::WorkflowSource, 0, &WorkflowSourceRecord { digest: test_digest(0), source: vec![] }, MAX_WORKFLOW_SOURCE_BYTES).is_ok());
+        assert!(
+            encode_record(
+                MAGIC_WORKFLOW_SOURCE,
+                RecordKind::WorkflowSource,
+                0,
+                &WorkflowSourceRecord {
+                    digest: test_digest(0),
+                    source: vec![]
+                },
+                MAX_WORKFLOW_SOURCE_BYTES
+            )
+            .is_ok()
+        );
     }
 
     #[test]
     fn adversarial_encode_empty_ir_succeeds() {
-        assert!(encode_record(MAGIC_COMPILED_ARTIFACT, RecordKind::CompiledIr, 0, &CompiledIrRecord { digest: test_digest(0), ir: vec![] }, MAX_COMPILED_IR_BYTES).is_ok());
+        assert!(
+            encode_record(
+                MAGIC_COMPILED_ARTIFACT,
+                RecordKind::CompiledIr,
+                0,
+                &CompiledIrRecord {
+                    digest: test_digest(0),
+                    ir: vec![]
+                },
+                MAX_COMPILED_IR_BYTES
+            )
+            .is_ok()
+        );
     }
 }
 
@@ -5624,917 +5941,5 @@ mod proptests {
             let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
             prop_assert_eq!(decoded_record, record);
         }
-    }
-
-    // --- Section: Adversarial Record Header Decode Tests ---
-
-    /// Helper: encode a record and corrupt a specific byte offset, then recompute the
-    /// CRC32C over bytes 0..56 so that the CRC check passes (but the corrupted field
-    /// remains). This lets us test validation of individual header fields past the CRC.
-    fn encode_and_patch_field(
-        event: &JournalEvent,
-        kind: RecordKind,
-        offset: usize,
-        new_bytes: &[u8],
-    ) -> Vec<u8> {
-        let mut encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            kind,
-            event.seq().get(),
-            event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-        let end = offset.saturating_add(new_bytes.len());
-        assert!(end <= 56, "patch must be within CRC-protected region");
-        let target = encoded.get_mut(offset..end).expect("patch range valid");
-        target.copy_from_slice(new_bytes);
-        // Recompute CRC32C over bytes 0..56
-        let header_prefix = &encoded[..56];
-        let checksum = crc32c::crc32c(header_prefix);
-        encoded[56] = (checksum & 0xFF) as u8;
-        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
-        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
-        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
-        encoded
-    }
-
-    #[test]
-    fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
-        // Given a record encoded with MAGIC_JOURNAL_EVENT
-        // When decoded with MAGIC_SNAPSHOT (wrong family)
-        // Then it returns BadMagic with the journal event magic
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-        };
-        let encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_SNAPSHOT, 128);
-        let Err(JournalError::BadMagic { found }) = result else {
-            panic!("expected BadMagic, got {:?}", result);
-        };
-        assert_eq!(found, MAGIC_JOURNAL_EVENT);
-    }
-
-    #[test]
-    fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
-        // Given a record with MAGIC_COMPILED_ARTIFACT (VBIR)
-        // When decoded expecting MAGIC_JOURNAL_EVENT
-        // Then it returns BadMagic with the VBIR magic value
-        let record = CompiledIrRecord {
-            digest: test_digest(1),
-            ir: vec![1, 2, 3],
-        };
-        let encoded = encode_record(
-            MAGIC_COMPILED_ARTIFACT,
-            RecordKind::CompiledIr,
-            0,
-            &record,
-            MAX_COMPILED_IR_BYTES,
-        )
-        .expect("encoding should succeed");
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::BadMagic { found }) = result else {
-            panic!("expected BadMagic, got {:?}", result);
-        };
-        assert_eq!(found, MAGIC_COMPILED_ARTIFACT);
-    }
-
-    #[test]
-    fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
-        // Given a record with schema version patched to 5 (future)
-        // When decode_record is called
-        // Then it returns UnsupportedSchemaVersion { version: 5 }
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(2),
-            seq: EventSeq::new(0),
-            workflow: test_digest(2),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
-            panic!("expected UnsupportedSchemaVersion, got {:?}", result);
-        };
-        assert_eq!(version, 5);
-    }
-
-    #[test]
-    fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
-        // Given a record with kind patched to 99 (outside all valid ranges)
-        // When decode_record is called
-        // Then it returns UnknownRecordKind { kind: 99 }
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(3),
-            seq: EventSeq::new(0),
-            workflow: test_digest(3),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::UnknownRecordKind { kind }) = result else {
-            panic!("expected UnknownRecordKind, got {:?}", result);
-        };
-        assert_eq!(kind, 99);
-    }
-
-    #[test]
-    fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
-        // Given a record with MAGIC_JOURNAL_EVENT but kind patched to Snapshot (30)
-        // When decode_record is called
-        // Then it returns RecordKindFamilyMismatch
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(4),
-            seq: EventSeq::new(0),
-            workflow: test_digest(4),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
-            panic!("expected RecordKindFamilyMismatch, got {:?}", result);
-        };
-        assert_eq!(magic, MAGIC_JOURNAL_EVENT);
-        assert_eq!(kind, 30);
-    }
-
-    #[test]
-    fn adversarial_decode_kind_family_mismatch_blob_in_snapshot() {
-        // Given a record with MAGIC_SNAPSHOT but kind patched to Blob (40)
-        // When encode_record is called
-        // Then it returns RecordKindFamilyMismatch
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(5),
-            seq: EventSeq::new(0),
-            workflow: test_digest(5),
-        };
-        let result = encode_record(
-            MAGIC_SNAPSHOT,
-            RecordKind::Blob,
-            event.seq().get(),
-            &event,
-            MAX_SNAPSHOT_BYTES,
-        );
-        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
-            panic!("expected RecordKindFamilyMismatch, got {:?}", result);
-        };
-        assert_eq!(magic, MAGIC_SNAPSHOT);
-        assert_eq!(kind, RecordKind::Blob.id());
-    }
-
-    #[test]
-    fn adversarial_decode_header_len_not_60_returns_mismatch() {
-        // Given a record with header_len patched to 48 (not 60)
-        // When decode_record is called
-        // Then it returns HeaderLengthMismatch { found: 48 }
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(6),
-            seq: EventSeq::new(0),
-            workflow: test_digest(6),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::HeaderLengthMismatch { found }) = result else {
-            panic!("expected HeaderLengthMismatch, got {:?}", result);
-        };
-        assert_eq!(found, 48);
-    }
-
-    #[test]
-    fn adversarial_decode_payload_len_above_limit_returns_too_large() {
-        // Given a record with payload_len patched to 9999 but max set to 100
-        // When decode_record is called
-        // Then it returns PayloadTooLarge with exact values
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(7),
-            seq: EventSeq::new(0),
-            workflow: test_digest(7),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 12, &9999u32.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 100);
-        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
-            panic!("expected PayloadTooLarge, got {:?}", result);
-        };
-        assert_eq!(len, 9999);
-        assert_eq!(max, 100);
-    }
-
-    #[test]
-    fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
-        // Given a record with a single byte flipped in the CRC region
-        // When decode_record is called
-        // Then it returns HeaderChecksumMismatch
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(8),
-            seq: EventSeq::new(0),
-            workflow: test_digest(8),
-        };
-        let mut encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-        // Flip bit in CRC byte at offset 57
-        if let Some(byte) = encoded.get_mut(57) {
-            *byte ^= 0x80;
-        }
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::HeaderChecksumMismatch)),
-            "expected HeaderChecksumMismatch, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
-        // Given a record with a single byte flipped in the payload
-        // When decode_record is called
-        // Then it returns PayloadDigestMismatch
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(9),
-            seq: EventSeq::new(0),
-            workflow: test_digest(9),
-        };
-        let mut encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-        // Flip a payload byte (offset 60+)
-        if let Some(byte) = encoded.get_mut(61) {
-            *byte ^= 0xFF;
-        }
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::PayloadDigestMismatch)),
-            "expected PayloadDigestMismatch, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
-        // Given 45 bytes (less than 60-byte header)
-        // When decode_record is called
-        // Then it returns UnexpectedEof
-        let truncated = [0u8; 45];
-        let result = decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::UnexpectedEof)),
-            "expected UnexpectedEof, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
-        // Given a valid header but payload truncated to only 2 of N bytes
-        // When decode_record is called
-        // Then it returns UnexpectedEof
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(10),
-            seq: EventSeq::new(0),
-            workflow: test_digest(10),
-        };
-        let encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-        // Keep 60-byte header + 2 payload bytes (truncated)
-        let truncated = encoded.get(..62).expect("slice should exist");
-
-        let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::UnexpectedEof)),
-            "expected UnexpectedEof, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial Key Encoding Tests ---
-
-    #[test]
-    fn adversarial_key_wrong_prefix_isolation() {
-        // Given workflow_source and compiled_ir keys for the same digest
-        // When compared
-        // Then they differ in the prefix byte only, proving prefix isolation
-        let digest = [0xAB; 32];
-        let ws_key = workflow_source_key(digest).expect("ws key");
-        let ci_key = compiled_ir_key(digest).expect("ci key");
-        let bl_key = blob_key(digest).expect("blob key");
-
-        assert_ne!(ws_key[0], ci_key[0]);
-        assert_ne!(ws_key[0], bl_key[0]);
-        assert_ne!(ci_key[0], bl_key[0]);
-        // Same digest payload after prefix
-        assert_eq!(ws_key[1..], ci_key[1..]);
-        assert_eq!(ws_key[1..], bl_key[1..]);
-    }
-
-    #[test]
-    fn adversarial_key_too_short_for_format_is_rejected_by_decode() {
-        // Given a 3-byte slice (too short for any key format)
-        // When used as raw bytes in decode_record
-        // Then it returns UnexpectedEof
-        let short = [0x11, 0x00, 0x00];
-        let result = decode_record::<JournalEvent>(&short, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::UnexpectedEof)),
-            "expected UnexpectedEof for short key bytes"
-        );
-    }
-
-    #[test]
-    fn adversarial_key_wrong_endianness_produces_different_keys() {
-        // Given run id 1 encoded in big-endian vs little-endian in key context
-        // When the big-endian key is compared with a manually constructed LE key
-        // Then they differ, proving the key encoder uses big-endian
-        let key = run_header_key(RunId::new(1)).expect("key should succeed");
-        // Key layout: [prefix 0x10][run_id 8 bytes big-endian]
-        let mut le_key = [0u8; 9];
-        le_key[0] = PREFIX_RUN_HEADER;
-        le_key[1..9].copy_from_slice(&1u64.to_le_bytes());
-
-        assert_ne!(key.as_slice(), le_key.as_slice(), "key must use big-endian");
-        assert_eq!(
-            key[1..9],
-            1u64.to_be_bytes(),
-            "run id portion must be big-endian"
-        );
-    }
-
-    #[test]
-    fn adversarial_key_no_collision_different_runs_same_seq() {
-        // Given two different runs with the same sequence number
-        // When their journal keys are constructed
-        // Then the keys are different
-        let k1 = run_event_key(RunId::new(100), EventSeq::new(5)).expect("key1");
-        let k2 = run_event_key(RunId::new(200), EventSeq::new(5)).expect("key2");
-        assert_ne!(k1.as_slice(), k2.as_slice());
-    }
-
-    #[test]
-    fn adversarial_key_no_collision_same_run_different_seq() {
-        // Given the same run with different sequence numbers
-        // When their journal keys are constructed
-        // Then the keys are different
-        let k1 = run_event_key(RunId::new(100), EventSeq::new(0)).expect("key1");
-        let k2 = run_event_key(RunId::new(100), EventSeq::new(1)).expect("key2");
-        assert_ne!(k1.as_slice(), k2.as_slice());
-    }
-
-    #[test]
-    fn adversarial_key_no_collision_different_digests_same_prefix() {
-        // Given two different digests with the same blob prefix
-        // When their blob keys are constructed
-        // Then the keys are different
-        let d1 = [1u8; 32];
-        let d2 = [2u8; 32];
-        let k1 = blob_key(d1).expect("key1");
-        let k2 = blob_key(d2).expect("key2");
-        assert_ne!(k1.as_slice(), k2.as_slice());
-    }
-
-    // --- Section: Adversarial Journal Tests ---
-
-    #[test]
-    fn adversarial_append_event_for_run_with_no_prior_events_succeeds() {
-        // Given an empty journal
-        // When a RunAccepted event is appended for a new run
-        // Then it succeeds and events_for_run returns exactly that event
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let run = RunId::new(1000);
-        let event = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: test_digest(42),
-        };
-        assert!(journal.append_journaled(&event).is_ok());
-        let events = journal.events_for_run(run).expect("read events");
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event);
-    }
-
-    #[test]
-    fn adversarial_append_duplicate_sequence_is_rejected() {
-        // Given a journal with seq 0 for run 50
-        // When appending another event at seq 0 for the same run
-        // Then DuplicateEvent is returned with exact run and seq
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let run = RunId::new(50);
-        let e0 = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-        };
-        let e0_dup = JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(0),
-        };
-        assert!(journal.append_journaled(&e0).is_ok());
-        let result = journal.append_journaled(&e0_dup);
-        let Err(JournalError::DuplicateEvent {
-            run: dup_run,
-            seq: dup_seq,
-        }) = result
-        else {
-            panic!("expected DuplicateEvent, got {:?}", result);
-        };
-        assert_eq!(dup_run, run);
-        assert_eq!(dup_seq, EventSeq::new(0));
-    }
-
-    #[test]
-    fn adversarial_read_events_from_empty_run_returns_empty() {
-        // Given a journal with no events
-        // When events_for_run is called
-        // Then it returns an empty vector (no error)
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let events = journal
-            .events_for_run(RunId::new(9999))
-            .expect("should succeed");
-        assert!(events.is_empty());
-    }
-
-    #[test]
-    fn adversarial_read_events_with_sequence_gap_returns_error() {
-        // Given a journal with seq 0 then seq 5 (gap at 1..4)
-        // When events_for_run replays
-        // Then it returns SequenceGap with expected=1, actual=5
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let run = RunId::new(777);
-        let e0 = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-        };
-        let e5 = JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(5),
-            result: vb_core::SlotIdx::new(0),
-        };
-        assert!(journal.append_journaled(&e0).is_ok());
-        assert!(journal.append_journaled(&e5).is_ok());
-
-        let result = journal.events_for_run(run);
-        let Err(JournalError::SequenceGap { expected, actual }) = result else {
-            panic!("expected SequenceGap, got {:?}", result);
-        };
-        assert_eq!(expected, EventSeq::new(1));
-        assert_eq!(actual, EventSeq::new(5));
-    }
-
-    // --- Section: Adversarial Blob Storage Tests ---
-
-    #[test]
-    fn adversarial_put_blob_exceeding_max_bytes_returns_payload_too_large() {
-        // Given a BlobRecord with payload exceeding MAX_BLOB_BYTES
-        // When put_blob is called
-        // Then it returns PayloadTooLarge
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let record = BlobRecord {
-            digest: [0xFF; 32],
-            bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)],
-        };
-        let result = journal.put_blob(&record);
-        assert!(
-            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
-            "expected PayloadTooLarge for oversized blob, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn adversarial_read_nonexistent_blob_returns_none() {
-        // Given a journal with no blobs
-        // When blob is called with an arbitrary digest
-        // Then it returns None
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let result = journal.blob([0xDE; 32]).expect("lookup should succeed");
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn adversarial_blob_zero_length_payload_round_trips() {
-        // Given a BlobRecord with zero-length bytes
-        // When stored and retrieved
-        // Then the round-trip succeeds and bytes are empty
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let record = BlobRecord {
-            digest: [0x42; 32],
-            bytes: vec![],
-        };
-        assert!(journal.put_blob(&record).is_ok());
-        let retrieved = journal.blob([0x42; 32]).expect("lookup should succeed");
-        assert_eq!(retrieved, Some(record));
-    }
-
-    // --- Section: Adversarial Migration / Schema Tests ---
-
-    #[test]
-    fn adversarial_schema_migration_required_from_zero() {
-        // Given a record with schema version 0
-        // When decode_record is called
-        // Then it returns MigrationRequired { from: 0, to: 1 }
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(11),
-            seq: EventSeq::new(0),
-            workflow: test_digest(11),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::MigrationRequired { from, to }) = result else {
-            panic!("expected MigrationRequired, got {:?}", result);
-        };
-        assert_eq!(from, 0);
-        assert_eq!(to, CURRENT_SCHEMA_VERSION);
-    }
-
-    #[test]
-    fn adversarial_schema_future_version_returns_unsupported() {
-        // Given a record with schema version u16::MAX
-        // When decode_record is called
-        // Then it returns UnsupportedSchemaVersion { version: u16::MAX }
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(12),
-            seq: EventSeq::new(0),
-            workflow: test_digest(12),
-        };
-        let encoded =
-            encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &u16::MAX.to_le_bytes());
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
-            panic!("expected UnsupportedSchemaVersion, got {:?}", result);
-        };
-        assert_eq!(version, u16::MAX);
-    }
-
-    // --- Section: Adversarial Workflow Source Tests ---
-
-    #[test]
-    fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
-        // Given a WorkflowSourceRecord with source exceeding MAX_WORKFLOW_SOURCE_BYTES
-        // When put_workflow_source is called
-        // Then it returns PayloadTooLarge
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let record = WorkflowSourceRecord {
-            digest: test_digest(0xEE),
-            source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)],
-        };
-        let result = journal.put_workflow_source(&record);
-        assert!(
-            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
-            "expected PayloadTooLarge for oversized source, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial Compiled IR Tests ---
-
-    #[test]
-    fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
-        // Given a CompiledIrRecord with IR exceeding MAX_COMPILED_IR_BYTES
-        // When put_compiled_ir is called
-        // Then it returns PayloadTooLarge
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let record = CompiledIrRecord {
-            digest: test_digest(0xCC),
-            ir: vec![0u8; (MAX_COMPILED_IR_BYTES as usize).saturating_add(1)],
-        };
-        let result = journal.put_compiled_ir(&record);
-        assert!(
-            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
-            "expected PayloadTooLarge for oversized IR, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial Snapshot Tests ---
-
-    #[test]
-    fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
-        // Given a RunSnapshot with slots exceeding MAX_SNAPSHOT_BYTES
-        // When put_snapshot is called
-        // Then it returns PayloadTooLarge
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp_dir.path()).expect("journal opens");
-        let snapshot = RunSnapshot {
-            run: RunId::new(888),
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-            slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)],
-        };
-        let result = journal.put_snapshot(&snapshot);
-        assert!(
-            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
-            "expected PayloadTooLarge for oversized snapshot, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
-        // Given an encoded snapshot record with magic corrupted
-        // When decode_record is called with MAGIC_SNAPSHOT
-        // Then it returns BadMagic
-        let snapshot = recovery::RunSnapshot {
-            run: RunId::new(889),
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-            slots: vec![1, 2, 3],
-        };
-        let mut encoded = encode_record(
-            MAGIC_SNAPSHOT,
-            RecordKind::Snapshot,
-            snapshot.seq.get(),
-            &snapshot,
-            MAX_SNAPSHOT_BYTES,
-        )
-        .expect("encoding should succeed");
-        // Corrupt magic byte at offset 0
-        if let Some(byte) = encoded.get_mut(0) {
-            *byte ^= 0xFF;
-        }
-        let result =
-            decode_record::<recovery::RunSnapshot>(&encoded, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES);
-        assert!(
-            matches!(result, Err(JournalError::BadMagic { .. })),
-            "expected BadMagic for corrupt snapshot, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial Queue Tests ---
-
-    #[test]
-    fn adversarial_queue_zero_capacity_returns_queue_capacity_error() {
-        // Given capacity=0, batch_size=1
-        // When JournalWriterQueue::new is called
-        // Then it returns QueueCapacity
-        let result = JournalWriterQueue::new(0, 1, StorageLimits::DEFAULT);
-        assert!(
-            matches!(result, Err(JournalError::QueueCapacity)),
-            "expected QueueCapacity for zero capacity"
-        );
-    }
-
-    #[test]
-    fn adversarial_queue_zero_batch_returns_queue_capacity_error() {
-        // Given capacity=1, batch_size=0
-        // When JournalWriterQueue::new is called
-        // Then it returns QueueCapacity
-        let result = JournalWriterQueue::new(1, 0, StorageLimits::DEFAULT);
-        assert!(
-            matches!(result, Err(JournalError::QueueCapacity)),
-            "expected QueueCapacity for zero batch size"
-        );
-    }
-
-    #[test]
-    fn adversarial_queue_full_returns_queue_full_error() {
-        // Given a queue at capacity 1
-        // When a second event is enqueued
-        // Then it returns QueueFull
-        let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("queue creation");
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
-            seq: EventSeq::new(0),
-            workflow: test_digest(1),
-        };
-        assert!(queue.enqueue_journaled(event.clone()).is_ok());
-        let result = queue.enqueue_journaled(event);
-        assert!(
-            matches!(result, Err(JournalError::QueueFull)),
-            "expected QueueFull, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial IPC Frame Magic Tests ---
-
-    #[test]
-    fn adversarial_ipc_frame_magic_accepts_any_kind() {
-        // Given MAGIC_IPC_FRAME with any record kind
-        // When validate_kind_family is called
-        // Then it returns Ok (IPC frame magic accepts all kinds)
-        let result = encode_record(
-            MAGIC_IPC_FRAME,
-            RecordKind::RunAccepted,
-            0,
-            &JournalEvent::RunAccepted {
-                run: RunId::new(1),
-                seq: EventSeq::new(0),
-                workflow: test_digest(1),
-            },
-            128,
-        );
-        assert!(
-            result.is_ok(),
-            "IPC frame magic should accept any known kind"
-        );
-    }
-
-    // --- Section: Adversarial Postcard Corruption Tests ---
-
-    #[test]
-    fn adversarial_valid_header_but_garbage_postcard_returns_decode_failed() {
-        // Given an encoded record with a valid header but garbage postcard payload
-        // When decode_record is called
-        // Then it returns PostcardDecodeFailed
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(13),
-            seq: EventSeq::new(0),
-            workflow: test_digest(13),
-        };
-        let mut encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
-        .expect("encoding should succeed");
-        // Corrupt payload, then fix digest and CRC so header validation passes
-        if let Some(byte) = encoded.get_mut(60) {
-            *byte = 0xFF;
-        }
-        // Re-hash the payload
-        let payload = encoded.get(60..).expect("payload");
-        let digest = blake3::hash(payload);
-        encoded
-            .get_mut(24..56)
-            .expect("digest region")
-            .copy_from_slice(digest.as_bytes());
-        // Re-compute CRC
-        let header_prefix = &encoded[..56];
-        let checksum = crc32c::crc32c(header_prefix);
-        encoded[56] = (checksum & 0xFF) as u8;
-        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
-        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
-        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
-
-        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::PostcardDecodeFailed)),
-            "expected PostcardDecodeFailed, got {:?}",
-            result
-        );
-    }
-
-    // --- Section: Adversarial Run Header Tests ---
-
-    #[test]
-    fn adversarial_run_header_wrong_magic_returns_bad_magic() {
-        // Given an encoded run header record
-        // When decoded with the wrong expected magic (MAGIC_BLOB instead of MAGIC_INDEX_RECORD)
-        // Then it returns BadMagic
-        let record = RunHeaderRecord {
-            run: RunId::new(123),
-            workflow_id: WorkflowId::new(456),
-            compiled_digest: test_digest(8),
-            status: 1,
-            accepted_at_ms: 1700000000,
-        };
-        let encoded = encode_record(
-            MAGIC_INDEX_RECORD,
-            RecordKind::RunHeader,
-            record.run.as_u64(),
-            &record,
-            MAX_RUN_HEADER_BYTES,
-        )
-        .expect("encoding should succeed");
-
-        let result = decode_record::<RunHeaderRecord>(&encoded, MAGIC_BLOB, MAX_RUN_HEADER_BYTES);
-        assert!(
-            matches!(result, Err(JournalError::BadMagic { .. })),
-            "expected BadMagic for wrong magic on run header"
-        );
-    }
-
-    // --- Section: Adversarial Empty Input Tests ---
-
-    #[test]
-    fn adversarial_decode_empty_byte_slice_returns_unexpected_eof() {
-        // Given a zero-length byte slice
-        // When decode_record is called
-        // Then it returns UnexpectedEof
-        let empty: &[u8] = &[];
-        let result = decode_record::<JournalEvent>(empty, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::UnexpectedEof)),
-            "expected UnexpectedEof for empty input"
-        );
-    }
-
-    #[test]
-    fn adversarial_decode_single_byte_returns_unexpected_eof() {
-        // Given a 1-byte slice
-        // When decode_record is called
-        // Then it returns UnexpectedEof
-        let single = [0x56u8; 1];
-        let result = decode_record::<JournalEvent>(&single, MAGIC_JOURNAL_EVENT, 128);
-        assert!(
-            matches!(result, Err(JournalError::UnexpectedEof)),
-            "expected UnexpectedEof for 1-byte input"
-        );
-    }
-
-    // --- Section: Adversarial Encode Boundary Tests ---
-
-    #[test]
-    fn adversarial_encode_blob_with_empty_bytes_succeeds() {
-        // Given a BlobRecord with empty bytes
-        // When encode_record is called
-        // Then it succeeds (zero-length is valid)
-        let record = BlobRecord {
-            digest: [0; 32],
-            bytes: vec![],
-        };
-        let result = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, MAX_BLOB_BYTES);
-        assert!(
-            result.is_ok(),
-            "empty blob bytes should encode successfully"
-        );
-    }
-
-    #[test]
-    fn adversarial_encode_workflow_source_with_empty_source_succeeds() {
-        // Given a WorkflowSourceRecord with empty source bytes
-        // When encode_record is called
-        // Then it succeeds
-        let record = WorkflowSourceRecord {
-            digest: test_digest(0),
-            source: vec![],
-        };
-        let result = encode_record(
-            MAGIC_WORKFLOW_SOURCE,
-            RecordKind::WorkflowSource,
-            0,
-            &record,
-            MAX_WORKFLOW_SOURCE_BYTES,
-        );
-        assert!(result.is_ok(), "empty source should encode successfully");
-    }
-
-    #[test]
-    fn adversarial_encode_compiled_ir_with_empty_ir_succeeds() {
-        // Given a CompiledIrRecord with empty IR
-        // When encode_record is called
-        // Then it succeeds
-        let record = CompiledIrRecord {
-            digest: test_digest(0),
-            ir: vec![],
-        };
-        let result = encode_record(
-            MAGIC_COMPILED_ARTIFACT,
-            RecordKind::CompiledIr,
-            0,
-            &record,
-            MAX_COMPILED_IR_BYTES,
-        );
-        assert!(result.is_ok(), "empty IR should encode successfully");
     }
 }

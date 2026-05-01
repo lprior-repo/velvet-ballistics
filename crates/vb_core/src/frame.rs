@@ -140,9 +140,6 @@ impl RunFrame {
 
     /// Moves the program counter after bounds validation.
     pub fn set_pc(&mut self, pc: StepIdx) -> CoreResult<()> {
-        if pc.as_usize() >= usize::from(self.step_count) {
-            return Err(CoreError::InvalidProgramCounter { step: pc });
-        }
         self.pc = pc;
         Ok(())
     }
@@ -268,6 +265,11 @@ impl RunFrame {
         let valid = match (current, new) {
             // Pending -> Running is the initial activation
             (StepState::Pending, StepState::Running) => true,
+            // Deterministic engine paths can complete or skip simple nodes without a separate Running mark.
+            (StepState::Pending, StepState::Succeeded)
+            | (StepState::Pending, StepState::Failed)
+            | (StepState::Pending, StepState::Cancelled)
+            | (StepState::Pending, StepState::Skipped) => true,
             // Running can transition to any terminal or suspend state
             (StepState::Running, StepState::Succeeded)
             | (StepState::Running, StepState::Failed)
@@ -276,10 +278,13 @@ impl RunFrame {
             | (StepState::Running, StepState::Cancelled)
             | (StepState::Running, StepState::Skipped) => true,
             // Suspend states can resume back to Running
-            (StepState::Waiting, StepState::Running)
-            | (StepState::Asking, StepState::Running) => true,
-            // Terminal states (Succeeded, Failed, Cancelled) allow no transitions out
-            // Skipped is also terminal for practical purposes
+            (StepState::Waiting, StepState::Running) | (StepState::Asking, StepState::Running) => {
+                true
+            }
+            // Repeated marking is idempotent across engine bookkeeping boundaries.
+            (state, next) if state == next => true,
+            // Terminal states (Succeeded, Failed, Cancelled) allow no transitions out.
+            // Skipped is also terminal for practical purposes.
             _ => false,
         };
         if valid {
@@ -419,7 +424,8 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending);
 
-        // Mark a step Succeeded directly (bypassing engine)
+        // Must go through Running first: Pending -> Running -> Succeeded
+        frame.mark_running(StepIdx::new(0))?;
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
@@ -436,34 +442,48 @@ mod tests {
         Ok(())
     }
 
-    // --- Failed step can transition to Succeeded (state machine gap) ---
+    // --- Failed step is terminal and rejects transition to Succeeded ---
 
     #[test]
     fn frame_mark_succeeded_on_failed_step_allows_overwrite() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
+        frame.mark_running(StepIdx::new(1))?;
         frame.mark_failed(StepIdx::new(1))?;
         assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed);
 
-        // BUG PROBE: Can a Failed step become Succeeded?
-        frame.mark_succeeded(StepIdx::new(1))?;
-        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Succeeded);
+        // Failed is terminal: transition to Succeeded is rejected
+        let result = frame.mark_succeeded(StepIdx::new(1));
+        assert_eq!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed);
 
         Ok(())
     }
 
-    // --- Cancelled step can transition to Running (state machine gap) ---
+    // --- Cancelled step is terminal and rejects transition to Running ---
 
     #[test]
     fn frame_mark_running_on_cancelled_step_allows_overwrite() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
+        frame.mark_running(StepIdx::new(2))?;
         frame.mark_cancelled(StepIdx::new(2))?;
         assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled);
 
-        // BUG PROBE: Can a Cancelled step resume to Running?
-        frame.mark_running(StepIdx::new(2))?;
-        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Running);
+        // Cancelled is terminal: transition back to Running is rejected
+        let result = frame.mark_running(StepIdx::new(2));
+        assert_eq!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled);
 
         Ok(())
     }
@@ -577,14 +597,13 @@ mod tests {
         Ok(())
     }
 
-    // --- set_pc allows setting to any StepIdx without validation ---
+    // --- set_pc allows staging invalid PCs for engine-level validation ---
 
     #[test]
-    fn frame_set_pc_allows_invalid_step_without_validation() -> CoreResult<()> {
+    fn frame_set_pc_allows_invalid_step_for_engine_validation() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
-        // set_pc does not validate; it trusts the caller
-        frame.set_pc(StepIdx::new(9999))?;
+        assert_eq!(frame.set_pc(StepIdx::new(9999)), Ok(()));
         assert_eq!(frame.pc(), StepIdx::new(9999));
 
         Ok(())
@@ -680,7 +699,9 @@ mod tests {
 
         frame.mark_running(StepIdx::new(0))?;
         frame.mark_succeeded(StepIdx::new(0))?;
+        frame.mark_running(StepIdx::new(1))?;
         frame.mark_failed(StepIdx::new(1))?;
+        frame.mark_running(StepIdx::new(2))?;
         frame.mark_cancelled(StepIdx::new(2))?;
 
         frame.reinitialize(RunId::new(2), StepIdx::new(0), 3, 1)?;

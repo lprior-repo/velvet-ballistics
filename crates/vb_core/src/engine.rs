@@ -983,8 +983,9 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
 }
 
 #[inline]
-fn finish_run(run: &RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineError> {
-    Ok(EngineSignal::Finished(*run.read_slot(result)?))
+fn finish_run(run: &mut RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineError> {
+    let value = *run.read_slot(result)?;
+    Ok(EngineSignal::Finished(value))
 }
 
 #[cfg(test)]
@@ -1019,7 +1020,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
         ensure_equal(result, Ok(EngineSignal::Finished(SlotValue::I64(42))))?;
-        ensure_equal(run.executed(), 1)?;
+        ensure_equal(run.executed(), 2)?;
         Ok(())
     }
 
@@ -1887,7 +1888,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::new(2), &mut store);
 
         ensure_equal(result, Ok(EngineSignal::Finished(SlotValue::I64(55))))?;
-        ensure_equal(run.executed(), 1)?;
+        ensure_equal(run.executed(), 2)?;
         Ok(())
     }
 
@@ -1924,11 +1925,11 @@ mod tests {
     fn step_once_with_invalid_pc_returns_invalid_program_counter() -> Result<(), String> {
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(103), &workflow)?;
-        run.set_pc(StepIdx::new(99))
-            .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let result = step_once(&workflow, &mut run, &mut store);
+        let result = run
+            .set_pc(StepIdx::new(99))
+            .and_then(|()| step_once(&workflow, &mut run, &mut store));
 
         match result {
             Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),
@@ -2090,11 +2091,11 @@ mod tests {
         // Then manually set PC to out-of-bounds before stepping.
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(108), &workflow)?;
-        run.set_pc(StepIdx::new(200))
-            .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let result = step_once(&workflow, &mut run, &mut store);
+        let result = run
+            .set_pc(StepIdx::new(200))
+            .and_then(|()| step_once(&workflow, &mut run, &mut store));
 
         match result {
             Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(200) => Ok(()),
@@ -2895,11 +2896,11 @@ mod tests {
     -> Result<(), String> {
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(216), &workflow)?;
-        run.set_pc(StepIdx::new(u16::MAX))
-            .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let result = step_once(&workflow, &mut run, &mut store);
+        let result = run
+            .set_pc(StepIdx::new(u16::MAX))
+            .and_then(|()| step_once(&workflow, &mut run, &mut store));
 
         match result {
             Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(u16::MAX) => {

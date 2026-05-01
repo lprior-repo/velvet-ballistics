@@ -1887,18 +1887,22 @@ mod tests {
             Ok(f) => f,
             Err(_) => return,
         };
-        run.set_pc(StepIdx::new(99));
         let mut store = ValueStore::new();
         let mut budget = StepBudget::new(10);
         // When driving with invalid pc
-        let result = drive_deterministic_full(
-            &workflow,
-            &mut run,
-            &mut budget,
-            &mut store,
-            &[],
-            RetryPolicy::NEVER,
-        );
+        let result = run
+            .set_pc(StepIdx::new(99))
+            .map_err(RuntimeEngineError::Core)
+            .and_then(|()| {
+                drive_deterministic_full(
+                    &workflow,
+                    &mut run,
+                    &mut budget,
+                    &mut store,
+                    &[],
+                    RetryPolicy::NEVER,
+                )
+            });
         // Then it returns Core(InvalidProgramCounter)
         assert_eq!(
             result,

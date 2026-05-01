@@ -171,10 +171,10 @@ fn check_null_bytes_in_source(text: &str) -> YamlResult<()> {
 /// tag (e.g. `!!timestamp`, `!!binary`, `!!set`, `!!omap`) is rejected.
 pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
     for event in events {
-        if let Some(tag) = event.tag() {
-            if !is_allowed_tag(tag) {
-                return Err(YamlError::CustomTag { tag: tag.into() });
-            }
+        if let Some(tag) = event.tag()
+            && !is_allowed_tag(tag)
+        {
+            return Err(YamlError::CustomTag { tag: tag.into() });
         }
         if let YamlEvent::Scalar { style, value, .. } = event {
             reject_binary_scalar(value, *style)?;
@@ -184,15 +184,7 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
 }
 
 /// The set of allowed YAML core schema tag suffixes.
-const ALLOWED_CORE_TAG_SUFFIXES: &[&str] = &[
-    "str",
-    "int",
-    "float",
-    "bool",
-    "null",
-    "seq",
-    "map",
-];
+const ALLOWED_CORE_TAG_SUFFIXES: &[&str] = &["str", "int", "float", "bool", "null", "seq", "map"];
 
 /// Check whether a tag string is one of the allowed YAML core schema types.
 ///
@@ -1084,7 +1076,7 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_yaml_11_NO_uppercase_rejected() {
+    fn adversarial_yaml_11_no_uppercase_rejected() {
         // Given: YAML with uppercase "NO"
         let yaml = "flag: NO\n";
         // When: validating profile
@@ -1099,7 +1091,7 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_yaml_11_ON_uppercase_rejected() {
+    fn adversarial_yaml_11_on_uppercase_rejected() {
         // Given: YAML with uppercase "ON"
         let yaml = "flag: ON\n";
         // When: validating profile
@@ -1114,7 +1106,7 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_yaml_11_Off_mixed_case_rejected() {
+    fn adversarial_yaml_11_off_mixed_case_rejected() {
         // Given: YAML with mixed-case "Off"
         let yaml = "flag: Off\n";
         // When: validating profile

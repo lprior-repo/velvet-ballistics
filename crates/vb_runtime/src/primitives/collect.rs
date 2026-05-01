@@ -665,8 +665,8 @@ mod tests {
     }
 
     #[test]
-    fn collect_next_returns_error_when_limit_exceeded() {
-        // Given a frame with items exceeding limit
+    fn collect_next_jumps_to_body_with_remaining_items() {
+        // Given a frame with items in collector
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let collector = SlotIdx::new(0);
@@ -676,7 +676,7 @@ mod tests {
             collector,
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
         );
-        // When calling collect_next with limit=2
+        // When calling collect_next with remaining items
         let result = collect_next(
             &mut run,
             &mut store,
@@ -685,7 +685,7 @@ mod tests {
             StepIdx::new(2),
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), StepIdx::new(2));
+        assert_eq!(run.pc(), StepIdx::new(1));
     }
 
     #[test]

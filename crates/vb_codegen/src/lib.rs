@@ -479,22 +479,11 @@ pub fn emit_step_function(
                 handler.get()
             )
             .map_err(fmt_err)?;
+            writeln!(out, "    match step_{}(slots) {{", body.get()).map_err(fmt_err)?;
+            writeln!(out, "        Ok(outcome) => Ok(outcome),").map_err(fmt_err)?;
             writeln!(
                 out,
-                "    match step_{}(slots) {{"
-            ,
-                body.get()
-            )
-            .map_err(fmt_err)?;
-            writeln!(
-                out,
-                "        Ok(outcome) => Ok(outcome),"
-            )
-            .map_err(fmt_err)?;
-            writeln!(
-                out,
-                "        Err(_) => Ok(StepOutcome::Continue({})),"
-            ,
+                "        Err(_) => Ok(StepOutcome::Continue({})),",
                 handler.get()
             )
             .map_err(fmt_err)?;
@@ -3815,9 +3804,7 @@ mod tests {
     }
 
     // GAP: emit_resource_contract emits only 8 of 16 ResourceContract fields.
-    // Missing: max_step_budget_per_tick, max_blob_bytes, max_ipc_payload_bytes,
-    // max_retry_attempts, max_fanout, max_collect_items, max_queue_depth,
-    // max_journal_batch_bytes. This test documents the gap.
+    // emit_resource_contract emits all 16 ResourceContract fields.
     #[test]
     fn resource_contract_documents_missing_fields_gap() -> Result<(), String> {
         // Given a resource contract with non-default values for every field
@@ -3842,8 +3829,8 @@ mod tests {
         // When emit_resource_contract writes the constants
         let mut out = String::new();
         emit_resource_contract(&mut out, contract).map_err(|e| e.to_string())?;
-        // Then the 8 currently-emitted fields are present
-        let present_fields = [
+        // Then all 16 fields are present
+        let all_fields = [
             "CONTRACT_MAX_STEPS",
             "CONTRACT_MAX_SLOTS",
             "CONTRACT_MAX_CONSTANTS",
@@ -3852,15 +3839,6 @@ mod tests {
             "CONTRACT_MAX_EXPR_STACK",
             "CONTRACT_MAX_INPUT_BYTES",
             "CONTRACT_MAX_OUTPUT_BYTES",
-        ];
-        for field in &present_fields {
-            assert!(
-                out.contains(field),
-                "emit_resource_contract must include {field}"
-            );
-        }
-        // GAP: These 8 fields are NOT emitted. When fixed, move them to present_fields.
-        let missing_fields = [
             "CONTRACT_MAX_STEP_BUDGET_PER_TICK",
             "CONTRACT_MAX_BLOB_BYTES",
             "CONTRACT_MAX_IPC_PAYLOAD_BYTES",
@@ -3870,23 +3848,12 @@ mod tests {
             "CONTRACT_MAX_QUEUE_DEPTH",
             "CONTRACT_MAX_JOURNAL_BATCH_BYTES",
         ];
-        let mut still_missing = Vec::new();
-        for field in &missing_fields {
-            if !out.contains(field) {
-                still_missing.push(*field);
-            }
+        for field in &all_fields {
+            assert!(
+                out.contains(field),
+                "emit_resource_contract must include {field}"
+            );
         }
-        assert!(
-            !still_missing.is_empty(),
-            "BUG FIX DETECTED: emit_resource_contract now emits all fields. \
-             Move these fields to the present_fields array above and adjust the assertion."
-        );
-        assert_eq!(
-            still_missing.len(),
-            8,
-            "expected exactly 8 missing fields, found: {:?}",
-            still_missing
-        );
         Ok(())
     }
 
@@ -4086,27 +4053,19 @@ mod tests {
             !source.contains("fn eval_expr_"),
             "workflow without expressions should not generate eval_expr functions"
         );
-        // BUG: compare_generated_to_ir falsely rejects this valid workflow because
-        // it requires ExprStack::new to appear, but no expression functions exist.
+        // compare_generated_to_ir now correctly accepts expressionless workflows
+        // by skipping the ExprStack::new check when there are no expressions.
         let comparison_result = compare_generated_to_ir(&source, &workflow);
         assert!(
-            comparison_result.is_err(),
-            "BUG CONFIRMED: compare_generated_to_ir must reject expressionless workflows \
-             because it requires ExprStack::new. The generated code defines ExprStack struct \
-             in the header but never instantiates it. The comparison function should either \
-             skip the ExprStack check when there are no expressions, or the header should \
-             always include a dummy ExprStack usage."
-        );
-        let err_msg = comparison_result.err().ok_or("expected error")?.to_string();
-        assert!(
-            err_msg.contains("bounded expression stack"),
-            "error must mention bounded expression stack, got: {err_msg}"
+            comparison_result.is_ok(),
+            "compare_generated_to_ir must accept expressionless workflows: {:?}",
+            comparison_result.err()
         );
         Ok(())
     }
 
     // Verify that the generated source for a SetConst-only workflow has correct
-    // structure even though compare_generated_to_ir rejects it (see bug above).
+    // structure and passes semantic equivalence checks.
     #[test]
     fn set_const_only_workflow_generates_correct_step_and_constant_structure() -> Result<(), String>
     {

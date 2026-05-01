@@ -135,7 +135,7 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
         run.write_slot(timeout, SlotValue::I64(300))
@@ -229,7 +229,7 @@ mod tests {
         // Given a frame with prompt value but no timeout
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask without timeout
@@ -339,7 +339,7 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         run.write_slot(timeout, SlotValue::I64(300))

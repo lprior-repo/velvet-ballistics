@@ -41,8 +41,9 @@ macro_rules! fail_assert {
 
 /// Valid minimal workflow YAML used across many tests.
 /// Note: vb_compile uses "save" not "set" for the set primitive field name.
+/// Expressions must be numeric literals or $slot references; bare identifiers like "x" are not valid.
 fn valid_workflow_yaml() -> &'static [u8] {
-    b"version: velvet-ballastics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: x\n      value: \"42\"\n  - id: s2\n    finish:\n      result: x\n"
+    b"version: velvet-ballastics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: a\n      value: \"42\"\n  - id: s2\n    finish:\n      result: a\n"
 }
 
 // ===========================================================================

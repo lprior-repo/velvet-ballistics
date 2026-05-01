@@ -876,7 +876,9 @@ mod tests {
         assert!(
             matches!(
                 result,
-                Err(YamlError::ForbiddenFeature { detail: "null_byte_in_source" })
+                Err(YamlError::ForbiddenFeature {
+                    detail: "null_byte_in_source"
+                })
             ),
             "expected ForbiddenFeature for null byte, got: {result:?}"
         );
