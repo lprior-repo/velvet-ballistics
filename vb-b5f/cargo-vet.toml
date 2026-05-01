@@ -1,0 +1,102 @@
+# cargo-vet configuration for Velvet Ballistics
+# Supply-chain verification for trusted dependencies
+
+# Default policy: treat all crates as audit-as-crates-io unless explicitly trusted
+[policy]
+# Only first-party crates (in the workspace) get audit-as-crates-io
+"vb-compiler" = { audit-as-crates-io = true }
+"vb-core" = { audit-as-crates-io = true }
+"vb-ipc" = { audit-as-crates-io = true }
+"vb-storage" = { audit-as-crates-io = true }
+"velvet-ballastics" = { audit-as-crates-io = true }
+"velvet-ballistics-workspace" = { audit-as-crates-io = true }
+
+# Default for all other crates
+[policy.default]
+audit-as-crates-io = true
+
+# Import exemptions for dependencies that are already trusted
+# These are performance-critical or well-established crates from crates.io
+
+# fjall — High-performance LSM-tree key-value store
+[[exemptions]]
+name = "fjall"
+version = "3.1.4"
+kind = "direct"
+notes = "Performance-critical storage engine; well-audited OSS"
+
+# saphyr-parser — YAML parser for workflow definitions
+[[exemptions]]
+name = "saphyr-parser"
+version = "0.0.6"
+kind = "direct"
+notes = "YAML parsing for workflow config"
+
+# saphyr — YAML serialization/deserialization
+[[exemptions]]
+name = "saphyr"
+version = "0.0.6"
+kind = "direct"
+notes = "YAML support for workflow definitions"
+
+# postcard — Efficient binary serialization
+[[exemptions]]
+name = "postcard"
+version = "1.1.1"
+kind = "direct"
+notes = "Binary serialization for IPC frames"
+
+# crossbeam-queue — Concurrent queue implementations
+[[exemptions]]
+name = "crossbeam-queue"
+version = "0.3.*"
+kind = "indirect"
+notes = "Concurrent data structures for shard routing"
+
+# rtrb — Real-time ring buffer
+[[exemptions]]
+name = "rtrb"
+version = "0.4.*"
+kind = "indirect"
+notes = "Lock-free ring buffer for IPC"
+
+# arrayvec — Stack-allocated arrays
+[[exemptions]]
+name = "arrayvec"
+version = "0.7.*"
+kind = "direct"
+notes = "Performance optimization for small vectors"
+
+# blake3 — Fast cryptographic hash
+[[exemptions]]
+name = "blake3"
+version = "1.8.*"
+kind = "direct"
+notes = "Workflow digest and content addressing"
+
+# bytes — Zero-copy byte handling
+[[exemptions]]
+name = "bytes"
+version = "1.10.*"
+kind = "direct"
+notes = "Efficient IPC frame handling"
+
+# thiserror — Error type derivation
+[[exemptions]]
+name = "thiserror"
+version = "2.0.*"
+kind = "direct"
+notes = "Ergonomic error type definitions"
+
+# tempfile — Temporary file handling for tests
+[[exemptions]]
+name = "tempfile"
+version = "3.23.*"
+kind = "dev"
+notes = "Test fixture generation only"
+
+# Criteria for exemption:
+# 1. Needed for performance or safety
+# 2. No HTTP egress requirement
+# 3. No async in core runtime path
+# 4. Well-audited open source with permissive license

@@ -1320,7 +1320,7 @@ mod tests {
 
     #[test]
     fn shard_inspect_captures_executed_count() {
-        // Given a shard with a finished workflow (executes 1 step)
+        // Given a shard with a finished workflow (executes 2 steps: SetConst + Finish)
         let config = small_config();
         let mut shard = Shard::new(config);
         let Some(workflow) = finished_workflow() else {
@@ -1333,7 +1333,7 @@ mod tests {
         );
         assert_eq!(shard.tick(), Ok(true));
         // Then the steps_executed counter reflects execution
-        assert_eq!(shard.counters().snapshot().steps_executed, 1);
+        assert_eq!(shard.counters().snapshot().steps_executed, 2);
     }
 
     #[test]

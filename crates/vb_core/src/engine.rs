@@ -985,6 +985,7 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
 #[inline]
 fn finish_run(run: &mut RunFrame, result: SlotIdx) -> Result<EngineSignal, EngineError> {
     let value = *run.read_slot(result)?;
+    run.increment_executed()?;
     Ok(EngineSignal::Finished(value))
 }
 

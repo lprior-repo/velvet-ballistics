@@ -80,12 +80,24 @@ pub fn ask_resume(
     Ok(vb_core::EngineSignal::Continue)
 }
 
-fn validate_numeric(_value: SlotValue, _expected: &'static str) -> Result<(), EngineError> {
-    Ok(())
+fn validate_numeric(value: SlotValue, expected: &'static str) -> Result<(), EngineError> {
+    match value {
+        SlotValue::I64(_) | SlotValue::F64(_) => Ok(()),
+        other => Err(EngineError::TypeMismatch {
+            expected,
+            found: other.type_name(),
+        }),
+    }
 }
 
-fn validate_symbol(_value: SlotValue, _expected: &'static str) -> Result<(), EngineError> {
-    Ok(())
+fn validate_symbol(value: SlotValue, expected: &'static str) -> Result<(), EngineError> {
+    match value {
+        SlotValue::Symbol(_) => Ok(()),
+        other => Err(EngineError::TypeMismatch {
+            expected,
+            found: other.type_name(),
+        }),
+    }
 }
 
 #[cfg(test)]
@@ -388,7 +400,7 @@ mod tests {
         // Given a frame at pc=0
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let pc_before = run.pc();
@@ -420,7 +432,7 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         // When calling ask with uninitialized timeout
@@ -523,7 +535,7 @@ mod tests {
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
         let timeout = SlotIdx::new(1);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write"));
         run.write_slot(timeout, SlotValue::I64(0))
@@ -574,7 +586,7 @@ mod tests {
         // Given a frame with a prompt
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
-        run.write_slot(prompt, SlotValue::I64(1))
+        run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
             .ok()
             .unwrap_or_else(|| panic!("write"));
         let before = run.executed();
@@ -630,7 +642,7 @@ mod tests {
     }
 
     #[test]
-    fn wait_until_with_bool_deadline_returns_awaiting_wait() {
+    fn wait_until_with_bool_deadline_returns_type_mismatch() {
         // Given a frame with a Bool in the deadline slot (type misuse)
         let mut run = fresh_frame();
         let deadline = SlotIdx::new(0);
@@ -639,9 +651,14 @@ mod tests {
             .unwrap_or_else(|| panic!("write"));
         // When calling wait_until with a Bool deadline
         let result = wait_until(&mut run, deadline);
-        // Then it returns AwaitingWait (no type checking on deadline value)
-        // BUG: wait_until does not validate that the deadline is a numeric type
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        // Then it returns TypeMismatch (deadline must be numeric)
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "deadline",
+                found: "boolean",
+            })
+        );
     }
 
     #[test]
@@ -666,29 +683,27 @@ mod tests {
     }
 
     #[test]
-    fn wait_until_with_list_deadline_returns_awaiting_wait() {
-        // Given a frame with a List in the deadline slot
-        // Note: wait_until reads the deadline slot but discards the value,
-        // so any type including List will succeed.
-        // This test verifies the lack of type checking on deadline.
-        // BUG: any SlotValue is accepted as a deadline
-        // We cannot test with a real List here without ValueStore, but
-        // the test with Bool already demonstrates the same bug.
-        // Instead, verify that the function never validates deadline type.
+    fn wait_until_with_symbol_deadline_returns_type_mismatch() {
+        // Given a frame with a Symbol in the deadline slot (non-numeric type)
         let mut run = fresh_frame();
         let deadline = SlotIdx::new(0);
-        // Use a Symbol as another non-numeric type
         run.write_slot(deadline, SlotValue::Symbol(vb_core::ids::SymbolId::new(42)))
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling wait_until with a Symbol deadline
         let result = wait_until(&mut run, deadline);
-        // Then it returns AwaitingWait (deadline type is not checked)
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        // Then it returns TypeMismatch (deadline must be numeric)
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "deadline",
+                found: "symbol",
+            })
+        );
     }
 
     #[test]
-    fn ask_with_bool_prompt_returns_awaiting_ask() {
+    fn ask_with_bool_prompt_returns_type_mismatch() {
         // Given a frame with Bool in prompt slot
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
@@ -697,8 +712,13 @@ mod tests {
             .unwrap_or_else(|| panic!("write"));
         // When calling ask with a Bool prompt
         let result = ask(&mut run, prompt, None);
-        // Then it returns AwaitingAsk (prompt type is not checked)
-        // BUG: any SlotValue is accepted as a prompt
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        // Then it returns TypeMismatch (prompt must be a Symbol)
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "prompt",
+                found: "boolean",
+            })
+        );
     }
 }

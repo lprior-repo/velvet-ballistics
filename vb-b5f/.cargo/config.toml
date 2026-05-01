@@ -1,0 +1,6 @@
+[alias]
+ci = "clippy --workspace --all-targets --all-features -- -D warnings"
+check-all = "check --workspace --all-targets --all-features"
+fmt-check = "fmt --all -- --check"
+doc-all = "doc --workspace --all-features --no-deps"
+test-all = "test --workspace --all-features"

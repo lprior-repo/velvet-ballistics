@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Check
+        run: cargo check --workspace --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --workspace --all-targets --all-features
+      - name: Docs
+        run: cargo doc --workspace --all-features --no-deps
+
+  cargo-geiger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Install cargo-geiger
+        run: cargo install cargo-geiger@1.1.2
+      - name: Geiger check
+        run: cargo geiger --manifest-path Cargo.toml
+        continue-on-error: false
+
+  cargo-vet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Install cargo-vet
+        run: cargo install cargo-vet@0.10.2
+      - name: Vet check
+        run: cargo vet --manifest-path Cargo.toml
+        continue-on-error: false
+
+  cargo-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Install criterion
+        run: cargo install criterion@0.5.1
+      - name: Check benchmarks compile
+        run: cargo bench --no-run --manifest-path Cargo.toml
+        continue-on-error: false
+
+  cargo-fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz@0.11.2
+      - name: Check fuzz targets compile
+        run: |
+          # Initialize fuzz corpora if needed
+          for target in workflow_parse workflow_compile slot_value_roundtrip binary_ipc_frame fjall_journal_append; do
+            mkdir -p fuzz/corpus/$target
+          done
+          # Check that fuzz targets build
+          cargo build --features fuzz --manifest-path Cargo.toml
+        continue-on-error: false
