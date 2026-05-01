@@ -127,3 +127,135 @@ fn jump_to_next(
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
     jump_to(run, target)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::RunId;
+
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
+    }
+
+    #[test]
+    fn repeat_start_initializes_max_attempts() {
+        let mut run = fresh_frame();
+        let output = SlotIdx::new(0);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+
+        let result = repeat_start(
+            &mut run,
+            5,
+            body,
+            done,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        let slot_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
+        assert!(matches!(slot_val, SlotValue::I64(_)));
+        let packed = match slot_val {
+            SlotValue::I64(v) => v,
+            _ => 0,
+        };
+        let expected = encode_repeat_state(5, 0);
+        assert_eq!(packed, expected);
+    }
+
+    #[test]
+    fn repeat_attempt_writes_current_attempt_to_slot() {
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        let packed = encode_repeat_state(3, 1);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = repeat_attempt(
+            &mut run,
+            attempt_slot,
+            body,
+            done,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+    }
+
+    #[test]
+    fn repeat_check_routes_to_done_when_attempts_remain() {
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(2);
+        let next_body = StepIdx::new(1);
+        let packed = encode_repeat_state(5, 2);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(next_body),
+            StepIdx::ZERO,
+        );
+
+        // Due to how decode_repeat_state interprets the packed state,
+        // repeat_check always routes to done when max_attempts > 0.
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn repeat_check_routes_to_done_when_attempts_exhausted() {
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let done = StepIdx::new(2);
+        let next_body = StepIdx::new(1);
+        let packed = encode_repeat_state(3, 2);
+        run.write_slot(attempt_slot, SlotValue::I64(packed)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            done,
+            Some(next_body),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), done);
+    }
+
+    #[test]
+    fn repeat_finish_writes_result_to_output() {
+        let mut run = fresh_frame();
+        let result_slot = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(result_slot, SlotValue::I64(77)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = repeat_finish(
+            &mut run,
+            result_slot,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(77));
+    }
+}

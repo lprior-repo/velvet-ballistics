@@ -76,3 +76,86 @@ pub fn ask_resume(
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::RunId;
+    use vb_core::value::SlotValue;
+
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
+    }
+
+    #[test]
+    fn wait_until_returns_awaiting_wait() {
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::I64(1000)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = wait_until(&mut run, deadline);
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn wait_event_returns_awaiting_wait() {
+        let mut run = fresh_frame();
+        let event = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+        run.write_slot(timeout, SlotValue::I64(500)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = wait_event(&mut run, event, Some(timeout));
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    }
+
+    #[test]
+    fn ask_returns_awaiting_ask() {
+        let mut run = fresh_frame();
+        let prompt = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+        run.write_slot(timeout, SlotValue::I64(300)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = ask(&mut run, prompt, Some(timeout));
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    }
+
+    #[test]
+    fn ask_resume_writes_answer_and_continues() {
+        let mut run = fresh_frame();
+        let answer = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(answer, SlotValue::I64(42)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
+    }
+}

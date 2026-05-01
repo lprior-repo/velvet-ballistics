@@ -1664,4 +1664,189 @@ mod tests {
             max_journal_batch_bytes: 1,
         }
     }
+
+    // -- WorkflowError exact variant assertions --
+
+    #[test]
+    fn workflow_error_empty_nodes_exact_variant() {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("empty"),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Box::new([]),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 0, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::EmptyNodes) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_entry_out_of_bounds_exact_variant() {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("entry_oob"),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 0,
+            entry: StepIdx::new(5),
+            resource_contract: resource_contract(1, 0, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::EntryOutOfBounds { entry }) if entry == StepIdx::new(5) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_step_out_of_bounds_exact_variant() {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("step_oob"),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(99)),
+                kind: CompiledNodeKind::Nop,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 0, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::StepOutOfBounds { step }) if step == StepIdx::new(99) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_slot_out_of_bounds_exact_variant() {
+        let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
+        parts.nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(5)),
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice();
+        parts.slot_count = 1;
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_const_out_of_bounds_exact_variant() {
+        let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
+        parts.nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(50),
+            },
+        }]
+        .into_boxed_slice();
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::ConstOutOfBounds { constant }) if constant == ConstIdx::new(50) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_node_id_mismatch_exact_variant() {
+        let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
+        parts.nodes = vec![CompiledNode {
+            id: StepIdx::new(7),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice();
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::NodeIdMismatch { expected, actual })
+                if expected == StepIdx::new(0) && actual == StepIdx::new(7) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_expression_wrapped_core_error_exact_variant() {
+        let expression = match ExprProgram::try_from_ops(vec![load(0)].into_boxed_slice()) {
+            Ok(e) => e,
+            Err(e) => panic!("expression creation failed: {e}"),
+        };
+
+        let parts = choose_expr_parts(
+            vec![ExprBranch {
+                condition: ExprIdx::new(1),
+                target: StepIdx::new(1),
+            }]
+            .into_boxed_slice(),
+            Some(StepIdx::new(1)),
+            vec![expression].into_boxed_slice(),
+        );
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::Expression(CoreError::ExprOutOfBounds { expr }))
+                if expr == ExprIdx::new(1) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workflow_error_empty_branch_table_exact_variant() {
+        let parts = choose_slot_parts(Box::new([]), None);
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::EmptyBranchTable) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::ResourceContract;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn resource_contract_max_steps_is_positive(_unused in 0u8..1u8) {
+            let contract = ResourceContract::DEFAULT;
+            prop_assert!(contract.max_steps > 0);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn resource_contract_max_slots_is_positive(_unused in 0u8..1u8) {
+            let contract = ResourceContract::DEFAULT;
+            prop_assert!(contract.max_slots > 0);
+        }
+    }
 }

@@ -1275,46 +1275,70 @@ mod tests {
 
     #[test]
     fn journal_key_is_fixed_width() {
+        // Given a run id 1 and event sequence 2
+        // When the journal key is constructed
+        // Then the key is exactly 17 bytes wide
         let key = journal_key(RunId::new(1), EventSeq::new(2));
 
-        assert!(matches!(key, Ok(bytes) if bytes.len() == 17));
+        let key = key.expect("journal key construction should succeed");
+        assert_eq!(key.len(), 17);
     }
 
     #[test]
     fn run_event_key_uses_required_prefix_and_big_endian_layout() {
+        // Given run id 0x0102030405060708 and event sequence 9
+        // When the run event key is constructed
+        // Then the layout is [0x11 prefix][run id big-endian][seq big-endian]
         let key = run_event_key(RunId::new(0x0102_0304_0506_0708), EventSeq::new(9));
 
-        assert!(matches!(
-            key,
-            Ok(bytes) if bytes == [
-                0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09,
-            ]
-        ));
+        let key = key.expect("run event key construction should succeed");
+        let expected: [u8; 17] = [
+            0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x09,
+        ];
+        assert_eq!(key.as_slice(), expected.as_slice());
     }
 
     #[test]
     fn key_encoders_use_required_lengths() {
+        // Given a standard 32-byte digest and common run/step identifiers
+        // When each key encoder is called
+        // Then the produced keys have the contract-specified byte widths
         let digest = [7_u8; 32];
 
-        assert!(matches!(workflow_source_key(digest), Ok(bytes) if bytes.len() == 33));
-        assert!(matches!(compiled_ir_key(digest), Ok(bytes) if bytes.len() == 33));
-        assert!(matches!(run_header_key(RunId::new(1)), Ok(bytes) if bytes.len() == 9));
-        assert!(
-            matches!(run_snapshot_key(RunId::new(1), EventSeq::new(2)), Ok(bytes) if bytes.len() == 17)
-        );
-        assert!(matches!(blob_key(digest), Ok(bytes) if bytes.len() == 33));
-        assert!(matches!(index_status_key(3, 4, RunId::new(5)), Ok(bytes) if bytes.len() == 18));
-        assert!(
-            matches!(index_workflow_key(WorkflowId::new(6), RunId::new(7)), Ok(bytes) if bytes.len() == 13)
-        );
-        assert!(
-            matches!(index_action_key(ActionId::new(8), RunId::new(9), StepIdx::new(10)), Ok(bytes) if bytes.len() == 13)
-        );
+        let ws = workflow_source_key(digest).expect("workflow_source_key should succeed");
+        assert_eq!(ws.len(), 33);
+
+        let ci = compiled_ir_key(digest).expect("compiled_ir_key should succeed");
+        assert_eq!(ci.len(), 33);
+
+        let rh = run_header_key(RunId::new(1)).expect("run_header_key should succeed");
+        assert_eq!(rh.len(), 9);
+
+        let rs =
+            run_snapshot_key(RunId::new(1), EventSeq::new(2)).expect("run_snapshot_key should succeed");
+        assert_eq!(rs.len(), 17);
+
+        let bl = blob_key(digest).expect("blob_key should succeed");
+        assert_eq!(bl.len(), 33);
+
+        let is = index_status_key(3, 4, RunId::new(5)).expect("index_status_key should succeed");
+        assert_eq!(is.len(), 18);
+
+        let iw = index_workflow_key(WorkflowId::new(6), RunId::new(7))
+            .expect("index_workflow_key should succeed");
+        assert_eq!(iw.len(), 13);
+
+        let ia = index_action_key(ActionId::new(8), RunId::new(9), StepIdx::new(10))
+            .expect("index_action_key should succeed");
+        assert_eq!(ia.len(), 13);
     }
 
     #[test]
     fn envelope_round_trips_and_reports_metadata() {
+        // Given a RunFinished journal event with run 99, seq 12, result slot 1
+        // When the event is encoded and then decoded
+        // Then the envelope metadata and deserialized event match the originals
         let event = JournalEvent::RunFinished {
             run: RunId::new(99),
             seq: EventSeq::new(12),
@@ -1328,20 +1352,16 @@ mod tests {
             &event,
             128,
         );
-        assert!(matches!(&encoded, Ok(bytes) if bytes.len() > 60));
-        let Ok(encoded) = encoded else {
-            return;
-        };
-        let decoded = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        let encoded = encoded.expect("encoding should succeed");
+        assert!(encoded.len() > 60, "encoded record must exceed header size");
 
-        assert!(matches!(
-            decoded,
-            Ok((envelope, decoded_event))
-                if envelope.magic == MAGIC_JOURNAL_EVENT
-                    && envelope.record_kind == RecordKind::RunFinished.id()
-                    && envelope.sequence == 12
-                    && decoded_event == event
-        ));
+        let (envelope, decoded_event) =
+            decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+                .expect("decoding should succeed");
+        assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(envelope.record_kind, RecordKind::RunFinished.id());
+        assert_eq!(envelope.sequence, 12);
+        assert_eq!(decoded_event, event);
     }
 
     #[test]
@@ -1534,15 +1554,28 @@ mod tests {
                 .is_ok()
         );
 
-        assert!(
-            matches!(journal.workflow_source(workflow_digest), Ok(Some(record)) if record == source)
-        );
-        assert!(matches!(journal.compiled_ir(compiled_digest), Ok(Some(record)) if record == ir));
-        assert!(matches!(journal.run_header(RunId::new(3)), Ok(Some(record)) if record == header));
-        assert!(
-            matches!(journal.snapshot(RunId::new(3), EventSeq::new(7)), Ok(Some(record)) if record == snapshot)
-        );
-        assert!(matches!(journal.blob([9; 32]), Ok(Some(record)) if record == blob));
+        let found_source = journal
+            .workflow_source(workflow_digest)
+            .expect("workflow source lookup should succeed");
+        assert_eq!(found_source, Some(source));
+
+        let found_ir = journal
+            .compiled_ir(compiled_digest)
+            .expect("compiled ir lookup should succeed");
+        assert_eq!(found_ir, Some(ir));
+
+        let found_header = journal
+            .run_header(RunId::new(3))
+            .expect("run header lookup should succeed");
+        assert_eq!(found_header, Some(header));
+
+        let found_snapshot = journal
+            .snapshot(RunId::new(3), EventSeq::new(7))
+            .expect("snapshot lookup should succeed");
+        assert_eq!(found_snapshot, Some(snapshot));
+
+        let found_blob = journal.blob([9; 32]).expect("blob lookup should succeed");
+        assert_eq!(found_blob, Some(blob));
     }
 
     #[test]
@@ -1625,8 +1658,217 @@ mod tests {
 
         assert!(journal.append_journaled(&accepted).is_ok());
         assert!(journal.append_journaled(&finished).is_ok());
-        let replay = journal.events_for_run(run);
 
-        assert!(matches!(replay, Ok(events) if events == vec![accepted, finished]));
+        let replay = journal
+            .events_for_run(run)
+            .expect("event replay should succeed");
+        assert_eq!(replay, vec![accepted, finished]);
+    }
+
+    #[test]
+    fn decode_rejects_truncated_header() {
+        // Given a byte slice shorter than the required 60-byte header
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let truncated = [0u8; 30];
+
+        let result = decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::UnexpectedEof)));
+    }
+
+    #[test]
+    fn decode_rejects_migration_required_schema() {
+        // Given a valid record whose schema version byte is 0 (less than current)
+        // When decode_record is called
+        // Then it returns MigrationRequired with from=0, to=CURRENT_SCHEMA_VERSION
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Set schema version to 0 (two LE bytes at offset 4..6)
+        encoded[4] = 0;
+        encoded[5] = 0;
+        // Recompute CRC32C for the modified header prefix
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(
+            result,
+            Err(JournalError::MigrationRequired { from: 0, to: 1 })
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_unsupported_future_schema() {
+        // Given a valid record whose schema version byte is 99 (greater than current)
+        // When decode_record is called
+        // Then it returns UnsupportedSchemaVersion
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Set schema version to 99 (two LE bytes at offset 4..6)
+        encoded[4] = 99;
+        encoded[5] = 0;
+        // Recompute CRC32C for the modified header prefix
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(
+            result,
+            Err(JournalError::UnsupportedSchemaVersion { version: 99 })
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_record_kind_family_mismatch() {
+        // Given a record encoded with MAGIC_JOURNAL_EVENT but a kind outside 10..=23
+        // When decode_record is called
+        // Then it returns RecordKindFamilyMismatch
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Patch the kind to 1 (WorkflowSource), which is outside 10..=23
+        // Kind is at offset 6..8, little-endian
+        let kind_bytes = 1u16.to_le_bytes();
+        encoded[6] = kind_bytes[0];
+        encoded[7] = kind_bytes[1];
+        // Recompute CRC32C
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(
+            result,
+            Err(JournalError::RecordKindFamilyMismatch { magic: MAGIC_JOURNAL_EVENT, kind: 1 })
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_header_length_mismatch() {
+        // Given a valid record whose declared header length is 99 (not 60)
+        // When decode_record is called
+        // Then it returns HeaderLengthMismatch with found=99
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Header length is at offset 8..12, little-endian. Set to 99.
+        let len_bytes = 99u32.to_le_bytes();
+        encoded[8] = len_bytes[0];
+        encoded[9] = len_bytes[1];
+        encoded[10] = len_bytes[2];
+        encoded[11] = len_bytes[3];
+        // Recompute CRC32C
+        let header_prefix = &encoded[..56];
+        let checksum = crc32c::crc32c(header_prefix);
+        encoded[56] = (checksum & 0xFF) as u8;
+        encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+        encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+        encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+        let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(
+            result,
+            Err(JournalError::HeaderLengthMismatch { found: 99 })
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_truncated_payload() {
+        // Given an encoded record with bytes truncated after the header
+        // When decode_record is called
+        // Then it returns UnexpectedEof
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([1; 32]),
+        };
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("encoding should succeed");
+        // Keep only the 60-byte header, discarding all payload bytes
+        let truncated = &encoded[..60];
+
+        let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128);
+        assert!(matches!(result, Err(JournalError::UnexpectedEof)));
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use crate::{EventSeq, RunId, run_event_key};
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn run_event_key_ordering_is_monotonic(seq1 in 0u64..1000u64, seq2 in 0u64..1000u64) {
+            let run = RunId::new(42);
+            let key1 = run_event_key(run, EventSeq::new(seq1));
+            let key2 = run_event_key(run, EventSeq::new(seq2));
+            let Ok(k1) = key1 else { return Ok(()) };
+            let Ok(k2) = key2 else { return Ok(()) };
+            if seq1 < seq2 {
+                prop_assert!(k1 < k2);
+            } else if seq1 > seq2 {
+                prop_assert!(k1 > k2);
+            }
+        }
     }
 }

@@ -85,66 +85,108 @@ impl FramePool {
 mod tests {
     use super::*;
 
+    fn new_pool(step_count: u16, slot_count: u16, capacity: usize) -> FramePool {
+        let result = FramePool::new(step_count, slot_count, capacity);
+        assert_eq!(result.as_ref().map(|_| ()), Ok(()));
+        match result {
+            Ok(pool) => pool,
+            Err(_) => unreachable!("asserted Ok above"),
+        }
+    }
+
     #[test]
     fn pool_creates_with_valid_capacity() {
-        let _pool = FramePool::new(10, 5, 16).ok();
+        assert_eq!(FramePool::new(10, 5, 16).as_ref().map(|_| ()), Ok(()));
     }
 
     #[test]
     fn pool_rejects_zero_capacity() {
-        let pool = FramePool::new(10, 5, 0);
-        match pool {
-            Err(vb_core::errors::CoreError::ResourceLimitExceeded { resource })
-                if resource == "frame_pool_capacity" => {}
-            other => assert!(false, "unexpected result: {other:?}"),
-        }
+        let result = FramePool::new(10, 5, 0);
+        assert_eq!(
+            result.as_ref().map(|_| ()),
+            Err(&vb_core::errors::CoreError::ResourceLimitExceeded {
+                resource: "frame_pool_capacity",
+            })
+        );
     }
 
     #[test]
     fn pool_rejects_excessive_capacity() {
-        let pool = FramePool::new(10, 5, MAX_POOL_CAPACITY + 1);
-        match pool {
-            Err(vb_core::errors::CoreError::ResourceLimitExceeded { resource })
-                if resource == "frame_pool_capacity" => {}
-            other => assert!(false, "unexpected result: {other:?}"),
-        }
+        let result = FramePool::new(10, 5, MAX_POOL_CAPACITY + 1);
+        assert_eq!(
+            result.as_ref().map(|_| ()),
+            Err(&vb_core::errors::CoreError::ResourceLimitExceeded {
+                resource: "frame_pool_capacity",
+            })
+        );
     }
 
     #[test]
     fn take_allocates_when_empty() {
-        let mut pool = FramePool::new(2, 1, 4).ok();
-        let frame = pool
-            .as_mut()
-            .and_then(|p| p.take(RunId::new(1), StepIdx::new(0)).ok());
-        let _ = frame;
+        let mut pool = new_pool(2, 1, 4);
+        let frame = pool.take(RunId::new(1), StepIdx::new(0));
+        assert_eq!(frame.map(|f| f.run_id()), Ok(RunId::new(1)));
     }
 
     #[test]
     fn release_and_reuse_frame() {
-        let mut pool = FramePool::new(2, 1, 4).ok();
-        let p = pool.as_mut();
-        let Some(p) = p else { return };
-        let frame = p.take(RunId::new(1), StepIdx::new(0)).ok();
-        let Some(frame) = frame else { return };
-        p.release(frame);
-        assert_eq!(p.available(), 1);
+        let mut pool = new_pool(2, 1, 4);
+        let frame = pool.take(RunId::new(1), StepIdx::new(0));
+        assert_eq!(frame.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+        let frame = match frame {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        pool.release(frame);
+        assert_eq!(pool.available(), 1);
 
-        let reused = p.take(RunId::new(2), StepIdx::new(0)).ok();
-        let Some(reused) = reused else { return };
-        assert_eq!(reused.run_id(), RunId::new(1));
+        let reused = pool.take(RunId::new(2), StepIdx::new(0));
+        assert_eq!(reused.map(|f| f.run_id()), Ok(RunId::new(1)));
     }
 
     #[test]
     fn release_drops_when_at_capacity() {
-        let mut pool = FramePool::new(2, 1, 1).ok();
-        let p = pool.as_mut();
-        let Some(p) = p else { return };
-        let frame1 = p.take(RunId::new(1), StepIdx::new(0)).ok();
-        let frame2 = p.take(RunId::new(2), StepIdx::new(0)).ok();
-        let Some(frame1) = frame1 else { return };
-        let Some(frame2) = frame2 else { return };
-        p.release(frame1);
-        p.release(frame2);
-        assert_eq!(p.available(), 1);
+        let mut pool = new_pool(2, 1, 1);
+        let frame1 = pool.take(RunId::new(1), StepIdx::new(0));
+        assert_eq!(frame1.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+        let frame2 = pool.take(RunId::new(2), StepIdx::new(0));
+        assert_eq!(frame2.as_ref().map(|f| f.run_id()), Ok(RunId::new(2)));
+        let frame1 = match frame1 {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let frame2 = match frame2 {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        pool.release(frame1);
+        pool.release(frame2);
+        assert_eq!(pool.available(), 1);
+    }
+
+    #[test]
+    fn is_empty_returns_true_for_new_pool() {
+        let pool = new_pool(2, 1, 4);
+        assert_eq!(pool.is_empty(), true);
+    }
+
+    #[test]
+    fn is_empty_returns_false_after_release() {
+        let mut pool = new_pool(2, 1, 4);
+        assert_eq!(pool.is_empty(), true);
+        let frame = pool.take(RunId::new(1), StepIdx::new(0));
+        assert_eq!(pool.is_empty(), true);
+        let frame = match frame {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        pool.release(frame);
+        assert_eq!(pool.is_empty(), false);
+    }
+
+    #[test]
+    fn capacity_returns_configured_value() {
+        let pool = new_pool(10, 5, 42);
+        assert_eq!(pool.capacity(), 42);
     }
 }

@@ -155,3 +155,103 @@ fn jump_to_next(
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
     jump_to(run, target)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::RunId;
+    use vb_core::value_store::ValueStore;
+
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
+    }
+
+    fn list_in_slot(run: &mut RunFrame, store: &mut ValueStore, slot: SlotIdx, items: Vec<SlotValue>) {
+        let id = store.insert_list(items.into_boxed_slice()).ok().unwrap_or_else(||
+            panic!("list insertion must succeed")
+        );
+        run.write_slot(slot, SlotValue::List(id)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+    }
+
+    #[test]
+    fn together_start_initializes_branch_tracking() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let output = SlotIdx::new(0);
+        let branch_a = StepIdx::new(1);
+        let join = StepIdx::new(2);
+
+        let result = together_start(
+            &mut run,
+            &mut store,
+            &[branch_a],
+            join,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), branch_a);
+        let slot_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
+        assert!(matches!(slot_val, SlotValue::List(_)));
+    }
+
+    #[test]
+    fn together_branch_routes_to_entry_step() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let entry = StepIdx::new(3);
+        let join = StepIdx::new(4);
+        list_in_slot(&mut run, &mut store, accumulator, vec![]);
+
+        let result = together_branch(
+            &mut run,
+            &mut store,
+            0,
+            entry,
+            join,
+            accumulator,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), entry);
+    }
+
+    #[test]
+    fn together_join_waits_for_all_branches() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let accumulator = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(5);
+
+        // Set up accumulator with a list containing one branch result.
+        list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+        // Output slot holds the last branch result (a non-list value).
+        run.write_slot(output, SlotValue::I64(20)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = together_join(
+            &mut run,
+            &mut store,
+            2,
+            accumulator,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        // Output slot should now hold the final merged list.
+        let final_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
+        assert!(matches!(final_val, SlotValue::List(_)));
+    }
+}

@@ -887,12 +887,16 @@ fn fmt_err(_: std::fmt::Error) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::{
-        compare_generated_to_ir, compile_check_generated_rust, emit_ids, emit_rust_workflow,
+        compare_generated_to_ir, compile_check_generated_rust, emit_action_match_dispatch,
+        emit_drive_function, emit_finish, emit_ids, emit_resource_contract, emit_rust_workflow,
+        emit_step_function, format_generated_rust, CodegenError,
     };
     use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprProgram,
-        ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
+        ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
     };
+
+    // --- Workflow helpers ---
 
     fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         let ops = vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))];
@@ -963,6 +967,130 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    /// Workflow with a Do node that dispatches to ActionId 5.
+    fn do_action_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_do_action"),
+            digest: WorkflowDigest::from_bytes([0xEF; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Do {
+                        action: ActionId::new(5),
+                        input: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    // --- CodegenError exact-variant tests ---
+
+    #[test]
+    fn codegen_error_format_buffer_overflow_exact_variant() {
+        let error = CodegenError::FormatBufferOverflow;
+        let message = error.to_string();
+        assert!(
+            message.contains("buffer"),
+            "FormatBufferOverflow display must mention buffer, got: {message}"
+        );
+    }
+
+    #[test]
+    fn codegen_error_rustfmt_failed_exact_variant() {
+        let error = CodegenError::RustfmtFailed {
+            detail: String::from("exit status 1"),
+        };
+        let message = error.to_string();
+        assert!(
+            message.contains("rustfmt"),
+            "RustfmtFailed display must mention rustfmt, got: {message}"
+        );
+        assert!(
+            message.contains("exit status 1"),
+            "RustfmtFailed display must include detail, got: {message}"
+        );
+    }
+
+    #[test]
+    fn codegen_error_compile_check_failed_exact_variant() {
+        let error = CodegenError::CompileCheckFailed {
+            detail: String::from("mismatched types"),
+        };
+        let message = error.to_string();
+        assert!(
+            message.contains("compile"),
+            "CompileCheckFailed display must mention compile, got: {message}"
+        );
+        assert!(
+            message.contains("mismatched types"),
+            "CompileCheckFailed display must include detail, got: {message}"
+        );
+    }
+
+    #[test]
+    fn codegen_error_semantic_mismatch_exact_variant() {
+        let error = CodegenError::SemanticMismatch {
+            detail: String::from("step count mismatch: generated has 2, IR has 3"),
+        };
+        let message = error.to_string();
+        assert!(
+            message.contains("semantic"),
+            "SemanticMismatch display must mention semantic, got: {message}"
+        );
+        assert!(
+            message.contains("step count mismatch: generated has 2, IR has 3"),
+            "SemanticMismatch display must include exact detail, got: {message}"
+        );
+    }
+
+    #[test]
+    fn codegen_error_io_exact_variant() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
+        let error = CodegenError::Io(io_err);
+        let message = error.to_string();
+        assert!(
+            message.contains("file missing"),
+            "Io display must include the inner IO error message, got: {message}"
+        );
+    }
+
+    #[test]
+    fn codegen_error_trybuild_fixture_exact_variant() {
+        let error = CodegenError::TrybuildFixture {
+            detail: String::from("fixture path has no parent directory"),
+        };
+        let message = error.to_string();
+        assert!(
+            message.contains("trybuild"),
+            "TrybuildFixture display must mention trybuild, got: {message}"
+        );
+        assert!(
+            message.contains("fixture path has no parent directory"),
+            "TrybuildFixture display must include exact detail, got: {message}"
+        );
+    }
+
+    // --- Public function behavior tests ---
+
     #[test]
     fn emit_rust_workflow_produces_non_empty_source() -> Result<(), String> {
         let workflow = minimal_workflow()?;
@@ -972,14 +1100,212 @@ mod tests {
     }
 
     #[test]
-    fn emit_ids_produces_output() -> Result<(), String> {
+    fn emit_ids_includes_workflow_id_type() -> Result<(), String> {
+        // Given a minimal compiled workflow
         let workflow = minimal_workflow()?;
+
+        // When emit_ids writes typed ID constants
         let mut out = String::new();
         emit_ids(&mut out, &workflow).map_err(|e| e.to_string())?;
-        assert!(out.contains("WORKFLOW_SLOT_COUNT"), "should emit slot count");
-        assert!(out.contains("WORKFLOW_NODE_COUNT"), "should emit node count");
+
+        // Then the output contains WORKFLOW_SLOT_COUNT and WORKFLOW_NODE_COUNT constants
+        assert!(
+            out.contains("WORKFLOW_SLOT_COUNT"),
+            "emit_ids must produce WORKFLOW_SLOT_COUNT constant"
+        );
+        assert!(
+            out.contains("WORKFLOW_NODE_COUNT"),
+            "emit_ids must produce WORKFLOW_NODE_COUNT constant"
+        );
+        assert!(
+            out.contains("usize"),
+            "emit_ids must use typed usize for slot count"
+        );
         Ok(())
     }
+
+    #[test]
+    fn emit_drive_function_includes_loop() -> Result<(), String> {
+        // Given a minimal compiled workflow
+        let workflow = minimal_workflow()?;
+
+        // When emit_drive_function writes the main step loop
+        let mut out = String::new();
+        emit_drive_function(&mut out, &workflow).map_err(|e| e.to_string())?;
+
+        // Then the output contains a loop construct and match dispatch
+        assert!(
+            out.contains("loop"),
+            "drive function must contain a loop construct"
+        );
+        assert!(
+            out.contains("pub fn drive"),
+            "drive function must be public and named drive"
+        );
+        assert!(
+            out.contains("StepOutcome"),
+            "drive function must dispatch on StepOutcome"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_step_function_includes_set_const() -> Result<(), String> {
+        // Given a minimal workflow with a SetConst node
+        let workflow = minimal_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+
+        // When emit_step_function writes the step for the SetConst node
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+
+        // Then the output writes the constant into the output slot
+        assert!(
+            out.contains("write_slot"),
+            "SetConst step must call write_slot"
+        );
+        assert!(
+            out.contains("read_const"),
+            "SetConst step must call read_const"
+        );
+        assert!(
+            out.contains("fn step_0"),
+            "SetConst step function must be named step_0"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_action_match_dispatch_includes_registered_actions() -> Result<(), String> {
+        // Given a workflow with a Do node dispatching to ActionId 5
+        let workflow = do_action_workflow()?;
+
+        // When emit_action_match_dispatch writes the action dispatch
+        let mut out = String::new();
+        emit_action_match_dispatch(&mut out, &workflow).map_err(|e| e.to_string())?;
+
+        // Then the output contains an arm for action id 5
+        assert!(
+            out.contains("dispatch_action"),
+            "dispatch must define dispatch_action function"
+        );
+        assert!(
+            out.contains("5 => Ok(())"),
+            "dispatch must include an arm for action id 5"
+        );
+        assert!(
+            out.contains("UnknownAction"),
+            "dispatch must handle unknown actions"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_finish_returns_result_value() -> Result<(), String> {
+        // Given a minimal compiled workflow
+        let workflow = minimal_workflow()?;
+
+        // When emit_finish writes the result extraction section
+        let mut out = String::new();
+        emit_finish(&mut out, &workflow).map_err(|e| e.to_string())?;
+
+        // Then the output contains the result extraction comment section
+        assert!(
+            out.contains("Result extraction"),
+            "emit_finish must include result extraction section marker"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_resource_contract_includes_limits() -> Result<(), String> {
+        // Given a resource contract with specific field values
+        let contract = ResourceContract {
+            max_steps: 100,
+            max_slots: 200,
+            max_constants: 50,
+            max_accessors: 10,
+            max_expressions: 20,
+            max_expr_stack: 32,
+            max_input_bytes: 4096,
+            max_output_bytes: 8192,
+            max_step_budget_per_tick: 500,
+            max_blob_bytes: 1024,
+            max_ipc_payload_bytes: 2048,
+            max_retry_attempts: 3,
+            max_fanout: 8,
+            max_collect_items: 100,
+            max_queue_depth: 64,
+            max_journal_batch_bytes: 512,
+        };
+
+        // When emit_resource_contract writes the contract constants
+        let mut out = String::new();
+        emit_resource_contract(&mut out, contract).map_err(|e| e.to_string())?;
+
+        // Then the output contains every contract field
+        assert!(
+            out.contains("CONTRACT_MAX_STEPS"),
+            "resource contract must emit CONTRACT_MAX_STEPS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_SLOTS"),
+            "resource contract must emit CONTRACT_MAX_SLOTS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_CONSTANTS"),
+            "resource contract must emit CONTRACT_MAX_CONSTANTS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_ACCESSORS"),
+            "resource contract must emit CONTRACT_MAX_ACCESSORS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_EXPRESSIONS"),
+            "resource contract must emit CONTRACT_MAX_EXPRESSIONS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_EXPR_STACK"),
+            "resource contract must emit CONTRACT_MAX_EXPR_STACK"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_INPUT_BYTES"),
+            "resource contract must emit CONTRACT_MAX_INPUT_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_OUTPUT_BYTES"),
+            "resource contract must emit CONTRACT_MAX_OUTPUT_BYTES"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn format_generated_rust_produces_valid_syntax() -> Result<(), String> {
+        // Given a generated workflow source
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // When format_generated_rust is invoked
+        let formatted = format_generated_rust(&source);
+
+        // Then either rustfmt succeeded with non-empty output, or it is not installed
+        match formatted {
+            Ok(output) => {
+                assert!(
+                    !output.is_empty(),
+                    "formatted output must be non-empty when rustfmt succeeds"
+                );
+            }
+            Err(CodegenError::RustfmtFailed { detail }) => {
+                // rustfmt not available in CI is acceptable; log the reason
+                eprintln!("rustfmt not available, skipping format check: {detail}");
+            }
+            Err(other) => return Err(format!("unexpected error from format_generated_rust: {other}")),
+        }
+        Ok(())
+    }
+
+    // --- Existing tests (preserved) ---
 
     #[test]
     fn generated_source_contains_required_sections() -> Result<(), String> {

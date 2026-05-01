@@ -182,36 +182,42 @@ mod tests {
     fn register_and_resolve_action() {
         let mut registry = ActionRegistry::new();
         let contract = test_contract(10);
-        registry.register(contract).ok();
+        assert_eq!(registry.register(contract), Ok(()));
         let resolved = registry.resolve_compile_time(ActionId::new(10));
-        resolved.ok();
+        assert_eq!(resolved.map(|c| c.id), Ok(ActionId::new(10)));
     }
 
     #[test]
     fn resolve_unknown_action_returns_error() {
         let registry = ActionRegistry::new();
         let result = registry.resolve_compile_time(ActionId::new(99));
-        match result {
-            Err(ActionError::UnknownAction { action }) if action == ActionId::new(99) => {}
-            other => assert!(false, "unexpected result: {other:?}"),
-        }
+        assert_eq!(result, Err(ActionError::UnknownAction { action: ActionId::new(99) }));
     }
 
     #[test]
     fn dispatch_produces_suspended_outcome() {
         let mut registry = ActionRegistry::new();
         let contract = test_contract(5);
-        registry.register(contract).ok();
+        assert_eq!(registry.register(contract), Ok(()));
         let input = test_input(5);
-        let contract = registry
-            .resolve_compile_time(ActionId::new(5))
-            .cloned()
-            .ok();
+        let resolved = registry.resolve_compile_time(ActionId::new(5));
+        assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(5)));
+        let contract = resolved.ok().cloned();
+        assert_eq!(contract.as_ref().map(|c| c.id), Some(ActionId::new(5)));
         let Some(ref contract) = contract else { return };
         let result = registry.dispatch(&input, contract);
         match result {
-            Ok(ActionOutcome::Suspended(ticket)) if ticket.action == ActionId::new(5) => {}
-            other => assert!(false, "unexpected result: {other:?}"),
+            Ok(ActionOutcome::Suspended(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(5));
+            }
+            other => assert_eq!(other, Ok(ActionOutcome::Suspended(ActionTicket {
+                run: RunId::new(1),
+                step: StepIdx::new(0),
+                seq: SeqNo::new(0),
+                action: ActionId::new(5),
+                attempt: 1,
+                idempotency_key: 0,
+            }))),
         }
     }
 
@@ -219,17 +225,51 @@ mod tests {
     fn register_duplicate_returns_error() {
         let mut registry = ActionRegistry::new();
         let contract = test_contract(3);
-        registry.register(contract).ok();
+        assert_eq!(registry.register(contract), Ok(()));
         let duplicate = test_contract(3);
-        match registry.register(duplicate) {
-            Err(ActionError::DispatchFailed) => {}
-            other => assert!(false, "unexpected result: {other:?}"),
-        }
+        assert_eq!(registry.register(duplicate), Err(ActionError::DispatchFailed));
     }
 
     #[test]
     fn default_registry_is_empty() {
         let registry = ActionRegistry::default();
-        assert!(registry.is_empty());
+        assert_eq!(registry.is_empty(), true);
+    }
+
+    #[test]
+    fn len_returns_zero_for_new_registry() {
+        let registry = ActionRegistry::new();
+        assert_eq!(registry.len(), 0);
+    }
+
+    #[test]
+    fn len_increases_after_register() {
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.len(), 0);
+        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.len(), 6);
+    }
+
+    #[test]
+    fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
+        let mut registry = ActionRegistry::new();
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        assert_eq!(registry.register(contract), Ok(()));
+        let input = test_input(1);
+        let resolved = registry.resolve_compile_time(ActionId::new(1));
+        assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(1)));
+        let contract = resolved.ok().cloned();
+        let Some(ref contract) = contract else { return };
+        let result = registry.dispatch(&input, contract);
+        assert_eq!(result, Err(ActionError::PayloadTooLarge { max_bytes: 0, actual_bytes: 0 }));
     }
 }

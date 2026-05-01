@@ -156,3 +156,121 @@ fn jump_to_next(
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
     jump_to(run, target)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::RunId;
+    use vb_core::value_store::ValueStore;
+
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 8, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
+    }
+
+    fn list_in_slot(run: &mut RunFrame, store: &mut ValueStore, slot: SlotIdx, items: Vec<SlotValue>) {
+        let id = store.insert_list(items.into_boxed_slice()).ok().unwrap_or_else(||
+            panic!("list insertion must succeed")
+        );
+        run.write_slot(slot, SlotValue::List(id)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+    }
+
+    #[test]
+    fn collect_start_initializes_collector() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+
+        let result = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        let slot_val = *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed"));
+        assert!(matches!(slot_val, SlotValue::List(_)));
+    }
+
+    #[test]
+    fn collect_page_increments_page_count() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let collector = SlotIdx::new(0);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(10)]);
+
+        let result = collect_page(
+            &mut run,
+            &mut store,
+            collector,
+            body,
+            done,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+    }
+
+    #[test]
+    fn collect_next_returns_continue_while_pages_remain() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        let collector = SlotIdx::new(1);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(5), SlotValue::I64(6)]);
+
+        let result = collect_next(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            1,
+            collector,
+            body,
+            done,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+    }
+
+    #[test]
+    fn collect_finish_materializes_output() {
+        let mut run = fresh_frame();
+        let collector = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(collector, SlotValue::I64(99)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = collect_finish(
+            &mut run,
+            collector,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(99));
+    }
+}

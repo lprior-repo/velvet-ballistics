@@ -568,9 +568,9 @@ fn map_try_send(error: TrySendError<IngressFrame>) -> IpcError {
 #[cfg(test)]
 mod tests {
     use super::{
-        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcCommand, IpcError, IpcFrameHeader,
-        IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity, SubmitRunPayload, decode_frame,
-        decode_payload, encode_payload,
+        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, BoundedPayload, IngressFrame, IpcCommand,
+        IpcError, IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
+        SubmitRunPayload, decode_frame, decode_payload, encode_payload,
     };
     use bytes::Bytes;
     use vb_core::{RunId, WorkflowDigest};
@@ -621,14 +621,22 @@ mod tests {
 
     #[test]
     fn oversized_payload_is_rejected() {
+        let payload_bytes = b"too big";
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
         let result = IngressFrame::new(
             RunId::new(1),
             WorkflowDigest::from_bytes([2; 32]),
-            Bytes::from_static(b"too big"),
-            MaxPayloadBytes::new(std::num::NonZeroUsize::MIN),
+            Bytes::from_static(payload_bytes),
+            max,
         );
 
-        assert!(matches!(result, Err(IpcError::PayloadTooLarge { .. })));
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: payload_bytes.len(),
+                limit: max.get(),
+            })
+        );
     }
 
     #[test]
@@ -674,6 +682,12 @@ mod tests {
 
     #[test]
     fn decoder_rejects_payload_above_bound() {
+        let payload_len_val: u32 = 8;
+        let payload_len_usize = match usize::try_from(payload_len_val) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
         let encoded = header_bytes(
             IPC_MAGIC,
             IPC_VERSION,
@@ -681,16 +695,21 @@ mod tests {
             0,
             0,
             1,
-            8,
+            payload_len_val,
         );
         assert!(encoded.is_ok(), "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
-        let decoded =
-            IpcFrameHeader::decode(&encoded, MaxPayloadBytes::new(std::num::NonZeroUsize::MIN));
+        let decoded = IpcFrameHeader::decode(&encoded, max);
 
-        assert!(matches!(decoded, Err(IpcError::PayloadTooLarge { .. })));
+        assert_eq!(
+            decoded,
+            Err(IpcError::PayloadTooLarge {
+                actual: payload_len_usize,
+                limit: max.get(),
+            })
+        );
     }
 
     #[test]
@@ -752,5 +771,102 @@ mod tests {
         };
 
         assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn from_u16_rejects_zero_command() {
+        let result = IpcCommand::from_u16(0);
+        assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    }
+
+    #[test]
+    fn unsupported_version_rejects_when_version_is_two() {
+        let encoded = header_bytes(IPC_MAGIC, 2, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
+        assert!(encoded.is_ok(), "test header should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+
+        assert_eq!(decoded, Err(IpcError::UnsupportedVersion { actual: 2 }));
+    }
+
+    #[test]
+    fn memory_ingress_try_recv_returns_none_when_empty() {
+        let capacity = QueueCapacity::new(std::num::NonZeroUsize::MIN);
+        let queue = MemoryIngress::bounded(capacity);
+
+        assert_eq!(queue.try_recv(), Ok(None));
+    }
+
+    #[test]
+    fn memory_ingress_is_empty_after_construction() {
+        let capacity = QueueCapacity::new(std::num::NonZeroUsize::MIN);
+        let queue = MemoryIngress::bounded(capacity);
+
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn bounded_payload_bytes_returns_inner_slice() {
+        let data = Bytes::from_static(b"hello");
+        let bounded = BoundedPayload::new(data.clone(), MaxPayloadBytes::DEFAULT);
+        assert!(bounded.is_ok(), "payload should fit default bound");
+        let Ok(bounded) = bounded else {
+            return;
+        };
+
+        assert_eq!(bounded.bytes(), &data);
+    }
+
+    #[test]
+    fn ingress_frame_accessors_return_correct_values() {
+        let run_id = RunId::new(42);
+        let workflow = WorkflowDigest::from_bytes([0xAB; 32]);
+        let data = Bytes::from_static(b"payload");
+        let frame = IngressFrame::new(run_id, workflow, data, MaxPayloadBytes::DEFAULT);
+        assert!(frame.is_ok(), "frame should construct");
+        let Ok(frame) = frame else {
+            return;
+        };
+
+        assert_eq!(frame.run_id(), run_id);
+        assert_eq!(frame.workflow(), workflow);
+        assert_eq!(frame.payload().bytes().as_ref(), b"payload");
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
+            let parsed = IpcCommand::from_u16(cmd);
+            prop_assert!(parsed.is_ok());
+            let Ok(command) = parsed else { return Ok(()) };
+            prop_assert_eq!(command.as_u16(), cmd);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn non_magic_bytes_always_rejected(magic in 0u32..) {
+            if magic != IPC_MAGIC {
+                let mut header_bytes = [0u8; IPC_HEADER_LEN];
+                header_bytes[..4].copy_from_slice(&magic.to_le_bytes());
+                header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+                let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+                prop_assert!(result.is_err());
+                if let Err(e) = result {
+                    prop_assert!(
+                        matches!(e, IpcError::InvalidMagic { .. }),
+                        "expected InvalidMagic, got {e:?}"
+                    );
+                }
+            }
+        }
     }
 }

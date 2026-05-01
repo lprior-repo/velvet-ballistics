@@ -614,10 +614,13 @@ mod tests {
         let Ok(count) = count else {
             return;
         };
-        assert!(matches!(
+        assert_eq!(
             count_response(count, IpcResponseKind::Event),
-            IpcResponse::CountOutOfRange { .. }
-        ));
+            IpcResponse::CountOutOfRange {
+                actual: count,
+                limit: u32::MAX,
+            }
+        );
     }
 
     #[test]
@@ -671,6 +674,39 @@ mod tests {
         assert_eq!(
             dispatch_command(&header, &encoded, &mut runtime),
             IpcResponse::CommandPayloadMismatch
+        );
+    }
+
+    #[test]
+    fn handle_health_returns_healthy_response() {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+
+        assert_eq!(
+            dispatch_command(&header, &[], &mut runtime),
+            IpcResponse::Healthy
+        );
+    }
+
+    #[test]
+    fn handle_cancel_run_bad_payload_returns_bad_request() {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let header = IpcFrameHeader::new(IpcCommand::CancelRun, 0, 1, 3);
+
+        assert_eq!(
+            dispatch_command(&header, b"bad", &mut runtime),
+            IpcResponse::BadRequest
+        );
+    }
+
+    #[test]
+    fn handle_inspect_run_bad_payload_returns_bad_request() {
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+        let header = IpcFrameHeader::new(IpcCommand::InspectRun, 0, 1, 3);
+
+        assert_eq!(
+            dispatch_command(&header, b"bad", &mut runtime),
+            IpcResponse::BadRequest
         );
     }
 }

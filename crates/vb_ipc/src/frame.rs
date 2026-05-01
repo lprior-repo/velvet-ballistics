@@ -140,3 +140,110 @@ fn payload_len_u32(len: usize) -> Result<u32, IpcError> {
         limit: usize::MAX,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_frame_produces_valid_header_and_payload() {
+        let payload = b"test-data";
+        let result = encode_frame(IpcCommand::Health, 0, 99, payload);
+        assert!(result.is_ok(), "encode_frame should succeed");
+        let Ok(frame) = result else {
+            return;
+        };
+
+        assert!(
+            frame.len() > IPC_HEADER_LEN,
+            "frame should contain header plus payload"
+        );
+        let header_slice = match frame.get(..IPC_HEADER_LEN) {
+            Some(s) => s,
+            None => return,
+        };
+        let header_bytes: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let header_result = decode_frame_header(&header_bytes);
+        assert!(header_result.is_ok(), "header should decode");
+        let Ok(header) = header_result else {
+            return;
+        };
+        assert_eq!(header.command, IpcCommand::Health);
+        assert_eq!(header.correlation, 99);
+        let payload_len = match usize::try_from(header.payload_len) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        assert_eq!(payload_len, payload.len());
+        assert_eq!(frame.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_short_input() {
+        let short: [u8; IPC_HEADER_LEN] = [0u8; IPC_HEADER_LEN];
+        let result = decode_frame_header(&short);
+        assert!(result.is_err(), "zero-filled header should fail validation");
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_bad_magic() {
+        let bad_magic: u32 = 0xDEAD_BEEF;
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&bad_magic.to_le_bytes());
+        let result = decode_frame_header(&header_bytes);
+
+        assert_eq!(result, Err(IpcError::InvalidMagic { actual: bad_magic }));
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_oversized_payload() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 9999);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let result = IpcFrameHeader::decode(&encoded, tiny_max);
+
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 9999,
+                limit: tiny_max.get(),
+            })
+        );
+    }
+
+    #[test]
+    fn validate_frame_magic_rejects_wrong_magic() {
+        let wrong_magic: u32 = 0x1234_5678;
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&wrong_magic.to_le_bytes());
+        bytes.extend_from_slice(&[0u8; 20]);
+
+        assert_eq!(
+            validate_frame_magic(&bytes),
+            Err(IpcError::InvalidMagic {
+                actual: wrong_magic,
+            })
+        );
+    }
+
+    #[test]
+    fn validate_frame_bounds_rejects_at_boundary() {
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 2);
+
+        assert_eq!(
+            validate_frame_bounds(&header, max),
+            Err(IpcError::PayloadTooLarge {
+                actual: 2,
+                limit: max.get(),
+            })
+        );
+    }
+}

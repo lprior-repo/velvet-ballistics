@@ -402,4 +402,84 @@ mod tests {
             other => assert_eq!(other, None),
         }
     }
+
+    #[test]
+    fn enqueue_shutdown_sets_shutting_down_flag() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+        };
+        let mut shard = Shard::new(config);
+        assert_eq!(shard.is_shutting_down(), false);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.is_shutting_down(), true);
+    }
+
+    #[test]
+    fn tick_returns_true_when_queue_is_empty() {
+        let config = ShardConfig::default();
+        let mut shard = Shard::new(config);
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    #[test]
+    fn cancel_nonexistent_run_succeeds_silently() {
+        let config = ShardConfig::default();
+        let mut shard = Shard::new(config);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run: RunId::new(999) }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    #[test]
+    fn counters_reflect_submitted_after_submit_tick() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+        };
+        let mut shard = Shard::new(config);
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    }
+
+    #[test]
+    fn inspect_nonexistent_run_returns_not_found() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+        };
+        let mut shard = Shard::new(config);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: RunId::new(999),
+                correlation: 42,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.take_inspect_response(),
+            Some(InspectResponse::NotFound {
+                run: RunId::new(999),
+                correlation: 42,
+            })
+        );
+    }
 }

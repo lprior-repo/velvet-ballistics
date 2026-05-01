@@ -128,3 +128,127 @@ fn jump_to_next(
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
     jump_to(run, target)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::RunId;
+    use vb_core::value::{ConstValue, SlotValue};
+    use vb_core::value_store::ValueStore;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
+    }
+
+    fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
+        let parts = WorkflowParts {
+            name: Box::from("reduce_test"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([5; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::ZERO,
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![cv].into_boxed_slice(),
+            slot_count: 8,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok().unwrap_or_else(|| panic!("workflow must compile"))
+    }
+
+    fn list_in_slot(run: &mut RunFrame, store: &mut ValueStore, slot: SlotIdx, items: Vec<SlotValue>) {
+        let id = store.insert_list(items.into_boxed_slice()).ok().unwrap_or_else(||
+            panic!("list insertion must succeed")
+        );
+        run.write_slot(slot, SlotValue::List(id)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+    }
+
+    #[test]
+    fn reduce_start_writes_initial_accumulator() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let plan = minimal_workflow_with_constant(ConstValue::I64(100));
+        let input = SlotIdx::new(0);
+        let accumulator = SlotIdx::new(1);
+        let output = SlotIdx::new(2);
+        let initial = ConstIdx::new(0);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(1), SlotValue::I64(2)]);
+
+        let result = reduce_start(
+            &plan,
+            &mut run,
+            &mut store,
+            input,
+            accumulator,
+            initial,
+            body,
+            done,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        assert_eq!(*run.read_slot(accumulator).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(100));
+    }
+
+    #[test]
+    fn reduce_next_applies_item_to_accumulator() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let iterator_slot = SlotIdx::new(0);
+        let accumulator = SlotIdx::new(1);
+        let output = SlotIdx::new(2);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(5), SlotValue::I64(6)]);
+
+        let result = reduce_next(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            accumulator,
+            body,
+            done,
+            Some(output),
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), body);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(5));
+    }
+
+    #[test]
+    fn reduce_finish_writes_final_accumulator_to_output() {
+        let mut run = fresh_frame();
+        let accumulator = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(accumulator, SlotValue::I64(42)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+
+        let result = reduce_finish(
+            &mut run,
+            accumulator,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
+    }
+}

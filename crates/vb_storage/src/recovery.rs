@@ -367,6 +367,9 @@ mod tests {
 
     #[test]
     fn action_tracker_blocks_non_idempotent_replay() {
+        // Given an action marked as completed in the tracker
+        // When the same action appears in a replay event list
+        // Then replay_events returns NonIdempotentActionBlocked
         let mut tracker = ActionReplayTracker::new();
         let action = ActionId::new(1);
         let step = StepIdx::new(5);
@@ -382,17 +385,20 @@ mod tests {
         }];
 
         let result = replay_events(&events, &mut tracker);
-        assert!(
-            matches!(
-                result,
-                Err(RecoveryError::NonIdempotentActionBlocked { .. })
-            ),
-            "should block re-execution of completed action"
-        );
+        let Err(err) = result else {
+            panic!("replay should fail for already-completed action");
+        };
+        assert!(matches!(
+            err,
+            RecoveryError::NonIdempotentActionBlocked { .. }
+        ));
     }
 
     #[test]
     fn action_tracker_allows_first_execution() {
+        // Given an action not yet recorded in the tracker
+        // When ActionScheduled then ActionCompleted are replayed
+        // Then replay succeeds and the tracker records the action as resolved
         let mut tracker = ActionReplayTracker::new();
         let action = ActionId::new(1);
         let step = StepIdx::new(5);
@@ -419,6 +425,9 @@ mod tests {
 
     #[test]
     fn action_tracker_tracks_failed_actions() {
+        // Given an action marked as failed in the tracker
+        // When the same action appears in a replay event list
+        // Then replay_events returns NonIdempotentActionBlocked
         let mut tracker = ActionReplayTracker::new();
         let action = ActionId::new(2);
         let step = StepIdx::new(3);
@@ -434,17 +443,20 @@ mod tests {
         }];
 
         let result = replay_events(&events, &mut tracker);
-        assert!(
-            matches!(
-                result,
-                Err(RecoveryError::NonIdempotentActionBlocked { .. })
-            ),
-            "should block re-execution of failed action"
-        );
+        let Err(err) = result else {
+            panic!("replay should fail for already-failed action");
+        };
+        assert!(matches!(
+            err,
+            RecoveryError::NonIdempotentActionBlocked { .. }
+        ));
     }
 
     #[test]
     fn compiled_ir_digest_match_succeeds() {
+        // Given identical expected and found digests
+        // When check_compiled_ir_digest is called
+        // Then it returns Ok
         let digest = test_digest(42);
         let result = check_compiled_ir_digest(digest, digest);
         assert!(result.is_ok());
@@ -452,17 +464,25 @@ mod tests {
 
     #[test]
     fn compiled_ir_digest_mismatch_fails() {
+        // Given different expected and found digests
+        // When check_compiled_ir_digest is called
+        // Then it returns CompiledIrDigestMismatch with the correct values
         let expected = test_digest(1);
         let found = test_digest(2);
-        let result = check_compiled_ir_digest(expected, found);
-        assert!(
-            matches!(result, Err(RecoveryError::CompiledIrDigestMismatch { .. })),
-            "mismatched digests should fail"
-        );
+        let Err(err) = check_compiled_ir_digest(expected, found) else {
+            panic!("mismatched digests should fail");
+        };
+        assert!(matches!(
+            err,
+            RecoveryError::CompiledIrDigestMismatch { .. }
+        ));
     }
 
     #[test]
     fn is_terminal_event_identifies_terminals() {
+        // Given each terminal event variant
+        // When is_terminal_event is called
+        // Then it returns true for terminals and false for non-terminals
         assert!(is_terminal_event(&JournalEvent::RunFinished {
             run: RunId::new(1),
             seq: EventSeq::new(5),
@@ -485,6 +505,9 @@ mod tests {
 
     #[test]
     fn extract_terminal_finds_last_terminal() {
+        // Given a RunAccepted followed by a RunFinished event
+        // When extract_terminal is called
+        // Then it returns the RunFinished event
         let events = vec![
             JournalEvent::RunAccepted {
                 run: RunId::new(1),
@@ -505,6 +528,9 @@ mod tests {
 
     #[test]
     fn extract_terminal_returns_none_without_terminal() {
+        // Given only a RunAccepted event (no terminal)
+        // When extract_terminal is called
+        // Then it returns None
         let events = vec![JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -517,6 +543,9 @@ mod tests {
 
     #[test]
     fn snapshot_plus_tail_rejects_event_before_snapshot() {
+        // Given a snapshot at seq 5 and a tail event at seq 3
+        // When recover_snapshot_plus_tail is called
+        // Then it returns ReplayDivergence
         let snapshot = RunSnapshot {
             run: RunId::new(1),
             seq: EventSeq::new(5),
@@ -525,21 +554,24 @@ mod tests {
         };
         let tail = vec![JournalEvent::StepSucceeded {
             run: RunId::new(1),
-            seq: EventSeq::new(3), // before snapshot
+            seq: EventSeq::new(3),
             step: StepIdx::new(0),
             output: SlotIdx::new(0),
         }];
         let mut tracker = ActionReplayTracker::new();
 
         let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "tail event before snapshot should be rejected"
-        );
+        let Err(err) = result else {
+            panic!("tail event before snapshot should be rejected");
+        };
+        assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
     }
 
     #[test]
     fn full_journal_recovery_with_no_data_fails() {
+        // Given an empty journal with no events for run 999
+        // When recover_full_journal is called
+        // Then it returns NoRecoveryData for that run
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
@@ -552,14 +584,17 @@ mod tests {
         let mut tracker = ActionReplayTracker::new();
 
         let result = recover_full_journal(&journal, RunId::new(999), &mut tracker);
-        assert!(
-            matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
-            "empty journal should produce NoRecoveryData"
-        );
+        let Err(err) = result else {
+            panic!("empty journal should produce NoRecoveryData");
+        };
+        assert!(matches!(err, RecoveryError::NoRecoveryData { .. }));
     }
 
     #[test]
     fn full_journal_recovery_replays_events() {
+        // Given a journal with 3 events (accepted, started, finished) for run 42
+        // When recover_full_journal is called
+        // Then exactly 3 events are replayed
         let temp_dir = tempfile::tempdir();
         assert!(temp_dir.is_ok());
         let Ok(temp_dir) = temp_dir else { return };
@@ -592,13 +627,16 @@ mod tests {
         assert!(journal.append_journaled(&finished).is_ok());
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_full_journal(&journal, run, &mut tracker);
-
-        assert!(matches!(result, Ok(events) if events.len() == 3));
+        let replayed = recover_full_journal(&journal, run, &mut tracker)
+            .expect("full journal recovery should succeed");
+        assert_eq!(replayed.len(), 3);
     }
 
     #[test]
     fn replay_all_event_kinds() {
+        // Given a sequence covering all 13 journal event variants
+        // When replay_events is called
+        // Then all 11 events are replayed and the action tracker records the completed action
         let run = RunId::new(7);
         let events = vec![
             JournalEvent::RunAccepted {
@@ -662,9 +700,67 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
-
-        assert!(matches!(result, Ok(events) if events.len() == 11));
+        let replayed = replay_events(&events, &mut tracker)
+            .expect("replay of all event kinds should succeed");
+        assert_eq!(replayed.len(), 11);
         assert!(tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
+    }
+
+    #[test]
+    fn snapshot_plus_tail_accepts_valid_tail_events() {
+        // Given a snapshot at seq 5 and valid tail events at seq 6 and 7
+        // When recover_snapshot_plus_tail is called
+        // Then the tail events are replayed successfully
+        let snapshot = RunSnapshot {
+            run: RunId::new(10),
+            seq: EventSeq::new(5),
+            workflow: test_digest(1),
+            slots: Vec::new(),
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run: RunId::new(10),
+                seq: EventSeq::new(6),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run: RunId::new(10),
+                seq: EventSeq::new(7),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(1),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("valid tail events should replay successfully");
+        assert_eq!(replayed.len(), 2);
+    }
+
+    #[test]
+    fn replay_detects_out_of_order_step() {
+        // Given events where StepStarted at step 2 precedes a StepStarted at step 1
+        // When replay_events processes them
+        // Then it returns ReplayDivergence for the backward step
+        let run = RunId::new(20);
+        let events = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(1),
+            },
+        ];
+
+        let mut tracker = ActionReplayTracker::new();
+        let result = replay_events(&events, &mut tracker);
+        let Err(err) = result else {
+            panic!("out-of-order steps should cause divergence");
+        };
+        assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
     }
 }
