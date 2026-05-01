@@ -173,3 +173,32 @@ impl WorkflowDigest {
         self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{RunId, SlotIdx, StepIdx, WorkflowId};
+
+    #[test]
+    fn workflow_id_as_u32_returns_inner_value() {
+        let id = WorkflowId::new(42);
+        assert_eq!(id.as_u32(), 42);
+    }
+
+    #[test]
+    fn run_id_as_u64_returns_inner_value() {
+        let id = RunId::new(12345);
+        assert_eq!(id.as_u64(), 12345);
+    }
+
+    #[test]
+    fn step_idx_as_usize_returns_inner_value() {
+        let idx = StepIdx::new(7);
+        assert_eq!(idx.as_usize(), 7);
+    }
+
+    #[test]
+    fn slot_idx_as_usize_returns_inner_value() {
+        let idx = SlotIdx::new(15);
+        assert_eq!(idx.as_usize(), 15);
+    }
+}

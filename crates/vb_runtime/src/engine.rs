@@ -607,6 +607,10 @@ fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::action::Idempotency;
+    use vb_core::engine::EngineSignal;
+    use vb_core::errors::EngineError;
+    use vb_core::value::SlotValue;
 
     #[test]
     fn retry_check_routes_to_body_when_attempts_remain() {
@@ -671,5 +675,293 @@ mod tests {
         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
         let key2 = compute_idempotency_key(RunId::new(2), SeqNo::new(0), ActionId::new(0));
         assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn runtime_signal_from_core_maps_all_variants() {
+        assert_eq!(
+            runtime_from_core(EngineSignal::Continue),
+            RuntimeSignal::Continue
+        );
+        assert_eq!(
+            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42))),
+            RuntimeSignal::Finished(SlotValue::I64(42))
+        );
+        assert_eq!(
+            runtime_from_core(EngineSignal::StepBudgetExhausted),
+            RuntimeSignal::StepBudgetExhausted
+        );
+        assert_eq!(
+            runtime_from_core(EngineSignal::AwaitingAction),
+            RuntimeSignal::AwaitingAction(ActionTicket {
+                run: RunId::ZERO,
+                step: StepIdx::ZERO,
+                seq: SeqNo::ZERO,
+                action: ActionId::new(0),
+                attempt: 1,
+                idempotency_key: 0,
+            })
+        );
+        assert_eq!(
+            runtime_from_core(EngineSignal::AwaitingWait),
+            RuntimeSignal::AwaitingWait
+        );
+        assert_eq!(
+            runtime_from_core(EngineSignal::AwaitingAsk),
+            RuntimeSignal::AwaitingAsk
+        );
+    }
+
+    #[test]
+    fn execute_do_returns_awaiting_action_for_known_action() {
+        let run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            contract_ref,
+            &registry_contracts,
+        );
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(1));
+                assert_eq!(ticket.run, RunId::new(1));
+                assert_eq!(ticket.step, StepIdx::new(0));
+            }
+            other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
+        }
+    }
+
+    #[test]
+    fn execute_do_propagates_taint_from_secret_input_without_violation() {
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let write_result = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+        assert_eq!(write_result.map(|_| ()), Ok(()));
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::AtLeastOnceExternal,
+        };
+        let registry_contracts: Vec<ActionContract> = vec![
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+            },
+            contract,
+        ];
+        let contract_ref = match registry_contracts.get(1) {
+            Some(c) => c,
+            None => return,
+        };
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(1),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            contract_ref,
+            &registry_contracts,
+        );
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(1));
+                assert_eq!(ticket.run, RunId::new(1));
+            }
+            other => assert_eq!(other, Ok(RuntimeSignal::Continue)),
+        }
+    }
+
+    #[test]
+    fn execute_do_returns_unknown_action_for_unregistered_action() {
+        let run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let empty_contracts: Vec<ActionContract> = Vec::new();
+        let dummy_contract = ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+        };
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            ActionId::new(5),
+            SlotIdx::new(0),
+            SeqNo::new(0),
+            &dummy_contract,
+            &empty_contracts,
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(5),
+            }))
+        );
+    }
+
+    #[test]
+    fn resume_action_outcome_ready_continues_execution() {
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let ready = vb_core::action::ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 8,
+        };
+        let outcome = ActionOutcome::Ready(ready);
+        let result = resume_action_outcome(&mut run, &outcome);
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
+    }
+
+    #[test]
+    fn resume_action_outcome_failed_non_retryable_returns_error() {
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Unknown,
+            retryable: false,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        let result = resume_action_outcome(&mut run, &outcome);
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
+                primitive: "action_failed_non_retryable",
+            }))
+        );
+    }
+
+    #[test]
+    fn resume_action_outcome_suspended_returns_awaiting() {
+        let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(5),
+            action: ActionId::new(3),
+            attempt: 2,
+            idempotency_key: 99,
+        };
+        let outcome = ActionOutcome::Suspended(ticket);
+        let result = resume_action_outcome(&mut run, &outcome);
+        assert_eq!(
+            result,
+            Ok(RuntimeSignal::AwaitingAction(ActionTicket {
+                run: RunId::new(1),
+                step: StepIdx::new(0),
+                seq: SeqNo::new(5),
+                action: ActionId::new(3),
+                attempt: 2,
+                idempotency_key: 99,
+            }))
+        );
+    }
+
+    #[test]
+    fn retry_policy_never_has_max_attempts_one() {
+        assert_eq!(RetryPolicy::NEVER.max_attempts, 1);
+    }
+
+    #[test]
+    fn retry_policy_default_has_max_attempts_three() {
+        assert_eq!(RetryPolicy::DEFAULT.max_attempts, 3);
+    }
+
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+        use vb_core::engine::StepBudget;
+
+        proptest! {
+            #[test]
+            fn step_budget_never_allows_more_than_n_steps(n in 1u64..1000u64) {
+                let mut budget = StepBudget::new(n);
+                let mut taken = 0u64;
+                let mut drained = false;
+                while !drained && taken <= n + 1 {
+                    match budget.try_take() {
+                        Ok(true) => taken += 1,
+                        Ok(false) => drained = true,
+                        Err(_) => drained = true,
+                    }
+                }
+                prop_assert_eq!(taken, n);
+            }
+        }
+
+        proptest! {
+            #[test]
+            fn idempotency_key_differs_for_different_tuples(
+                run1 in 1u64..100u64,
+                run2 in 1u64..100u64,
+                seq1 in 0u64..100u64,
+                seq2 in 0u64..100u64,
+                action1 in 0u16..10u16,
+                action2 in 0u16..10u16,
+            ) {
+                prop_assume!(run1 != run2 || seq1 != seq2 || action1 != action2);
+                let key1 = super::compute_idempotency_key(RunId::new(run1), SeqNo::new(seq1), ActionId::new(action1));
+                let key2 = super::compute_idempotency_key(RunId::new(run2), SeqNo::new(seq2), ActionId::new(action2));
+                prop_assert_ne!(key1, key2);
+            }
+        }
     }
 }

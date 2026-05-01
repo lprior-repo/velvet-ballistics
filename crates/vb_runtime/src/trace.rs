@@ -1,8 +1,6 @@
 //! Bounded trace ring using rtrb SPSC ring buffer.
 
 use rtrb::RingBuffer;
-use std::collections::VecDeque;
-use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
 /// Bounded trace event ring for one shard.
@@ -10,7 +8,6 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 pub struct TraceRing {
     producer: rtrb::Producer<TraceEvent>,
     consumer: rtrb::Consumer<TraceEvent>,
-    mirror: VecDeque<TraceEvent>,
     capacity: usize,
     dropped: u64,
 }
@@ -23,7 +20,6 @@ impl TraceRing {
         Self {
             producer,
             consumer,
-            mirror: VecDeque::with_capacity(capacity),
             capacity,
             dropped: 0,
         }
@@ -38,7 +34,6 @@ impl TraceRing {
     /// Attempts to push a trace event. Returns false if the ring is full (drops oldest policy
     /// is not used here; the caller may choose to count the drop).
     pub fn push(&mut self, event: TraceEvent) -> bool {
-        self.remember(event.clone());
         match self.producer.push(event) {
             Ok(()) => true,
             Err(_) => {
@@ -46,21 +41,6 @@ impl TraceRing {
                 false
             }
         }
-    }
-
-    /// Returns a non-destructive bounded snapshot of events for one run.
-    pub fn snapshot_for_run(&self, target: RunId, limit: usize) -> Vec<TraceEvent> {
-        let bounded_limit = limit.min(self.capacity);
-        let mut events = Vec::with_capacity(bounded_limit);
-        for event in &self.mirror {
-            if events.len() >= bounded_limit {
-                return events;
-            }
-            if event.run_id() == target {
-                events.push(event.clone());
-            }
-        }
-        events
     }
 
     /// Drains all pending trace events into a vector.
@@ -112,16 +92,6 @@ impl TraceRing {
     pub const fn dropped(&self) -> u64 {
         self.dropped
     }
-
-    fn remember(&mut self, event: TraceEvent) {
-        if self.capacity == 0 {
-            return;
-        }
-        if self.mirror.len() >= self.capacity {
-            let _ = self.mirror.pop_front();
-        }
-        self.mirror.push_back(event);
-    }
 }
 
 /// Binary trace event recorded by the shard execution loop.
@@ -162,24 +132,6 @@ pub enum TraceEvent {
         /// Step that received the completion.
         step: StepIdx,
     },
-    /// An action failed with a typed failure code.
-    ActionFailed {
-        /// Run identifier.
-        run: RunId,
-        /// Step that received the failure.
-        step: StepIdx,
-        /// Machine-readable failure code.
-        code: ActionFailureCode,
-    },
-    /// An ask was answered and the run was resumed.
-    AskAnswered {
-        /// Run identifier.
-        run: RunId,
-        /// Step that issued the ask.
-        step: StepIdx,
-        /// Slot that received the answer payload.
-        slot: SlotIdx,
-    },
     /// A run was submitted.
     RunSubmitted {
         /// Run identifier.
@@ -207,8 +159,6 @@ impl TraceEvent {
             | Self::SlotWritten { run, .. }
             | Self::ActionScheduled { run, .. }
             | Self::ActionCompleted { run, .. }
-            | Self::ActionFailed { run, .. }
-            | Self::AskAnswered { run, .. }
             | Self::RunSubmitted { run }
             | Self::RunFinished { run }
             | Self::RunFailed { run } => *run,
@@ -221,38 +171,90 @@ mod tests {
     use super::*;
 
     #[test]
-    fn snapshot_for_run_does_not_drain_events() {
-        let run = RunId::new(3);
-        let mut ring = TraceRing::new(4);
-        assert!(ring.push(TraceEvent::RunSubmitted { run }));
-
-        let first = ring.snapshot_for_run(run, 4);
-        let second = ring.snapshot_for_run(run, 4);
-
-        assert_eq!(first, vec![TraceEvent::RunSubmitted { run }]);
-        assert_eq!(second, vec![TraceEvent::RunSubmitted { run }]);
-        assert_eq!(ring.drain(), vec![TraceEvent::RunSubmitted { run }]);
+    fn new_creates_with_configured_capacity() {
+        let ring = TraceRing::new(8);
+        assert_eq!(ring.capacity(), 8);
     }
 
     #[test]
-    fn snapshot_for_run_respects_capacity_window() {
-        let first_run = RunId::new(1);
-        let second_run = RunId::new(2);
-        let mut ring = TraceRing::new(2);
-        assert!(ring.push(TraceEvent::RunSubmitted { run: first_run }));
-        assert!(ring.push(TraceEvent::RunSubmitted { run: second_run }));
-        assert!(!ring.push(TraceEvent::RunFinished { run: first_run }));
+    fn push_succeeds_when_ring_has_space() {
+        let mut ring = TraceRing::new(4);
+        let event = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        assert_eq!(ring.push(event), true);
+        assert_eq!(ring.dropped(), 0);
+    }
 
-        let first_events = ring.snapshot_for_run(first_run, 2);
-        let second_events = ring.snapshot_for_run(second_run, 2);
+    #[test]
+    fn push_returns_false_when_ring_is_full() {
+        let mut ring = TraceRing::new(1);
+        let event1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let event2 = TraceEvent::RunSubmitted { run: RunId::new(2) };
+        assert_eq!(ring.push(event1), true);
+        assert_eq!(ring.push(event2), false);
+        assert_eq!(ring.dropped(), 1);
+    }
 
-        assert_eq!(
-            first_events,
-            vec![TraceEvent::RunFinished { run: first_run }]
-        );
-        assert_eq!(
-            second_events,
-            vec![TraceEvent::RunSubmitted { run: second_run }]
-        );
+    #[test]
+    fn drain_returns_all_pushed_events() {
+        let mut ring = TraceRing::new(8);
+        let e1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let e2 = TraceEvent::StepStarted { run: RunId::new(1), step: StepIdx::new(0) };
+        let e3 = TraceEvent::StepEnded { run: RunId::new(1), step: StepIdx::new(0) };
+        assert_eq!(ring.push(e1.clone()), true);
+        assert_eq!(ring.push(e2.clone()), true);
+        assert_eq!(ring.push(e3.clone()), true);
+        let events = ring.drain();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events.get(0), Some(&e1));
+        assert_eq!(events.get(1), Some(&e2));
+        assert_eq!(events.get(2), Some(&e3));
+    }
+
+    #[test]
+    fn drain_into_respects_limit() {
+        let mut ring = TraceRing::new(8);
+        for i in 0..5u64 {
+            let event = TraceEvent::RunSubmitted { run: RunId::new(i) };
+            assert_eq!(ring.push(event), true);
+        }
+        let mut vec = Vec::new();
+        ring.drain_into(2, &mut vec);
+        assert_eq!(vec.len(), 2);
+    }
+
+    #[test]
+    fn drain_for_run_filters_by_run_id() {
+        let mut ring = TraceRing::new(16);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        assert_eq!(ring.push(TraceEvent::StepStarted { run: RunId::new(2), step: StepIdx::new(0) }), true);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }), true);
+        assert_eq!(ring.push(TraceEvent::StepEnded { run: RunId::new(1), step: StepIdx::new(0) }), true);
+        let events = ring.drain_for_run(RunId::new(2), 10);
+        assert_eq!(events.len(), 2);
+        assert_eq!(events.get(0), Some(&TraceEvent::StepStarted { run: RunId::new(2), step: StepIdx::new(0) }));
+        assert_eq!(events.get(1), Some(&TraceEvent::RunSubmitted { run: RunId::new(2) }));
+    }
+
+    #[test]
+    fn drain_for_run_returns_empty_for_nonexistent_run() {
+        let mut ring = TraceRing::new(8);
+        assert_eq!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }), true);
+        let events = ring.drain_for_run(RunId::new(99), 10);
+        assert_eq!(events.len(), 0);
+    }
+
+    #[test]
+    fn trace_event_run_id_returns_correct_run_for_all_variants() {
+        let run = RunId::new(42);
+        let step = StepIdx::new(5);
+        let slot = SlotIdx::new(3);
+        assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+        assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
+        assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunFinished { run }.run_id(), run);
+        assert_eq!(TraceEvent::RunFailed { run }.run_id(), run);
     }
 }

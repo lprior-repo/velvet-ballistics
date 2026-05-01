@@ -29,40 +29,19 @@ pub fn decode_frame_header(bytes: &[u8; IPC_HEADER_LEN]) -> Result<IpcFrameHeade
     IpcFrameHeader::decode(bytes, MaxPayloadBytes::DEFAULT)
 }
 
-/// Decodes a header from arbitrary bytes for fuzzing and socket ingress.
-pub fn fuzz_decode_frame(bytes: &[u8], max_payload: MaxPayloadBytes) -> Result<(), IpcError> {
-    validate_frame_magic(bytes)?;
-    if bytes.len() < IPC_HEADER_LEN {
-        return Err(IpcError::HeaderDecodeFailed);
-    }
-    let header_bytes = fixed_header_from_slice(bytes)?;
-    let header = IpcFrameHeader::decode(&header_bytes, max_payload)?;
-    validate_frame_bounds(&header, max_payload)?;
-    let payload_len = payload_len_usize(header.payload_len)?;
-    let total_len = IPC_HEADER_LEN
-        .checked_add(payload_len)
-        .ok_or(IpcError::PayloadTooLarge {
-            actual: payload_len,
-            limit: max_payload.get(),
-        })?;
-    if bytes.len() < total_len {
-        return Err(IpcError::PayloadLengthMismatch {
-            header: total_len,
-            actual: bytes.len(),
-        });
-    }
-    let payload = bytes
-        .get(IPC_HEADER_LEN..total_len)
-        .ok_or(IpcError::HeaderDecodeFailed)?;
-    decode_frame_payload(&header, payload).map(|_| ())
-}
-
 /// Decodes the payload from postcard bytes after the header has been validated.
 pub fn decode_frame_payload(
     header: &IpcFrameHeader,
     payload: &[u8],
 ) -> Result<crate::IpcPayload, IpcError> {
-    let expected_len = payload_len_usize(header.payload_len)?;
+    let expected_len = match usize::try_from(header.payload_len) {
+        Ok(len) => len,
+        Err(_) => {
+            return Err(IpcError::PayloadLengthOutOfRange {
+                actual: header.payload_len,
+            });
+        }
+    };
     if payload.len() != expected_len {
         return Err(IpcError::PayloadLengthMismatch {
             header: expected_len,
@@ -94,7 +73,14 @@ pub fn validate_frame_bounds(
     header: &IpcFrameHeader,
     max_payload: MaxPayloadBytes,
 ) -> Result<(), IpcError> {
-    let payload_len = payload_len_usize(header.payload_len)?;
+    let payload_len = match usize::try_from(header.payload_len) {
+        Ok(len) => len,
+        Err(_) => {
+            return Err(IpcError::PayloadLengthOutOfRange {
+                actual: header.payload_len,
+            });
+        }
+    };
     if payload_len > max_payload.get() {
         return Err(IpcError::PayloadTooLarge {
             actual: payload_len,
@@ -106,19 +92,11 @@ pub fn validate_frame_bounds(
 
 /// Reads a frame header from a Read trait object.
 pub fn read_frame_header<R: Read>(reader: &mut R) -> Result<IpcFrameHeader, IpcError> {
-    read_frame_header_bounded(reader, MaxPayloadBytes::DEFAULT)
-}
-
-/// Reads a frame header with an explicit payload bound.
-pub fn read_frame_header_bounded<R: Read>(
-    reader: &mut R,
-    max_payload: MaxPayloadBytes,
-) -> Result<IpcFrameHeader, IpcError> {
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     reader
         .read_exact(&mut header_bytes)
         .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    IpcFrameHeader::decode(&header_bytes, max_payload)
+    decode_frame_header(&header_bytes)
 }
 
 /// Reads the payload bytes following a validated header from a Read trait object.
@@ -126,17 +104,14 @@ pub fn read_frame_payload<R: Read>(
     reader: &mut R,
     header: &IpcFrameHeader,
 ) -> Result<Vec<u8>, IpcError> {
-    read_frame_payload_bounded(reader, header, MaxPayloadBytes::DEFAULT)
-}
-
-/// Reads payload bytes only after the declared length is checked against a bound.
-pub fn read_frame_payload_bounded<R: Read>(
-    reader: &mut R,
-    header: &IpcFrameHeader,
-    max_payload: MaxPayloadBytes,
-) -> Result<Vec<u8>, IpcError> {
-    validate_frame_bounds(header, max_payload)?;
-    let payload_len = payload_len_usize(header.payload_len)?;
+    let payload_len = match usize::try_from(header.payload_len) {
+        Ok(len) => len,
+        Err(_) => {
+            return Err(IpcError::PayloadLengthOutOfRange {
+                actual: header.payload_len,
+            });
+        }
+    };
     let mut payload = vec![0u8; payload_len];
     reader
         .read_exact(&mut payload)
@@ -166,13 +141,109 @@ fn payload_len_u32(len: usize) -> Result<u32, IpcError> {
     })
 }
 
-fn payload_len_usize(len: u32) -> Result<usize, IpcError> {
-    usize::try_from(len).map_err(|_| IpcError::PayloadLengthOutOfRange { actual: len })
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn fixed_header_from_slice(bytes: &[u8]) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
-    let header = bytes
-        .get(..IPC_HEADER_LEN)
-        .ok_or(IpcError::HeaderDecodeFailed)?;
-    <[u8; IPC_HEADER_LEN]>::try_from(header).map_err(|_| IpcError::HeaderDecodeFailed)
+    #[test]
+    fn encode_frame_produces_valid_header_and_payload() {
+        let payload = b"test-data";
+        let result = encode_frame(IpcCommand::Health, 0, 99, payload);
+        assert!(result.is_ok(), "encode_frame should succeed");
+        let Ok(frame) = result else {
+            return;
+        };
+
+        assert!(
+            frame.len() > IPC_HEADER_LEN,
+            "frame should contain header plus payload"
+        );
+        let header_slice = match frame.get(..IPC_HEADER_LEN) {
+            Some(s) => s,
+            None => return,
+        };
+        let header_bytes: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let header_result = decode_frame_header(&header_bytes);
+        assert!(header_result.is_ok(), "header should decode");
+        let Ok(header) = header_result else {
+            return;
+        };
+        assert_eq!(header.command, IpcCommand::Health);
+        assert_eq!(header.correlation, 99);
+        let payload_len = match usize::try_from(header.payload_len) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        assert_eq!(payload_len, payload.len());
+        assert_eq!(frame.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_short_input() {
+        let short: [u8; IPC_HEADER_LEN] = [0u8; IPC_HEADER_LEN];
+        let result = decode_frame_header(&short);
+        assert!(result.is_err(), "zero-filled header should fail validation");
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_bad_magic() {
+        let bad_magic: u32 = 0xDEAD_BEEF;
+        let mut header_bytes = [0u8; IPC_HEADER_LEN];
+        header_bytes[..4].copy_from_slice(&bad_magic.to_le_bytes());
+        let result = decode_frame_header(&header_bytes);
+
+        assert_eq!(result, Err(IpcError::InvalidMagic { actual: bad_magic }));
+    }
+
+    #[test]
+    fn fuzz_decode_frame_rejects_oversized_payload() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 9999);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else {
+            return;
+        };
+        let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let result = IpcFrameHeader::decode(&encoded, tiny_max);
+
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 9999,
+                limit: tiny_max.get(),
+            })
+        );
+    }
+
+    #[test]
+    fn validate_frame_magic_rejects_wrong_magic() {
+        let wrong_magic: u32 = 0x1234_5678;
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&wrong_magic.to_le_bytes());
+        bytes.extend_from_slice(&[0u8; 20]);
+
+        assert_eq!(
+            validate_frame_magic(&bytes),
+            Err(IpcError::InvalidMagic {
+                actual: wrong_magic,
+            })
+        );
+    }
+
+    #[test]
+    fn validate_frame_bounds_rejects_at_boundary() {
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 2);
+
+        assert_eq!(
+            validate_frame_bounds(&header, max),
+            Err(IpcError::PayloadTooLarge {
+                actual: 2,
+                limit: max.get(),
+            })
+        );
+    }
 }

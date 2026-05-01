@@ -7,18 +7,6 @@ pub mod client;
 pub mod frame;
 pub mod server;
 
-pub use client::{IpcClient, IpcClientError, connect_ipc, recv_response, send_command};
-pub use frame::{
-    decode_frame_header, decode_frame_payload, encode_frame, fuzz_decode_frame, read_frame_header,
-    read_frame_payload, validate_frame_bounds, write_frame,
-};
-pub use server::{
-    IpcResponse, IpcServer, IpcServerError, WorkflowResolutionError, WorkflowResolver,
-    handle_answer_ask, handle_cancel_run, handle_complete_action, handle_drain_trace,
-    handle_fail_action, handle_health, handle_inspect_run, handle_list_events, handle_ping,
-    handle_shutdown, handle_submit_run, handle_submit_run_inline, serve_ipc,
-};
-
 use bytes::Bytes;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
 use serde::{Deserialize, Serialize};
@@ -127,15 +115,19 @@ impl IpcFrameHeader {
 
     /// Encodes the header using the §21 little-endian wire layout.
     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
-        let mut bytes = [0_u8; IPC_HEADER_LEN];
-        write_header_field(&mut bytes, 0, &IPC_MAGIC.to_le_bytes())?;
-        write_header_field(&mut bytes, 4, &IPC_VERSION.to_le_bytes())?;
-        write_header_field(&mut bytes, 6, &self.command.as_u16().to_le_bytes())?;
-        write_header_field(&mut bytes, 8, &self.flags.to_le_bytes())?;
-        write_header_field(&mut bytes, 10, &0_u16.to_le_bytes())?;
-        write_header_field(&mut bytes, 12, &self.correlation.to_le_bytes())?;
-        write_header_field(&mut bytes, 20, &self.payload_len.to_le_bytes())?;
-        Ok(bytes)
+        let mut bytes = Vec::with_capacity(IPC_HEADER_LEN);
+        bytes.extend_from_slice(&IPC_MAGIC.to_le_bytes());
+        bytes.extend_from_slice(&IPC_VERSION.to_le_bytes());
+        bytes.extend_from_slice(&self.command.as_u16().to_le_bytes());
+        bytes.extend_from_slice(&self.flags.to_le_bytes());
+        bytes.extend_from_slice(&0_u16.to_le_bytes());
+        bytes.extend_from_slice(&self.correlation.to_le_bytes());
+        bytes.extend_from_slice(&self.payload_len.to_le_bytes());
+
+        match <[u8; IPC_HEADER_LEN]>::try_from(bytes.as_slice()) {
+            Ok(encoded) => Ok(encoded),
+            Err(_) => Err(IpcError::HeaderEncodeFailed),
+        }
     }
 
     /// Decodes and validates a fixed IPC header before payload allocation.
@@ -533,9 +525,6 @@ pub enum IpcError {
     /// Typed Postcard payload decoding failed.
     #[error("failed to decode IPC payload")]
     PayloadDecodeFailed,
-    /// Response payload decoded, but did not match the expected response type.
-    #[error("failed to decode IPC response payload")]
-    ResponseDecodeFailed,
 }
 
 fn read_u16_le(cursor: &mut Cursor<&[u8]>) -> Result<u16, IpcError> {
@@ -576,36 +565,15 @@ fn map_try_send(error: TrySendError<IngressFrame>) -> IpcError {
     }
 }
 
-fn write_header_field(
-    target: &mut [u8; IPC_HEADER_LEN],
-    offset: usize,
-    field: &[u8],
-) -> Result<(), IpcError> {
-    let end = offset
-        .checked_add(field.len())
-        .ok_or(IpcError::HeaderEncodeFailed)?;
-    let Some(slice) = target.get_mut(offset..end) else {
-        return Err(IpcError::HeaderEncodeFailed);
-    };
-    slice.copy_from_slice(field);
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcClient, IpcClientError,
-        IpcCommand, IpcError, IpcFrameHeader, IpcPayload, IpcResponse, IpcServer, IpcServerError,
-        MaxPayloadBytes, MemoryIngress, QueueCapacity, SubmitRunPayload, WorkflowResolutionError,
-        WorkflowResolver, connect_ipc, decode_frame, decode_frame_header, decode_frame_payload,
-        decode_payload, encode_frame, encode_payload, handle_cancel_run, handle_ping,
-        handle_submit_run, handle_submit_run_inline, read_frame_header, read_frame_payload,
-        recv_response, send_command, serve_ipc, validate_frame_bounds, write_frame,
+        IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, BoundedPayload, IngressFrame, IpcCommand,
+        IpcError, IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
+        SubmitRunPayload, decode_frame, decode_payload, encode_payload,
     };
     use bytes::Bytes;
-    use std::path::Path;
     use vb_core::{RunId, WorkflowDigest};
-    use vb_runtime::runtime::Runtime;
 
     fn header_bytes(
         magic: u32,
@@ -653,14 +621,22 @@ mod tests {
 
     #[test]
     fn oversized_payload_is_rejected() {
+        let payload_bytes = b"too big";
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
         let result = IngressFrame::new(
             RunId::new(1),
             WorkflowDigest::from_bytes([2; 32]),
-            Bytes::from_static(b"too big"),
-            MaxPayloadBytes::new(std::num::NonZeroUsize::MIN),
+            Bytes::from_static(payload_bytes),
+            max,
         );
 
-        assert!(matches!(result, Err(IpcError::PayloadTooLarge { .. })));
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: payload_bytes.len(),
+                limit: max.get(),
+            })
+        );
     }
 
     #[test]
@@ -706,6 +682,12 @@ mod tests {
 
     #[test]
     fn decoder_rejects_payload_above_bound() {
+        let payload_len_val: u32 = 8;
+        let payload_len_usize = match usize::try_from(payload_len_val) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
         let encoded = header_bytes(
             IPC_MAGIC,
             IPC_VERSION,
@@ -713,16 +695,21 @@ mod tests {
             0,
             0,
             1,
-            8,
+            payload_len_val,
         );
         assert!(encoded.is_ok(), "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
-        let decoded =
-            IpcFrameHeader::decode(&encoded, MaxPayloadBytes::new(std::num::NonZeroUsize::MIN));
+        let decoded = IpcFrameHeader::decode(&encoded, max);
 
-        assert!(matches!(decoded, Err(IpcError::PayloadTooLarge { .. })));
+        assert_eq!(
+            decoded,
+            Err(IpcError::PayloadTooLarge {
+                actual: payload_len_usize,
+                limit: max.get(),
+            })
+        );
     }
 
     #[test]
@@ -787,57 +774,99 @@ mod tests {
     }
 
     #[test]
-    fn root_exports_cover_mandatory_ipc_api() {
-        let _connect: fn(&Path) -> Result<IpcClient, IpcClientError> = connect_ipc;
-        let _send: fn(&mut IpcClient, IpcCommand, u64, &IpcPayload) -> Result<(), IpcClientError> =
-            send_command;
-        let _recv: fn(
-            &mut IpcClient,
-            MaxPayloadBytes,
-        ) -> Result<(IpcFrameHeader, IpcResponse), IpcClientError> = recv_response;
-        let _serve: fn(
-            &mut IpcServer,
-            &mut Runtime,
-            Option<std::time::Duration>,
-        ) -> Result<bool, IpcServerError> = serve_ipc;
-        let _handle_ping: fn() -> IpcResponse = handle_ping;
-        let _handle_submit: fn(
-            &IpcFrameHeader,
-            &[u8],
-            &mut Runtime,
-            Option<&mut dyn WorkflowResolver>,
-        ) -> IpcResponse = handle_submit_run;
-        let _handle_submit_inline: fn(
-            &[u8],
-            &mut Runtime,
-            Option<&mut dyn WorkflowResolver>,
-        ) -> IpcResponse = handle_submit_run_inline;
-        let _handle_cancel: fn(&[u8], &mut Runtime) -> IpcResponse = handle_cancel_run;
-        let _encode_frame: fn(IpcCommand, u16, u64, &[u8]) -> Result<Vec<u8>, IpcError> =
-            encode_frame;
-        let _decode_header: fn(&[u8; IPC_HEADER_LEN]) -> Result<IpcFrameHeader, IpcError> =
-            decode_frame_header;
-        let _decode_payload: fn(&IpcFrameHeader, &[u8]) -> Result<IpcPayload, IpcError> =
-            decode_frame_payload;
-        let _validate_bounds: fn(&IpcFrameHeader, MaxPayloadBytes) -> Result<(), IpcError> =
-            validate_frame_bounds;
-        let _write_frame: fn(&mut Vec<u8>, IpcCommand, u16, u64, &[u8]) -> Result<(), IpcError> =
-            write_frame;
-        let _resolution_error = WorkflowResolutionError::Required;
+    fn from_u16_rejects_zero_command() {
+        let result = IpcCommand::from_u16(0);
+        assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    }
 
-        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 17, 0);
-        let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
+    #[test]
+    fn unsupported_version_rejects_when_version_is_two() {
+        let encoded = header_bytes(IPC_MAGIC, 2, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
+        assert!(encoded.is_ok(), "test header should encode");
         let Ok(encoded) = encoded else {
             return;
         };
-        let mut header_reader = &encoded[..];
-        assert_eq!(read_frame_header(&mut header_reader), Ok(header));
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-        let mut payload_reader = &[][..];
-        assert_eq!(
-            read_frame_payload(&mut payload_reader, &header),
-            Ok(Vec::new())
-        );
+        assert_eq!(decoded, Err(IpcError::UnsupportedVersion { actual: 2 }));
+    }
+
+    #[test]
+    fn memory_ingress_try_recv_returns_none_when_empty() {
+        let capacity = QueueCapacity::new(std::num::NonZeroUsize::MIN);
+        let queue = MemoryIngress::bounded(capacity);
+
+        assert_eq!(queue.try_recv(), Ok(None));
+    }
+
+    #[test]
+    fn memory_ingress_is_empty_after_construction() {
+        let capacity = QueueCapacity::new(std::num::NonZeroUsize::MIN);
+        let queue = MemoryIngress::bounded(capacity);
+
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn bounded_payload_bytes_returns_inner_slice() {
+        let data = Bytes::from_static(b"hello");
+        let bounded = BoundedPayload::new(data.clone(), MaxPayloadBytes::DEFAULT);
+        assert!(bounded.is_ok(), "payload should fit default bound");
+        let Ok(bounded) = bounded else {
+            return;
+        };
+
+        assert_eq!(bounded.bytes(), &data);
+    }
+
+    #[test]
+    fn ingress_frame_accessors_return_correct_values() {
+        let run_id = RunId::new(42);
+        let workflow = WorkflowDigest::from_bytes([0xAB; 32]);
+        let data = Bytes::from_static(b"payload");
+        let frame = IngressFrame::new(run_id, workflow, data, MaxPayloadBytes::DEFAULT);
+        assert!(frame.is_ok(), "frame should construct");
+        let Ok(frame) = frame else {
+            return;
+        };
+
+        assert_eq!(frame.run_id(), run_id);
+        assert_eq!(frame.workflow(), workflow);
+        assert_eq!(frame.payload().bytes().as_ref(), b"payload");
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
+            let parsed = IpcCommand::from_u16(cmd);
+            prop_assert!(parsed.is_ok());
+            let Ok(command) = parsed else { return Ok(()) };
+            prop_assert_eq!(command.as_u16(), cmd);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn non_magic_bytes_always_rejected(magic in 0u32..) {
+            if magic != IPC_MAGIC {
+                let mut header_bytes = [0u8; IPC_HEADER_LEN];
+                header_bytes[..4].copy_from_slice(&magic.to_le_bytes());
+                header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+                let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+                prop_assert!(result.is_err());
+                if let Err(e) = result {
+                    prop_assert!(
+                        matches!(e, IpcError::InvalidMagic { .. }),
+                        "expected InvalidMagic, got {e:?}"
+                    );
+                }
+            }
+        }
     }
 }

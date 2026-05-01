@@ -15,5 +15,8 @@ thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 vb_runtime = { path = "../vb_runtime" }
 
+[dev-dependencies]
+proptest = { workspace = true }
+
 [lints]
 workspace = true

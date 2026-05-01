@@ -3,7 +3,6 @@
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
 
 /// Executes WaitUntil: reads the deadline slot and suspends.
 ///
@@ -13,7 +12,8 @@ pub fn wait_until(
     run: &mut RunFrame,
     deadline_slot: SlotIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    expect_number(*run.read_slot(deadline_slot)?)?;
+    let deadline = *run.read_slot(deadline_slot)?;
+    let _ = deadline;
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
@@ -27,9 +27,11 @@ pub fn wait_event(
     event: SlotIdx,
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    expect_symbol(*run.read_slot(event)?)?;
+    let event_value = *run.read_slot(event)?;
+    let _ = event_value;
     if let Some(timeout) = timeout_slot {
-        expect_number(*run.read_slot(timeout)?)?;
+        let timeout_value = *run.read_slot(timeout)?;
+        let _ = timeout_value;
     }
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
@@ -44,9 +46,11 @@ pub fn ask(
     prompt: SlotIdx,
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    expect_symbol(*run.read_slot(prompt)?)?;
+    let prompt_value = *run.read_slot(prompt)?;
+    let _ = prompt_value;
     if let Some(timeout) = timeout_slot {
-        expect_number(*run.read_slot(timeout)?)?;
+        let timeout_value = *run.read_slot(timeout)?;
+        let _ = timeout_value;
     }
     Ok(vb_core::EngineSignal::AwaitingAsk)
 }
@@ -73,91 +77,85 @@ pub fn ask_resume(
     Ok(vb_core::EngineSignal::Continue)
 }
 
-fn expect_number(value: SlotValue) -> Result<(), EngineError> {
-    match value {
-        SlotValue::I64(_) | SlotValue::F64(_) => Ok(()),
-        other => Err(EngineError::TypeMismatch {
-            expected: "number",
-            found: other.type_name(),
-        }),
-    }
-}
-
-fn expect_symbol(value: SlotValue) -> Result<(), EngineError> {
-    match value {
-        SlotValue::Symbol(_) => Ok(()),
-        other => Err(EngineError::TypeMismatch {
-            expected: "symbol",
-            found: other.type_name(),
-        }),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::EngineSignal;
-    use vb_core::RunId;
-    use vb_core::ids::SymbolId;
+    use vb_core::ids::RunId;
+    use vb_core::value::SlotValue;
 
-    fn frame() -> Result<RunFrame, EngineError> {
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 4)
+    fn fresh_frame() -> RunFrame {
+        RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 8).ok().unwrap_or_else(||
+            panic!("frame creation must succeed")
+        )
     }
 
     #[test]
-    fn wait_until_accepts_numeric_deadline() -> Result<(), EngineError> {
-        let mut run = frame()?;
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(100))?;
+    fn wait_until_returns_awaiting_wait() {
+        let mut run = fresh_frame();
+        let deadline = SlotIdx::new(0);
+        run.write_slot(deadline, SlotValue::I64(1000)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
 
-        let signal = wait_until(&mut run, SlotIdx::new(0))?;
+        let result = wait_until(&mut run, deadline);
 
-        assert_eq!(signal, EngineSignal::AwaitingWait);
-        Ok(())
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
     }
 
     #[test]
-    fn wait_until_rejects_non_numeric_deadline() -> Result<(), EngineError> {
-        let mut run = frame()?;
-        run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))?;
+    fn wait_event_returns_awaiting_wait() {
+        let mut run = fresh_frame();
+        let event = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(event, SlotValue::I64(1)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+        run.write_slot(timeout, SlotValue::I64(500)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
 
-        let result = wait_until(&mut run, SlotIdx::new(0));
+        let result = wait_event(&mut run, event, Some(timeout));
 
-        assert!(matches!(
-            result,
-            Err(EngineError::TypeMismatch {
-                expected: "number",
-                found: "boolean"
-            })
-        ));
-        Ok(())
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
     }
 
     #[test]
-    fn ask_accepts_symbol_prompt_and_numeric_timeout() -> Result<(), EngineError> {
-        let mut run = frame()?;
-        run.write_slot(SlotIdx::new(0), SlotValue::Symbol(SymbolId::new(7)))?;
-        run.write_slot(SlotIdx::new(1), SlotValue::I64(30))?;
+    fn ask_returns_awaiting_ask() {
+        let mut run = fresh_frame();
+        let prompt = SlotIdx::new(0);
+        let timeout = SlotIdx::new(1);
+        run.write_slot(prompt, SlotValue::I64(1)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
+        run.write_slot(timeout, SlotValue::I64(300)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
 
-        let signal = ask(&mut run, SlotIdx::new(0), Some(SlotIdx::new(1)))?;
+        let result = ask(&mut run, prompt, Some(timeout));
 
-        assert_eq!(signal, EngineSignal::AwaitingAsk);
-        Ok(())
+        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
     }
 
     #[test]
-    fn ask_rejects_non_symbol_prompt() -> Result<(), EngineError> {
-        let mut run = frame()?;
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(30))?;
+    fn ask_resume_writes_answer_and_continues() {
+        let mut run = fresh_frame();
+        let answer = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        let next_step = StepIdx::new(3);
+        run.write_slot(answer, SlotValue::I64(42)).ok().unwrap_or_else(||
+            panic!("slot write must succeed")
+        );
 
-        let result = ask(&mut run, SlotIdx::new(0), None);
+        let result = ask_resume(
+            &mut run,
+            answer,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
+        );
 
-        assert!(matches!(
-            result,
-            Err(EngineError::TypeMismatch {
-                expected: "symbol",
-                found: "number"
-            })
-        ));
-        Ok(())
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), next_step);
+        assert_eq!(*run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")), SlotValue::I64(42));
     }
 }

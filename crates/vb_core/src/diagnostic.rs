@@ -229,4 +229,76 @@ mod tests {
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.span, Span::ZERO);
     }
+
+    // -- DiagnosticCodeParseError exact variant assertions --
+
+    #[test]
+    fn diagnostic_code_parse_error_invalid_format_when_missing_prefix() {
+        let result = DiagnosticCode::from_str("0101");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::InvalidFormat)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_invalid_format_when_hex_digits() {
+        let result = DiagnosticCode::from_str("E010A");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::InvalidFormat)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_invalid_format_when_too_short() {
+        let result = DiagnosticCode::from_str("E01");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::InvalidFormat)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_invalid_format_when_too_long() {
+        let result = DiagnosticCode::from_str("E010101");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::InvalidFormat)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_invalid_format_when_empty() {
+        let result = DiagnosticCode::from_str("");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::InvalidFormat)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_unsupported_code_when_out_of_range() {
+        let result = DiagnosticCode::from_str("E0410");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::UnsupportedCode)
+        );
+    }
+
+    #[test]
+    fn diagnostic_code_parse_error_unsupported_code_when_fully_outside_ranges() {
+        let result = DiagnosticCode::from_str("E9999");
+
+        assert_eq!(
+            result,
+            Err(DiagnosticCodeParseError::UnsupportedCode)
+        );
+    }
 }

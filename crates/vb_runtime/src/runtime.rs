@@ -165,6 +165,41 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+    fn suspended_workflow() -> Option<CompiledWorkflow> {
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("suspended"),
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn test_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+        }
+    }
 
     #[test]
     fn snapshot_run_reports_missing_run_without_command_queue() {
@@ -198,5 +233,56 @@ mod tests {
         let second = runtime.list_events(RunId::new(1));
         assert_eq!(first, Ok(Vec::new()));
         assert_eq!(second, Ok(Vec::new()));
+    }
+
+    #[test]
+    fn new_creates_configured_shard_count() {
+        let Some(shard_count) = NonZeroUsize::new(3) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(false));
+    }
+
+    #[test]
+    fn shutdown_graceful_enqueues_on_all_shards() {
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(false));
+    }
+
+    #[test]
+    fn counters_snapshot_aggregates_across_shards() {
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf1) = suspended_workflow() else { return };
+        let Some(wf2) = suspended_workflow() else { return };
+        assert_eq!(runtime.submit_direct(RunId::new(1), wf1), Ok(()));
+        assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 2);
+    }
+
+    #[test]
+    fn drain_trace_aggregates_across_shards() {
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf1) = suspended_workflow() else { return };
+        let Some(wf2) = suspended_workflow() else { return };
+        assert_eq!(runtime.submit_direct(RunId::new(1), wf1), Ok(()));
+        assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let events = runtime.drain_trace();
+        // Each submit produces RunSubmitted + ActionScheduled = 2 events per run
+        assert_eq!(events.len(), 4);
     }
 }

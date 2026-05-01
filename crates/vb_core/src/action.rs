@@ -252,4 +252,83 @@ mod tests {
         let result = propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::Clean);
         assert_eq!(result, Taint::Clean);
     }
+
+    // -- ActionError exact variant assertions --
+
+    #[test]
+    fn action_error_unknown_action_exact_variant() {
+        let error = ActionError::UnknownAction {
+            action: ActionId::new(42),
+        };
+        let ActionError::UnknownAction { action } = error else {
+            panic!("expected UnknownAction variant");
+        };
+        assert_eq!(action, ActionId::new(42));
+    }
+
+    #[test]
+    fn action_error_invalid_ticket_exact_variant() {
+        let error = ActionError::InvalidTicket;
+        assert_eq!(error, ActionError::InvalidTicket);
+    }
+
+    #[test]
+    fn action_error_payload_too_large_exact_variant() {
+        let error = ActionError::PayloadTooLarge {
+            max_bytes: 1024,
+            actual_bytes: 2048,
+        };
+        let ActionError::PayloadTooLarge {
+            max_bytes,
+            actual_bytes,
+        } = error
+        else {
+            panic!("expected PayloadTooLarge variant");
+        };
+        assert_eq!(max_bytes, 1024);
+        assert_eq!(actual_bytes, 2048);
+    }
+
+    #[test]
+    fn action_error_output_slot_out_of_bounds_exact_variant() {
+        let error = ActionError::OutputSlotOutOfBounds {
+            slot: 5,
+            max_slots: 4,
+        };
+        let ActionError::OutputSlotOutOfBounds { slot, max_slots } = error else {
+            panic!("expected OutputSlotOutOfBounds variant");
+        };
+        assert_eq!(slot, 5);
+        assert_eq!(max_slots, 4);
+    }
+
+    #[test]
+    fn action_error_non_idempotent_replay_blocked_exact_variant() {
+        let error = ActionError::NonIdempotentReplayBlocked;
+        assert_eq!(error, ActionError::NonIdempotentReplayBlocked);
+    }
+
+    #[test]
+    fn action_error_completion_already_recorded_exact_variant() {
+        let error = ActionError::CompletionAlreadyRecorded;
+        assert_eq!(error, ActionError::CompletionAlreadyRecorded);
+    }
+
+    #[test]
+    fn action_error_queue_full_exact_variant() {
+        let error = ActionError::QueueFull;
+        assert_eq!(error, ActionError::QueueFull);
+    }
+
+    #[test]
+    fn action_error_encoding_failed_exact_variant() {
+        let error = ActionError::EncodingFailed;
+        assert_eq!(error, ActionError::EncodingFailed);
+    }
+
+    #[test]
+    fn action_error_dispatch_failed_exact_variant() {
+        let error = ActionError::DispatchFailed;
+        assert_eq!(error, ActionError::DispatchFailed);
+    }
 }

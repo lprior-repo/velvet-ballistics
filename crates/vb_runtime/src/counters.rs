@@ -50,6 +50,71 @@ impl ShardCounters {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_creates_zeroed_counters() {
+        let counters = ShardCounters::new();
+        let snap = counters.snapshot();
+        assert_eq!(snap, CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        });
+    }
+
+    #[test]
+    fn inc_submitted_increments_submitted_in_snapshot() {
+        let counters = ShardCounters::new();
+        counters.inc_submitted();
+        counters.inc_submitted();
+        counters.inc_submitted();
+        assert_eq!(counters.snapshot().runs_submitted, 3);
+    }
+
+    #[test]
+    fn inc_completed_increments_completed_in_snapshot() {
+        let counters = ShardCounters::new();
+        counters.inc_completed();
+        counters.inc_completed();
+        assert_eq!(counters.snapshot().runs_completed, 2);
+    }
+
+    #[test]
+    fn inc_failed_increments_failed_in_snapshot() {
+        let counters = ShardCounters::new();
+        counters.inc_failed();
+        assert_eq!(counters.snapshot().runs_failed, 1);
+    }
+
+    #[test]
+    fn add_steps_increments_step_count_in_snapshot() {
+        let counters = ShardCounters::new();
+        counters.add_steps(42);
+        assert_eq!(counters.snapshot().steps_executed, 42);
+    }
+
+    #[test]
+    fn multiple_operations_accumulate_in_single_snapshot() {
+        let counters = ShardCounters::new();
+        counters.inc_submitted();
+        counters.inc_submitted();
+        counters.inc_submitted();
+        counters.inc_completed();
+        counters.inc_completed();
+        counters.inc_failed();
+        counters.add_steps(100);
+        let snap = counters.snapshot();
+        assert_eq!(snap.runs_submitted, 3);
+        assert_eq!(snap.runs_completed, 2);
+        assert_eq!(snap.runs_failed, 1);
+        assert_eq!(snap.steps_executed, 100);
+    }
+}
+
 /// Snapshot of all shard counters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CounterSnapshot {
