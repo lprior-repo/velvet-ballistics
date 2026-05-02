@@ -55,6 +55,15 @@ const CODE_LIMIT_EXCEEDED: u16 = 0x040A;
 const CODE_UNSUPPORTED_TRIGGER: u16 = 0x040B;
 const CODE_HTTP_TRIGGER_OUT_OF_CORE: u16 = 0x040C;
 
+/// Gate verifier errors: E05xx.
+const CODE_EXPRESSION_STACK_EXCEEDED: u16 = 0x0501;
+const CODE_EXPRESSION_STACK_MISMATCH: u16 = 0x0502;
+const CODE_ACCESSOR_SLOT_OUT_OF_RANGE: u16 = 0x0503;
+const CODE_ACCESSOR_PATH_INVALID: u16 = 0x0504;
+const CODE_SLOT_REFERENCE_OUT_OF_RANGE: u16 = 0x0505;
+const CODE_LOOP_BODY_STEP_OUT_OF_RANGE: u16 = 0x0506;
+const CODE_SLOT_DEPENDENCY_CYCLE: u16 = 0x0507;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -220,6 +229,62 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_HTTP_TRIGGER_OUT_OF_CORE),
             "HTTP trigger out of core".into(),
         ),
+        ValidationError::ExpressionStackExceeded { declared, limit } => (
+            DiagnosticCode::new(CODE_EXPRESSION_STACK_EXCEEDED),
+            format!("expression stack exceeded: declared {declared}, limit {limit}"),
+        ),
+        ValidationError::ExpressionStackMismatch {
+            expr_index,
+            declared,
+            computed,
+        } => (
+            DiagnosticCode::new(CODE_EXPRESSION_STACK_MISMATCH),
+            format!(
+                "expression stack mismatch: expr {expr_index}, declared {declared}, computed {computed}"
+            ),
+        ),
+        ValidationError::AccessorSlotOutOfRange {
+            accessor_index,
+            slot,
+            slot_count,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_SLOT_OUT_OF_RANGE),
+            format!(
+                "accessor slot out of range: accessor {accessor_index}, slot {slot}, slot_count {slot_count}"
+            ),
+        ),
+        ValidationError::AccessorPathInvalid {
+            accessor_index,
+            segment_index,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_PATH_INVALID),
+            format!("accessor path invalid: accessor {accessor_index}, segment {segment_index}"),
+        ),
+        ValidationError::SlotReferenceOutOfRange {
+            slot,
+            slot_count,
+            context,
+        } => (
+            DiagnosticCode::new(CODE_SLOT_REFERENCE_OUT_OF_RANGE),
+            format!(
+                "slot reference out of range: slot {slot}, slot_count {slot_count}, context {context}"
+            ),
+        ),
+        ValidationError::LoopBodyStepOutOfRange {
+            step,
+            node_count,
+            source_node,
+            label,
+        } => (
+            DiagnosticCode::new(CODE_LOOP_BODY_STEP_OUT_OF_RANGE),
+            format!(
+                "loop body step out of range: step {step}, node_count {node_count}, source_node {source_node}, label {label}"
+            ),
+        ),
+        ValidationError::SlotDependencyCycle { slot, chain } => (
+            DiagnosticCode::new(CODE_SLOT_DEPENDENCY_CYCLE),
+            format!("slot dependency cycle: slot {slot}, chain {chain}"),
+        ),
     }
 }
 
@@ -383,6 +448,39 @@ mod tests {
                 trigger: "cron".into(),
             },
             ValidationError::HttpTriggerOutOfCore,
+            ValidationError::ExpressionStackExceeded {
+                declared: 65,
+                limit: 64,
+            },
+            ValidationError::ExpressionStackMismatch {
+                expr_index: 0,
+                declared: 2,
+                computed: 1,
+            },
+            ValidationError::AccessorSlotOutOfRange {
+                accessor_index: 0,
+                slot: 5,
+                slot_count: 2,
+            },
+            ValidationError::AccessorPathInvalid {
+                accessor_index: 0,
+                segment_index: 1,
+            },
+            ValidationError::SlotReferenceOutOfRange {
+                slot: 99,
+                slot_count: 10,
+                context: "node 0".into(),
+            },
+            ValidationError::LoopBodyStepOutOfRange {
+                step: 99,
+                node_count: 5,
+                source_node: 0,
+                label: "for_each body".into(),
+            },
+            ValidationError::SlotDependencyCycle {
+                slot: 0,
+                chain: "slot 0 -> slot 1 -> slot 0".into(),
+            },
         ]
     }
 

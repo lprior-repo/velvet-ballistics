@@ -27,6 +27,7 @@ use thiserror::Error;
 
 pub mod control_flow;
 pub mod diagnostic;
+pub mod gates;
 pub mod references;
 pub mod schema;
 pub mod type_taint;
@@ -141,6 +142,52 @@ pub enum ValidationError {
 
     #[error("HTTP_TRIGGER_OUT_OF_CORE")]
     HttpTriggerOutOfCore,
+
+    // Gate 7: Expression stack depth bounded
+    #[error("EXPRESSION_STACK_EXCEEDED: declared {declared}, limit {limit}")]
+    ExpressionStackExceeded { declared: usize, limit: usize },
+
+    #[error("EXPRESSION_STACK_MISMATCH: expr {expr_index}, declared {declared}, computed {computed}")]
+    ExpressionStackMismatch {
+        expr_index: usize,
+        declared: usize,
+        computed: usize,
+    },
+
+    // Gate 8: Accessor path segments valid
+    #[error("ACCESSOR_SLOT_OUT_OF_RANGE: accessor {accessor_index}, slot {slot}, slot_count {slot_count}")]
+    AccessorSlotOutOfRange {
+        accessor_index: usize,
+        slot: usize,
+        slot_count: usize,
+    },
+
+    #[error("ACCESSOR_PATH_INVALID: accessor {accessor_index}, segment {segment_index}")]
+    AccessorPathInvalid {
+        accessor_index: usize,
+        segment_index: usize,
+    },
+
+    // Gate 9: Slot references within bounds
+    #[error("SLOT_REFERENCE_OUT_OF_RANGE: slot {slot}, slot_count {slot_count}, context {context}")]
+    SlotReferenceOutOfRange {
+        slot: usize,
+        slot_count: usize,
+        context: String,
+    },
+
+    // Gate 11: Loop body graph well-formed
+    #[error("LOOP_BODY_STEP_OUT_OF_RANGE: step {step}, node_count {node_count}, source_node {source_node}, label {label}")]
+    LoopBodyStepOutOfRange {
+        step: usize,
+        node_count: usize,
+        source_node: usize,
+        label: String,
+    },
+
+    // Gate 13: No slot dependency cycles
+    #[error("SLOT_DEPENDENCY_CYCLE: slot {slot}, chain {chain}")]
+    SlotDependencyCycle { slot: usize, chain: String },
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;
