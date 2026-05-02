@@ -1409,6 +1409,10 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 40 | Evidence chain completion | Slot value/taint snapshots in journal. Action input/output payload persistence for completed actions. Durability proof per primitive (each primitive must document what journal events constitute proof of completion). `VerificationProof.durable` field gates acceptance. Tests: crash recovery with evidence chain, payload reconstruction. |
 | 41 | Capability model | `Capability` struct. Actions declare required capabilities. Admission checks granted capabilities. `CapabilityDenied` rejection. Operator grants capabilities at run submission. Tests: missing capability rejection, granted capability acceptance. |
 | 42 | Validation deduplication | Eliminate duplicate validation between `vb_validate` and `vb_compile`. Single validation pipeline operating on a shared intermediate representation. Both crate APIs preserved for backward compatibility but backed by one implementation. |
+| 43 | Taint propagation fix | Fix runtime taint tracking: `EvalExpr` joins taint from loaded slots, `BuildObject`/`BuildList` join taint from field/item slots, `Finish` carries taint in signal. Expression evaluator returns `(SlotValue, Taint)` pairs. Compile-time checks remain as defense-in-depth. Resolves DRIFT-1. |
+| 44 | Recovery evidence chain | Emit `SlotWritten` + `StepStarted`/`StepSucceeded` for every deterministic step. Gate hydration on `UnsupportedRecoveryState` — fail with typed error if slots/taint cannot be reconstructed. Replace `Ok(()) \| Err(_) => {}` pattern in shard with propagated errors. Resolves DRIFT-2. |
+| 45 | Resource budget enforcement | Per-run `ValueStore` arena cap. Tightened `ResourceContract` defaults (no `u16::MAX`). Hard ceiling on `StepBudget` per tick. Replace Collect global Mutex with per-run state. Resolves DRIFT-3. |
+| 46 | IR structural validation | `try_from_parts` validates reachable nodes, forward-only edges, loop pairing, SymbolId ranges, accessor path segments. Artifact loading treats input as untrusted. Resolves DRIFT-4. |
 
 Round 2 current implementation state, observed in this tree and not a final release claim:
 
@@ -3257,3 +3261,95 @@ pub struct Capability {
 Admission checks that every declared requirement is satisfied by a granted permission. Ungranted capabilities cause `CapabilityDenied` rejection.
 
 Capability checking occurs at admission time (cold path) only. The runtime does not re-check capabilities during execution. `Box<str>` is acceptable because admission is cold-path.
+
+---
+
+## 67. Architectural Drift Register
+
+This section tracks known architectural defects discovered through adversarial review. Each entry states the defect, the root cause, the resolution contract, and the phase that resolves it. Entries are removed when the resolution phase is complete and evidenced.
+
+### DRIFT-1: Runtime Taint Tracking Is Incomplete
+
+**Defect:** `EvalExpr`, `BuildObject`, and `BuildList` nodes write `Taint::Clean` unconditionally via `write_slot`. The `Finish` node emits `EngineSignal::Finished(SlotValue)` which carries no taint metadata. Compile-time taint checking is the only effective defense. A hand-crafted `CompiledWorkflow` that bypasses the compiler has no runtime taint protection.
+
+**Root cause:** `write_slot` hardcodes `Taint::Clean`. Only `copy_slot` and `write_slot_with_taint` propagate taint. The expression evaluator, object builder, and list builder read tainted values but discard taint on output.
+
+**Resolution contract:**
+1. `EvalExpr` must read taint from every `LoadSlot` operand and join them into the output taint.
+2. `BuildObject` must join taint from every field slot into the output taint.
+3. `BuildList` must join taint from every item slot into the output taint.
+4. `EngineSignal::Finished` must carry taint alongside the value, or the finish handler must check taint before emitting.
+5. The expression evaluator's `eval_load_slot` must return both value and taint.
+6. Compile-time taint checks remain as defense-in-depth.
+
+**Coding style:** No functional combinators. No iterator chains. Use explicit `for` loops with checked indexing. Taint join is `max(left, right)` using the `repr(u8)` discriminant — a simple `u8` comparison, not a trait.
+
+**Resolves in:** Phase 43 (Taint Propagation Fix)
+
+### DRIFT-2: Crash Recovery Cannot Reconstruct Live State
+
+**Defect:** The journal records no slot values, no slot taint, no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` reports `slot_values: true`, `slot_taint: true`, but `hydrate_run_frame` proceeds with empty frames anyway. The system is not crash-recoverable for any workflow that performs deterministic computation between suspension points.
+
+**Root cause:** Journal events are only emitted at suspension points (action dispatch, wait, ask). Deterministic steps between suspensions are treated as atomic but the journal cannot reconstruct them.
+
+**Resolution contract:**
+1. Every deterministic step must emit `SlotWritten` events (value + taint) to the journal before advancing PC.
+2. `StepStarted`/`StepSucceeded` events must be emitted for every step, not just suspension points.
+3. Recovery must reconstruct slot values and taint from journal events.
+4. `UnsupportedRecoveryState` must gate hydration: if `slot_values == true`, hydration must fail with a typed error, not produce a broken frame.
+5. Journal error handling in shard.rs must not use `Ok(()) | Err(_) => {}`. Journal write failures must propagate as runtime errors or at minimum log a diagnostic.
+
+**Performance note:** Emitting `SlotWritten` per deterministic step increases journal write volume. Under `Journaled` durability, these batch via the writer queue. Under `Strict`, each step gets an fsync — this is the correct safety tradeoff. `Volatile` mode remains zero-journal for testing.
+
+**Coding style:** No async. No channels. Synchronous journal append within the shard's single-threaded drive loop. Bounded writer queue absorbs burst. If queue is full, the step blocks (backpressure), not silently drops.
+
+**Resolves in:** Phase 44 (Recovery Evidence Chain)
+
+### DRIFT-3: No Aggregate Resource Budget Across Primitive Composition
+
+**Defect:** Individual primitive bounds exist (`ForEach limit`, `Together branches`, `Repeat max_attempts`) but their composition is unbounded. `ForEach(limit=1000)` wrapping `Together(branches=256)` can create 256,000 sequential step executions and 256,000 ValueStore arena entries in a single run. The `ValueStore` has no cap on total arena entries (symbols, lists, objects, blobs are all append-only with no GC).
+
+**Root cause:** Bounds are per-primitive, not per-run. No dataflow analysis propagates bounds through nested compositions. `ResourceContract` defaults (`max_fanout: u16::MAX`, `max_collect_items: u32::MAX`, `max_step_budget_per_tick: u64::MAX`) are effectively unbounded.
+
+**Resolution contract:**
+1. Phase 37 (Whole-Workflow Boundedness) computes `WholeWorkflowBudget` from IR — this resolves the static analysis gap.
+2. `ValueStore` must have a per-run arena cap (e.g., `max_arena_entries: u32`). Insert methods must check the cap and return a typed error on overflow.
+3. `ResourceContract` defaults must be tightened from `u16::MAX`/`u32::MAX`/`u64::MAX` to policy-specified defaults.
+4. `StepBudget` per tick must have a hard ceiling (e.g., 100,000) regardless of configuration.
+5. Collect global `Mutex<Vec>` must be replaced with per-run pagination state to eliminate cross-run interference.
+
+**Resolves in:** Phase 37 (boundedness) + Phase 45 (Resource Budget Enforcement)
+
+### DRIFT-4: IR Validation Is Bounds-Only, Not Structural
+
+**Defect:** `try_from_parts` validates that all numeric indices are within array bounds. It does NOT validate structural correctness: reachable nodes, forward-only edges, well-formed loop structures (ForEachStart pairs with ForEachNext), valid SymbolId references, or accessor path segment validity. A postcard-deserialized artifact from untrusted input bypasses all compiler-level structural validation.
+
+**Root cause:** The compiler's structural validations (control flow, reference, type/taint) operate on the AST, not on the compiled IR. They are never re-checked at the IR level.
+
+**Resolution contract:**
+1. `try_from_parts` must validate that every node is reachable from `entry`.
+2. `try_from_parts` must reject backward edges (Jump targets, Choose targets, loop body/done targets must be forward).
+3. `try_from_parts` must validate that loop primitives are paired correctly (ForEachStart has a matching ForEachNext and ForEachJoin).
+4. `try_from_parts` must validate that BuildObject SymbolIds are within the symbol table range.
+5. `try_from_parts` must validate AccessorProgram path segments (Field SymbolId range, Index bounds).
+6. The artifact loading path (`run-compiled` CLI command) must treat the artifact as untrusted input.
+
+**Coding style:** Straightforward `for` loops over nodes. Checked indexing. No recursion (bounded by node count). Each check returns a typed `IRValidationError` identifying the specific node and check that failed.
+
+**Resolves in:** Phase 46 (IR Structural Validation)
+
+### DRIFT-5: Validation Logic Duplicated Between vb_validate and vb_compile
+
+**Defect:** Both `vb_validate` and `vb_compile` contain parallel modules (schema, references, control_flow, type_taint) that must be kept in sync manually. The two crates operate on different input types (document model vs AST) but enforce the same rules.
+
+**Root cause:** Historical. `vb_validate` was built first on the document model. `vb_compile` was built later with its own validation on the AST. Both must accept the same workflow language.
+
+**Resolution contract:**
+1. Single validation pipeline on a shared intermediate representation.
+2. Both crate public APIs preserved for backward compatibility.
+3. Internal delegation to one implementation.
+4. Remove the sync requirement.
+
+**Coding style:** No traits, no generics, no higher-order functions. A plain `pub fn validate(parts: &WorkflowParts) -> Result<ValidationOutput, ValidationError>` that each crate calls.
+
+**Resolves in:** Phase 42 (Validation Deduplication)
