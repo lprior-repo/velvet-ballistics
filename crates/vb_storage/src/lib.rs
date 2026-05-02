@@ -1052,8 +1052,9 @@ impl FjallJournal {
         let compiled_ir = database.keyspace(KEYSPACE_COMPILED_IR, || {
             keyspace_options_for(KeyspaceProfile::Cold)
         })?;
-        let run_header =
-            database.keyspace(KEYSPACE_RUN_HEADER, fjall::KeyspaceCreateOptions::default)?;
+        let run_header = database.keyspace(KEYSPACE_RUN_HEADER, || {
+            keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         let events = database.keyspace(KEYSPACE_RUN_EVENT, || {
             keyspace_options_for(KeyspaceProfile::Hot)
         })?;
