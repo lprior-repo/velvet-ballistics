@@ -72,7 +72,10 @@ mod tests {
 
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
-        ensure_equal(result, Ok(EngineSignal::Finished(SlotValue::I64(42))))?;
+        ensure_equal(
+            result,
+            Ok(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        )?;
         ensure_equal(run.executed(), 2)?;
         Ok(())
     }
@@ -85,7 +88,10 @@ mod tests {
 
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
-        ensure_equal(result, Ok(EngineSignal::Finished(SlotValue::Bool(true))))?;
+        ensure_equal(
+            result,
+            Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean)),
+        )?;
         Ok(())
     }
 
@@ -98,7 +104,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::Bool(true)) {
+        if result == EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected const finish result: {result:?}"))
@@ -217,7 +223,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(11)) {
+        if result == EngineSignal::Finished(SlotValue::I64(11), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -237,7 +243,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(22)) {
+        if result == EngineSignal::Finished(SlotValue::I64(22), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -257,7 +263,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(99)) {
+        if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -307,7 +313,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(11)) {
+        if result == EngineSignal::Finished(SlotValue::I64(11), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -328,7 +334,10 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        ensure_equal(result, EngineSignal::Finished(SlotValue::I64(22)))?;
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(22), Taint::Clean),
+        )?;
         Ok(())
     }
 
@@ -346,7 +355,10 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        ensure_equal(result, EngineSignal::Finished(SlotValue::I64(99)))?;
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(99), Taint::Clean),
+        )?;
         Ok(())
     }
 
@@ -389,7 +401,7 @@ mod tests {
         let workflow = eval_add_workflow().map_err(|error| error.to_string())?;
         let run = test_frame(RunId::new(23), &workflow)?;
 
-        let value =
+        let (value, _taint) =
             eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())?;
 
         ensure_equal(value, SlotValue::I64(42))?;
@@ -461,7 +473,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(42)) {
+        if result == EngineSignal::Finished(SlotValue::I64(42), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -479,7 +491,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        if result == EngineSignal::Finished(SlotValue::I64(77)) {
+        if result == EngineSignal::Finished(SlotValue::I64(77), Taint::Clean) {
             Ok(())
         } else {
             Err(format!("unexpected result: {result:?}"))
@@ -530,7 +542,10 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
 
-        ensure_equal(result, EngineSignal::Finished(SlotValue::I64(123)))?;
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(123), Taint::Clean),
+        )?;
         Ok(())
     }
 
@@ -769,7 +784,7 @@ mod tests {
         let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|error| error.to_string())?;
         let object = match result {
-            EngineSignal::Finished(SlotValue::Object(object)) => object,
+            EngineSignal::Finished(SlotValue::Object(object), Taint::Clean) => object,
             other => return Err(format!("unexpected result: {other:?}")),
         };
         let list = match store.object_field(object, SymbolId::new(1)) {
@@ -1183,7 +1198,9 @@ mod tests {
         .map_err(|error| error.to_string())?;
         let run = test_frame(RunId::new(117), &workflow)?;
 
-        eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())
+        let (value, _taint) =
+            eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())?;
+        Ok(value)
     }
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -1239,7 +1256,10 @@ mod tests {
 
         let result = run_until_blocked(&workflow, &mut run, StepBudget::new(2), &mut store);
 
-        ensure_equal(result, Ok(EngineSignal::Finished(SlotValue::I64(55))))?;
+        ensure_equal(
+            result,
+            Ok(EngineSignal::Finished(SlotValue::I64(55), Taint::Clean)),
+        )?;
         ensure_equal(run.executed(), 2)?;
         Ok(())
     }

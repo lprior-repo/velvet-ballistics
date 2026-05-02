@@ -16,6 +16,22 @@ pub enum Taint {
     DerivedFromSecret = 2,
 }
 
+/// Joins two taint levels, returning the more restrictive one.
+#[must_use]
+pub fn join_taint(a: Taint, b: Taint) -> Taint {
+    let a_disc: u8 = match a {
+        Taint::Clean => 0,
+        Taint::Secret => 1,
+        Taint::DerivedFromSecret => 2,
+    };
+    let b_disc: u8 = match b {
+        Taint::Clean => 0,
+        Taint::Secret => 1,
+        Taint::DerivedFromSecret => 2,
+    };
+    if a_disc >= b_disc { a } else { b }
+}
+
 /// Finite floating-point scalar accepted by the runtime value model.
 ///
 /// # Why a custom newtype (not `ordered-float` / `noisy_float`)

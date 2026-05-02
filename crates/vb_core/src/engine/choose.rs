@@ -50,12 +50,14 @@ fn choose_expr_branch_target(
     store: &mut ValueStore,
     branch: &ExprBranch,
 ) -> Result<Option<StepIdx>, EngineError> {
-    match super::expr_eval::eval_expr_with_store(plan, run, store, branch.condition)? {
+    let (value, _taint) =
+        super::expr_eval::eval_expr_with_store(plan, run, store, branch.condition)?;
+    match value {
         SlotValue::Bool(true) => Ok(Some(branch.target)),
         SlotValue::Bool(false) => Ok(None),
-        value => Err(EngineError::TypeMismatch {
+        other => Err(EngineError::TypeMismatch {
             expected: "boolean",
-            found: value.type_name(),
+            found: other.type_name(),
         }),
     }
 }

@@ -1,7 +1,8 @@
 //! Engine signal types and step budget.
 
 use crate::errors::EngineError;
-use crate::value::SlotValue;
+use crate::limits::MAX_STEP_BUDGET;
+use crate::value::{SlotValue, Taint};
 
 /// Bounded number of steps a caller may execute in one engine slice.
 pub struct StepBudget {
@@ -11,7 +12,7 @@ pub struct StepBudget {
 impl StepBudget {
     /// Largest bounded execution slice representable by the runtime.
     pub const MAX: Self = Self {
-        remaining: u64::MAX,
+        remaining: MAX_STEP_BUDGET,
     };
 
     /// Creates a budget. Zero is valid and executes no transitions.
@@ -42,8 +43,8 @@ impl StepBudget {
 pub enum EngineSignal {
     /// The run made progress and can continue immediately.
     Continue,
-    /// The run finished with a result value.
-    Finished(SlotValue),
+    /// The run finished with a result value and its taint level.
+    Finished(SlotValue, Taint),
     /// The caller's execution slice ended before completion.
     StepBudgetExhausted,
     /// The run suspended on an action.

@@ -36,7 +36,7 @@ pub use ids::{
     SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use span::{Located, SourceMap, Span, Spanned};
-pub use value::{ConstValue, FiniteF64, SlotValue, Taint};
+pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,

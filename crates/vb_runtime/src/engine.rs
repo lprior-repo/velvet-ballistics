@@ -571,7 +571,7 @@ pub fn resume_action_outcome(
 fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
     match signal {
         EngineSignal::Continue => RuntimeSignal::Continue,
-        EngineSignal::Finished(value) => RuntimeSignal::Finished(value),
+        EngineSignal::Finished(value, _taint) => RuntimeSignal::Finished(value),
         EngineSignal::StepBudgetExhausted => RuntimeSignal::StepBudgetExhausted,
         EngineSignal::AwaitingAction => RuntimeSignal::AwaitingAction(ActionTicket {
             run: RunId::ZERO,

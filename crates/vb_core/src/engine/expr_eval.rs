@@ -3,7 +3,7 @@
 use crate::errors::EngineError;
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, SymbolId};
 use crate::limits::MAX_EXPRESSION_STACK_USIZE;
-use crate::value::SlotValue;
+use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{AccessorProgram, CompiledWorkflow, ExprOp};
 
@@ -494,26 +494,32 @@ fn eval_expr_inner(
     run: &crate::RunFrame,
     store: &mut ValueStore,
     expr: ExprIdx,
-) -> Result<SlotValue, EngineError> {
+) -> Result<(SlotValue, Taint), EngineError> {
     let program = plan
         .expression(expr)
         .ok_or(EngineError::ExprOutOfBounds { expr })?;
     let mut stack = ExprStack::new(program.max_stack)?;
+    let mut taint_accum = Taint::Clean;
     let mut index = 0usize;
     while index < program.ops.len() {
         let op = expression_op(program.ops.as_ref(), index)?;
-        eval_expr_op(plan, run, store, op, &mut stack)?;
+        eval_expr_op(plan, run, store, op, &mut stack, &mut taint_accum)?;
         index = next_expr_index(index)?;
     }
-    finish_expr_stack(&mut stack)
+    let value = finish_expr_stack(&mut stack)?;
+    Ok((value, taint_accum))
 }
 
 fn eval_load_slot(
     run: &crate::RunFrame,
     stack: &mut ExprStack,
     slot: SlotIdx,
+    taint_accum: &mut Taint,
 ) -> Result<(), EngineError> {
-    push_value(stack, *run.read_slot(slot)?)
+    let value = *run.read_slot(slot)?;
+    let slot_taint = run.read_taint(slot)?;
+    *taint_accum = join_taint(*taint_accum, slot_taint);
+    push_value(stack, value)
 }
 
 fn eval_load_const(
@@ -535,11 +541,14 @@ fn eval_expr_op(
     store: &mut ValueStore,
     op: ExprOp,
     stack: &mut ExprStack,
+    taint_accum: &mut Taint,
 ) -> Result<(), EngineError> {
     match op {
-        ExprOp::LoadSlot(slot) => eval_load_slot(run, stack, slot),
+        ExprOp::LoadSlot(slot) => eval_load_slot(run, stack, slot, taint_accum),
         ExprOp::LoadConst(constant) => eval_load_const(plan, stack, constant),
-        ExprOp::LoadAccessor(accessor) => eval_load_accessor(plan, run, store, stack, accessor),
+        ExprOp::LoadAccessor(accessor) => {
+            eval_load_accessor(plan, run, store, stack, accessor, taint_accum)
+        }
         other => eval_expr_operator(other, stack, store),
     }
 }
@@ -550,8 +559,11 @@ fn eval_load_accessor(
     store: &mut ValueStore,
     stack: &mut ExprStack,
     accessor: AccessorIdx,
+    taint_accum: &mut Taint,
 ) -> Result<(), EngineError> {
-    push_value(stack, eval_accessor_inner(plan, run, store, accessor)?)
+    let (value, accessor_taint) = eval_accessor_with_taint_inner(plan, run, store, accessor)?;
+    *taint_accum = join_taint(*taint_accum, accessor_taint);
+    push_value(stack, value)
 }
 
 pub fn eval_expr_with_store(
@@ -559,7 +571,7 @@ pub fn eval_expr_with_store(
     run: &crate::RunFrame,
     store: &mut ValueStore,
     expr: ExprIdx,
-) -> Result<SlotValue, EngineError> {
+) -> Result<(SlotValue, Taint), EngineError> {
     eval_expr_inner(plan, run, store, expr)
 }
 
@@ -567,7 +579,7 @@ pub fn eval_expr(
     plan: &CompiledWorkflow,
     run: &crate::RunFrame,
     expr: ExprIdx,
-) -> Result<SlotValue, EngineError> {
+) -> Result<(SlotValue, Taint), EngineError> {
     let mut store = ValueStore::new();
     eval_expr_inner(plan, run, &mut store, expr)
 }
@@ -584,6 +596,22 @@ fn eval_accessor_inner(
             reason: "accessor index out of bounds",
         })?;
     eval_accessor_program(run, store, program)
+}
+
+fn eval_accessor_with_taint_inner(
+    plan: &CompiledWorkflow,
+    run: &crate::RunFrame,
+    store: &mut ValueStore,
+    accessor: AccessorIdx,
+) -> Result<(SlotValue, Taint), EngineError> {
+    let program = plan
+        .accessor(accessor)
+        .ok_or(EngineError::InvalidCompiledWorkflow {
+            reason: "accessor index out of bounds",
+        })?;
+    let root_taint = run.read_taint(program.root)?;
+    let value = eval_accessor_program(run, store, program)?;
+    Ok((value, root_taint))
 }
 
 pub fn eval_accessor(
@@ -742,7 +770,8 @@ mod tests {
     ) -> Result<SlotValue, EngineError> {
         let plan = empty_plan_with_expr(ops.into(), constants.into())?;
         let run = run_frame_with_slots(vec![])?;
-        eval_expr_with_store(&plan, &run, store, ExprIdx::new(0))
+        let (value, _) = eval_expr_with_store(&plan, &run, store, ExprIdx::new(0))?;
+        Ok(value)
     }
 
     #[test]
@@ -841,7 +870,8 @@ mod tests {
     ) -> Result<SlotValue, EngineError> {
         let plan = empty_plan_with_expr(ops.into(), constants.into())?;
         let run = run_frame_with_slots(slots)?;
-        eval_expr_with_store(&plan, &run, store, ExprIdx::new(0))
+        let (value, _) = eval_expr_with_store(&plan, &run, store, ExprIdx::new(0))?;
+        Ok(value)
     }
 
     #[test]
