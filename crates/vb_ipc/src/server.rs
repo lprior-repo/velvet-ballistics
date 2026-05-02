@@ -4,26 +4,21 @@ use arrayvec::ArrayVec;
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};
 use std::collections::HashMap;
-use std::io::{Read, Write};
 use std::path::Path;
-use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
-use vb_core::ids::WorkflowDigest;
-use vb_core::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{AskAnswer, AskTicket};
-use vb_runtime::trace::TraceEvent;
+
+pub use crate::connection::{
+    accept_client, handle_writable, read_client_bytes, remove_client, ClientConnection,
+    MAX_CLIENTS, READ_CHUNK_BYTES, SERVER_TOKEN,
+};
+pub use crate::dispatch::dispatch_command;
+pub use crate::session::{WorkflowResolutionError, WorkflowResolver};
+pub use crate::session::{WorkflowResolutionError, WorkflowResolver};
 
 use crate::{
-    IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader, IpcTraceEvent, IpcTraceEventKind,
-    MaxPayloadBytes,
+    IpcCommand, IpcError, IpcFrameHeader, IpcResponse, IpcServerError, MaxPayloadBytes,
+    IPC_HEADER_LEN,
 };
-
-const SERVER_TOKEN: Token = Token(0);
-const FIRST_CLIENT_TOKEN: usize = 1;
-const MAX_CLIENTS: usize = 256;
-const READ_CHUNK_BYTES: usize = 4096;
 
 /// IPC server serving commands over a Unix domain socket.
 pub struct IpcServer {
@@ -32,12 +27,6 @@ pub struct IpcServer {
     events: Events,
     clients: HashMap<usize, ClientConnection>,
     next_token: usize,
-}
-
-struct ClientConnection {
-    stream: mio::net::UnixStream,
-    read_buffer: Vec<u8>,
-    write_buffer: Vec<u8>,
 }
 
 /// Response payload sent back to IPC clients after command processing.
@@ -60,7 +49,7 @@ pub enum IpcResponse {
     /// Command completed with typed run events.
     Events {
         /// Typed event payloads listed for the run.
-        events: Vec<IpcTraceEvent>,
+        events: Vec<crate::IpcTraceEvent>,
     },
     /// Run inspection acknowledged.
     Inspected {
@@ -101,29 +90,6 @@ pub enum IpcResponse {
         /// Error description.
         message: String,
     },
-}
-
-/// Resolves compiled workflows for IPC submit commands.
-pub trait WorkflowResolver {
-    /// Returns the compiled workflow for an already-validated digest.
-    fn resolve_workflow(
-        &mut self,
-        digest: WorkflowDigest,
-    ) -> Result<CompiledWorkflow, WorkflowResolutionError>;
-}
-
-/// Workflow resolution failed before runtime submission.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum WorkflowResolutionError {
-    /// No resolver is wired into this IPC surface.
-    #[error("workflow resolution required")]
-    Required,
-    /// The requested workflow digest is unknown.
-    #[error("workflow not found")]
-    NotFound,
-    /// Resolver rejected the compiled workflow artifact.
-    #[error("workflow artifact invalid")]
-    InvalidArtifact,
 }
 
 impl IpcServer {
@@ -168,7 +134,7 @@ impl IpcServer {
         &mut self,
         runtime: &mut Runtime,
         timeout: Option<std::time::Duration>,
-        resolver: Option<&mut dyn WorkflowResolver>,
+        mut resolver: Option<&mut dyn WorkflowResolver>,
     ) -> Result<bool, IpcServerError> {
         self.poll
             .poll(&mut self.events, timeout)
@@ -180,7 +146,6 @@ impl IpcServer {
                 .try_push((event.token(), event.is_readable(), event.is_writable()))
                 .map_err(|_| IpcServerError::TooManyClients)?;
         }
-        let mut resolver = resolver;
         for (token, readable, writable) in pending {
             if token == SERVER_TOKEN {
                 self.accept_client()?;
@@ -190,7 +155,13 @@ impl IpcServer {
             let token_index = token.0;
 
             if writable {
-                let should_remove = self.handle_writable(token_index)?;
+                let should_remove = {
+                    let client = match self.clients.get_mut(&token_index) {
+                        Some(c) => c,
+                        None => continue,
+                    };
+                    handle_writable(&self.poll, token_index, client)?
+                };
                 if should_remove {
                     self.remove_client(token_index);
                     continue;
@@ -199,7 +170,13 @@ impl IpcServer {
 
             if readable {
                 let resolver_ref = borrow_workflow_resolver(&mut resolver);
-                let should_remove = self.handle_readable(token_index, runtime, resolver_ref)?;
+                let should_remove = {
+                    let client = match self.clients.get_mut(&token_index) {
+                        Some(c) => c,
+                        None => continue,
+                    };
+                    read_client_bytes(client, &self.poll, token, runtime, resolver_ref)?
+                };
                 if should_remove {
                     self.remove_client(token_index);
                 }
@@ -210,136 +187,13 @@ impl IpcServer {
     }
 
     fn accept_client(&mut self) -> Result<(), IpcServerError> {
-        if self.clients.len() >= MAX_CLIENTS {
-            return Err(IpcServerError::TooManyClients);
-        }
-
-        let (stream, _addr) = self
-            .listener
-            .accept()
-            .map_err(|source| IpcServerError::AcceptFailed { source })?;
-
-        let token_val = self
-            .next_token
-            .checked_add(1)
-            .ok_or(IpcServerError::TooManyClients)?;
-        let token = Token(self.next_token);
-        self.next_token = token_val;
-
-        let mut client = ClientConnection {
-            stream,
-            read_buffer: Vec::new(),
-            write_buffer: Vec::new(),
-        };
-
-        self.poll
-            .registry()
-            .register(&mut client.stream, token, Interest::READABLE)
-            .map_err(|source| IpcServerError::PollFailed { source })?;
-
-        drop(self.clients.insert(token.0, client));
+        let token = accept_client(
+            &self.poll,
+            &self.listener,
+            &mut self.clients,
+            &mut self.next_token,
+        )?;
         Ok(())
-    }
-
-    fn handle_readable(
-        &mut self,
-        token_index: usize,
-        runtime: &mut Runtime,
-        resolver: Option<&mut dyn WorkflowResolver>,
-    ) -> Result<bool, IpcServerError> {
-        let registry = self
-            .poll
-            .registry()
-            .try_clone()
-            .map_err(|source| IpcServerError::PollFailed { source })?;
-        let token = Token(token_index);
-
-        let Some(client) = self.clients.get_mut(&token_index) else {
-            return Ok(true);
-        };
-        let mut resolver = resolver;
-
-        let mut temp_buf = [0u8; READ_CHUNK_BYTES];
-        let bytes_read = match client.stream.read(&mut temp_buf) {
-            Ok(0) => return Ok(true),
-            Ok(n) => n,
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => return Ok(false),
-            Err(_) => return Ok(true),
-        };
-
-        append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
-
-        while client.read_buffer.len() >= IPC_HEADER_LEN {
-            let header_bytes = read_buffer_header(&client.read_buffer)?;
-            let header = match IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT) {
-                Ok(h) => h,
-                Err(error) => {
-                    let response = frame_error_response(error);
-                    let fallback_header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);
-                    send_response(
-                        &mut client.stream,
-                        &mut client.write_buffer,
-                        &registry,
-                        token,
-                        &fallback_header,
-                        &response,
-                    )?;
-                    return Ok(true);
-                }
-            };
-
-            let total_len = frame_total_len(&header)?;
-            if client.read_buffer.len() < total_len {
-                return Ok(false);
-            }
-
-            let payload_bytes = extract_payload(&mut client.read_buffer, total_len)?;
-
-            let response = dispatch_command_with_resolver(
-                &header,
-                &payload_bytes,
-                runtime,
-                borrow_workflow_resolver(&mut resolver),
-            );
-            send_response(
-                &mut client.stream,
-                &mut client.write_buffer,
-                &registry,
-                token,
-                &header,
-                &response,
-            )?;
-        }
-
-        Ok(false)
-    }
-
-    fn handle_writable(&mut self, token_index: usize) -> Result<bool, IpcServerError> {
-        let Some(client) = self.clients.get_mut(&token_index) else {
-            return Ok(true);
-        };
-
-        if client.write_buffer.is_empty() {
-            return Ok(false);
-        }
-
-        let written = match client.stream.write(&client.write_buffer) {
-            Ok(n) => n,
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => return Ok(false),
-            Err(_) => return Ok(true),
-        };
-
-        client.write_buffer.drain(..written);
-
-        if client.write_buffer.is_empty() {
-            let token = Token(token_index);
-            self.poll
-                .registry()
-                .reregister(&mut client.stream, token, Interest::READABLE)
-                .map_err(|source| IpcServerError::PollFailed { source })?;
-        }
-
-        Ok(false)
     }
 
     fn remove_client(&mut self, token_index: usize) {
@@ -368,398 +222,6 @@ pub fn serve_ipc_with_resolver(
     server.poll_once_with_resolver(runtime, timeout, resolver)
 }
 
-/// Decodes a postcard-encoded payload and preserves the typed IPC decode error.
-fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
-    postcard::from_bytes(payload).map_err(|_| ipc_error_response(IpcError::PayloadDecodeFailed))
-}
-
-fn ipc_error_response(error: IpcError) -> IpcResponse {
-    IpcResponse::PayloadError {
-        diagnostic: error.diagnostic_code().code(),
-        message: error.to_string(),
-    }
-}
-
-#[cfg(test)]
-fn dispatch_command(header: &IpcFrameHeader, payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    dispatch_command_with_resolver(header, payload, runtime, None)
-}
-
-fn dispatch_command_with_resolver(
-    header: &IpcFrameHeader,
-    payload: &[u8],
-    runtime: &mut Runtime,
-    resolver: Option<&mut dyn WorkflowResolver>,
-) -> IpcResponse {
-    match header.command {
-        IpcCommand::Health => handle_health(),
-        IpcCommand::Shutdown => handle_shutdown(runtime),
-        IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
-            handle_submit_run(header, payload, runtime, resolver)
-        }
-        IpcCommand::CancelRun => handle_cancel_run(payload, runtime),
-        IpcCommand::InspectRun => handle_inspect_run(payload, runtime),
-        IpcCommand::ListEvents => handle_list_events(payload, runtime),
-        IpcCommand::AnswerAsk => handle_answer_ask(payload, runtime),
-        IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
-        IpcCommand::FailAction => handle_fail_action(payload, runtime),
-        IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
-    }
-}
-
-/// Handles a ping/health request.
-pub fn handle_ping() -> IpcResponse {
-    IpcResponse::Healthy
-}
-
-/// Handles a health request.
-pub fn handle_health() -> IpcResponse {
-    handle_ping()
-}
-
-/// Handles shutdown.
-pub fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
-    match runtime.shutdown_graceful() {
-        Ok(()) => IpcResponse::ShuttingDown,
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles submit-run commands after resolving the compiled workflow explicitly.
-pub fn handle_submit_run(
-    header: &IpcFrameHeader,
-    payload: &[u8],
-    runtime: &mut Runtime,
-    resolver: Option<&mut dyn WorkflowResolver>,
-) -> IpcResponse {
-    let decoded = match decode_payload::<crate::IpcPayload>(payload) {
-        Ok(d) => d,
-        Err(response) => return response,
-    };
-
-    match (header.command, decoded) {
-        (IpcCommand::SubmitRun, crate::IpcPayload::SubmitRun(submit))
-        | (IpcCommand::SubmitRunInline, crate::IpcPayload::SubmitRunInline(submit)) => {
-            submit_resolved_workflow(header.command, submit, runtime, resolver)
-        }
-        _ => IpcResponse::CommandPayloadMismatch,
-    }
-}
-
-/// Handles inline submit-run commands.
-pub fn handle_submit_run_inline(
-    payload: &[u8],
-    runtime: &mut Runtime,
-    resolver: Option<&mut dyn WorkflowResolver>,
-) -> IpcResponse {
-    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 0, 0);
-    handle_submit_run(&header, payload, runtime, resolver)
-}
-
-/// Handles cancel-run.
-pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::CancelRun { run_id }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    match runtime.snapshot_run(run_id, 0) {
-        Ok(vb_runtime::shard::InspectResponse::Found(_)) => {}
-        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => {
-            return IpcResponse::RuntimeError {
-                message: String::from("run not found"),
-            };
-        }
-        Err(e) => {
-            return IpcResponse::RuntimeError {
-                message: e.to_string(),
-            };
-        }
-    }
-
-    match runtime.cancel_run(run_id) {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles inspect-run.
-pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::InspectRun { run_id }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    match runtime.snapshot_run(run_id, 0) {
-        Ok(vb_runtime::shard::InspectResponse::Found(_snapshot)) => IpcResponse::Inspected {
-            run_id: run_id.as_u64(),
-        },
-        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => IpcResponse::RuntimeError {
-            message: String::from("run not found"),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles list-events.
-pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::ListEvents {
-        run_id,
-        from_sequence,
-    }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    match runtime.list_events(run_id) {
-        Ok(events) => typed_events_response(&events, from_sequence),
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles answer-ask.
-pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::AnswerAsk { run_id, ticket, .. }) =
-        decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    let Some(ask_step) = step_from_ticket(ticket) else {
-        return IpcResponse::BadRequest;
-    };
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run: run_id,
-            ask_step,
-            resume_step: ask_step,
-        },
-        answer_slot: SlotIdx::ZERO,
-        value: SlotValue::Null,
-        taint: Taint::Clean,
-    };
-
-    match runtime.answer_ask(answer) {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles complete-action.
-pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::CompleteAction {
-        run_id,
-        ticket,
-        output,
-    }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
-        return IpcResponse::BadRequest;
-    };
-    let output_len = payload_len(output.len());
-    let decoded_output = match decode_payload::<crate::IpcActionOutputPayload>(&output) {
-        Ok(d) => d,
-        Err(response) => return response,
-    };
-    match runtime
-        .complete_action_with_output(action_ticket, decoded_output.into_action_output(output_len))
-    {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-/// Handles fail-action.
-pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::FailAction {
-        run_id,
-        ticket,
-        error,
-    }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
-        return IpcResponse::BadRequest;
-    };
-    let failure = ActionFailure {
-        code: ActionFailureCode::Unknown,
-        retryable: false,
-        taint: Taint::Clean,
-        detail: None,
-        encoded_len: payload_len(error.len()),
-    };
-
-    match runtime.fail_action(action_ticket, failure) {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
-    match u16::try_from(ticket) {
-        Ok(step) => Some(StepIdx::new(step)),
-        Err(_) => None,
-    }
-}
-
-fn action_ticket_from_wire(run_id: vb_core::RunId, ticket: u64) -> Option<ActionTicket> {
-    let step = step_from_ticket(ticket)?;
-    Some(ActionTicket {
-        run: run_id,
-        step,
-        seq: SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-    })
-}
-
-fn payload_len(len: usize) -> u32 {
-    u32::try_from(len).map_or(u32::MAX, |value| value)
-}
-
-/// Handles drain-trace.
-pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::DrainTrace {
-        run_id,
-        max_records,
-    }) = decode_payload::<crate::IpcPayload>(payload)
-    else {
-        return IpcResponse::BadRequest;
-    };
-
-    let all_events = runtime.drain_trace();
-    let max = match usize::try_from(max_records) {
-        Ok(value) => value,
-        Err(_) => usize::MAX,
-    };
-    let filtered: Vec<TraceEvent> = all_events
-        .into_iter()
-        .filter(|event| event.run_id() == run_id)
-        .take(max)
-        .collect();
-    count_response(filtered.len(), IpcResponseKind::Trace)
-}
-
-enum IpcResponseKind {
-    Trace,
-}
-
-fn count_response(count: usize, kind: IpcResponseKind) -> IpcResponse {
-    match u32::try_from(count) {
-        Ok(value) => match kind {
-            IpcResponseKind::Trace => IpcResponse::TraceCount { count: value },
-        },
-        Err(_) => IpcResponse::CountOutOfRange {
-            actual: count,
-            limit: u32::MAX,
-        },
-    }
-}
-
-fn typed_events_response(events: &[TraceEvent], from_sequence: u64) -> IpcResponse {
-    let mut typed_events = Vec::with_capacity(events.len());
-    let mut index = 0usize;
-    while index < events.len() {
-        let Ok(sequence) = u64::try_from(index) else {
-            return IpcResponse::CountOutOfRange {
-                actual: index,
-                limit: u32::MAX,
-            };
-        };
-        if sequence >= from_sequence {
-            let Some(event) = events.get(index) else {
-                return IpcResponse::CountOutOfRange {
-                    actual: index,
-                    limit: u32::MAX,
-                };
-            };
-            typed_events.push(IpcTraceEvent {
-                sequence,
-                kind: trace_event_kind(event),
-            });
-        }
-        index = match index.checked_add(1) {
-            Some(next) => next,
-            None => {
-                return IpcResponse::CountOutOfRange {
-                    actual: index,
-                    limit: u32::MAX,
-                };
-            }
-        };
-    }
-    IpcResponse::Events {
-        events: typed_events,
-    }
-}
-
-fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
-    match event {
-        TraceEvent::StepStarted { run, step } => IpcTraceEventKind::StepStarted {
-            run: *run,
-            step: *step,
-        },
-        TraceEvent::StepEnded { run, step } => IpcTraceEventKind::StepEnded {
-            run: *run,
-            step: *step,
-        },
-        TraceEvent::SlotWritten { run, slot } => IpcTraceEventKind::SlotWritten {
-            run: *run,
-            slot: *slot,
-        },
-        TraceEvent::ActionScheduled { run, step } => IpcTraceEventKind::ActionScheduled {
-            run: *run,
-            step: *step,
-        },
-        TraceEvent::ActionCompleted { run, step } => IpcTraceEventKind::ActionCompleted {
-            run: *run,
-            step: *step,
-        },
-        TraceEvent::ActionFailed { run, step, code } => IpcTraceEventKind::ActionFailed {
-            run: *run,
-            step: *step,
-            code: *code,
-        },
-        TraceEvent::AskAnswered { run, step, slot } => IpcTraceEventKind::AskAnswered {
-            run: *run,
-            step: *step,
-            slot: *slot,
-        },
-        TraceEvent::RunSubmitted { run } => IpcTraceEventKind::RunSubmitted { run: *run },
-        TraceEvent::RunFinished { run } => IpcTraceEventKind::RunFinished { run: *run },
-        TraceEvent::RunFailed { run } => IpcTraceEventKind::RunFailed { run: *run },
-        TraceEvent::RunCancelled { run } => IpcTraceEventKind::RunCancelled { run: *run },
-    }
-}
-
 fn borrow_workflow_resolver<'a>(
     resolver: &'a mut Option<&mut dyn WorkflowResolver>,
 ) -> Option<&'a mut dyn WorkflowResolver> {
@@ -767,155 +229,6 @@ fn borrow_workflow_resolver<'a>(
         Some(inner) => Some(&mut **inner),
         None => None,
     }
-}
-
-fn submit_resolved_workflow(
-    command: IpcCommand,
-    submit: crate::SubmitRunPayload,
-    runtime: &mut Runtime,
-    resolver: Option<&mut dyn WorkflowResolver>,
-) -> IpcResponse {
-    let Some(resolver) = resolver else {
-        return IpcResponse::WorkflowResolutionRequired;
-    };
-    let workflow = match resolver.resolve_workflow(submit.workflow) {
-        Ok(workflow) => workflow,
-        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
-        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
-            return IpcResponse::WorkflowResolutionUnsupported;
-        }
-    };
-    if workflow.digest() != submit.workflow {
-        return IpcResponse::WorkflowDigestMismatch;
-    }
-    let result = match command {
-        IpcCommand::SubmitRun => runtime.submit_compiled(submit.run_id, workflow),
-        IpcCommand::SubmitRunInline => runtime.submit_direct(submit.run_id, workflow),
-        _ => return IpcResponse::CommandPayloadMismatch,
-    };
-    match result {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: submit.run_id.as_u64(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
-        },
-    }
-}
-
-fn append_read_bytes(
-    read_buffer: &mut Vec<u8>,
-    temp_buf: &[u8; READ_CHUNK_BYTES],
-    bytes_read: usize,
-) -> Result<(), IpcServerError> {
-    let read_slice = temp_buf
-        .get(..bytes_read)
-        .ok_or(IpcServerError::FrameInvalid {
-            source: IpcError::PayloadLengthMismatch {
-                header: READ_CHUNK_BYTES,
-                actual: bytes_read,
-            },
-        })?;
-    let next_len = read_buffer
-        .len()
-        .checked_add(read_slice.len())
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    let max_buffer = IPC_HEADER_LEN
-        .checked_add(MaxPayloadBytes::DEFAULT.get())
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    if next_len > max_buffer {
-        return Err(IpcServerError::ReadBufferTooLarge);
-    }
-    read_buffer.extend_from_slice(read_slice);
-    Ok(())
-}
-
-fn read_buffer_header(read_buffer: &[u8]) -> Result<[u8; IPC_HEADER_LEN], IpcServerError> {
-    let header_slice = read_buffer
-        .get(..IPC_HEADER_LEN)
-        .ok_or(IpcServerError::IncompleteFrame)?;
-    <[u8; IPC_HEADER_LEN]>::try_from(header_slice).map_err(|_| IpcServerError::IncompleteFrame)
-}
-
-fn frame_total_len(header: &IpcFrameHeader) -> Result<usize, IpcServerError> {
-    let payload_len =
-        usize::try_from(header.payload_len).map_err(|_| IpcServerError::FrameInvalid {
-            source: IpcError::PayloadLengthOutOfRange {
-                actual: header.payload_len,
-            },
-        })?;
-    let total_len = IPC_HEADER_LEN
-        .checked_add(payload_len)
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    Ok(total_len)
-}
-
-fn extract_payload(read_buffer: &mut Vec<u8>, total_len: usize) -> Result<Vec<u8>, IpcServerError> {
-    if read_buffer.len() < total_len {
-        return Err(IpcServerError::IncompleteFrame);
-    }
-    // Keep unread bytes in the connection buffer and return only the consumed payload.
-    let remaining = read_buffer.split_off(total_len);
-    let mut frame = std::mem::replace(read_buffer, remaining);
-    Ok(frame.split_off(IPC_HEADER_LEN))
-}
-
-fn frame_error_response(error: IpcError) -> IpcResponse {
-    IpcResponse::FrameError {
-        message: error.to_string(),
-    }
-}
-
-fn send_response(
-    stream: &mut mio::net::UnixStream,
-    write_buffer: &mut Vec<u8>,
-    registry: &mio::Registry,
-    token: Token,
-    request_header: &IpcFrameHeader,
-    response: &IpcResponse,
-) -> Result<(), IpcServerError> {
-    let payload_bytes =
-        postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let payload_len =
-        u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    // Build the response frame header via IpcFrameHeader::encode (uses byteorder internally).
-    let header = IpcFrameHeader::new(
-        request_header.command,
-        0,
-        request_header.correlation,
-        payload_len,
-    );
-    let header_bytes = header
-        .encode()
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    write_buffer.clear();
-    write_buffer.extend_from_slice(&header_bytes);
-    write_buffer.extend_from_slice(&payload_bytes);
-
-    let written = match stream.write(write_buffer) {
-        Ok(count) => count,
-        Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => 0,
-        Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-    };
-    if written > 0 {
-        drop(write_buffer.drain(..written));
-    }
-    if write_buffer.is_empty() {
-        match stream.flush() {
-            Ok(()) => {}
-            Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => {}
-            Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-        }
-    } else {
-        registry
-            .reregister(stream, token, Interest::READABLE | Interest::WRITABLE)
-            .map_err(|source| IpcServerError::PollFailed { source })?;
-    }
-
-    Ok(())
 }
 
 /// IPC server errors.
@@ -987,16 +300,21 @@ impl IpcServerError {
 #[allow(clippy::let_underscore_must_use)]
 mod tests {
     use super::{
-        IpcResponse, IpcResponseKind, IpcServer, IpcServerError, READ_CHUNK_BYTES,
-        WorkflowResolutionError, WorkflowResolver, append_read_bytes, count_response,
-        dispatch_command, dispatch_command_with_resolver, extract_payload, frame_error_response,
-        frame_total_len, handle_complete_action, handle_list_events, read_buffer_header, serve_ipc,
-        serve_ipc_with_resolver,
+        dispatch_command, serve_ipc, serve_ipc_with_resolver, ClientConnection, IpcResponse,
+        IpcResponseKind, IpcServer, IpcServerError, WorkflowResolutionError, WorkflowResolver,
+        READ_CHUNK_BYTES,
     };
     use crate::client::IpcClient;
+    use crate::connection::{
+        append_read_bytes, extract_payload, frame_error_response, frame_total_len,
+        read_buffer_header,
+    };
+    use crate::dispatch::{
+        count_response, dispatch_command_with_resolver, handle_complete_action, handle_list_events,
+    };
     use crate::{
-        IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
-        IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload,
+        IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
+        IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload, IPC_HEADER_LEN,
     };
     use std::num::NonZeroUsize;
     use std::sync::mpsc::{Receiver, Sender};

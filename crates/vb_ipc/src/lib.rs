@@ -15,6 +15,9 @@
 pub mod client;
 pub mod frame;
 pub mod server;
+pub mod connection;
+pub mod dispatch;
+pub mod session;
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
