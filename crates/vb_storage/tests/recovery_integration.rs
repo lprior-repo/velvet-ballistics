@@ -921,3 +921,217 @@ fn recovery_across_multiple_runs_is_isolated() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 16-17: Corruption handling, auto-recovery, snapshot discovery
+// ---------------------------------------------------------------------------
+
+use vb_storage::recovery::{
+    auto_recover, latest_snapshot_for_run, scan_events_tolerant,
+    AutoRecoveryResult, RunSnapshot,
+};
+
+#[test]
+fn tolerant_scan_returns_all_events_for_healthy_journal() {
+    // Given a journal with a full run of events
+    // When scan_events_tolerant is called
+    // Then all events are returned with zero corrupt records
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(700);
+    let digest = test_digest(0xAA);
+
+    {
+        let journal = open_journal(&dir);
+        let events = build_full_run_events(run, digest);
+        write_events_strict(&journal, &events);
+    }
+
+    let journal = open_journal(&dir);
+    let result = scan_events_tolerant(&journal, run).expect("tolerant scan should succeed");
+
+    assert_eq!(result.events.len(), 9, "all 9 events should be decoded");
+    assert!(result.corrupt.is_empty(), "no corrupt records expected");
+}
+
+#[test]
+fn latest_snapshot_returns_none_when_no_snapshots_exist() {
+    // Given a journal with events but no snapshots
+    // When latest_snapshot_for_run is called
+    // Then it returns Ok(None)
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(701);
+    let digest = test_digest(0xBB);
+
+    {
+        let journal = open_journal(&dir);
+        let events = build_full_run_events(run, digest);
+        write_events_strict(&journal, &events);
+    }
+
+    let journal = open_journal(&dir);
+    let result = latest_snapshot_for_run(&journal, run).expect("scan should succeed");
+    assert!(result.is_none(), "no snapshots should exist");
+}
+
+#[test]
+fn latest_snapshot_returns_highest_sequence_snapshot() {
+    // Given a journal with snapshots at seq 0, 3, and 7 for the same run
+    // When latest_snapshot_for_run is called
+    // Then it returns the snapshot at seq 7
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(702);
+    let digest = test_digest(0xCC);
+
+    {
+        let journal = open_journal(&dir);
+        for seq in [0u64, 3u64, 7u64] {
+            let snapshot = RunSnapshot {
+                run,
+                seq: EventSeq::new(seq),
+                workflow: digest,
+                slots: vec![seq as u8],
+            };
+            journal.put_snapshot(&snapshot).expect("snapshot write should succeed");
+        }
+    }
+
+    let journal = open_journal(&dir);
+    let result = latest_snapshot_for_run(&journal, run)
+        .expect("scan should succeed")
+        .expect("at least one snapshot should exist");
+    assert_eq!(result.seq, EventSeq::new(7), "should return highest seq snapshot");
+}
+
+#[test]
+fn auto_recover_uses_snapshot_plus_tail_when_snapshot_available() {
+    // Given a journal with events at seq 0-4 and a snapshot at seq 2
+    // When auto_recover is called
+    // Then it returns SnapshotPlusTail with tail events at seq 3-4
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(703);
+    let digest = test_digest(0xDD);
+
+    let events = build_full_run_events(run, digest);
+
+    {
+        let journal = open_journal(&dir);
+        write_events_strict(&journal, &events);
+
+        // Write snapshot at seq 2
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(2),
+            workflow: digest,
+            slots: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot write should succeed");
+    }
+
+    let journal = open_journal(&dir);
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    let result = auto_recover(&journal, run, &mut tracker).expect("auto recover should succeed");
+
+    match result {
+        AutoRecoveryResult::SnapshotPlusTail {
+            snapshot: snap,
+            tail_events,
+        } => {
+            assert_eq!(snap.seq, EventSeq::new(2));
+            // Events at seq 3, 4, 5, 6, 7, 8 are after seq 2
+            assert!(!tail_events.is_empty(), "tail events should exist after snapshot");
+        }
+        AutoRecoveryResult::FullJournal { .. } => {
+            panic!("expected SnapshotPlusTail, got FullJournal");
+        }
+    }
+}
+
+#[test]
+fn auto_recover_falls_back_to_full_journal_without_snapshot() {
+    // Given a journal with events but no snapshot
+    // When auto_recover is called
+    // Then it returns FullJournal with all events
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(704);
+    let digest = test_digest(0xEE);
+
+    {
+        let journal = open_journal(&dir);
+        let events = build_full_run_events(run, digest);
+        write_events_strict(&journal, &events);
+    }
+
+    let journal = open_journal(&dir);
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    let result = auto_recover(&journal, run, &mut tracker).expect("auto recover should succeed");
+
+    match result {
+        AutoRecoveryResult::FullJournal { events } => {
+            assert_eq!(events.len(), 9, "all 9 events should be recovered");
+        }
+        AutoRecoveryResult::SnapshotPlusTail { .. } => {
+            panic!("expected FullJournal, got SnapshotPlusTail");
+        }
+    }
+}
+
+#[test]
+fn auto_recover_fails_for_missing_run() {
+    // Given a journal with no events for a run
+    // When auto_recover is called
+    // Then it returns NoRecoveryData
+    let dir = TempDir::new().expect("temp dir should be created");
+
+    {
+        let _journal = open_journal(&dir);
+    }
+
+    let journal = open_journal(&dir);
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    let result = auto_recover(&journal, RunId::new(9999), &mut tracker);
+
+    assert!(
+        result.is_err(),
+        "auto recover should fail for missing run"
+    );
+}
+
+#[test]
+fn latest_snapshot_is_isolated_between_runs() {
+    // Given snapshots for run A at seq 10 and run B at seq 5
+    // When latest_snapshot_for_run is called for each
+    // Then each run gets its own correct snapshot
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run_a = RunId::new(800);
+    let run_b = RunId::new(801);
+    let digest = test_digest(0xFF);
+
+    {
+        let journal = open_journal(&dir);
+        let snap_a = RunSnapshot {
+            run: run_a,
+            seq: EventSeq::new(10),
+            workflow: digest,
+            slots: vec![],
+        };
+        let snap_b = RunSnapshot {
+            run: run_b,
+            seq: EventSeq::new(5),
+            workflow: digest,
+            slots: vec![],
+        };
+        journal.put_snapshot(&snap_a).expect("snap A should write");
+        journal.put_snapshot(&snap_b).expect("snap B should write");
+    }
+
+    let journal = open_journal(&dir);
+    let found_a = latest_snapshot_for_run(&journal, run_a)
+        .expect("scan A should succeed")
+        .expect("snap A should exist");
+    let found_b = latest_snapshot_for_run(&journal, run_b)
+        .expect("scan B should succeed")
+        .expect("snap B should exist");
+
+    assert_eq!(found_a.seq, EventSeq::new(10));
+    assert_eq!(found_b.seq, EventSeq::new(5));
+}

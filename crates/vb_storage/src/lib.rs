@@ -1443,6 +1443,24 @@ impl FjallJournal {
     pub fn batch(&self) -> JournalWriteBatch<'_> {
         JournalWriteBatch::new(self)
     }
+
+    /// Returns a prefix iterator over the event keyspace for the given key prefix.
+    pub(crate) fn event_keyspace_prefix(
+        &self,
+        prefix: &[u8],
+    ) -> fjall::Iter {
+        let snap = self.database.snapshot();
+        snap.prefix(&self.events, prefix)
+    }
+
+    /// Returns a prefix iterator over the snapshot keyspace for the given key prefix.
+    pub(crate) fn snapshot_keyspace_prefix(
+        &self,
+        prefix: &[u8],
+    ) -> fjall::Iter {
+        let snap = self.database.snapshot();
+        snap.prefix(&self.run_snapshot, prefix)
+    }
 }
 
 /// Atomic cross-keyspace write batch backed by Fjall.
@@ -2101,7 +2119,7 @@ fn sequenced_run_key(
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
 
-fn run_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
+pub(crate) fn run_prefix(run: RunId) -> Result<[u8; RUN_EVENT_PREFIX_BYTES], JournalError> {
     run_only_key(PREFIX_RUN_EVENT, run)
 }
 
@@ -2117,7 +2135,7 @@ fn digest_key(
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
 
-fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
+pub(crate) fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
     let mut key = ArrayVec::<u8, RUN_ONLY_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;
