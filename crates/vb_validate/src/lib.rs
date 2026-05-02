@@ -8,17 +8,13 @@
 //! Validates schema structure, references, control flow, type/taint, and
 //! resource limits for YAML workflows. Runs only at compile time.
 //!
-//! NOTE: Duplicate validation with `vb_compile`
+//! NOTE: Validation deduplication (DRIFT-5)
 //! -----------------------------------------------
-// The four validation modules here (schema, references, control_flow, type_taint)
-// mirror modules of the same name inside `vb_compile`. However, they operate on
-// their own input types (`WorkflowDoc`, `WorkflowRefs`, `WorkflowFlow`,
-// `WorkflowTypes`) whereas `vb_compile` operates on its AST types (`WorkflowAst`,
-// `Yaml`).  This is not a simple module removal -- the type boundary is real.
-//
-// Future work should unify these by having both crates share the same input
-// representation so that a single set of validation functions serves both paths.
-// Until then, changes to validation rules must be applied in both places.
+// The `references` module exposes `RefTables` and `validate_single_reference`
+// as public API so that `vb_compile` can share reference validation logic
+// without duplicating it. Control-flow and type/taint validation remain
+// crate-local because the input type boundary between `WorkflowFlow`/
+// `WorkflowTypes` and `WorkflowAst` requires different traversal strategies.
 
 use thiserror::Error;
 
