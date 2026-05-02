@@ -732,6 +732,7 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
     validate_step(entry, node_count).map_err(|_| WorkflowError::EntryOutOfBounds { entry })
 }
 
+#[allow(clippy::match_same_arms)] // Field names differ; bodies are structurally identical but not mergeable
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_optional_slot(node.output, parts.slot_count)?;
     validate_optional_step(node.next, parts.nodes.len())?;
@@ -1108,14 +1109,14 @@ fn validate_accessor(accessor: AccessorIdx, accessor_count: usize) -> Result<(),
 fn validate_accessor_path_symbols(accessors: &[AccessorProgram]) -> Result<(), WorkflowError> {
     for accessor in accessors {
         for segment in accessor.path.as_ref() {
-            if let PathSegment::Index(index) = *segment {
-                if index == u32::MAX {
-                    return Err(WorkflowError::Expression(
-                        CoreError::InvalidCompiledWorkflow {
-                            reason: "accessor path index uses reserved value u32::MAX",
-                        },
-                    ));
-                }
+            if let PathSegment::Index(index) = *segment
+                && index == u32::MAX
+            {
+                return Err(WorkflowError::Expression(
+                    CoreError::InvalidCompiledWorkflow {
+                        reason: "accessor path index uses reserved value u32::MAX",
+                    },
+                ));
             }
         }
     }
@@ -1177,6 +1178,7 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 
 /// Collects all StepIdx targets referenced by a node kind (branch targets,
 /// loop body/done, jump target, etc.) but NOT the `next` field.
+#[allow(clippy::match_same_arms)] // Arms grouped by semantic category for readability
 fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
     match kind {
         CompiledNodeKind::Nop
@@ -1282,6 +1284,7 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 }
 
 /// Validates that kind-specific edges respect the forward-only rule.
+#[allow(clippy::match_same_arms)] // Arms grouped by semantic category for readability
 fn validate_kind_edges(
     kind: &CompiledNodeKind,
     ci: usize,
@@ -1401,26 +1404,26 @@ fn push_loop_span(
         return Ok(());
     };
 
-    if let Some(&(_outer_start, outer_done)) = spans.last() {
-        if done_idx > outer_done {
-            return Err(WorkflowError::ImproperLoopNesting {
-                inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
-                    WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
-                    }
-                })?),
-                outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
-                    WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
-                    }
-                })?),
-            });
-        }
+    if let Some(&(_outer_start, outer_done)) = spans.last()
+        && done_idx > outer_done
+    {
+        return Err(WorkflowError::ImproperLoopNesting {
+            inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
+                WorkflowError::ResourceContractExceeded {
+                    resource: "max_steps",
+                }
+            })?),
+            outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
+                WorkflowError::ResourceContractExceeded {
+                    resource: "max_steps",
+                }
+            })?),
+        });
     }
 
     while spans
         .last()
-        .map_or(false, |&(_, done): &(usize, usize)| done <= ci)
+        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
     {
         spans.pop();
     }

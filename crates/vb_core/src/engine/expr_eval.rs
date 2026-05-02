@@ -306,7 +306,7 @@ fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut sum: i64 = 0;
-    for &item in items.iter() {
+    for &item in items {
         let n = expect_i64(item)?;
         sum = sum
             .checked_add(n)
@@ -367,7 +367,7 @@ fn eval_unique(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engi
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut seen: Vec<SlotValue> = Vec::new();
-    for &item in items.iter() {
+    for &item in items {
         if !seen.contains(&item) {
             seen.push(item);
         }
@@ -408,7 +408,7 @@ fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engin
         .object(right_id)
         .map_err(|_| EngineError::ObjectOutOfBounds { object: right_id })?;
     let mut merged: Vec<ObjectField> = left_fields.to_vec();
-    for &field in right_fields.iter() {
+    for &field in right_fields {
         if let Some(pos) = merged.iter().position(|&f| f.key == field.key) {
             if let Some(entry) = merged.get_mut(pos) {
                 *entry = field;

@@ -261,24 +261,17 @@ impl RunFrame {
     }
 
     /// Validates that a state transition is legal under the frame state machine.
+    #[allow(clippy::match_same_arms)] // Arms grouped by semantic transition category for readability
     fn validate_transition(current: StepState, new: StepState) -> CoreResult<()> {
         let valid = match (current, new) {
             // Pending -> Running is the initial activation
             (StepState::Pending, StepState::Running) => true,
             // Deterministic engine paths can complete or skip simple nodes without a separate Running mark.
-            (StepState::Pending, StepState::Succeeded)
-            | (StepState::Pending, StepState::Failed)
-            | (StepState::Pending, StepState::Cancelled)
-            | (StepState::Pending, StepState::Skipped) => true,
+            (StepState::Pending, StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped) => true,
             // Running can transition to any terminal or suspend state
-            (StepState::Running, StepState::Succeeded)
-            | (StepState::Running, StepState::Failed)
-            | (StepState::Running, StepState::Waiting)
-            | (StepState::Running, StepState::Asking)
-            | (StepState::Running, StepState::Cancelled)
-            | (StepState::Running, StepState::Skipped) => true,
+            (StepState::Running, StepState::Succeeded | StepState::Failed | StepState::Waiting | StepState::Asking | StepState::Cancelled | StepState::Skipped) => true,
             // Suspend states can resume back to Running
-            (StepState::Waiting, StepState::Running) | (StepState::Asking, StepState::Running) => {
+            (StepState::Waiting | StepState::Asking, StepState::Running) => {
                 true
             }
             // Repeated marking is idempotent across engine bookkeeping boundaries.

@@ -1,4 +1,10 @@
 #![forbid(unsafe_code)]
+// Pedantic allows: these lints are documentation-only or would require pervasive
+// changes with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
 //! Hot in-memory execution core for Velvet Ballastics.
 //!
 //! This crate owns the compiled workflow IR, numeric identifiers, runtime slot

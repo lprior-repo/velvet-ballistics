@@ -65,13 +65,16 @@ fn collect_and_validate_events(text: &str, limits: &YamlLimits) -> YamlResult<Ve
         })?;
 
         match &event {
-            saphyr_parser::Event::StreamStart | saphyr_parser::Event::StreamEnd => {}
+            saphyr_parser::Event::StreamStart
+            | saphyr_parser::Event::StreamEnd
+            | saphyr_parser::Event::DocumentEnd
+            | saphyr_parser::Event::Alias(_)
+            | saphyr_parser::Event::Nothing => {}
             saphyr_parser::Event::DocumentStart(_) => {
                 document_count = document_count
                     .checked_add(1)
                     .ok_or(YamlError::MultipleDocuments { count: usize::MAX })?;
             }
-            saphyr_parser::Event::DocumentEnd => {}
             saphyr_parser::Event::MappingStart(_, _)
             | saphyr_parser::Event::SequenceStart(_, _) => {
                 depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
@@ -94,8 +97,6 @@ fn collect_and_validate_events(text: &str, limits: &YamlLimits) -> YamlResult<Ve
                 check_null_bytes(value)?;
                 found_content = true;
             }
-            saphyr_parser::Event::Alias(_) => {}
-            saphyr_parser::Event::Nothing => {}
         }
 
         node_count = node_count
@@ -177,7 +178,7 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
             return Err(YamlError::CustomTag { tag: tag.into() });
         }
         if let YamlEvent::Scalar { style, value, .. } = event {
-            reject_binary_scalar(value, *style)?;
+            reject_binary_scalar(value, *style);
         }
     }
     Ok(())
@@ -205,11 +206,12 @@ fn is_allowed_tag(tag: &str) -> bool {
 }
 
 /// Reject binary scalars (indicated by a tag like `!!binary`).
-fn reject_binary_scalar(_value: &str, _style: crate::events::ScalarStyle) -> YamlResult<()> {
-    // Binary scalars come through as tagged nodes. The tag check in
-    // reject_forbidden_features catches !!binary tags. Plain scalars
-    // without tags are always acceptable.
-    Ok(())
+///
+/// Binary scalars come through as tagged nodes. The tag check in
+/// [`reject_forbidden_features`] catches `!!binary` tags. Plain scalars
+/// without tags are always acceptable.
+fn reject_binary_scalar(_value: &str, _style: crate::events::ScalarStyle) {
+    // No-op: binary scalars are caught by the tag check in reject_forbidden_features.
 }
 
 /// Reject anchors, aliases, and merge keys from a pre-collected event list.

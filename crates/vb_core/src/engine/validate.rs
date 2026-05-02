@@ -50,7 +50,7 @@ pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowE
 /// Validates that all node indices are within the node array bounds.
 pub fn validate_node_bounds(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
-    for node in parts.nodes.iter() {
+    for node in &parts.nodes {
         if node.id.as_usize() >= node_count {
             return Err(WorkflowError::StepOutOfBounds { step: node.id });
         }
@@ -66,12 +66,11 @@ pub fn validate_node_bounds(parts: &WorkflowParts) -> Result<(), WorkflowError> 
 /// Validates that all step transition targets reference valid node indices.
 pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
-    for node in parts.nodes.iter() {
+    for node in &parts.nodes {
         match &node.kind {
             CompiledNodeKind::Jump { target } if target.as_usize() >= node_count => {
                 return Err(WorkflowError::StepOutOfBounds { step: *target });
             }
-            CompiledNodeKind::Jump { .. } => {}
             CompiledNodeKind::Choose {
                 branches,
                 otherwise,
@@ -84,14 +83,19 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
             } => {
                 validate_slot_branch_targets(branches, *otherwise, node_count)?;
             }
-            CompiledNodeKind::ForEachStart { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::ForEachNext { body, done, .. } => {
+            CompiledNodeKind::ForEachStart { body, done, .. }
+            | CompiledNodeKind::ForEachNext { body, done, .. }
+            | CompiledNodeKind::CollectStart { body, done, .. }
+            | CompiledNodeKind::CollectPage { body, done, .. }
+            | CompiledNodeKind::CollectNext { body, done, .. }
+            | CompiledNodeKind::ReduceStart { body, done, .. }
+            | CompiledNodeKind::ReduceNext { body, done, .. }
+            | CompiledNodeKind::RepeatStart { body, done, .. }
+            | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
                 validate_two_step_targets(*body, *done, node_count)?;
             }
             CompiledNodeKind::TogetherStart { branches, join } => {
-                for branch in branches.iter() {
+                for branch in branches {
                     if branch.as_usize() >= node_count {
                         return Err(WorkflowError::StepOutOfBounds { step: *branch });
                     }
@@ -103,31 +107,9 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
             CompiledNodeKind::TogetherBranch { entry, join, .. } => {
                 validate_two_step_targets(*entry, *join, node_count)?;
             }
-            CompiledNodeKind::CollectStart { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::CollectPage { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::CollectNext { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::ReduceStart { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::ReduceNext { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::RepeatStart { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
-            CompiledNodeKind::RepeatAttempt { body, done, .. } => {
-                validate_two_step_targets(*body, *done, node_count)?;
-            }
             CompiledNodeKind::RepeatCheck { done, .. } if done.as_usize() >= node_count => {
                 return Err(WorkflowError::StepOutOfBounds { step: *done });
             }
-            CompiledNodeKind::RepeatCheck { .. } => {}
             CompiledNodeKind::RetryCheck {
                 body, exhausted, ..
             } => {

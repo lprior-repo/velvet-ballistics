@@ -385,7 +385,7 @@ fn require_scalar_in(
 
 /// Optional string field.
 fn opt_str(node: &saphyr::Yaml<'_>, field: &str) -> Option<String> {
-    lookup(node, field).and_then(|v| v.as_str().map(|s| s.to_string()))
+    lookup(node, field).and_then(|v| v.as_str().map(std::string::ToString::to_string))
 }
 
 /// Optional u32 field.
@@ -457,7 +457,7 @@ fn parse_inputs(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<InputField>> {
     };
 
     let mut inputs = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         if !item.is_mapping() {
             return Err(YamlError::FieldShape {
                 field: "inputs",
@@ -486,7 +486,7 @@ fn parse_vars(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<VarField>> {
     };
 
     let mut vars = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         if !item.is_mapping() {
             return Err(YamlError::FieldShape {
                 field: "vars",
@@ -510,7 +510,7 @@ fn parse_secrets(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<SecretField>> {
     };
 
     let mut secrets = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         if !item.is_mapping() {
             return Err(YamlError::FieldShape {
                 field: "secrets",
@@ -534,7 +534,7 @@ fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     };
 
     let mut steps = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         steps.push(parse_step(item)?);
     }
     Ok(steps)
@@ -673,7 +673,7 @@ fn parse_choose(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     let mut branches = Vec::new();
 
     if let Some(seq) = lookup(node, "branches").and_then(|v| v.as_vec()) {
-        for item in seq.iter() {
+        for item in seq {
             if !item.is_mapping() {
                 return Err(YamlError::FieldShape {
                     field: "choose.branches[]",
@@ -712,7 +712,7 @@ fn parse_together(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     let mut branches = Vec::new();
 
     if let Some(seq) = lookup(node, "branches").and_then(|v| v.as_vec()) {
-        for item in seq.iter() {
+        for item in seq {
             if !item.is_mapping() {
                 return Err(YamlError::FieldShape {
                     field: "together.branches[]",
@@ -772,7 +772,7 @@ fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     };
 
     let mut steps = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         steps.push(parse_step(item)?);
     }
     Ok(steps)
@@ -841,7 +841,7 @@ fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleAst>> {
     };
 
     let mut examples = Vec::new();
-    for item in seq.iter() {
+    for item in seq {
         if !item.is_mapping() {
             return Err(YamlError::FieldShape {
                 field: "examples",

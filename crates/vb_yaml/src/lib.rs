@@ -2,6 +2,11 @@
 #![deny(unused_must_use)]
 #![deny(unreachable_pub)]
 #![deny(rust_2018_idioms)]
+// Pedantic allows: these lints are documentation-only or would require pervasive
+// changes with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
 
 //! Cold-path YAML parsing and profile enforcement for velvet-ballastics.
 //!
