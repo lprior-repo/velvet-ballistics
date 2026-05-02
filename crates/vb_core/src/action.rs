@@ -1125,7 +1125,7 @@ mod tests {
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
         };
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         let write_result = frame.write_slot_with_taint(
@@ -1151,7 +1151,7 @@ mod tests {
 
     #[test]
     fn validate_key_ingredients_derived_secret_rejected() {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         let write_result = frame.write_slot_with_taint(
@@ -1328,7 +1328,7 @@ mod tests {
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
         };
-        let mut frame = RunFrame::new(RunId::new(53), StepIdx::new(0), 4, 4);
+        let frame = RunFrame::new(RunId::new(53), StepIdx::new(0), 4, 4);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         // Slot 0 has a clean value.
@@ -1371,7 +1371,7 @@ mod tests {
             side_effect: SideEffect::Creates,
             retry_safety: RetrySafety::KeyRequired,
         };
-        let mut frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
+        let frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         let write_clean = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
@@ -1446,7 +1446,7 @@ mod tests {
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
         };
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         let write_result = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
