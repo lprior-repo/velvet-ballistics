@@ -1167,6 +1167,39 @@ impl FjallJournal {
         )
     }
 
+    /// Returns all stored compiled IR artifact digests.
+    pub fn list_artifacts(&self) -> Result<Vec<WorkflowDigest>, JournalError> {
+        let prefix = [PREFIX_COMPILED_IR];
+        let mut digests = Vec::new();
+        for item in self.compiled_ir.prefix(prefix) {
+            let raw_key = item.key()?;
+            let digest_bytes = raw_key
+                .get(1..)
+                .ok_or(JournalError::UnexpectedEof)?;
+            let digest_array = <[u8; DIGEST_BYTES]>::try_from(digest_bytes)
+                .map_err(|_| JournalError::UnexpectedEof)?;
+            digests.push(WorkflowDigest::from_bytes(digest_array));
+        }
+        Ok(digests)
+    }
+
+    /// Removes a compiled IR artifact by digest.
+    pub fn remove_artifact(&self, digest: WorkflowDigest) -> Result<(), JournalError> {
+        let key = compiled_ir_key(digest.as_bytes())?;
+        let exists = self.compiled_ir.contains_key(key.as_slice())?;
+        if !exists {
+            return Err(JournalError::ArtifactNotFound { digest });
+        }
+        self.compiled_ir.remove(key.as_slice())?;
+        Ok(())
+    }
+
+    /// Returns whether a compiled IR artifact is stored for the given digest.
+    pub fn artifact_exists(&self, digest: WorkflowDigest) -> Result<bool, JournalError> {
+        let key = compiled_ir_key(digest.as_bytes())?;
+        Ok(self.compiled_ir.contains_key(key.as_slice())?)
+    }
+
     /// Stores run metadata by run id.
     pub fn put_run_header(&self, record: &RunHeaderRecord) -> Result<(), JournalError> {
         let key = run_header_key(record.run)?;
@@ -1924,6 +1957,12 @@ pub enum JournalError {
     /// Artifact digest checksum mismatch.
     #[error("artifact checksum mismatch")]
     ArtifactChecksumMismatch,
+    /// Requested artifact digest was not found in storage.
+    #[error("artifact not found: {digest:?}")]
+    ArtifactNotFound {
+        /// Digest of the missing artifact.
+        digest: WorkflowDigest,
+    },
 }
 
 impl JournalError {
@@ -1975,6 +2014,8 @@ impl JournalError {
     pub const ARTIFACT_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4017);
     /// Diagnostic code for artifact checksum mismatch.
     pub const ARTIFACT_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4018);
+    /// Diagnostic code for artifact not found.
+    pub const ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x4019);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -2004,6 +2045,7 @@ impl JournalError {
             Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
+            Self::ArtifactNotFound { .. } => Self::ARTIFACT_NOT_FOUND_CODE,
         }
     }
 }
@@ -9585,4 +9627,137 @@ fn submit_artifact_duplicate_digest_replaces() {
     // Verify only one record exists (replaced, not duplicated).
     let loaded = journal.compiled_ir(digest).expect("load compiled ir");
     assert!(loaded.is_some());
+}
+
+#[test]
+fn list_artifacts_empty_returns_empty() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    assert!(
+        artifacts.is_empty(),
+        "empty journal should have no artifacts"
+    );
+}
+
+#[test]
+fn list_artifacts_returns_stored_digests() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let d1 = WorkflowDigest::from_bytes([0x10; 32]);
+    let d2 = WorkflowDigest::from_bytes([0x20; 32]);
+    let d3 = WorkflowDigest::from_bytes([0x30; 32]);
+
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest: d1,
+            ir: vec![1u8],
+        })
+        .expect("put d1");
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest: d2,
+            ir: vec![2u8],
+        })
+        .expect("put d2");
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest: d3,
+            ir: vec![3u8],
+        })
+        .expect("put d3");
+
+    let mut artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    artifacts.sort_by(|a, b| a.as_bytes().cmp(&b.as_bytes()));
+
+    assert_eq!(artifacts.len(), 3, "should list all 3 artifacts");
+    assert!(artifacts.contains(&d1), "should contain d1");
+    assert!(artifacts.contains(&d2), "should contain d2");
+    assert!(artifacts.contains(&d3), "should contain d3");
+}
+
+#[test]
+fn remove_artifact_removes_from_list() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let d1 = WorkflowDigest::from_bytes([0x40; 32]);
+    let d2 = WorkflowDigest::from_bytes([0x50; 32]);
+
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest: d1,
+            ir: vec![1u8],
+        })
+        .expect("put d1");
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest: d2,
+            ir: vec![2u8],
+        })
+        .expect("put d2");
+
+    journal.remove_artifact(d1).expect("remove d1 should succeed");
+
+    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    assert_eq!(artifacts.len(), 1, "should have 1 artifact after removal");
+    assert!(
+        artifacts.contains(&d2),
+        "remaining artifact should be d2"
+    );
+    assert!(
+        !artifacts.contains(&d1),
+        "removed artifact should not be in list"
+    );
+}
+
+#[test]
+fn remove_artifact_not_found_returns_error() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let missing = WorkflowDigest::from_bytes([0xFF; 32]);
+    let result = journal.remove_artifact(missing);
+
+    assert!(
+        result.is_err(),
+        "removing non-existent artifact should return error"
+    );
+    let Err(JournalError::ArtifactNotFound { digest }) = result else {
+        panic!("expected ArtifactNotFound error variant");
+    };
+    assert_eq!(digest, missing, "error should contain the requested digest");
+}
+
+#[test]
+fn artifact_exists_returns_true_for_stored() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let digest = WorkflowDigest::from_bytes([0xAA; 32]);
+
+    let exists_before = journal
+        .artifact_exists(digest)
+        .expect("artifact_exists should succeed");
+    assert!(
+        !exists_before,
+        "artifact should not exist before storage"
+    );
+
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
+            digest,
+            ir: vec![42u8],
+        })
+        .expect("put should succeed");
+
+    let exists_after = journal
+        .artifact_exists(digest)
+        .expect("artifact_exists should succeed");
+    assert!(
+        exists_after,
+        "artifact should exist after storage"
+    );
 }
