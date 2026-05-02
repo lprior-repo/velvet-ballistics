@@ -28,10 +28,12 @@ pub struct ValueStore {
     /// Secondary index for O(1) object field lookup, mirroring `objects`.
     object_field_index: Vec<IndexMap<SymbolId, SlotValue>>,
     blobs: Vec<Bytes>,
+    /// Hard cap on total arena entries (sum of all arena lengths).
+    max_arena_entries: u64,
 }
 
 impl ValueStore {
-    /// Creates an empty cold value store.
+    /// Creates an empty cold value store with no arena cap.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -40,6 +42,20 @@ impl ValueStore {
             objects: Vec::new(),
             object_field_index: Vec::new(),
             blobs: Vec::new(),
+            max_arena_entries: 0,
+        }
+    }
+
+    /// Creates a cold value store with a hard cap on total arena entries.
+    #[must_use]
+    pub fn with_max_slots(max_slots: u16) -> Self {
+        Self {
+            symbols: Vec::new(),
+            lists: Vec::new(),
+            objects: Vec::new(),
+            object_field_index: Vec::new(),
+            blobs: Vec::new(),
+            max_arena_entries: u64::from(max_slots),
         }
     }
 
@@ -47,6 +63,7 @@ impl ValueStore {
     pub fn insert_symbol(&mut self, value: impl Into<Box<str>>) -> CoreResult<SymbolId> {
         let value = value.into();
         validate_symbol_len(value.len())?;
+        self.check_arena_cap()?;
         let id = next_symbol_id(self.symbols.len())?;
         self.symbols.push(value);
         Ok(id)
@@ -56,6 +73,7 @@ impl ValueStore {
     pub fn insert_list(&mut self, values: impl Into<Box<[SlotValue]>>) -> CoreResult<ListId> {
         let values = values.into();
         validate_list_len(values.len())?;
+        self.check_arena_cap()?;
         let id = next_list_id(self.lists.len())?;
         self.lists.push(values);
         Ok(id)
@@ -65,6 +83,7 @@ impl ValueStore {
     pub fn insert_object(&mut self, fields: impl Into<Box<[ObjectField]>>) -> CoreResult<ObjectId> {
         let fields = fields.into();
         validate_object_len(fields.len())?;
+        self.check_arena_cap()?;
         let id = next_object_id(self.objects.len())?;
         let mut index = IndexMap::new();
         let mut field_pos = 0usize;
@@ -90,6 +109,7 @@ impl ValueStore {
     pub fn insert_blob(&mut self, bytes: impl Into<Bytes>) -> CoreResult<BlobId> {
         let bytes = bytes.into();
         validate_blob_len(bytes.len())?;
+        self.check_arena_cap()?;
         let id = next_blob_id(self.blobs.len())?;
         self.blobs.push(bytes);
         Ok(id)
@@ -173,6 +193,42 @@ impl ValueStore {
     pub fn blob_count(&self) -> usize {
         self.blobs.len()
     }
+
+    /// Total number of entries across all arenas.
+    #[must_use]
+    pub fn total_arena_count(&self) -> u64 {
+        let mut total = 0u64;
+        total = total.saturating_add(checked_len_to_u64(self.symbols.len()));
+        total = total.saturating_add(checked_len_to_u64(self.lists.len()));
+        total = total.saturating_add(checked_len_to_u64(self.objects.len()));
+        total = total.saturating_add(checked_len_to_u64(self.blobs.len()));
+        total
+    }
+
+    /// Returns the configured max arena entries (0 means uncapped).
+    #[must_use]
+    pub const fn max_arena_entries(&self) -> u64 {
+        self.max_arena_entries
+    }
+
+    /// Checks whether a new arena entry would exceed the cap.
+    fn check_arena_cap(&self) -> CoreResult<()> {
+        if self.max_arena_entries == 0 {
+            return Ok(());
+        }
+        let current = self.total_arena_count();
+        if current >= self.max_arena_entries {
+            return Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: self.max_arena_entries,
+            });
+        }
+        Ok(())
+    }
+}
+
+fn checked_len_to_u64(len: usize) -> u64 {
+    u64::try_from(len).unwrap_or(u64::MAX)
 }
 
 fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {
@@ -1210,5 +1266,86 @@ mod tests {
             return Err(String::from("unique field at max object edge must resolve"));
         }
         Ok(())
+    }
+
+    // =========================================================================
+    // Phase 45 tests — ValueStore arena cap enforcement
+    // =========================================================================
+
+    #[test]
+    fn value_store_with_max_slots_allows_inserts_up_to_cap() -> Result<(), String> {
+        let mut store = ValueStore::with_max_slots(3);
+        assert_eq!(store.max_arena_entries(), 3);
+        assert_eq!(store.total_arena_count(), 0);
+
+        // Insert 3 entries total (1 symbol + 1 list + 1 blob) -- should succeed
+        store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        assert_eq!(store.total_arena_count(), 1);
+
+        store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        assert_eq!(store.total_arena_count(), 2);
+
+        store
+            .insert_blob(Bytes::from_static(b"x"))
+            .map_err(|e| e.to_string())?;
+        assert_eq!(store.total_arena_count(), 3);
+
+        // 4th insert should fail
+        match store.insert_symbol(Box::<str>::from("b")) {
+            Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 3,
+            }) => Ok(()),
+            other => Err(format!("expected BudgetExceeded, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn value_store_with_max_slots_one_rejects_second_insert() -> Result<(), String> {
+        let mut store = ValueStore::with_max_slots(1);
+        // First insert succeeds
+        store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        assert_eq!(store.total_arena_count(), 1);
+        // Second insert fails because cap is reached
+        match store.insert_symbol(Box::<str>::from("b")) {
+            Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 1,
+            }) => Ok(()),
+            other => Err(format!("expected BudgetExceeded, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn value_store_new_has_no_cap_and_allows_unlimited_inserts() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        assert_eq!(store.max_arena_entries(), 0);
+        let mut expected_count = 0u64;
+        for _ in 0..100u64 {
+            store
+                .insert_symbol(Box::<str>::from("s"))
+                .map_err(|e| e.to_string())?;
+            expected_count = expected_count
+                .checked_add(1)
+                .ok_or_else(|| String::from("count overflow"))?;
+            if store.total_arena_count() != expected_count {
+                return Err(String::from("total_arena_count mismatch"));
+            }
+        }
+        assert_eq!(store.total_arena_count(), 100);
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_default_equals_new() {
+        let default: ValueStore = Default::default();
+        let constructed = ValueStore::new();
+        assert_eq!(default, constructed);
     }
 }

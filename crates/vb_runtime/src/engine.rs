@@ -707,7 +707,7 @@ mod tests {
             RuntimeSignal::Continue
         );
         assert_eq!(
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42))),
+            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
             RuntimeSignal::Finished(SlotValue::I64(42))
         );
         assert_eq!(
