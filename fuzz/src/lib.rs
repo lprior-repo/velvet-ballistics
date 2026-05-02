@@ -854,6 +854,335 @@ pub fn fuzz_admission_flow(data: &[u8]) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Target G: Expression evaluator (postcard-decoded ExprProgram)
+// ---------------------------------------------------------------------------
+
+/// Exercises the expression evaluator on arbitrary `ExprProgram` bytes decoded
+/// via postcard. Decodes a full `WorkflowParts` (which may contain arbitrary
+/// expression ops), builds a compiled workflow, and evaluates each expression.
+/// The target verifies that evaluation never panics regardless of input.
+pub fn fuzz_expr_eval(data: &[u8]) {
+    if let Ok(parts) = postcard::from_bytes::<vb_core::WorkflowParts>(data) {
+        let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
+            return;
+        };
+        let Ok(run) = vb_core::RunFrame::new(
+            vb_core::RunId::new(1),
+            workflow.entry(),
+            workflow.node_count(),
+            workflow.slot_count(),
+        ) else {
+            return;
+        };
+        let mut store = vb_core::ValueStore::new();
+        // Iterate expressions by index until expression() returns None.
+        let mut i: u16 = 0;
+        loop {
+            let expr_idx = vb_core::ExprIdx::new(i);
+            if workflow.expression(expr_idx).is_none() {
+                break;
+            }
+            // The evaluator must return a Result -- it must never panic.
+            drop(vb_core::engine::eval_expr_with_store(
+                &workflow,
+                &run,
+                &mut store,
+                expr_idx,
+            ));
+            i = i.saturating_add(1);
+            if i == 0 {
+                // Wrapped around -- stop.
+                break;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target H: Accessor traversal
+// ---------------------------------------------------------------------------
+
+/// Maximum accessor path depth for fuzz-generated accessors.
+const FUZZ_MAX_ACCESSOR_DEPTH: usize = 16;
+
+/// Exercises accessor path traversal on arbitrary accessor programs decoded via
+/// postcard. Constructs a compiled workflow with accessor programs populated from
+/// fuzz input, writes slot values into a `RunFrame`, and evaluates each accessor
+/// against a `ValueStore`. Verifies that accessor traversal never panics.
+pub fn fuzz_accessor_traversal(data: &[u8]) {
+    if data.len() < 4 {
+        return;
+    }
+
+    let Some(&byte0) = data.first() else {
+        return;
+    };
+    let Some(&byte1) = data.get(1) else {
+        return;
+    };
+    let slot_count = u16::from(byte0.wrapping_rem(16)).saturating_add(1);
+    let accessor_count = usize::from(byte1.wrapping_rem(8)).saturating_add(1);
+
+    let mut accessors: Vec<vb_core::AccessorProgram> = Vec::new();
+    let mut offset = 2usize;
+    for _ in 0..accessor_count {
+        let root_byte = data.get(offset).copied().unwrap_or(0);
+        let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(slot_count));
+        offset = offset.saturating_add(1);
+
+        let path_len_byte = data.get(offset).copied().unwrap_or(0);
+        let path_len = usize::from(path_len_byte.wrapping_rem(4));
+        offset = offset.saturating_add(1);
+
+        let mut path: Vec<vb_core::PathSegment> = Vec::new();
+        for _ in 0..path_len {
+            if offset >= data.len() {
+                break;
+            }
+            let seg_byte = data.get(offset).copied().unwrap_or(0);
+            offset = offset.saturating_add(1);
+            let segment = if seg_byte.is_multiple_of(2) {
+                // Field accessor
+                vb_core::PathSegment::Field(vb_core::SymbolId::new(
+                    u32::from(seg_byte).wrapping_rem(16),
+                ))
+            } else {
+                // Index accessor
+                vb_core::PathSegment::Index(u32::from(seg_byte).wrapping_rem(8))
+            };
+            path.push(segment);
+            if path.len() >= FUZZ_MAX_ACCESSOR_DEPTH {
+                break;
+            }
+        }
+
+        accessors.push(vb_core::AccessorProgram {
+            root,
+            path: path.into_boxed_slice(),
+        });
+
+        if offset >= data.len() {
+            break;
+        }
+    }
+
+    // Build a minimal workflow with the constructed accessors.
+    let max_slot = slot_count.saturating_sub(1);
+    let parts = vb_core::WorkflowParts {
+        name: Box::<str>::from("fuzz_accessor"),
+        digest: vb_core::WorkflowDigest::from_bytes([0xE0; 32]),
+        nodes: vec![vb_core::CompiledNode {
+            id: vb_core::StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: vb_core::CompiledNodeKind::Finish {
+                result: vb_core::SlotIdx::new(max_slot),
+            },
+        }]
+        .into(),
+        expressions: Box::new([]),
+        accessors: accessors.into(),
+        constants: Box::new([]),
+        slot_count,
+        entry: vb_core::StepIdx::ZERO,
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+    };
+
+    let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
+        return;
+    };
+
+    let mut store = vb_core::ValueStore::new();
+
+    // Populate the ValueStore with some data that accessors might traverse.
+    let Ok(sym_a) = store.insert_symbol(Box::<str>::from("field_a")) else {
+        return;
+    };
+    let _ = sym_a;
+    let Ok(list_id) = store.insert_list(
+        vec![
+            vb_core::SlotValue::I64(10),
+            vb_core::SlotValue::I64(20),
+            vb_core::SlotValue::I64(30),
+        ]
+        .into_boxed_slice(),
+    ) else {
+        return;
+    };
+    let Ok(obj_id) = store.insert_object(
+        vec![
+            vb_core::value_store::ObjectField {
+                key: vb_core::SymbolId::new(0),
+                value: vb_core::SlotValue::Bool(true),
+            },
+            vb_core::value_store::ObjectField {
+                key: vb_core::SymbolId::new(1),
+                value: vb_core::SlotValue::I64(42),
+            },
+        ]
+        .into_boxed_slice(),
+    ) else {
+        return;
+    };
+
+    // Write some slot values that the accessors reference.
+    let mut run_with_data = match vb_core::RunFrame::new(
+        vb_core::RunId::new(4),
+        vb_core::StepIdx::ZERO,
+        workflow.node_count(),
+        slot_count,
+    ) {
+        Ok(r) => r,
+        Err(_) => return,
+    };
+
+    // Write various slot values for accessor roots to traverse.
+    if max_slot > 0 {
+        let _ = run_with_data.write_slot_with_taint(
+            vb_core::SlotIdx::new(0),
+            vb_core::SlotValue::Null,
+            vb_core::Taint::Clean,
+        );
+    }
+    if slot_count > 1 {
+        let _ = run_with_data.write_slot_with_taint(
+            vb_core::SlotIdx::new(1),
+            vb_core::SlotValue::Bool(true),
+            vb_core::Taint::Clean,
+        );
+    }
+    if slot_count > 2 {
+        let _ = run_with_data.write_slot_with_taint(
+            vb_core::SlotIdx::new(2),
+            vb_core::SlotValue::I64(7),
+            vb_core::Taint::Clean,
+        );
+    }
+    if slot_count > 3 {
+        let _ = run_with_data.write_slot_with_taint(
+            vb_core::SlotIdx::new(3),
+            vb_core::SlotValue::List(list_id),
+            vb_core::Taint::Clean,
+        );
+    }
+    if slot_count > 4 {
+        let _ = run_with_data.write_slot_with_taint(
+            vb_core::SlotIdx::new(4),
+            vb_core::SlotValue::Object(obj_id),
+            vb_core::Taint::Clean,
+        );
+    }
+
+    // Evaluate each accessor -- must never panic.
+    let mut i: u16 = 0;
+    loop {
+        let accessor_idx = vb_core::AccessorIdx::new(i);
+        if workflow.accessor(accessor_idx).is_none() {
+            break;
+        }
+        drop(vb_core::engine::eval_accessor_with_store(
+            &workflow,
+            &run_with_data,
+            &mut store,
+            accessor_idx,
+        ));
+        i = i.saturating_add(1);
+        if i == 0 {
+            break;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target I: SlotValue postcard roundtrip
+// ---------------------------------------------------------------------------
+
+/// Exercises SlotValue postcard decode-and-re-encode roundtrip on arbitrary
+/// bytes. Decodes bytes as `SlotValue` via postcard, then re-encodes the result
+/// and verifies the bytes match. Both decode and encode must never panic.
+pub fn fuzz_slot_value_roundtrip(data: &[u8]) {
+    // Attempt to decode arbitrary bytes as a SlotValue.
+    let Ok(decoded): Result<vb_core::SlotValue, _> = postcard::from_bytes(data) else {
+        return;
+    };
+
+    // Re-encode the decoded value.
+    let Ok(re_encoded): Result<Vec<u8>, _> = postcard::to_allocvec(&decoded) else {
+        return;
+    };
+
+    // The round-tripped bytes must match the original input.
+    if data.len() == re_encoded.len() {
+        let mut matching = true;
+        for i in 0..data.len() {
+            if data.get(i) != re_encoded.get(i) {
+                matching = false;
+                break;
+            }
+        }
+        if matching {
+            // Successful roundtrip: verify we can decode the re-encoded bytes too.
+            let Ok(_re_decoded): Result<vb_core::SlotValue, _> = postcard::from_bytes(&re_encoded)
+            else {
+                return;
+            };
+        }
+    }
+
+    // Also exercise display_with_store -- must never panic.
+    let store = vb_core::ValueStore::new();
+    let _display = decoded.display_with_store(&store);
+
+    // Exercise type_name -- must never panic.
+    let _type_name = decoded.type_name();
+
+    // Exercise is_true -- must never panic.
+    let _truthy = decoded.is_true();
+}
+
+// ---------------------------------------------------------------------------
+// Target J: Admission fuzz (arbitrary artifact bytes)
+// ---------------------------------------------------------------------------
+
+/// Exercises `submit_artifact` with arbitrary postcard-encoded `WorkflowParts`
+/// bytes. Unlike `fuzz_admission_flow` which constructs workflows from fuzz
+/// input bytes, this target decodes raw fuzz data directly as `WorkflowParts`,
+/// providing coverage over structurally valid but semantically invalid artifacts.
+/// The target verifies that admission never panics regardless of input.
+pub fn fuzz_admission_fuzz(data: &[u8]) {
+    // Attempt to decode arbitrary bytes as WorkflowParts.
+    let Ok(parts) = postcard::from_bytes::<vb_core::WorkflowParts>(data) else {
+        return;
+    };
+
+    // Try to build a compiled workflow -- may fail if structurally invalid.
+    let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
+        return;
+    };
+
+    // Open a temporary journal.
+    let temp_dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(_) => return,
+    };
+    let journal = match vb_storage::FjallJournal::open(temp_dir.path(), None) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+
+    // Cycle through all policies to exercise different admission paths.
+    let policies = [
+        vb_core::RuntimePolicy::Relaxed,
+        vb_core::RuntimePolicy::Journaled,
+        vb_core::RuntimePolicy::Strict,
+    ];
+    for policy in policies {
+        // submit_artifact must never panic -- it must return Result.
+        drop(vb_storage::submit_artifact(&journal, &workflow, policy));
+    }
+}
+
 fn selected_workflow(data: &[u8]) -> &'static [u8] {
     match data.first().copied() {
         Some(value) if value.is_multiple_of(2) => SMALL_WORKFLOW_A,

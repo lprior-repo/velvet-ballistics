@@ -74,3 +74,23 @@ pub fn taint_propagation(data: &[u8]) {
 pub fn resource_budget(data: &[u8]) {
     fuzz_lib::fuzz_resource_budget(data);
 }
+
+/// Expression evaluator postcard-decode fuzz target.
+pub fn expr_eval(data: &[u8]) {
+    fuzz_lib::fuzz_expr_eval(data);
+}
+
+/// Accessor path traversal fuzz target.
+pub fn accessor_traversal(data: &[u8]) {
+    fuzz_lib::fuzz_accessor_traversal(data);
+}
+
+/// SlotValue postcard roundtrip fuzz target.
+pub fn slot_value_roundtrip(data: &[u8]) {
+    fuzz_lib::fuzz_slot_value_roundtrip(data);
+}
+
+/// Admission flow arbitrary artifact bytes fuzz target.
+pub fn admission_fuzz(data: &[u8]) {
+    fuzz_lib::fuzz_admission_fuzz(data);
+}
