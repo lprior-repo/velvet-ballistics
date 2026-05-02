@@ -86,9 +86,8 @@ fn mark_step_after_signal(
     match signal {
         EngineSignal::AwaitingWait => run.mark_waiting(step),
         EngineSignal::AwaitingAsk => run.mark_asking(step),
-        EngineSignal::AwaitingAction => Ok(()),
+        EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => Ok(()),
         EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),
-        EngineSignal::StepBudgetExhausted => Ok(()),
     }
 }
 

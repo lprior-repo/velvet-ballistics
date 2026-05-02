@@ -295,21 +295,17 @@ pub fn validate_idempotency_key_ingredients(
 ) -> Result<(), IdempotencyViolation> {
     let mut i = 0;
     while i < key_slots.len() {
-        let slot = match key_slots.get(i) {
-            Some(value) => *value,
-            None => break,
+        let Some(&slot) = key_slots.get(i) else {
+            break;
         };
-        let slot_taint = match frame.read_taint(slot) {
-            Ok(t) => t,
-            Err(_) => {
-                // Slot not readable; cannot validate. Skip silently since
-                // the key ingredient may not be populated yet.
-                i = match i.checked_add(1) {
-                    Some(next) => next,
-                    None => break,
-                };
-                continue;
-            }
+        let Ok(slot_taint) = frame.read_taint(slot) else {
+            // Slot not readable; cannot validate. Skip silently since
+            // the key ingredient may not be populated yet.
+            i = match i.checked_add(1) {
+                Some(next) => next,
+                None => break,
+            };
+            continue;
         };
         match slot_taint {
             Taint::Clean => {}

@@ -31,7 +31,7 @@ fn choose_expr_target(
             .ok_or(EngineError::InternalInvariantViolation {
                 reason: "choose expr branch index checked by loop bound",
             })?;
-        if let Some(target) = choose_expr_branch_target(plan, run, store, branch)? {
+        if let Some(target) = choose_expr_branch_target(plan, run, store, *branch)? {
             return Ok(target);
         }
         index = index.checked_add(1).ok_or({
@@ -48,7 +48,7 @@ fn choose_expr_branch_target(
     plan: &CompiledWorkflow,
     run: &crate::RunFrame,
     store: &mut ValueStore,
-    branch: &ExprBranch,
+    branch: ExprBranch,
 ) -> Result<Option<StepIdx>, EngineError> {
     let (value, _taint) =
         super::expr_eval::eval_expr_with_store(plan, run, store, branch.condition)?;
@@ -83,7 +83,7 @@ fn choose_slot_target(
             .ok_or(EngineError::InternalInvariantViolation {
                 reason: "choose slot branch index checked by loop bound",
             })?;
-        if let Some(target) = choose_slot_branch_target(run, branch)? {
+        if let Some(target) = choose_slot_branch_target(run, *branch)? {
             return Ok(target);
         }
         index = index.checked_add(1).ok_or({
@@ -98,7 +98,7 @@ fn choose_slot_target(
 
 fn choose_slot_branch_target(
     run: &crate::RunFrame,
-    branch: &SlotBranch,
+    branch: SlotBranch,
 ) -> Result<Option<StepIdx>, EngineError> {
     match run.read_slot(branch.condition)? {
         SlotValue::Bool(true) => Ok(Some(branch.target)),

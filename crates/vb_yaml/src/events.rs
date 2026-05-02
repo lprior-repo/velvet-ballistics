@@ -157,8 +157,8 @@ impl YamlEvent {
         match self {
             Self::Scalar { anchor_id, .. }
             | Self::SequenceStart { anchor_id, .. }
-            | Self::MappingStart { anchor_id, .. } => *anchor_id,
-            Self::Alias { anchor_id, .. } => *anchor_id,
+            | Self::MappingStart { anchor_id, .. }
+            | Self::Alias { anchor_id, .. } => *anchor_id,
             _ => 0,
         }
     }
@@ -222,7 +222,9 @@ pub(crate) fn convert_event(
     let span = EventSpan::from_parser_span(span);
     match event {
         saphyr_parser::Event::StreamStart => YamlEvent::StreamStart { span },
-        saphyr_parser::Event::StreamEnd => YamlEvent::StreamEnd { span },
+        saphyr_parser::Event::StreamEnd | saphyr_parser::Event::Nothing => {
+            YamlEvent::StreamEnd { span }
+        }
         saphyr_parser::Event::DocumentStart(explicit) => {
             YamlEvent::DocumentStart { explicit, span }
         }
@@ -247,7 +249,6 @@ pub(crate) fn convert_event(
             span,
         },
         saphyr_parser::Event::MappingEnd => YamlEvent::MappingEnd { span },
-        saphyr_parser::Event::Nothing => YamlEvent::StreamEnd { span },
     }
 }
 
