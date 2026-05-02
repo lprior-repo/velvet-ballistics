@@ -55,6 +55,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 2,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -88,6 +89,7 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 2,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -130,6 +132,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(1)]),
         slot_count: 3,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -626,6 +629,7 @@ fn budget_validation_rejects_oversized_workflow() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 2,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: tight_contract,
     };
@@ -656,6 +660,7 @@ fn budget_validation_rejects_oversized_workflow() {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: slot_contract,
     };

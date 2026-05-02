@@ -572,6 +572,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };

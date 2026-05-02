@@ -174,6 +174,7 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
         accessors: vec![].into(),
         constants,
         slot_count: FUZZ_SLOT_COUNT,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     }) else {
@@ -244,6 +245,7 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
         accessors: vec![].into(),
         constants: vec![].into(),
         slot_count,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     }) else {
@@ -362,6 +364,7 @@ pub fn fuzz_resource_budget(data: &[u8]) {
         accessors: vec![].into(),
         constants: vec![constant].into(),
         slot_count: 1,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     }) else {
@@ -481,6 +484,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
         accessors: Box::new([]),
         constants: Box::new([]),
         slot_count,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     };
@@ -807,6 +811,7 @@ pub fn fuzz_admission_flow(data: &[u8]) {
         accessors: Box::new([]),
         constants: vec![vb_core::ConstValue::Bool(true)].into_boxed_slice(),
         slot_count,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     };

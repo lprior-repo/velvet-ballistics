@@ -125,6 +125,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![cv].into_boxed_slice(),
             slot_count: 8,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };

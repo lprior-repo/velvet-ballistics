@@ -1158,6 +1158,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         };
@@ -1900,6 +1901,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         };
@@ -2011,6 +2013,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         };
@@ -2170,6 +2173,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         };
@@ -2348,6 +2352,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         };

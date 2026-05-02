@@ -1207,6 +1207,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         }

@@ -9556,6 +9556,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(true)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -9615,6 +9616,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(true)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -9662,6 +9664,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(true)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -9737,6 +9740,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(true)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -9770,10 +9774,11 @@ fn submit_artifact_malformed_ir_rejected() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(false)]),
         slot_count: 0,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
-    // try_from_parts must reject this — the same validation gate
+    // try_from_parts must reject this -- the same validation gate
     // that submit_artifact uses to produce ArtifactMalformed.
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(result.is_err(), "empty nodes should be rejected by try_from_parts");

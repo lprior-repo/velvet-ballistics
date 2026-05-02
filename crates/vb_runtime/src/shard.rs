@@ -1149,6 +1149,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -1198,6 +1199,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([vb_core::value::ConstValue::Bool(false)]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -1491,6 +1493,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -1530,6 +1533,7 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([vb_core::value::ConstValue::I64(10)]),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -1589,6 +1593,7 @@ mod tests {
                 vb_core::value::ConstValue::I64(10),
             ]),
             slot_count: 3,
+            symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
         };

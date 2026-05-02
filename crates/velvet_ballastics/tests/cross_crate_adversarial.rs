@@ -23,6 +23,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 4,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     }
@@ -306,6 +307,7 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 2,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -415,6 +417,7 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 3,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -1398,6 +1401,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 2,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };

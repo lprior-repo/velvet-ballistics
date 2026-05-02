@@ -6,8 +6,8 @@ use crate::ids::{
 };
 use crate::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK,
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_SLOTS_PER_WORKFLOW,
-    MAX_STEPS_PER_WORKFLOW,
+    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH,
+    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,7 @@ pub struct CompiledWorkflow {
     accessors: Box<[AccessorProgram]>,
     constants: Box<[ConstValue]>,
     slot_count: u16,
+    symbols_count: u32,
     entry: StepIdx,
     resource_contract: ResourceContract,
 }
@@ -40,6 +41,7 @@ impl CompiledWorkflow {
             accessors: parts.accessors,
             constants: parts.constants,
             slot_count: parts.slot_count,
+            symbols_count: parts.symbols_count,
             entry: parts.entry,
             resource_contract: parts.resource_contract,
         })
@@ -67,6 +69,12 @@ impl CompiledWorkflow {
     #[must_use]
     pub const fn slot_count(&self) -> u16 {
         self.slot_count
+    }
+
+    /// Number of interned symbols referenced by this workflow.
+    #[must_use]
+    pub const fn symbols_count(&self) -> u32 {
+        self.symbols_count
     }
 
     /// Number of compiled nodes.
@@ -116,6 +124,7 @@ impl CompiledWorkflow {
             accessors: self.accessors.clone(),
             constants: self.constants.clone(),
             slot_count: self.slot_count,
+            symbols_count: self.symbols_count,
             entry: self.entry,
             resource_contract: self.resource_contract,
         }
@@ -216,6 +225,8 @@ pub struct WorkflowParts {
     pub constants: Box<[ConstValue]>,
     /// Number of runtime slots.
     pub slot_count: u16,
+    /// Number of interned symbols referenced by this workflow.
+    pub symbols_count: u32,
     /// Entry step.
     pub entry: StepIdx,
     /// Explicit resource bounds carried with the compiled artifact.
@@ -323,6 +334,20 @@ pub enum WorkflowError {
     BudgetPolicyExceeded {
         /// Human-readable detail describing which dimension failed.
         detail: &'static str,
+    },
+    /// A symbol identifier exceeded the declared symbols table bound.
+    #[error("symbol {symbol:?} exceeds symbols_count")]
+    SymbolOutOfBounds {
+        /// Invalid symbol identifier.
+        symbol: SymbolId,
+    },
+    /// An accessor path exceeded the maximum allowed depth.
+    #[error("accessor path depth {depth} exceeds maximum {max}")]
+    AccessorPathTooDeep {
+        /// Actual path depth.
+        depth: usize,
+        /// Maximum allowed path depth.
+        max: usize,
     },
 }
 
@@ -621,7 +646,9 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         validate_node_id(node, index)?;
         validate_node(node, parts)?;
     }
-    validate_accessor_path_symbols(&parts.accessors)?;
+    validate_accessor_paths(&parts.accessors, parts.symbols_count)?;
+    validate_constants_symbols(&parts.constants, parts.symbols_count)?;
+    validate_build_object_symbols(&parts.nodes, parts.symbols_count)?;
     validate_reachability(parts)?;
     validate_forward_edges(parts)?;
     Ok(())
@@ -1138,22 +1165,74 @@ fn validate_accessor(accessor: AccessorIdx, accessor_count: usize) -> Result<(),
     }
 }
 
-/// Validates that accessor path index segments do not use the reserved u32::MAX value.
-fn validate_accessor_path_symbols(accessors: &[AccessorProgram]) -> Result<(), WorkflowError> {
+/// Validates accessor paths: depth limits, reserved index values, and SymbolId bounds.
+fn validate_accessor_paths(
+    accessors: &[AccessorProgram],
+    symbols_count: u32,
+) -> Result<(), WorkflowError> {
     for accessor in accessors {
+        let path_len = accessor.path.len();
+        if path_len > MAX_PATH_DEPTH {
+            return Err(WorkflowError::AccessorPathTooDeep {
+                depth: path_len,
+                max: MAX_PATH_DEPTH,
+            });
+        }
         for segment in accessor.path.as_ref() {
-            if let PathSegment::Index(index) = *segment
-                && index == u32::MAX
-            {
-                return Err(WorkflowError::Expression(
-                    CoreError::InvalidCompiledWorkflow {
-                        reason: "accessor path index uses reserved value u32::MAX",
-                    },
-                ));
+            match *segment {
+                PathSegment::Field(symbol) => {
+                    validate_symbol(symbol, symbols_count)?;
+                }
+                PathSegment::Index(index) => {
+                    if index == u32::MAX {
+                        return Err(WorkflowError::Expression(
+                            CoreError::InvalidCompiledWorkflow {
+                                reason: "accessor path index uses reserved value u32::MAX",
+                            },
+                        ));
+                    }
+                }
             }
         }
     }
     Ok(())
+}
+
+/// Validates SymbolId values in the constant pool against the declared symbols count.
+fn validate_constants_symbols(
+    constants: &[ConstValue],
+    symbols_count: u32,
+) -> Result<(), WorkflowError> {
+    for constant in constants {
+        if let ConstValue::Symbol(symbol) = *constant {
+            validate_symbol(symbol, symbols_count)?;
+        }
+    }
+    Ok(())
+}
+
+/// Validates SymbolId values in BuildObject fields across all nodes.
+fn validate_build_object_symbols(
+    nodes: &[CompiledNode],
+    symbols_count: u32,
+) -> Result<(), WorkflowError> {
+    for node in nodes {
+        if let CompiledNodeKind::BuildObject { fields } = &node.kind {
+            for (symbol, _slot) in fields.as_ref() {
+                validate_symbol(*symbol, symbols_count)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Validates that a symbol identifier falls within the declared symbols table bound.
+fn validate_symbol(symbol: SymbolId, symbols_count: u32) -> Result<(), WorkflowError> {
+    if symbol.get() < symbols_count {
+        Ok(())
+    } else {
+        Err(WorkflowError::SymbolOutOfBounds { symbol })
+    }
 }
 
 /// Check A: every node must be reachable from the entry step via a forward walk
@@ -1556,10 +1635,8 @@ mod tests {
     };
     use crate::errors::CoreError;
     use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-    use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
+    use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
     use crate::value::ConstValue;
-
-    #[test]
 
     #[test]
     fn expr_program_rejects_binary_underflow() -> Result<(), String> {
@@ -1965,7 +2042,7 @@ mod tests {
         let fields =
             vec![(crate::ids::SymbolId::new(0), SlotIdx::new(0)); MAX_OBJECT_FIELDS_PER_VALUE]
                 .into_boxed_slice();
-        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 1, 1);
+        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -1979,7 +2056,7 @@ mod tests {
             MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)
         ]
         .into_boxed_slice();
-        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 1, 1);
+        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
         match CompiledWorkflow::try_from_parts(parts) {
             Err(WorkflowError::ResourceContractExceeded {
@@ -1991,7 +2068,7 @@ mod tests {
 
     #[test]
     fn workflow_parts_reject_build_object_field_slot_out_of_bounds() -> Result<(), String> {
-        let parts = construction_parts(
+        let parts = construction_parts_with_symbols(
             CompiledNodeKind::BuildObject {
                 fields: vec![
                     (crate::ids::SymbolId::new(1), SlotIdx::new(0)),
@@ -2001,6 +2078,7 @@ mod tests {
             },
             2,
             2,
+            3,
         );
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2013,7 +2091,7 @@ mod tests {
     fn workflow_parts_preserve_build_object_duplicate_field_order() -> Result<(), String> {
         let key = crate::ids::SymbolId::new(5);
         let fields = vec![(key, SlotIdx::new(0)), (key, SlotIdx::new(1))].into_boxed_slice();
-        let parts = construction_parts(CompiledNodeKind::BuildObject { fields }, 2, 2);
+        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 2, 2, 6);
 
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -2044,6 +2122,15 @@ mod tests {
         slot_count: u16,
         max_slots: u16,
     ) -> WorkflowParts {
+        construction_parts_with_symbols(kind, slot_count, max_slots, 0)
+    }
+
+    fn construction_parts_with_symbols(
+        kind: CompiledNodeKind,
+        slot_count: u16,
+        max_slots: u16,
+        symbols_count: u32,
+    ) -> WorkflowParts {
         WorkflowParts {
             name: Box::<str>::from("construction_validation"),
             digest: WorkflowDigest::from_bytes([0x42; 32]),
@@ -2058,6 +2145,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count,
+            symbols_count,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, max_slots, 0, 0, 0),
         }
@@ -2104,6 +2192,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract,
         }
@@ -2173,6 +2262,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: validated_slot_count,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(3, validated_slot_count, 1, 1, 1),
         }
@@ -2217,6 +2307,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
         };
@@ -2243,6 +2334,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(5),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
         };
@@ -2269,6 +2361,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
         };
@@ -2390,6 +2483,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(0, 0, 0, 0, 0),
         };
@@ -2418,6 +2512,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(1), // exactly at len
             resource_contract: resource_contract(1, 0, 0, 0, 0),
         };
@@ -2603,6 +2698,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 0,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(0, 0, 0, 0, 0),
         };
@@ -2903,6 +2999,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(max_steps, slot_count, 1, 0, 0),
         }
@@ -3082,6 +3179,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 3,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(4, 3, 1, 0, 0),
         };
@@ -3160,6 +3258,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 5,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(6, 5, 1, 0, 0),
         };
@@ -3247,6 +3346,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 5,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(6, 5, 1, 0, 0),
         };
@@ -3279,6 +3379,7 @@ mod tests {
             accessors: vec![accessor].into_boxed_slice(),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 43,
             entry: StepIdx::new(0),
             resource_contract: contract,
         };
@@ -3311,6 +3412,7 @@ mod tests {
             accessors: vec![accessor].into_boxed_slice(),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
         };
@@ -3352,6 +3454,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(1)].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
         };
@@ -3396,6 +3499,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(1)].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
         };
@@ -3429,6 +3533,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
         };
@@ -3457,6 +3562,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 2, 0, 0, 0),
         };
@@ -3486,6 +3592,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(1)].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
         };
@@ -3525,12 +3632,620 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
             Err(WorkflowError::UnreachableNode { step }) if step == StepIdx::new(1) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // =========================================================================
+    // Phase 46: SymbolId, accessor path depth, and untrusted input tests
+    // =========================================================================
+
+    // --- SymbolId range validation in accessor path Field segments ---
+
+    #[test]
+    fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(SymbolId::new(5))].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_sym_oob"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 3, // Only symbols 0, 1, 2 exist; SymbolId(5) is out of bounds
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
+        // SymbolId(2) should be valid when symbols_count=3 (symbols 0, 1, 2)
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(SymbolId::new(2))].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_sym_boundary"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_sym_zero_no_syms"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // --- Accessor path depth validation ---
+
+    #[test]
+    fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
+        let deep_path: Vec<PathSegment> = (0..=MAX_PATH_DEPTH)
+            .map(|i| PathSegment::Index(u32::try_from(i).unwrap_or(0)))
+            .collect();
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: deep_path.into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_deep"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::AccessorPathTooDeep { depth, max }) => {
+                if depth == MAX_PATH_DEPTH.saturating_add(1) && max == MAX_PATH_DEPTH {
+                    Ok(())
+                } else {
+                    Err(format!("wrong depth/max: depth={depth}, max={max}"))
+                }
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
+        let path: Vec<PathSegment> = (0..MAX_PATH_DEPTH)
+            .map(|i| PathSegment::Index(u32::try_from(i).unwrap_or(0)))
+            .collect();
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: path.into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_max_depth"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: Box::new([]),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_empty_path"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    // --- SymbolId range validation in constant pool ---
+
+    #[test]
+    fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("const_sym_oob"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Symbol(SymbolId::new(99))].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("const_sym_boundary"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Symbol(SymbolId::new(4))].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("const_sym_no_syms"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Symbol(SymbolId::new(0))].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // --- SymbolId range validation in BuildObject fields ---
+
+    #[test]
+    fn phase46_rejects_build_object_symbol_out_of_bounds() -> Result<(), String> {
+        let parts = construction_parts_with_symbols(
+            CompiledNodeKind::BuildObject {
+                fields: vec![
+                    (SymbolId::new(0), SlotIdx::new(0)),
+                    (SymbolId::new(10), SlotIdx::new(0)),
+                ]
+                .into_boxed_slice(),
+            },
+            1,
+            1,
+            5, // only symbols 0..4 exist
+        );
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(10) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_build_object_symbols_within_range() -> Result<(), String> {
+        let parts = construction_parts_with_symbols(
+            CompiledNodeKind::BuildObject {
+                fields: vec![
+                    (SymbolId::new(0), SlotIdx::new(0)),
+                    (SymbolId::new(1), SlotIdx::new(0)),
+                ]
+                .into_boxed_slice(),
+            },
+            1,
+            1,
+            2,
+        );
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    // --- Accessor path index u32::MAX rejection (existing check, new test) ---
+
+    #[test]
+    fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Index(u32::MAX)].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_u32max"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::Expression(CoreError::InvalidCompiledWorkflow { reason })) => {
+                if reason.contains("u32::MAX") {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected reason: {reason}"))
+                }
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // --- Mixed accessor path with both Field and Index ---
+
+    #[test]
+    fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![
+                PathSegment::Field(SymbolId::new(0)),
+                PathSegment::Index(3),
+                PathSegment::Field(SymbolId::new(1)),
+            ]
+            .into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_mixed"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![
+                PathSegment::Field(SymbolId::new(0)),
+                PathSegment::Index(3),
+                PathSegment::Field(SymbolId::new(5)), // out of bounds
+            ]
+            .into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_mixed_bad"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // --- symbols_count roundtrip through to_parts ---
+
+    #[test]
+    fn phase46_symbols_count_roundtrip() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("sym_roundtrip"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 42,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        if workflow.symbols_count() != 42 {
+            return Err(format!(
+                "expected symbols_count 42, got {}",
+                workflow.symbols_count()
+            ));
+        }
+        let recovered = workflow.to_parts();
+        if recovered.symbols_count != 42 {
+            return Err(format!(
+                "expected symbols_count 42 in recovered parts, got {}",
+                recovered.symbols_count
+            ));
+        }
+        Ok(())
+    }
+
+    // --- Multiple constants with mixed SymbolId validity ---
+
+    #[test]
+    fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("const_mixed_oob"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Symbol(SymbolId::new(0)), // valid
+                ConstValue::Symbol(SymbolId::new(50)), // out of bounds
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 10,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(2, 1, 2, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // --- Accessor root slot validation (existing check, confirmed by test) ---
+
+    #[test]
+    fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(5),
+            path: Box::new([]),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("acc_root_oob"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -3602,6 +4317,7 @@ mod proptests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
         }
@@ -3650,6 +4366,7 @@ mod proptests {
                 accessors: Box::new([]),
                 constants: vec![ConstValue::Null].into_boxed_slice(),
                 slot_count,
+                symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, slot_count, 1, 0, 0),
             };
@@ -3700,6 +4417,7 @@ mod proptests {
                 accessors: Box::new([]),
                 constants: vec![ConstValue::Null].into_boxed_slice(),
                 slot_count,
+                symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(2, slot_count, 1, 0, 0),
             };
@@ -3769,6 +4487,7 @@ mod proptests {
                 accessors: Box::new([]),
                 constants: vec![ConstValue::Null].into_boxed_slice(),
                 slot_count: 1,
+                symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
             };
@@ -3850,6 +4569,7 @@ mod proptests {
                 accessors: Box::new([]),
                 constants: vec![ConstValue::Null].into_boxed_slice(),
                 slot_count: 1,
+                symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
             };
@@ -3925,6 +4645,7 @@ mod proptests {
                 accessors: Box::new([]),
                 constants: vec![ConstValue::Null].into_boxed_slice(),
                 slot_count: actual_slots,
+                symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, declared_slots, 1, 0, 0),
             };

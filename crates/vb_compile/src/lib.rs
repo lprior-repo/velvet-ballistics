@@ -259,6 +259,7 @@ pub fn lower_steps_to_ir(
     accessors: Vec<AccessorProgram>,
     constants: Vec<ConstValue>,
     slot_count: u16,
+    symbols_count: u32,
     name: &str,
     digest: WorkflowDigest,
 ) -> Result<CompiledWorkflow, CompileErrors> {
@@ -270,6 +271,7 @@ pub fn lower_steps_to_ir(
         accessors: accessors.into_boxed_slice(),
         constants: constants.into_boxed_slice(),
         slot_count,
+        symbols_count,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     };
@@ -835,6 +837,7 @@ impl SlotCompiler {
             name: Box::from(name),
             digest,
             slot_count: self.slot_count()?,
+            symbols_count: 0,
             nodes: self.nodes.into_boxed_slice(),
             expressions: self.expressions.into_boxed_slice(),
             accessors: self.accessors.into_boxed_slice(),
@@ -1466,7 +1469,9 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
         | WorkflowError::EmptyBranchTable
         | WorkflowError::UnreachableNode { .. }
         | WorkflowError::BackwardEdge { .. }
-        | WorkflowError::ImproperLoopNesting { .. } => "INVALID_COMPILED_WORKFLOW",
+        | WorkflowError::ImproperLoopNesting { .. }
+        | WorkflowError::SymbolOutOfBounds { .. }
+        | WorkflowError::AccessorPathTooDeep { .. } => "INVALID_COMPILED_WORKFLOW",
     }
 }
 
@@ -1918,6 +1923,7 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         name: Box::<str>::from(name),
         digest,
         slot_count: builder.slot_count()?,
+        symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -5692,6 +5698,7 @@ steps:
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(7)].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -5725,6 +5732,7 @@ steps:
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };

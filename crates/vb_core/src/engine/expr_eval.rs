@@ -746,6 +746,7 @@ mod tests {
             accessors: vec![].into(),
             constants,
             slot_count: 8,
+            symbols_count: 10,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         })

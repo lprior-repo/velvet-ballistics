@@ -37,6 +37,7 @@ fn input_slot_parts() -> WorkflowParts {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     }
@@ -55,6 +56,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 4,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     }

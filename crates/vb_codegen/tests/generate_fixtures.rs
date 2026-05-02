@@ -44,6 +44,7 @@ fn generate_minimal_workflow_fixture() {
         accessors: Box::new([]),
         constants: vec![vb_core::ConstValue::I64(42)].into_boxed_slice(),
         slot_count: 1,
+        symbols_count: 0,
         entry: vb_core::StepIdx::new(0),
         resource_contract: vb_core::ResourceContract::DEFAULT,
     };
