@@ -161,20 +161,20 @@ pub struct ResourceContract {
 impl ResourceContract {
     /// Conservative default used until policy profiles become user-configurable.
     pub const DEFAULT: Self = Self {
-        max_steps: 1_000,
-        max_slots: u16::MAX,
+        max_steps: 10_000,
+        max_slots: 1_024,
         max_constants: u16::MAX,
         max_accessors: 8_192,
         max_expressions: 4_096,
-        max_expr_stack: MAX_EXPRESSION_STACK,
-        max_step_budget_per_tick: u64::MAX,
+        max_expr_stack: 64,
+        max_step_budget_per_tick: 10_000,
         max_input_bytes: 1_048_576,
         max_output_bytes: 1_048_576,
         max_blob_bytes: 16_777_216,
         max_ipc_payload_bytes: 1_048_576,
-        max_retry_attempts: u16::MAX,
-        max_fanout: u16::MAX,
-        max_collect_items: u32::MAX,
+        max_retry_attempts: 3,
+        max_fanout: 64,
+        max_collect_items: 1_024,
         max_queue_depth: 1_024,
         max_journal_batch_bytes: 1_048_576,
     };

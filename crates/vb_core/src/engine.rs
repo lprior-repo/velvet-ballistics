@@ -1284,10 +1284,10 @@ mod tests {
     #[test]
     fn step_budget_max_does_not_overflow_on_consecutive_takes() -> Result<(), String> {
         let mut budget = StepBudget::MAX;
-        ensure_equal(budget.remaining(), u64::MAX)?;
+        ensure_equal(budget.remaining(), crate::limits::MAX_STEP_BUDGET)?;
         let take = budget.try_take().map_err(|error| error.to_string())?;
         ensure_equal(take, true)?;
-        ensure_equal(budget.remaining(), u64::MAX - 1)?;
+        ensure_equal(budget.remaining(), crate::limits::MAX_STEP_BUDGET - 1)?;
         Ok(())
     }
 

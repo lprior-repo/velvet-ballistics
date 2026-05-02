@@ -81,3 +81,7 @@ pub const MAX_SYMBOL_BYTES_PER_VALUE: usize = 4_096;
 /// Maximum bytes in one runtime blob arena value.
 ///
 pub const MAX_BLOB_BYTES_PER_VALUE: usize = 16_777_216;
+
+/// Maximum deterministic transitions per runtime tick.
+///
+pub const MAX_STEP_BUDGET: u64 = 10_000;

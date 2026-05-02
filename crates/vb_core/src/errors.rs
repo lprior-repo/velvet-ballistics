@@ -190,6 +190,14 @@ pub enum CoreError {
         /// Maximum branches.
         max: u16,
     },
+    /// A resource budget was exceeded during execution.
+    #[error("budget exceeded: {budget} limit was {limit}")]
+    BudgetExceeded {
+        /// Which budget was exceeded.
+        budget: &'static str,
+        /// The configured limit.
+        limit: u64,
+    },
 }
 
 impl CoreError {
@@ -261,6 +269,8 @@ impl CoreError {
     pub const COLLECT_ITEM_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1404);
     /// Together branch limit exceeded diagnostic code.
     pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1405);
+    /// Budget exceeded diagnostic code.
+    pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1406);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -286,6 +296,8 @@ impl CoreError {
     pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str = "REPEAT_LIMIT_REACHED";
     /// Runtime code for collect item/page limit failures.
     pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
+    /// Runtime code for budget exceeded failures.
+    pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -324,6 +336,7 @@ impl CoreError {
             Self::CollectPageLimitExceeded => Self::COLLECT_PAGE_LIMIT_CODE,
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
+            Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
         }
     }
 
@@ -353,6 +366,7 @@ impl CoreError {
             Self::CollectPageLimitExceeded | Self::CollectItemLimitExceeded => {
                 Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE)
             }
+            Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -656,6 +670,16 @@ mod tests {
     }
 
     #[test]
+    fn core_error_diagnostic_code_budget_exceeded() {
+        let error = CoreError::BudgetExceeded {
+            budget: "max_slots",
+            limit: 1_024,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1406));
+        assert_eq!(error.to_string(), "budget exceeded: max_slots limit was 1024");
+    }
+
+    #[test]
     fn core_error_runtime_codes_cover_section_17_core_mappings() {
         assert_eq!(
             CoreError::ConstOutOfBounds {
@@ -726,6 +750,14 @@ mod tests {
             CoreError::CollectItemLimitExceeded.runtime_code(),
             Some("COLLECT_LIMIT_REACHED")
         );
+        assert_eq!(
+            CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 1_024,
+            }
+            .runtime_code(),
+            Some("BUDGET_EXCEEDED")
+        );
     }
 
     #[test]
@@ -743,15 +775,16 @@ mod tests {
             CoreError::QUEUE_FULL_RUNTIME_CODE,
             CoreError::REPEAT_LIMIT_REACHED_RUNTIME_CODE,
             CoreError::COLLECT_LIMIT_REACHED_RUNTIME_CODE,
+            CoreError::BUDGET_EXCEEDED_RUNTIME_CODE,
         ];
-        assert_eq!(codes.len(), 12);
+        assert_eq!(codes.len(), 13);
         assert_eq!(
             codes
                 .iter()
                 .copied()
                 .collect::<std::collections::BTreeSet<_>>()
                 .len(),
-            12
+            13
         );
     }
 
@@ -1091,6 +1124,24 @@ mod tests {
         };
         if max != 64 {
             return Err(String::from("unexpected max"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn core_error_budget_exceeded_exact_variant() -> Result<(), String> {
+        let error = CoreError::BudgetExceeded {
+            budget: "max_slots",
+            limit: 1_024,
+        };
+        let CoreError::BudgetExceeded { budget, limit } = error else {
+            return Err(String::from("expected BudgetExceeded variant"));
+        };
+        if budget != "max_slots" {
+            return Err(String::from("unexpected budget name"));
+        }
+        if limit != 1_024 {
+            return Err(String::from("unexpected limit"));
         }
         Ok(())
     }
