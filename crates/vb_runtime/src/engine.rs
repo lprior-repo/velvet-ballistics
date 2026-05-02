@@ -2546,6 +2546,7 @@ mod tests {
             constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
             slot_count: 2,
             entry: StepIdx::ZERO,
+            symbols_count: 0,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
             symbols_count: 0,
         };
@@ -2634,6 +2635,7 @@ mod tests {
             constants: Box::from([]),
             slot_count: 1,
             entry: StepIdx::ZERO,
+            symbols_count: 0,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
             symbols_count: 0,
         };
