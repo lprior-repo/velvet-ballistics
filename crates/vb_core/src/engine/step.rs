@@ -97,7 +97,7 @@ fn eval_expr_node(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     node: &crate::workflow::CompiledNode,
-    store: &ValueStore,
+    store: &mut ValueStore,
     expr: ExprIdx,
 ) -> Result<EngineSignal, EngineError> {
     let value = expr_eval::eval_expr_with_store(plan, run, store, expr)?;

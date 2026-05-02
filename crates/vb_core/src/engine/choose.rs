@@ -9,7 +9,7 @@ use crate::workflow::{CompiledWorkflow, ExprBranch, SlotBranch};
 pub(super) fn choose_expr_branch(
     plan: &CompiledWorkflow,
     run: &mut crate::frame::RunFrame,
-    store: &ValueStore,
+    store: &mut ValueStore,
     branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
 ) -> Result<crate::EngineSignal, EngineError> {
@@ -20,7 +20,7 @@ pub(super) fn choose_expr_branch(
 fn choose_expr_target(
     plan: &CompiledWorkflow,
     run: &crate::RunFrame,
-    store: &ValueStore,
+    store: &mut ValueStore,
     branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
 ) -> Result<StepIdx, EngineError> {
@@ -47,7 +47,7 @@ fn choose_expr_target(
 fn choose_expr_branch_target(
     plan: &CompiledWorkflow,
     run: &crate::RunFrame,
-    store: &ValueStore,
+    store: &mut ValueStore,
     branch: &ExprBranch,
 ) -> Result<Option<StepIdx>, EngineError> {
     match super::expr_eval::eval_expr_with_store(plan, run, store, branch.condition)? {
