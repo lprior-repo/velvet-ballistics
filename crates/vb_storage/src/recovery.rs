@@ -784,13 +784,12 @@ pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
 mod tests {
     use super::{
         ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-        RecoveryFrameSeed, RecoveryHydration,
-        RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
-        UnsupportedRecoveryState, check_compiled_ir_digest, check_workflow_source_digest,
-        extract_terminal, is_terminal_event, recover_all_incomplete_runs, recover_full_journal,
-        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
-        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
-        summarize_recovery_events, verify_digests,
+        RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
+        RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
+        check_workflow_source_digest, extract_terminal, is_terminal_event,
+        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+        recover_runtime_frame_seed_from_events, recover_runtime_summary,
+        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};

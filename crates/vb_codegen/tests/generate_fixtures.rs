@@ -12,12 +12,12 @@ fn fixtures_dir() -> PathBuf {
 #[test]
 fn generate_minimal_workflow_fixture() {
     let fixture_path = fixtures_dir().join("minimal_workflow.rs");
-    
+
     // Create a minimal workflow
     let ops = vec![vb_core::ExprOp::LoadConst(vb_core::ConstIdx::new(0))];
     let expr = vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice())
         .expect("expression must compile");
-    
+
     let parts = vb_core::WorkflowParts {
         name: Box::<str>::from("test_codegen"),
         digest: vb_core::WorkflowDigest::from_bytes([0xAB; 32]),
@@ -47,23 +47,22 @@ fn generate_minimal_workflow_fixture() {
         entry: vb_core::StepIdx::new(0),
         resource_contract: vb_core::ResourceContract::DEFAULT,
     };
-    
-    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts)
-        .expect("workflow must compile");
-    
+
+    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts).expect("workflow must compile");
+
     // Emit generated Rust
     let source = vb_codegen::emit_rust_workflow(&workflow)
         .expect("codegen must succeed for minimal workflow");
-    
+
     // Append a main function so trybuild can compile it as a binary
     let mut source = source;
     source.push_str("\nfn main() {\n");
     source.push_str("    let slots = [None; WORKFLOW_SLOT_COUNT];\n");
     source.push_str("    let _result = drive(slots);\n");
     source.push_str("}\n");
-    
+
     std::fs::create_dir_all(fixtures_dir()).expect("must create fixtures dir");
     std::fs::write(&fixture_path, source).expect("must write fixture");
-    
+
     println!("Generated fixture: {}", fixture_path.display());
 }

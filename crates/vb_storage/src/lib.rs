@@ -1401,7 +1401,10 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a workflow source record into the batch.
-    pub fn put_workflow_source(&mut self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
+    pub fn put_workflow_source(
+        &mut self,
+        record: &WorkflowSourceRecord,
+    ) -> Result<(), JournalError> {
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -1472,14 +1475,20 @@ impl<'j> JournalWriteBatch<'j> {
         run: RunId,
     ) -> Result<(), JournalError> {
         let key = index_status_key(state, timestamp, run)?;
-        self.inner.insert(&self.journal.index_status, key, Vec::<u8>::new());
+        self.inner
+            .insert(&self.journal.index_status, key, Vec::<u8>::new());
         Ok(())
     }
 
     /// Inserts a workflow index marker into the batch.
-    pub fn put_workflow_index(&mut self, workflow: WorkflowId, run: RunId) -> Result<(), JournalError> {
+    pub fn put_workflow_index(
+        &mut self,
+        workflow: WorkflowId,
+        run: RunId,
+    ) -> Result<(), JournalError> {
         let key = index_workflow_key(workflow, run)?;
-        self.inner.insert(&self.journal.index_workflow, key, Vec::<u8>::new());
+        self.inner
+            .insert(&self.journal.index_workflow, key, Vec::<u8>::new());
         Ok(())
     }
 
@@ -1491,7 +1500,8 @@ impl<'j> JournalWriteBatch<'j> {
         step: StepIdx,
     ) -> Result<(), JournalError> {
         let key = index_action_key(action, run, step)?;
-        self.inner.insert(&self.journal.index_action, key, Vec::<u8>::new());
+        self.inner
+            .insert(&self.journal.index_action, key, Vec::<u8>::new());
         Ok(())
     }
 
@@ -2621,30 +2631,31 @@ mod tests {
         let run = RunId::new(42);
 
         let mut batch = journal.batch();
-        assert!(batch
-            .put_workflow_source(&WorkflowSourceRecord {
-                digest,
-                source: b"test workflow".to_vec(),
-            })
-            .is_ok());
-        assert!(batch
-            .put_run_header(&RunHeaderRecord {
-                run,
-                workflow_id: WorkflowId::new(7),
-                compiled_digest: digest,
-                status: 1,
-                accepted_at_ms: 1234,
-            })
-            .is_ok());
+        assert!(
+            batch
+                .put_workflow_source(&WorkflowSourceRecord {
+                    digest,
+                    source: b"test workflow".to_vec(),
+                })
+                .is_ok()
+        );
+        assert!(
+            batch
+                .put_run_header(&RunHeaderRecord {
+                    run,
+                    workflow_id: WorkflowId::new(7),
+                    compiled_digest: digest,
+                    status: 1,
+                    accepted_at_ms: 1234,
+                })
+                .is_ok()
+        );
         assert!(batch.commit().is_ok());
 
         let source = journal.workflow_source(digest);
         assert!(source.is_ok());
         assert!(source.as_ref().unwrap().is_some());
-        assert_eq!(
-            source.unwrap().unwrap().source,
-            b"test workflow".to_vec()
-        );
+        assert_eq!(source.unwrap().unwrap().source, b"test workflow".to_vec());
 
         let header = journal.run_header(run);
         assert!(header.is_ok());
@@ -2663,13 +2674,14 @@ mod tests {
 
         let digest = [2; 32];
         let mut batch = journal.batch().strict();
-        assert!(batch
-            .put_blob(
-                &BlobRecord {
+        assert!(
+            batch
+                .put_blob(&BlobRecord {
                     digest,
                     bytes: b"blob data".to_vec(),
                 })
-            .is_ok());
+                .is_ok()
+        );
         assert!(batch.commit().is_ok());
 
         let blob = journal.blob(digest);
@@ -2693,13 +2705,15 @@ mod tests {
         let step = StepIdx::new(2);
 
         let mut batch = journal.batch();
-        assert!(batch
-            .append_event(&JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(0),
-                workflow: WorkflowDigest::from_bytes([3; 32]),
-            })
-            .is_ok());
+        assert!(
+            batch
+                .append_event(&JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow: WorkflowDigest::from_bytes([3; 32]),
+                })
+                .is_ok()
+        );
         assert!(batch.put_workflow_index(workflow, run).is_ok());
         assert!(batch.put_action_index(action, run, step).is_ok());
         assert!(batch.put_status_index(1, 5678, run).is_ok());
@@ -2750,21 +2764,25 @@ mod tests {
 
         let digest = WorkflowDigest::from_bytes([4; 32]);
         let mut batch = journal.batch();
-        assert!(batch
-            .put_workflow_source(&WorkflowSourceRecord {
-                digest,
-                source: b"a".to_vec(),
-            })
-            .is_ok());
+        assert!(
+            batch
+                .put_workflow_source(&WorkflowSourceRecord {
+                    digest,
+                    source: b"a".to_vec(),
+                })
+                .is_ok()
+        );
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
 
-        assert!(batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"ir".to_vec(),
-            })
-            .is_ok());
+        assert!(
+            batch
+                .put_compiled_ir(&CompiledIrRecord {
+                    digest,
+                    ir: b"ir".to_vec(),
+                })
+                .is_ok()
+        );
         assert_eq!(batch.len(), 2);
     }
 

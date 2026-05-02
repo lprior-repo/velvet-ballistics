@@ -13,24 +13,25 @@ fn fixtures_dir() -> PathBuf {
 fn trybuild_compile_fail_tests() {
     let t = trybuild::TestCases::new();
     let fixtures = fixtures_dir();
-    
+
     // Check that compile-fail fixtures exist and are loadable
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
         .expect("compile-fail fixtures directory must exist")
         .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry.path().extension().map_or(false, |ext| ext == "rs")
-        })
+        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();
-    
+
     if fixture_files.is_empty() {
         // No compile-fail fixtures yet; emit a clear message and pass
-        eprintln!("NOTE: No compile-fail fixtures found in {}", fixtures.display());
+        eprintln!(
+            "NOTE: No compile-fail fixtures found in {}",
+            fixtures.display()
+        );
         eprintln!("      This is expected until unsupported-primitive fixtures are added.");
         return;
     }
-    
+
     for fixture in fixture_files {
         t.compile_fail(&fixture);
     }
@@ -40,26 +41,27 @@ fn trybuild_compile_fail_tests() {
 fn trybuild_pass_tests() {
     let t = trybuild::TestCases::new();
     let fixtures = fixtures_dir().join("pass");
-    
+
     if !fixtures.exists() {
-        eprintln!("NOTE: No pass fixtures directory found at {}", fixtures.display());
+        eprintln!(
+            "NOTE: No pass fixtures directory found at {}",
+            fixtures.display()
+        );
         return;
     }
-    
+
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
         .expect("pass fixtures directory must exist")
         .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry.path().extension().map_or(false, |ext| ext == "rs")
-        })
+        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();
-    
+
     if fixture_files.is_empty() {
         eprintln!("NOTE: No pass fixtures found in {}", fixtures.display());
         return;
     }
-    
+
     for fixture in fixture_files {
         t.pass(&fixture);
     }

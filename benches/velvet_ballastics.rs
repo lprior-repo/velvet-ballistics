@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ResourceContract,
-    RunId, SlotBranch, SlotIdx, StepBudget, StepIdx, WorkflowDigest, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ResourceContract, RunId,
+    SlotBranch, SlotIdx, StepBudget, StepIdx, WorkflowDigest, WorkflowParts,
 };
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -23,11 +23,8 @@ struct GeneratedBinary {
 impl GeneratedBinary {
     fn compile(workflow: &CompiledWorkflow, name: &str) -> Option<Self> {
         let generated = vb_codegen::emit_rust_workflow(workflow).ok()?;
-        let temp_dir = std::env::temp_dir().join(format!(
-            "vb_bench_gen_{}_{}",
-            std::process::id(),
-            name
-        ));
+        let temp_dir =
+            std::env::temp_dir().join(format!("vb_bench_gen_{}_{}", std::process::id(), name));
         std::fs::create_dir_all(&temp_dir).ok()?;
         let source_path = temp_dir.join("generated.rs");
         let binary_path = temp_dir.join("generated_bin");
@@ -703,11 +700,7 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         vb_core::ConstValue::Bool(true),
         vb_core::ConstValue::I64(42),
     ];
-    compiled_from_nodes(
-        "bench_choose_100",
-        nodes,
-        constants.into_boxed_slice(),
-    )
+    compiled_from_nodes("bench_choose_100", nodes, constants.into_boxed_slice())
 }
 
 fn expression_workflow() -> Option<CompiledWorkflow> {
@@ -742,11 +735,7 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
         vb_core::ConstValue::I64(3),
         vb_core::ConstValue::I64(7),
     ];
-    compiled_from_nodes(
-        "bench_expr",
-        nodes,
-        constants.into_boxed_slice(),
-    )
+    compiled_from_nodes("bench_expr", nodes, constants.into_boxed_slice())
 }
 
 fn compiled_from_nodes(
@@ -863,7 +852,12 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(100), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                        Some(vb_core::run_until_blocked(
+                            plan,
+                            run,
+                            StepBudget::MAX,
+                            &mut store,
+                        ))
                     } else {
                         None
                     })
@@ -886,7 +880,12 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(101), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                        Some(vb_core::run_until_blocked(
+                            plan,
+                            run,
+                            StepBudget::MAX,
+                            &mut store,
+                        ))
                     } else {
                         None
                     })
@@ -909,7 +908,12 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(102), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                        Some(vb_core::run_until_blocked(
+                            plan,
+                            run,
+                            StepBudget::MAX,
+                            &mut store,
+                        ))
                     } else {
                         None
                     })
@@ -932,7 +936,12 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(103), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                        Some(vb_core::run_until_blocked(
+                            plan,
+                            run,
+                            StepBudget::MAX,
+                            &mut store,
+                        ))
                     } else {
                         None
                     })
@@ -1047,7 +1056,8 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                         let mut store = vb_core::ValueStore::new();
                         if let Ok(run) = frame.as_mut() {
                             #[allow(clippy::let_underscore_must_use)]
-                            let _ = vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                            let _ =
+                                vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
                         }
                     }
                     let ir_ns = ir_start.elapsed().as_nanos();
@@ -1080,7 +1090,8 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                         let mut store = vb_core::ValueStore::new();
                         if let Ok(run) = frame.as_mut() {
                             #[allow(clippy::let_underscore_must_use)]
-                            let _ = vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                            let _ =
+                                vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
                         }
                     }
                     let ir_ns = ir_start.elapsed().as_nanos();

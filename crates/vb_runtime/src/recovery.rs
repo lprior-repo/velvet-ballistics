@@ -76,7 +76,9 @@ pub fn recovery_boundary_from_hydration(
 ) -> Box<dyn RuntimeRecoveryBoundary> {
     match hydration {
         RecoveryHydration::Summary(summary) => Box::new(SummaryRecoveryBoundary { summary }),
-        RecoveryHydration::FrameSeed(seed) => Box::new(DurableFrameRecoveryBoundary::from_seed(seed)),
+        RecoveryHydration::FrameSeed(seed) => {
+            Box::new(DurableFrameRecoveryBoundary::from_seed(seed))
+        }
     }
 }
 
@@ -138,6 +140,7 @@ fn mark_suspended(
 mod tests {
     use super::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary, SummaryRecoveryBoundary};
     use crate::RuntimeError;
+    use crate::recovery::recovery_boundary_from_hydration;
     use vb_core::frame::StepState;
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
     use vb_storage::EventSeq;
@@ -145,7 +148,6 @@ mod tests {
         RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
         RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     };
-    use crate::recovery::recovery_boundary_from_hydration;
 
     #[test]
     fn summary_recovery_boundary_exposes_summary() {
@@ -361,7 +363,10 @@ mod tests {
         let boundary = recovery_boundary_from_hydration(hydration);
 
         assert_eq!(boundary.summary(), summary);
-        let frame = boundary.hydrate_run_frame().unwrap();
+        let frame = match boundary.hydrate_run_frame() {
+            Ok(f) => f,
+            Err(e) => panic!("hydration should succeed: {e}"),
+        };
         assert_eq!(frame.run_id(), run);
         assert_eq!(frame.pc(), StepIdx::new(1));
         assert_eq!(frame.step_count(), 2);
