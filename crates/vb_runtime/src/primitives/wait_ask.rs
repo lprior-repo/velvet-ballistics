@@ -473,7 +473,7 @@ mod tests {
         let mut run = fresh_frame();
         let answer = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        let next_step = StepIdx::new(5);
+        let next_step = StepIdx::new(3);
         run.write_slot(answer, SlotValue::I64(12345))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
