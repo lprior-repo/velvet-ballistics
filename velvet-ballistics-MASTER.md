@@ -447,597 +447,127 @@ Runtime limits must be explicit per profile for active runs, ready queue depth, 
 
 ## 14. Core Rust Types
 
-All snippets are contracts for `crates/vb_core/src/`. Implementations may split files, but public behavior must match.
+**Source of truth:** `crates/vb_core/src/`. The authoritative type layout is the code. This section states behavioral contracts that the code must satisfy. If code and doc disagree on field layout, the code wins. If code and doc disagree on behavior, the doc wins.
 
-### `ids.rs`
+### `ids.rs` — Numeric ID Types
 
-```rust
-#![forbid(unsafe_code)]
+Required ID types (all `#[repr(transparent)]`, `Copy`, `Serialize`, `Deserialize`):
 
-use serde::{Deserialize, Serialize};
+| Type | Inner | Purpose |
+|------|-------|---------|
+| `WorkflowId` | `u32` | Workflow identity |
+| `RunId` | `u64` | Run identity |
+| `StepIdx` | `u16` | Step/node index into `CompiledWorkflow.nodes` |
+| `SlotIdx` | `u16` | Slot index into `RunFrame.slots` |
+| `ExprIdx` | `u16` | Expression program index |
+| `ActionId` | `u16` | Action identity |
+| `AccessorIdx` | `u16` | Accessor program index |
+| `ConstIdx` | `u16` | Constant pool index |
+| `SymbolId` | `u32` | Interned string handle |
+| `ListId` | `u32` | List arena handle |
+| `ObjectId` | `u32` | Object arena handle |
+| `BlobId` | `u64` | Blob arena handle |
+| `SeqNo` | `u64` | Monotonic event sequence |
+| `WorkflowDigest` | `[u8; 32]` | BLAKE3 digest |
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct WorkflowId(pub u32);
+Behavioral contracts:
+- Table-index types (`StepIdx`, `SlotIdx`, `ExprIdx`, `AccessorIdx`, `ConstIdx`) must provide checked access to slices (via `CheckedIndex` trait or equivalent).
+- No ID type may be constructed from unchecked arithmetic or unchecked casts.
+- `WorkflowDigest` must provide `from_bytes` and `as_bytes` for storage interop.
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct RunId(pub u64);
+### `value.rs` — Slot Value Model
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct StepIdx(pub u16);
+Required types:
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct SlotIdx(pub u16);
+| Type | Contract |
+|------|----------|
+| `Taint` | Three-level lattice: `Clean < DerivedFromSecret < Secret`. `#[repr(u8)]` with explicit discriminants. Propagation rules in Section 47. |
+| `FiniteF64` | Newtype over `f64`. Rejects NaN, +inf, -inf in both debug and release builds. Manual `Serialize`/`Deserialize` (not derive) to enforce rejection on decode. |
+| `SlotValue` | Handle-only `Copy` enum: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`, `List(ListId)`, `Object(ObjectId)`, `Blob(BlobId)`. Must provide `type_name()` and `is_true()`. |
+| `ConstValue` | Compile-time constant: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`. Must convert to `SlotValue` via `to_slot_value()` with no silent `Null` fallback. |
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ExprIdx(pub u16);
+Behavioral contracts:
+- `SlotValue` is handle-based; text and large payloads are referenced by handles, never stored inline.
+- `FiniteF64::new` returns `CoreError::NonFiniteNumber` for non-finite inputs. No panic path.
+- `ConstValue::to_slot_value` must map every variant; no default/fallback.
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ActionId(pub u16);
+### `error.rs` — Core Error Types
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AccessorIdx(pub u16);
+Required error variants (the authoritative list is in the code; this lists the minimum):
 
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ConstIdx(pub u16);
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct SymbolId(pub u32);
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ListId(pub u32);
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ObjectId(pub u32);
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct BlobId(pub u64);
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct SeqNo(pub u64);
-
-impl StepIdx { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl SlotIdx { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl ExprIdx { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl ActionId { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl AccessorIdx { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl ConstIdx { #[must_use] pub fn as_usize(self) -> usize { usize::from(self.0) } }
-impl WorkflowId { #[must_use] pub fn as_u32(self) -> u32 { self.0 } }
-impl RunId { #[must_use] pub fn as_u64(self) -> u64 { self.0 } }
+```text
+InvalidCompiledWorkflow { reason }
+InvalidProgramCounter { step }
+MissingNextStep { step }
+MissingOutputSlot { step }
+SlotOutOfBounds { slot }
+ConstOutOfBounds { index }
+ExprOutOfBounds { expr }
+StepStateOutOfBounds { step }
+ExpressionStackOverflow { max }
+ExpressionStackUnderflow
+UnsupportedPrimitive { primitive }
+TypeMismatch { expected, found }
+DivisionByZero
+NonFiniteNumber
+QueueFull
+ResourceLimitExceeded { resource }
+AllocationFailed
+InternalInvariantViolation { reason }
 ```
 
-### `value.rs`
+All errors must be typed (no stringly errors), must carry diagnostic codes (Section 16), and must never require heap allocation in the hot path.
 
-```rust
-#![forbid(unsafe_code)]
+### `workflow.rs` — Compiled IR Types
 
-use crate::errors::{CoreError, CoreResult};
-use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
-use serde::{Deserialize, Serialize};
+Required types (authoritative layout in code):
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Taint {
-    Clean,
-    Secret,
-    DerivedFromSecret,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct FiniteF64(f64);
-
-impl FiniteF64 {
-    pub fn new(value: f64) -> CoreResult<Self> {
-        if value.is_finite() {
-            Ok(Self(value))
-        } else {
-            Err(CoreError::NonFiniteNumber)
-        }
-    }
-
-    #[must_use]
-    pub fn get(self) -> f64 { self.0 }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum SlotValue {
-    Null,
-    Bool(bool),
-    I64(i64),
-    F64(FiniteF64),
-    Symbol(SymbolId),
-    List(ListId),
-    Object(ObjectId),
-    Blob(BlobId),
-}
-
-impl SlotValue {
-    #[must_use]
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::Null => "null",
-            Self::Bool(_) => "boolean",
-            Self::I64(_) | Self::F64(_) => "number",
-            Self::Symbol(_) => "symbol",
-            Self::List(_) => "list",
-            Self::Object(_) => "object",
-            Self::Blob(_) => "blob",
-        }
-    }
-
-    #[must_use]
-    pub fn is_true(&self) -> bool {
-        matches!(self, Self::Bool(true))
-    }
-}
-```
-
-`SlotValue` is a handle-based, `Copy`-compatible hot value model. It must remain small enough for hot slot arrays. Text and field names are interned as `SymbolId`; large UTF-8/text payloads live in blob arenas/stores and are referenced by `BlobId`. Lists and objects live in arenas and are referenced by `ListId` and `ObjectId`. Raw `bytes::Bytes` live in blob arenas or IPC buffers; hot slots hold handles only. `FiniteF64` rejects NaN and infinities.
-
-### `errors.rs`
-
-```rust
-#![forbid(unsafe_code)]
-
-use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
-use thiserror::Error;
-
-pub type CoreResult<T> = Result<T, CoreError>;
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum CoreError {
-    #[error("invalid compiled workflow: {reason}")]
-    InvalidCompiledWorkflow { reason: &'static str },
-
-    #[error("invalid program counter: {step:?}")]
-    InvalidProgramCounter { step: StepIdx },
-
-    #[error("missing next step for {step:?}")]
-    MissingNextStep { step: StepIdx },
-
-    #[error("missing output slot for {step:?}")]
-    MissingOutputSlot { step: StepIdx },
-
-    #[error("slot index out of bounds: {slot:?}")]
-    SlotOutOfBounds { slot: SlotIdx },
-
-    #[error("constant index out of bounds: {index:?}")]
-    ConstOutOfBounds { index: ConstIdx },
-
-    #[error("expression index out of bounds: {expr:?}")]
-    ExprOutOfBounds { expr: ExprIdx },
-
-    #[error("step state index out of bounds: {step:?}")]
-    StepStateOutOfBounds { step: StepIdx },
-
-    #[error("expression stack overflow: max {max}")]
-    ExpressionStackOverflow { max: u8 },
-
-    #[error("expression stack underflow")]
-    ExpressionStackUnderflow,
-
-    #[error("unsupported primitive: {primitive}")]
-    UnsupportedPrimitive { primitive: &'static str },
-
-    #[error("type mismatch: expected {expected}, found {found}")]
-    TypeMismatch { expected: &'static str, found: &'static str },
-
-    #[error("division by zero")]
-    DivisionByZero,
-
-    #[error("non-finite number is not allowed")]
-    NonFiniteNumber,
-
-    #[error("queue full")]
-    QueueFull,
-
-    #[error("resource limit exceeded: {resource}")]
-    ResourceLimitExceeded { resource: &'static str },
-
-    #[error("allocation failed")]
-    AllocationFailed,
-
-    #[error("internal invariant violation: {reason}")]
-    InternalInvariantViolation { reason: &'static str },
-}
-```
-
-Required core errors include `ConstOutOfBounds { index: ConstIdx }`, `MissingOutputSlot { step: StepIdx }`, `MissingNextStep { step: StepIdx }`, `StepStateOutOfBounds { step: StepIdx }`, `ExpressionStackOverflow { max: u8 }`, `ExpressionStackUnderflow`, `InvalidCompiledWorkflow { reason: &'static str }`, `InternalInvariantViolation { reason: &'static str }`, `UnsupportedPrimitive { primitive: &'static str }`, and `NonFiniteNumber`.
-
-### `compiled.rs`
-
-```rust
-#![forbid(unsafe_code)]
-
-use crate::errors::{CoreError, CoreResult};
-use crate::ids::{ActionId, AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use crate::value::{FiniteF64, SlotValue};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompiledWorkflow {
-    // NOTE: current implementation uses u32; the contract prefers WorkflowId for type safety.
-    pub workflow_id: u32,
-    pub nodes: Box<[CompiledNode]>,
-    pub expressions: Box<[ExprProgram]>,
-    pub accessors: Box<[AccessorProgram]>,
-    pub constants: Box<[ConstValue]>,
-    pub slot_count: u16,
-    pub first_step: StepIdx,
-    pub resource_contract: ResourceContract,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompiledNode {
-    pub id: StepIdx,
-    pub output: Option<SlotIdx>,
-    pub next: Option<StepIdx>,
-    pub kind: CompiledNodeKind,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CompiledNodeKind {
-    Nop,
-    SetConst { value: ConstIdx },
-    Copy { source: SlotIdx },
-    EvalExpr { expr: ExprIdx },
-    BuildObject { fields: Box<[(SymbolId, SlotIdx)]> },
-    BuildList { items: Box<[SlotIdx]> },
-    Do { action: ActionId, input: SlotIdx },
-    Choose { branches: Box<[ExprBranch]>, otherwise: Option<StepIdx> },
-    ChooseSlot { branches: Box<[SlotBranch]>, otherwise: Option<StepIdx> },
-    ForEachStart { input: SlotIdx, item_slot: SlotIdx, limit: u32, body: StepIdx, done: StepIdx },
-    ForEachNext { iterator_slot: SlotIdx, body: StepIdx, done: StepIdx },
-    ForEachJoin { output: SlotIdx },
-    TogetherStart { branches: Box<[StepIdx]>, join: StepIdx },
-    TogetherBranch { branch: u16, entry: StepIdx, join: StepIdx },
-    TogetherJoin { branch_count: u16, accumulator: SlotIdx },
-    CollectStart { source: SlotIdx, limit: u32, page_size: u32, body: StepIdx, done: StepIdx },
-    CollectPage { collector_slot: SlotIdx, body: StepIdx, done: StepIdx },
-    CollectNext { collector_slot: SlotIdx, body: StepIdx, done: StepIdx },
-    CollectFinish { collector_slot: SlotIdx },
-    ReduceStart { input: SlotIdx, accumulator: SlotIdx, initial: ConstIdx, body: StepIdx, done: StepIdx },
-    ReduceNext { iterator_slot: SlotIdx, accumulator: SlotIdx, body: StepIdx, done: StepIdx },
-    ReduceFinish { accumulator: SlotIdx },
-    RepeatStart { max_attempts: u16, body: StepIdx, done: StepIdx },
-    RepeatAttempt { attempt_slot: SlotIdx, body: StepIdx, done: StepIdx },
-    RepeatCheck { attempt_slot: SlotIdx, body: StepIdx, exhausted: StepIdx },
-    RepeatFinish { result: SlotIdx },
-    WaitUntil { deadline_slot: SlotIdx },
-    WaitEvent { event: SlotIdx, timeout_slot: Option<SlotIdx> },
-    Ask { prompt: SlotIdx, timeout_slot: Option<SlotIdx> },
-    AskResume { answer: SlotIdx },
-    RetryCheck { policy_slot: SlotIdx, body: StepIdx, exhausted: StepIdx },
-    ErrorHandler { body: StepIdx, handler: StepIdx },
-    Jump { target: StepIdx },
-    Finish { result: SlotIdx },
-}
-```
-
-The final `CompiledNodeKind` includes all primitives: `Nop`, `SetConst`, `Copy`, `EvalExpr`, `BuildObject`, `BuildList`, `Do`, `Choose`, `ChooseSlot`, `ForEachStart`, `ForEachNext`, `ForEachJoin`, `TogetherStart`, `TogetherBranch`, `TogetherJoin`, `CollectStart`, `CollectPage`, `CollectNext`, `CollectFinish`, `ReduceStart`, `ReduceNext`, `ReduceFinish`, `RepeatStart`, `RepeatAttempt`, `RepeatCheck`, `RepeatFinish`, `WaitUntil`, `WaitEvent`, `Ask`, `AskResume`, `RetryCheck`, `ErrorHandler`, `Jump`, and `Finish`.
+| Type | Contract |
+|------|----------|
+| `CompiledWorkflow` | Immutable compiled artifact. Holds `nodes`, `expressions`, `accessors`, `constants`, `slot_count`, `entry: StepIdx`, `digest: WorkflowDigest`, `name`, `resource_contract`. Fields are private with getter methods. Constructed via `try_from_parts()` which validates all bounds. |
+| `CompiledNode` | Single IR node: `id: StepIdx`, `output: Option<SlotIdx>`, `next: Option<StepIdx>`, `kind: CompiledNodeKind`. |
+| `CompiledNodeKind` | 34+ variants covering all primitives (Section 15 lists them). The authoritative variant list is in the code. |
+| `ExprProgram` | Postfix bytecode: `ops: Box<[ExprOp]>`, `max_stack: u8`. Stack effects validated by `check_expr_stack_bound`. |
+| `ExprOp` | 30 opcodes: `LoadSlot`, `LoadConst`, `LoadAccessor`, comparison, logical, arithmetic, and helper ops (Section 46). |
+| `AccessorProgram` | Path traversal: `root: SlotIdx`, `path: Box<[PathSegment]>` where `PathSegment = Field(SymbolId) \| Index(u32)`. |
+| `ConstValue` | See `value.rs` above. |
+| `ResourceContract` | 16 fields controlling hard limits (Section 13). |
 
 Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only. Generated Rust may skip IR dispatch but must preserve identical semantics. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
-Legacy names such as `CopySlot`, `DoAction`, `TryAgain`, and `OnError` are migration notes only and must not be the final public IR. Deprecated untyped choose examples may appear only in import adapters or migration tests that immediately normalize to `Choose` or `ChooseSlot` before validation succeeds.
+### `frame.rs` — Run Frame
 
-```rust
-pub enum DeprecatedCompiledNodeKindExampleOnly {
-    TogetherFork { branches: Box<[StepIdx]>, join: StepIdx },
-    Fail { error_slot: SlotIdx },
-}
+`RunFrame` holds mutable execution state for a single run:
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExprBranch {
-    pub condition: ExprIdx,
-    pub target: StepIdx,
-}
+| Field | Type | Contract |
+|-------|------|----------|
+| `run_id` | `RunId` | Immutable after construction |
+| `pc` | `StepIdx` | Program counter; set by `set_pc()` |
+| `executed` | `u64` | Transition counter; incremented by deterministic steps |
+| `states` | `Box<[StepState]>` | Per-step state machine; transitions validated (Section 45) |
+| `slots` | `Box<[Option<SlotValue>]>` | Slot values; checked access only |
+| `taint` | `Box<[Taint]>` | Per-slot taint; parallel to `slots` |
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SlotBranch {
-    pub condition: SlotIdx,
-    pub target: StepIdx,
-}
+Behavioral contracts:
+- `RunFrame::new` is the only constructor. Allocates exactly three boxed arrays. Rejects `step_count == 0` and out-of-range `first_step`. No arena/blob/symbol/journal allocation.
+- `read_slot`/`write_slot`/`read_taint`/`write_taint` return `SlotOutOfBounds` for invalid indices.
+- `mark_*` methods return `StepStateOutOfBounds` for invalid steps.
+- Step-state transitions follow the contract in Section 45. Invalid transitions return `InternalInvariantViolation`.
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExprProgram {
-    pub ops: Box<[ExprOp]>,
-    pub max_stack: u8,
-}
+### `engine.rs` — Execution Engine
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ExprOp {
-    LoadSlot(SlotIdx),
-    LoadConst(ConstIdx),
-    LoadAccessor(AccessorIdx),
-    Eq, NotEq, Gt, Gte, Lt, Lte,
-    And, Or, Not,
-    Add, Sub, Mul, Div,
-    Contains, StartsWith, EndsWith, Has, Exists, Length, Empty,
-    Append, AppendIf, Merge, Sum, Count, Unique,
-}
+Required types and functions:
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessorProgram {
-    pub root: SlotIdx,
-    pub path: Box<[PathSegment]>,
-}
+| Type/Function | Contract |
+|---------------|----------|
+| `EngineSignal` | `Continue`, `Finished(SlotValue)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk` |
+| `StepBudget` | Bounded step counter. `try_take() -> CoreResult<bool>`. Budget 0 returns `StepBudgetExhausted` immediately. |
+| `step_once` | Execute single node dispatch. Returns `EngineSignal`. |
+| `drive_deterministic` | Loop calling `step_once` until blocked by budget, suspension, or finish. |
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PathSegment {
-    Field(SymbolId),
-    Index(u32),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConstValue {
-    Null,
-    Bool(bool),
-    I64(i64),
-    F64(FiniteF64),
-    Symbol(SymbolId),
-}
-
-impl ConstValue {
-    pub fn to_slot_value(&self) -> CoreResult<SlotValue> {
-        match self {
-            Self::Null => Ok(SlotValue::Null),
-            Self::Bool(value) => Ok(SlotValue::Bool(*value)),
-            Self::I64(value) => Ok(SlotValue::I64(*value)),
-            Self::F64(value) => Ok(SlotValue::F64(*value)),
-            Self::Symbol(value) => Ok(SlotValue::Symbol(*value)),
-        }
-    }
-}
-```
-
-`choose` lowering rule: conditions must be `ExprIdx` in `Choose`, or must be materialized by `EvalExpr -> SlotIdx` followed by `ChooseSlot`. Runtime must not evaluate raw YAML condition strings. `ChooseSlot` accepts only slots whose validated static type is boolean; non-boolean slot values return `CoreError::TypeMismatch { expected: "boolean", found }`.
-
-### `frame.rs`
-
-```rust
-#![forbid(unsafe_code)]
-
-use crate::errors::{CoreError, CoreResult};
-use crate::ids::{RunId, SlotIdx, StepIdx};
-use crate::value::{SlotValue, Taint};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StepState {
-    Pending,
-    Running,
-    Succeeded,
-    Failed,
-    Skipped,
-    Waiting,
-    Asking,
-    Cancelled,
-}
-
-pub struct RunFrame {
-    run_id: RunId,
-    pc: StepIdx,
-    executed: u64,
-    states: Box<[StepState]>,
-    slots: Box<[Option<SlotValue>]>,
-    taint: Box<[Taint]>,
-}
-
-impl RunFrame {
-    pub fn new(run_id: RunId, first_step: StepIdx, step_count: u16, slot_count: u16) -> CoreResult<Self> {
-        let states_len = usize::from(step_count);
-        let slots_len = usize::from(slot_count);
-        if states_len == 0 {
-            return Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" });
-        }
-        if first_step.as_usize() >= states_len {
-            return Err(CoreError::InvalidProgramCounter { step: first_step });
-        }
-        let states = vec![StepState::Pending; states_len].into_boxed_slice();
-        let slots = vec![None; slots_len].into_boxed_slice();
-        let taint = vec![Taint::Clean; slots_len].into_boxed_slice();
-        Ok(Self { run_id, pc: first_step, executed: 0, states, slots, taint })
-    }
-
-    #[must_use] pub fn run_id(&self) -> RunId { self.run_id }
-    #[must_use] pub fn pc(&self) -> StepIdx { self.pc }
-    #[must_use] pub fn executed(&self) -> u64 { self.executed }
-
-    pub fn set_pc(&mut self, pc: StepIdx) { self.pc = pc; }
-
-    pub fn read_slot(&self, slot: SlotIdx) -> CoreResult<&SlotValue> {
-        self.slots
-            .get(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })?
-            .as_ref()
-            .ok_or(CoreError::SlotOutOfBounds { slot })
-    }
-
-    pub fn write_slot(&mut self, slot: SlotIdx, value: SlotValue) -> CoreResult<()> {
-        *self
-            .slots
-            .get_mut(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = Some(value);
-        Ok(())
-    }
-
-    pub fn read_taint(&self, slot: SlotIdx) -> CoreResult<Taint> {
-        self.taint
-            .get(slot.as_usize())
-            .copied()
-            .ok_or(CoreError::SlotOutOfBounds { slot })
-    }
-
-    pub fn write_taint(&mut self, slot: SlotIdx, taint: Taint) -> CoreResult<()> {
-        *self
-            .taint
-            .get_mut(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = taint;
-        Ok(())
-    }
-
-    pub fn mark_running(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Running;
-        Ok(())
-    }
-
-    pub fn mark_succeeded(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Succeeded;
-        Ok(())
-    }
-
-    pub fn mark_failed(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Failed;
-        Ok(())
-    }
-
-    pub fn mark_skipped(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Skipped;
-        Ok(())
-    }
-
-    pub fn mark_waiting(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Waiting;
-        Ok(())
-    }
-
-    pub fn mark_asking(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Asking;
-        Ok(())
-    }
-
-    pub fn mark_cancelled(&mut self, step: StepIdx) -> CoreResult<()> {
-        *self.states
-            .get_mut(step.as_usize())
-            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Cancelled;
-        Ok(())
-    }
-
-    pub fn step_state(&self, step: StepIdx) -> CoreResult<StepState> {
-        self.states
-            .get(step.as_usize())
-            .copied()
-            .ok_or(CoreError::StepStateOutOfBounds { step })
-    }
-}
-```
-
-`RunFrame::new` is the only frame constructor in `vb_core`. It allocates exactly three boxed arrays at admission: `states` length `step_count`, `slots` length `slot_count`, and `taint` length `slot_count`. It performs no arena, blob, symbol, object, list, journal, or queue allocation. It rejects `step_count == 0` with `CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" }` and rejects an out-of-range `first_step` with `CoreError::InvalidProgramCounter { step: first_step }`. Allocation failure must surface as `CoreError::AllocationFailed` when the implementation uses a fallible allocator path; it must not panic. `read_taint` and `write_taint` use the same slot bounds as `read_slot`/`write_slot` and return `CoreError::SlotOutOfBounds { slot }` for invalid slots. Step-state mutation methods `mark_running`, `mark_succeeded`, `mark_failed`, `mark_skipped`, `mark_waiting`, `mark_asking`, and `mark_cancelled` return `CoreResult<()>` and never silently ignore bad step IDs.
-
-### `engine.rs`
-
-```rust
-#![forbid(unsafe_code)]
-
-use crate::compiled::{CompiledNodeKind, CompiledWorkflow};
-use crate::errors::{CoreError, CoreResult};
-use crate::frame::RunFrame;
-use crate::value::SlotValue;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum EngineSignal {
-    Continue,
-    AwaitingAction,
-    AwaitingWait,
-    AwaitingAsk,
-    Finished(SlotValue),
-    StepBudgetExhausted,
-}
-
-pub struct StepBudget {
-    remaining: u64,
-}
-
-impl StepBudget {
-    #[must_use]
-    pub fn new(value: u64) -> Self { Self { remaining: value } }
-
-    pub fn try_take(&mut self) -> CoreResult<bool> {
-        if self.remaining == 0 {
-            Ok(false)
-        } else {
-            self.remaining = self.remaining.saturating_sub(1);
-            Ok(true)
-        }
-    }
-
-    #[must_use]
-    pub fn remaining(&self) -> u64 { self.remaining }
-}
-
-pub fn drive_deterministic(
-    workflow: &CompiledWorkflow,
-    frame: &mut RunFrame,
-    budget: &mut StepBudget,
-) -> CoreResult<EngineSignal> {
-    loop {
-        if !budget.try_take()? {
-            return Ok(EngineSignal::StepBudgetExhausted);
-        }
-        let pc = frame.pc();
-        let node = workflow
-            .nodes
-            .get(pc.as_usize())
-            .ok_or(CoreError::InvalidProgramCounter { step: pc })?;
-
-        frame.mark_running(pc)?;
-
-        match &node.kind {
-            CompiledNodeKind::SetConst { value } => {
-                let out = node.output.ok_or(CoreError::MissingOutputSlot { step: pc })?;
-                let constant = workflow
-                    .constants
-                    .get(value.as_usize())
-                    .ok_or(CoreError::ConstOutOfBounds { index: *value })?;
-                frame.write_slot(out, constant.to_slot_value()?)?;
-                let next = node.next.ok_or(CoreError::MissingNextStep { step: pc })?;
-                frame.set_pc(next);
-                frame.mark_succeeded(pc)?;
-            }
-            CompiledNodeKind::Finish { result } => {
-                let value = *frame.read_slot(*result)?;
-                frame.mark_succeeded(pc)?;
-                return Ok(EngineSignal::Finished(value));
-            }
-            CompiledNodeKind::Do { .. } => {
-                return Ok(EngineSignal::AwaitingAction);
-            }
-            CompiledNodeKind::WaitUntil { .. } => {
-                return Ok(EngineSignal::AwaitingWait);
-            }
-            CompiledNodeKind::Ask { .. } => {
-                return Ok(EngineSignal::AwaitingAsk);
-            }
-            _ => return Err(CoreError::UnsupportedPrimitive { primitive: "not_yet_implemented" }),
-        }
-    }
-}
-```
-
-The `Finish` arm may copy the result out of the frame because `SlotValue` is a handle-only `Copy` enum. If a future value model introduces non-`Copy` fields, this snippet must change to an explicit bounded clone/move contract before that value model can be accepted. `SetConst` has no silent `Null` fallback and no unrelated slot `0` guard. Missing constants, missing outputs, missing next steps, and unsupported primitives are typed errors.
 `StepBudget` uses `remaining: u64`; `try_take() -> CoreResult<bool>`. Budget `0` executes zero transitions and returns `StepBudgetExhausted`. Budget `1` executes exactly one transition.
+
+Known design limitation: `EngineSignal::Finished(SlotValue)` carries no taint. Taint information at the Finish boundary is discarded. This is documented in Section 47 and must be addressed in a future phase if finish-result taint tracking is required.
 
 ---
 
@@ -1570,249 +1100,154 @@ Round 2 state: the workspace has been rebaselined to the underscore crate contra
 
 ---
 
-## 24. Mandatory Function List: `vb_core`
+## 24. Mandatory Function Surface: `vb_core`
 
-Required public functions and methods:
+**Source of truth:** `crates/vb_core/src/`. This section states required behavioral coverage. Exact function names and signatures are defined by the code.
 
-```text
-WorkflowId::as_u32
-RunId::as_u64
-StepIdx::as_usize
-SlotIdx::as_usize
-ExprIdx::as_usize
-ActionId::as_usize
-AccessorIdx::as_usize
-ConstIdx::as_usize
-FiniteF64::new
-FiniteF64::get
-SlotValue::type_name
-SlotValue::is_true
-ConstValue::to_slot_value
-StepBudget::new
-StepBudget::try_take
-StepBudget::remaining
-RunFrame::new
-RunFrame::run_id
-RunFrame::pc
-RunFrame::executed
-RunFrame::set_pc
-RunFrame::read_slot
-RunFrame::write_slot
-RunFrame::read_taint
-RunFrame::write_taint
-RunFrame::mark_running
-RunFrame::mark_succeeded
-RunFrame::mark_failed
-RunFrame::mark_skipped
-RunFrame::mark_waiting
-RunFrame::mark_asking
-RunFrame::mark_cancelled
-RunFrame::step_state
-validate_compiled_workflow
-drive_deterministic
-step_once
-eval_expr
-eval_accessor
-build_object
-build_list
-validate_resource_contract
-validate_node_bounds
-validate_transition_target
-```
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| ID accessors | Every numeric ID type must provide checked raw access (e.g., `get()`, `as_usize()`). |
+| Value operations | `FiniteF64::new`, `FiniteF64::get`, `SlotValue::type_name`, `SlotValue::is_true`, `ConstValue::to_slot_value`. |
+| Frame operations | `RunFrame::new`, `run_id`, `pc`, `executed`, `set_pc`, `read_slot`, `write_slot`, `read_taint`, `write_taint`, `write_slot_with_taint`, `mark_*` for all 7 step states, `step_state`, `reinitialize`, `increment_executed`. |
+| Budget | `StepBudget::new`, `try_take`, `remaining`. |
+| Execution | `step_once`, `drive_deterministic` (core), expression evaluation with `ValueStore`, accessor evaluation. |
+| IR validation | `CompiledWorkflow::try_from_parts` validates node bounds, resource contracts, transition targets, expression stack bounds. |
+| Value store | `ValueStore::new`, `insert_symbol`, `insert_list`, `insert_object`, `insert_blob`, lookup methods for each handle type, `object_field`, `list_item`. |
 
 ---
 
-## 25. Mandatory Function List: `vb_yaml`
+## 25. Mandatory Function Surface: `vb_yaml`
 
-```text
-parse_yaml_events
-parse_workflow_source
-validate_yaml_profile
-reject_duplicate_keys
-reject_forbidden_yaml_features
-reject_anchors_aliases_merges
-reject_multiple_documents
-reject_yaml_1_1_ambiguous_scalars
-build_source_map
-span_for_node
-load_fixture_source
-```
+**Source of truth:** `crates/vb_yaml/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Parsing | `parse_yaml_events`, `parse_workflow_source`. |
+| Profile validation | `validate_yaml_profile` (rejects anchors, aliases, merge keys, duplicate keys, ambiguous scalars, custom tags, binary scalars, multiple documents). |
+| Source maps | `build_source_map`, `span_for_node`. |
+| Fixtures | `load_fixture_source`. |
 
 ---
 
-## 26. Mandatory Function List: `vb_validate`
+## 26. Mandatory Function Surface: `vb_validate`
 
-```text
-validate_workflow_schema
-validate_version
-validate_trigger
-validate_manual_trigger
-validate_ipc_trigger
-reject_http_trigger
-validate_ids
-validate_step_fields
-validate_single_primitive
-validate_references
-validate_control_flow
-validate_forward_only_then
-validate_reachability
-validate_types
-validate_taint
-validate_resource_limits
-diagnostic_from_error
-emit_golden_diagnostic
-```
+**Source of truth:** `crates/vb_validate/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Schema validation | `validate_workflow_schema` (required fields, ID rules, primitive count, trigger types including HTTP rejection). |
+| References | `validate_references` (forward refs, runtime refs, undeclared secrets). |
+| Control flow | `validate_control_flow`, `validate_forward_only_then`, `validate_reachability`. |
+| Type/taint | `validate_types`, `validate_taint` (taint propagation, secret leak detection). |
+| Resources | `validate_resource_limits`. |
+| Diagnostics | `diagnostic_from_error`, `error_code`. |
 
 ---
 
-## 27. Mandatory Function List: `vb_expr`
+## 27. Mandatory Function Surface: `vb_expr`
 
-```text
-lex_expr
-parse_expr
-typecheck_expr
-compile_expr
-eval_expr_program
-eval_binary_op
-eval_unary_op
-eval_helper
-check_expr_stack_bound
-compile_expr_to_bytecode
-const_fold_expr
-```
+**Source of truth:** `crates/vb_expr/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Lexer | `lex_expr` (bounded token stream, 256 max tokens). |
+| Parser | `parse_expr` (Pratt parser, AST output, 64 max depth). |
+| Typechecker | `typecheck_expr` (type propagation, mismatch detection). |
+| Bytecode compiler | `compile_expr_to_bytecode`, `compile_expr_with_pool`, `compile_expr_with_resolver`, `const_fold_expr`, `check_expr_stack_bound`. |
+| Evaluator | `eval_expr_program`, `eval_binary_op`, `eval_unary_op`, `eval_helper`. |
 
 ---
 
-## 28. Mandatory Function List: `vb_compile`
+## 28. Mandatory Function Surface: `vb_compile`
 
-```text
-compile_workflow
-build_slot_layout
-build_accessor_table
-build_constant_pool
-lower_steps_to_ir
-lower_set
-lower_do
-lower_choose
-lower_for_each
-lower_together
-lower_collect
-lower_reduce
-lower_repeat
-lower_wait
-lower_ask
-lower_finish
-validate_ir
-compute_compiled_digest
-emit_compiled_artifact
-compile_to_generated_rust
-```
+**Source of truth:** `crates/vb_compile/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Entry point | `compile_workflow`, `YamlCompiler::compile`, `parse_ast`. |
+| Slot compilation | Slot layout, accessor table, constant pool construction. |
+| Lowering | Per-primitive lowering (set, do, choose, for_each, together, collect, reduce, repeat, wait, ask, finish). |
+| Validation | Schema, reference, control flow, type-taint validation integrated into compile pipeline. |
+| Expression | Expression compilation with reference resolution to `SlotIdx`. |
+| Output | Digest computation, compiled artifact emission. |
 
 ---
 
-## 29. Mandatory Function List: `vb_storage`
+## 29. Mandatory Function Surface: `vb_storage`
 
-```text
-open_store
-init_keyspaces
-encode_key
-put_workflow_source
-put_compiled_ir
-put_run_header
-append_journal_event
-write_snapshot
-put_blob
-read_blob
-read_run_events
-read_latest_snapshot
-recover_run
-recover_all_incomplete_runs
-replay_journal
-verify_replay_determinism
-flush_profile
-encode_record_header
-decode_record_header
-verify_digest_match
-recover_snapshot_plus_tail
-```
+**Source of truth:** `crates/vb_storage/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Database | `FjallJournal::open` (creates/opens Fjall with 9 keyspaces). |
+| Write path | `append_journaled`, `append_strict`, `append_strict_batch`, `persist_strict`. Write lock for ordering. |
+| Keyspaces | Per-keyspace put/get: `put_workflow_source`, `put_compiled_ir`, `put_run_header`, `put_snapshot`, `put_blob`, index puts. |
+| Read path | `workflow_source`, `compiled_ir`, `run_header`, `run_headers`, `snapshot`, `blob`, `events_for_run`. |
+| Record encoding | `encode_record`, `decode_record` (BLAKE3 digest + CRC32C envelope). |
+| Key construction | `workflow_source_key`, `compiled_ir_key`, `run_header_key`, `run_event_key`, `run_snapshot_key`, `blob_key`, index key constructors. |
+| Recovery | `recover_full_journal`, `recover_snapshot_plus_tail`, `recover_runtime_summary`, `recover_runtime_frame_seed`, `recover_all_incomplete_runs`, `replay_events`, `is_terminal_event`, `extract_terminal`. |
+| Digest verification | `verify_digests`, `check_workflow_source_digest`, `check_compiled_ir_digest`. |
+| Writer queue | `JournalWriterQueue` for bounded group commit. |
 
 ---
 
-## 30. Mandatory Function List: `vb_runtime`
+## 30. Mandatory Function Surface: `vb_runtime`
 
-```text
-Runtime::new
-Runtime::submit_direct
-Runtime::submit_compiled
-Runtime::cancel_run
-Runtime::inspect_run
-Runtime::list_events
-Runtime::answer_ask
-Runtime::complete_action
-Runtime::fail_action
-Runtime::drain_trace
-Runtime::shutdown_graceful
-Shard::new
-Shard::enqueue
-Shard::tick
-Shard::drive_run
-Shard::handle_action_completion
-Shard::handle_timer
-ActionRegistry::register
-ActionRegistry::resolve_compile_time
-ActionRegistry::dispatch
-FramePool::take
-FramePool::release
-drive_deterministic
-step_once
-```
+**Source of truth:** `crates/vb_runtime/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Runtime | `Runtime::new`, `new_with_journal`, `submit_direct`, `submit_compiled`, `submit_compiled_with_inputs`, `cancel_run`, `inspect_run`, `tick_all`, `tick_shard`, `complete_action_with_output`, `fail_action`, `timer_fired`, `shutdown_graceful`, `drain_trace`, `take_inspect_response`, `counters_snapshot`. |
+| Shard | `Shard::new`, `new_with_journal`, `enqueue`, `tick`, internal drive/action/timer handlers, `drain_for_shutdown`, `counters`, `snapshot_run`. |
+| Engine | `execute_node_full` (all node kinds), `drive_deterministic_full`, `drive_with_actions`, `resume_action_outcome`. |
+| Primitives | Per-primitive handlers in `primitives/`: for_each, together, collect, reduce, repeat, wait_ask. |
+| Frame pool | `FramePool::take`, `release`, `available`, `capacity`. |
+| Action dispatch | `ActionRegistry::register`, `dispatch`. |
+| Trace | `TraceRing` with SPSC ring, drain, and history. |
+| Journal adapters | `NoopRuntimeJournal`, `VolatileRuntimeJournal`, `StorageRuntimeJournal`, `QueuedStorageRuntimeJournal`. |
 
 ---
 
-## 31. Mandatory Function List: `vb_ipc`
+## 31. Mandatory Function Surface: `vb_ipc`
 
-```text
-encode_frame
-decode_frame_header
-decode_frame_payload
-validate_frame_bounds
-serve_ipc
-connect_ipc
-send_command
-recv_response
-handle_ping
-handle_submit_run
-handle_submit_run_inline
-handle_cancel_run
-handle_inspect_run
-handle_list_events
-handle_answer_ask
-handle_complete_action
-handle_fail_action
-handle_drain_trace
-handle_health
-handle_shutdown
-```
+**Source of truth:** `crates/vb_ipc/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Frame encode/decode | `encode_frame`, `decode_frame_header`, `decode_frame_payload`, `validate_frame_bounds`. |
+| Server | `serve_ipc` (mio-based Unix socket loop, all 11 command handlers). |
+| Client | `IpcClient::connect`, `send_command`, `recv_response`. |
+| Command handlers | `handle_submit_run`, `handle_submit_run_inline`, `handle_cancel_run`, `handle_inspect_run`, `handle_list_events`, `handle_answer_ask`, `handle_complete_action`, `handle_fail_action`, `handle_drain_trace`, `handle_health`, `handle_shutdown`. |
 
 ---
 
-## 32. Mandatory Function List: `vb_codegen`
+## 32. Mandatory Function Surface: `vb_codegen`
 
-```text
-emit_rust_workflow
-emit_ids
-emit_drive_function
-emit_step_function
-emit_expr_function
-emit_action_boundary
-emit_finish
-format_generated_rust
-compile_check_generated_rust
-compare_generated_to_ir
-emit_action_match_dispatch
-emit_resource_contract
-emit_trybuild_fixture
-```
+**Source of truth:** `crates/vb_codegen/src/`.
+
+Required coverage areas:
+
+| Area | Required public surface |
+|------|------------------------|
+| Code generation | `emit_rust_workflow` (CompiledWorkflow to Rust source). |
+| Components | emit for IDs, drive function, step function, expression function, action boundary, finish, action match dispatch, resource contract. |
+| Validation | `compare_generated_to_ir`, `validate_generated_subset`, compile-check generated Rust, trybuild fixture emission. |
 
 ---
 
@@ -1993,217 +1428,145 @@ Round 2 status rule: a public function existing in a crate is only API surface e
 
 ---
 
-## 36. Mandatory Tests
+## 36. Mandatory Test Coverage
 
-Unit tests:
+**Test naming:** Exact test names are not mandated. Tests must exist that verify the following behaviors. The authoritative test list is the codebase; this section states required coverage areas.
 
-```text
-finite_f64_accepts_finite
-finite_f64_rejects_nan_and_infinity
-slot_value_type_names_are_stable
-slot_value_text_uses_symbol_or_blob_handles
-const_value_to_slot_value_has_no_null_fallback
-step_budget_try_take_exhausts_cleanly
-run_frame_bounds_checked_for_slots
-run_frame_bounds_checked_for_step_states
-mark_methods_return_errors_on_invalid_step
-compiled_workflow_rejects_invalid_pc
-compiled_workflow_rejects_invalid_edges
-compiled_workflow_rejects_invalid_tables
-```
+### Core value and ID tests
 
-Parser and validator tests:
+Required coverage:
+- `FiniteF64` accepts finite values, rejects NaN, rejects positive infinity, rejects negative infinity.
+- `SlotValue` type names are stable and correct for every variant.
+- `SlotValue` text uses symbol or blob handles (no inline strings).
+- `ConstValue::to_slot_value` maps every variant; no silent Null fallback.
+- `StepBudget` exhaustion returns false without error; remaining reaches zero cleanly.
+- `RunFrame` bounds-checked for slots and step states; out-of-bounds returns typed errors.
+- Step-state mark methods return errors on invalid step indices.
+- `CompiledWorkflow::try_from_parts` rejects invalid PC, invalid edges, invalid tables.
 
-```text
-minimal_manual_workflow_valid
-minimal_ipc_workflow_valid
-http_trigger_rejected_from_core
-duplicate_keys_rejected
-anchors_aliases_merge_tags_rejected
-yaml_1_1_booleans_rejected
-unknown_top_level_field_rejected
-unknown_step_field_rejected
-multiple_primitives_rejected
-missing_primitive_rejected
-future_reference_rejected
-control_flow_cycle_rejected
-secret_result_leak_rejected
-all_diagnostics_have_code_path_span_message
-```
+### Parser and validator tests
 
-Engine invariant tests:
+Required coverage:
+- Minimal valid manual and IPC workflows parse successfully.
+- HTTP trigger rejected as out-of-core.
+- Duplicate keys, anchors, aliases, merge keys, YAML 1.1 ambiguous booleans all rejected.
+- Unknown top-level fields and unknown step fields rejected.
+- Multiple primitives per step rejected; missing primitive rejected.
+- Forward references rejected.
+- Control-flow cycles detected and rejected.
+- Secret-tainted finish results rejected at compile time.
+- All diagnostics have code, path, span, and message.
 
-```text
-terminal_runs_do_not_return_to_running
-failed_steps_do_not_become_succeeded_without_handler
-budget_exhaustion_does_not_advance_pc
-missing_output_slot_is_typed_error
-const_out_of_bounds_is_typed_error
-expression_stack_overflow_is_typed_error
-expression_stack_underflow_is_typed_error
-unsupported_primitive_is_typed_error
-set_const_never_reads_unrelated_slot_zero
-choose_expr_and_choose_slot_match_when_materialized
-```
+### Engine invariant tests
 
-Recovery tests:
+Required coverage:
+- Terminal states never transition back to running.
+- Failed steps do not become succeeded without error handler.
+- Budget exhaustion does not advance PC.
+- Missing output slot, const out of bounds, expression stack overflow/underflow, unsupported primitive — all return typed errors.
+- `SetConst` never reads unrelated slot zero.
+- `Choose` and `ChooseSlot` produce identical results when conditions are pre-materialized.
 
-```text
-recover_run_from_full_journal
-recover_run_from_snapshot_plus_tail
-replay_detects_divergence
-replay_does_not_duplicate_non_idempotent_action
-strict_profile_persists_before_ack
-journaled_profile_group_commit_recovers
-corrupt_journal_record_returns_typed_error
-```
+### Recovery tests
 
-IPC tests:
+Required coverage:
+- Full journal replay reconstructs run state.
+- Snapshot plus tail replay reconstructs run state.
+- Replay detects divergence with typed error.
+- Non-idempotent actions blocked during replay.
+- Strict profile persists before ack.
+- Journaled profile group commit recovers.
+- Corrupt journal record returns typed error.
 
-```text
-decode_rejects_bad_magic_before_payload_allocation
-decode_rejects_oversized_payload
-ping_roundtrip
-submit_run_roundtrip
-submit_run_compiled_roundtrip
-cancel_run_roundtrip
-inspect_run_roundtrip
-get_events_roundtrip
-stream_events_respects_backpressure
-malformed_frame_returns_typed_error
-```
+### IPC tests
 
-Scheduler tests:
+Required coverage:
+- Bad magic rejected before payload allocation.
+- Oversized payload rejected.
+- Command roundtrips (submit, cancel, inspect, events).
+- Backpressure respected.
+- Malformed frames return typed errors.
 
-```text
-queue_full_returns_typed_error
-run_stays_on_one_shard
-cancel_pending_run
-cancel_waiting_run
-shutdown_graceful_drains_or_reports_remaining
-timer_resume_order_is_deterministic
-action_completion_resumes_correct_run
-no_task_per_step_behavior_under_load
-```
+### Scheduler tests
 
-Compile-fail tests:
+Required coverage:
+- Queue-full returns typed error.
+- Run stays on one shard.
+- Cancel pending and waiting runs.
+- Shutdown drains gracefully or reports remaining.
+- Timer resume order deterministic.
+- Action completion resumes correct run.
+- No task-per-step behavior under load.
 
-```text
-generated_code_cannot_use_unsafe
-generated_code_cannot_unwrap
-generated_code_cannot_index_unchecked
-generated_code_cannot_reference_yaml_runtime
-public_codegen_contract_rejects_missing_step
-```
+### Compile-fail tests
+
+Required coverage:
+- Generated code cannot use unsafe, unwrap, unchecked indexing, or YAML runtime references.
+- Public codegen contract rejects missing step.
 
 ---
 
 ## 37. Fuzz Targets
 
-```text
-fuzz_targets/yaml_events.rs       arbitrary bytes -> parser never panics
-fuzz_targets/expression.rs        arbitrary bytes -> tokenizer/parser/compiler never panics
-fuzz_targets/ipc_frame.rs         arbitrary bytes -> decoder never panics and length checks hold
-fuzz_targets/journal_event.rs     arbitrary bytes -> Postcard decode failure is typed
-fuzz_targets/compiled_ir.rs       arbitrary bytes -> decode/validate never panics
-fuzz_targets/generated_compare.rs generated/IR equivalence over small workflows
-```
+Required fuzz harnesses (actual paths: `fuzz/src/bin/*.rs`):
+
+| Target | Coverage requirement |
+|--------|---------------------|
+| `yaml_events` | Arbitrary UTF-8 bytes → parser never panics |
+| `expression` | Arbitrary UTF-8 bytes → lexer/parser/compiler never panics |
+| `ipc_frame` | Arbitrary bytes → decoder never panics, length checks hold |
+| `journal_event` | Arbitrary bytes → Postcard decode failure is typed |
+| `compiled_ir` | Arbitrary bytes → decode/validate never panics |
+| `generated_compare` | Generated/IR equivalence over small workflows |
 
 ---
 
 ## 38. Property Tests
 
-```text
-expression_constant_folding_preserves_result
-expression_bytecode_matches_ast_interpreter
-compiled_digest_stable_for_same_input
-slot_layout_stable_for_same_workflow
-accessor_layout_stable_for_same_workflow
-journal_replay_is_deterministic
-snapshot_plus_tail_equals_full_journal_replay
-for_each_output_order_matches_input_order
-together_output_order_matches_yaml_order
-retry_attempt_count_never_exceeds_limit
-collect_never_exceeds_page_item_time_limits
-no_terminal_state_transitions_back_to_running
-secret_taint_never_enters_result
-ir_and_generated_outputs_match
-ir_and_generated_errors_match
-```
+Required proptest coverage areas:
+
+| Property | Description |
+|----------|-------------|
+| Constant folding | Constant expressions fold to identical result as runtime evaluation |
+| Bytecode/AST parity | Compiled bytecode produces same result as AST interpretation |
+| Digest stability | Same input produces same compiled digest |
+| Layout stability | Slot layout and accessor layout stable for same workflow |
+| Replay determinism | Journal replay produces identical run state |
+| Snapshot equivalence | Snapshot + tail replay equals full journal replay |
+| Ordering invariants | `for_each` output order matches input order; `together` output order matches YAML order |
+| Bound enforcement | Retry attempts never exceed limit; collect never exceeds page/item/time limits |
+| State machine | No terminal state transitions back to running |
+| Taint safety | Secret taint never enters finish result (at compile time) |
+| IR/generated parity | IR interpreter and generated Rust produce identical outputs and errors |
 
 ---
 
 ## 39. Mandatory Benchmarks
 
-Benchmark names:
+**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `benches/velvet_ballastics.rs`.
 
-```text
-parse_yaml_small
-parse_yaml_1mb
-validate_minimal
-validate_1000_steps
-compile_ir_minimal
-compile_ir_1000_steps
-expr_eq_symbol
-expr_number_compare
-expr_boolean_chain
-expr_arithmetic
-slot_read
-slot_write
-slot_copy
-const_lookup_checked
-slot_taint_read_write
-symbol_intern_compile
-object_field_direct_slot
-object_field_accessor
-list_arena_append
-list_arena_iter
-blob_store_put_get
-transition_set
-transition_eval_expr
-transition_choose_2
-transition_choose_100
-transition_finish
-run_noop_1
-run_noop_10
-run_noop_1000
-run_set_chain_1000
-run_choose_heavy
-for_each_noop_10000
-together_noop_100
-collect_page_10000
-reduce_numeric_10000
-repeat_100_attempts
-postcard_encode_event
-postcard_decode_event
-fjall_append_event_no_persist
-fjall_append_event_journaled
-fjall_append_event_strict
-fjall_read_1000_events
-arrayqueue_push_pop
-rtrb_push_pop
-trace_event_push
-trace_ring_full_policy
-journal_writer_queue_push
-group_commit_batch_1
-group_commit_batch_64
-group_commit_batch_1024
-shard_submit_to_start
-shard_submit_to_finish
-direct_api_submit_to_finish
-ask_answer_resume
-action_complete_resume
-wait_timer_resume
-ipc_frame_encode
-ipc_frame_decode
-ipc_submit_to_finish
-ir_vs_generated_1
-ir_vs_generated_1000
-generated_expr_eq
-generated_set_chain_1000
-generated_choose_100
-trace_off_vs_binary
-```
+Required coverage areas:
+
+| Area | Required benchmarks |
+|------|-------------------|
+| YAML parsing | Small workflow, large (1 MiB) workflow |
+| Validation | Minimal workflow, 1000-step workflow |
+| Compilation | Minimal workflow, 1000-step workflow |
+| Expression | Symbol equality, number comparison, boolean chain, arithmetic |
+| Slot operations | Read, write, copy |
+| Core transitions | SetConst, EvalExpr, Choose (2-branch, 100-branch), Finish |
+| Run chains | 1-step, 10-step, 1000-step save chains |
+| Iteration | for_each, together, collect, reduce, repeat |
+| Storage | Fjall append (no-persist, journaled, strict), Fjall read 1000 events |
+| IPC | Frame encode, frame decode |
+| Queues | ArrayQueue push/pop, rtrb push/pop |
+| Trace | Trace event push, ring full policy |
+| Writer queue | Journal writer queue push, group commit (batch 1, 64, 1024) |
+| Scheduler | Shard submit-to-start, submit-to-finish |
+| Direct API | Submit-to-finish |
+| Async primitives | Ask answer resume, action complete resume, wait timer resume |
+| Generated mode | Expression, save chain, choose |
+| IR vs generated | 1-step, 1000-step comparison, ratio benchmarks |
 
 Every benchmark result must include metadata:
 
