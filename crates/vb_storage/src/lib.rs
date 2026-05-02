@@ -1662,11 +1662,11 @@ pub fn admit_compiled_artifact(
     vb_core::CompiledWorkflow::try_from_parts(parts.clone())
         .map_err(|_| JournalError::ArtifactMalformed)?;
 
-    // Checksum validation: serialized bytes must hash to claimed digest.
+    // Checksum validation: serialize and verify digest.
     let bytes = postcard::to_allocvec(&parts)
         .map_err(|_| JournalError::ArtifactMalformed)?;
     let computed = blake3::hash(&bytes);
-    if computed.as_bytes() != workflow.digest().as_bytes() {
+    if computed.as_bytes() != &workflow.digest().as_bytes() {
         return Err(JournalError::ArtifactChecksumMismatch);
     }
 
@@ -9179,6 +9179,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     let digest = workflow.digest();
 
     let result = admit_compiled_artifact(&journal, &workflow)?;
+    eprintln!("DEBUG: digest = {:?}, result = {:?}", digest.as_bytes(), result.as_bytes());
     assert_eq!(result, digest);
 
     let loaded = journal.compiled_ir(digest)?;
