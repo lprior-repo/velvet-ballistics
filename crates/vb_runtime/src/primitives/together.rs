@@ -92,8 +92,7 @@ pub fn together_join(
             // Append the last branch body result if it's not already a list.
             let last_result = *run.read_slot(out)?;
             match last_result {
-                SlotValue::List(_) => SlotValue::List(id),
-                SlotValue::Null => SlotValue::List(id),
+                SlotValue::List(_) | SlotValue::Null => SlotValue::List(id),
                 other => {
                     append_to_accumulator(run, store, accumulator, other)?;
                     *run.read_slot(accumulator)?

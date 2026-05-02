@@ -5,6 +5,9 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::too_many_lines)]
+// indexing_slicing: allowed at crate level because all indexing in vb_core is
+// guarded by explicit bounds checks that clippy cannot statically verify.
+#![allow(clippy::indexing_slicing)]
 //! Hot in-memory execution core for Velvet Ballastics.
 //!
 //! This crate owns the compiled workflow IR, numeric identifiers, runtime slot

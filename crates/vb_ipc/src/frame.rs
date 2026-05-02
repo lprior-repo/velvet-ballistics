@@ -35,13 +35,10 @@ pub fn decode_frame_payload(
     header: &IpcFrameHeader,
     payload: &[u8],
 ) -> Result<crate::IpcPayload, IpcError> {
-    let expected_len = match usize::try_from(header.payload_len) {
-        Ok(len) => len,
-        Err(_) => {
-            return Err(IpcError::PayloadLengthOutOfRange {
-                actual: header.payload_len,
-            });
-        }
+    let Ok(expected_len) = usize::try_from(header.payload_len) else {
+        return Err(IpcError::PayloadLengthOutOfRange {
+            actual: header.payload_len,
+        });
     };
     if payload.len() != expected_len {
         return Err(IpcError::PayloadLengthMismatch {
@@ -72,13 +69,10 @@ pub fn validate_frame_bounds(
     header: &IpcFrameHeader,
     max_payload: MaxPayloadBytes,
 ) -> Result<(), IpcError> {
-    let payload_len = match usize::try_from(header.payload_len) {
-        Ok(len) => len,
-        Err(_) => {
-            return Err(IpcError::PayloadLengthOutOfRange {
-                actual: header.payload_len,
-            });
-        }
+    let Ok(payload_len) = usize::try_from(header.payload_len) else {
+        return Err(IpcError::PayloadLengthOutOfRange {
+            actual: header.payload_len,
+        });
     };
     if payload_len > max_payload.get() {
         return Err(IpcError::PayloadTooLarge {
@@ -115,13 +109,10 @@ pub fn read_frame_payload<R: Read>(
     reader: &mut R,
     header: &IpcFrameHeader,
 ) -> Result<Vec<u8>, IpcError> {
-    let payload_len = match usize::try_from(header.payload_len) {
-        Ok(len) => len,
-        Err(_) => {
-            return Err(IpcError::PayloadLengthOutOfRange {
-                actual: header.payload_len,
-            });
-        }
+    let Ok(payload_len) = usize::try_from(header.payload_len) else {
+        return Err(IpcError::PayloadLengthOutOfRange {
+            actual: header.payload_len,
+        });
     };
     let mut payload = vec![0u8; payload_len];
     reader

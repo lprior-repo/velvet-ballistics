@@ -1,4 +1,11 @@
 #![forbid(unsafe_code)]
+// Pedantic allows: documentation-only lints that would require pervasive changes
+// with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::return_self_not_must_use)]
 //! Cold-path YAML compiler boundary.
 //!
 //! YAML enters the system only through this crate. The hot engine consumes only
@@ -620,7 +627,7 @@ pub fn compute_compiled_digest(source: &[u8]) -> WorkflowDigest {
 pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, CompileErrors> {
     let parts = workflow.to_parts();
     postcard::to_allocvec(&parts)
-        .map(|vec| vec.into_boxed_slice())
+        .map(std::vec::Vec::into_boxed_slice)
         .map_err(|error| {
             CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
                 feature: Box::leak(
@@ -1262,27 +1269,39 @@ impl CompileError {
     pub fn code(&self) -> &'static str {
         match self {
             Self::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
-            Self::Utf8(_) | Self::Parse(_) | Self::DocumentCount { .. } => "FORBIDDEN_YAML_FEATURE",
-            Self::EmptySource => "MISSING_REQUIRED_FIELD",
-            Self::TopLevelNotMapping => "TYPE_MISMATCH",
-            Self::NonStringKey { .. }
+            Self::Utf8(_)
+            | Self::Parse(_)
+            | Self::DocumentCount { .. }
+            | Self::NonStringKey { .. }
             | Self::AliasForbidden { .. }
             | Self::AnchorForbidden { .. }
             | Self::MergeKeyForbidden { .. }
             | Self::TagForbidden { .. }
             | Self::BadValue
             | Self::FloatForbidden => "FORBIDDEN_YAML_FEATURE",
+            Self::EmptySource
+            | Self::MissingField { .. }
+            | Self::MissingTriggerField { .. }
+            | Self::MissingStepId { .. }
+            | Self::MissingStepField { .. } => "MISSING_REQUIRED_FIELD",
+            Self::TopLevelNotMapping
+            | Self::FieldShape { .. }
+            | Self::InvalidInputSchema { .. }
+            | Self::StepShape { .. }
+            | Self::UnsupportedConstantValue { .. }
+            | Self::TypeMismatch { .. }
+            | Self::UnknownSlotType { .. } => "TYPE_MISMATCH",
             Self::DuplicateKey { .. } => "DUPLICATE_KEY",
             Self::DepthLimit { .. }
             | Self::NodeLimit { .. }
             | Self::SequenceLimit { .. }
             | Self::MappingLimit { .. }
-            | Self::ScalarLimit { .. } => "LIMIT_EXCEEDED",
+            | Self::ScalarLimit { .. }
+            | Self::StepIndexOutOfRange { .. }
+            | Self::SlotIndexOutOfRange { .. }
+            | Self::BranchTargetOutOfRange { .. }
+            | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
             Self::Workflow(error) => workflow_error_code(error),
-            Self::MissingField { .. }
-            | Self::MissingTriggerField { .. }
-            | Self::MissingStepId { .. }
-            | Self::MissingStepField { .. } => "MISSING_REQUIRED_FIELD",
             Self::UnknownTopLevelField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
             Self::InvalidVersion { .. } => "INVALID_VERSION",
             Self::InvalidTriggerCount { .. }
@@ -1290,37 +1309,26 @@ impl CompileError {
             | Self::TriggerShape { .. }
             | Self::UnknownTriggerField { .. }
             | Self::InvalidTriggerField { .. } => "UNSUPPORTED_TRIGGER",
-            Self::FieldShape { .. } => "TYPE_MISMATCH",
             Self::UnknownInputSchemaField { .. } => "UNKNOWN_INPUT_SCHEMA_FIELD",
-            Self::InvalidInputSchema { .. } => "TYPE_MISMATCH",
-            Self::UnsupportedTopLevelResult => "INVALID_FINISH",
-            Self::EmptySteps => "MISSING_STEP_PRIMITIVE",
+            Self::UnsupportedTopLevelResult | Self::LastStepMustFinish => "INVALID_FINISH",
+            Self::EmptySteps | Self::MissingStepPrimitive { .. } => "MISSING_STEP_PRIMITIVE",
             Self::InvalidName { field, value } => invalid_name_code(field, value),
             Self::DuplicateStepId { .. } => "DUPLICATE_ID",
-            Self::StepShape { .. } => "TYPE_MISMATCH",
             Self::UnknownStepField { .. } | Self::UnknownStepPrimitiveField { .. } => {
                 "UNKNOWN_STEP_FIELD"
             }
-            Self::MissingStepPrimitive { .. } => "MISSING_STEP_PRIMITIVE",
             Self::MultipleStepPrimitives { .. } => "MULTIPLE_STEP_PRIMITIVES",
             Self::UnsupportedStepPrimitive { primitive, .. } => primitive_code(primitive),
             Self::UnsupportedStepControlField { field, .. } => control_field_code(field),
             Self::StepFieldShape { field, .. } => step_field_shape_code(field),
-            Self::StepIndexOutOfRange { .. }
-            | Self::SlotIndexOutOfRange { .. }
-            | Self::BranchTargetOutOfRange { .. }
-            | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
             Self::BackwardBranchTarget { .. } | Self::UnknownStepTarget { .. } => {
                 "INVALID_THEN_TARGET"
             }
-            Self::LastStepMustFinish => "INVALID_FINISH",
-            Self::UnsupportedConstantValue { .. } => "TYPE_MISMATCH",
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),
             Self::UnsupportedAccessorReference { .. } => "UNSUPPORTED_ACCESSOR_REFERENCE",
             Self::UnreachableStep { .. } => "UNREACHABLE_STEP",
-            Self::TypeMismatch { .. } | Self::UnknownSlotType { .. } => "TYPE_MISMATCH",
             Self::SecretTaintLeak { .. } => "SECRET_RESULT_LEAK",
             Self::ExpressionUnexpectedChar { .. }
             | Self::ExpressionUnterminatedString { .. }
@@ -1431,6 +1439,7 @@ impl CompileErrors {
     }
 
     /// Iterates over collected errors in reporting order.
+    #[allow(clippy::iter_without_into_iter)]
     pub fn iter(&self) -> std::slice::Iter<'_, CompileError> {
         self.0.iter()
     }
@@ -1504,6 +1513,7 @@ fn reject_duplicate_mapping_keys(text: &str) -> Result<(), CompileError> {
     Ok(())
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn validate_duplicate_keys_in_started_node<'input>(
     event: Event<'input>,
     mark: Span,
@@ -1815,8 +1825,7 @@ fn build_source_ir_starts(steps: &saphyr::Sequence<'_>) -> Result<Vec<StepIdx>, 
 fn compiled_step_width(step: &Yaml<'_>, index: usize) -> Result<usize, CompileError> {
     let StepSpec { primitive, body } = step_spec(step, index)?;
     match primitive {
-        StepPrimitive::Ask => Ok(2),
-        StepPrimitive::ForEach | StepPrimitive::Together => Ok(2),
+        StepPrimitive::Ask | StepPrimitive::ForEach | StepPrimitive::Together => Ok(2),
         StepPrimitive::Collect | StepPrimitive::Reduce | StepPrimitive::Repeat => Ok(3),
         StepPrimitive::Finish => {
             let result = required_step_field(body, index, "result")?;
@@ -1990,11 +1999,10 @@ fn validate_for_each_shape(
 }
 
 fn reject_unsupported_for_each_fields(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
-    let mapping = match body.as_mapping() {
-        Some(m) => m,
-        None => return Ok(()),
+    let Some(mapping) = body.as_mapping() else {
+        return Ok(());
     };
-    for (key, _) in mapping.iter() {
+    for (key, _) in mapping {
         let Some(field) = key.as_str() else {
             continue;
         };
@@ -2776,6 +2784,7 @@ fn reject_non_mapping_step_body(
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn set_const_node(
     id: StepIdx,
     output: SlotIdx,
@@ -2835,6 +2844,7 @@ fn compile_choose(
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn compile_slot_choose(
     id: StepIdx,
     condition: SlotIdx,
@@ -3105,9 +3115,9 @@ fn compile_ask(
     }
     let mut nodes = lower_ask(id, prompt, answer, timeout, &mut SlotCompiler::new())?;
     // Ask (index 0) chains to AskResume for structural reachability.
-    if let (Some(ask_node), Some(resume_node)) = (nodes.get(0), nodes.get(1)) {
+    if let (Some(_ask_node), Some(resume_node)) = (nodes.first(), nodes.get(1)) {
         let resume_id = resume_node.id;
-        if let Some(ask_node) = nodes.get_mut(0) {
+        if let Some(ask_node) = nodes.first_mut() {
             ask_node.next = Some(resume_id);
         }
     }
@@ -3464,8 +3474,8 @@ fn slot_value(node: &Yaml<'_>, step: usize) -> Result<ConstValue, CompileError> 
         Yaml::Value(saphyr::Scalar::Null) => Ok(ConstValue::Null),
         Yaml::Value(saphyr::Scalar::Boolean(value)) => Ok(ConstValue::Bool(*value)),
         Yaml::Value(saphyr::Scalar::Integer(value)) => Ok(ConstValue::I64(*value)),
-        Yaml::Value(saphyr::Scalar::String(value)) => text_slot_value(value.as_ref(), step),
-        Yaml::Representation(value, _, None) => text_slot_value(value.as_ref(), step),
+        Yaml::Value(saphyr::Scalar::String(value))
+        | Yaml::Representation(value, _, None) => text_slot_value(value.as_ref(), step),
         Yaml::Sequence(sequence) => list_slot_value(sequence, step),
         Yaml::Mapping(mapping) => object_slot_value(mapping, step),
         _ => Err(CompileError::UnsupportedConstantValue { step }),

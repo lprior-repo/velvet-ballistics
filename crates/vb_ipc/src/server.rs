@@ -535,9 +535,8 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         return IpcResponse::BadRequest;
     };
 
-    let ask_step = match step_from_ticket(ticket) {
-        Some(step) => step,
-        None => return IpcResponse::BadRequest,
+    let Some(ask_step) = step_from_ticket(ticket) else {
+        return IpcResponse::BadRequest;
     };
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -571,9 +570,8 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
         return IpcResponse::BadRequest;
     };
 
-    let action_ticket = match action_ticket_from_wire(run_id, ticket) {
-        Some(ticket) => ticket,
-        None => return IpcResponse::BadRequest,
+    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+        return IpcResponse::BadRequest;
     };
     let output_len = payload_len(output.len());
     let decoded_output = match decode_payload::<crate::IpcActionOutputPayload>(&output) {
@@ -603,9 +601,8 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         return IpcResponse::BadRequest;
     };
 
-    let action_ticket = match action_ticket_from_wire(run_id, ticket) {
-        Some(ticket) => ticket,
-        None => return IpcResponse::BadRequest,
+    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+        return IpcResponse::BadRequest;
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
@@ -691,14 +688,11 @@ fn typed_events_response(events: &[TraceEvent], from_sequence: u64) -> IpcRespon
     let mut typed_events = Vec::with_capacity(events.len());
     let mut index = 0usize;
     while index < events.len() {
-        let sequence = match u64::try_from(index) {
-            Ok(value) => value,
-            Err(_) => {
-                return IpcResponse::CountOutOfRange {
-                    actual: index,
-                    limit: u32::MAX,
-                };
-            }
+        let Ok(sequence) = u64::try_from(index) else {
+            return IpcResponse::CountOutOfRange {
+                actual: index,
+                limit: u32::MAX,
+            };
         };
         if sequence >= from_sequence {
             let Some(event) = events.get(index) else {

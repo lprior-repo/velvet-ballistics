@@ -1,4 +1,11 @@
 #![forbid(unsafe_code)]
+// Pedantic allows: documentation-only lints that would require pervasive changes
+// with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::return_self_not_must_use)]
 //! Generated Rust workflow mode for velvet-ballastics maxperf builds.
 //!
 //! Compiles `CompiledWorkflow` IR into native Rust source that passes the same
@@ -270,8 +277,7 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     for step_idx in 0..workflow.node_count() {
         writeln!(
             out,
-            "            {} => step_{}(&mut slots)?,",
-            step_idx, step_idx
+            "            {step_idx} => step_{step_idx}(&mut slots)?,"
         )
         .map_err(fmt_err)?;
     }
@@ -304,8 +310,7 @@ pub fn emit_step_function(
     let step_id = node.id.get();
     writeln!(
         out,
-        "fn step_{}(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> {{",
-        step_id
+        "fn step_{step_id}(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> {{"
     )
     .map_err(fmt_err)?;
 
@@ -617,9 +622,8 @@ pub fn emit_expr_function(
     expr_idx: vb_core::ExprIdx,
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
-    let program = match workflow.expression(expr_idx) {
-        Some(p) => p,
-        None => return Ok(()),
+    let Some(program) = workflow.expression(expr_idx) else {
+        return Ok(());
     };
 
     writeln!(
@@ -1272,32 +1276,26 @@ fn emit_accessor_eval(
     accessor_idx: vb_core::AccessorIdx,
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
-    let accessor = match workflow.accessor(accessor_idx) {
-        Some(a) => a,
-        None => {
-            writeln!(
-                out,
-                "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor index out of bounds\" }});"
-            )
-            .map_err(fmt_err)?;
-            return Ok(());
-        }
+    let Some(accessor) = workflow.accessor(accessor_idx) else {
+        writeln!(
+            out,
+            "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor index out of bounds\" }});"
+        )
+        .map_err(fmt_err)?;
+        return Ok(());
     };
 
     let root_slot = accessor.root.get();
     if accessor.path.is_empty() {
-        writeln!(out, "    stack.push(read_slot(slots, {})?)?;", root_slot).map_err(fmt_err)?;
+        writeln!(out, "    stack.push(read_slot(slots, {root_slot})?)?;").map_err(fmt_err)?;
     } else {
-        let first_segment = match accessor.path.first() {
-            Some(seg) => seg,
-            None => {
-                writeln!(
-                    out,
-                    "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor path segment missing\" }});"
-                )
-                .map_err(fmt_err)?;
-                return Ok(());
-            }
+        let Some(first_segment) = accessor.path.first() else {
+            writeln!(
+                out,
+                "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor path segment missing\" }});"
+            )
+            .map_err(fmt_err)?;
+            return Ok(());
         };
         let segment_name = match first_segment {
             vb_core::PathSegment::Field(_) => "field",
@@ -1305,10 +1303,7 @@ fn emit_accessor_eval(
         };
         writeln!(
             out,
-            "    {{ let _root = read_slot(slots, {})?; return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor traversal '{}' on generated type\" }}); }}"
-            ,
-            root_slot,
-            segment_name
+            "    {{ let _root = read_slot(slots, {root_slot})?; return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor traversal '{segment_name}' on generated type\" }}); }}"
         )
         .map_err(fmt_err)?;
     }

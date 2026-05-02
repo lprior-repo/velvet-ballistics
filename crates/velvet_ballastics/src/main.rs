@@ -1,4 +1,6 @@
 //! Velvet Ballastics binary entrypoint.
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -51,33 +53,33 @@ fn main() -> ExitCode {
     let parsed = parse_args(&args);
 
     match parsed {
-        Ok(Command::Help) => exit_from_io(write_help_stdout(), ExitCode::SUCCESS),
-        Ok(Command::Version) => exit_from_io(write_version_stdout(), ExitCode::SUCCESS),
+        Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
+        Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::Validate { workflow }) => cmd_validate(&workflow),
         Ok(Command::Compile {
             workflow,
             emit,
             out,
-        }) => cmd_compile(&workflow, &emit, &out),
+        }) => cmd_compile(&workflow, emit, &out),
         Ok(Command::Run {
             workflow,
             input_bin,
             durability,
             db,
-        }) => cmd_run(&workflow, &input_bin, &durability, db.as_deref()),
+        }) => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
         Ok(Command::RunCompiled {
             workflow,
             input_bin,
             durability,
             db,
-        }) => cmd_run_compiled(&workflow, &input_bin, &durability, db.as_deref()),
+        }) => cmd_run_compiled(&workflow, &input_bin, durability, db.as_deref()),
         Ok(Command::IpcServe { socket, db }) => cmd_ipc_serve(&socket, &db),
         Ok(Command::Inspect { run_id, db }) => cmd_inspect(&run_id, &db),
         Ok(Command::Events { run_id, db }) => cmd_events(&run_id, &db),
         Ok(Command::Replay { run_id, db }) => cmd_replay(&run_id, &db),
         Ok(Command::BenchRun { workflow }) => cmd_bench_run(&workflow),
         Ok(Command::Doctor { db }) => cmd_doctor(&db),
-        Err(e) => exit_from_io(write_error_stderr(&e), ExitCode::FAILURE),
+        Err(e) => exit_from_io(&write_error_stderr(&e), ExitCode::FAILURE),
     }
 }
 
@@ -390,7 +392,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_compile(workflow: &std::path::Path, emit: &EmitTarget, out: &std::path::Path) -> ExitCode {
+fn cmd_compile(workflow: &std::path::Path, emit: EmitTarget, out: &std::path::Path) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -446,7 +448,7 @@ fn cmd_compile(workflow: &std::path::Path, emit: &EmitTarget, out: &std::path::P
 fn cmd_run(
     workflow: &std::path::Path,
     input_bin: &std::path::Path,
-    durability: &DurabilityMode,
+    durability: DurabilityMode,
     db: Option<&std::path::Path>,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
@@ -477,13 +479,13 @@ fn cmd_run(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, *durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
 fn cmd_run_compiled(
     vbir_path: &std::path::Path,
     input_bin: &std::path::Path,
-    durability: &DurabilityMode,
+    durability: DurabilityMode,
     db: Option<&std::path::Path>,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
@@ -519,7 +521,7 @@ fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, *durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1115,9 +1117,8 @@ fn event_name(event: &vb_storage::JournalEvent) -> &'static str {
 }
 
 fn unique_doctor_run_id() -> u64 {
-    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration,
-        Err(_) => return u64::MAX,
+    let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return u64::MAX;
     };
     match u64::try_from(now.as_nanos()) {
         Ok(value) => value,
@@ -1127,7 +1128,7 @@ fn unique_doctor_run_id() -> u64 {
 
 // --- Helpers ---
 
-fn exit_from_io(result: io::Result<()>, success_code: ExitCode) -> ExitCode {
+fn exit_from_io(result: &io::Result<()>, success_code: ExitCode) -> ExitCode {
     match result {
         Ok(()) => success_code,
         Err(_) => ExitCode::FAILURE,

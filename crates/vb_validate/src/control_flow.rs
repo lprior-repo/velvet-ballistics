@@ -91,9 +91,8 @@ fn mark_reachable(flow: &WorkflowFlow, reachable: &mut [bool]) -> ValidationResu
 }
 
 fn push_successors(flow: &WorkflowFlow, index: usize, stack: &mut Vec<usize>) {
-    let step = match flow.steps.get(index) {
-        Some(step) => step,
-        None => return,
+    let Some(step) = flow.steps.get(index) else {
+        return;
     };
     for &target in &step.branch_targets {
         if target < flow.steps.len() {

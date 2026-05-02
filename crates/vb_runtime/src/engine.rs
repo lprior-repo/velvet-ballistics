@@ -436,7 +436,7 @@ pub fn drive_deterministic_full(
         }
 
         match signal {
-            RuntimeSignal::Continue => continue,
+            RuntimeSignal::Continue => {}
             other => return Ok(other),
         }
     }
@@ -493,6 +493,7 @@ pub fn execute_do(
     Ok(RuntimeSignal::AwaitingAction(ticket))
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn execute_do_without_contract(
     run: &RunFrame,
     step: StepIdx,
@@ -568,6 +569,7 @@ pub fn resume_action_outcome(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
     match signal {
         EngineSignal::Continue => RuntimeSignal::Continue,
@@ -594,9 +596,8 @@ fn mark_step_after_signal(
     match signal {
         RuntimeSignal::AwaitingWait => run.mark_waiting(step),
         RuntimeSignal::AwaitingAsk => run.mark_asking(step),
-        RuntimeSignal::AwaitingAction(_) => Ok(()),
+        RuntimeSignal::AwaitingAction(_) | RuntimeSignal::StepBudgetExhausted => Ok(()),
         RuntimeSignal::Continue | RuntimeSignal::Finished(_) => run.mark_succeeded(step),
-        RuntimeSignal::StepBudgetExhausted => Ok(()),
     }
 }
 

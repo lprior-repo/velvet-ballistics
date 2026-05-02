@@ -104,19 +104,20 @@ fn collect_references_from_step_kind(
 ) {
     use crate::ast::StepKindAst;
     match kind {
-        StepKindAst::Run { .. } => {}
+        StepKindAst::Run { .. }
+        | StepKindAst::ForEach { .. }
+        | StepKindAst::Together { .. }
+        | StepKindAst::Collect { .. }
+        | StepKindAst::Repeat { .. }
+        | StepKindAst::Wait { .. }
+        | StepKindAst::Ask { .. } => {}
         StepKindAst::Save { fields } => collect_references_from_value_entries(fields, tables, errors),
         StepKindAst::Choose { condition, .. } => {
             collect_references_from_expression(condition, tables, errors);
         }
-        StepKindAst::ForEach { .. }
-        | StepKindAst::Together { .. }
-        | StepKindAst::Collect { .. }
-        | StepKindAst::Repeat { .. } => {}
         StepKindAst::Reduce { initial, .. } => {
             collect_references_from_value(initial, tables, errors);
         }
-        StepKindAst::Wait { .. } | StepKindAst::Ask { .. } => {}
         StepKindAst::Finish { result } => {
             collect_references_from_expression(result, tables, errors);
         }
@@ -197,7 +198,7 @@ fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(),
     let Some((root, tail)) = body.split_once('.') else {
         // Bare reference -- delegate to shared validation
         return validate_single_reference(reference, tables)
-            .map_err(|e| map_validation_error(reference, e));
+            .map_err(|e| map_validation_error(reference, &e));
     };
     // Compile-specific: slot references are not in the standalone validator
     if matches!(root, "slot" | "slots") {
@@ -210,7 +211,7 @@ fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(),
         return Err(error);
     }
     validate_single_reference(reference, tables)
-        .map_err(|e| map_validation_error(reference, e))
+        .map_err(|e| map_validation_error(reference, &e))
 }
 
 /// Validates a `$slot.*` reference (compile-specific).
@@ -262,9 +263,9 @@ fn check_accessor_path(
     tables: &RefTables,
 ) -> Option<CompileError> {
     // Only check accessor paths for name-rooted references
-    let (name, path) = match tail.split_once('.') {
-        Some((name, path)) => (name, path),
-        None => return None,
+    #[allow(clippy::question_mark)]
+    let Some((name, path)) = tail.split_once('.') else {
+        return None;
     };
     // Check if the root+name is declared; if so, the trailing path is unsupported
     let is_declared = match root {
@@ -286,14 +287,8 @@ fn check_accessor_path(
 
 /// Maps a `vb_validate::ValidationError` from shared reference validation into
 /// a `CompileError` with source-location context.
-fn map_validation_error(reference: &str, error: vb_validate::ValidationError) -> CompileError {
+fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -> CompileError {
     match error {
-        vb_validate::ValidationError::DirectRuntimeReference => CompileError::IllegalReference {
-            reference: Box::from(reference),
-        },
-        vb_validate::ValidationError::FutureReference { .. } => CompileError::IllegalReference {
-            reference: Box::from(reference),
-        },
         vb_validate::ValidationError::UnknownReference { .. } => {
             let Some(body) = reference.strip_prefix('$') else {
                 return CompileError::UnknownReferenceRoot {

@@ -131,21 +131,18 @@ pub fn lex_expr_spanned(input: &str) -> ExprResult<Vec<SpannedToken>> {
 
     while let Some(result) = lexer.next() {
         let span = lexer.span();
-        match result {
-            Ok(logos_tok) => {
-                let tok = convert_logos_token(logos_tok, lexer.slice())?;
-                push_spanned_token(&mut tokens, tok, span.start, span.end)?;
+        if let Ok(logos_tok) = result {
+            let tok = convert_logos_token(logos_tok, lexer.slice())?;
+            push_spanned_token(&mut tokens, tok, span.start, span.end)?;
+        } else {
+            // Logos reports an error for unrecognized input.
+            // Check for unterminated string (opening " with no closing quote).
+            let slice = lexer.slice();
+            if slice.starts_with('"') {
+                return Err(ExprError::UnterminatedString);
             }
-            Err(()) => {
-                // Logos reports an error for unrecognized input.
-                // Check for unterminated string (opening " with no closing quote).
-                let slice = lexer.slice();
-                if slice.starts_with('"') {
-                    return Err(ExprError::UnterminatedString);
-                }
-                let ch = slice.chars().next().ok_or(ExprError::UnexpectedEof)?;
-                return Err(ExprError::UnexpectedChar { ch });
-            }
+            let ch = slice.chars().next().ok_or(ExprError::UnexpectedEof)?;
+            return Err(ExprError::UnexpectedChar { ch });
         }
     }
 

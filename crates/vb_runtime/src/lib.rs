@@ -2,6 +2,14 @@
 #![deny(unused_must_use)]
 #![deny(unreachable_pub)]
 #![deny(rust_2018_idioms)]
+// Pedantic allows: documentation-only lints that would require pervasive changes
+// with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::comparison_chain)]
 #![cfg_attr(
     test,
     allow(

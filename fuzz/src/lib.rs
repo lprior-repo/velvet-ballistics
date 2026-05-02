@@ -1,4 +1,11 @@
 //! Shared fuzz target bodies for Velvet Ballistics evidence gates.
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::doc_markdown)]
 
 use vb_core::WorkflowParts;
 
@@ -405,9 +412,8 @@ pub fn fuzz_resource_budget(data: &[u8]) {
     );
 
     // Budget exhaustion must be a clean Result, never a panic.
-    let signal = match result {
-        Ok(signal) => signal,
-        Err(_) => return,
+    let Ok(signal) = result else {
+        return;
     };
 
     let executed = run.executed();

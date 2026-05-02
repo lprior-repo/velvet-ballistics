@@ -422,11 +422,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn literal(&mut self, value: ExpressionLiteral) -> Result<ParsedExpression, CompileError> {
         self.advance();
         Ok(ParsedExpression::Literal(value))
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn reference(&mut self, value: Box<str>) -> Result<ParsedExpression, CompileError> {
         self.advance();
         Ok(ParsedExpression::Reference(value))
@@ -509,6 +511,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn close_args(
         &mut self,
         args: &mut Vec<ParsedExpression>,

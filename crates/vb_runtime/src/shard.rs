@@ -246,9 +246,8 @@ impl Shard {
             return Ok(false);
         }
 
-        let cmd = match self.command_queue.pop() {
-            Some(cmd) => cmd,
-            None => return Ok(true),
+        let Some(cmd) = self.command_queue.pop() else {
+            return Ok(true);
         };
 
         match cmd {
@@ -260,10 +259,10 @@ impl Shard {
             } => self.handle_submit_with_inputs(run, workflow, &inputs)?,
             ShardCommand::Resume { run } => self.handle_resume(run)?,
             ShardCommand::ActionCompleted { ticket, output } => {
-                self.handle_action_completion(ticket, output)?
+                self.handle_action_completion(ticket, output)?;
             }
             ShardCommand::ActionCompletedLegacy { run, step } => {
-                self.handle_legacy_action_completion(run, step)?
+                self.handle_legacy_action_completion(run, step)?;
             }
             ShardCommand::ActionFailed { ticket, failure } => {
                 self.handle_action_failure(ticket, failure)?;
@@ -375,6 +374,7 @@ impl Shard {
         self.drive_run(run)
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_action_completion(
         &mut self,
         ticket: ActionTicket,
@@ -428,6 +428,7 @@ impl Shard {
         self.drive_run(run)
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_action_failure(
         &mut self,
         ticket: ActionTicket,
@@ -541,12 +542,9 @@ impl Shard {
 
     fn handle_timer(&mut self, run: RunId) -> RuntimeResult<()> {
         let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timers.swap_remove(&run) {
-            Some(timer) => timer,
-            None => {
-                self.runs.insert(run, state);
-                return Err(RuntimeError::InvalidTimerFire);
-            }
+        let Some(timer) = self.pending_timers.swap_remove(&run) else {
+            self.runs.insert(run, state);
+            return Err(RuntimeError::InvalidTimerFire);
         };
         advance_after_timer_fire(&mut state, timer)?;
         match timer.kind {
@@ -608,6 +606,7 @@ impl Shard {
         )
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn apply_drive_result(
         &mut self,
         run: RunId,
@@ -615,15 +614,11 @@ impl Shard {
         result: RuntimeEngineResult<RuntimeSignal>,
     ) -> RuntimeResult<()> {
         match result {
-            Ok(RuntimeSignal::Continue) => {
+            Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
                 self.keep_run(run, state);
                 Ok(())
             }
             Ok(RuntimeSignal::Finished(_)) => self.finish_run(run, state),
-            Ok(RuntimeSignal::StepBudgetExhausted) => {
-                self.keep_run(run, state);
-                Ok(())
-            }
             Ok(RuntimeSignal::AwaitingAction(ticket)) => self.await_action(run, state, ticket),
             Ok(RuntimeSignal::AwaitingWait) => self.await_timer(run, state, PendingTimerKind::Wait),
             Ok(RuntimeSignal::AwaitingAsk) => self.await_timer(run, state, PendingTimerKind::Ask),
@@ -774,8 +769,8 @@ fn timer_registration_required(state: &RunState, step: StepIdx) -> bool {
     };
     match node.kind {
         CompiledNodeKind::WaitUntil { .. } => true,
-        CompiledNodeKind::WaitEvent { timeout_slot, .. } => timeout_slot.is_some(),
-        CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
+        CompiledNodeKind::WaitEvent { timeout_slot, .. }
+        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
         _ => false,
     }
 }
@@ -785,8 +780,7 @@ fn advance_after_timer_fire(state: &mut RunState, timer: PendingTimer) -> Runtim
         return Err(RuntimeError::InvalidTimerFire);
     };
     match (timer.kind, &node.kind) {
-        (PendingTimerKind::Wait, CompiledNodeKind::WaitUntil { .. })
-        | (PendingTimerKind::Wait, CompiledNodeKind::WaitEvent { .. })
+        (PendingTimerKind::Wait, CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. })
         | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
@@ -916,9 +910,8 @@ fn find_error_handler_for_failure(workflow: &CompiledWorkflow, failed: StepIdx) 
     let mut index = 0usize;
     let count = usize::from(workflow.node_count());
     while index < count {
-        let raw = match u16::try_from(index) {
-            Ok(value) => value,
-            Err(_) => return None,
+        let Ok(raw) = u16::try_from(index) else {
+            return None;
         };
         if let Some(handler) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
             return Some(handler);
@@ -965,7 +958,7 @@ fn snapshot_from_state(run: RunId, correlation: u64, state: &RunState) -> Inspec
 }
 
 /// Shard configuration.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShardConfig {
     /// Bounded capacity for the command queue.
     pub command_queue_capacity: usize,
