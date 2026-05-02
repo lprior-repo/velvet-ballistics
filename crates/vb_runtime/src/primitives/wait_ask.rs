@@ -71,8 +71,9 @@ pub fn ask_resume(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let answer_value = *run.read_slot(answer)?;
+    let answer_taint = run.read_taint(answer)?;
     if let Some(out) = output {
-        run.write_slot(out, answer_value)?;
+        run.write_slot_with_taint(out, answer_value, answer_taint)?;
     }
     let target = next.ok_or(EngineError::MissingNextStep { step })?;
     run.set_pc(target)?;

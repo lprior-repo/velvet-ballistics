@@ -3,7 +3,7 @@
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
+use vb_core::value::{SlotValue, join_taint};
 use vb_core::value_store::ValueStore;
 
 use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
@@ -64,7 +64,7 @@ pub fn together_branch(
     if branch > 0 {
         let branch_output = require_output(output, run.pc())?;
         let previous_result = *run.read_slot(branch_output)?;
-        append_to_accumulator(run, store, accumulator, previous_result)?;
+        append_to_accumulator(run, store, accumulator, previous_result, branch_output)?;
     }
     jump_to(run, entry)
 }
@@ -94,7 +94,7 @@ pub fn together_join(
             match last_result {
                 SlotValue::List(_) | SlotValue::Null => SlotValue::List(id),
                 other => {
-                    append_to_accumulator(run, store, accumulator, other)?;
+                    append_to_accumulator(run, store, accumulator, other, out)?;
                     *run.read_slot(accumulator)?
                 }
             }
@@ -104,7 +104,10 @@ pub fn together_join(
             acc_value
         }
     };
-    run.write_slot(out, final_list)?;
+    let acc_taint = run.read_taint(accumulator)?;
+    let out_taint = run.read_taint(out)?;
+    let combined_taint = join_taint(acc_taint, out_taint);
+    run.write_slot_with_taint(out, final_list, combined_taint)?;
     jump_to_next(run, next, step)
 }
 
@@ -120,14 +123,18 @@ fn append_to_accumulator(
     store: &mut ValueStore,
     accumulator: SlotIdx,
     value: SlotValue,
+    branch_output: SlotIdx,
 ) -> Result<(), EngineError> {
     let current = *run.read_slot(accumulator)?;
+    let acc_taint = run.read_taint(accumulator)?;
+    let branch_taint = run.read_taint(branch_output)?;
+    let combined_taint = join_taint(acc_taint, branch_taint);
     let list_id = expect_list(current)?;
     let existing = store.list(list_id)?;
     let mut items = existing.to_vec();
     items.push(value);
     let updated = store.insert_list(items.into_boxed_slice())?;
-    run.write_slot(accumulator, SlotValue::List(updated))?;
+    run.write_slot_with_taint(accumulator, SlotValue::List(updated), combined_taint)?;
     Ok(())
 }
 

@@ -22,6 +22,7 @@ pub fn for_each_start(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let list_id = expect_list(*run.read_slot(input)?)?;
+    let input_taint = run.read_taint(input)?;
     let items = store.list(list_id)?;
     let item_count = items.len();
     let limit_count = usize::try_from(limit).map_err(|_| EngineError::IterationLimitExceeded {
@@ -34,9 +35,10 @@ pub fn for_each_start(
     }
     let iter_output = require_output(output, run.pc())?;
     if item_count == 0 {
-        run.write_slot(
+        run.write_slot_with_taint(
             iter_output,
             SlotValue::List(store.insert_list(empty_list())?),
+            input_taint,
         )?;
         return jump_to(run, done);
     }
@@ -46,10 +48,10 @@ pub fn for_each_start(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each item_count checked nonzero",
         })?;
-    run.write_slot(item_slot, first)?;
+    run.write_slot_with_taint(item_slot, first, input_taint)?;
     let tail = tail_items(items)?;
     let tail_id = store.insert_list(tail)?;
-    run.write_slot(iter_output, SlotValue::List(tail_id))?;
+    run.write_slot_with_taint(iter_output, SlotValue::List(tail_id), input_taint)?;
     jump_to(run, body)
 }
 
@@ -63,6 +65,7 @@ pub fn for_each_next(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let list_id = expect_list(*run.read_slot(iterator_slot)?)?;
+    let iter_taint = run.read_taint(iterator_slot)?;
     let items = store.list(list_id)?;
     if items.is_empty() {
         return jump_to(run, done);
@@ -74,10 +77,10 @@ pub fn for_each_next(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each next items checked nonempty",
         })?;
-    run.write_slot(item_output, first)?;
+    run.write_slot_with_taint(item_output, first, iter_taint)?;
     let tail = tail_items(items)?;
     let tail_id = store.insert_list(tail)?;
-    run.write_slot(iterator_slot, SlotValue::List(tail_id))?;
+    run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
     jump_to(run, body)
 }
 
@@ -91,8 +94,9 @@ pub fn for_each_join(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let output_slot = require_output(output, step)?;
     let value = *run.read_slot(materialized)?;
+    let taint = run.read_taint(materialized)?;
     expect_list(value)?;
-    run.write_slot(output_slot, value)?;
+    run.write_slot_with_taint(output_slot, value, taint)?;
     jump_to_next(run, next, step)
 }
 
