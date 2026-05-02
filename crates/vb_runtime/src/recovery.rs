@@ -43,6 +43,13 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     }
 
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
+        if self.seed.summary.slots_written > 0 && self.seed.unsupported.slot_values {
+            return Err(RuntimeError::InvalidRecoveryHydration);
+        }
+        if self.seed.summary.slots_written > 0 && self.seed.unsupported.slot_taint {
+            return Err(RuntimeError::InvalidRecoveryHydration);
+        }
+
         let mut frame = RunFrame::new(
             self.seed.summary.run,
             self.seed.first_step,

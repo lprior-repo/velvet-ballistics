@@ -372,6 +372,11 @@ mod tests {
                     run,
                     workflow: WorkflowDigest::from_bytes([2; 32]),
                 },
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step: StepIdx::new(1),
+                    output: SlotIdx::ZERO,
+                },
                 RuntimeJournalEvent::RunFinished {
                     run,
                     result: SlotIdx::ZERO,

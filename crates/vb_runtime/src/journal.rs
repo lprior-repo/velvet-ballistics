@@ -101,6 +101,22 @@ pub enum RuntimeJournalEvent {
         /// Slot written by the event.
         slot: SlotIdx,
     },
+    /// Deterministic step began execution.
+    StepStarted {
+        /// Run identifier.
+        run: RunId,
+        /// Step index.
+        step: StepIdx,
+    },
+    /// Deterministic step completed and wrote an output slot.
+    StepSucceeded {
+        /// Run identifier.
+        run: RunId,
+        /// Step index.
+        step: StepIdx,
+        /// Output slot index.
+        output: SlotIdx,
+    },
 }
 
 impl RuntimeJournalEvent {
@@ -119,7 +135,9 @@ impl RuntimeJournalEvent {
             | Self::WaitResolved { run, .. }
             | Self::AskScheduled { run, .. }
             | Self::AskAnswered { run, .. }
-            | Self::SlotWritten { run, .. } => run,
+            | Self::SlotWritten { run, .. }
+            | Self::StepStarted { run, .. }
+            | Self::StepSucceeded { run, .. } => run,
         }
     }
 }
@@ -300,6 +318,12 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunCancelled { run } => {
                 Some(JournalEvent::RunCancelled { run, seq })
             }
+            RuntimeJournalEvent::StepStarted { run, step } => {
+                Some(JournalEvent::StepStarted { run, seq, step })
+            }
+            RuntimeJournalEvent::StepSucceeded { run, step, output } => {
+                Some(JournalEvent::StepSucceeded { run, seq, step, output })
+            }
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
@@ -345,7 +369,9 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => None,
+            | RuntimeJournalEvent::SlotWritten { .. }
+            | RuntimeJournalEvent::StepStarted { .. }
+            | RuntimeJournalEvent::StepSucceeded { .. } => None,
         }
     }
 
@@ -372,7 +398,9 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
-            | RuntimeJournalEvent::ActionFailed { .. } => None,
+            | RuntimeJournalEvent::ActionFailed { .. }
+            | RuntimeJournalEvent::StepStarted { .. }
+            | RuntimeJournalEvent::StepSucceeded { .. } => None,
         }
     }
 

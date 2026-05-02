@@ -552,7 +552,22 @@ pub fn recover_runtime_frame_seed_from_events(
         builder.observe_event(event)?;
     }
 
-    builder.finish()
+    let seed = builder.finish()?;
+
+    if seed.summary.slots_written > 0 && seed.unsupported.slot_values {
+        return Err(RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: "recovery cannot reconstruct slot values from durable events".to_owned(),
+        });
+    }
+    if seed.summary.slots_written > 0 && seed.unsupported.slot_taint {
+        return Err(RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: "recovery cannot reconstruct slot taint from durable events".to_owned(),
+        });
+    }
+
+    Ok(seed)
 }
 
 /// Recovers summary hydration for every durable run header whose journal has no

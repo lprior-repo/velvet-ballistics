@@ -404,6 +404,11 @@ impl Shard {
             run,
             slot: output.output_slot,
         })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: ticket.step,
+            output: output.output_slot,
+        })?;
         self.journal.append(RuntimeJournalEvent::ActionCompleted {
             run,
             step: ticket.step,
@@ -477,7 +482,7 @@ impl Shard {
                 code: failure.code,
             });
             let state = self.take_run_state(run)?;
-            self.fail_run_state(run, state);
+            self.fail_run_state(run, state)?;
             return Ok(());
         }
         self.trace_ring.push(TraceEvent::ActionFailed {
@@ -517,6 +522,20 @@ impl Shard {
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         });
+        self.journal.append(RuntimeJournalEvent::AskAnswered {
+            run,
+            step: answer.ticket.ask_step,
+            slot: answer.answer_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot: answer.answer_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: answer.ticket.ask_step,
+            output: answer.answer_slot,
+        })?;
         self.drive_run(run)
     }
 
@@ -532,18 +551,15 @@ impl Shard {
         advance_after_timer_fire(&mut state, timer)?;
         match timer.kind {
             PendingTimerKind::Wait => {
-                match self.journal.append(RuntimeJournalEvent::WaitResolved {
+                self.journal.append(RuntimeJournalEvent::WaitResolved {
                     run,
                     step: timer.step,
-                }) {
-                    Ok(()) | Err(_) => {}
-                }
+                })?;
             }
             PendingTimerKind::Ask => {}
         }
         let result = Self::drive_state(&mut state, self.step_budget_per_tick);
-        self.apply_drive_result(run, state, result);
-        Ok(())
+        self.apply_drive_result(run, state, result)
     }
 
     fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
@@ -567,8 +583,7 @@ impl Shard {
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {
         let mut state = self.take_run_state(run)?;
         let result = Self::drive_state(&mut state, self.step_budget_per_tick);
-        self.apply_drive_result(run, state, result);
-        Ok(())
+        self.apply_drive_result(run, state, result)
     }
 
     fn take_run_state(&mut self, run: RunId) -> RuntimeResult<RunState> {
@@ -598,11 +613,17 @@ impl Shard {
         run: RunId,
         state: RunState,
         result: RuntimeEngineResult<RuntimeSignal>,
-    ) {
+    ) -> RuntimeResult<()> {
         match result {
-            Ok(RuntimeSignal::Continue) => self.keep_run(run, state),
+            Ok(RuntimeSignal::Continue) => {
+                self.keep_run(run, state);
+                Ok(())
+            }
             Ok(RuntimeSignal::Finished(_)) => self.finish_run(run, state),
-            Ok(RuntimeSignal::StepBudgetExhausted) => self.keep_run(run, state),
+            Ok(RuntimeSignal::StepBudgetExhausted) => {
+                self.keep_run(run, state);
+                Ok(())
+            }
             Ok(RuntimeSignal::AwaitingAction(ticket)) => self.await_action(run, state, ticket),
             Ok(RuntimeSignal::AwaitingWait) => self.await_timer(run, state, PendingTimerKind::Wait),
             Ok(RuntimeSignal::AwaitingAsk) => self.await_timer(run, state, PendingTimerKind::Ask),
@@ -615,7 +636,7 @@ impl Shard {
         self.runs.insert(run, state);
     }
 
-    fn finish_run(&mut self, run: RunId, state: RunState) {
+    fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
@@ -624,66 +645,60 @@ impl Shard {
             Some(slot) => slot,
             None => SlotIdx::ZERO,
         };
-        match self
-            .journal
-            .append(RuntimeJournalEvent::RunFinished { run, result })
-        {
-            Ok(()) | Err(_) => {}
-        }
+        self.journal
+            .append(RuntimeJournalEvent::StepSucceeded {
+                run,
+                step: state.frame.pc(),
+                output: result,
+            })?;
+        self.journal
+            .append(RuntimeJournalEvent::RunFinished { run, result })?;
         self.release_frame(state.frame);
+        Ok(())
     }
 
-    fn await_action(&mut self, run: RunId, mut state: RunState, ticket: ActionTicket) {
+    fn await_action(&mut self, run: RunId, mut state: RunState, ticket: ActionTicket) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
-        match self.journal.append(RuntimeJournalEvent::ActionScheduled {
+        self.journal.append(RuntimeJournalEvent::ActionScheduled {
             run,
             step,
             action: ticket.action,
-        }) {
-            Ok(()) | Err(_) => {}
-        }
+        })?;
         self.runs.insert(run, state);
+        Ok(())
     }
 
-    fn await_timer(&mut self, run: RunId, state: RunState, kind: PendingTimerKind) {
+    fn await_timer(&mut self, run: RunId, state: RunState, kind: PendingTimerKind) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         if timer_registration_required(&state, step) {
             self.pending_timers.insert(run, PendingTimer { step, kind });
             match kind {
                 PendingTimerKind::Wait => {
-                    match self
-                        .journal
-                        .append(RuntimeJournalEvent::WaitScheduled { run, step })
-                    {
-                        Ok(()) | Err(_) => {}
-                    }
+                    self.journal
+                        .append(RuntimeJournalEvent::WaitScheduled { run, step })?;
                 }
                 PendingTimerKind::Ask => {
-                    match self
-                        .journal
-                        .append(RuntimeJournalEvent::AskScheduled { run, step })
-                    {
-                        Ok(()) | Err(_) => {}
-                    }
+                    self.journal
+                        .append(RuntimeJournalEvent::AskScheduled { run, step })?;
                 }
             }
         }
         self.runs.insert(run, state);
+        Ok(())
     }
 
-    fn fail_run_state(&mut self, run: RunId, state: RunState) {
+    fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
-        match self.journal.append(RuntimeJournalEvent::RunFailed { run }) {
-            Ok(()) | Err(_) => {}
-        }
+        self.journal.append(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
+        Ok(())
     }
 
     fn take_frame_for(
