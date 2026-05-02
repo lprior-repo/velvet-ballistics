@@ -59,3 +59,18 @@ pub extern "C" fn LLVMFuzzerTestOneInputCompiledIr(_data: *const u8, _len: usize
 pub fn generated_compare(data: &[u8]) {
     fuzz_lib::fuzz_generated_compare(data);
 }
+
+/// Arbitrary bytecode expression evaluation fuzz target.
+pub fn expr_bytecode(data: &[u8]) {
+    fuzz_lib::fuzz_expr_bytecode(data);
+}
+
+/// Taint propagation invariant fuzz target.
+pub fn taint_propagation(data: &[u8]) {
+    fuzz_lib::fuzz_taint_propagation(data);
+}
+
+/// Resource budget counting fuzz target.
+pub fn resource_budget(data: &[u8]) {
+    fuzz_lib::fuzz_resource_budget(data);
+}

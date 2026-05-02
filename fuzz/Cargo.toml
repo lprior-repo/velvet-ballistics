@@ -65,3 +65,24 @@ path = "src/bin/generated_compare.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "expr_bytecode"
+path = "src/bin/expr_bytecode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "taint_propagation"
+path = "src/bin/taint_propagation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "resource_budget"
+path = "src/bin/resource_budget.rs"
+test = false
+doc = false
+bench = false
