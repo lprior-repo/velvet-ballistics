@@ -417,6 +417,7 @@ pub fn replay_events(
 ) -> RecoveryResult<Vec<JournalEvent>> {
     let mut replayed = Vec::new();
     let mut last_step: Option<StepIdx> = None;
+    let mut active_step: Option<StepIdx> = None;
 
     for event in events {
         match event {
@@ -429,7 +430,11 @@ pub fn replay_events(
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
             | JournalEvent::RunFinished { .. }
-            | JournalEvent::RunFailedEvent { .. } => {}
+            | JournalEvent::RunFailedEvent { .. } => {
+                if matches!(event, JournalEvent::StepSucceeded { .. }) {
+                    active_step = None;
+                }
+            }
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
                 if let Some(prev) = last_step
@@ -444,7 +449,17 @@ pub fn replay_events(
                         ),
                     });
                 }
+                if active_step == Some(*step) {
+                    return Err(RecoveryError::ReplayDivergence {
+                        step: *step,
+                        detail: format!(
+                            "step {} started twice without completion",
+                            step.get()
+                        ),
+                    });
+                }
                 last_step = Some(*step);
+                active_step = Some(*step);
             }
             JournalEvent::ActionScheduled { action, step, .. } => {
                 // Check if this action was already resolved
