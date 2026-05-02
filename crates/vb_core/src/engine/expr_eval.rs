@@ -184,12 +184,14 @@ fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), Engine
     let (haystack, needle) = pop_pair(stack)?;
     let haystack_id = expect_symbol(haystack)?;
     let needle_id = expect_symbol(needle)?;
-    let haystack_str = store.symbol(haystack_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: haystack_id,
-    })?;
-    let needle_str = store.symbol(needle_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: needle_id,
-    })?;
+    let haystack_str = store
+        .symbol(haystack_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds {
+            symbol: haystack_id,
+        })?;
+    let needle_str = store
+        .symbol(needle_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: needle_id })?;
     push_value(stack, SlotValue::Bool(haystack_str.contains(needle_str)))
 }
 
@@ -197,12 +199,12 @@ fn eval_starts_with(stack: &mut ExprStack, store: &ValueStore) -> Result<(), Eng
     let (text, prefix) = pop_pair(stack)?;
     let text_id = expect_symbol(text)?;
     let prefix_id = expect_symbol(prefix)?;
-    let text_str = store.symbol(text_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: text_id,
-    })?;
-    let prefix_str = store.symbol(prefix_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: prefix_id,
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: text_id })?;
+    let prefix_str = store
+        .symbol(prefix_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: prefix_id })?;
     push_value(stack, SlotValue::Bool(text_str.starts_with(prefix_str)))
 }
 
@@ -210,12 +212,12 @@ fn eval_ends_with(stack: &mut ExprStack, store: &ValueStore) -> Result<(), Engin
     let (text, suffix) = pop_pair(stack)?;
     let text_id = expect_symbol(text)?;
     let suffix_id = expect_symbol(suffix)?;
-    let text_str = store.symbol(text_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: text_id,
-    })?;
-    let suffix_str = store.symbol(suffix_id).map_err(|_| EngineError::SymbolOutOfBounds {
-        symbol: suffix_id,
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: text_id })?;
+    let suffix_str = store
+        .symbol(suffix_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: suffix_id })?;
     push_value(stack, SlotValue::Bool(text_str.ends_with(suffix_str)))
 }
 
@@ -224,9 +226,9 @@ fn eval_ends_with(stack: &mut ExprStack, store: &ValueStore) -> Result<(), Engin
 fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (list, item) = pop_pair(stack)?;
     let list_id = expect_list(list)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let found = items.contains(&item);
     push_value(stack, SlotValue::Bool(found))
 }
@@ -235,22 +237,28 @@ fn eval_length(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineEr
     let value = pop_value(stack)?;
     let len = match value {
         SlotValue::Symbol(id) => {
-            let s = store.symbol(id).map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
+            let s = store
+                .symbol(id)
+                .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
             s.len()
         }
         SlotValue::List(id) => {
-            let items = store.list(id).map_err(|_| EngineError::ListOutOfBounds { list: id })?;
+            let items = store
+                .list(id)
+                .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
             items.len()
         }
         SlotValue::Object(id) => {
-            let fields = store.object(id).map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
+            let fields = store
+                .object(id)
+                .map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
             fields.len()
         }
         other => {
             return Err(EngineError::TypeMismatch {
                 expected: "text, list, or object",
                 found: other.type_name(),
-            })
+            });
         }
     };
     let len_i64 = i64::try_from(len).map_err(|_| EngineError::InvalidCompiledWorkflow {
@@ -264,22 +272,28 @@ fn eval_empty(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineErr
     let is_empty = match value {
         SlotValue::Null => true,
         SlotValue::Symbol(id) => {
-            let s = store.symbol(id).map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
+            let s = store
+                .symbol(id)
+                .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
             s.is_empty()
         }
         SlotValue::List(id) => {
-            let items = store.list(id).map_err(|_| EngineError::ListOutOfBounds { list: id })?;
+            let items = store
+                .list(id)
+                .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
             items.is_empty()
         }
         SlotValue::Object(id) => {
-            let fields = store.object(id).map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
+            let fields = store
+                .object(id)
+                .map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
             fields.is_empty()
         }
         other => {
             return Err(EngineError::TypeMismatch {
                 expected: "text, list, object, or null",
                 found: other.type_name(),
-            })
+            });
         }
     };
     push_value(stack, SlotValue::Bool(is_empty))
@@ -288,15 +302,17 @@ fn eval_empty(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineErr
 fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = pop_value(stack)?;
     let list_id = expect_list(value)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut sum: i64 = 0;
     for &item in items.iter() {
         let n = expect_i64(item)?;
-        sum = sum.checked_add(n).ok_or(EngineError::InvalidCompiledWorkflow {
-            reason: "sum overflow",
-        })?;
+        sum = sum
+            .checked_add(n)
+            .ok_or(EngineError::InvalidCompiledWorkflow {
+                reason: "sum overflow",
+            })?;
     }
     push_value(stack, SlotValue::I64(sum))
 }
@@ -304,9 +320,9 @@ fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError
 fn eval_count(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = pop_value(stack)?;
     let list_id = expect_list(value)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let count = i64::try_from(items.len()).map_err(|_| EngineError::InvalidCompiledWorkflow {
         reason: "count exceeds i64 range",
     })?;
@@ -316,12 +332,14 @@ fn eval_count(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineErr
 fn eval_append(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
     let (list, item) = pop_pair(stack)?;
     let list_id = expect_list(list)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     new_items.push(item);
-    let new_list = store.insert_list(new_items.into_boxed_slice()).map_err(|_| EngineError::AllocationFailed)?;
+    let new_list = store
+        .insert_list(new_items.into_boxed_slice())
+        .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }
 
@@ -329,30 +347,34 @@ fn eval_append_if(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), E
     let (list, item, condition) = pop_triple(stack)?;
     let list_id = expect_list(list)?;
     let cond = expect_bool(condition)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     if cond {
         new_items.push(item);
     }
-    let new_list = store.insert_list(new_items.into_boxed_slice()).map_err(|_| EngineError::AllocationFailed)?;
+    let new_list = store
+        .insert_list(new_items.into_boxed_slice())
+        .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }
 
 fn eval_unique(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
     let value = pop_value(stack)?;
     let list_id = expect_list(value)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds {
-        list: list_id,
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut seen: Vec<SlotValue> = Vec::new();
     for &item in items.iter() {
         if !seen.contains(&item) {
             seen.push(item);
         }
     }
-    let new_list = store.insert_list(seen.into_boxed_slice()).map_err(|_| EngineError::AllocationFailed)?;
+    let new_list = store
+        .insert_list(seen.into_boxed_slice())
+        .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }
 
@@ -363,9 +385,9 @@ fn eval_exists(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineEr
     match value {
         SlotValue::Null => push_value(stack, SlotValue::Bool(false)),
         SlotValue::Object(object_id) => {
-            let fields = store.object(object_id).map_err(|_| EngineError::ObjectOutOfBounds {
-                object: object_id,
-            })?;
+            let fields = store
+                .object(object_id)
+                .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
             push_value(stack, SlotValue::Bool(!fields.is_empty()))
         }
         other => Err(EngineError::TypeMismatch {
@@ -379,12 +401,12 @@ fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engin
     let (left, right) = pop_pair(stack)?;
     let left_id = expect_object(left)?;
     let right_id = expect_object(right)?;
-    let left_fields = store.object(left_id).map_err(|_| EngineError::ObjectOutOfBounds {
-        object: left_id,
-    })?;
-    let right_fields = store.object(right_id).map_err(|_| EngineError::ObjectOutOfBounds {
-        object: right_id,
-    })?;
+    let left_fields = store
+        .object(left_id)
+        .map_err(|_| EngineError::ObjectOutOfBounds { object: left_id })?;
+    let right_fields = store
+        .object(right_id)
+        .map_err(|_| EngineError::ObjectOutOfBounds { object: right_id })?;
     let mut merged: Vec<ObjectField> = left_fields.to_vec();
     for &field in right_fields.iter() {
         if let Some(pos) = merged.iter().position(|&f| f.key == field.key) {
@@ -395,7 +417,9 @@ fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engin
             merged.push(field);
         }
     }
-    let new_object = store.insert_object(merged.into_boxed_slice()).map_err(|_| EngineError::AllocationFailed)?;
+    let new_object = store
+        .insert_object(merged.into_boxed_slice())
+        .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::Object(new_object))
 }
 
@@ -662,8 +686,8 @@ mod tests {
     use crate::ids::{ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::limits::MAX_EXPRESSION_STACK;
     use crate::workflow::{
-        check_expr_stack_bound, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram,
-        ResourceContract, WorkflowParts,
+        CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, ResourceContract, WorkflowParts,
+        check_expr_stack_bound,
     };
 
     fn empty_plan_with_expr(
@@ -675,10 +699,11 @@ mod tests {
                 reason: "stack check failed",
             }
         })?;
-        let expr = ExprProgram::try_from_parts(ops, max_stack)
-            .map_err(|_| EngineError::InvalidCompiledWorkflow {
+        let expr = ExprProgram::try_from_parts(ops, max_stack).map_err(|_| {
+            EngineError::InvalidCompiledWorkflow {
                 reason: "expr parts",
-            })?;
+            }
+        })?;
         CompiledWorkflow::try_from_parts(WorkflowParts {
             name: "test".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),
@@ -853,16 +878,9 @@ mod tests {
             .into_boxed_slice(),
         )?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Exists,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::Object(obj)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Exists];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::Object(obj)], vec![], &mut store)?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -874,16 +892,9 @@ mod tests {
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
         )?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Length,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::List(list)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
         assert_eq!(result, SlotValue::I64(3));
         Ok(())
     }
@@ -893,16 +904,9 @@ mod tests {
         let mut store = ValueStore::new();
         let list = store.insert_list(vec![].into_boxed_slice())?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Empty,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::List(list)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Empty];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -999,16 +1003,9 @@ mod tests {
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
         )?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Sum,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::List(list)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
         assert_eq!(result, SlotValue::I64(6));
         Ok(())
     }
@@ -1016,20 +1013,12 @@ mod tests {
     #[test]
     fn count_computes_list_length() -> Result<(), EngineError> {
         let mut store = ValueStore::new();
-        let list = store.insert_list(
-            vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice(),
-        )?;
+        let list =
+            store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Count,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::List(list)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Count];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
         assert_eq!(result, SlotValue::I64(2));
         Ok(())
     }
@@ -1041,16 +1030,9 @@ mod tests {
             vec![SlotValue::I64(1), SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice(),
         )?;
 
-        let ops = vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::Unique,
-        ];
-        let result = eval_expr_ops_with_store(
-            &ops,
-            vec![SlotValue::List(list)],
-            vec![],
-            &mut store,
-        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique];
+        let result =
+            eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
         let result_list_id = expect_list(result)?;
         let items = store.list(result_list_id)?;
         assert_eq!(items.len(), 2);

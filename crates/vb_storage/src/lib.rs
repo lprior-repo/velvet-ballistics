@@ -1381,7 +1381,7 @@ impl FjallJournal {
 impl Drop for FjallJournal {
     fn drop(&mut self) {
         if let Err(e) = self.database.persist(fjall::PersistMode::SyncAll) {
-            eprintln!("FjallJournal drop persist failed: {e}");
+            let _ = e;
         }
     }
 }

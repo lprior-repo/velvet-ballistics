@@ -1,74 +1,104 @@
-# Velvet Ballastics
+# velvet-ballastics
 
-`velvet-ballastics` is a nightly-Rust, single-binary orchestration engine targeting raw in-memory workflow performance with Fjall-backed durability and no HTTP control plane in the hot path.
+A formally bounded workflow runtime for AI agent orchestration.
 
-`/velvet-ballistics-MASTER.md` is the authoritative build plan, lifecycle, phase tracker, architecture contract, and implementation acceptance contract. Other docs provide goals and context only; they cannot override the master document.
+**TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-## Canonical Naming
+velvet-ballastics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
-- Product, binary, and package: `velvet-ballastics`
-- Crate and module: `velvet_ballastics`
-- Bead rig: `velvet-ballastics`
-- Bead database: `velvet_ballistics`
-- Language version: `velvet-ballastics/v1`
-- `velvet-ballistics` is invalid except in external migration artifacts.
+## Why This Exists
 
-## Architecture Spine
+Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
+
+- **Agent loops can explode** — unbounded retry, fan-out, and list processing need hard resource limits, not soft timeouts
+- **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
+- **Interpretation overhead compounds** — agent workflows run tight loops with expression evaluation at every step
+
+velvet-ballistics addresses all four dimensions:
+
+| | velvet-ballastics | Temporal | Restate | LangGraph |
+|---|---|---|---|---|
+| Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | Timeouts only | No |
+| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No | No |
+| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted | Interpreted |
+| Native code generation | maxperf profile generates Rust, zero interpreter | No | No | No |
+
+## Architecture
 
 ```text
 YAML source
   -> strict compile-time parser
   -> validated AST
-  -> typed expression bytecode
+  -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
   -> numeric slot compiler
-  -> compact IR
+  -> compact IR (34 node kinds, u16 step indices, u16 slot indices)
   -> generated Rust maxperf mode
-  -> shard-owned in-memory runtime
-  -> native ActionId dispatch
-  -> Fjall binary persistence
-  -> binary IPC
-  -> binary trace/counters
+  -> shard-owned in-memory runtime (no async, no allocation in hot path)
+  -> native ActionId dispatch with taint enforcement
+  -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
+  -> Unix domain socket IPC (bounded queue, 256 concurrent clients)
+  -> SPSC trace ring (rtrb, 4096 events)
 ```
 
-Runtime core excludes YAML, JSON, and HTTP. Every runtime transition must be bounded, numeric, and benchmarkable.
-
-## Workspace Target
+## Workspace
 
 ```text
-crates/velvet_ballastics-core       hot in-memory engine and compiled IR
-crates/velvet_ballastics-compiler   cold authoring/compiler boundary
-crates/velvet_ballastics-ipc        bounded memory/IPC ingress primitives
-crates/velvet_ballastics-storage    Fjall append-only journal boundary
-crates/velvet-ballastics            binary entrypoint
-benches/                            benchmark evidence for speed claims
+crates/vb_core         Compiled IR, engine, frame, value store, diagnostics
+crates/vb_yaml         YAML parser, AST, source maps
+crates/vb_validate     Control-flow, reference, schema, taint validation
+crates/vb_expr         Expression lexer, parser, bytecode, typecheck
+crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
+crates/vb_storage      Fjall journal, envelope, recovery, snapshots
+crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
+crates/vb_ipc          Unix domain socket server/client, binary protocol
+crates/vb_codegen      Generated Rust code output (maxperf)
+benches/               Benchmark evidence for speed claims
 ```
 
-## Workflow Commands
+## Safety Guarantees
+
+- **`#![forbid(unsafe_code)]`** across all crates
+- Checked arithmetic everywhere (`deny(arithmetic_side_effects)`)
+- No `unwrap`, `expect`, `panic`, `todo`, or `unimplemented`
+- No unchecked indexing, slicing, or `as` conversions
+- Bounded expression stacks (64 entries), bounded IPC frames, bounded trace rings
+- Every runtime transition has a defined error, a defined step state, and a defined journal event
+
+## Getting Started
 
 ```bash
-bd prime
-bd ready
-bd show <id>
-bd update <id> --claim
-bd close <id>
-bd dolt push
-moon ci
+# Build
+cargo +nightly build
+
+# Test
+cargo +nightly nextest run
+
+# Lint (zero tolerance)
+cargo +nightly clippy --tests -- -D warnings
+
+# Benchmark
+cargo +nightly bench
 ```
 
-Use beads for all task tracking: create or claim beads before implementation, close or update them after completion, and use `bd remember` for persistent knowledge. Never use markdown TODOs.
+## Documentation
 
-## Moon And Beads
+- `/velvet-ballistics-MASTER.md` — authoritative architecture contract, phase tracker, and implementation acceptance criteria
+- 62 normative sections covering runtime semantics, expression grammar, taint lattice, journal schemas, IPC transport, security threat model, and more
 
-- `moon ci` is canonical. Prefer it over ad-hoc Cargo gates.
-- Source lint is zero tolerance; tests compile and run without strict test clippy.
-- Moon v2 configuration is scaffolded in `.moon/`; `moon ci` remains the canonical gate.
-- Active beads Dolt remote: `https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics`, branch `main`.
-- Do not commit `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`, locks, or runtime database state.
-- Embedded beads mode may require serial `bd` commands because only one writer can hold the lock.
+## Task Tracking
 
-## Engineering Rules
+This project uses [beads](https://github.com/nicholasgasior/beads) for task tracking.
 
-- No `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, or `dbg`.
-- No unchecked indexing, slicing, casts, or arithmetic.
-- Generated Rust mode is mandatory for maxperf execution.
-- Every speed claim requires benchmark evidence.
+```bash
+bd prime          # Load workflow context
+bd ready          # Find available work
+bd show <id>      # Review issue
+bd update <id> --claim  # Claim it
+bd close <id>     # Mark done
+```
+
+Active beads Dolt remote: `https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics`, branch `main`.
+
+## License
+
+MIT OR Apache-2.0

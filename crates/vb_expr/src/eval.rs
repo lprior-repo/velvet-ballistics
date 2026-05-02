@@ -242,24 +242,26 @@ fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
 
 fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Length)?;
-    let len = match value {
-        SlotValue::List(id) => id.get(),
-        SlotValue::Null => 0u32,
-        other => {
-            return Err(ExprError::TypeMismatch {
-                expected: "list".into(),
-                found: other.type_name().into(),
-            });
-        }
-    };
-    Ok(SlotValue::I64(i64::from(len)))
+    match value {
+        SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list length".into(),
+            found: "list handle without store".into(),
+        }),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
 }
 
 fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Empty)?;
     match *value {
         SlotValue::Null => Ok(SlotValue::Bool(true)),
-        SlotValue::List(_) => Ok(SlotValue::Bool(true)),
+        SlotValue::List(_) => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list emptiness check".into(),
+            found: "list handle without store".into(),
+        }),
         other => Err(ExprError::TypeMismatch {
             expected: "list or null".into(),
             found: other.type_name().into(),
@@ -270,7 +272,10 @@ fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
 fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Unique)?;
     match *value {
-        SlotValue::List(_) => Ok(*value),
+        SlotValue::List(_) => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list deduplication".into(),
+            found: "list handle without store".into(),
+        }),
         other => Err(ExprError::TypeMismatch {
             expected: "list".into(),
             found: other.type_name().into(),
