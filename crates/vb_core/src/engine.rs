@@ -546,7 +546,7 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
             .map_err(|error| error.to_string())?;
 
-        let value = eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0))
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
             .map_err(|error| error.to_string())?;
 
         ensure_equal(value, SlotValue::I64(2))?;
@@ -566,7 +566,7 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(object), Taint::Clean)
             .map_err(|error| error.to_string())?;
 
-        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+        match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
             Err(EngineError::ObjectFieldNotFound { field }) if field == SymbolId::new(9) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
@@ -584,7 +584,7 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
             .map_err(|error| error.to_string())?;
 
-        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+        match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
             Err(EngineError::ListIndexOutOfBounds { index: 4 }) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
@@ -596,11 +596,11 @@ mod tests {
             accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
                 .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(121), &workflow)?;
-        let store = test_store();
+        let mut store = test_store();
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::Clean)
             .map_err(|error| error.to_string())?;
 
-        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+        match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "field",
                 found: "number",
@@ -615,7 +615,7 @@ mod tests {
             accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())
                 .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(122), &workflow)?;
-        let store = test_store();
+        let mut store = test_store();
         run.write_slot_with_taint(
             SlotIdx::new(0),
             SlotValue::Object(ObjectId::new(99)),
@@ -623,7 +623,7 @@ mod tests {
         )
         .map_err(|error| error.to_string())?;
 
-        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+        match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
             Err(EngineError::ObjectOutOfBounds { object }) if object == ObjectId::new(99) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
@@ -634,7 +634,7 @@ mod tests {
         let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(123), &workflow)?;
-        let store = test_store();
+        let mut store = test_store();
         run.write_slot_with_taint(
             SlotIdx::new(0),
             SlotValue::List(ListId::new(88)),
@@ -642,7 +642,7 @@ mod tests {
         )
         .map_err(|error| error.to_string())?;
 
-        match eval_accessor_with_store(&workflow, &run, &store, AccessorIdx::new(0)) {
+        match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
             Err(EngineError::ListOutOfBounds { list }) if list == ListId::new(88) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
