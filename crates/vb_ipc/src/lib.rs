@@ -2549,6 +2549,298 @@ fn adversarial_submit_run_payload_with_zero_workflow_roundtrips() {
     assert_eq!(decode_payload(&encoded), Ok(payload));
 }
 
+// ══ IPC frame validation hardening tests ══
+
+#[test]
+fn frame_validation_oversized_payload_exceeding_default_max_returns_error() {
+    // Given: a header claiming payload_len larger than the default 1 MiB bound
+    let default_max = MaxPayloadBytes::DEFAULT.get();
+    let over_limit = match u32::try_from(default_max.saturating_add(1)) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 1, over_limit);
+
+    // When: decoding the header with default max
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadTooLarge is returned before any payload allocation
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: default_max.saturating_add(1),
+            limit: default_max,
+        })
+    );
+}
+
+#[test]
+fn frame_validation_header_claims_large_payload_but_actual_data_shorter_returns_error() {
+    // Given: a valid header declaring payload_len=500 but only 10 bytes supplied
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 42, 500);
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let short_payload = Bytes::from(vec![0u8; 10]);
+
+    // When: decoding the full frame
+    let result = decode_frame(&encoded, short_payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadLengthMismatch with exact values
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadLengthMismatch {
+            header: 500,
+            actual: 10,
+        })
+    );
+}
+
+#[test]
+fn frame_validation_invalid_magic_bytes_returns_typed_error() {
+    // Given: header bytes with magic = 0x0000_0000 (not VBLT)
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&0x0000_0000_u32.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+
+    // When: decoding the header
+    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+
+    // Then: InvalidMagic with actual=0
+    assert_eq!(result, Err(IpcError::InvalidMagic { actual: 0 }));
+}
+
+#[test]
+fn frame_validation_version_mismatch_returns_unsupported_version() {
+    // Given: valid magic but version=255 (not 1)
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&255u16.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+
+    // When: decoding the header
+    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+
+    // Then: UnsupportedVersion with actual=255
+    assert_eq!(result, Err(IpcError::UnsupportedVersion { actual: 255 }));
+}
+
+#[test]
+fn frame_validation_zero_command_id_returns_unknown_command() {
+    // Given: valid magic and version but command=0 (not in v1 command set)
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    // command bytes 6..8 are already 0
+
+    // When: decoding the header
+    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+
+    // Then: UnknownCommand(0)
+    assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+}
+
+#[test]
+fn frame_validation_unrecognized_command_id_returns_typed_error() {
+    // Given: valid magic and version but command=13 (not defined)
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&13u16.to_le_bytes());
+
+    // When: decoding the header
+    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+
+    // Then: UnknownCommand(13)
+    assert_eq!(result, Err(IpcError::UnknownCommand(13)));
+}
+
+#[test]
+fn frame_validation_valid_header_with_unknown_payload_type_decode_fails() {
+    // Given: a valid header with Health command but garbage payload bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let garbage = Bytes::from(vec![0xDE, 0xAD, 0xBE, 0xEF]);
+
+    // When: decoding the frame (header succeeds, postcard payload decode fails)
+    let frame_result = decode_frame(&encoded, garbage, MaxPayloadBytes::DEFAULT);
+    assert_ok!(frame_result, "frame struct decode should succeed");
+    let Ok(frame) = frame_result else { return };
+
+    // Then: decoding the typed payload fails
+    let payload_result = decode_payload(frame.payload());
+    assert_eq!(payload_result, Err(IpcError::PayloadDecodeFailed));
+}
+
+#[test]
+fn frame_validation_truncated_frame_shorter_than_header_returns_error() {
+    // Given: a reader with 0 bytes (completely empty)
+    let data: [u8; 0] = [];
+    let mut cursor = std::io::Cursor::new(data);
+
+    // When: reading a frame header
+    let result = crate::frame::read_frame_header(&mut cursor);
+
+    // Then: HeaderDecodeFailed
+    assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+}
+
+#[test]
+fn frame_validation_header_claims_more_data_than_available_returns_error() {
+    // Given: a valid header declaring payload_len=200 but reader has only 5 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 200);
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let mut cursor = std::io::Cursor::new(encoded.as_slice());
+
+    // Read header successfully
+    let decoded_header = crate::frame::read_frame_header(&mut cursor);
+    assert_ok!(decoded_header, "header read should succeed");
+    let Ok(decoded_header) = decoded_header else { return };
+
+    // When: reading payload with only 5 bytes available (header claimed 200)
+    let short_data = vec![0u8; 5];
+    let mut payload_cursor = std::io::Cursor::new(short_data.as_slice());
+    let result = crate::frame::read_frame_payload(&mut payload_cursor, &decoded_header);
+
+    // Then: PayloadDecodeFailed (short read)
+    assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
+}
+
+#[test]
+fn frame_validation_valid_frame_parse_succeeds() {
+    // Given: a well-formed frame with SubmitRun command
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 42, 0);
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let payload = Bytes::new();
+
+    // When: decoding the frame
+    let result = decode_frame(&encoded, payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: the frame decodes successfully with correct fields
+    assert_ok!(result, "well-formed frame should decode");
+    let Ok(frame) = result else { return };
+    assert_eq!(frame.header().command, IpcCommand::SubmitRun);
+    assert_eq!(frame.header().flags, 0);
+    assert_eq!(frame.header().correlation, 42);
+    assert_eq!(frame.header().payload_len, 0);
+    assert_eq!(frame.payload().bytes().len(), 0);
+}
+
+#[test]
+fn frame_validation_roundtrip_encode_decode_preserves_all_fields() {
+    // Given: a frame with all fields populated and a non-trivial payload
+    let original_header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
+    let encoded = original_header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let payload = Bytes::from_static(b"payload!");
+
+    // When: decoding the frame
+    let result = decode_frame(&encoded, payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: all fields are preserved exactly
+    assert_ok!(result, "frame should decode");
+    let Ok(frame) = result else { return };
+    assert_eq!(frame.header().command, IpcCommand::CompleteAction);
+    assert_eq!(frame.header().flags, 0xABCD);
+    assert_eq!(frame.header().correlation, 0x1234_5678_9ABC_DEF0);
+    assert_eq!(frame.header().payload_len, 8);
+    assert_eq!(frame.payload().bytes().as_ref(), b"payload!");
+}
+
+#[test]
+fn frame_validation_roundtrip_all_commands_preserve_command_identity() {
+    // Given: every valid command in the v1 command set
+    let commands = [
+        IpcCommand::SubmitRun,
+        IpcCommand::SubmitRunInline,
+        IpcCommand::CancelRun,
+        IpcCommand::InspectRun,
+        IpcCommand::ListEvents,
+        IpcCommand::AnswerAsk,
+        IpcCommand::CompleteAction,
+        IpcCommand::FailAction,
+        IpcCommand::DrainTrace,
+        IpcCommand::Health,
+        IpcCommand::Shutdown,
+    ];
+
+    for command in commands {
+        // When: encoding and decoding each command through the full frame path
+        let header = IpcFrameHeader::new(command, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded, "header should encode for {command:?}");
+        let Ok(encoded) = encoded else { return };
+        let result = decode_frame(&encoded, Bytes::new(), MaxPayloadBytes::DEFAULT);
+
+        // Then: the command identity is preserved
+        assert_ok!(result, "frame should decode for {command:?}");
+        let Ok(frame) = result else { return };
+        assert_eq!(frame.header().command, command, "command should roundtrip for {command:?}");
+    }
+}
+
+#[test]
+fn frame_validation_payload_at_exact_max_boundary_succeeds() {
+    // Given: a header with payload_len exactly equal to the default max
+    let max = MaxPayloadBytes::DEFAULT.get();
+    let payload_len = match u32::try_from(max) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 1, payload_len);
+    let encoded = header.encode();
+    assert_ok!(encoded, "header should encode");
+    let Ok(encoded) = encoded else { return };
+    let payload = Bytes::from(vec![0u8; max]);
+
+    // When: decoding the frame
+    let result = decode_frame(&encoded, payload, MaxPayloadBytes::DEFAULT);
+
+    // Then: it succeeds (boundary is inclusive)
+    assert_ok!(result, "frame at exact max boundary should decode");
+    let Ok(frame) = result else { return };
+    assert_eq!(frame.header().payload_len, payload_len);
+    assert_eq!(frame.payload().bytes().len(), max);
+}
+
+#[test]
+fn frame_validation_read_frame_header_bounded_rejects_empty_reader() {
+    // Given: a reader with 0 bytes
+    let data: [u8; 0] = [];
+    let mut cursor = std::io::Cursor::new(data);
+
+    // When: reading a bounded frame header
+    let result = crate::frame::read_frame_header_bounded(&mut cursor, MaxPayloadBytes::DEFAULT);
+
+    // Then: HeaderDecodeFailed
+    assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+}
+
+#[test]
+fn frame_validation_read_frame_payload_bounded_rejects_truncated_data() {
+    // Given: a valid header with payload_len=50 but reader with 10 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 50);
+    let data = vec![0u8; 10];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+
+    // When: reading bounded payload
+    let result = crate::frame::read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadDecodeFailed (short read)
+    assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
+}
+
 #[cfg(test)]
 mod proptests {
     use super::{
