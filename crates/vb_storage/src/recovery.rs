@@ -4620,4 +4620,793 @@ mod tests {
             "no terminal event in list, expected None"
         );
     }
+
+    // =========================================================================
+    // RecoverySummary API completeness tests
+    // =========================================================================
+    //
+    // These tests verify that RecoveryFrameSeed and RecoveryRuntimeSummary carry
+    // every field needed for live-frame hydration into a RunFrame. They construct
+    // complete journal event sequences for a multi-step workflow, build the seed,
+    // and assert every field matches the original state.
+
+    /// Helper: builds a comprehensive multi-step event sequence that exercises
+    /// every journal event variant except SlotWrittenEvent (which would make
+    /// frame-seed recovery fail due to unsupported slot values). Includes
+    /// StepSucceeded with output slots so slot_count is non-zero.
+    fn completeness_workflow_events() -> Vec<JournalEvent> {
+        let run = RunId::new(9001);
+        let workflow = test_digest(77);
+        vec![
+            // Step 0: simple step that succeeds immediately
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(1),
+            },
+            // Step 1: action step (action scheduled then completed)
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(1),
+                action: ActionId::new(10),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(1),
+                action: ActionId::new(10),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(1),
+                output: SlotIdx::new(2),
+            },
+            // Step 2: wait suspend
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(7),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(8),
+                step: StepIdx::new(2),
+            },
+            // Step 3: ask suspend then answer
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(3),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(10),
+                step: StepIdx::new(3),
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(11),
+                step: StepIdx::new(3),
+            },
+            // Step 4: action that fails
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(12),
+                step: StepIdx::new(4),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(13),
+                step: StepIdx::new(4),
+                action: ActionId::new(20),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(14),
+                step: StepIdx::new(4),
+                action: ActionId::new(20),
+            },
+            // Step 5: retry (no StepStarted -- only RetryScheduledEvent)
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(15),
+                step: StepIdx::new(5),
+            },
+            // Finish
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(16),
+                result: SlotIdx::new(3),
+            },
+        ]
+    }
+
+    #[test]
+    fn completeness_seed_captures_all_step_states() {
+        // Given a multi-step workflow that exercises Running, Succeeded, Waiting,
+        // Asking, and Failed step states
+        // When recover_runtime_frame_seed_from_events builds the seed
+        // Then every step entry is present with the correct RecoveredStepState
+        let events = completeness_workflow_events();
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed recovery should succeed");
+
+        // Step 0: succeeded
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert!(
+            step0.is_some(),
+            "step 0 must be present in recovered steps"
+        );
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Succeeded)
+        );
+
+        // Step 1: succeeded (action completed -> step succeeded)
+        let step1 = seed.steps.iter().find(|e| e.step == StepIdx::new(1));
+        assert!(
+            step1.is_some(),
+            "step 1 must be present in recovered steps"
+        );
+        assert_eq!(
+            step1.map(|e| e.state),
+            Some(RecoveredStepState::Succeeded)
+        );
+
+        // Step 2: waiting (WaitScheduledEvent is the last event for this step)
+        let step2 = seed.steps.iter().find(|e| e.step == StepIdx::new(2));
+        assert!(
+            step2.is_some(),
+            "step 2 must be present in recovered steps"
+        );
+        assert_eq!(
+            step2.map(|e| e.state),
+            Some(RecoveredStepState::Waiting)
+        );
+
+        // Step 3: asking (AskScheduledEvent, but then AskAnswered overrides to Running)
+        let step3 = seed.steps.iter().find(|e| e.step == StepIdx::new(3));
+        assert!(
+            step3.is_some(),
+            "step 3 must be present in recovered steps"
+        );
+        assert_eq!(
+            step3.map(|e| e.state),
+            Some(RecoveredStepState::Running),
+            "AskAnsweredEvent should transition step 3 back to Running"
+        );
+
+        // Step 4: failed (ActionFailedEvent)
+        let step4 = seed.steps.iter().find(|e| e.step == StepIdx::new(4));
+        assert!(
+            step4.is_some(),
+            "step 4 must be present in recovered steps"
+        );
+        assert_eq!(
+            step4.map(|e| e.state),
+            Some(RecoveredStepState::Failed)
+        );
+
+        // Step 5: running (RetryScheduledEvent transitions to Running)
+        let step5 = seed.steps.iter().find(|e| e.step == StepIdx::new(5));
+        assert!(
+            step5.is_some(),
+            "step 5 must be present in recovered steps"
+        );
+        assert_eq!(
+            step5.map(|e| e.state),
+            Some(RecoveredStepState::Running)
+        );
+    }
+
+    #[test]
+    fn completeness_seed_captures_program_counter() {
+        // Given a workflow where the last step event targets step 5
+        // When the seed is built
+        // Then pc equals step 5 (the highest-observed step from the builder)
+        let run = RunId::new(9015);
+        // Use a minimal set without StepSucceeded that would set unsupported flags
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(5),
+            },
+        ];
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed recovery should succeed");
+
+        // The builder sets pc = step on each observe_step call. The last observe_step
+        // is for step 5 (RetryScheduledEvent).
+        assert_eq!(
+            seed.pc, StepIdx::new(5),
+            "pc should be the last observed step"
+        );
+    }
+
+    #[test]
+    fn completeness_seed_captures_frame_dimensions() {
+        // Given a workflow with max step index 5 and max slot index 3
+        // When the seed is built
+        // Then step_count = 6 (max_step + 1) and slot_count = 4 (max_slot + 1)
+        let events = completeness_workflow_events();
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed recovery should succeed");
+
+        assert_eq!(
+            seed.step_count, 6,
+            "step_count should be max_step(5) + 1"
+        );
+        assert_eq!(
+            seed.slot_count, 4,
+            "slot_count should be max_slot(3) + 1"
+        );
+    }
+
+    #[test]
+    fn completeness_seed_captures_unsupported_state_flags() {
+        // Given a workflow with StepSucceeded and ActionScheduled events (no SlotWrittenEvent)
+        // When the seed is built
+        // Then unsupported.slot_values/slot_taint are true (from StepSucceeded)
+        // and action_payloads is true (from ActionScheduled)
+        // The seed succeeds because slots_written=0 (no SlotWrittenEvent)
+        let events = completeness_workflow_events();
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed recovery should succeed: slots_written=0 bypasses unsupported check");
+
+        assert!(
+            seed.unsupported.slot_values,
+            "slot_values should be marked unsupported because StepSucceeded was observed"
+        );
+        assert!(
+            seed.unsupported.slot_taint,
+            "slot_taint should be marked unsupported because StepSucceeded was observed"
+        );
+        assert!(
+            seed.unsupported.action_payloads,
+            "action_payloads should be marked unsupported because ActionScheduled was observed"
+        );
+    }
+
+    #[test]
+    fn completeness_seed_rejects_when_slots_written_but_unsupported() {
+        // Given a workflow with SlotWrittenEvent (which sets unsupported.slot_values=true)
+        // When recover_runtime_frame_seed_from_events finishes and checks consistency
+        // Then it returns ReplayDivergence because slots were written but cannot be
+        // reconstructed from durable events
+        let run = RunId::new(9002);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(99),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot: SlotIdx::new(0),
+            },
+        ];
+
+        let result = recover_runtime_frame_seed_from_events(&events);
+        let Err(RecoveryError::ReplayDivergence { detail, .. }) = result else {
+            panic!("expected ReplayDivergence for unsupported slot values, got {:?}", result);
+        };
+        assert!(
+            detail.contains("slot values"),
+            "divergence detail should mention slot values: {detail}"
+        );
+    }
+
+    #[test]
+    fn completeness_summary_captures_all_counters() {
+        // Given a multi-step workflow with a known number of each event kind
+        // When summarize_recovery_events builds the summary
+        // Then every counter matches the expected count
+        let events = completeness_workflow_events();
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+        let summary = hydration.summary();
+
+        assert_eq!(summary.steps_started, 5, "5 StepStarted events (steps 0-4)");
+        assert_eq!(summary.steps_succeeded, 2, "2 StepSucceeded events (steps 0 and 1)");
+        assert_eq!(summary.actions_scheduled, 2, "2 ActionScheduled events");
+        assert_eq!(summary.actions_resolved, 2, "1 ActionCompleted + 1 ActionFailed = 2 resolved");
+        assert_eq!(summary.suspensions, 3, "1 Wait + 1 Ask + 1 Retry = 3 suspensions");
+        assert_eq!(summary.slots_written, 0, "0 SlotWrittenEvent");
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(3),
+            }),
+            "terminal should be Finished with result slot 3"
+        );
+    }
+
+    #[test]
+    fn completeness_summary_captures_first_and_last_seq() {
+        // Given events from seq 0 to seq 16
+        // When the summary is built
+        // Then first_seq = 0 and last_seq = 16
+        let events = completeness_workflow_events();
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+        let summary = hydration.summary();
+
+        assert_eq!(summary.first_seq, EventSeq::new(0));
+        assert_eq!(summary.last_seq, EventSeq::new(16));
+    }
+
+    #[test]
+    fn completeness_summary_captures_workflow_digest() {
+        // Given a RunAccepted event with a specific workflow digest
+        // When the summary is built
+        // Then summary.workflow is Some with that exact digest
+        let events = completeness_workflow_events();
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+        let summary = hydration.summary();
+
+        assert_eq!(summary.workflow, Some(test_digest(77)));
+    }
+
+    #[test]
+    fn completeness_summary_captures_cancelled_terminal() {
+        // Given events ending with RunCancelled
+        // When the summary is built
+        // Then terminal is Some(Cancelled)
+        let run = RunId::new(9010);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(2),
+            },
+        ];
+
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+        let summary = hydration.summary();
+
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Cancelled)
+        );
+    }
+
+    #[test]
+    fn completeness_summary_captures_failed_terminal() {
+        // Given events ending with RunFailedEvent
+        // When the summary is built
+        // Then terminal is Some(Failed)
+        let run = RunId::new(9011);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(1),
+            },
+        ];
+
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+        let summary = hydration.summary();
+
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Failed)
+        );
+    }
+
+    #[test]
+    fn completeness_step_without_explicit_started_uses_implicit_running() {
+        // Given an ActionScheduled event for a step that never received StepStarted
+        // When the seed is built
+        // Then the step is recorded as Running (ActionScheduled calls observe_step with Running)
+        let run = RunId::new(9020);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert!(
+            step0.is_some(),
+            "step 0 should be present via ActionScheduled"
+        );
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Running),
+            "ActionScheduled should infer Running state"
+        );
+    }
+
+    #[test]
+    fn completeness_later_event_overwrites_earlier_step_state() {
+        // Given StepStarted -> WaitScheduled for the same step
+        // When the seed is built
+        // Then the step state is Waiting (the later event wins)
+        let run = RunId::new(9030);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Waiting),
+            "WaitScheduled should overwrite the Running state from StepStarted"
+        );
+    }
+
+    #[test]
+    fn completeness_no_slot_events_means_zero_slot_count() {
+        // Given a workflow with no slot-related events
+        // When the seed is built
+        // Then slot_count is 0
+        let run = RunId::new(9040);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        assert_eq!(
+            seed.slot_count, 0,
+            "no slot events should yield slot_count=0"
+        );
+        assert!(
+            !seed.unsupported.slot_values,
+            "no slot events should not mark slot_values unsupported"
+        );
+        assert!(
+            !seed.unsupported.slot_taint,
+            "no slot events should not mark slot_taint unsupported"
+        );
+    }
+
+    #[test]
+    fn completeness_unsupported_action_payloads_set_by_action_events() {
+        // Given only action-related events (no slot events)
+        // When the seed is built
+        // Then action_payloads is true but slot_values/slot_taint are false
+        let run = RunId::new(9050);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        assert!(
+            seed.unsupported.action_payloads,
+            "ActionScheduled should mark action_payloads unsupported"
+        );
+        assert!(
+            !seed.unsupported.slot_values,
+            "no slot events should leave slot_values supported"
+        );
+        assert!(
+            !seed.unsupported.slot_taint,
+            "no slot events should leave slot_taint supported"
+        );
+    }
+
+    #[test]
+    fn completeness_empty_events_returns_no_recovery_data() {
+        // Given an empty events list
+        // When recover_runtime_frame_seed_from_events is called
+        // Then it returns NoRecoveryData
+        let result = recover_runtime_frame_seed_from_events(&[]);
+        let Err(RecoveryError::NoRecoveryData { .. }) = result else {
+            panic!("empty events should return NoRecoveryData, got {:?}", result);
+        };
+    }
+
+    #[test]
+    fn completeness_run_id_propagated_from_first_event() {
+        // Given events all with run_id 9001
+        // When the summary is built
+        // Then summary.run equals RunId::new(9001)
+        let events = completeness_workflow_events();
+        let hydration = summarize_recovery_events(&events).expect("summary succeeds");
+
+        assert_eq!(hydration.summary().run, RunId::new(9001));
+    }
+
+    #[test]
+    fn completeness_step_count_is_one_when_no_step_events() {
+        // Given only a RunAccepted event (no step events)
+        // When the seed is built
+        // Then step_count is 1 (the default from count_from_max_step(None))
+        let run = RunId::new(9060);
+        let events = vec![JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+        }];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        assert_eq!(
+            seed.step_count, 1,
+            "no step events should default to step_count=1"
+        );
+        assert_eq!(seed.pc, StepIdx::ZERO, "no step events means pc=ZERO");
+        assert!(
+            seed.steps.is_empty(),
+            "no step events means empty steps list"
+        );
+    }
+
+    #[test]
+    fn completeness_events_from_different_runs_rejected() {
+        // Given events with different run IDs
+        // When summarize_recovery_events processes them
+        // Then it returns ReplayDivergence
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run: RunId::new(2),
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let result = summarize_recovery_events(&events);
+        let Err(RecoveryError::ReplayDivergence { detail, .. }) = result else {
+            panic!("mixed run IDs should cause divergence, got {:?}", result);
+        };
+        assert!(
+            detail.contains("multiple runs"),
+            "detail should mention multiple runs: {detail}"
+        );
+    }
+
+    #[test]
+    fn completeness_slot_count_inferred_from_max_slot_reference() {
+        // Given StepSucceeded with output=SlotIdx(5) and RunFinished with result=SlotIdx(7)
+        // When the seed is built
+        // Then slot_count = 8 (max observed slot index + 1)
+        let run = RunId::new(9070);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(5),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(2),
+                result: SlotIdx::new(7),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        assert_eq!(
+            seed.slot_count, 8,
+            "slot_count should be max_slot(7) + 1"
+        );
+    }
+
+    #[test]
+    fn completeness_ask_answered_transitions_to_running() {
+        // Given AskScheduled then AskAnswered for the same step
+        // When the seed is built
+        // Then the step is in Running state (AskAnswered transitions back)
+        let run = RunId::new(9080);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Running),
+            "AskAnsweredEvent should transition step back to Running"
+        );
+    }
+
+    #[test]
+    fn completeness_action_failed_produces_failed_step_state() {
+        // Given ActionFailedEvent for a step
+        // When the seed is built
+        // Then the step is in Failed state
+        let run = RunId::new(9090);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Failed),
+            "ActionFailedEvent should produce Failed step state"
+        );
+    }
+
+    #[test]
+    fn completeness_retry_scheduled_produces_running_state() {
+        // Given RetryScheduledEvent for a step
+        // When the seed is built
+        // Then the step is in Running state
+        let run = RunId::new(9100);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover");
+
+        let step0 = seed.steps.iter().find(|e| e.step == StepIdx::new(0));
+        assert_eq!(
+            step0.map(|e| e.state),
+            Some(RecoveredStepState::Running),
+            "RetryScheduledEvent should produce Running step state"
+        );
+    }
 }
