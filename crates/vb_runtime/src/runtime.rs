@@ -293,6 +293,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         }
     }
 
@@ -322,6 +323,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let runtime = Runtime::new(shard_count, config);
         let first = runtime.list_events(RunId::new(1));
@@ -921,6 +923,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -1160,6 +1163,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -1205,6 +1209,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -1445,6 +1450,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
