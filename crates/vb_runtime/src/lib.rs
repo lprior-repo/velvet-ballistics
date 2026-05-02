@@ -33,6 +33,7 @@
 
 pub mod action;
 pub mod admission;
+pub mod command;
 pub mod counters;
 pub mod engine;
 pub mod frame_pool;
@@ -40,10 +41,13 @@ pub mod journal;
 pub mod primitives;
 pub mod recovery;
 pub mod runtime;
+pub mod run_state;
+pub mod scheduler;
 pub mod shard;
+pub mod timer;
 pub mod trace;
 
-pub use shard::{AskAnswer, AskTicket};
+pub use command::{AskAnswer, AskTicket};
 
 #[cfg(test)]
 mod test_harness;
