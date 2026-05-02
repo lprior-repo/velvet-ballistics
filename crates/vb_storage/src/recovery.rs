@@ -139,12 +139,14 @@ pub struct RecoveryRuntimeSummary {
     pub terminal: Option<RecoveryTerminalState>,
 }
 
-/// Explicit recovery product. Today recovery hydrates summaries only; full frame
-/// hydration is intentionally not represented as a successful variant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Explicit recovery product. Supports summary-only or full live-frame seed
+/// recovery from durable journal events.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecoveryHydration {
     /// Summary-only recovery product.
     Summary(RecoveryRuntimeSummary),
+    /// Full live-frame seed recovered from durable events.
+    FrameSeed(RecoveryFrameSeed),
 }
 
 /// Step state recovered from durable lifecycle events.
@@ -204,9 +206,10 @@ pub struct RecoveryFrameSeed {
 impl RecoveryHydration {
     /// Returns the summary carried by this hydration product.
     #[must_use]
-    pub const fn summary(self) -> RecoveryRuntimeSummary {
+    pub fn summary(&self) -> RecoveryRuntimeSummary {
         match self {
-            Self::Summary(summary) => summary,
+            Self::Summary(summary) => *summary,
+            Self::FrameSeed(seed) => seed.summary,
         }
     }
 }
@@ -780,7 +783,8 @@ pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
 )]
 mod tests {
     use super::{
-        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
+        ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
+        RecoveryFrameSeed, RecoveryHydration,
         RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
         UnsupportedRecoveryState, check_compiled_ir_digest, check_workflow_source_digest,
         extract_terminal, is_terminal_event, recover_all_incomplete_runs, recover_full_journal,
@@ -830,7 +834,9 @@ mod tests {
         ];
 
         let hydration = summarize_recovery_events(&events).expect("summary recovery succeeds");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
 
         assert_eq!(summary.run, run);
         assert_eq!(summary.first_seq, EventSeq::new(0));
@@ -3383,7 +3389,9 @@ mod tests {
             },
         ];
         let hydration = summarize_recovery_events(&events).expect("summary");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
         assert_eq!(summary.suspensions, 3);
     }
 
@@ -3429,7 +3437,9 @@ mod tests {
             },
         ];
         let hydration = summarize_recovery_events(&events).expect("summary");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
         assert_eq!(summary.slots_written, 2);
         assert_eq!(summary.actions_scheduled, 1);
         assert_eq!(summary.actions_resolved, 2); // completed + failed
@@ -3454,7 +3464,9 @@ mod tests {
             },
         ];
         let hydration = summarize_recovery_events(&events).expect("summary");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
         let Some(RecoveryTerminalState::Finished { result }) = summary.terminal else {
             panic!("expected Finished terminal state");
         };
@@ -3612,7 +3624,9 @@ mod tests {
             result: vb_core::SlotIdx::new(5),
         }];
         let hydration = summarize_recovery_events(&events).expect("summary");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
         assert_eq!(summary.run, run);
         assert_eq!(summary.steps_started, 0);
         assert_eq!(summary.steps_succeeded, 0);
@@ -3723,7 +3737,9 @@ mod tests {
 
         let journal2 = FjallJournal::open(temp_dir.path(), None).expect("reopen");
         let hydration = recover_runtime_summary(&journal2, run).expect("recovery summary");
-        let RecoveryHydration::Summary(summary) = hydration;
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected summary hydration");
+        };
         assert_eq!(summary.run, run);
         assert_eq!(summary.workflow, Some(workflow));
         assert_eq!(summary.steps_started, 1);
@@ -3862,5 +3878,98 @@ mod tests {
         let summary = hydration.summary();
         assert_eq!(summary.run, RunId::new(42));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
+    }
+
+    #[test]
+    fn adversarial_hydration_frame_seed_accessor_returns_embedded_summary() {
+        // Given a RecoveryHydration::FrameSeed
+        // When summary() is called
+        // Then it returns the summary embedded in the seed
+        let inner = RecoveryRuntimeSummary {
+            run: RunId::new(43),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(3),
+            workflow: Some(adv_digest(2)),
+            steps_started: 1,
+            steps_succeeded: 1,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 1,
+            terminal: Some(RecoveryTerminalState::Finished {
+                result: vb_core::SlotIdx::new(0),
+            }),
+        };
+        let seed = RecoveryFrameSeed {
+            summary: inner,
+            first_step: vb_core::StepIdx::ZERO,
+            step_count: 2,
+            slot_count: 1,
+            pc: vb_core::StepIdx::new(1),
+            steps: vec![RecoveredStepEntry {
+                step: vb_core::StepIdx::ZERO,
+                state: RecoveredStepState::Succeeded,
+            }],
+            unsupported: UnsupportedRecoveryState {
+                slot_values: true,
+                slot_taint: true,
+                action_payloads: false,
+            },
+        };
+        let hydration = RecoveryHydration::FrameSeed(seed);
+        let summary = hydration.summary();
+        assert_eq!(summary.run, RunId::new(43));
+        assert_eq!(summary.steps_started, 1);
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: vb_core::SlotIdx::new(0),
+            })
+        );
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_produces_frame_seed_hydration() {
+        // Given a journal with run events
+        // When recover_runtime_frame_seed is called
+        // Then it returns a RecoveryFrameSeed with correct dimensions
+        let dir = tempfile::tempdir().expect("temp dir");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+        let run = RunId::new(99);
+        let workflow = adv_digest(3);
+
+        journal
+            .append_strict(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("append accepted");
+        journal
+            .append_strict(&JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: vb_core::StepIdx::new(0),
+            })
+            .expect("append started");
+        journal
+            .append_strict(&JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: vb_core::StepIdx::new(0),
+                output: vb_core::SlotIdx::new(0),
+            })
+            .expect("append succeeded");
+
+        let seed = recover_runtime_frame_seed(&journal, run).expect("frame seed recovery");
+        assert_eq!(seed.summary.run, run);
+        assert_eq!(seed.summary.workflow, Some(workflow));
+        assert_eq!(seed.summary.steps_started, 1);
+        assert_eq!(seed.summary.steps_succeeded, 1);
+        assert_eq!(seed.step_count, 1);
+        assert_eq!(seed.pc, vb_core::StepIdx::new(0));
+        assert_eq!(seed.steps.len(), 1);
+        assert_eq!(seed.steps[0].step, vb_core::StepIdx::new(0));
+        assert_eq!(seed.steps[0].state, RecoveredStepState::Succeeded);
     }
 }

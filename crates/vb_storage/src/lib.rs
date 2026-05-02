@@ -1376,6 +1376,162 @@ impl FjallJournal {
         let (_, record) = decode_record(value.as_ref(), magic, max_payload_len)?;
         Ok(Some(record))
     }
+
+    /// Creates a new atomic cross-keyspace write batch.
+    pub fn batch(&self) -> JournalWriteBatch<'_> {
+        JournalWriteBatch::new(self)
+    }
+}
+
+/// Atomic cross-keyspace write batch backed by Fjall.
+///
+/// Accumulates writes across multiple keyspaces and commits them
+/// atomically with a single WAL fsync.
+pub struct JournalWriteBatch<'j> {
+    inner: fjall::OwnedWriteBatch,
+    journal: &'j FjallJournal,
+}
+
+impl<'j> JournalWriteBatch<'j> {
+    fn new(journal: &'j FjallJournal) -> Self {
+        Self {
+            inner: journal.database.batch(),
+            journal,
+        }
+    }
+
+    /// Inserts a workflow source record into the batch.
+    pub fn put_workflow_source(&mut self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
+        let key = workflow_source_key(record.digest.as_bytes())?;
+        let value = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            0,
+            record,
+            MAX_WORKFLOW_SOURCE_BYTES,
+        )?;
+        self.inner.insert(&self.journal.workflow_source, key, value);
+        Ok(())
+    }
+
+    /// Inserts a compiled IR record into the batch.
+    pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+        let key = compiled_ir_key(record.digest.as_bytes())?;
+        let value = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            record,
+            MAX_COMPILED_IR_BYTES,
+        )?;
+        self.inner.insert(&self.journal.compiled_ir, key, value);
+        Ok(())
+    }
+
+    /// Inserts a run header record into the batch.
+    pub fn put_run_header(&mut self, record: &RunHeaderRecord) -> Result<(), JournalError> {
+        let key = run_header_key(record.run)?;
+        let value = encode_record(
+            MAGIC_INDEX_RECORD,
+            RecordKind::RunHeader,
+            record.run.as_u64(),
+            record,
+            MAX_RUN_HEADER_BYTES,
+        )?;
+        self.inner.insert(&self.journal.run_header, key, value);
+        Ok(())
+    }
+
+    /// Inserts a run snapshot record into the batch.
+    pub fn put_snapshot(&mut self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+        let key = run_snapshot_key(snapshot.run, snapshot.seq)?;
+        let value = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::Snapshot,
+            snapshot.seq.get(),
+            snapshot,
+            MAX_SNAPSHOT_BYTES,
+        )?;
+        self.inner.insert(&self.journal.run_snapshot, key, value);
+        Ok(())
+    }
+
+    /// Inserts a blob record into the batch.
+    pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
+        let key = blob_key(record.digest)?;
+        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        self.inner.insert(&self.journal.blob, key, value);
+        Ok(())
+    }
+
+    /// Inserts a status index marker into the batch.
+    pub fn put_status_index(
+        &mut self,
+        state: u8,
+        timestamp: u64,
+        run: RunId,
+    ) -> Result<(), JournalError> {
+        let key = index_status_key(state, timestamp, run)?;
+        self.inner.insert(&self.journal.index_status, key, Vec::<u8>::new());
+        Ok(())
+    }
+
+    /// Inserts a workflow index marker into the batch.
+    pub fn put_workflow_index(&mut self, workflow: WorkflowId, run: RunId) -> Result<(), JournalError> {
+        let key = index_workflow_key(workflow, run)?;
+        self.inner.insert(&self.journal.index_workflow, key, Vec::<u8>::new());
+        Ok(())
+    }
+
+    /// Inserts an action index marker into the batch.
+    pub fn put_action_index(
+        &mut self,
+        action: ActionId,
+        run: RunId,
+        step: StepIdx,
+    ) -> Result<(), JournalError> {
+        let key = index_action_key(action, run, step)?;
+        self.inner.insert(&self.journal.index_action, key, Vec::<u8>::new());
+        Ok(())
+    }
+
+    /// Appends a journal event into the batch.
+    pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
+        let key = journal_key(event.run_id(), event.seq())?;
+        let value = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            event.record_kind(),
+            event.seq().get(),
+            event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        self.inner.insert(&self.journal.events, key, value);
+        Ok(())
+    }
+
+    /// Returns the number of operations in the batch.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Returns true if the batch contains no operations.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Sets strict durability for the commit.
+    pub fn strict(mut self) -> Self {
+        self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll));
+        self
+    }
+
+    /// Commits the batch atomically.
+    pub fn commit(self) -> Result<(), JournalError> {
+        self.inner.commit()?;
+        Ok(())
+    }
 }
 
 impl Drop for FjallJournal {
@@ -2450,6 +2606,194 @@ mod tests {
         assert!(events.is_ok());
         let Ok(events) = events else { return };
         assert_eq!(events, vec![strict1, strict2]);
+    }
+
+    #[test]
+    fn write_batch_commits_cross_keyspace_atomically() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = WorkflowDigest::from_bytes([1; 32]);
+        let run = RunId::new(42);
+
+        let mut batch = journal.batch();
+        assert!(batch
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest,
+                source: b"test workflow".to_vec(),
+            })
+            .is_ok());
+        assert!(batch
+            .put_run_header(&RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(7),
+                compiled_digest: digest,
+                status: 1,
+                accepted_at_ms: 1234,
+            })
+            .is_ok());
+        assert!(batch.commit().is_ok());
+
+        let source = journal.workflow_source(digest);
+        assert!(source.is_ok());
+        assert!(source.as_ref().unwrap().is_some());
+        assert_eq!(
+            source.unwrap().unwrap().source,
+            b"test workflow".to_vec()
+        );
+
+        let header = journal.run_header(run);
+        assert!(header.is_ok());
+        assert!(header.as_ref().unwrap().is_some());
+        assert_eq!(header.unwrap().unwrap().run, run);
+    }
+
+    #[test]
+    fn write_batch_strict_commits_with_durability() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = [2; 32];
+        let mut batch = journal.batch().strict();
+        assert!(batch
+            .put_blob(
+                &BlobRecord {
+                    digest,
+                    bytes: b"blob data".to_vec(),
+                })
+            .is_ok());
+        assert!(batch.commit().is_ok());
+
+        let blob = journal.blob(digest);
+        assert!(blob.is_ok());
+        assert!(blob.as_ref().unwrap().is_some());
+        assert_eq!(blob.unwrap().unwrap().bytes, b"blob data".to_vec());
+    }
+
+    #[test]
+    fn write_batch_appends_events_and_indexes() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run = RunId::new(99);
+        let workflow = WorkflowId::new(5);
+        let action = ActionId::new(3);
+        let step = StepIdx::new(2);
+
+        let mut batch = journal.batch();
+        assert!(batch
+            .append_event(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([3; 32]),
+            })
+            .is_ok());
+        assert!(batch.put_workflow_index(workflow, run).is_ok());
+        assert!(batch.put_action_index(action, run, step).is_ok());
+        assert!(batch.put_status_index(1, 5678, run).is_ok());
+        assert!(batch.commit().is_ok());
+
+        let events = journal.events_for_run(run);
+        assert!(events.is_ok());
+        assert_eq!(events.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn write_batch_empty_commit_succeeds() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let batch = journal.batch();
+        assert!(batch.is_empty());
+        assert_eq!(batch.len(), 0);
+        assert!(batch.commit().is_ok());
+    }
+
+    #[test]
+    fn write_batch_is_empty_after_construction() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let batch = journal.batch();
+        assert!(batch.is_empty());
+        assert_eq!(batch.len(), 0);
+    }
+
+    #[test]
+    fn write_batch_len_tracks_operations() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let digest = WorkflowDigest::from_bytes([4; 32]);
+        let mut batch = journal.batch();
+        assert!(batch
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest,
+                source: b"a".to_vec(),
+            })
+            .is_ok());
+        assert_eq!(batch.len(), 1);
+        assert!(!batch.is_empty());
+
+        assert!(batch
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: b"ir".to_vec(),
+            })
+            .is_ok());
+        assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn write_batch_snapshot_round_trips() {
+        let temp_dir = tempfile::tempdir();
+        assert!(temp_dir.is_ok());
+        let Ok(temp_dir) = temp_dir else { return };
+        let journal = FjallJournal::open(temp_dir.path(), None);
+        assert!(journal.is_ok());
+        let Ok(journal) = journal else { return };
+
+        let run = RunId::new(77);
+        let seq = EventSeq::new(5);
+        let snapshot = RunSnapshot {
+            run,
+            seq,
+            workflow: WorkflowDigest::from_bytes([5; 32]),
+            slots: b"slot_data".to_vec(),
+        };
+
+        let mut batch = journal.batch();
+        assert!(batch.put_snapshot(&snapshot).is_ok());
+        assert!(batch.commit().is_ok());
+
+        let loaded = journal.snapshot(run, seq);
+        assert!(loaded.is_ok());
+        assert!(loaded.as_ref().unwrap().is_some());
+        assert_eq!(loaded.unwrap().unwrap().run, run);
     }
 
     #[test]

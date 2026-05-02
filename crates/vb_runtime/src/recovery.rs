@@ -17,36 +17,10 @@ pub trait RuntimeRecoveryBoundary {
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame>;
 }
 
-/// Summary-only recovery product accepted by the runtime.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SummaryRecoveryBoundary {
-    summary: RecoveryRuntimeSummary,
-}
-
 /// Runtime recovery boundary backed by a durable live-frame seed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DurableFrameRecoveryBoundary {
     seed: RecoveryFrameSeed,
-}
-
-impl SummaryRecoveryBoundary {
-    /// Builds a runtime recovery boundary from storage recovery hydration.
-    #[must_use]
-    pub const fn from_hydration(hydration: RecoveryHydration) -> Self {
-        Self {
-            summary: hydration.summary(),
-        }
-    }
-}
-
-impl RuntimeRecoveryBoundary for SummaryRecoveryBoundary {
-    fn summary(&self) -> RecoveryRuntimeSummary {
-        self.summary
-    }
-
-    fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
-        Err(RuntimeError::UnsupportedFullRecoveryHydration)
-    }
 }
 
 impl DurableFrameRecoveryBoundary {
@@ -95,6 +69,41 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     }
 }
 
+/// Recovery boundary factory that selects summary-only or full-frame
+/// hydration based on the storage recovery product.
+pub fn recovery_boundary_from_hydration(
+    hydration: RecoveryHydration,
+) -> Box<dyn RuntimeRecoveryBoundary> {
+    match hydration {
+        RecoveryHydration::Summary(summary) => Box::new(SummaryRecoveryBoundary { summary }),
+        RecoveryHydration::FrameSeed(seed) => Box::new(DurableFrameRecoveryBoundary::from_seed(seed)),
+    }
+}
+
+/// Summary-only recovery product accepted by the runtime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SummaryRecoveryBoundary {
+    summary: RecoveryRuntimeSummary,
+}
+
+impl SummaryRecoveryBoundary {
+    /// Builds a runtime recovery boundary from a storage recovery hydration.
+    #[must_use]
+    pub const fn from_summary(summary: RecoveryRuntimeSummary) -> Self {
+        Self { summary }
+    }
+}
+
+impl RuntimeRecoveryBoundary for SummaryRecoveryBoundary {
+    fn summary(&self) -> RecoveryRuntimeSummary {
+        self.summary
+    }
+
+    fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
+        Err(RuntimeError::UnsupportedFullRecoveryHydration)
+    }
+}
+
 fn apply_recovered_step(
     frame: &mut RunFrame,
     step: vb_core::StepIdx,
@@ -136,6 +145,7 @@ mod tests {
         RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
         RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     };
+    use crate::recovery::recovery_boundary_from_hydration;
 
     #[test]
     fn summary_recovery_boundary_exposes_summary() {
@@ -154,7 +164,7 @@ mod tests {
                 result: SlotIdx::new(2),
             }),
         };
-        let boundary = SummaryRecoveryBoundary::from_hydration(RecoveryHydration::Summary(summary));
+        let boundary = SummaryRecoveryBoundary::from_summary(summary);
 
         assert_eq!(boundary.summary(), summary);
     }
@@ -174,7 +184,7 @@ mod tests {
             slots_written: 0,
             terminal: None,
         };
-        let boundary = SummaryRecoveryBoundary::from_hydration(RecoveryHydration::Summary(summary));
+        let boundary = SummaryRecoveryBoundary::from_summary(summary);
 
         assert_eq!(
             boundary.hydrate_run_frame(),
@@ -282,5 +292,134 @@ mod tests {
             boundary.hydrate_run_frame(),
             Err(RuntimeError::InvalidRecoveryHydration)
         );
+    }
+
+    #[test]
+    fn recovery_boundary_factory_selects_summary_for_summary_variant() {
+        let summary = RecoveryRuntimeSummary {
+            run: RunId::new(19),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(0),
+            workflow: None,
+            steps_started: 0,
+            steps_succeeded: 0,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 0,
+            terminal: None,
+        };
+        let hydration = RecoveryHydration::Summary(summary);
+        let boundary = recovery_boundary_from_hydration(hydration);
+
+        assert_eq!(boundary.summary(), summary);
+        assert_eq!(
+            boundary.hydrate_run_frame(),
+            Err(RuntimeError::UnsupportedFullRecoveryHydration)
+        );
+    }
+
+    #[test]
+    fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
+        let run = RunId::new(20);
+        let summary = RecoveryRuntimeSummary {
+            run,
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(2),
+            workflow: Some(WorkflowDigest::from_bytes([6; 32])),
+            steps_started: 1,
+            steps_succeeded: 1,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 0,
+            terminal: None,
+        };
+        let seed = RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 2,
+            slot_count: 4,
+            pc: StepIdx::new(1),
+            steps: vec![
+                RecoveredStepEntry {
+                    step: StepIdx::ZERO,
+                    state: RecoveredStepState::Succeeded,
+                },
+                RecoveredStepEntry {
+                    step: StepIdx::new(1),
+                    state: RecoveredStepState::Running,
+                },
+            ],
+            unsupported: UnsupportedRecoveryState {
+                slot_values: true,
+                slot_taint: true,
+                action_payloads: false,
+            },
+        };
+        let hydration = RecoveryHydration::FrameSeed(seed);
+        let boundary = recovery_boundary_from_hydration(hydration);
+
+        assert_eq!(boundary.summary(), summary);
+        let frame = boundary.hydrate_run_frame().unwrap();
+        assert_eq!(frame.run_id(), run);
+        assert_eq!(frame.pc(), StepIdx::new(1));
+        assert_eq!(frame.step_count(), 2);
+        assert_eq!(frame.slot_count(), 4);
+        assert_eq!(frame.step_state(StepIdx::ZERO), Ok(StepState::Succeeded));
+        assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Running));
+    }
+
+    #[test]
+    fn recovery_boundary_factory_frame_seed_round_trips_summary() {
+        let summary = RecoveryRuntimeSummary {
+            run: RunId::new(21),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(5),
+            workflow: Some(WorkflowDigest::from_bytes([7; 32])),
+            steps_started: 3,
+            steps_succeeded: 2,
+            actions_scheduled: 1,
+            actions_resolved: 1,
+            suspensions: 0,
+            slots_written: 2,
+            terminal: Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(1),
+            }),
+        };
+        let seed = RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 3,
+            slot_count: 2,
+            pc: StepIdx::new(2),
+            steps: vec![
+                RecoveredStepEntry {
+                    step: StepIdx::ZERO,
+                    state: RecoveredStepState::Succeeded,
+                },
+                RecoveredStepEntry {
+                    step: StepIdx::new(1),
+                    state: RecoveredStepState::Succeeded,
+                },
+                RecoveredStepEntry {
+                    step: StepIdx::new(2),
+                    state: RecoveredStepState::Running,
+                },
+            ],
+            unsupported: UnsupportedRecoveryState {
+                slot_values: true,
+                slot_taint: true,
+                action_payloads: true,
+            },
+        };
+        let hydration = RecoveryHydration::FrameSeed(seed);
+        let boundary = recovery_boundary_from_hydration(hydration);
+
+        let recovered_summary = boundary.summary();
+        assert_eq!(recovered_summary.run, summary.run);
+        assert_eq!(recovered_summary.steps_started, summary.steps_started);
+        assert_eq!(recovered_summary.steps_succeeded, summary.steps_succeeded);
+        assert_eq!(recovered_summary.terminal, summary.terminal);
     }
 }
