@@ -1148,6 +1148,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = vb_core::workflow::WorkflowParts {
@@ -1891,6 +1893,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = vb_core::workflow::WorkflowParts {
@@ -2003,6 +2007,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = vb_core::workflow::WorkflowParts {
@@ -2145,6 +2151,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -2153,6 +2161,8 @@ mod tests {
             id: StepIdx::new(1),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -2161,6 +2171,8 @@ mod tests {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2336,12 +2348,16 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let node1 = CompiledNode {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = vb_core::workflow::WorkflowParts {
@@ -2497,6 +2513,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -2505,12 +2523,16 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let finish = CompiledNode {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2588,12 +2610,16 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let finish = CompiledNode {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },

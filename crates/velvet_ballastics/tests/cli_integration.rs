@@ -25,6 +25,8 @@ fn input_slot_parts() -> WorkflowParts {
         id: StepIdx::ZERO,
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
@@ -428,6 +430,8 @@ fn core_workflow_rejects_out_of_bounds_step() {
         id: StepIdx::new(99),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([bad_node]));
@@ -441,6 +445,8 @@ fn core_workflow_rejects_invalid_jump_target() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
@@ -610,6 +616,8 @@ fn codegen_emit_rust_produces_output() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([node]));

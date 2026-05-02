@@ -466,6 +466,13 @@ pub struct CompiledNode {
     pub output: Option<SlotIdx>,
     /// Optional fallthrough step.
     pub next: Option<StepIdx>,
+    /// Optional error handler step. When this step fails and `on_error` is
+    /// set, the engine routes PC to this handler instead of failing the run.
+    pub on_error: Option<StepIdx>,
+    /// Optional slot where failure information is written before routing to
+    /// the error handler. The slot receives an object with `code`, `message`,
+    /// and `step` fields describing the failure.
+    pub error_slot: Option<SlotIdx>,
     /// Node behavior.
     pub kind: CompiledNodeKind,
 }
@@ -796,6 +803,8 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_optional_slot(node.output, parts.slot_count)?;
     validate_optional_step(node.next, parts.nodes.len())?;
+    validate_optional_step(node.on_error, parts.nodes.len())?;
+    validate_optional_slot(node.error_slot, parts.slot_count)?;
     match &node.kind {
         CompiledNodeKind::Nop => Ok(()),
         CompiledNodeKind::SetConst { value } => validate_const(*value, parts.constants.len()),
@@ -1275,6 +1284,9 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         if let Some(next) = node.next {
             targets.push(next);
         }
+        if let Some(handler) = node.on_error {
+            targets.push(handler);
+        }
         collect_node_targets(&node.kind, &mut targets);
 
         for target in targets {
@@ -1403,6 +1415,10 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 
         if let Some(next) = node.next {
             validate_forward_target(next, index, current_id)?;
+        }
+
+        if let Some(handler) = node.on_error {
+            validate_forward_target(handler, index, current_id)?;
         }
 
         validate_kind_edges(&node.kind, index, current_id)?;
@@ -1833,6 +1849,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2138,6 +2156,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind,
             }]
             .into_boxed_slice(),
@@ -2185,6 +2205,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -2238,12 +2260,16 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: branch_kind,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -2252,6 +2278,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -2327,6 +2355,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -2354,6 +2384,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(99)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -2379,6 +2411,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(5)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice();
@@ -2397,6 +2431,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(50),
             },
@@ -2418,6 +2454,8 @@ mod tests {
             id: StepIdx::new(7),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice();
@@ -2505,6 +2543,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -2533,6 +2573,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(99),
             },
@@ -2557,6 +2599,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(5),
             },
@@ -2579,6 +2623,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(99),
             },
@@ -2605,6 +2651,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(5)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice();
@@ -2625,6 +2673,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Jump {
                 target: StepIdx::new(50),
             },
@@ -2647,6 +2697,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(10),
             },
@@ -2669,6 +2721,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(200)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice();
@@ -2691,6 +2745,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -2720,6 +2776,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::BuildList {
                 items: vec![SlotIdx::new(0), SlotIdx::new(5)].into_boxed_slice(),
             },
@@ -2744,6 +2802,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::TogetherStart {
                     branches: vec![StepIdx::new(1), StepIdx::new(99)].into_boxed_slice(),
                     join: StepIdx::new(2),
@@ -2753,12 +2813,16 @@ mod tests {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -2782,6 +2846,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::TogetherStart {
                     branches: vec![StepIdx::new(1)].into_boxed_slice(),
                     join: StepIdx::new(50),
@@ -2791,6 +2857,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -2812,6 +2880,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count: 0,
                 accumulator: SlotIdx::new(0),
@@ -2838,6 +2908,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::RepeatStart {
                     max_attempts: 0,
                     body: StepIdx::new(1),
@@ -2848,12 +2920,16 @@ mod tests {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -2878,12 +2954,16 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(5), // should be 1
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -3013,12 +3093,16 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3027,6 +3111,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3048,18 +3134,24 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
                     output: None,
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3080,12 +3172,16 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
                     output: None,
                     next: Some(StepIdx::new(0)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3113,12 +3209,16 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Jump {
                         target: StepIdx::new(0),
                     },
@@ -3141,6 +3241,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(0),
                         item_slot: SlotIdx::new(1),
@@ -3153,12 +3255,16 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachNext {
                         iterator_slot: SlotIdx::new(2),
                         body: StepIdx::new(1),
@@ -3169,6 +3275,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3198,6 +3306,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(0),
                         item_slot: SlotIdx::new(1),
@@ -3210,6 +3320,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(1),
                         item_slot: SlotIdx::new(2),
@@ -3222,12 +3334,16 @@ mod tests {
                     id: StepIdx::new(2),
                     output: None,
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachNext {
                         iterator_slot: SlotIdx::new(3),
                         body: StepIdx::new(2),
@@ -3238,6 +3354,8 @@ mod tests {
                     id: StepIdx::new(4),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachNext {
                         iterator_slot: SlotIdx::new(4),
                         body: StepIdx::new(1),
@@ -3248,6 +3366,8 @@ mod tests {
                     id: StepIdx::new(5),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3286,6 +3406,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(0),
                         item_slot: SlotIdx::new(1),
@@ -3298,6 +3420,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(1),
                         item_slot: SlotIdx::new(2),
@@ -3310,12 +3434,16 @@ mod tests {
                     id: StepIdx::new(2),
                     output: None,
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachNext {
                         iterator_slot: SlotIdx::new(3),
                         body: StepIdx::new(2),
@@ -3326,6 +3454,8 @@ mod tests {
                     id: StepIdx::new(4),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::ForEachNext {
                         iterator_slot: SlotIdx::new(4),
                         body: StepIdx::new(1),
@@ -3336,6 +3466,8 @@ mod tests {
                     id: StepIdx::new(5),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3370,6 +3502,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -3403,6 +3537,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -3435,6 +3571,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3444,6 +3582,8 @@ mod tests {
                     output: Some(SlotIdx::new(0)),
                     // Backward edge: node 1 -> node 0 creates a cycle.
                     next: Some(StepIdx::new(0)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3480,6 +3620,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3489,6 +3631,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3524,6 +3668,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(99),
                 },
@@ -3553,6 +3699,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0), SlotIdx::new(50)].into_boxed_slice(),
                 },
@@ -3583,6 +3731,8 @@ mod tests {
                 // Output slot 200 is out of bounds for slot_count=1.
                 output: Some(SlotIdx::new(200)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -3614,6 +3764,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3622,6 +3774,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -4295,6 +4449,8 @@ mod proptests {
                 id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(next_step)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -4304,6 +4460,8 @@ mod proptests {
             id: StepIdx::new(u16::try_from(last).map_or(u16::MAX, |v| v)),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -4357,6 +4515,8 @@ mod proptests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(bad_slot),
                     },
@@ -4399,6 +4559,8 @@ mod proptests {
                         id: StepIdx::new(0),
                         output: Some(SlotIdx::new(bad_slot)),
                         next: Some(StepIdx::new(1)),
+                        on_error: None,
+                        error_slot: None,
                         kind: CompiledNodeKind::SetConst {
                             value: ConstIdx::new(0),
                         },
@@ -4407,6 +4569,8 @@ mod proptests {
                         id: StepIdx::new(1),
                         output: None,
                         next: None,
+                        on_error: None,
+                        error_slot: None,
                         kind: CompiledNodeKind::Finish {
                             result: SlotIdx::new(0),
                         },
@@ -4475,6 +4639,8 @@ mod proptests {
                     id: claimed_id,
                     output: Some(SlotIdx::new(0)),
                     next,
+                    on_error: None,
+                    error_slot: None,
                     kind,
                 });
             }
@@ -4544,6 +4710,8 @@ mod proptests {
                     id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
                     output: Some(SlotIdx::new(0)),
                     next,
+                    on_error: None,
+                    error_slot: None,
                     kind,
                 });
             }
@@ -4554,6 +4722,8 @@ mod proptests {
                     id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -4636,6 +4806,8 @@ mod proptests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },

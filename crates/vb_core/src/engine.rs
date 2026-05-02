@@ -1,6 +1,7 @@
 //! Synchronous in-memory state-machine loop.
 
 pub(crate) mod choose;
+pub(crate) mod error_routing;
 pub(crate) mod expr_eval;
 pub(crate) mod node_helpers;
 pub(crate) mod object_list;
@@ -13,6 +14,7 @@ pub use crate::errors::EngineError;
 pub use crate::frame::RunFrame;
 pub use crate::value_store::ValueStore;
 pub use crate::workflow::CompiledWorkflow;
+pub use error_routing::{ErrorHandlerOutcome, ErrorSlotData, route_error_handler};
 pub use expr_eval::eval_accessor;
 pub use expr_eval::eval_accessor_with_store;
 pub use expr_eval::eval_expr;
@@ -57,7 +59,7 @@ mod tests {
     use crate::value_store::{ObjectField, ValueStore};
     use crate::workflow::{
         AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-        ExprProgram, PathSegment, SlotBranch, WorkflowParts,
+        ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
     };
 
     fn test_store() -> ValueStore {
@@ -838,6 +840,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst { value: constant },
             },
             tiny_finish_node(),
@@ -855,6 +859,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -866,6 +872,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -888,6 +896,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ChooseSlot {
                     branches: vec![
                         SlotBranch {
@@ -910,6 +920,8 @@ mod tests {
                 id: StepIdx::new(4),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
@@ -958,6 +970,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Choose {
                     branches: vec![
                         ExprBranch {
@@ -980,6 +994,8 @@ mod tests {
                 id: StepIdx::new(4),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
@@ -1015,6 +1031,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Copy {
                         source: SlotIdx::new(0),
                     },
@@ -1050,6 +1068,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1082,6 +1102,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1090,6 +1112,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -1119,6 +1143,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -1127,6 +1153,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -1135,6 +1163,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildList {
                         items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                     },
@@ -1143,6 +1173,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: Some(SlotIdx::new(3)),
                     next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildObject {
                         fields: vec![
                             (SymbolId::new(1), SlotIdx::new(2)),
@@ -1155,6 +1187,8 @@ mod tests {
                     id: StepIdx::new(4),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(3),
                     },
@@ -1176,6 +1210,8 @@ mod tests {
             id: StepIdx::new(id),
             output: Some(SlotIdx::new(output)),
             next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(constant),
             },
@@ -1198,6 +1234,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1330,6 +1368,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1364,6 +1404,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -1372,6 +1414,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -1411,6 +1455,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1501,6 +1547,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -1536,6 +1584,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::WaitUntil {
                     deadline_slot: SlotIdx::new(0),
                 },
@@ -1570,6 +1620,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None,
@@ -1614,6 +1666,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
@@ -1661,6 +1715,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
@@ -1705,6 +1761,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
@@ -1930,6 +1988,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1938,6 +1998,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -1979,6 +2041,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1987,6 +2051,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -2026,6 +2092,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -2034,6 +2102,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -2042,6 +2112,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildObject {
                         fields: vec![
                             (SymbolId::new(1), SlotIdx::new(0)),
@@ -2054,6 +2126,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -2117,6 +2191,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -2125,6 +2201,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -2133,6 +2211,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildObject {
                         fields: vec![
                             (SymbolId::new(1), SlotIdx::new(0)),
@@ -2145,6 +2225,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -2181,6 +2263,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -2189,6 +2273,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -2197,6 +2283,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildList {
                         items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                     },
@@ -2205,6 +2293,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -2268,6 +2358,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -2276,6 +2368,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -2284,6 +2378,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildList {
                         items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                     },
@@ -2292,6 +2388,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -2429,6 +2527,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -3184,6 +3284,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -3192,6 +3294,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -3237,6 +3341,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -3245,6 +3351,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -3297,6 +3405,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Jump {
                         target: StepIdx::new(1),
                     },
@@ -3305,6 +3415,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3344,6 +3456,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3352,12 +3466,16 @@ mod tests {
                     id: StepIdx::new(1),
                     output: None,
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -3435,6 +3553,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -3472,6 +3592,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None,
@@ -3507,6 +3629,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3515,6 +3639,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -3523,6 +3649,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildObject {
                         fields: vec![
                             (SymbolId::new(1), SlotIdx::new(0)),
@@ -3535,6 +3663,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -3579,6 +3709,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -3587,6 +3719,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -3595,6 +3729,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::BuildList {
                         items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                     },
@@ -3603,6 +3739,8 @@ mod tests {
                     id: StepIdx::new(3),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -3749,6 +3887,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -3758,6 +3898,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(1)),
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -3768,6 +3910,8 @@ mod tests {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
@@ -3905,7 +4049,7 @@ mod tests {
         };
 
         // Resume with failure.
-        let result = resume_action_failure(&mut run, ticket, ActionFailureCode::Timeout, true)
+        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Timeout, true)
             .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
@@ -3943,7 +4087,7 @@ mod tests {
         };
 
         // Resume with a non-retryable failure.
-        let result = resume_action_failure(&mut run, ticket, ActionFailureCode::Rejected, false)
+        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Rejected, false)
             .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
@@ -4056,6 +4200,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -4064,6 +4210,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(1)),
                 next: None, // No next step - this should cause an error
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -4159,6 +4307,558 @@ mod tests {
             }
             other => return Err(format!("expected Completed journal event, got {other:?}")),
         }
+        Ok(())
+    }
+
+    // =========================================================================
+    // Phase 21 tests -- on_error/then handler routing
+    // =========================================================================
+
+    /// Builds a workflow where node 0 has an on_error handler routing to node 2,
+    /// and node 2 (handler) finishes with a recovery result.
+    ///
+    /// Layout:
+    /// - Node 0: Nop with on_error -> node 2, error_slot -> slot 1, next -> node 1
+    /// - Node 1: Finish (happy path result from slot 0)
+    /// - Node 2: SetConst(99) -> slot 2 (handler recovery value)
+    /// - Node 3: Finish (handler completion result from slot 2)
+    #[allow(dead_code)]
+    fn error_handler_catch_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: "error_handler_catch".into(),
+            digest: WorkflowDigest::from_bytes([21u8; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    on_error: Some(StepIdx::new(2)),
+                    error_slot: Some(SlotIdx::new(1)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(99)].into_boxed_slice(),
+            slot_count: 4,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Workflow with a node that will fail during execution (missing const),
+    /// but has an on_error handler to catch it.
+    fn error_handler_catch_failing_step_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: "error_handler_catch_failing".into(),
+            digest: WorkflowDigest::from_bytes([22u8; 32]),
+            nodes: vec![
+                // Node 0: SetConst with valid value
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 1: Copy from uninitialized slot (will fail at runtime), but has handler
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    on_error: Some(StepIdx::new(2)),
+                    error_slot: Some(SlotIdx::new(3)),
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(4), // valid index, but never written -> fails at runtime
+                    },
+                },
+                // Node 2: Handler - writes recovery value
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                // Node 3: Finish with slot 2 (either normal or recovered)
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42), ConstValue::I64(999)].into_boxed_slice(),
+            slot_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Workflow where a failing step has no error handler (should propagate failure).
+    fn no_handler_failure_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: "no_handler_failure".into(),
+            digest: WorkflowDigest::from_bytes([23u8; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 1: Copy from uninitialized slot (will fail at runtime), no handler
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(2), // valid index, but never written -> fails at runtime
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn error_handler_catches_failing_step_and_routes_to_handler() -> Result<(), String> {
+        let workflow = error_handler_catch_failing_step_workflow()?;
+        let mut run = test_frame(RunId::new(301), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // The workflow should finish successfully via the error handler path.
+        // Node 0 succeeds (SetConst), node 1 fails (Copy from bad slot),
+        // engine routes to node 2 (handler), node 2 succeeds (SetConst recovery),
+        // node 3 finishes with recovery value.
+        match result {
+            Ok(EngineSignal::Finished(value, _taint)) => {
+                ensure_equal(value, SlotValue::I64(999))?;
+            }
+            Ok(other) => return Err(format!("expected Finished, got {other:?}")),
+            Err(e) => return Err(format!("unexpected error: {e}")),
+        }
+
+        // Error slot should have the failed step index.
+        let error_slot_value = run.read_slot(SlotIdx::new(3));
+        match error_slot_value {
+            Ok(value) => {
+                // Should contain the failed step index (1)
+                ensure_equal(*value, SlotValue::I64(1))?;
+            }
+            Err(_) => return Err(String::from("error slot should have been written")),
+        }
+
+        // Step 1 should be Failed
+        ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Failed))?;
+        // Handler step (2) should be Succeeded
+        ensure_equal(run.step_state(StepIdx::new(2)), Ok(StepState::Succeeded))?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn no_handler_propagates_failure() -> Result<(), String> {
+        let workflow = no_handler_failure_workflow()?;
+        let mut run = test_frame(RunId::new(302), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // Should fail because node 1 has no error handler.
+        match result {
+            Err(e) => {
+                // Should be a SlotOutOfBounds error from the Copy node
+                let msg = format!("{e}");
+                if !msg.contains("slot") {
+                    return Err(format!("expected slot-related error, got: {msg}"));
+                }
+            }
+            Ok(other) => return Err(format!("expected error, got {other:?}")),
+        }
+
+        // Step 1 should be Failed
+        ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Failed))?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_handler_recovery_path_finishes_successfully() -> Result<(), String> {
+        // Test that after handler catches an error, execution continues through
+        // the handler's next step (forward transition), not back to the failed step.
+        let workflow = error_handler_catch_failing_step_workflow()?;
+        let mut run = test_frame(RunId::new(303), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // Should finish with the recovery value (999) from the handler path
+        match result {
+            Ok(EngineSignal::Finished(value, Taint::Clean)) => {
+                ensure_equal(value, SlotValue::I64(999))?;
+            }
+            Ok(other) => return Err(format!("expected Finished(Clean), got {other:?}")),
+            Err(e) => return Err(format!("unexpected error: {e}")),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_slot_contains_failed_step_index() -> Result<(), String> {
+        let workflow = error_handler_catch_failing_step_workflow()?;
+        let mut run = test_frame(RunId::new(304), &workflow)?;
+        let mut store = test_store();
+
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // The error slot (slot 3) should contain the step index that failed
+        let slot_value = run.read_slot(SlotIdx::new(3)).map_err(|e| format!("{e}"))?;
+        ensure_equal(*slot_value, SlotValue::I64(1))?; // Step 1 failed
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_handler_node_routes_to_body() -> Result<(), String> {
+        // Test the CompiledNodeKind::ErrorHandler variant routes PC to its body.
+        let parts = WorkflowParts {
+            name: "error_handler_node".into(),
+            digest: WorkflowDigest::from_bytes([24u8; 32]),
+            nodes: vec![
+                // Node 0: ErrorHandler { body: 1, handler: 3 }
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::ErrorHandler {
+                        body: StepIdx::new(1),
+                        handler: StepIdx::new(3),
+                    },
+                },
+                // Node 1: SetConst 42 -> slot 0
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 2: Finish with slot 0 (happy path)
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                // Node 3: Handler - writes recovery value, finishes at node 4
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                // Node 4: Finish with slot 1 (handler recovery path)
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42), ConstValue::I64(100)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(305), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // ErrorHandler routes to body (node 1), which succeeds, then finishes at node 2
+        match result {
+            Ok(EngineSignal::Finished(value, Taint::Clean)) => {
+                ensure_equal(value, SlotValue::I64(42))?;
+            }
+            Ok(other) => return Err(format!("expected Finished(42, Clean), got {other:?}")),
+            Err(e) => return Err(format!("unexpected error: {e}")),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_handler_catches_body_failure() -> Result<(), String> {
+        // ErrorHandler body fails, but body has on_error pointing to handler.
+        let parts = WorkflowParts {
+            name: "error_handler_body_fail".into(),
+            digest: WorkflowDigest::from_bytes([25u8; 32]),
+            nodes: vec![
+                // Node 0: ErrorHandler { body: 1, handler: 3 }
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::ErrorHandler {
+                        body: StepIdx::new(1),
+                        handler: StepIdx::new(3),
+                    },
+                },
+                // Node 1: Copy from uninitialized slot (fails at runtime), has on_error -> handler
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: Some(StepIdx::new(3)),
+                    error_slot: Some(SlotIdx::new(2)),
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(3), // valid index, uninitialized -> fails at runtime
+                    },
+                },
+                // Node 2: Finish (happy path)
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                // Node 3: Handler - writes recovery value, finishes at node 4
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 4: Finish (handler recovery path)
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(100)].into_boxed_slice(),
+            slot_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(306), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // Body (node 1) fails, on_error routes to handler (node 3),
+        // handler writes recovery value, then finishes at node 4.
+        match result {
+            Ok(EngineSignal::Finished(value, Taint::Clean)) => {
+                ensure_equal(value, SlotValue::I64(100))?;
+            }
+            Ok(other) => return Err(format!("expected Finished(100, Clean), got {other:?}")),
+            Err(e) => return Err(format!("unexpected error: {e}")),
+        }
+
+        // Verify error slot content
+        let error_value = run.read_slot(SlotIdx::new(2)).map_err(|e| format!("{e}"))?;
+        ensure_equal(*error_value, SlotValue::I64(1))?; // failed step index
+
+        Ok(())
+    }
+
+    #[test]
+    fn handler_failure_propagates_when_no_nested_handler() -> Result<(), String> {
+        // Handler itself fails without its own handler -> run fails.
+        let parts = WorkflowParts {
+            name: "handler_fail_propagate".into(),
+            digest: WorkflowDigest::from_bytes([26u8; 32]),
+            nodes: vec![
+                // Node 0: Copy from uninitialized slot, routes to handler
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: Some(StepIdx::new(1)),
+                    error_slot: Some(SlotIdx::new(2)),
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(3), // valid index, uninitialized -> fails at runtime
+                    },
+                },
+                // Node 1: Handler also fails (no nested handler)
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None, // no nested handler
+                    error_slot: None,
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(4), // valid index, uninitialized -> fails at runtime
+                    },
+                },
+                // Node 2: Finish
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+            slot_count: 6,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(307), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        // Should fail because the handler (node 1) also fails and has no handler.
+        match result {
+            Err(e) => {
+                let msg = format!("{e}");
+                if !msg.contains("slot") {
+                    return Err(format!("expected slot-related error from handler, got: {msg}"));
+                }
+            }
+            Ok(other) => return Err(format!("expected error, got {other:?}")),
+        }
+
+        // Step 0 should be Failed
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+        // Handler step (1) should also be Failed
+        ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Failed))?;
+
         Ok(())
     }
 }

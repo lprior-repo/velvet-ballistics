@@ -1,6 +1,7 @@
 //! Single-step execution engine.
 
 use super::choose;
+use super::error_routing::{ErrorHandlerOutcome, route_error_handler};
 use super::expr_eval;
 use super::node_helpers;
 use super::object_list;
@@ -29,7 +30,16 @@ pub fn step_once(
         Ok(signal) => signal,
         Err(error) => {
             run.mark_failed(pc)?;
-            return Err(error);
+            // Check if this step has an error handler.
+            match route_error_handler(plan, run, pc, &error)? {
+                ErrorHandlerOutcome::Routed => {
+                    // PC is now at the handler step. Continue execution.
+                    return Ok(EngineSignal::Continue);
+                }
+                ErrorHandlerOutcome::NoHandler => {
+                    return Err(error);
+                }
+            }
         }
     };
     mark_step_after_signal(run, pc, &signal)?;
@@ -80,6 +90,12 @@ fn execute_boundary_node(
         CompiledNodeKind::Ask { .. } => Ok(EngineSignal::AwaitingAsk),
         CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
         CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
+        CompiledNodeKind::ErrorHandler { body, .. } => {
+            // ErrorHandler node routes PC to its body step.
+            // If the body fails, the engine's error routing will catch it
+            // via the body node's on_error field and route to the handler.
+            node_helpers::jump_to(run, *body)
+        }
         _ => Err(EngineError::UnsupportedPrimitive {
             primitive: "not_yet_implemented",
         }),
@@ -153,9 +169,9 @@ pub fn resume_action_completion(
 /// Resumes a run after an action failure.
 ///
 /// Marks the suspended step as failed. If the workflow has an error handler
-/// for this step (modeled as `ErrorHandler` node kind), the PC is advanced
-/// to the handler; otherwise the step remains in the Failed state and the
-/// caller receives the failure signal.
+/// for this step, the PC is advanced to the handler and the engine signal
+/// is `Continue`; otherwise the step remains in the Failed state and the
+/// caller receives `AwaitingAction` to handle the failure externally.
 ///
 /// Returns a journal event recording the failure.
 ///
@@ -163,6 +179,7 @@ pub fn resume_action_completion(
 ///
 /// Returns `EngineError` if the step state transition is invalid.
 pub fn resume_action_failure(
+    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     ticket: ActionTicket,
     failure_code: ActionFailureCode,
@@ -179,9 +196,14 @@ pub fn resume_action_failure(
         retryable,
     };
 
-    // For now, the failure terminates the step. Error handler routing is
-    // a higher-level concern that inspects the journal and node structure.
-    Ok((EngineSignal::AwaitingAction, journal))
+    // Attempt to route to the error handler if configured.
+    let error = EngineError::ResourceLimitExceeded {
+        resource: "action_failure",
+    };
+    match route_error_handler(plan, run, step, &error)? {
+        ErrorHandlerOutcome::Routed => Ok((EngineSignal::Continue, journal)),
+        ErrorHandlerOutcome::NoHandler => Ok((EngineSignal::AwaitingAction, journal)),
+    }
 }
 
 fn mark_step_after_signal(

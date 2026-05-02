@@ -9535,6 +9535,8 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
@@ -9543,6 +9545,8 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -9595,6 +9599,8 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
@@ -9603,6 +9609,8 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -9644,6 +9652,8 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -9652,6 +9662,8 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -9720,6 +9732,8 @@ fn submit_artifact_checksum_mismatch_rejected() {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -9728,6 +9742,8 @@ fn submit_artifact_checksum_mismatch_rejected() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -9944,6 +9960,8 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -9952,6 +9970,8 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -10013,6 +10033,8 @@ fn submit_artifact_stale_digest_rejected() {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
@@ -10021,6 +10043,8 @@ fn submit_artifact_stale_digest_rejected() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

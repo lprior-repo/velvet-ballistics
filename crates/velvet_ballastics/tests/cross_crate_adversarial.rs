@@ -287,6 +287,8 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
@@ -295,6 +297,8 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -348,6 +352,8 @@ fn core_to_runtime_jump_to_out_of_bounds_step_is_rejected() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(99),
         },
@@ -366,6 +372,8 @@ fn core_to_runtime_choose_with_empty_branches_is_rejected() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches: Box::from([]),
             otherwise: None,
@@ -389,6 +397,8 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
@@ -397,6 +407,8 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
         id: StepIdx::new(1),
         output: Some(SlotIdx::new(1)),
         next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -405,6 +417,8 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
         id: StepIdx::new(2),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -806,6 +820,8 @@ fn compile_to_codegen_simple_nop_workflow_produces_rust_source() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([node]));
@@ -1381,6 +1397,8 @@ fn runtime_submit_and_tick_simple_workflow() {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
@@ -1389,6 +1407,8 @@ fn runtime_submit_and_tick_simple_workflow() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1469,6 +1489,8 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([node]));

@@ -742,6 +742,8 @@ mod tests {
             digest: WorkflowDigest::from_bytes([0; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
                 next: None,
                 output: None,

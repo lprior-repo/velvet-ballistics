@@ -26,6 +26,8 @@ fn generate_minimal_workflow_fixture() {
                 id: vb_core::StepIdx::new(0),
                 output: Some(vb_core::SlotIdx::new(0)),
                 next: Some(vb_core::StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: vb_core::CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
                 },
@@ -34,6 +36,8 @@ fn generate_minimal_workflow_fixture() {
                 id: vb_core::StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: vb_core::CompiledNodeKind::Finish {
                     result: vb_core::SlotIdx::new(0),
                 },

@@ -480,6 +480,8 @@ fn valid_parts() -> WorkflowParts {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -488,6 +490,8 @@ fn valid_parts() -> WorkflowParts {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -572,6 +576,8 @@ fn try_from_parts_rejects_unreachable_node() {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -580,6 +586,8 @@ fn try_from_parts_rejects_unreachable_node() {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -588,6 +596,8 @@ fn try_from_parts_rejects_unreachable_node() {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -683,6 +693,8 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ChooseSlot {
                     branches: Box::new([]),
                     otherwise: None,
@@ -692,6 +704,8 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -781,6 +795,8 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -789,6 +805,8 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -848,6 +866,8 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -856,6 +876,8 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1004,6 +1026,8 @@ fn eval_expr_value(
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },

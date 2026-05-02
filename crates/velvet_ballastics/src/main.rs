@@ -1224,6 +1224,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::ZERO),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1232,6 +1234,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },

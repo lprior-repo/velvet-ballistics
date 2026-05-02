@@ -560,6 +560,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },

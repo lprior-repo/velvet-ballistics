@@ -35,6 +35,8 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -43,6 +45,8 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -68,6 +72,8 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(1)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Do {
             action: ActionId::new(7),
             input: SlotIdx::new(0),
@@ -77,6 +83,8 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
@@ -112,6 +120,8 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(1)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::EvalExpr {
             expr: ExprIdx::new(0),
         },
@@ -120,6 +130,8 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
@@ -607,6 +619,8 @@ fn budget_validation_rejects_oversized_workflow() {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -615,6 +629,8 @@ fn budget_validation_rejects_oversized_workflow() {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -646,6 +662,8 @@ fn budget_validation_rejects_oversized_workflow() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

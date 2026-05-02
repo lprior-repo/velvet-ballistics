@@ -875,6 +875,8 @@ mod tests {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -883,6 +885,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -913,6 +917,8 @@ mod tests {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -921,6 +927,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Do {
                         action: crate::ids::ActionId::new(0),
                         input: SlotIdx::new(0),
@@ -930,6 +938,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -965,6 +975,8 @@ mod tests {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -973,6 +985,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Ask {
                         prompt: SlotIdx::new(0),
                         timeout_slot: None,
@@ -982,6 +996,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -1017,6 +1033,8 @@ mod tests {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -1025,6 +1043,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Copy {
                         source: SlotIdx::new(0),
                     },
@@ -1033,6 +1053,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -1041,6 +1063,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -1109,6 +1133,8 @@ mod tests {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -1117,6 +1143,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(1),
                     },
@@ -1125,6 +1153,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1133,6 +1163,8 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -1185,6 +1217,8 @@ mod tests {
         let plan = make_plan(
             vec![CompiledNode {
                 id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
                 output: None,
                 next: None,

@@ -238,6 +238,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -263,6 +265,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(7),
                 input: SlotIdx::new(0),
@@ -272,6 +276,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -455,6 +461,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -463,6 +471,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1962,6 +1972,8 @@ mod tests {
             id: StepIdx::ZERO,
             output: Some(SlotIdx::ZERO),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1970,6 +1982,8 @@ mod tests {
             id: StepIdx::new(1),
             output: None,
             next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::WaitUntil {
                 deadline_slot: SlotIdx::ZERO,
             },
@@ -1978,6 +1992,8 @@ mod tests {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },
