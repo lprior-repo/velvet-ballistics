@@ -2,6 +2,8 @@
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
+use crate::value_store::ValueStore;
+use core::fmt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Secret propagation marker attached to each runtime slot.
@@ -56,6 +58,12 @@ pub fn join_taint(a: Taint, b: Taint) -> Taint {
 pub struct FiniteF64(f64);
 
 impl Eq for FiniteF64 {}
+
+impl fmt::Display for FiniteF64 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl FiniteF64 {
     /// Creates a finite floating-point value, rejecting NaN and infinities.
@@ -116,6 +124,21 @@ pub enum SlotValue {
 }
 
 impl Eq for SlotValue {}
+
+impl fmt::Display for SlotValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Null => write!(f, "null"),
+            Self::Bool(v) => write!(f, "{v}"),
+            Self::I64(v) => write!(f, "{v}"),
+            Self::F64(v) => write!(f, "{v}"),
+            Self::Symbol(id) => write!(f, "symbol:{}", id.get()),
+            Self::List(id) => write!(f, "list:{}", id.get()),
+            Self::Object(id) => write!(f, "object:{}", id.get()),
+            Self::Blob(id) => write!(f, "blob:{}", id.as_u64()),
+        }
+    }
+}
 
 /// Compile-time constant value, smaller than SlotValue.
 /// Constants cannot hold runtime-allocated handles (List, Object, Blob).
@@ -690,5 +713,52 @@ impl SlotValue {
     #[must_use]
     pub const fn is_true(&self) -> bool {
         matches!(self, Self::Bool(true))
+    }
+
+    /// Resolves arena handles against the store and returns a human-readable
+    /// string.  Falls back to the bare `Display` representation when the
+    /// handle cannot be resolved (out-of-bounds, missing field, etc.).
+    pub fn display_with_store(&self, store: &ValueStore) -> String {
+        match self {
+            Self::Null => String::from("null"),
+            Self::Bool(v) => format!("{v}"),
+            Self::I64(v) => format!("{v}"),
+            Self::F64(v) => format!("{v}"),
+            Self::Symbol(id) => match store.symbol(*id) {
+                Ok(s) => format!("symbol:{s}"),
+                Err(_) => format!("symbol:{}", id.get()),
+            },
+            Self::List(id) => match store.list(*id) {
+                Ok(items) => {
+                    let inner: Vec<String> =
+                        items.iter().map(|v| v.display_with_store(store)).collect();
+                    format!("[{}]", inner.join(", "))
+                }
+                Err(_) => format!("list:{}", id.get()),
+            },
+            Self::Object(id) => match store.object(*id) {
+                Ok(fields) => {
+                    let inner: Vec<String> = fields
+                        .iter()
+                        .map(|f| {
+                            let key_display = match store.symbol(f.key) {
+                                Ok(s) => String::from(s),
+                                Err(_) => format!("{}", f.key.get()),
+                            };
+                            format!("{}: {}", key_display, f.value.display_with_store(store))
+                        })
+                        .collect();
+                    format!("{{{}}}", inner.join(", "))
+                }
+                Err(_) => format!("object:{}", id.get()),
+            },
+            Self::Blob(id) => match store.blob(*id) {
+                Ok(bytes) => {
+                    let len = bytes.len();
+                    format!("blob:<{len} bytes>")
+                }
+                Err(_) => format!("blob:{}", id.as_u64()),
+            },
+        }
     }
 }
