@@ -12,10 +12,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub enum Taint {
     /// Slot contains no secret-derived data.
     Clean = 0,
-    /// Slot contains a secret value.
-    Secret = 1,
     /// Slot contains data derived from one or more secrets.
-    DerivedFromSecret = 2,
+    DerivedFromSecret = 1,
+    /// Slot contains a secret value.
+    Secret = 2,
 }
 
 /// Joins two taint levels, returning the more restrictive one.
@@ -23,13 +23,13 @@ pub enum Taint {
 pub fn join_taint(a: Taint, b: Taint) -> Taint {
     let a_disc: u8 = match a {
         Taint::Clean => 0,
-        Taint::Secret => 1,
-        Taint::DerivedFromSecret => 2,
+        Taint::DerivedFromSecret => 1,
+        Taint::Secret => 2,
     };
     let b_disc: u8 = match b {
         Taint::Clean => 0,
-        Taint::Secret => 1,
-        Taint::DerivedFromSecret => 2,
+        Taint::DerivedFromSecret => 1,
+        Taint::Secret => 2,
     };
     if a_disc >= b_disc { a } else { b }
 }

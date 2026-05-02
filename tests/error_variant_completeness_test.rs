@@ -3,7 +3,7 @@ use std::io;
 use vb_codegen::CodegenError;
 use vb_compile::{CompileError, SourceMark};
 use vb_core::{
-    ActionError, ActionId, BlobId, Capability, CapabilitySet, ConstIdx, CoreError,
+    ActionError, ActionId, BlobId, ConstIdx, CoreError,
     DiagnosticCode, DiagnosticCodeParseError, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx,
     SymbolId, WorkflowDigest, WorkflowError,
 };
@@ -29,7 +29,7 @@ fn validation_errors_map_every_public_variant_to_an_exact_code() {
 fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
-    assert_eq!(core.len(), 35);
+    assert_eq!(core.len(), 34);
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn ipc_errors_map_every_public_variant_to_an_exact_code() {
 fn journal_errors_map_every_public_variant_to_an_exact_code() {
     let journal = journal_error_codes();
     assert_unique_codes(&journal);
-    assert_eq!(journal.len(), 22);
+    assert_eq!(journal.len(), 25);
 }
 
 #[test]
@@ -222,6 +222,13 @@ fn validation_error_variant_name(error: &ValidationError) -> &'static str {
         ValidationError::SecretNotDeclared { .. } => "SecretNotDeclared",
         ValidationError::DirectRuntimeReference => "DirectRuntimeReference",
         ValidationError::InvalidThenTarget => "InvalidThenTarget",
+        ValidationError::ExpressionStackExceeded { .. } => "ExpressionStackExceeded",
+        ValidationError::ExpressionStackMismatch { .. } => "ExpressionStackMismatch",
+        ValidationError::AccessorSlotOutOfRange { .. } => "AccessorSlotOutOfRange",
+        ValidationError::AccessorPathInvalid { .. } => "AccessorPathInvalid",
+        ValidationError::SlotReferenceOutOfRange { .. } => "SlotReferenceOutOfRange",
+        ValidationError::LoopBodyStepOutOfRange { .. } => "LoopBodyStepOutOfRange",
+        ValidationError::SlotDependencyCycle { .. } => "SlotDependencyCycle",
         ValidationError::ControlFlowCycle => "ControlFlowCycle",
         ValidationError::UnreachableStep { .. } => "UnreachableStep",
         ValidationError::InvalidChoose => "InvalidChoose",
@@ -242,6 +249,11 @@ fn validation_error_variant_name(error: &ValidationError) -> &'static str {
         ValidationError::LimitExceeded { .. } => "LimitExceeded",
         ValidationError::UnsupportedTrigger { .. } => "UnsupportedTrigger",
         ValidationError::HttpTriggerOutOfCore => "HttpTriggerOutOfCore",
+        ValidationError::NodeKindConstraintViolation { .. } => "NodeKindConstraintViolation",
+        ValidationError::ActionContractMissing { .. } => "ActionContractMissing",
+        ValidationError::ActionContractOrphan { .. } => "ActionContractOrphan",
+        ValidationError::SlotTypeInconsistency { .. } => "SlotTypeInconsistency",
+        ValidationError::NonDeterministicPath { .. } => "NonDeterministicPath",
     }
 }
 
@@ -300,11 +312,6 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
         CoreError::BudgetExceeded { budget: "b", limit: 1 },
-        CoreError::CapabilityDenied {
-            action: ActionId::new(1),
-            required: Capability::Action(ActionId::new(1)),
-            granted: CapabilitySet::empty(),
-        },
     ];
     samples
         .iter()
@@ -352,7 +359,6 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
         CoreError::BudgetExceeded { .. } => "BudgetExceeded",
-        CoreError::CapabilityDenied { .. } => "CapabilityDenied",
     }
 }
 
@@ -402,6 +408,7 @@ fn runtime_error_variant_name(error: &RuntimeError) -> &'static str {
         RuntimeError::InvalidRecoveryHydration => "InvalidRecoveryHydration",
         RuntimeError::CommandQueueCapacityExceeded { .. } => "CommandQueueCapacityExceeded",
         RuntimeError::ActiveRunCapacityZero => "ActiveRunCapacityZero",
+        RuntimeError::AdmissionArtifactNotFound { .. } => "AdmissionArtifactNotFound",
     }
 }
 
@@ -484,6 +491,11 @@ fn journal_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         JournalError::UnexpectedEof,
         JournalError::PostcardDecodeFailed,
         JournalError::QueueShutdown,
+        JournalError::ArtifactMalformed,
+        JournalError::ArtifactChecksumMismatch,
+        JournalError::ArtifactNotFound {
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        },
     ];
     std::iter::once((JournalError::FJALL_CODE, "Fjall"))
         .chain(std::iter::once((JournalError::ENCODE_CODE, "Encode")))
@@ -519,6 +531,9 @@ fn journal_error_variant_name(error: &JournalError) -> &'static str {
         JournalError::UnexpectedEof => "UnexpectedEof",
         JournalError::PostcardDecodeFailed => "PostcardDecodeFailed",
         JournalError::QueueShutdown => "QueueShutdown",
+        JournalError::ArtifactMalformed => "ArtifactMalformed",
+        JournalError::ArtifactChecksumMismatch => "ArtifactChecksumMismatch",
+        JournalError::ArtifactNotFound { .. } => "ArtifactNotFound",
     }
 }
 

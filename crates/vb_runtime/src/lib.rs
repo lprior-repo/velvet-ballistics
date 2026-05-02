@@ -669,3 +669,20 @@ mod bdd_runtime_error {
         );
     }
 }
+
+// Error conversion impls for cross-crate ? propagation.
+
+impl From<vb_core::errors::CoreError> for RuntimeError {
+    fn from(error: vb_core::errors::CoreError) -> Self {
+        match error {
+            vb_core::errors::CoreError::QueueFull => Self::QueueFull,
+            _ => Self::StorageJournalAppendFailed,
+        }
+    }
+}
+
+impl From<vb_storage::JournalError> for RuntimeError {
+    fn from(_error: vb_storage::JournalError) -> Self {
+        Self::StorageJournalAppendFailed
+    }
+}
