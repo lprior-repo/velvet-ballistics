@@ -24,6 +24,7 @@ pub mod errors;
 pub mod frame;
 pub mod ids;
 pub mod limits;
+pub mod policy;
 pub mod span;
 pub mod value;
 pub mod value_store;
@@ -49,6 +50,7 @@ pub use ids::{
     AccessorIdx, ActionId, BlobId, CheckedIndex, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo,
     SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowId,
 };
+pub use policy::RuntimePolicy;
 pub use span::{Located, SourceMap, Span, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
