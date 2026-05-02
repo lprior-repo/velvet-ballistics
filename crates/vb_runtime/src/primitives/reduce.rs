@@ -31,6 +31,7 @@ pub fn reduce_start(
         .to_slot_value()?;
     run.write_slot(accumulator, init_value)?;
     let list_id = expect_list(*run.read_slot(input)?)?;
+    let input_taint = run.read_taint(input)?;
     let items = store.list(list_id)?;
     if items.is_empty() {
         return jump_to(run, done);
@@ -42,10 +43,10 @@ pub fn reduce_start(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "reduce items checked nonempty",
         })?;
-    run.write_slot(input, first)?;
+    run.write_slot_with_taint(input, first, input_taint)?;
     let tail = tail_items(items)?;
     let tail_id = store.insert_list(tail)?;
-    run.write_slot(iter_output, SlotValue::List(tail_id))?;
+    run.write_slot_with_taint(iter_output, SlotValue::List(tail_id), input_taint)?;
     jump_to(run, body)
 }
 
@@ -61,6 +62,7 @@ pub fn reduce_next(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let remaining_id = expect_list(*run.read_slot(iterator_slot)?)?;
+    let iter_taint = run.read_taint(iterator_slot)?;
     let remaining = store.list(remaining_id)?;
     if remaining.is_empty() {
         return jump_to(run, done);
@@ -72,10 +74,10 @@ pub fn reduce_next(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "reduce next items checked nonempty",
         })?;
-    run.write_slot(item_output, first)?;
+    run.write_slot_with_taint(item_output, first, iter_taint)?;
     let tail = tail_items(remaining)?;
     let tail_id = store.insert_list(tail)?;
-    run.write_slot(iterator_slot, SlotValue::List(tail_id))?;
+    run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
     jump_to(run, body)
 }
 
@@ -88,8 +90,9 @@ pub fn reduce_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let value = *run.read_slot(accumulator)?;
+    let taint = run.read_taint(accumulator)?;
     let out = require_output(output, step)?;
-    run.write_slot(out, value)?;
+    run.write_slot_with_taint(out, value, taint)?;
     jump_to_next(run, next, step)
 }
 

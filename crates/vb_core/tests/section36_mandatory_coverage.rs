@@ -924,7 +924,7 @@ fn taint_propagation_join_returns_most_restrictive() {
     assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
     assert_eq!(
         join_taint(Taint::Secret, Taint::DerivedFromSecret),
-        Taint::DerivedFromSecret
+        Taint::Secret
     );
     assert_eq!(
         join_taint(Taint::DerivedFromSecret, Taint::Clean),

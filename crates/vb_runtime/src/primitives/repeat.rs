@@ -124,8 +124,9 @@ pub fn repeat_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let value = *run.read_slot(result)?;
+    let taint = run.read_taint(result)?;
     let out = require_output(output, step)?;
-    run.write_slot(out, value)?;
+    run.write_slot_with_taint(out, value, taint)?;
     jump_to_next(run, next, step)
 }
 

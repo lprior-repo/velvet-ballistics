@@ -5,7 +5,7 @@ use std::sync::{Mutex, MutexGuard};
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ListId, RunId, SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
+use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 
 use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
@@ -41,6 +41,7 @@ pub fn collect_start(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let list_id = expect_list(*run.read_slot(source)?)?;
+    let source_taint = run.read_taint(source)?;
     let ps = page_size_from(page_size)?;
     validate_page_bound(ps, limit)?;
     let items = store.list(list_id)?;
@@ -51,16 +52,17 @@ pub fn collect_start(
         None => source,
     };
     if items.is_empty() {
-        run.write_slot(
+        run.write_slot_with_taint(
             collector,
             SlotValue::List(store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?),
+            source_taint,
         )?;
         remove_collect_state(run, collector);
         return jump_to(run, done);
     }
     let page = copy_prefix(items, ps)?;
     let page_len = page.len();
-    let current_page = write_collected_page(run, store, collector, page)?;
+    let current_page = write_collected_page_with_taint(run, store, collector, page, source_taint)?;
     let cursor = checked_add_usize(0, page_len, "collect cursor overflow")?;
     upsert_collect_state(CollectPaginationState {
         frame_key: collect_frame_key(run),
@@ -140,8 +142,9 @@ pub fn collect_finish(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let final_value = *run.read_slot(collector_slot)?;
+    let final_taint = run.read_taint(collector_slot)?;
     let out = require_output(output, step)?;
-    run.write_slot(out, final_value)?;
+    run.write_slot_with_taint(out, final_value, final_taint)?;
     remove_collect_state(run, collector_slot);
     jump_to_next(run, next, step)
 }
@@ -180,6 +183,18 @@ fn write_collected_page(
 ) -> Result<ListId, EngineError> {
     let page_id = store.insert_list(items)?;
     run.write_slot(collector, SlotValue::List(page_id))?;
+    Ok(page_id)
+}
+
+fn write_collected_page_with_taint(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    collector: SlotIdx,
+    items: Box<[SlotValue]>,
+    taint: Taint,
+) -> Result<ListId, EngineError> {
+    let page_id = store.insert_list(items)?;
+    run.write_slot_with_taint(collector, SlotValue::List(page_id), taint)?;
     Ok(page_id)
 }
 
