@@ -930,6 +930,17 @@ pub fn verify_digest_match(
     }
 }
 
+/// Verifies that content bytes hash to the expected digest.
+/// Used at admission time to prevent digest forgery.
+fn verify_content_digest(content: &[u8], expected: &[u8; DIGEST_BYTES]) -> Result<(), JournalError> {
+    let computed = blake3::hash(content);
+    if computed.as_bytes() == expected {
+        Ok(())
+    } else {
+        Err(JournalError::PayloadDigestMismatch)
+    }
+}
+
 /// Encodes `[0x01][workflow_digest_32]`.
 pub fn workflow_source_key(
     digest: [u8; DIGEST_BYTES],
@@ -1112,7 +1123,12 @@ impl FjallJournal {
     }
 
     /// Stores immutable workflow source bytes by digest.
+    ///
+    /// The source bytes are verified against the claimed digest before storage.
+    /// If the BLAKE3 hash of `record.source` does not match `record.digest`,
+    /// this returns [`JournalError::PayloadDigestMismatch`].
     pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
+        verify_content_digest(&record.source, &record.digest.as_bytes())?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -1264,7 +1280,12 @@ impl FjallJournal {
     }
 
     /// Stores a bounded blob by digest.
+    ///
+    /// The blob bytes are verified against the claimed digest before storage.
+    /// If the BLAKE3 hash of `record.bytes` does not match `record.digest`,
+    /// this returns [`JournalError::PayloadDigestMismatch`].
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
+        verify_content_digest(&record.bytes, &record.digest)?;
         let key = blob_key(record.digest)?;
         let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
         self.blob.insert(key.to_vec(), value)?;
@@ -1442,10 +1463,13 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a workflow source record into the batch.
+    ///
+    /// The source bytes are verified against the claimed digest before staging.
     pub fn put_workflow_source(
         &mut self,
         record: &WorkflowSourceRecord,
     ) -> Result<(), JournalError> {
+        verify_content_digest(&record.source, &record.digest.as_bytes())?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -1501,7 +1525,10 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a blob record into the batch.
+    ///
+    /// The blob bytes are verified against the claimed digest before staging.
     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
+        verify_content_digest(&record.bytes, &record.digest)?;
         let key = blob_key(record.digest)?;
         let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
         self.inner.insert(&self.journal.blob, key, value);
@@ -2338,8 +2365,8 @@ fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
 mod tests {
     use super::{
         BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DiagnosticCode,
-        EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue, KeyspaceProfile,
-        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
+        DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue,
+        KeyspaceProfile, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
         MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
         MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
         MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR,
@@ -2475,13 +2502,15 @@ mod tests {
     fn free_put_wrappers_delegate_to_journal_methods() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let journal = open_store(temp.path()).expect("journal should open");
-        let workflow_digest = WorkflowDigest::from_bytes([1; 32]);
+        let source_bytes = vec![b'a'];
+        let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
-        let blob_digest = [3_u8; 32];
+        let blob_bytes = vec![b'b'];
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
 
         let source = WorkflowSourceRecord {
             digest: workflow_digest,
-            source: vec![b'a'],
+            source: source_bytes,
         };
         put_workflow_source(&journal, &source).expect("workflow source should store");
         let stored_source = journal
@@ -2514,7 +2543,7 @@ mod tests {
 
         let blob = BlobRecord {
             digest: blob_digest,
-            bytes: vec![b'b'],
+            bytes: blob_bytes,
         };
         put_blob(&journal, &blob).expect("blob should store");
         let stored_blob = read_blob(&journal, blob_digest).expect("blob lookup should succeed");
@@ -2822,14 +2851,15 @@ queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = WorkflowDigest::from_bytes([1; 32]);
+        let source_bytes = b"test workflow".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let run = RunId::new(42);
 
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord {
                 digest,
-                source: b"test workflow".to_vec(),
+                source: source_bytes,
             })
             .expect("put_workflow_source must succeed");
         batch
@@ -2857,12 +2887,13 @@ queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = [2; 32];
+        let blob_bytes = b"blob data".to_vec();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let mut batch = journal.batch().strict();
         batch
                 .put_blob(&BlobRecord {
                     digest,
-                    bytes: b"blob data".to_vec(),
+                    bytes: blob_bytes,
                 }).expect("action must succeed");
 batch.commit().expect("batch.commit must succeed");
 
@@ -2924,12 +2955,13 @@ batch.commit().expect("batch.commit must succeed");
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = WorkflowDigest::from_bytes([4; 32]);
+        let source = b"a".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let mut batch = journal.batch();
         batch
                 .put_workflow_source(&WorkflowSourceRecord {
                     digest,
-                    source: b"a".to_vec(),
+                    source,
                 }).expect("action must succeed");
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
@@ -2995,11 +3027,12 @@ batch.commit().expect("batch.commit must succeed");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
 
-        let workflow_digest = WorkflowDigest::from_bytes([1; 32]);
+        let source_bytes = vec![b'n', b'a', b'm', b'e'];
+        let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
         let source = WorkflowSourceRecord {
             digest: workflow_digest,
-            source: vec![b'n', b'a', b'm', b'e'],
+            source: source_bytes,
         };
         let ir = CompiledIrRecord {
             digest: compiled_digest,
@@ -3018,9 +3051,11 @@ batch.commit().expect("batch.commit must succeed");
             workflow: compiled_digest,
             slots: vec![8, 9],
         };
+        let blob_bytes = vec![10, 11];
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let blob = BlobRecord {
-            digest: [9; 32],
-            bytes: vec![10, 11],
+            digest: blob_digest,
+            bytes: blob_bytes,
         };
 
 journal.put_workflow_source(&source).expect("journal.put_workflow_source must succeed");
@@ -3052,7 +3087,7 @@ journal.put_status_index(1, 2, RunId::new(3)).expect("journal.put_status_index m
             .expect("snapshot lookup should succeed");
         assert_eq!(found_snapshot, Some(snapshot));
 
-        let found_blob = journal.blob([9; 32]).expect("blob lookup should succeed");
+        let found_blob = journal.blob(blob_digest).expect("blob lookup should succeed");
         assert_eq!(found_blob, Some(blob));
     }
 
@@ -3884,9 +3919,11 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([7; 32]),
         };
+        let blob_bytes = vec![1, 2, 3];
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let blob = BlobRecord {
-            digest: [3; 32],
-            bytes: vec![1, 2, 3],
+            digest: blob_digest,
+            bytes: blob_bytes,
         };
         let snapshot = RunSnapshot {
             run,
@@ -4019,10 +4056,11 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = WorkflowDigest::from_bytes([42; 32]);
+        let source = vec![b'h', b'e', b'l', b'l', b'o'];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest,
-            source: vec![b'h', b'e', b'l', b'l', b'o'],
+            source,
         };
 journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
 
@@ -4099,10 +4137,11 @@ journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = [0xCC; 32];
+        let blob_bytes = vec![1, 2, 3, 4, 5];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let record = BlobRecord {
             digest,
-            bytes: vec![1, 2, 3, 4, 5],
+            bytes: blob_bytes,
         };
 journal.put_blob(&record).expect("journal.put_blob must succeed");
 
@@ -5025,10 +5064,11 @@ journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
         // When a different digest is queried
         // Then it returns None
         let (_guard, journal) = open_journal();
-        let stored_digest = test_digest(10);
+        let source = vec![1];
+        let stored_digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest: stored_digest,
-            source: vec![1],
+            source,
         };
 journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
 
@@ -6025,10 +6065,11 @@ journal.put_run_header(&record).expect("journal.put_run_header must succeed");
         // When stored and retrieved
         // Then the record survives with empty bytes
         let (_guard, journal) = open_journal();
-        let digest = [0u8; 32];
+        let blob_bytes: Vec<u8> = vec![];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let record = BlobRecord {
             digest,
-            bytes: vec![],
+            bytes: blob_bytes,
         };
 journal.put_blob(&record).expect("journal.put_blob must succeed");
         let retrieved = journal.blob(digest).expect("lookup should succeed");
@@ -6041,10 +6082,11 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
         // When stored and retrieved
         // Then the record survives with empty source
         let (_guard, journal) = open_journal();
-        let digest = test_digest(0);
+        let source: Vec<u8> = vec![];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest,
-            source: vec![],
+            source,
         };
 journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
         let retrieved = journal
@@ -6536,9 +6578,11 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
     fn adversarial_put_blob_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let bytes = vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let record = BlobRecord {
-            digest: [0xFF; 32],
-            bytes: vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)],
+            digest,
+            bytes,
         };
         assert!(matches!(
             journal.put_blob(&record),
@@ -6550,12 +6594,14 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
     fn adversarial_blob_zero_length_round_trips() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let bytes: Vec<u8> = vec![];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let record = BlobRecord {
-            digest: [0x42; 32],
-            bytes: vec![],
+            digest,
+            bytes: bytes.clone(),
         };
 journal.put_blob(&record).expect("journal.put_blob must succeed");
-        assert_eq!(journal.blob([0x42; 32]).expect("ok"), Some(record));
+        assert_eq!(journal.blob(digest).expect("ok"), Some(record));
     }
 
     #[test]
@@ -6603,9 +6649,11 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
     fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let source = vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
-            digest: test_digest(0xEE),
-            source: vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)],
+            digest,
+            source,
         };
         assert!(matches!(
             journal.put_workflow_source(&record),
@@ -7738,10 +7786,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn journal_put_then_get_workflow_source_consistent() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([0x77; 32]);
+        let source = b"consistent_source".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest,
-            source: b"consistent_source".to_vec(),
+            source,
         };
         journal.put_workflow_source(&record).expect("put_workflow_source must succeed");
         let found = journal.workflow_source(digest).expect("workflow_source must succeed");
@@ -7800,10 +7849,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn journal_put_then_get_blob_consistent() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = [0xBB; 32];
+        let blob_bytes = b"consistent_blob".to_vec();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let record = BlobRecord {
             digest,
-            bytes: b"consistent_blob".to_vec(),
+            bytes: blob_bytes,
         };
         journal.put_blob(&record).expect("put_blob must succeed");
         let found = journal.blob(digest).expect("blob must succeed");
@@ -7996,10 +8046,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let mut batch = journal.batch();
-        let digest = WorkflowDigest::from_bytes([0x41; 32]);
+        let source = b"a".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         batch.put_workflow_source(&WorkflowSourceRecord {
             digest,
-            source: b"a".to_vec(),
+            source,
         }).expect("put 1 must succeed");
         assert_eq!(batch.len(), 1, "batch must have len 1 after first put");
         batch.put_compiled_ir(&CompiledIrRecord {
@@ -8022,10 +8073,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let mut batch = journal.batch();
-        let digest = WorkflowDigest::from_bytes([0x42; 32]);
+        let source = b"data".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         batch.put_workflow_source(&WorkflowSourceRecord {
             digest,
-            source: b"data".to_vec(),
+            source,
         }).expect("put must succeed");
         assert_eq!(batch.len(), 1, "batch must have 1 operation before commit");
         batch.commit().expect("commit must succeed");
@@ -8106,11 +8158,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn batch_atomic_all_or_nothing_workflow_source_and_ir() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([0xAC; 32]);
+        let source_bytes = b"atomic_source".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let mut batch = journal.batch();
         batch.put_workflow_source(&WorkflowSourceRecord {
             digest,
-            source: b"atomic_source".to_vec(),
+            source: source_bytes,
         }).expect("put_workflow_source must succeed");
         batch.put_compiled_ir(&CompiledIrRecord {
             digest,
@@ -8155,14 +8208,16 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn batch_strict_commit_all_persisted_durably() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let path = temp_dir.path().to_path_buf();
-        let digest = WorkflowDigest::from_bytes([0xDD; 32]);
-        let blob_digest = [0xEE; 32];
+        let ws_bytes = b"strict_ws".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&ws_bytes).into());
+        let blob_bytes = b"strict_blob".to_vec();
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         {
             let journal = FjallJournal::open(&path, None).expect("setup: journal open");
             let mut batch = journal.batch().strict();
             batch.put_workflow_source(&WorkflowSourceRecord {
                 digest,
-                source: b"strict_ws".to_vec(),
+                source: ws_bytes,
             }).expect("put_workflow_source must succeed");
             batch.put_compiled_ir(&CompiledIrRecord {
                 digest,
@@ -8170,7 +8225,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             }).expect("put_compiled_ir must succeed");
             batch.put_blob(&BlobRecord {
                 digest: blob_digest,
-                bytes: b"strict_blob".to_vec(),
+                bytes: blob_bytes,
             }).expect("put_blob must succeed");
             batch.commit().expect("commit must succeed");
         }
@@ -8197,14 +8252,16 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn batch_commit_after_multiple_puts_persists_all() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest_1 = WorkflowDigest::from_bytes([1; 32]);
+        let ws_bytes = b"ws".to_vec();
+        let digest_1 = WorkflowDigest::from_bytes(blake3::hash(&ws_bytes).into());
         let digest_2 = WorkflowDigest::from_bytes([2; 32]);
-        let blob_digest = [3u8; 32];
+        let blob_bytes = b"blob".to_vec();
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let run = RunId::new(9005);
         let mut batch = journal.batch();
         batch.put_workflow_source(&WorkflowSourceRecord {
             digest: digest_1,
-            source: b"ws".to_vec(),
+            source: ws_bytes,
         }).expect("put 1 must succeed");
         batch.put_compiled_ir(&CompiledIrRecord {
             digest: digest_2,
@@ -8219,7 +8276,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         }).expect("put 3 must succeed");
         batch.put_blob(&BlobRecord {
             digest: blob_digest,
-            bytes: b"blob".to_vec(),
+            bytes: blob_bytes,
         }).expect("put 4 must succeed");
         batch.put_snapshot(&RunSnapshot {
             run,
@@ -8268,10 +8325,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn journal_workflow_source_after_batch_commit_matches_input() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([0xFE; 32]);
+        let source = b"exact_bytes_source".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest,
-            source: b"exact_bytes_source".to_vec(),
+            source,
         };
         let mut batch = journal.batch();
         batch.put_workflow_source(&record).expect("put must succeed");
@@ -8354,10 +8412,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn journal_blob_after_batch_commit_matches_input() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = [0xF0; 32];
+        let blob_bytes = b"batch_blob_exact".to_vec();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let record = BlobRecord {
             digest,
-            bytes: b"batch_blob_exact".to_vec(),
+            bytes: blob_bytes,
         };
         let mut batch = journal.batch();
         batch.put_blob(&record).expect("put must succeed");
@@ -8455,13 +8514,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_batch_commit_then_reopen_preserves_all_keys() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([4; 32]);
+        let source_bytes = b"source".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let run = RunId::new(9004);
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord {
                 digest,
-                source: b"source".to_vec(),
+                source: source_bytes,
             })
             .expect("put_workflow_source");
         batch
@@ -8473,10 +8533,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
                 accepted_at_ms: 100,
             })
             .expect("put_run_header");
+        let blob_bytes = b"blob".to_vec();
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         batch
             .put_blob(&BlobRecord {
-                digest: digest.as_bytes(),
-                bytes: b"blob".to_vec(),
+                digest: blob_digest,
+                bytes: blob_bytes,
             })
             .expect("put_blob");
         batch.commit().expect("commit");
@@ -8486,7 +8548,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         assert!(source.is_some(), "workflow source must survive reopen");
         let header = journal2.run_header(run).expect("get header");
         assert!(header.is_some(), "run header must survive reopen");
-        let blob = journal2.blob(digest.as_bytes()).expect("get blob");
+        let blob = journal2.blob(blob_digest).expect("get blob");
         assert!(blob.is_some(), "blob must survive reopen");
     }
 
@@ -8544,10 +8606,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_workflow_source_for_wrong_digest_returns_none() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest_a = WorkflowDigest::from_bytes([1; 32]);
+        let source = b"data".to_vec();
+        let digest_a = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest: digest_a,
-            source: b"data".to_vec(),
+            source,
         };
         journal.put_workflow_source(&record).expect("put");
         let digest_b = WorkflowDigest::from_bytes([2; 32]);
@@ -8580,13 +8643,15 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_batch_two_sequential_commits_both_visible() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest1 = WorkflowDigest::from_bytes([1; 32]);
-        let digest2 = WorkflowDigest::from_bytes([2; 32]);
+        let source1 = b"first".to_vec();
+        let digest1 = WorkflowDigest::from_bytes(blake3::hash(&source1).into());
+        let source2 = b"second".to_vec();
+        let digest2 = WorkflowDigest::from_bytes(blake3::hash(&source2).into());
         let mut batch1 = journal.batch();
         batch1
             .put_workflow_source(&WorkflowSourceRecord {
                 digest: digest1,
-                source: b"first".to_vec(),
+                source: source1,
             })
             .expect("put1");
         batch1.commit().expect("commit1");
@@ -8594,7 +8659,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         batch2
             .put_workflow_source(&WorkflowSourceRecord {
                 digest: digest2,
-                source: b"second".to_vec(),
+                source: source2,
             })
             .expect("put2");
         batch2.commit().expect("commit2");
@@ -8623,24 +8688,26 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_blob_with_single_byte_roundtrips() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([42; 32]);
+        let bytes = vec![0xFF];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let record = BlobRecord {
-            digest: digest.as_bytes(),
-            bytes: vec![0xFF],
+            digest,
+            bytes: bytes.clone(),
         };
         journal.put_blob(&record).expect("put");
-        let loaded = journal.blob(digest.as_bytes()).expect("get").expect("must exist");
-        assert_eq!(loaded.bytes, vec![0xFF]);
+        let loaded = journal.blob(digest).expect("get").expect("must exist");
+        assert_eq!(loaded.bytes, bytes);
     }
 
     #[test]
     fn adversarial_workflow_source_with_empty_bytes_roundtrips() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([7; 32]);
+        let source: Vec<u8> = vec![];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
             digest,
-            source: vec![],
+            source,
         };
         journal.put_workflow_source(&record).expect("put");
         let loaded = journal.workflow_source(digest).expect("get").expect("must exist");
@@ -8761,14 +8828,15 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_batch_commit_with_5_puts_persists_all() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let d1 = WorkflowDigest::from_bytes([1; 32]);
+        let source = b"s".to_vec();
+        let d1 = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let d2 = WorkflowDigest::from_bytes([2; 32]);
         let run = RunId::new(9050);
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord {
                 digest: d1,
-                source: b"s".to_vec(),
+                source,
             })
             .expect("put1");
         batch
@@ -8786,10 +8854,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
                 accepted_at_ms: 0,
             })
             .expect("put3");
+        let blob_bytes = b"b".to_vec();
+        let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         batch
             .put_blob(&BlobRecord {
-                digest: d1.as_bytes(),
-                bytes: b"b".to_vec(),
+                digest: blob_digest,
+                bytes: blob_bytes,
             })
             .expect("put4");
         batch
@@ -8799,7 +8869,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         assert!(journal.workflow_source(d1).expect("g1").is_some());
         assert!(journal.compiled_ir(d2).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
-        assert!(journal.blob(d1.as_bytes()).expect("g4").is_some());
+        assert!(journal.blob(blob_digest).expect("g4").is_some());
     }
 
     #[test]
@@ -8923,13 +8993,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_batch_commit_persists_all_keys_or_none() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([13; 32]);
+        let source = b"src".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let run = RunId::new(9070);
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord {
                 digest,
-                source: b"src".to_vec(),
+                source,
             })
             .expect("ws");
         batch
@@ -8952,6 +9023,126 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         assert!(journal.workflow_source(digest).expect("g1").is_some());
         assert!(journal.compiled_ir(digest).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
+    }
+}
+
+/// Security-specific tests proving that digest forgery, cross-run injection,
+/// and silent bypass attacks are blocked.
+#[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
+mod security_tests {
+    use crate::{
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, WorkflowSourceRecord,
+    };
+    use vb_core::{RunId, WorkflowDigest};
+
+    /// SECURITY: put_workflow_source rejects a forged digest where source bytes
+    /// do not hash to the claimed digest.
+    #[test]
+    fn forged_workflow_source_digest_rejected() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let forged_digest = WorkflowDigest::from_bytes([0xDE; 32]);
+        let record = WorkflowSourceRecord {
+            digest: forged_digest,
+            source: b"this will not hash to 0xDE..DE".to_vec(),
+        };
+        let result = journal.put_workflow_source(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "forged workflow source digest must be rejected, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: put_blob rejects a forged digest where blob bytes do not hash
+    /// to the claimed digest.
+    #[test]
+    fn forged_blob_digest_rejected() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let forged_digest = [0xAB; 32];
+        let record = BlobRecord {
+            digest: forged_digest,
+            bytes: b"these bytes won't hash to 0xAB..AB".to_vec(),
+        };
+        let result = journal.put_blob(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "forged blob digest must be rejected, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: batch put_workflow_source rejects a forged digest.
+    #[test]
+    fn batch_forged_workflow_source_digest_rejected() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let forged_digest = WorkflowDigest::from_bytes([0xFF; 32]);
+        let mut batch = journal.batch();
+        let result = batch.put_workflow_source(&WorkflowSourceRecord {
+            digest: forged_digest,
+            source: b"not the right hash".to_vec(),
+        });
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "batch forged workflow source digest must be rejected, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: batch put_blob rejects a forged digest.
+    #[test]
+    fn batch_forged_blob_digest_rejected() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let mut batch = journal.batch();
+        let result = batch.put_blob(&BlobRecord {
+            digest: [0x11; 32],
+            bytes: b"wrong hash".to_vec(),
+        });
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "batch forged blob digest must be rejected, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: put_workflow_source accepts a record with a correct digest.
+    #[test]
+    fn valid_workflow_source_digest_accepted() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let source = b"valid content".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+        let record = WorkflowSourceRecord {
+            digest,
+            source,
+        };
+        journal
+            .put_workflow_source(&record)
+            .expect("correct digest must be accepted");
+    }
+
+    /// SECURITY: put_blob accepts a record with a correct digest.
+    #[test]
+    fn valid_blob_digest_accepted() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let bytes = b"valid blob content".to_vec();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
+        let record = BlobRecord {
+            digest,
+            bytes,
+        };
+        journal.put_blob(&record).expect("correct digest must be accepted");
     }
 }
 
