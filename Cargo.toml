@@ -54,8 +54,8 @@ vb_yaml = { path = "crates/vb_yaml" }
 name = "velvet_ballastics"
 harness = false
 
-[[bench]]
-name = "iai_benches"
+#[[bench]]
+#name = "iai_benches"
 
 [workspace.package]
 edition = "2024"
