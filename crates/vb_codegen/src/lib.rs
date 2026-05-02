@@ -5491,6 +5491,608 @@ mod tests {
         );
         Ok(())
     }
+
+    // --- ForEach / Together unsupported-primitive rejection tests ---
+
+    fn for_each_next_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_for_each_next"),
+            digest: WorkflowDigest::from_bytes([0x78; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn for_each_join_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_for_each_join"),
+            digest: WorkflowDigest::from_bytes([0x79; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::ForEachJoin {
+                        output: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn together_branch_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_together_branch"),
+            digest: WorkflowDigest::from_bytes([0x89; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::TogetherBranch {
+                        branch: 0,
+                        entry: StepIdx::new(1),
+                        join: StepIdx::new(1),
+                        accumulator: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn together_join_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_together_join"),
+            digest: WorkflowDigest::from_bytes([0x8A; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::TogetherJoin {
+                        branch_count: 1,
+                        accumulator: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn nested_for_each_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_nested_for_each"),
+            digest: WorkflowDigest::from_bytes([0x7A; 32]),
+            nodes: vec![
+                // Outer ForEachStart
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(3),
+                    },
+                },
+                // Inner ForEachStart (nested)
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(1),
+                        item_slot: SlotIdx::new(2),
+                        limit: 5,
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(2),
+                    },
+                },
+                // Inner body placeholder -> Finish
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+                // Outer done -> Finish
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// A complete ForEach workflow that sums values from a list.
+    /// This documents the expected IR structure for a ForEach sum workflow.
+    fn for_each_sum_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_for_each_sum"),
+            digest: WorkflowDigest::from_bytes([0x7B; 32]),
+            nodes: vec![
+                // Node 0: SetConst - initialize accumulator (0) in slot 2
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 1: ForEachStart - iterate over list in slot 0, bind item to slot 1
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(3)),
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 100,
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(3),
+                    },
+                },
+                // Node 2: ForEachNext - advance iterator (body node)
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(3)),
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(3),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(3),
+                    },
+                },
+                // Node 3: ForEachJoin - materialize results
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: Some(StepIdx::new(4)),
+                    kind: CompiledNodeKind::ForEachJoin {
+                        output: SlotIdx::new(2),
+                    },
+                },
+                // Node 4: Finish - return accumulator
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
+            slot_count: 4,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// A complete Together workflow with two branches.
+    /// This documents the expected IR structure for a Together parallel-branch workflow.
+    fn together_two_branch_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_together_two_branch"),
+            digest: WorkflowDigest::from_bytes([0x8B; 32]),
+            nodes: vec![
+                // Node 0: TogetherStart - begin parallel branches
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    kind: CompiledNodeKind::TogetherStart {
+                        branches: vec![StepIdx::new(1), StepIdx::new(3)].into_boxed_slice(),
+                        join: StepIdx::new(5),
+                    },
+                },
+                // Node 1: TogetherBranch 0 - first branch entry
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    kind: CompiledNodeKind::TogetherBranch {
+                        branch: 0,
+                        entry: StepIdx::new(2),
+                        join: StepIdx::new(5),
+                        accumulator: SlotIdx::new(2),
+                    },
+                },
+                // Node 2: SetConst - branch 0 body: write 10
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Node 3: TogetherBranch 1 - second branch entry
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    kind: CompiledNodeKind::TogetherBranch {
+                        branch: 1,
+                        entry: StepIdx::new(4),
+                        join: StepIdx::new(5),
+                        accumulator: SlotIdx::new(2),
+                    },
+                },
+                // Node 4: SetConst - branch 1 body: write 20
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(5)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                // Node 5: TogetherJoin - merge results
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: None,
+                    next: Some(StepIdx::new(6)),
+                    kind: CompiledNodeKind::TogetherJoin {
+                        branch_count: 2,
+                        accumulator: SlotIdx::new(2),
+                    },
+                },
+                // Node 6: Finish - return merged output
+                CompiledNode {
+                    id: StepIdx::new(6),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10), ConstValue::I64(20)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    // --- ForEach validation rejection tests ---
+
+    #[test]
+    fn for_each_start_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = for_each_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn for_each_next_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = for_each_next_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "ForEachNext",
+            "unsupported generated Rust IR feature: ForEachNext",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "ForEachNext",
+            "unsupported generated Rust IR feature: ForEachNext",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn for_each_join_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = for_each_join_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "ForEachJoin",
+            "unsupported generated Rust IR feature: ForEachJoin",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "ForEachJoin",
+            "unsupported generated Rust IR feature: ForEachJoin",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn for_each_sum_workflow_is_rejected_by_codegen() -> Result<(), String> {
+        // Given a complete ForEach sum workflow with ForEachStart, ForEachNext, and ForEachJoin
+        let workflow = for_each_sum_workflow()?;
+        // When validate_generated_subset checks it
+        // Then it rejects with ForEachStart (first unsupported node encountered)
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        Ok(())
+    }
+
+    // --- Together validation rejection tests ---
+
+    #[test]
+    fn together_start_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = together_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "TogetherStart",
+            "unsupported generated Rust IR feature: TogetherStart",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "TogetherStart",
+            "unsupported generated Rust IR feature: TogetherStart",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn together_branch_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = together_branch_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "TogetherBranch",
+            "unsupported generated Rust IR feature: TogetherBranch",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "TogetherBranch",
+            "unsupported generated Rust IR feature: TogetherBranch",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn together_join_codegen_is_typed_error() -> Result<(), String> {
+        let workflow = together_join_workflow()?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "TogetherJoin",
+            "unsupported generated Rust IR feature: TogetherJoin",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "TogetherJoin",
+            "unsupported generated Rust IR feature: TogetherJoin",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn together_two_branch_workflow_is_rejected_by_codegen() -> Result<(), String> {
+        // Given a complete Together workflow with TogetherStart, TogetherBranch, and TogetherJoin
+        let workflow = together_two_branch_workflow()?;
+        // When validate_generated_subset checks it
+        // Then it rejects with TogetherStart (first unsupported node encountered)
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "TogetherStart",
+            "unsupported generated Rust IR feature: TogetherStart",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "TogetherStart",
+            "unsupported generated Rust IR feature: TogetherStart",
+        )?;
+        Ok(())
+    }
+
+    // --- Nested ForEach validation rejection test ---
+
+    #[test]
+    fn nested_for_each_workflow_is_rejected_by_codegen() -> Result<(), String> {
+        // Given a workflow with a ForEachStart inside a ForEachStart (nested loops)
+        let workflow = nested_for_each_workflow()?;
+        // When validate_generated_subset checks it
+        // Then it rejects with ForEachStart (outer loop is first unsupported node)
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "ForEachStart",
+            "unsupported generated Rust IR feature: ForEachStart",
+        )?;
+        Ok(())
+    }
+
+    // --- Step emit verification for all ForEach/Together node kinds ---
+
+    #[test]
+    fn emit_step_match_produces_correct_arm_for_for_each_next_node() -> Result<(), String> {
+        // Given a ForEachNext node (unsupported in codegen)
+        let workflow = for_each_next_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When emit_step_function generates code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reports unsupported primitive
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "ForEachNext must emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("ForEachNext"),
+            "UnsupportedPrimitive must name ForEachNext, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_step_match_produces_correct_arm_for_for_each_join_node() -> Result<(), String> {
+        // Given a ForEachJoin node (unsupported in codegen)
+        let workflow = for_each_join_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When emit_step_function generates code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reports unsupported primitive
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "ForEachJoin must emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("ForEachJoin"),
+            "UnsupportedPrimitive must name ForEachJoin, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_step_match_produces_correct_arm_for_together_branch_node() -> Result<(), String> {
+        // Given a TogetherBranch node (unsupported in codegen)
+        let workflow = together_branch_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When emit_step_function generates code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reports unsupported primitive
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "TogetherBranch must emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("TogetherBranch"),
+            "UnsupportedPrimitive must name TogetherBranch, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn emit_step_match_produces_correct_arm_for_together_join_node() -> Result<(), String> {
+        // Given a TogetherJoin node (unsupported in codegen)
+        let workflow = together_join_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        // When emit_step_function generates code
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        // Then the output reports unsupported primitive
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "TogetherJoin must emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("TogetherJoin"),
+            "UnsupportedPrimitive must name TogetherJoin, got: {out}"
+        );
+        Ok(())
+    }
 }
 
 #[cfg(test)]
