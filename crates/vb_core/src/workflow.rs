@@ -5,7 +5,7 @@ use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS,
+    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK,
     MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_SLOTS_PER_WORKFLOW,
     MAX_STEPS_PER_WORKFLOW,
 };
@@ -295,6 +295,28 @@ pub enum WorkflowError {
     /// Branching node has no branch and no otherwise route.
     #[error("branch table must contain a branch or otherwise target")]
     EmptyBranchTable,
+    /// A node is not reachable from the entry step.
+    #[error("node {step:?} is not reachable from the entry step")]
+    UnreachableNode {
+        /// Unreachable step index.
+        step: StepIdx,
+    },
+    /// An edge points backward without being a recognized loop back-edge.
+    #[error("backward edge from {from:?} to {to:?}")]
+    BackwardEdge {
+        /// Source step of the backward edge.
+        from: StepIdx,
+        /// Target step of the backward edge.
+        to: StepIdx,
+    },
+    /// An inner loop exceeds its outer loop span.
+    #[error("inner loop at {inner:?} exceeds outer loop done at {outer_done:?}")]
+    ImproperLoopNesting {
+        /// Inner loop start step.
+        inner: StepIdx,
+        /// Outer loop done step.
+        outer_done: StepIdx,
+    },
 }
 
 /// Bounded postfix expression bytecode program.
@@ -592,6 +614,9 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         validate_node_id(node, index)?;
         validate_node(node, parts)?;
     }
+    validate_accessor_path_symbols(&parts.accessors)?;
+    validate_reachability(parts)?;
+    validate_forward_edges(parts)?;
     Ok(())
 }
 
@@ -1079,6 +1104,331 @@ fn validate_accessor(accessor: AccessorIdx, accessor_count: usize) -> Result<(),
     }
 }
 
+/// Validates that accessor path index segments do not use the reserved u32::MAX value.
+fn validate_accessor_path_symbols(accessors: &[AccessorProgram]) -> Result<(), WorkflowError> {
+    for accessor in accessors {
+        for segment in accessor.path.as_ref() {
+            if let PathSegment::Index(index) = *segment {
+                if index == u32::MAX {
+                    return Err(WorkflowError::Expression(
+                        CoreError::InvalidCompiledWorkflow {
+                            reason: "accessor path index uses reserved value u32::MAX",
+                        },
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Check A: every node must be reachable from the entry step via a forward walk
+/// following `next` edges and kind-specific targets.
+fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let node_count = parts.nodes.len();
+    if node_count == 0 {
+        return Ok(());
+    }
+
+    let mut visited: Vec<bool> = vec![false; node_count];
+    let mut queue: Vec<usize> = Vec::new();
+
+    let entry_usize = parts.entry.as_usize();
+    if entry_usize >= node_count {
+        return Ok(());
+    }
+    visited[entry_usize] = true;
+    queue.push(entry_usize);
+
+    let mut head = 0usize;
+    while head < queue.len() {
+        let current = queue[head];
+        head = head.saturating_add(1);
+
+        let mut targets: Vec<StepIdx> = Vec::new();
+        let node = &parts.nodes[current];
+        if let Some(next) = node.next {
+            targets.push(next);
+        }
+        collect_node_targets(&node.kind, &mut targets);
+
+        for target in targets {
+            let target_usize = target.as_usize();
+            if target_usize < node_count && !visited[target_usize] {
+                visited[target_usize] = true;
+                queue.push(target_usize);
+            }
+        }
+    }
+
+    for (index, was_visited) in visited.iter().enumerate() {
+        if !was_visited {
+            return Err(WorkflowError::UnreachableNode {
+                step: StepIdx::new(u16::try_from(index).map_err(|_| {
+                    WorkflowError::ResourceContractExceeded {
+                        resource: "max_steps",
+                    }
+                })?),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Collects all StepIdx targets referenced by a node kind (branch targets,
+/// loop body/done, jump target, etc.) but NOT the `next` field.
+fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
+    match kind {
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::CollectFinish { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::Finish { .. } => {}
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            for branch in branches.as_ref() {
+                targets.push(branch.target);
+            }
+            if let Some(fallback) = *otherwise {
+                targets.push(fallback);
+            }
+        }
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
+            for branch in branches.as_ref() {
+                targets.push(branch.target);
+            }
+            if let Some(fallback) = *otherwise {
+                targets.push(fallback);
+            }
+        }
+        CompiledNodeKind::ForEachStart { body, done, .. }
+        | CompiledNodeKind::ForEachNext { body, done, .. }
+        | CompiledNodeKind::CollectStart { body, done, .. }
+        | CompiledNodeKind::CollectPage { body, done, .. }
+        | CompiledNodeKind::CollectNext { body, done, .. }
+        | CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. }
+        | CompiledNodeKind::RepeatStart { body, done, .. }
+        | CompiledNodeKind::RepeatAttempt { body, done, .. }
+        | CompiledNodeKind::RetryCheck {
+            body,
+            exhausted: done,
+            ..
+        } => {
+            targets.push(*body);
+            targets.push(*done);
+        }
+        CompiledNodeKind::RepeatCheck { done, .. } => {
+            targets.push(*done);
+        }
+        CompiledNodeKind::TogetherStart { branches, join } => {
+            for branch in branches.as_ref() {
+                targets.push(*branch);
+            }
+            targets.push(*join);
+        }
+        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
+            targets.push(*entry);
+            targets.push(*join);
+        }
+        CompiledNodeKind::TogetherJoin { .. } => {}
+        CompiledNodeKind::WaitEvent { .. } => {}
+        CompiledNodeKind::ErrorHandler { body, handler } => {
+            targets.push(*body);
+            targets.push(*handler);
+        }
+        CompiledNodeKind::Jump { target } => {
+            targets.push(*target);
+        }
+    }
+}
+
+/// Check B: all edges must point forward except recognized loop back-edges.
+/// Check D: loop spans must be properly nested (no overlapping loops).
+fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let mut loop_spans: Vec<(usize, usize)> = Vec::new();
+
+    for (index, node) in parts.nodes.iter().enumerate() {
+        let current_id = StepIdx::new(u16::try_from(index).map_err(|_| {
+            WorkflowError::ResourceContractExceeded {
+                resource: "max_steps",
+            }
+        })?);
+
+        if let Some(next) = node.next {
+            validate_forward_target(next, index, current_id)?;
+        }
+
+        validate_kind_edges(&node.kind, index, current_id)?;
+
+        push_loop_span(&node.kind, index, &mut loop_spans)?;
+    }
+    Ok(())
+}
+
+/// Validates that kind-specific edges respect the forward-only rule.
+fn validate_kind_edges(
+    kind: &CompiledNodeKind,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    match kind {
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::CollectFinish { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::Finish { .. } => Ok(()),
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            for branch in branches.as_ref() {
+                validate_forward_target(branch.target, ci, cid)?;
+            }
+            if let Some(fallback) = *otherwise {
+                validate_forward_target(fallback, ci, cid)?;
+            }
+            Ok(())
+        }
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
+            for branch in branches.as_ref() {
+                validate_forward_target(branch.target, ci, cid)?;
+            }
+            if let Some(fallback) = *otherwise {
+                validate_forward_target(fallback, ci, cid)?;
+            }
+            Ok(())
+        }
+        CompiledNodeKind::ForEachStart { body, done, .. } => {
+            let _ = body;
+            validate_forward_target(*done, ci, cid)
+        }
+        CompiledNodeKind::ForEachNext { body, done, .. } => {
+            let _ = body;
+            validate_forward_target(*done, ci, cid)
+        }
+        CompiledNodeKind::TogetherStart { branches, join } => {
+            let _ = branches;
+            validate_forward_target(*join, ci, cid)
+        }
+        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
+            let _ = entry;
+            validate_forward_target(*join, ci, cid)
+        }
+        CompiledNodeKind::CollectStart { body, done, .. }
+        | CompiledNodeKind::CollectPage { body, done, .. }
+        | CompiledNodeKind::CollectNext { body, done, .. }
+        | CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. }
+        | CompiledNodeKind::RepeatStart { body, done, .. }
+        | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
+            let _ = body;
+            validate_forward_target(*done, ci, cid)
+        }
+        CompiledNodeKind::RepeatCheck { done, .. } => validate_forward_target(*done, ci, cid),
+        CompiledNodeKind::RetryCheck {
+            body, exhausted, ..
+        } => {
+            let _ = body;
+            validate_forward_target(*exhausted, ci, cid)
+        }
+        CompiledNodeKind::ErrorHandler { body, handler } => {
+            let _ = body;
+            validate_forward_target(*handler, ci, cid)
+        }
+        CompiledNodeKind::Jump { .. } => Ok(()),
+    }
+}
+
+/// Validates a target step is strictly forward from the current node.
+fn validate_forward_target(target: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    if target.as_usize() > ci {
+        Ok(())
+    } else {
+        Err(WorkflowError::BackwardEdge {
+            from: cid,
+            to: target,
+        })
+    }
+}
+
+/// Tracks loop spans for nesting validation (Check D).
+fn push_loop_span(
+    kind: &CompiledNodeKind,
+    ci: usize,
+    spans: &mut Vec<(usize, usize)>,
+) -> Result<(), WorkflowError> {
+    let done_usize: Option<usize> = match kind {
+        CompiledNodeKind::ForEachStart { done, .. }
+        | CompiledNodeKind::CollectStart { done, .. }
+        | CompiledNodeKind::ReduceStart { done, .. }
+        | CompiledNodeKind::RepeatStart { done, .. } => Some(done.as_usize()),
+        CompiledNodeKind::TogetherStart { join, .. } => Some(join.as_usize()),
+        _ => None,
+    };
+
+    let Some(done_idx) = done_usize else {
+        return Ok(());
+    };
+
+    if let Some(&(_outer_start, outer_done)) = spans.last() {
+        if done_idx > outer_done {
+            return Err(WorkflowError::ImproperLoopNesting {
+                inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
+                    WorkflowError::ResourceContractExceeded {
+                        resource: "max_steps",
+                    }
+                })?),
+                outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
+                    WorkflowError::ResourceContractExceeded {
+                        resource: "max_steps",
+                    }
+                })?),
+            });
+        }
+    }
+
+    while spans
+        .last()
+        .map_or(false, |&(_, done): &(usize, usize)| done <= ci)
+    {
+        spans.pop();
+    }
+
+    spans.push((ci, done_idx));
+    Ok(())
+}
+
 fn validate_expr_op_count(ops: &[ExprOp]) -> CoreResult<()> {
     if ops.len() > MAX_EXPRESSION_OPS {
         Err(CoreError::ResourceLimitExceeded {
@@ -1147,11 +1497,12 @@ const fn effect(pop: u8, push: u8) -> StackEffect {
 #[cfg(test)]
 mod tests {
     use super::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram,
-        ResourceContract, SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound,
+        check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+        ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
+        WorkflowParts,
     };
     use crate::errors::CoreError;
-    use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
     use crate::value::ConstValue;
 
@@ -2202,8 +2553,8 @@ mod tests {
     // --- Resource contract max_steps set to 0 with 1 node ---
 
     #[test]
-    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded()
-    -> Result<(), String> {
+    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded(
+    ) -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("zero_max_steps"),
             digest: WorkflowDigest::from_bytes([2; 32]),
@@ -2255,8 +2606,8 @@ mod tests {
     // --- TogetherStart with out-of-bounds branch target ---
 
     #[test]
-    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
-    -> Result<(), String> {
+    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
+    ) -> Result<(), String> {
         let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
         parts.nodes = vec![
             CompiledNode {
@@ -2504,6 +2855,434 @@ mod tests {
             return Err(String::from("slot_count mismatch"));
         }
         Ok(())
+    }
+
+    // --- Phase 46: IR structural validation tests ---
+
+    fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+        let max_steps = u16::try_from(nodes.len()).unwrap_or(u16::MAX);
+        WorkflowParts {
+            name: Box::<str>::from("phase46"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(max_steps, slot_count, 1, 0, 0),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_unreachable_node() -> Result<(), String> {
+        let parts = phase46_parts_with_nodes(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ],
+            1,
+        );
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::UnreachableNode { step }) if step == StepIdx::new(2) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_reachable_chain() -> Result<(), String> {
+        let parts = phase46_parts_with_nodes(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ],
+            1,
+        );
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_rejects_backward_next() -> Result<(), String> {
+        let parts = phase46_parts_with_nodes(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(0)),
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ],
+            1,
+        );
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::BackwardEdge { from, to }) => {
+                if from == StepIdx::new(1) && to == StepIdx::new(0) {
+                    Ok(())
+                } else {
+                    Err(format!("wrong from/to: {from:?} -> {to:?}"))
+                }
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_jump_backward() -> Result<(), String> {
+        let parts = phase46_parts_with_nodes(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Jump {
+                        target: StepIdx::new(0),
+                    },
+                },
+            ],
+            1,
+        );
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_accepts_foreach_forward() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("phase46_foreach"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(2),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(4, 3, 1, 0, 0),
+        };
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_rejects_improper_nesting() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("phase46_nesting"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(1),
+                        item_slot: SlotIdx::new(2),
+                        limit: 10,
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(3),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(4),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(6, 5, 1, 0, 0),
+        };
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::ImproperLoopNesting { inner, outer_done }) => {
+                if inner == StepIdx::new(1) && outer_done == StepIdx::new(4) {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "wrong inner/outer: inner={inner:?}, outer_done={outer_done:?}"
+                    ))
+                }
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_accepts_proper_nesting() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("phase46_proper"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(1),
+                        item_slot: SlotIdx::new(2),
+                        limit: 10,
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(3),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(4),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 5,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(6, 5, 1, 0, 0),
+        };
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_accepts_accessor_field() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(SymbolId::new(42))].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("phase46_acc_field"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn phase46_accepts_accessor_index() -> Result<(), String> {
+        let accessor = AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Index(7)].into_boxed_slice(),
+        };
+        let mut contract = resource_contract(1, 1, 1, 0, 0);
+        contract.max_accessors = 1;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("phase46_acc_index"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: vec![accessor].into_boxed_slice(),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: contract,
+        };
+        CompiledWorkflow::try_from_parts(parts)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
     }
 }
 
