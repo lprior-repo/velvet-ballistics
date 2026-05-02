@@ -169,9 +169,12 @@ fn eval_i64_values(
 fn eval_div_values(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     let left_i64 = expect_i64(left)?;
     let right_i64 = expect_i64(right)?;
+    if right_i64 == 0 {
+        return Err(ExprError::DivisionByZero);
+    }
     let value = left_i64
         .checked_div(right_i64)
-        .ok_or(ExprError::DivisionByZero)?;
+        .ok_or(ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(value))
 }
 
@@ -1182,6 +1185,59 @@ mod tests {
             });
         };
         assert_eq!(max, vb_core::limits::MAX_EXPRESSION_STACK);
+        Ok(())
+    }
+
+    // ===== Security regression tests =====
+
+    #[test]
+    fn eval_binary_op_i64_min_div_neg_one_is_integer_overflow_not_division_by_zero() -> ExprResult<()>
+    {
+        // SECURITY: i64::MIN / -1 overflows (mathematical result exceeds i64::MAX).
+        // Previously, checked_div mapped None -> DivisionByZero, which is incorrect.
+        // The fix checks for zero explicitly and maps overflow to IntegerOverflow.
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MIN / -1".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_div_by_zero_still_returns_division_by_zero() -> ExprResult<()> {
+        // Ensure the fix does not regress the legitimate division-by-zero path.
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(10), SlotValue::I64(0));
+        let Err(ExprError::DivisionByZero) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected DivisionByZero for 10 / 0".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_i64_min_div_neg_one_is_integer_overflow() -> ExprResult<()> {
+        // SECURITY: end-to-end test that i64::MIN / -1 returns IntegerOverflow,
+        // not DivisionByZero. We cannot parse i64::MIN as a literal directly since
+        // the positive value overflows i64, so we construct a program manually.
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Div,
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let constants = vec![ConstValue::I64(i64::MIN), ConstValue::I64(-1)];
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for i64::MIN / -1 end-to-end".into(),
+            });
+        };
         Ok(())
     }
 }
