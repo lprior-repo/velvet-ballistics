@@ -1286,6 +1286,7 @@ members = [
   "crates/vb_ipc",
   "crates/vb_codegen",
   "crates/velvet_ballastics",
+  "fuzz",
 ]
 resolver = "2"
 
@@ -1403,12 +1404,12 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 34 | Full benchmark suite | Criterion/iai suites, metadata, generated-vs-IR ratios. |
 | 35 | Maxperf | PGO, target-cpu-native, mandatory generated Rust, regression thresholds. |
 | 36 | Hardening | Full gates, sanitizer jobs, fuzz expansion, docs, bead evidence, release readiness. |
-| 37 | Whole-workflow boundedness | Static dataflow analyzer: compute `WholeWorkflowBudget` from IR, propagate bounds through nested loops/branches, reject if any budget exceeds policy. New `BoundednessPolicy` config. Tests: nested fanout, sequential sum, conditional max, unbounded rejection. |
+| 37 | Whole-workflow boundedness | Static dataflow analyzer: compute `WholeWorkflowBudget` from IR, propagate bounds through nested loops/branches, reject if any budget exceeds policy. New `BoundednessPolicy` config. Tests: nested fanout, sequential sum, conditional max, unbounded rejection. Resolves DRIFT-3 (aggregate budget gap) with Phase 45. |
 | 38 | Idempotency verification gate | `SideEffect` + `RetrySafety` classification per action. Verification gate rejects retry on side-effecting actions without idempotency key. Key ingredient validation (reject secrets, random, time in keys). New `IdempotencyViolation` error type. Tests: every side-effect class, key restriction, retry reachability. |
 | 39 | Accepted artifacts + admission | `AcceptedArtifact` record with `VerificationProof`. `RunAdmission` flow: artifact digest, input validation, capability check, secret availability, `RunAccepted` event. Runs bind to artifact by digest, not loose YAML. CLI `--strict` mode for AI-authored workflows. Tests: admission rejection paths, artifact binding, strict-mode warnings. |
 | 40 | Evidence chain completion | Slot value/taint snapshots in journal. Action input/output payload persistence for completed actions. Durability proof per primitive (each primitive must document what journal events constitute proof of completion). `VerificationProof.durable` field gates acceptance. Tests: crash recovery with evidence chain, payload reconstruction. |
 | 41 | Capability model | `Capability` struct. Actions declare required capabilities. Admission checks granted capabilities. `CapabilityDenied` rejection. Operator grants capabilities at run submission. Tests: missing capability rejection, granted capability acceptance. |
-| 42 | Validation deduplication | Eliminate duplicate validation between `vb_validate` and `vb_compile`. Single validation pipeline operating on a shared intermediate representation. Both crate APIs preserved for backward compatibility but backed by one implementation. |
+| 42 | Validation deduplication | Eliminate duplicate validation between `vb_validate` and `vb_compile`. Single validation pipeline operating on a shared intermediate representation. Both crate APIs preserved for backward compatibility but backed by one implementation. Resolves DRIFT-5. |
 | 43 | Taint propagation fix | Fix runtime taint tracking: `EvalExpr` joins taint from loaded slots, `BuildObject`/`BuildList` join taint from field/item slots, `Finish` carries taint in signal. Expression evaluator returns `(SlotValue, Taint)` pairs. Compile-time checks remain as defense-in-depth. Resolves DRIFT-1. |
 | 44 | Recovery evidence chain | Emit `SlotWritten` + `StepStarted`/`StepSucceeded` for every deterministic step. Gate hydration on `UnsupportedRecoveryState` — fail with typed error if slots/taint cannot be reconstructed. Replace `Ok(()) \| Err(_) => {}` pattern in shard with propagated errors. Resolves DRIFT-2. |
 | 45 | Resource budget enforcement | Per-run `ValueStore` arena cap. Tightened `ResourceContract` defaults (no `u16::MAX`). Hard ceiling on `StepBudget` per tick. Replace Collect global Mutex with per-run state. Resolves DRIFT-3. |
@@ -3202,19 +3203,6 @@ pub struct RunAdmission {
     pub admitted_at: u64,
 }
 ```
-
-### Capability Model
-
-v1 capabilities are named permissions that actions declare and operators grant:
-
-```rust
-pub struct Capability {
-    pub name: Box<str>,  // e.g. "network.github", "secrets.read.github_token"
-    pub action: ActionId,
-}
-```
-
-Admission checks that every capability required by the artifact's actions has been granted. Ungranted capabilities cause `CapabilityDenied` rejection.
 
 ### Secret Availability Check
 

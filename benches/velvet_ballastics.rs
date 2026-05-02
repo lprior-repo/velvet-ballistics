@@ -81,6 +81,15 @@ fn bytes_len(bytes: &[u8]) -> u64 {
     u64::try_from(bytes.len()).unwrap_or(u64::MAX)
 }
 
+/// Observer function to force materialization of parse result.
+/// Marked no_inline to prevent LLVM from constant-folding the parse.
+#[inline(never)]
+fn parse_and_observe(input: &str) -> usize {
+    vb_yaml::parse_yaml_events(input)
+        .map(|e| e.len())
+        .unwrap_or(0)
+}
+
 fn parse_yaml_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("yaml_parse");
     let small_meta = metadata("parse_yaml_small", SMALL_WORKFLOW, "fixture=small_workflow");
@@ -89,12 +98,15 @@ fn parse_yaml_benches(c: &mut Criterion) {
         BenchmarkId::from_parameter(small_meta),
         SMALL_WORKFLOW,
         |b, input| {
-            b.iter(|| match std::str::from_utf8(input) {
-                Ok(text) => vb_yaml::parse_yaml_events(black_box(text)),
-                Err(error) => Err(vb_yaml::YamlError::ParseError {
-                    line: 0,
-                    reason: error.to_string().into_boxed_str(),
-                }),
+            b.iter(|| {
+                let result = match std::str::from_utf8(input) {
+                    Ok(text) => vb_yaml::parse_yaml_events(black_box(text)),
+                    Err(error) => Err(vb_yaml::YamlError::ParseError {
+                        line: 0,
+                        reason: error.to_string().into_boxed_str(),
+                    }),
+                };
+                black_box(result.is_ok())
             })
         },
     );
@@ -109,7 +121,12 @@ fn parse_yaml_benches(c: &mut Criterion) {
     group.bench_with_input(
         BenchmarkId::from_parameter(large_meta),
         &one_mb,
-        |b, input| b.iter(|| vb_yaml::parse_yaml_events(black_box(input.as_str()))),
+        |b, input| {
+            // Use a separate observer function to prevent elision.
+            // The key insight: criterion measures b.iter() calls, not what's inside.
+            // So we must ensure the parse actually happens inside the iter closure.
+            b.iter(|| parse_and_observe(input.as_str()))
+        },
     );
     group.finish();
 }
@@ -232,11 +249,13 @@ fn slot_and_transition_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(2), plan);
                     let mut store = vb_core::ValueStore::new();
                     if let Ok(run) = frame.as_mut() {
-                        let _signal = vb_core::step_once(black_box(plan), run, &mut store);
+                        let signal = vb_core::step_once(black_box(plan), run, &mut store);
+                        black_box(signal.is_ok())
+                    } else {
+                        black_box(false)
                     }
-                    Some(frame)
                 } else {
-                    None
+                    black_box(false)
                 }
             })
         },
@@ -253,16 +272,18 @@ fn slot_and_transition_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(3), plan);
                     let mut store = vb_core::ValueStore::new();
                     if let Ok(run) = frame.as_mut() {
-                        let _signal = vb_core::run_until_blocked(
+                        let signal = vb_core::run_until_blocked(
                             black_box(plan),
                             run,
                             StepBudget::new(10),
                             &mut store,
                         );
+                        black_box(signal.is_ok())
+                    } else {
+                        black_box(false)
                     }
-                    Some(frame)
                 } else {
-                    None
+                    black_box(false)
                 }
             })
         },
@@ -540,16 +561,18 @@ fn bench_run_workflow(
                 let mut frame = vb_core::new_run_frame(RunId::new(6), plan);
                 let mut store = vb_core::ValueStore::new();
                 if let Ok(run) = frame.as_mut() {
-                    let _signal = vb_core::run_until_blocked(
+                    let signal = vb_core::run_until_blocked(
                         black_box(plan),
                         run,
                         StepBudget::new(budget),
                         &mut store,
                     );
+                    black_box(signal.is_ok())
+                } else {
+                    black_box(false)
                 }
-                Some(frame)
             } else {
-                None
+                black_box(false)
             }
         })
     });
@@ -853,17 +876,14 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(100), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(
-                            plan,
-                            run,
-                            StepBudget::MAX,
-                            &mut store,
-                        ))
+                        let signal =
+                            vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_))))
                     } else {
-                        None
+                        false
                     })
                 } else {
-                    None
+                    false
                 }
             })
         },
@@ -881,17 +901,14 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(101), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(
-                            plan,
-                            run,
-                            StepBudget::MAX,
-                            &mut store,
-                        ))
+                        let signal =
+                            vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_))))
                     } else {
-                        None
+                        false
                     })
                 } else {
-                    None
+                    false
                 }
             })
         },
@@ -909,17 +926,14 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(102), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(
-                            plan,
-                            run,
-                            StepBudget::MAX,
-                            &mut store,
-                        ))
+                        let signal =
+                            vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        black_box(signal.is_ok())
                     } else {
-                        None
+                        false
                     })
                 } else {
-                    None
+                    false
                 }
             })
         },
@@ -937,17 +951,14 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(103), plan);
                     let mut store = vb_core::ValueStore::new();
                     black_box(if let Ok(run) = frame.as_mut() {
-                        Some(vb_core::run_until_blocked(
-                            plan,
-                            run,
-                            StepBudget::MAX,
-                            &mut store,
-                        ))
+                        let signal =
+                            vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        black_box(signal.is_ok())
                     } else {
-                        None
+                        false
                     })
                 } else {
-                    None
+                    false
                 }
             })
         },
@@ -1056,9 +1067,9 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                         let mut frame = vb_core::new_run_frame(RunId::new(200), plan);
                         let mut store = vb_core::ValueStore::new();
                         if let Ok(run) = frame.as_mut() {
-                            #[allow(clippy::let_underscore_must_use)]
-                            let _ =
+                            let signal =
                                 vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                            black_box(signal.is_ok());
                         }
                     }
                     let ir_ns = ir_start.elapsed().as_nanos();
@@ -1090,9 +1101,9 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                         let mut frame = vb_core::new_run_frame(RunId::new(201), plan);
                         let mut store = vb_core::ValueStore::new();
                         if let Ok(run) = frame.as_mut() {
-                            #[allow(clippy::let_underscore_must_use)]
-                            let _ =
+                            let signal =
                                 vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                            black_box(signal.is_ok());
                         }
                     }
                     let ir_ns = ir_start.elapsed().as_nanos();

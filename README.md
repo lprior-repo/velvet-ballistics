@@ -83,6 +83,8 @@ cargo +nightly bench
 ## Documentation
 
 - `/velvet-ballistics-MASTER.md` — authoritative architecture contract, phase tracker, and implementation acceptance criteria
+- `CHANGELOG.md` — release history and notable changes
+- `RELEASE_CHECKLIST.md` — steps for future releases
 - 62 normative sections covering runtime semantics, expression grammar, taint lattice, journal schemas, IPC transport, security threat model, and more
 
 ## Task Tracking
