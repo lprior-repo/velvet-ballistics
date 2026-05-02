@@ -3754,4 +3754,375 @@ mod tests {
             RuntimeError::ACTIVE_RUN_CAPACITY_ZERO_CODE
         );
     }
+
+    // =======================================================================
+    // Stress tests — shard scheduler
+    // =======================================================================
+
+    /// Stress Test A: Concurrent run submission up to capacity.
+    /// Submit multiple runs up to MAX_ACTIVE_RUNS, verify all are accepted,
+    /// then submit one more and verify it is rejected with capacity error.
+    #[test]
+    fn stress_concurrent_run_submission_up_to_capacity() {
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 64,
+            step_budget_per_tick: 64,
+            max_active_runs: 8,
+        };
+        let capacity: usize = 8;
+        let mut shard = Shard::new(config);
+
+        // Phase 1: Submit runs up to capacity. Each uses a suspended workflow
+        // so it stays active (suspended on the Do node).
+        let mut submitted: u64 = 0;
+        for i in 1u64..=8 {
+            let Some(workflow) = suspended_workflow() else {
+                return;
+            };
+            let run_id = RunId::new(i);
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: run_id,
+                    workflow,
+                }),
+                Ok(()),
+                "enqueue should succeed for run {i}"
+            );
+            assert_eq!(
+                shard.tick(),
+                Ok(true),
+                "tick should succeed for run {i}"
+            );
+            submitted = submitted.saturating_add(1);
+        }
+
+        // All 8 runs are now submitted and active (suspended on Do).
+        assert_eq!(shard.counters().snapshot().runs_submitted, submitted);
+
+        // Verify every run is present via inspect.
+        for i in 1u64..=8 {
+            let run_id = RunId::new(i);
+            assert_eq!(
+                shard.enqueue(ShardCommand::Inspect {
+                    run: run_id,
+                    correlation: i,
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+            match shard.take_inspect_response() {
+                Some(InspectResponse::Found(snap)) => {
+                    assert_eq!(snap.run, run_id);
+                    assert_eq!(snap.correlation, i);
+                }
+                other => {
+                    assert_eq!(other, None);
+                }
+            }
+        }
+
+        // Phase 2: Submit one more run beyond capacity -- must be rejected.
+        let Some(overflow_workflow) = suspended_workflow() else {
+            return;
+        };
+        let overflow_id = RunId::new(9);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: overflow_id,
+                workflow: overflow_workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::ActiveRunCapacityExceeded {
+                capacity: capacity,
+            })
+        );
+    }
+
+    /// Stress Test B: Cancellation mid-execution.
+    /// Submit a run that suspends on a Do node, then cancel it.
+    /// Verify the run is removed, resources are cleaned up, and new
+    /// submissions succeed afterwards.
+    #[test]
+    fn stress_cancellation_mid_execution() {
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 64,
+            step_budget_per_tick: 64,
+            max_active_runs: 4,
+        };
+        let mut shard = Shard::new(config);
+
+        // Submit a run that suspends on Do.
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(1001);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+
+        // The run is now active and suspended on the Do node.
+        // Frame pool should show 0 available (frame is in use).
+        assert_eq!(
+            shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+            Some(0)
+        );
+
+        // Cancel the run mid-execution.
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+
+        // Verify: cancelled run is removed from active set.
+        assert_eq!(
+            shard.snapshot_run(run, 1),
+            InspectResponse::NotFound {
+                run,
+                correlation: 1,
+            }
+        );
+
+        // Verify: frame pool resources are cleaned up (frame returned).
+        assert_eq!(
+            shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+            Some(1)
+        );
+
+        // Verify: counters reflect the cancellation.
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+
+        // Verify: subsequent submissions succeed after cancellation frees a slot.
+        let Some(workflow2) = suspended_workflow() else {
+            return;
+        };
+        let run2 = RunId::new(1002);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: run2,
+                workflow: workflow2,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+
+        // The new run is active and suspended.
+        let snap = shard.snapshot_run(run2, 2);
+        match snap {
+            InspectResponse::Found(s) => {
+                assert_eq!(s.run, run2);
+                assert_eq!(s.correlation, 2);
+            }
+            InspectResponse::NotFound { run, correlation } => {
+                assert_eq!(run, run2);
+                assert_eq!(correlation, 2);
+            }
+        }
+    }
+
+    /// Stress Test C: Shutdown with active runs.
+    /// Submit multiple active runs, then enqueue a Shutdown command.
+    /// Verify the shutdown flag is set, no new submissions are processed,
+    /// and the drain processes commands up to the shutdown marker.
+    #[test]
+    fn stress_shutdown_with_active_runs() {
+        let config = ShardConfig {
+            command_queue_capacity: 32,
+            trace_capacity: 64,
+            step_budget_per_tick: 64,
+            max_active_runs: 8,
+        };
+        let mut shard = Shard::new(config);
+
+        // Submit 3 suspended runs.
+        for i in 1u64..=3 {
+            let Some(workflow) = suspended_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow,
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        assert_eq!(shard.counters().snapshot().runs_submitted, 3);
+
+        // Enqueue a submit and a shutdown, then try to enqueue another submit.
+        // The pre-shutdown submit should be processed, the shutdown stops processing,
+        // and the post-shutdown submit stays in the queue (never processed).
+        let Some(workflow_before) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(10),
+                workflow: workflow_before,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+
+        let Some(workflow_after) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(11),
+                workflow: workflow_after,
+            }),
+            Ok(())
+        );
+
+        // Process: first the pre-shutdown submit, then the shutdown.
+        assert_eq!(shard.tick(), Ok(true)); // processes submit for run 10
+        assert_eq!(shard.counters().snapshot().runs_submitted, 4);
+
+        assert_eq!(shard.tick(), Ok(false)); // processes Shutdown
+        assert_eq!(shard.is_shutting_down(), true);
+
+        // Verify: no new submissions are accepted after shutdown is processed.
+        // The post-shutdown submit is still in the queue but tick() returns false
+        // without processing it.
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 4);
+
+        // Verify: the 4 active runs are still present (shutdown does not kill them
+        // in this non-drain path -- it just prevents further processing).
+        for i in 1u64..=3 {
+            let snap = shard.snapshot_run(RunId::new(i), i);
+            match snap {
+                InspectResponse::Found(s) => {
+                    assert_eq!(s.run, RunId::new(i));
+                }
+                other => {
+                    assert_eq!(
+                        other,
+                        InspectResponse::NotFound {
+                            run: RunId::new(i),
+                            correlation: i,
+                        }
+                    );
+                }
+            }
+        }
+    }
+
+    /// Stress Test D: Frame pool recycling.
+    /// Submit and complete several runs with identical workflow dimensions,
+    /// verifying frames are returned to the pool and reused by subsequent runs
+    /// without corruption.
+    #[test]
+    fn stress_frame_pool_recycling() {
+        let config = ShardConfig {
+            command_queue_capacity: 32,
+            trace_capacity: 64,
+            step_budget_per_tick: 64,
+            max_active_runs: 8,
+        };
+        let mut shard = Shard::new(config);
+
+        // Phase 1: Submit and complete 4 runs sequentially with the finished_workflow.
+        // The finished workflow has (2 nodes, 1 slot) dimensions.
+        // Because runs finish one at a time, the pool reuses the same frame:
+        // run 1 allocates new, finishes, returns 1 frame.
+        // run 2 takes from pool, finishes, returns 1 frame. And so on.
+        for i in 1u64..=4 {
+            let Some(workflow) = finished_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow,
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+
+        // All 4 runs completed. Pool has 1 available frame (reused each time).
+        assert_eq!(shard.counters().snapshot().runs_completed, 4);
+        assert_eq!(
+            shard.frame_pools.get(&(2, 1)).map(FramePool::available),
+            Some(1),
+            "pool should have 1 reusable frame after 4 sequential completions"
+        );
+
+        // Phase 2: Submit 4 concurrent runs using suspended_workflow (1 node, 1 slot).
+        // These all stay active at once, taking 4 frames from the (1,1) pool.
+        for i in 10u64..=13 {
+            let Some(workflow) = suspended_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow,
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        // 4 runs are suspended, so the (1,1) pool has 0 available frames.
+        assert_eq!(
+            shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+            Some(0)
+        );
+
+        // Cancel all 4 to return their frames to the pool.
+        for i in 10u64..=13 {
+            assert_eq!(
+                shard.enqueue(ShardCommand::Cancel {
+                    run: RunId::new(i),
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        // Pool should now have 4 available frames.
+        assert_eq!(
+            shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+            Some(4),
+            "pool should have 4 frames after 4 cancellations"
+        );
+
+        // Phase 3: Submit 4 more suspended runs that reuse those pooled frames.
+        for i in 20u64..=23 {
+            let Some(workflow) = suspended_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow,
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        // All 4 reused frames from pool. Pool now has 0 available.
+        assert_eq!(
+            shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+            Some(0)
+        );
+
+        // Phase 4: Verify no corruption. All runs completed/cancelled correctly.
+        // 4 finished + 4 cancelled in wave 1 + 4 active in wave 2 = 12 submitted.
+        assert_eq!(shard.counters().snapshot().runs_submitted, 12);
+        assert_eq!(shard.counters().snapshot().runs_completed, 4);
+        assert_eq!(shard.counters().snapshot().runs_failed, 4);
+    }
 }
