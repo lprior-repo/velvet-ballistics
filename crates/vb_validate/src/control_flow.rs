@@ -194,13 +194,13 @@ mod tests {
     #[test]
     fn accepts_linear_flow() {
         let flow = linear_flow(3);
-        assert!(validate_control_flow(&flow).is_ok());
+        assert_eq!(validate_control_flow(&flow), Ok(()));
     }
 
     #[test]
     fn accepts_branching_flow() {
         let flow = branching_flow();
-        assert!(validate_control_flow(&flow).is_ok());
+        assert_eq!(validate_control_flow(&flow), Ok(()));
     }
 
     #[test]
@@ -313,7 +313,7 @@ mod tests {
                 then_target: None,
             }],
         };
-        assert!(validate_control_flow(&flow).is_ok());
+        assert_eq!(validate_control_flow(&flow), Ok(()));
     }
 
     #[test]

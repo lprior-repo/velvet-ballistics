@@ -1261,8 +1261,8 @@ mod tests {
             },
         ];
 
-        let result = replay_events(&events, &mut tracker);
-        assert!(result.is_ok(), "first execution should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("first execution should succeed");
+        assert_eq!(replayed.len(), 2);
         assert!(tracker.is_resolved(action, step));
     }
 
@@ -1418,8 +1418,7 @@ mod tests {
         // When check_compiled_ir_digest is called
         // Then it returns Ok
         let digest = test_digest(42);
-        let result = check_compiled_ir_digest(digest, digest);
-        assert!(result.is_ok());
+        check_compiled_ir_digest(digest, digest).expect("matching digests should succeed");
     }
 
     #[test]
@@ -1532,15 +1531,8 @@ mod tests {
         // Given an empty journal with no events for run 999
         // When recover_full_journal is called
         // Then it returns NoRecoveryData for that run
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else {
-            assert!(false, "journal should open");
-            return;
-        };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let mut tracker = ActionReplayTracker::new();
 
         let result = recover_full_journal(&journal, RunId::new(999), &mut tracker);
@@ -1555,15 +1547,8 @@ mod tests {
         // Given a journal with 3 events (accepted, started, finished) for run 42
         // When recover_full_journal is called
         // Then exactly 3 events are replayed
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else {
-            assert!(false, "journal should open");
-            return;
-        };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(42);
 
         let accepted = JournalEvent::RunAccepted {
@@ -1582,9 +1567,9 @@ mod tests {
             result: SlotIdx::new(0),
         };
 
-        assert!(journal.append_journaled(&accepted).is_ok());
-        assert!(journal.append_journaled(&started).is_ok());
-        assert!(journal.append_journaled(&finished).is_ok());
+        journal.append_journaled(&accepted).expect("setup: append accepted");
+        journal.append_journaled(&started).expect("setup: append started");
+        journal.append_journaled(&finished).expect("setup: append finished");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = recover_full_journal(&journal, run, &mut tracker)
@@ -1731,12 +1716,8 @@ mod tests {
         // Given a journal with a RunAccepted event using digest [1;32]
         // When check_workflow_source_digest is called with digest [2;32]
         // Then it returns WorkflowSourceDigestMismatch with exact expected/found
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(100);
         let stored_digest = test_digest(1);
@@ -1745,7 +1726,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: stored_digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let wrong_digest = test_digest(2);
         let result = check_workflow_source_digest(&journal, run, wrong_digest);
@@ -1761,12 +1742,8 @@ mod tests {
         // Given a journal with a RunAccepted event using digest [5;32]
         // When check_workflow_source_digest is called with the same digest
         // Then it returns Ok
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(101);
         let digest = test_digest(5);
@@ -1775,10 +1752,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = check_workflow_source_digest(&journal, run, digest);
-        assert!(result.is_ok());
+        check_workflow_source_digest(&journal, run, digest).expect("matching digest should succeed");
     }
 
     #[test]
@@ -1805,12 +1781,8 @@ mod tests {
         // Given a journal with matching digests
         // When verify_digests is called with Full level
         // Then it returns Ok
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(200);
         let digest = test_digest(7);
@@ -1819,17 +1791,17 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = verify_digests(
+        verify_digests(
             &journal,
             run,
             digest,
             test_digest(8),
             test_digest(8),
             DigestCheck::Full,
-        );
-        assert!(result.is_ok());
+        )
+        .expect("matching digests at Full level should succeed");
     }
 
     #[test]
@@ -1837,12 +1809,8 @@ mod tests {
         // Given matching workflow digests but different IR digests
         // When verify_digests is called with WorkflowAndIr level
         // Then it returns CompiledIrDigestMismatch
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(201);
         let digest = test_digest(7);
@@ -1851,7 +1819,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let result = verify_digests(
             &journal,
@@ -1872,12 +1840,8 @@ mod tests {
         // Given an empty journal
         // When recover_full_journal is called
         // Then it returns NoRecoveryData with the correct run
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(999);
         let mut tracker = ActionReplayTracker::new();
@@ -1894,10 +1858,8 @@ mod tests {
         // When replay_events is called
         // Then it returns an empty vector
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&[], &mut tracker);
-        assert!(result.is_ok());
-        let events = result.expect("empty replay should succeed");
-        assert!(events.is_empty());
+        let replayed = replay_events(&[], &mut tracker).expect("empty replay should succeed");
+        assert!(replayed.is_empty());
     }
 
     #[test]
@@ -1930,9 +1892,7 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
-        assert!(result.is_ok());
-        let replayed = result.expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 3);
         assert!(tracker.is_resolved(action, step));
     }
@@ -2091,12 +2051,8 @@ mod tests {
         // Given a journal with ActionScheduled followed by ActionFailedEvent
         // When recover_full_journal is called
         // Then the action is marked as resolved (failed) in the tracker
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(300);
         let action = ActionId::new(10);
@@ -2127,12 +2083,13 @@ mod tests {
         ];
 
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_full_journal(&journal, run, &mut tracker);
-        assert!(result.is_ok());
+        let replayed = recover_full_journal(&journal, run, &mut tracker)
+            .expect("full journal recovery should succeed");
+        assert_eq!(replayed.len(), 4);
         assert!(tracker.is_resolved(action, step));
     }
 
@@ -2182,9 +2139,7 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
-        assert!(result.is_ok());
-        let replayed = result.expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
         assert_eq!(replayed.len(), 7);
     }
 
@@ -2193,12 +2148,8 @@ mod tests {
         // Given matching workflow digest but different IR digest
         // When verify_digests is called with WorkflowSourceOnly level
         // Then it returns Ok (IR mismatch is not checked)
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(400);
         let wf_digest = test_digest(7);
@@ -2207,17 +2158,17 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: wf_digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = verify_digests(
+        verify_digests(
             &journal,
             run,
             wf_digest,
             test_digest(8),
             test_digest(99), // different, but should not be checked at this level
             DigestCheck::WorkflowSourceOnly,
-        );
-        assert!(result.is_ok());
+        )
+        .expect("WorkflowSourceOnly should skip IR check");
     }
 
     #[test]
@@ -2225,15 +2176,11 @@ mod tests {
         // Given a journal with no events for the run
         // When check_workflow_source_digest is called
         // Then it returns Ok (no RunAccepted event means no mismatch)
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let result = check_workflow_source_digest(&journal, RunId::new(500), test_digest(1));
-        assert!(result.is_ok());
+        check_workflow_source_digest(&journal, RunId::new(500), test_digest(1))
+            .expect("no events should succeed");
     }
 
     // --- Section: Recovery Error Variant Exact-Assertion Tests ---
@@ -2368,12 +2315,8 @@ mod tests {
         // Given an empty journal
         // When recover_full_journal is called for a run
         // Then it returns NoRecoveryData with the correct run
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(1);
         let mut tracker = ActionReplayTracker::new();
@@ -2389,12 +2332,8 @@ mod tests {
         // Given a journal with accepted, step started, run finished
         // When recover_full_journal is called
         // Then 3 events are returned in order
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(10);
         let events: Vec<crate::JournalEvent> = vec![
@@ -2415,7 +2354,7 @@ mod tests {
             },
         ];
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
@@ -2432,12 +2371,8 @@ mod tests {
         // Given a journal with an accepted but not terminated run
         // When recover_full_journal is called
         // Then extract_terminal returns None (run is still active)
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(20);
         let events: Vec<crate::JournalEvent> = vec![
@@ -2453,7 +2388,7 @@ mod tests {
             },
         ];
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
@@ -2471,12 +2406,8 @@ mod tests {
         // Given a journal with a run ending in RunFinished
         // When recover_full_journal is called
         // Then extract_terminal returns the RunFinished event
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(30);
         let events: Vec<crate::JournalEvent> = vec![
@@ -2492,7 +2423,7 @@ mod tests {
             },
         ];
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
@@ -2511,12 +2442,8 @@ mod tests {
         // Given a journal with a run ending in RunFailedEvent
         // When recover_full_journal is called
         // Then extract_terminal returns the RunFailedEvent
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(40);
         let events: Vec<crate::JournalEvent> = vec![
@@ -2531,7 +2458,7 @@ mod tests {
             },
         ];
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
@@ -2607,7 +2534,8 @@ mod tests {
         let mut tracker = ActionReplayTracker::new();
 
         let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
-        assert!(result.is_ok());
+        let replayed = result.expect("snapshot plus tail recovery should succeed");
+        assert_eq!(replayed.len(), 2);
         assert!(tracker.is_resolved(action, step));
     }
 
@@ -2698,12 +2626,8 @@ mod tests {
         // Given a journal with a RunAccepted event using digest [5;32]
         // When check_workflow_source_digest is called with the same digest
         // Then it returns Ok
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(600);
         let digest = test_digest(5);
@@ -2712,10 +2636,9 @@ mod tests {
             seq: crate::EventSeq::new(0),
             workflow: digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = check_workflow_source_digest(&journal, run, digest);
-        assert!(result.is_ok());
+        check_workflow_source_digest(&journal, run, digest).expect("matching digest should succeed");
     }
 
     #[test]
@@ -2724,8 +2647,7 @@ mod tests {
         // When check_compiled_ir_digest is called
         // Then it returns Ok
         let digest = test_digest(42);
-        let result = check_compiled_ir_digest(digest, digest);
-        assert!(result.is_ok());
+        check_compiled_ir_digest(digest, digest).expect("matching digests should succeed");
     }
 
     #[test]
@@ -2733,12 +2655,8 @@ mod tests {
         // Given a journal with matching workflow and IR digests
         // When verify_digests is called at Full level
         // Then it returns Ok
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(700);
         let wf_digest = test_digest(10);
@@ -2748,17 +2666,17 @@ mod tests {
             seq: crate::EventSeq::new(0),
             workflow: wf_digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = verify_digests(
+        verify_digests(
             &journal,
             run,
             wf_digest,
             ir_digest,
             ir_digest,
             DigestCheck::Full,
-        );
-        assert!(result.is_ok());
+        )
+        .expect("all matching digests at Full level should succeed");
     }
 
     // --- Section: ActionReplayTracker BDD Tests ---
@@ -2846,12 +2764,8 @@ mod tests {
         // Given matching workflow digest but mismatched IR digest
         // When verify_digests is called with WorkflowSourceOnly level
         // Then it returns Ok (IR not checked)
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(800);
         let wf_digest = test_digest(7);
@@ -2860,17 +2774,17 @@ mod tests {
             seq: crate::EventSeq::new(0),
             workflow: wf_digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
-        let result = verify_digests(
+        verify_digests(
             &journal,
             run,
             wf_digest,
             test_digest(8),
             test_digest(99),
             DigestCheck::WorkflowSourceOnly,
-        );
-        assert!(result.is_ok());
+        )
+        .expect("WorkflowSourceOnly should skip IR check");
     }
 
     // --- Section: RunSnapshot Tests ---
@@ -3053,12 +2967,8 @@ mod tests {
         // Given a journal with a run ending in RunCancelled
         // When recover_full_journal is called
         // Then the terminal event is RunCancelled
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = crate::FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(50);
         let events: Vec<crate::JournalEvent> = vec![
@@ -3073,7 +2983,7 @@ mod tests {
             },
         ];
         for event in &events {
-            assert!(journal.append_journaled(event).is_ok());
+            journal.append_journaled(event).expect("setup: append event");
         }
 
         let mut tracker = ActionReplayTracker::new();
@@ -3150,7 +3060,6 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("journal opens");
         let result = journal.snapshot(RunId::new(9999), EventSeq::new(0));
-        assert!(result.is_ok());
         let Ok(opt) = result else { return };
         assert_eq!(opt, None);
     }
@@ -3284,7 +3193,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: stored,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let result = check_workflow_source_digest(&journal, run, wrong);
         let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
@@ -3328,7 +3237,7 @@ mod tests {
             seq: EventSeq::new(0),
             result: vb_core::SlotIdx::new(0),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = recover_full_journal(&journal, run, &mut tracker)
@@ -3350,7 +3259,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: adv_digest(5),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = recover_full_journal(&journal, run, &mut tracker)
@@ -3681,7 +3590,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: wf_digest,
         };
-        assert!(journal.append_journaled(&event).is_ok());
+        journal.append_journaled(&event).expect("setup: append event");
 
         let result = verify_digests(
             &journal,

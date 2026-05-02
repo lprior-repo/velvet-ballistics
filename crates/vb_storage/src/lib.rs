@@ -2467,12 +2467,8 @@ mod tests {
 
     #[test]
     fn append_strict_batch_writes_all_events_with_single_fsync() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(61);
         let events = vec![
@@ -2494,7 +2490,7 @@ mod tests {
         ];
 
         let result = journal.append_strict_batch(&events);
-        assert!(result.is_ok());
+        result.expect("action must succeed");
 
         let replayed = journal
             .events_for_run(run)
@@ -2505,12 +2501,8 @@ mod tests {
 
     #[test]
     fn append_strict_batch_rejects_duplicate_within_batch() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(62);
         let event = JournalEvent::RunAccepted {
@@ -2554,12 +2546,8 @@ mod tests {
 
     #[test]
     fn batch_builder_round_trips_via_append_strict_batch() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(64);
         let mut builder = BatchBuilder::new();
@@ -2574,7 +2562,7 @@ mod tests {
             step: StepIdx::new(0),
         });
 
-        assert!(journal.append_strict_batch(builder.as_slice()).is_ok());
+journal.append_strict_batch(builder.as_slice()).expect("journal.append_strict_batch must succeed");
         let events = journal
             .events_for_run(run)
             .expect("events_for_run should succeed");
@@ -2583,12 +2571,8 @@ mod tests {
 
     #[test]
     fn flush_profile_batches_strict_events_into_single_fsync() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = open_store(temp_dir.path());
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let Ok(queue) = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT) else {
             return;
         };
@@ -2604,100 +2588,76 @@ mod tests {
             result: vb_core::SlotIdx::new(0),
         };
 
-        assert!(queue.enqueue_strict(strict1.clone()).is_ok());
-        assert!(queue.enqueue_strict(strict2.clone()).is_ok());
+queue.enqueue_strict(strict1.clone()).expect("queue.enqueue_strict must succeed");
+queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed");
         let report = flush_profile(&queue, &journal);
 
-        assert!(report.is_ok());
-        let Ok(report) = report else { return };
+        let report = report.expect("flush_profile should succeed");
         assert_eq!(report.drained, 2);
         assert_eq!(report.written, 2);
         let events = read_run_events(&journal, run);
-        assert!(events.is_ok());
-        let Ok(events) = events else { return };
+        let events = events.expect("read_run_events should succeed");
         assert_eq!(events, vec![strict1, strict2]);
     }
 
     #[test]
     fn write_batch_commits_cross_keyspace_atomically() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = WorkflowDigest::from_bytes([1; 32]);
         let run = RunId::new(42);
 
         let mut batch = journal.batch();
-        assert!(
-            batch
-                .put_workflow_source(&WorkflowSourceRecord {
-                    digest,
-                    source: b"test workflow".to_vec(),
-                })
-                .is_ok()
-        );
-        assert!(
-            batch
-                .put_run_header(&RunHeaderRecord {
-                    run,
-                    workflow_id: WorkflowId::new(7),
-                    compiled_digest: digest,
-                    status: 1,
-                    accepted_at_ms: 1234,
-                })
-                .is_ok()
-        );
-        assert!(batch.commit().is_ok());
+        batch
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest,
+                source: b"test workflow".to_vec(),
+            })
+            .expect("put_workflow_source must succeed");
+        batch
+            .put_run_header(&RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(7),
+                compiled_digest: digest,
+                status: 1,
+                accepted_at_ms: 1234,
+            })
+            .expect("put_run_header must succeed");
+        batch.commit().expect("batch.commit must succeed");
 
-        let source = journal.workflow_source(digest);
-        assert!(source.is_ok());
-        assert!(source.as_ref().unwrap().is_some());
-        assert_eq!(source.unwrap().unwrap().source, b"test workflow".to_vec());
+        let source = journal.workflow_source(digest).expect("workflow source roundtrip");
+        assert!(source.is_some());
+        assert_eq!(source.unwrap().source, b"test workflow".to_vec());
 
-        let header = journal.run_header(run);
-        assert!(header.is_ok());
-        assert!(header.as_ref().unwrap().is_some());
-        assert_eq!(header.unwrap().unwrap().run, run);
+        let header = journal.run_header(run).expect("run header roundtrip");
+        assert!(header.is_some());
+        assert_eq!(header.unwrap().run, run);
     }
 
     #[test]
     fn write_batch_strict_commits_with_durability() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = [2; 32];
         let mut batch = journal.batch().strict();
-        assert!(
-            batch
+        batch
                 .put_blob(&BlobRecord {
                     digest,
                     bytes: b"blob data".to_vec(),
-                })
-                .is_ok()
-        );
-        assert!(batch.commit().is_ok());
+                }).expect("action must succeed");
+batch.commit().expect("batch.commit must succeed");
 
-        let blob = journal.blob(digest);
-        assert!(blob.is_ok());
-        assert!(blob.as_ref().unwrap().is_some());
-        assert_eq!(blob.unwrap().unwrap().bytes, b"blob data".to_vec());
+        let blob = journal.blob(digest).expect("blob roundtrip");
+        assert!(blob.is_some());
+        assert_eq!(blob.unwrap().bytes, b"blob data".to_vec());
     }
 
     #[test]
     fn write_batch_appends_events_and_indexes() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(99);
         let workflow = WorkflowId::new(5);
@@ -2705,48 +2665,37 @@ mod tests {
         let step = StepIdx::new(2);
 
         let mut batch = journal.batch();
-        assert!(
-            batch
+        batch
                 .append_event(&JournalEvent::RunAccepted {
                     run,
                     seq: EventSeq::new(0),
                     workflow: WorkflowDigest::from_bytes([3; 32]),
-                })
-                .is_ok()
-        );
-        assert!(batch.put_workflow_index(workflow, run).is_ok());
-        assert!(batch.put_action_index(action, run, step).is_ok());
-        assert!(batch.put_status_index(1, 5678, run).is_ok());
-        assert!(batch.commit().is_ok());
+                }).expect("action must succeed");
+batch.put_workflow_index(workflow, run).expect("batch.put_workflow_index must succeed");
+batch.put_action_index(action, run, step).expect("batch.put_action_index must succeed");
+batch.put_status_index(1, 5678, run).expect("batch.put_status_index must succeed");
+batch.commit().expect("batch.commit must succeed");
 
         let events = journal.events_for_run(run);
-        assert!(events.is_ok());
-        assert_eq!(events.unwrap().len(), 1);
+        let events = events.expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1);
     }
 
     #[test]
     fn write_batch_empty_commit_succeeds() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let batch = journal.batch();
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);
-        assert!(batch.commit().is_ok());
+batch.commit().expect("batch.commit must succeed");
     }
 
     #[test]
     fn write_batch_is_empty_after_construction() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let batch = journal.batch();
         assert!(batch.is_empty());
@@ -2755,45 +2704,31 @@ mod tests {
 
     #[test]
     fn write_batch_len_tracks_operations() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = WorkflowDigest::from_bytes([4; 32]);
         let mut batch = journal.batch();
-        assert!(
-            batch
+        batch
                 .put_workflow_source(&WorkflowSourceRecord {
                     digest,
                     source: b"a".to_vec(),
-                })
-                .is_ok()
-        );
+                }).expect("action must succeed");
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
 
-        assert!(
-            batch
+        batch
                 .put_compiled_ir(&CompiledIrRecord {
                     digest,
                     ir: b"ir".to_vec(),
-                })
-                .is_ok()
-        );
+                }).expect("action must succeed");
         assert_eq!(batch.len(), 2);
     }
 
     #[test]
     fn write_batch_snapshot_round_trips() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(77);
         let seq = EventSeq::new(5);
@@ -2805,13 +2740,12 @@ mod tests {
         };
 
         let mut batch = journal.batch();
-        assert!(batch.put_snapshot(&snapshot).is_ok());
-        assert!(batch.commit().is_ok());
+batch.put_snapshot(&snapshot).expect("batch.put_snapshot must succeed");
+batch.commit().expect("batch.commit must succeed");
 
-        let loaded = journal.snapshot(run, seq);
-        assert!(loaded.is_ok());
-        assert!(loaded.as_ref().unwrap().is_some());
-        assert_eq!(loaded.unwrap().unwrap().run, run);
+        let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap().run, run);
     }
 
     #[test]
@@ -2833,25 +2767,15 @@ mod tests {
 
         // Verify the function exists and returns valid options by using them
         // in a real database open.
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None);
         assert!(journal.is_ok(), "journal should open with tuned keyspaces");
     }
 
     #[test]
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
 
         let workflow_digest = WorkflowDigest::from_bytes([1; 32]);
@@ -2882,22 +2806,14 @@ mod tests {
             bytes: vec![10, 11],
         };
 
-        assert!(journal.put_workflow_source(&source).is_ok());
-        assert!(journal.put_compiled_ir(&ir).is_ok());
-        assert!(journal.put_run_header(&header).is_ok());
-        assert!(journal.put_snapshot(&snapshot).is_ok());
-        assert!(journal.put_blob(&blob).is_ok());
-        assert!(journal.put_status_index(1, 2, RunId::new(3)).is_ok());
-        assert!(
-            journal
-                .put_workflow_index(WorkflowId::new(4), RunId::new(3))
-                .is_ok()
-        );
-        assert!(
-            journal
-                .put_action_index(ActionId::new(5), RunId::new(3), StepIdx::new(6))
-                .is_ok()
-        );
+journal.put_workflow_source(&source).expect("journal.put_workflow_source must succeed");
+journal.put_compiled_ir(&ir).expect("journal.put_compiled_ir must succeed");
+journal.put_run_header(&header).expect("journal.put_run_header must succeed");
+journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
+journal.put_blob(&blob).expect("journal.put_blob must succeed");
+journal.put_status_index(1, 2, RunId::new(3)).expect("journal.put_status_index must succeed");
+        journal.put_workflow_index(WorkflowId::new(4), RunId::new(3)).expect("action must succeed");
+        journal.put_action_index(ActionId::new(5), RunId::new(3), StepIdx::new(6)).expect("action must succeed");
 
         let found_source = journal
             .workflow_source(workflow_digest)
@@ -2937,7 +2853,9 @@ mod tests {
             &source,
             128,
         );
-        assert!(encoded.is_ok());
+        assert!(encoded.is_ok(), "encoding must succeed for valid input");
+        let encoded = encoded.expect("setup: encoding");
+        assert!(!encoded.is_empty(), "encoded bytes must be non-empty");
         let wrong_family = encode_record(
             MAGIC_COMPILED_ARTIFACT,
             RecordKind::WorkflowSource,
@@ -2954,16 +2872,8 @@ mod tests {
 
     #[test]
     fn duplicate_event_append_is_rejected() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let event = JournalEvent::RunAccepted {
             run: RunId::new(9),
             seq: EventSeq::new(0),
@@ -2973,7 +2883,7 @@ mod tests {
         let first = journal.append_journaled(&event);
         let second = journal.append_journaled(&event);
 
-        assert!(first.is_ok());
+        first.expect("action must succeed");
         assert!(matches!(second, Err(JournalError::DuplicateEvent { .. })));
     }
 
@@ -2992,8 +2902,8 @@ mod tests {
             seq: EventSeq::new(1),
         };
 
-        assert!(queue.enqueue_journaled(journaled).is_ok());
-        assert!(queue.enqueue_strict(strict).is_ok());
+queue.enqueue_journaled(journaled).expect("queue.enqueue_journaled must succeed");
+queue.enqueue_strict(strict).expect("queue.enqueue_strict must succeed");
 
         assert!(matches!(
             queue.pending_profile_counts(),
@@ -3003,12 +2913,8 @@ mod tests {
 
     #[test]
     fn flush_profile_wrapper_flushes_queued_events() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = open_store(temp_dir.path());
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let Ok(queue) = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT) else {
             return;
         };
@@ -3024,32 +2930,22 @@ mod tests {
             result: vb_core::SlotIdx::new(0),
         };
 
-        assert!(queue.enqueue_journaled(journaled.clone()).is_ok());
-        assert!(queue.enqueue_strict(strict.clone()).is_ok());
+queue.enqueue_journaled(journaled.clone()).expect("queue.enqueue_journaled must succeed");
+queue.enqueue_strict(strict.clone()).expect("queue.enqueue_strict must succeed");
         let report = flush_profile(&queue, &journal);
 
-        assert!(report.is_ok());
-        let Ok(report) = report else { return };
+        let report = report.expect("flush_profile should succeed");
         assert_eq!(report.drained, 2);
         assert_eq!(report.written, 2);
         let events = read_run_events(&journal, run);
-        assert!(events.is_ok());
-        let Ok(events) = events else { return };
+        let events = events.expect("read_run_events should succeed");
         assert_eq!(events, vec![journaled, strict]);
     }
 
     #[test]
     fn replay_returns_contiguous_events_for_run() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok(), "tempdir should be created");
-        let Ok(temp_dir) = temp_dir else {
-            return;
-        };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(11);
         let accepted = JournalEvent::RunAccepted {
             run,
@@ -3062,8 +2958,8 @@ mod tests {
             result: vb_core::SlotIdx::new(0),
         };
 
-        assert!(journal.append_journaled(&accepted).is_ok());
-        assert!(journal.append_journaled(&finished).is_ok());
+journal.append_journaled(&accepted).expect("journal.append_journaled must succeed");
+journal.append_journaled(&finished).expect("journal.append_journaled must succeed");
 
         let replay = journal
             .events_for_run(run)
@@ -3397,12 +3293,8 @@ mod tests {
         // Given events stored for run 10 and a replay request for run 20
         // When events_for_run is called for run 20 on a journal that only has run 10 events
         // Then no events are returned (no prefix match), producing an empty result
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run_a = RunId::new(10);
         let event = JournalEvent::RunAccepted {
@@ -3410,11 +3302,10 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+journal.append_journaled(&event).expect("journal.append_journaled must succeed");
 
         let run_b = RunId::new(20);
         let result = journal.events_for_run(run_b);
-        assert!(result.is_ok());
         let events = result.expect("events_for_run should succeed for missing run");
         assert!(events.is_empty(), "no events should exist for run_b");
     }
@@ -3424,12 +3315,8 @@ mod tests {
         // Given a journal with seq 0 then seq 2 for the same run
         // When events_for_run replays
         // Then it returns SequenceGap with expected=1, actual=2
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(100);
         let event0 = JournalEvent::RunAccepted {
@@ -3437,7 +3324,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-        assert!(journal.append_journaled(&event0).is_ok());
+journal.append_journaled(&event0).expect("journal.append_journaled must succeed");
 
         // Manually insert an event at seq 2 (skipping seq 1)
         let event2 = JournalEvent::StepStarted {
@@ -3445,7 +3332,7 @@ mod tests {
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
         };
-        assert!(journal.append_journaled(&event2).is_ok());
+journal.append_journaled(&event2).expect("journal.append_journaled must succeed");
 
         let result = journal.events_for_run(run);
         let Err(JournalError::SequenceGap { expected, actual }) = result else {
@@ -3470,19 +3357,15 @@ mod tests {
         // Given a journal with a RunAccepted event for run 42, seq 7
         // When the same event is appended again
         // Then DuplicateEvent is returned with run=42, seq=7
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let event = JournalEvent::RunAccepted {
             run: RunId::new(42),
             seq: EventSeq::new(7),
             workflow: WorkflowDigest::from_bytes([3; 32]),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+journal.append_journaled(&event).expect("journal.append_journaled must succeed");
 
         let result = journal.append_journaled(&event);
         let Err(JournalError::DuplicateEvent { run, seq }) = result else {
@@ -3756,36 +3639,28 @@ mod tests {
         // Given a temporary directory
         // When FjallJournal::open is called
         // Then the journal opens successfully
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
+        assert!(journal.is_ok(), "journal should open with default config");
     }
 
     #[test]
     fn public_open_wrappers_create_declared_keyspaces() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
 
         let journal = open_store(temp_dir.path());
-        assert!(journal.is_ok());
+        assert!(journal.is_ok(), "open_store should succeed");
         drop(journal);
 
         let reopened = init_keyspaces(temp_dir.path());
-        assert!(reopened.is_ok());
+        assert!(reopened.is_ok(), "init_keyspaces should succeed");
         assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
     }
 
     #[test]
     fn public_wrappers_delegate_to_journal_storage_paths() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = open_store(temp_dir.path());
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let run = RunId::new(70);
         let event = JournalEvent::RunAccepted {
             run,
@@ -3803,49 +3678,37 @@ mod tests {
             slots: vec![4, 5, 6],
         };
 
-        assert!(append_journal_event(&journal, &event).is_ok());
-        assert!(journal.put_blob(&blob).is_ok());
-        assert!(write_snapshot(&journal, &snapshot).is_ok());
+append_journal_event(&journal, &event).expect("append_journal_event must succeed");
+journal.put_blob(&blob).expect("journal.put_blob must succeed");
+write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
 
         let events = read_run_events(&journal, run);
-        assert!(events.is_ok());
-        let Ok(events) = events else { return };
+        let events = events.expect("read_run_events should succeed");
         assert_eq!(events, vec![event.clone()]);
         let loaded_blob = read_blob(&journal, blob.digest);
-        assert!(loaded_blob.is_ok());
-        let Ok(loaded_blob) = loaded_blob else {
-            return;
-        };
+        let loaded_blob = loaded_blob.expect("read_blob should succeed");
         assert_eq!(loaded_blob, Some(blob));
         let loaded_snapshot = journal.snapshot(run, EventSeq::new(0));
-        assert!(loaded_snapshot.is_ok());
-        let Ok(loaded_snapshot) = loaded_snapshot else {
-            return;
-        };
+        let loaded_snapshot = loaded_snapshot.expect("snapshot lookup should succeed");
         assert_eq!(loaded_snapshot, Some(snapshot));
     }
 
     #[test]
     fn replay_journal_wrapper_uses_recovery_replay() {
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = open_store(temp_dir.path());
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let run = RunId::new(71);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([8; 32]),
         };
-        assert!(append_journal_event(&journal, &event).is_ok());
+append_journal_event(&journal, &event).expect("append_journal_event must succeed");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = replay_journal(&journal, run, &mut tracker);
 
-        assert!(replayed.is_ok());
-        let Ok(replayed) = replayed else { return };
+        let replayed = replayed.expect("replay_journal should succeed");
         assert_eq!(replayed, vec![event]);
     }
 
@@ -3854,12 +3717,8 @@ mod tests {
         // Given an open journal
         // When append_strict is called with a RunAccepted event
         // Then the event can be retrieved via events_for_run
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(55);
         let event = JournalEvent::RunAccepted {
@@ -3868,7 +3727,7 @@ mod tests {
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
         let result = journal.append_strict(&event);
-        assert!(result.is_ok());
+        result.expect("action must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -3882,12 +3741,8 @@ mod tests {
         // Given an open journal with a seq-0 event
         // When append_strict is called with seq 2 (skipping seq 1)
         // Then events_for_run returns SequenceGap
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(60);
         let event0 = JournalEvent::RunAccepted {
@@ -3895,14 +3750,14 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-        assert!(journal.append_strict(&event0).is_ok());
+journal.append_strict(&event0).expect("journal.append_strict must succeed");
 
         let event2 = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
         };
-        assert!(journal.append_strict(&event2).is_ok());
+journal.append_strict(&event2).expect("journal.append_strict must succeed");
 
         let result = journal.events_for_run(run);
         let Err(JournalError::SequenceGap { expected, actual }) = result else {
@@ -3917,9 +3772,7 @@ mod tests {
         // Given an open journal with a persisted event
         // When the journal is closed and reopened
         // Then the same event is visible
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
 
         let run = RunId::new(77);
         let event = JournalEvent::RunAccepted {
@@ -3928,15 +3781,12 @@ mod tests {
             workflow: WorkflowDigest::from_bytes([5; 32]),
         };
         {
-            let journal = FjallJournal::open(temp_dir.path(), None);
-            assert!(journal.is_ok());
-            let Ok(journal) = journal else { return };
-            assert!(journal.append_strict(&event).is_ok());
+            let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+journal.append_strict(&event).expect("journal.append_strict must succeed");
         }
 
         let journal2 = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal2.is_ok());
-        let Ok(journal2) = journal2 else { return };
+        let journal2 = journal2.expect("journal should reopen cleanly");
         let events = journal2
             .events_for_run(run)
             .expect("events_for_run should succeed after reopen");
@@ -3949,19 +3799,15 @@ mod tests {
         // Given an open journal and a workflow source record
         // When put_workflow_source is called
         // Then the record can be retrieved by digest
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = WorkflowDigest::from_bytes([42; 32]);
         let record = WorkflowSourceRecord {
             digest,
             source: vec![b'h', b'e', b'l', b'l', b'o'],
         };
-        assert!(journal.put_workflow_source(&record).is_ok());
+journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
 
         let retrieved = journal
             .workflow_source(digest)
@@ -3974,12 +3820,8 @@ mod tests {
         // Given an open journal with no stored workflow source
         // When workflow_source is called with an arbitrary digest
         // Then it returns None
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let missing = WorkflowDigest::from_bytes([99; 32]);
         let result = journal
@@ -3993,12 +3835,8 @@ mod tests {
         // Given an open journal and a run header record
         // When put_run_header is called
         // Then the record can be retrieved by run id
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let record = RunHeaderRecord {
             run: RunId::new(123),
@@ -4007,7 +3845,7 @@ mod tests {
             status: 1,
             accepted_at_ms: 1700000000,
         };
-        assert!(journal.put_run_header(&record).is_ok());
+journal.put_run_header(&record).expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(123))
@@ -4020,19 +3858,15 @@ mod tests {
         // Given an open journal and a compiled IR record
         // When put_compiled_ir is called
         // Then the record can be retrieved by digest
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = WorkflowDigest::from_bytes([3; 32]);
         let record = CompiledIrRecord {
             digest,
             ir: vec![0xDE, 0xAD, 0xBE, 0xEF],
         };
-        assert!(journal.put_compiled_ir(&record).is_ok());
+journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
 
         let retrieved = journal
             .compiled_ir(digest)
@@ -4045,19 +3879,15 @@ mod tests {
         // Given an open journal and a blob record
         // When put_blob is called
         // Then the record can be retrieved by digest
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let digest = [0xCC; 32];
         let record = BlobRecord {
             digest,
             bytes: vec![1, 2, 3, 4, 5],
         };
-        assert!(journal.put_blob(&record).is_ok());
+journal.put_blob(&record).expect("journal.put_blob must succeed");
 
         let retrieved = journal.blob(digest).expect("blob lookup should succeed");
         assert_eq!(retrieved, Some(record));
@@ -4068,12 +3898,8 @@ mod tests {
         // Given an open journal and a run snapshot
         // When put_snapshot is called
         // Then the snapshot can be retrieved by run and seq
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let snapshot = RunSnapshot {
             run: RunId::new(88),
@@ -4081,7 +3907,7 @@ mod tests {
             workflow: WorkflowDigest::from_bytes([7; 32]),
             slots: vec![1, 2, 3],
         };
-        assert!(journal.put_snapshot(&snapshot).is_ok());
+journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
 
         let retrieved = journal
             .snapshot(RunId::new(88), EventSeq::new(10))
@@ -4094,15 +3920,11 @@ mod tests {
         // Given an open journal
         // When put_action_index is called
         // Then no error is returned and the index entry exists
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal.put_action_index(ActionId::new(1), RunId::new(2), StepIdx::new(3));
-        assert!(result.is_ok());
+        result.expect("action must succeed");
     }
 
     #[test]
@@ -4110,15 +3932,11 @@ mod tests {
         // Given an open journal
         // When put_status_index is called
         // Then no error is returned
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal.put_status_index(1, 1700000000, RunId::new(99));
-        assert!(result.is_ok());
+        result.expect("action must succeed");
     }
 
     #[test]
@@ -4126,15 +3944,11 @@ mod tests {
         // Given an open journal
         // When put_workflow_index is called
         // Then no error is returned
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal.put_workflow_index(WorkflowId::new(7), RunId::new(8));
-        assert!(result.is_ok());
+        result.expect("action must succeed");
     }
 
     #[test]
@@ -4142,12 +3956,8 @@ mod tests {
         // Given a journal with events for run 10 and run 20
         // When events_for_run is called for run 10
         // Then only run 10 events are returned
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run_a = RunId::new(10);
         let run_b = RunId::new(20);
@@ -4168,9 +3978,9 @@ mod tests {
             step: StepIdx::new(0),
         };
 
-        assert!(journal.append_journaled(&event_a0).is_ok());
-        assert!(journal.append_journaled(&event_b0).is_ok());
-        assert!(journal.append_journaled(&event_a1).is_ok());
+journal.append_journaled(&event_a0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&event_b0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&event_a1).expect("journal.append_journaled must succeed");
 
         let events_a = journal
             .events_for_run(run_a)
@@ -4397,12 +4207,8 @@ mod tests {
         // Given an open journal with no stored headers
         // When run_header is called for an arbitrary run
         // Then it returns None
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal
             .run_header(RunId::new(999))
@@ -4415,12 +4221,8 @@ mod tests {
         // Given an open journal with no stored IR
         // When compiled_ir is called
         // Then it returns None
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal
             .compiled_ir(WorkflowDigest::from_bytes([0; 32]))
@@ -4433,12 +4235,8 @@ mod tests {
         // Given an open journal with no snapshots
         // When snapshot is called
         // Then it returns None
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal
             .snapshot(RunId::new(1), EventSeq::new(0))
@@ -4451,12 +4249,8 @@ mod tests {
         // Given an open journal with no blobs
         // When blob is called
         // Then it returns None
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
-        let journal = FjallJournal::open(temp_dir.path(), None);
-        assert!(journal.is_ok());
-        let Ok(journal) = journal else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let result = journal.blob([0; 32]).expect("lookup should succeed");
         assert_eq!(result, None);
@@ -4498,7 +4292,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4524,8 +4318,8 @@ mod tests {
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
         };
-        assert!(journal.append_strict(&accepted).is_ok());
-        assert!(journal.append_strict(&started).is_ok());
+journal.append_strict(&accepted).expect("journal.append_strict must succeed");
+journal.append_strict(&started).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4548,7 +4342,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4578,7 +4372,7 @@ mod tests {
             step,
             output,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4609,7 +4403,7 @@ mod tests {
             seq: EventSeq::new(0),
             slot,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4639,7 +4433,7 @@ mod tests {
             step,
             action,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4672,7 +4466,7 @@ mod tests {
             step,
             action,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4703,7 +4497,7 @@ mod tests {
             seq: EventSeq::new(0),
             result,
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4730,7 +4524,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4761,9 +4555,9 @@ mod tests {
             seq: EventSeq::new(2),
             result: vb_core::SlotIdx::new(0),
         };
-        assert!(journal.append_strict(&e0).is_ok());
-        assert!(journal.append_strict(&e1).is_ok());
-        assert!(journal.append_strict(&e2).is_ok());
+journal.append_strict(&e0).expect("journal.append_strict must succeed");
+journal.append_strict(&e1).expect("journal.append_strict must succeed");
+journal.append_strict(&e2).expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4786,7 +4580,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(journal.append_strict(&event).is_ok());
+journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let result = journal.append_strict(&event);
         let Err(JournalError::DuplicateEvent {
@@ -4833,11 +4627,11 @@ mod tests {
             seq: EventSeq::new(4),
             result: vb_core::SlotIdx::new(1),
         };
-        assert!(journal.append_journaled(&e0).is_ok());
-        assert!(journal.append_journaled(&e1).is_ok());
-        assert!(journal.append_journaled(&e2).is_ok());
-        assert!(journal.append_journaled(&e3).is_ok());
-        assert!(journal.append_journaled(&e4).is_ok());
+journal.append_journaled(&e0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&e1).expect("journal.append_journaled must succeed");
+journal.append_journaled(&e2).expect("journal.append_journaled must succeed");
+journal.append_journaled(&e3).expect("journal.append_journaled must succeed");
+journal.append_journaled(&e4).expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4862,7 +4656,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+journal.append_journaled(&event).expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(RunId::new(2))
@@ -4905,11 +4699,11 @@ mod tests {
             result: vb_core::SlotIdx::new(0),
         };
 
-        assert!(journal.append_journaled(&a0).is_ok());
-        assert!(journal.append_journaled(&b0).is_ok());
-        assert!(journal.append_journaled(&a1).is_ok());
-        assert!(journal.append_journaled(&b1).is_ok());
-        assert!(journal.append_journaled(&a2).is_ok());
+journal.append_journaled(&a0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&b0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&a1).expect("journal.append_journaled must succeed");
+journal.append_journaled(&b1).expect("journal.append_journaled must succeed");
+journal.append_journaled(&a2).expect("journal.append_journaled must succeed");
 
         let events_a = journal
             .events_for_run(run_a)
@@ -4939,7 +4733,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+journal.append_journaled(&event).expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -4961,7 +4755,7 @@ mod tests {
             status: 0,
             accepted_at_ms: u64::MAX / 2,
         };
-        assert!(journal.put_run_header(&record).is_ok());
+journal.put_run_header(&record).expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(1))
@@ -4981,7 +4775,7 @@ mod tests {
             workflow: test_digest(7),
             slots: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE],
         };
-        assert!(journal.put_snapshot(&snapshot).is_ok());
+journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
 
         let retrieved = journal
             .snapshot(RunId::new(1), EventSeq::new(0))
@@ -5000,7 +4794,7 @@ mod tests {
             digest: stored_digest,
             ir: vec![1, 2, 3],
         };
-        assert!(journal.put_compiled_ir(&record).is_ok());
+journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
 
         let result = journal
             .compiled_ir(test_digest(2))
@@ -5019,7 +4813,7 @@ mod tests {
             digest: stored_digest,
             source: vec![1],
         };
-        assert!(journal.put_workflow_source(&record).is_ok());
+journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
 
         let result = journal
             .workflow_source(test_digest(11))
@@ -5745,8 +5539,8 @@ mod tests {
             status: 1,
             accepted_at_ms: 200,
         };
-        assert!(journal.put_run_header(&original).is_ok());
-        assert!(journal.put_run_header(&updated).is_ok());
+journal.put_run_header(&original).expect("journal.put_run_header must succeed");
+journal.put_run_header(&updated).expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(1))
@@ -5789,11 +5583,11 @@ mod tests {
             result: vb_core::SlotIdx::new(0),
         };
 
-        assert!(journal.append_journaled(&r1_e0).is_ok());
-        assert!(journal.append_journaled(&r1_e1).is_ok());
-        assert!(journal.append_journaled(&r2_e0).is_ok());
-        assert!(journal.append_journaled(&r2_e1).is_ok());
-        assert!(journal.append_journaled(&r2_e2).is_ok());
+journal.append_journaled(&r1_e0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&r1_e1).expect("journal.append_journaled must succeed");
+journal.append_journaled(&r2_e0).expect("journal.append_journaled must succeed");
+journal.append_journaled(&r2_e1).expect("journal.append_journaled must succeed");
+journal.append_journaled(&r2_e2).expect("journal.append_journaled must succeed");
 
         let events1 = journal
             .events_for_run(run1)
@@ -5910,7 +5704,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(journal.append_journaled(&event).is_ok());
+journal.append_journaled(&event).expect("journal.append_journaled must succeed");
         let events = journal
             .events_for_run(run)
             .expect("should succeed with contiguous events");
@@ -5922,9 +5716,7 @@ mod tests {
         // Given a journal with multiple event types for a run
         // When the journal is closed and reopened
         // Then all events are preserved
-        let temp_dir = tempfile::tempdir();
-        assert!(temp_dir.is_ok());
-        let Ok(temp_dir) = temp_dir else { return };
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let run = RunId::new(999);
 
         {
@@ -5970,7 +5762,7 @@ mod tests {
                 },
             ];
             for event in &events {
-                assert!(journal.append_strict(event).is_ok());
+journal.append_strict(event).expect("journal.append_strict must succeed");
             }
         }
 
@@ -5996,7 +5788,7 @@ mod tests {
             status: 3,
             accepted_at_ms: 1700000000,
         };
-        assert!(journal.put_run_header(&record).is_ok());
+journal.put_run_header(&record).expect("journal.put_run_header must succeed");
         let retrieved = journal
             .run_header(RunId::new(42))
             .expect("lookup should succeed");
@@ -6021,7 +5813,7 @@ mod tests {
             digest,
             bytes: vec![],
         };
-        assert!(journal.put_blob(&record).is_ok());
+journal.put_blob(&record).expect("journal.put_blob must succeed");
         let retrieved = journal.blob(digest).expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
@@ -6037,7 +5829,7 @@ mod tests {
             digest,
             source: vec![],
         };
-        assert!(journal.put_workflow_source(&record).is_ok());
+journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
         let retrieved = journal
             .workflow_source(digest)
             .expect("lookup should succeed");
@@ -6545,7 +6337,7 @@ mod tests {
             digest: [0x42; 32],
             bytes: vec![],
         };
-        assert!(journal.put_blob(&record).is_ok());
+journal.put_blob(&record).expect("journal.put_blob must succeed");
         assert_eq!(journal.blob([0x42; 32]).expect("ok"), Some(record));
     }
 
@@ -6685,7 +6477,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-        assert!(queue.enqueue_journaled(event.clone()).is_ok());
+queue.enqueue_journaled(event.clone()).expect("queue.enqueue_journaled must succeed");
         assert!(matches!(
             queue.enqueue_journaled(event),
             Err(JournalError::QueueFull)
@@ -6781,8 +6573,8 @@ mod tests {
             seq: EventSeq::new(1),
         };
 
-        assert!(queue.enqueue_journaled(accepted).is_ok());
-        assert!(queue.enqueue_journaled(cancelled).is_ok());
+queue.enqueue_journaled(accepted).expect("queue.enqueue_journaled must succeed");
+queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed");
         assert!(matches!(
             queue.flush_batch(&journal),
             Ok(report) if report.drained == 2 && report.written == 2
@@ -6809,8 +6601,8 @@ mod tests {
             seq: EventSeq::new(1),
         };
 
-        assert!(queue.enqueue_journaled(accepted.clone()).is_ok());
-        assert!(queue.enqueue_strict(cancelled).is_ok());
+queue.enqueue_journaled(accepted.clone()).expect("queue.enqueue_journaled must succeed");
+queue.enqueue_strict(cancelled).expect("queue.enqueue_strict must succeed");
         assert!(matches!(
             queue.shutdown(&journal),
             Ok(report) if report.drained == 2 && report.written == 2
@@ -6838,9 +6630,9 @@ mod tests {
             seq: EventSeq::new(1),
         };
 
-        assert!(journal.append_journaled(&accepted).is_ok());
-        assert!(queue.enqueue_journaled(accepted).is_ok());
-        assert!(queue.enqueue_journaled(cancelled).is_ok());
+journal.append_journaled(&accepted).expect("journal.append_journaled must succeed");
+queue.enqueue_journaled(accepted).expect("queue.enqueue_journaled must succeed");
+queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed");
 
         // This models the crash window where a prior attempt reached Fjall before
         // the queue could durably drain. Retrying accepts the identical event only.

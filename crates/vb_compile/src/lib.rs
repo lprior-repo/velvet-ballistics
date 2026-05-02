@@ -5394,9 +5394,8 @@ steps:
     #[test]
     fn compile_produces_valid_workflow_for_minimal_source() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
         let Ok(wf) = result else {
-            compile_test_fail!("expected Ok")
+            compile_test_fail!("expected Ok, got {:?}", result)
         };
         assert_eq!(wf.node_count(), 2);
     }
@@ -5404,13 +5403,16 @@ steps:
     #[test]
     fn compile_produces_valid_workflow_for_optional_fields() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok, got {:?}", result)
+        };
+        assert_eq!(wf.node_count(), 2);
+        assert_eq!(wf.name(), "fast_path");
     }
 
     #[test]
     fn compile_produces_non_default_workflow_digest() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
-        assert!(result.is_ok());
         let Ok(wf) = result else {
             compile_test_fail!("expected Ok")
         };
@@ -5423,7 +5425,6 @@ steps:
     #[test]
     fn compile_produces_matching_workflow_name() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
-        assert!(result.is_ok());
         let Ok(wf) = result else {
             compile_test_fail!("expected Ok")
         };
@@ -5433,7 +5434,6 @@ steps:
     #[test]
     fn compile_produces_correct_entry_step_index() {
         let result = YamlCompiler::default().compile(OPTIONAL_TOP_LEVEL_FIELDS_SOURCE);
-        assert!(result.is_ok());
         let Ok(wf) = result else {
             compile_test_fail!("expected Ok")
         };
@@ -5448,7 +5448,11 @@ steps:
             ..YamlLimits::default()
         };
         let compiler = YamlCompiler { limits };
-        assert!(compiler.compile(source).is_ok());
+        let result = compiler.compile(source);
+        let Ok(wf) = result else {
+            compile_test_fail!("expected Ok, got {:?}", result)
+        };
+        assert_eq!(wf.node_count(), 2);
     }
 
     #[test]
@@ -5839,7 +5843,7 @@ steps:
             max_stack: 0,
         });
         let idx = sc.push_expression(prog);
-        assert!(idx.is_ok());
+        assert_eq!(idx.ok().map(|i| i.get()), Some(0));
     }
 
     #[test]

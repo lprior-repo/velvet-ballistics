@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn accepts_valid_workflow() {
         let doc = valid_workflow_doc();
-        assert!(validate_workflow_schema(&doc).is_ok());
+        assert_eq!(validate_workflow_schema(&doc), Ok(()));
     }
 
     #[test]

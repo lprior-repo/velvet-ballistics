@@ -1429,7 +1429,7 @@ mod tests {
                 digest: compiled.digest(),
                 ir,
             };
-            assert!(journal.put_compiled_ir(&record).is_ok());
+            assert!(journal.put_compiled_ir(&record).is_ok(), "put_compiled_ir must succeed");
             let mut resolver = StorageWorkflowResolver {
                 journal: Arc::new(journal),
             };

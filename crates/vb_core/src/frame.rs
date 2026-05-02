@@ -591,8 +591,11 @@ mod tests {
 
         // The overflow path uses checked_add, so it will return Err when overflow occurs.
         // We verify the error variant is correct.
-        let max_frame_err = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1);
-        assert!(max_frame_err.is_ok());
+        let max_frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1);
+        assert_eq!(max_frame.as_ref().map(RunFrame::step_count), Ok(2));
+        assert_eq!(max_frame.as_ref().map(RunFrame::slot_count), Ok(1));
+        assert_eq!(max_frame.as_ref().map(RunFrame::pc), Ok(StepIdx::ZERO));
+        assert_eq!(max_frame.as_ref().map(RunFrame::executed), Ok(0));
 
         Ok(())
     }

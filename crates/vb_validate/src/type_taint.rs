@@ -612,7 +612,7 @@ mod tests {
             "done",
             TypedValue::Literal(ValueType::Number),
         )]);
-        assert!(validate_taint(&wf).is_ok());
+        assert_eq!(validate_taint(&wf), Ok(()));
     }
 
     #[test]
@@ -647,7 +647,7 @@ mod tests {
             save_step("flag", TypedValue::Literal(ValueType::Boolean)),
             choose_step("route", TypedValue::Slot(0)),
         ]);
-        assert!(validate_types(&wf).is_ok());
+        assert_eq!(validate_types(&wf), Ok(()));
     }
 
     #[test]
@@ -668,7 +668,7 @@ mod tests {
             "route",
             TypedValue::Literal(ValueType::Boolean),
         )]);
-        assert!(validate_types(&wf).is_ok());
+        assert_eq!(validate_types(&wf), Ok(()));
     }
 
     #[test]
@@ -694,7 +694,7 @@ mod tests {
             schema_type: ValueType::Text,
             is_secret: false,
         });
-        assert!(validate_taint(&wf).is_ok());
+        assert_eq!(validate_taint(&wf), Ok(()));
     }
 
     #[test]
@@ -721,7 +721,7 @@ mod tests {
             TypedValue::Literal(ValueType::Number),
         )]);
         let hard = ResourceLimits::default();
-        assert!(validate_resource_limits(&wf, &hard).is_ok());
+        assert_eq!(validate_resource_limits(&wf, &hard), Ok(()));
     }
 
     #[test]
@@ -764,7 +764,7 @@ mod tests {
             save_step("val", TypedValue::Literal(ValueType::Any)),
             choose_step("route", TypedValue::Slot(0)),
         ]);
-        assert!(validate_types(&wf).is_ok());
+        assert_eq!(validate_types(&wf), Ok(()));
     }
 
     #[test]
@@ -786,7 +786,7 @@ mod tests {
             TypedValue::Reference("$vars.label".into()),
         )]);
         wf.vars.push(("label".to_owned(), ValueType::Boolean));
-        assert!(validate_taint(&wf).is_ok());
+        assert_eq!(validate_taint(&wf), Ok(()));
     }
 
     // ---------------------------------------------------------------------------

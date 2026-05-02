@@ -1417,7 +1417,7 @@ mod tests {
     fn missing_version_is_error() {
         let yaml = "name: test\nwhen:\n  manual: {}\nsteps: []\n";
         let result = parse_workflow_ast(yaml);
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::MissingField { field: "version" })));
     }
 
     #[test]
@@ -1431,13 +1431,13 @@ mod tests {
               - id: s1
         "};
         let result = parse_workflow_ast(yaml);
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::MissingField { field: "step primitive (set/save/do/choose/foreach/together/collect/reduce/repeat/wait/ask/finish)" })));
     }
 
     #[test]
     fn empty_source_is_error() {
         let result = parse_workflow_ast("");
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::EmptySource)));
     }
 
     // -----------------------------------------------------------------------

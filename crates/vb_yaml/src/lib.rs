@@ -207,14 +207,14 @@ mod tests {
     #[test]
     fn validate_rejects_empty_source() {
         let result = validate_yaml_profile("");
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::EmptySource)));
     }
 
     #[test]
     fn validate_accepts_simple_mapping() {
         let yaml = "key: value\n";
         let result = validate_yaml_profile(yaml);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     #[test]
@@ -231,28 +231,28 @@ mod tests {
     fn reject_duplicate_keys_detects_dups() {
         let keys = vec!["foo", "bar", "foo"];
         let result = reject_duplicate_keys(&keys);
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::DuplicateKey { .. })));
     }
 
     #[test]
     fn reject_duplicate_keys_allows_unique() {
         let keys = vec!["foo", "bar", "baz"];
         let result = reject_duplicate_keys(&keys);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     #[test]
     fn reject_yaml_1_1_ambiguous_rejects_yes() {
         let scalars = vec!["yes"];
         let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::AmbiguousScalar { .. })));
     }
 
     #[test]
     fn reject_yaml_1_1_ambiguous_allows_true() {
         let scalars = vec!["true"];
         let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     // -----------------------------------------------------------------------
@@ -803,7 +803,7 @@ mod tests {
         // When: parsing events
         let result = parse_yaml_events("");
         // Then: Err
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::EmptySource)));
     }
 
     #[test]

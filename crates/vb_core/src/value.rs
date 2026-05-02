@@ -212,25 +212,21 @@ mod tests {
     fn finite_f64_accepts_zero() {
         let result = FiniteF64::new(0.0);
 
-        assert!(result.is_ok());
-        assert_eq!(result.map_err(|_| String::new()).map(|v| v.get()), Ok(0.0));
+        assert_eq!(result.map(|f| f.get()), Ok(0.0));
     }
 
     #[test]
     fn finite_f64_accepts_negative_one() {
         let result = FiniteF64::new(-1.0);
 
-        assert!(result.is_ok());
-        assert_eq!(result.map_err(|_| String::new()).map(|v| v.get()), Ok(-1.0));
+        assert_eq!(result.map(|f| f.get()), Ok(-1.0));
     }
 
     #[test]
     fn finite_f64_accepts_max_finite() {
         let result = FiniteF64::new(f64::MAX);
 
-        assert!(result.is_ok());
-        let inner = result.map_err(|_| String::new()).map(|v| v.get());
-        assert_eq!(inner, Ok(f64::MAX));
+        assert_eq!(result.map(|f| f.get()), Ok(f64::MAX));
     }
 
     #[test]
@@ -344,19 +340,15 @@ mod tests {
     fn finite_f64_negative_zero_is_accepted_and_preserves_sign_bit() {
         // -0.0 is finite and must be accepted; the sign bit must survive.
         let result = FiniteF64::new(-0.0_f64);
-        assert!(result.is_ok(), "negative zero must be accepted as finite");
-        let inner = result.map_err(|_| String::new()).map(|v| v.get());
-        assert_eq!(inner, Ok(-0.0_f64));
+        assert_eq!(result.as_ref().map(|f| f.get()), Ok(-0.0_f64));
         // Confirm it is distinct from +0.0 at the bit-pattern level.
-        assert_eq!(inner.map(|v| v.to_bits()), Ok((-0.0_f64).to_bits()));
+        assert_eq!(result.map(|f| f.get().to_bits()), Ok((-0.0_f64).to_bits()));
     }
 
     #[test]
     fn finite_f64_positive_zero_is_accepted() {
         let result = FiniteF64::new(0.0_f64);
-        assert!(result.is_ok());
-        let inner = result.map_err(|_| String::new()).map(|v| v.get());
-        assert_eq!(inner, Ok(0.0_f64));
+        assert_eq!(result.map(|f| f.get()), Ok(0.0_f64));
     }
 
     #[test]
@@ -411,11 +403,7 @@ mod tests {
         let subnormal = f64::from_bits(1_u64); // smallest positive subnormal
         assert!(subnormal.is_subnormal(), "must be subnormal");
         let result = FiniteF64::new(subnormal);
-        assert!(result.is_ok(), "subnormals are finite and must be accepted");
-        assert_eq!(
-            result.map_err(|_| String::new()).map(|v| v.get()),
-            Ok(subnormal)
-        );
+        assert_eq!(result.map(|f| f.get()), Ok(subnormal));
     }
 
     #[test]
@@ -424,7 +412,7 @@ mod tests {
         assert!(largest_subnormal.is_subnormal(), "must be subnormal");
         assert!(largest_subnormal.is_finite(), "subnormals are finite");
         let result = FiniteF64::new(largest_subnormal);
-        assert!(result.is_ok(), "subnormals must be accepted");
+        assert_eq!(result.map(|f| f.get()), Ok(largest_subnormal));
     }
 
     #[test]
@@ -433,7 +421,7 @@ mod tests {
         assert!(neg_subnormal.is_subnormal(), "must be negative subnormal");
         assert!(neg_subnormal.is_finite());
         let result = FiniteF64::new(neg_subnormal);
-        assert!(result.is_ok(), "negative subnormals must be accepted");
+        assert_eq!(result.map(|f| f.get()), Ok(neg_subnormal));
     }
 
     #[test]
@@ -442,24 +430,20 @@ mod tests {
         assert!(!min_normal.is_subnormal());
         assert!(min_normal.is_finite());
         let result = FiniteF64::new(min_normal);
-        assert!(result.is_ok());
+        assert_eq!(result.map(|f| f.get()), Ok(min_normal));
     }
 
     #[test]
     fn finite_f64_accepts_f64_min() {
         // f64::MIN is the most negative finite value
         let result = FiniteF64::new(f64::MIN);
-        assert!(result.is_ok());
-        assert_eq!(
-            result.map_err(|_| String::new()).map(|v| v.get()),
-            Ok(f64::MIN)
-        );
+        assert_eq!(result.map(|f| f.get()), Ok(f64::MIN));
     }
 
     #[test]
     fn finite_f64_accepts_f64_max() {
         let result = FiniteF64::new(f64::MAX);
-        assert!(result.is_ok());
+        assert_eq!(result.map(|f| f.get()), Ok(f64::MAX));
     }
 
     #[test]
@@ -554,12 +538,11 @@ mod tests {
     #[test]
     fn slot_value_f64_with_negative_zero_is_valid() {
         let result = FiniteF64::new(-0.0_f64);
-        assert!(result.is_ok());
-        if let Ok(finite) = result {
-            let val = SlotValue::F64(finite);
-            assert_eq!(val.type_name(), "number");
-            assert!(!val.is_true());
-        }
+        assert_eq!(result.as_ref().map(|f| f.get()), Ok(-0.0_f64));
+        let finite = result.expect("setup: negative zero must be finite");
+        let val = SlotValue::F64(finite);
+        assert_eq!(val.type_name(), "number");
+        assert!(!val.is_true());
     }
 
     // =========================================================================
@@ -658,10 +641,9 @@ mod tests {
     fn slot_value_equality_distinguishes_i64_zero_from_f64_zero() {
         // SlotValue::I64(0) and SlotValue::F64(FiniteF64(0.0)) are different variants.
         let result = FiniteF64::new(0.0);
-        assert!(result.is_ok());
-        if let Ok(finite) = result {
-            assert_ne!(SlotValue::I64(0), SlotValue::F64(finite));
-        }
+        assert_eq!(result.as_ref().map(|f| f.get()), Ok(0.0));
+        let finite = result.expect("setup: zero must be finite");
+        assert_ne!(SlotValue::I64(0), SlotValue::F64(finite));
     }
 
     #[test]

@@ -47,8 +47,8 @@ fn numeric_ids_construct_access_parse_and_serialize() {
     assert_eq!(RunId::from_str("18"), Ok(RunId::new(18)));
     assert_eq!(SeqNo::from_str("19"), Ok(SeqNo::new(19)));
 
-    assert!(StepIdx::from_str("65536").is_err());
-    assert!(RunId::from_str("340282366920938463463374607431768211455").is_err());
+    assert!(matches!(StepIdx::from_str("65536"), Err(..)));
+    assert!(matches!(RunId::from_str("340282366920938463463374607431768211455"), Err(..)));
     assert_eq!(roundtrip_id(StepIdx::new(12)), StepIdx::new(12));
     assert_eq!(roundtrip_symbol_id(SymbolId::new(20)), SymbolId::new(20));
     assert_eq!(roundtrip_list_id(ListId::new(21)), ListId::new(21));
@@ -146,7 +146,7 @@ fn diagnostics_parse_display_and_own_messages() {
     assert_eq!(code.code(), 0x1001);
     assert_eq!(code.to_string(), "E1001");
     assert_eq!(DiagnosticCode::from_str("E1001"), Ok(code));
-    assert!(DiagnosticCode::from_str("E9999").is_err());
+    assert!(matches!(DiagnosticCode::from_str("E9999"), Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)));
     assert_eq!(diagnostic.severity, Severity::Error);
     assert_eq!(Severity::Warning, Severity::Warning);
     assert_eq!(Severity::Info, Severity::Info);

@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn accepts_declared_input_reference() {
         let tables = make_tables(&["user"], &[], &[], &[]);
-        assert!(validate_single_reference("$input.user", &tables).is_ok());
+        assert_eq!(validate_single_reference("$input.user", &tables), Ok(()));
     }
 
     #[test]
@@ -197,13 +197,13 @@ mod tests {
     #[test]
     fn accepts_declared_var_reference() {
         let tables = make_tables(&[], &["count"], &[], &[]);
-        assert!(validate_single_reference("$vars.count", &tables).is_ok());
+        assert_eq!(validate_single_reference("$vars.count", &tables), Ok(()));
     }
 
     #[test]
     fn accepts_declared_secret_reference() {
         let tables = make_tables(&[], &[], &["token"], &[]);
-        assert!(validate_single_reference("$secrets.token", &tables).is_ok());
+        assert_eq!(validate_single_reference("$secrets.token", &tables), Ok(()));
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod tests {
                 "$secrets.token".to_owned(),
             ],
         };
-        assert!(validate_references(&workflow).is_ok());
+        assert_eq!(validate_references(&workflow), Ok(()));
     }
 
     #[test]

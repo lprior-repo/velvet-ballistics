@@ -5541,7 +5541,7 @@ mod proptests {
         fn emit_resource_contract_output_contains_all_fields(contract in arb_resource_contract()) {
             let mut out = String::new();
             let result = emit_resource_contract(&mut out, contract);
-            prop_assert!(result.is_ok());
+            prop_assert!(result.is_ok(), "encoding valid resource contract must succeed");
             prop_assert!(!out.is_empty());
             prop_assert!(out.contains("CONTRACT_MAX_STEPS"));
             prop_assert!(out.contains("CONTRACT_MAX_SLOTS"));

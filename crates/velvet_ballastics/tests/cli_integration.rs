@@ -208,7 +208,7 @@ steps:
 fn yaml_parse_broken_yaml_returns_error() {
     let yaml = "{{{broken";
     let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_yaml::YamlError::ParseError { .. })));
 }
 
 #[test]
@@ -216,7 +216,7 @@ fn yaml_profile_rejects_anchors() {
     let yaml =
         "version: &velvet \"velvet-ballastics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let result = vb_yaml::validate_yaml_profile(yaml);
-    assert!(result.is_err(), "anchors should be rejected");
+    assert!(matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)), "anchors should be rejected");
 }
 
 #[test]

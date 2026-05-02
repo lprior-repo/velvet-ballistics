@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn single_document_accepted() {
         let result = validate_yaml_profile("a: 1\n");
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     #[test]
@@ -433,14 +433,14 @@ mod tests {
     fn quoted_yes_accepted() {
         let yaml = "flag: 'yes'\n";
         let result = validate_yaml_profile(yaml);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     #[test]
     fn true_false_accepted() {
         let yaml = "flag: true\nother: false\n";
         let result = validate_yaml_profile(yaml);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
     }
 
     #[test]
@@ -467,7 +467,7 @@ mod tests {
     #[test]
     fn reject_duplicate_keys_allows_unique() {
         let keys = vec!["a", "b", "c"];
-        assert!(reject_duplicate_keys(&keys).is_ok());
+        assert_eq!(reject_duplicate_keys(&keys), Ok(()));
     }
 
     #[test]
@@ -946,7 +946,7 @@ mod tests {
         // When: validating
         let result = validate_yaml_profile(yaml);
         // Then: Err (empty source or parse error)
-        assert!(result.is_err());
+        assert!(matches!(result, Err(YamlError::EmptySource)));
     }
 
     #[test]
