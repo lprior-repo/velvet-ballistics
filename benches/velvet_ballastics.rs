@@ -52,6 +52,7 @@ impl GeneratedBinary {
         })
     }
 
+    #[allow(dead_code)]
     fn run(&self) -> std::process::Output {
         match Command::new(&self.path).output() {
             Ok(output) => output,
