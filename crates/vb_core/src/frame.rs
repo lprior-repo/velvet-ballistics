@@ -161,12 +161,16 @@ impl RunFrame {
     }
 
     /// Reads an initialized slot.
+    ///
+    /// Returns `SlotOutOfBounds` when the index is outside the slot array,
+    /// or `SlotUninitialized` when the index is valid but no value has been
+    /// written to that slot yet.
     pub fn read_slot(&self, slot: SlotIdx) -> CoreResult<&SlotValue> {
         self.slots
             .get(slot.as_usize())
             .ok_or(CoreError::SlotOutOfBounds { slot })?
             .as_ref()
-            .ok_or(CoreError::SlotOutOfBounds { slot })
+            .ok_or(CoreError::SlotUninitialized { slot })
     }
 
     /// Writes a slot value without changing taint.
@@ -194,18 +198,40 @@ impl RunFrame {
     }
 
     /// Reads a slot taint marker.
+    ///
+    /// Returns `SlotOutOfBounds` when the index is outside the slot array,
+    /// or `SlotUninitialized` when the slot index is valid but has no value.
     pub fn read_taint(&self, slot: SlotIdx) -> CoreResult<Taint> {
+        let index = slot.as_usize();
+        let slot_value = self
+            .slots
+            .get(index)
+            .ok_or(CoreError::SlotOutOfBounds { slot })?;
+        if slot_value.is_none() {
+            return Err(CoreError::SlotUninitialized { slot });
+        }
         self.taint
-            .get(slot.as_usize())
+            .get(index)
             .copied()
             .ok_or(CoreError::SlotOutOfBounds { slot })
     }
 
     /// Writes a slot taint marker.
+    ///
+    /// Rejects taint writes to uninitialized slots to prevent a taint/value
+    /// desync where a slot carries a non-Clean taint but has no value.
     pub fn write_taint(&mut self, slot: SlotIdx, taint: Taint) -> CoreResult<()> {
+        let index = slot.as_usize();
+        let slot_value = self
+            .slots
+            .get(index)
+            .ok_or(CoreError::SlotOutOfBounds { slot })?;
+        if slot_value.is_none() {
+            return Err(CoreError::SlotUninitialized { slot });
+        }
         *self
             .taint
-            .get_mut(slot.as_usize())
+            .get_mut(index)
             .ok_or(CoreError::SlotOutOfBounds { slot })? = taint;
         Ok(())
     }
@@ -328,11 +354,16 @@ mod tests {
         assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Pending));
         assert_eq!(
             frame.read_slot(SlotIdx::ZERO),
-            Err(CoreError::SlotOutOfBounds {
+            Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
             })
         );
-        assert_eq!(frame.read_taint(SlotIdx::ZERO), Ok(Taint::Clean));
+        assert_eq!(
+            frame.read_taint(SlotIdx::ZERO),
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
     }
 
     #[test]
@@ -556,10 +587,10 @@ mod tests {
         );
     }
 
-    // --- Uninitialized slot read returns error ---
+    // --- Uninitialized slot read returns SlotUninitialized ---
 
     #[test]
-    fn frame_read_uninitialized_slot_returns_slot_out_of_bounds() {
+    fn frame_read_uninitialized_slot_returns_slot_uninitialized() {
         let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2) {
             Ok(frame) => frame,
             Err(_) => return,
@@ -568,7 +599,7 @@ mod tests {
         let result = frame.read_slot(SlotIdx::ZERO);
         assert_eq!(
             result,
-            Err(CoreError::SlotOutOfBounds {
+            Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
             })
         );
@@ -651,6 +682,8 @@ mod tests {
     fn frame_taint_roundtrip_write_then_read() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
+        // Initialize slot with a value before writing taint
+        frame.write_slot(SlotIdx::new(1), SlotValue::I64(42))?;
         frame.write_taint(SlotIdx::new(1), Taint::Secret)?;
         assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::Secret);
 
@@ -781,6 +814,163 @@ mod tests {
         frame.mark_running(StepIdx::new(6))?;
         frame.mark_cancelled(StepIdx::new(6))?;
         assert_eq!(frame.step_state(StepIdx::new(6))?, StepState::Cancelled);
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Slot lifecycle security regression tests
+    // =========================================================================
+
+    // --- Bug 1 fix: write_taint rejects uninitialized slot (prevents taint/value desync) ---
+
+    #[test]
+    fn security_write_taint_on_uninitialized_slot_returns_slot_uninitialized() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        // Slot 0 has never been written -- taint write must be rejected
+        let result = frame.write_taint(SlotIdx::ZERO, Taint::Secret);
+        assert_eq!(
+            result,
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
+
+        // Taint must remain Clean (the default), not Secret
+        // Note: read_taint also now requires the slot to be initialized,
+        // so we verify by writing a value first, then checking taint.
+        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(1))?;
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
+
+        Ok(())
+    }
+
+    // --- Bug 1 fix: read_taint rejects uninitialized slot ---
+
+    #[test]
+    fn security_read_taint_on_uninitialized_slot_returns_slot_uninitialized() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        let result = frame.read_taint(SlotIdx::ZERO);
+        assert_eq!(
+            result,
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
+
+        Ok(())
+    }
+
+    // --- Bug 1 fix: write_taint succeeds on initialized slot ---
+
+    #[test]
+    fn security_write_taint_on_initialized_slot_succeeds() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true))?;
+        assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret), Ok(()));
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
+
+        Ok(())
+    }
+
+    // --- Bug 2 fix: read_slot distinguishes uninitialized from out-of-bounds ---
+
+    #[test]
+    fn security_read_slot_distinguishes_uninitialized_from_out_of_bounds() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        // Slot 0 exists but is uninitialized -- returns SlotUninitialized
+        assert_eq!(
+            frame.read_slot(SlotIdx::ZERO),
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
+
+        // Slot 99 does not exist -- returns SlotOutOfBounds
+        assert_eq!(
+            frame.read_slot(SlotIdx::new(99)),
+            Err(CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(99)
+            })
+        );
+
+        Ok(())
+    }
+
+    // --- Regression: overwrite of initialized slot is allowed (write-in-place semantics) ---
+
+    #[test]
+    fn security_overwrite_initialized_slot_succeeds() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(10))?;
+        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(10));
+
+        // Overwrite is allowed (no write-once enforcement)
+        frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(false))?;
+        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::Bool(false));
+
+        Ok(())
+    }
+
+    // --- Regression: read_taint on out-of-bounds slot returns SlotOutOfBounds ---
+
+    #[test]
+    fn security_read_taint_out_of_bounds_returns_slot_out_of_bounds() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        assert_eq!(
+            frame.read_taint(SlotIdx::new(99)),
+            Err(CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(99)
+            })
+        );
+
+        Ok(())
+    }
+
+    // --- Regression: write_taint on out-of-bounds slot returns SlotOutOfBounds ---
+
+    #[test]
+    fn security_write_taint_out_of_bounds_returns_slot_out_of_bounds() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
+
+        assert_eq!(
+            frame.write_taint(SlotIdx::new(99), Taint::Secret),
+            Err(CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(99)
+            })
+        );
+
+        Ok(())
+    }
+
+    // --- Regression: write_taint after slot cleared by overwrite to None ---
+
+    #[test]
+    fn security_write_taint_after_slot_cleared_returns_uninitialized() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
+
+        // Initialize and verify
+        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)?;
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
+
+        // Overwrite with None-equivalent (clear via write_slot_with_taint not possible,
+        // but write_slot sets the value directly)
+        // After reinitialize, the slot should be cleared
+        frame.reinitialize(RunId::new(2), StepIdx::ZERO, 2, 1)?;
+
+        // Now write_taint should fail because slot is uninitialized again
+        assert_eq!(
+            frame.write_taint(SlotIdx::ZERO, Taint::Secret),
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
 
         Ok(())
     }

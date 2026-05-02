@@ -33,6 +33,12 @@ pub enum CoreError {
         /// Invalid slot index.
         slot: SlotIdx,
     },
+    /// A slot was read before any value was written to it.
+    #[error("slot not initialized: {slot:?}")]
+    SlotUninitialized {
+        /// Uninitialized slot index.
+        slot: SlotIdx,
+    },
     /// A node referenced a missing expression program.
     #[error("expression index out of bounds: {expr:?}")]
     ExprOutOfBounds {
@@ -209,6 +215,8 @@ impl CoreError {
     pub const MISSING_NEXT_STEP_CODE: DiagnosticCode = DiagnosticCode::new(0x1002);
     /// Slot out-of-bounds diagnostic code.
     pub const SLOT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1011);
+    /// Slot uninitialized diagnostic code.
+    pub const SLOT_UNINITIALIZED_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
     /// Expression out-of-bounds diagnostic code.
     pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
     /// Constant out-of-bounds diagnostic code.
@@ -306,6 +314,7 @@ impl CoreError {
             Self::InvalidProgramCounter { .. } => Self::INVALID_PROGRAM_COUNTER_CODE,
             Self::MissingNextStep { .. } => Self::MISSING_NEXT_STEP_CODE,
             Self::SlotOutOfBounds { .. } => Self::SLOT_OUT_OF_BOUNDS_CODE,
+            Self::SlotUninitialized { .. } => Self::SLOT_UNINITIALIZED_CODE,
             Self::ExprOutOfBounds { .. } => Self::EXPR_OUT_OF_BOUNDS_CODE,
             Self::ConstOutOfBounds { .. } => Self::CONST_OUT_OF_BOUNDS_CODE,
             Self::MissingOutputSlot { .. } => Self::MISSING_OUTPUT_SLOT_CODE,

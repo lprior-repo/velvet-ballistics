@@ -492,11 +492,16 @@ mod tests {
         );
         assert_eq!(
             reused.read_slot(SlotIdx::ZERO),
-            Err(vb_core::CoreError::SlotOutOfBounds {
+            Err(vb_core::CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
             })
         );
-        assert_eq!(reused.read_taint(SlotIdx::ZERO), Ok(vb_core::Taint::Clean));
+        assert_eq!(
+            reused.read_taint(SlotIdx::ZERO),
+            Err(vb_core::CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
     }
 
     #[test]
@@ -611,8 +616,13 @@ mod tests {
             Ok(f) => f,
             Err(_) => return,
         };
-        // Then the taint is reset to Clean
-        assert_eq!(reused.read_taint(SlotIdx::ZERO), Ok(vb_core::Taint::Clean));
+        // Then the slot is uninitialized (taint cannot be read without a value)
+        assert_eq!(
+            reused.read_taint(SlotIdx::ZERO),
+            Err(vb_core::CoreError::SlotUninitialized {
+                slot: SlotIdx::ZERO
+            })
+        );
     }
 
     // =======================================================================
