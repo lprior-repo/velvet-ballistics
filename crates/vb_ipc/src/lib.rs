@@ -1,4 +1,12 @@
 #![forbid(unsafe_code)]
+// Pedantic allows: documentation-only lints that would require pervasive changes
+// with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::needless_pass_by_value)]
 //! Bounded memory ingress and binary IPC for Velvet Ballastics.
 //!
 //! This crate deliberately exposes memory/IPC-shaped primitives only. HTTP is

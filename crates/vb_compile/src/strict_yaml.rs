@@ -46,11 +46,9 @@ fn validate_event(event: &Event<'_>, mark: Span) -> Result<(), CompileError> {
         Event::Alias(_) => Err(CompileError::AliasForbidden {
             mark: SourceMark::from_parser_span(mark),
         }),
-        Event::MappingStart(anchor, tag) | Event::SequenceStart(anchor, tag) => {
-            reject_anchor(*anchor, mark)?;
-            reject_tag(tag.as_ref(), mark)
-        }
-        Event::Scalar(_, _, anchor, tag) => {
+        Event::MappingStart(anchor, tag)
+        | Event::SequenceStart(anchor, tag)
+        | Event::Scalar(_, _, anchor, tag) => {
             reject_anchor(*anchor, mark)?;
             reject_tag(tag.as_ref(), mark)
         }

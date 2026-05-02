@@ -1,4 +1,12 @@
 #![forbid(unsafe_code)]
+// Pedantic allows: documentation-only lints that would require pervasive changes
+// with no functional impact on correctness or safety.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::comparison_chain)]
 //! Fjall append-only journal boundary with full recovery support.
 //!
 //! Provides digest-mismatch detection, full primitive replay (all node kinds),
@@ -693,11 +701,10 @@ impl JournalEvent {
         match self {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::StepStarted { .. } => RecordKind::StepStarted,
-            Self::StepSucceeded { .. } => RecordKind::SlotWritten,
+            Self::StepSucceeded { .. } | Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
             Self::ActionScheduled { .. } => RecordKind::ActionScheduled,
             Self::ActionCompletedEvent { .. } => RecordKind::ActionCompleted,
             Self::ActionFailedEvent { .. } => RecordKind::ActionFailed,
-            Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
@@ -1363,6 +1370,7 @@ impl FjallJournal {
         Ok(replay)
     }
 
+    #[allow(clippy::unused_self)]
     fn decode_optional<T: DeserializeOwned>(
         &self,
         keyspace: &fjall::Keyspace,

@@ -372,8 +372,9 @@ pub fn load_snapshot(
 ) -> RecoveryResult<RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
-        Ok(None) => Err(RecoveryError::CorruptSnapshot { run, seq }),
-        Err(JournalError::PostcardDecodeFailed) => Err(RecoveryError::CorruptSnapshot { run, seq }),
+        Ok(None) | Err(JournalError::PostcardDecodeFailed) => {
+            Err(RecoveryError::CorruptSnapshot { run, seq })
+        }
         Err(other) => Err(RecoveryError::Journal(other)),
     }
 }
@@ -414,9 +415,16 @@ pub fn replay_events(
 
     for event in events {
         match event {
-            JournalEvent::RunAccepted { .. } => {
-                // Accepted is the start of a run
-            }
+            JournalEvent::RunAccepted { .. }
+            | JournalEvent::StepSucceeded { .. }
+            | JournalEvent::SlotWrittenEvent { .. }
+            | JournalEvent::WaitScheduledEvent { .. }
+            | JournalEvent::AskScheduledEvent { .. }
+            | JournalEvent::AskAnsweredEvent { .. }
+            | JournalEvent::RetryScheduledEvent { .. }
+            | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunFinished { .. }
+            | JournalEvent::RunFailedEvent { .. } => {}
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
                 if let Some(prev) = last_step
@@ -432,9 +440,6 @@ pub fn replay_events(
                     });
                 }
                 last_step = Some(*step);
-            }
-            JournalEvent::StepSucceeded { .. } => {
-                // Step completed successfully
             }
             JournalEvent::ActionScheduled { action, step, .. } => {
                 // Check if this action was already resolved
@@ -452,22 +457,6 @@ pub fn replay_events(
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 // Mark action as failed to prevent re-execution
                 tracker.mark_failed(*action, *step);
-            }
-            JournalEvent::SlotWrittenEvent { .. } => {
-                // Slot write during replay
-            }
-            JournalEvent::WaitScheduledEvent { .. } => {}
-            JournalEvent::AskScheduledEvent { .. } => {}
-            JournalEvent::AskAnsweredEvent { .. } => {}
-            JournalEvent::RetryScheduledEvent { .. } => {}
-            JournalEvent::RunCancelled { .. } => {
-                // Terminal state
-            }
-            JournalEvent::RunFinished { .. } => {
-                // Terminal state - successful completion
-            }
-            JournalEvent::RunFailedEvent { .. } => {
-                // Terminal state - failure
             }
         }
         replayed.push(event.clone());
@@ -655,12 +644,15 @@ impl RecoveryFrameSeedBuilder {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn observe_event(&mut self, event: &JournalEvent) -> RecoveryResult<()> {
         match event {
             JournalEvent::RunAccepted { .. }
             | JournalEvent::RunCancelled { .. }
             | JournalEvent::RunFailedEvent { .. } => Ok(()),
-            JournalEvent::StepStarted { step, .. } => {
+            JournalEvent::StepStarted { step, .. }
+            | JournalEvent::AskAnsweredEvent { step, .. }
+            | JournalEvent::RetryScheduledEvent { step, .. } => {
                 self.observe_step(*step, RecoveredStepState::Running);
                 Ok(())
             }
@@ -698,11 +690,6 @@ impl RecoveryFrameSeedBuilder {
             }
             JournalEvent::AskScheduledEvent { step, .. } => {
                 self.observe_step(*step, RecoveredStepState::Asking);
-                Ok(())
-            }
-            JournalEvent::AskAnsweredEvent { step, .. }
-            | JournalEvent::RetryScheduledEvent { step, .. } => {
-                self.observe_step(*step, RecoveredStepState::Running);
                 Ok(())
             }
             JournalEvent::RunFinished { result, .. } => {

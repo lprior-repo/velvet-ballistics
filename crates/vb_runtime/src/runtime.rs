@@ -30,6 +30,7 @@ impl Runtime {
     }
 
     /// Creates a new runtime with an explicit runtime journal sink.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new_with_journal(
         shard_count: NonZeroUsize,
         config: ShardConfig,
@@ -39,7 +40,7 @@ impl Runtime {
         let mut shards = Vec::with_capacity(count);
         let mut index = 0usize;
         while index < count {
-            shards.push(Shard::new_with_journal(config.clone(), journal.clone()));
+            shards.push(Shard::new_with_journal(config, journal.clone()));
             index = index.saturating_add(1);
         }
         Self {
@@ -200,9 +201,8 @@ impl Runtime {
 
     fn shard_index(&self, run: RunId) -> usize {
         let hash = run.as_u64();
-        let count = match u64::try_from(self.shard_count) {
-            Ok(value) => value,
-            Err(_) => return 0,
+        let Ok(count) = u64::try_from(self.shard_count) else {
+            return 0;
         };
         let Some(remainder) = hash.checked_rem(count) else {
             return 0;

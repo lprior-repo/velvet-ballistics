@@ -51,8 +51,7 @@ impl TypeContext {
             .iter()
             .rev()
             .find(|(n, _)| n.as_ref() == name)
-            .map(|(_, ty)| *ty)
-            .unwrap_or(ExprType::Unknown)
+            .map_or(ExprType::Unknown, |(_, ty)| *ty)
     }
 }
 
@@ -153,17 +152,16 @@ fn typecheck_helper(
         .map(|a| typecheck_expr(a, ctx))
         .collect::<ExprResult<Vec<_>>>()?;
     match helper {
-        ExprHelper::Contains | ExprHelper::StartsWith | ExprHelper::EndsWith => Ok(ExprType::Bool),
-        ExprHelper::Has => Ok(ExprType::Bool),
-        ExprHelper::Exists => Ok(ExprType::Bool),
-        ExprHelper::Length => Ok(ExprType::I64),
-        ExprHelper::Empty => Ok(ExprType::Bool),
-        ExprHelper::Append => Ok(ExprType::List),
-        ExprHelper::AppendIf => Ok(ExprType::List),
-        ExprHelper::Merge => Ok(ExprType::List),
-        ExprHelper::Sum => Ok(ExprType::I64),
-        ExprHelper::Count => Ok(ExprType::I64),
-        ExprHelper::Unique => Ok(ExprType::List),
+        ExprHelper::Contains
+        | ExprHelper::StartsWith
+        | ExprHelper::EndsWith
+        | ExprHelper::Has
+        | ExprHelper::Exists
+        | ExprHelper::Empty => Ok(ExprType::Bool),
+        ExprHelper::Length | ExprHelper::Sum | ExprHelper::Count => Ok(ExprType::I64),
+        ExprHelper::Append | ExprHelper::AppendIf | ExprHelper::Merge | ExprHelper::Unique => {
+            Ok(ExprType::List)
+        }
     }
 }
 

@@ -134,7 +134,6 @@ fn schema_type(name: &str) -> ValueType {
         "boolean" => ValueType::Boolean,
         "object" => ValueType::Object,
         "list" | "list<any>" | "list<text>" | "list<number>" | "list<boolean>" => ValueType::List,
-        "any" => ValueType::Any,
         _ => ValueType::Any,
     }
 }
@@ -199,7 +198,7 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));
             }
             StepKindAst::Together { .. } => {
-                facts.write_slot(index, ValueFact::clean(ValueType::Any))
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
             }
             StepKindAst::Collect { source, .. } => {
                 if let Err(e) = facts.read_slot(source.as_usize(), "collect.source") {

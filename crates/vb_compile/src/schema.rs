@@ -5,14 +5,11 @@ pub(crate) fn validate_input_schemas(doc: &Yaml<'_>) -> Result<(), CompileErrors
     let Some(node) = doc.as_mapping_get("inputs") else {
         return Ok(());
     };
-    let mapping = match node.as_mapping() {
-        Some(m) => m,
-        None => {
-            return Err(CompileErrors(vec![CompileError::FieldShape {
-                field: "inputs",
-                expected: "a mapping",
-            }]));
-        }
+    let Some(mapping) = node.as_mapping() else {
+        return Err(CompileErrors(vec![CompileError::FieldShape {
+            field: "inputs",
+            expected: "a mapping",
+        }]));
     };
     let mut errors = Vec::new();
     for (_, schema) in mapping {

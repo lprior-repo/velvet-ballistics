@@ -40,15 +40,12 @@ impl TraceRing {
     /// is not used here; the caller may choose to count the drop).
     pub fn push(&mut self, event: TraceEvent) -> bool {
         let remembered = event.clone();
-        match self.producer.push(event) {
-            Ok(()) => {
-                self.remember(remembered);
-                true
-            }
-            Err(_) => {
-                self.dropped = self.dropped.saturating_add(1);
-                false
-            }
+        if let Ok(()) = self.producer.push(event) {
+            self.remember(remembered);
+            true
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+            false
         }
     }
 
@@ -63,9 +60,8 @@ impl TraceRing {
     pub fn drain_into(&mut self, limit: usize, events: &mut Vec<TraceEvent>) {
         let mut drained = 0usize;
         while drained < limit {
-            let event = match self.consumer.pop() {
-                Ok(event) => event,
-                Err(_) => return,
+            let Ok(event) = self.consumer.pop() else {
+                return;
             };
             events.push(event);
             drained = match drained.checked_add(1) {
@@ -81,9 +77,8 @@ impl TraceRing {
         let mut events = Vec::with_capacity(bounded_limit);
         let mut inspected = 0usize;
         while inspected < bounded_limit {
-            let event = match self.consumer.pop() {
-                Ok(event) => event,
-                Err(_) => return events,
+            let Ok(event) = self.consumer.pop() else {
+                return events;
             };
             if event.run_id() == target {
                 events.push(event);

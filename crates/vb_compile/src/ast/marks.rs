@@ -188,5 +188,5 @@ fn insert_key_mark(
         Some(parent) => {
             nested.insert((parent.into(), value.into()), mark);
         }
-    };
+    }
 }
