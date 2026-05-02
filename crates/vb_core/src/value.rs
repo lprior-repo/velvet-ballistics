@@ -632,6 +632,74 @@ mod tests {
         assert_eq!(a, b, "copy must preserve equality");
     }
 
+    #[test]
+    fn taint_postcard_roundtrips_all_variants() {
+        let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        for variant in variants {
+            let bytes = postcard::to_allocvec(&variant);
+            assert!(bytes.is_ok(), "postcard serialization should succeed for {variant:?}");
+            let Ok(bytes) = bytes else { return };
+            let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
+            assert!(recovered.is_ok(), "postcard deserialization should succeed for {variant:?}");
+            let Ok(recovered) = recovered else { return };
+            assert_eq!(variant, recovered, "roundtrip must preserve {variant:?}");
+        }
+    }
+
+    #[test]
+    fn taint_lattice_join_is_commutative() {
+        let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        for a in variants {
+            for b in variants {
+                assert_eq!(
+                    join_taint(a, b),
+                    join_taint(b, a),
+                    "join_taint must be commutative: join({a:?}, {b:?})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn taint_lattice_join_is_associative() {
+        let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        for a in variants {
+            for b in variants {
+                for c in variants {
+                    assert_eq!(
+                        join_taint(join_taint(a, b), c),
+                        join_taint(a, join_taint(b, c)),
+                        "join_taint must be associative: ({a:?}, {b:?}, {c:?})"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn taint_lattice_secret_is_top_element() {
+        let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        for v in variants {
+            assert_eq!(
+                join_taint(v, Taint::Secret),
+                Taint::Secret,
+                "Secret must absorb all: join({v:?}, Secret)"
+            );
+        }
+    }
+
+    #[test]
+    fn taint_lattice_clean_is_bottom_element() {
+        let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        for v in variants {
+            assert_eq!(
+                join_taint(v, Taint::Clean),
+                v,
+                "Clean must be identity: join({v:?}, Clean)"
+            );
+        }
+    }
+
     // =========================================================================
     // Adversarial BDD tests — ConstValue edge cases
     // =========================================================================

@@ -919,21 +919,17 @@ fn budget_exhaustion_then_resume_advances_correctly() -> Result<(), String> {
 
 #[test]
 fn taint_propagation_join_returns_most_restrictive() {
+    // All 9 input combinations for join_taint, verified against the lattice:
+    //   Clean(0) < DerivedFromSecret(1) < Secret(2)
     assert_eq!(join_taint(Taint::Clean, Taint::Clean), Taint::Clean);
+    assert_eq!(join_taint(Taint::Clean, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
     assert_eq!(join_taint(Taint::Clean, Taint::Secret), Taint::Secret);
+    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Clean), Taint::DerivedFromSecret);
+    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
+    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Secret), Taint::Secret);
     assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::DerivedFromSecret),
-        Taint::DerivedFromSecret
-    );
-    assert_eq!(
-        join_taint(Taint::DerivedFromSecret, Taint::Clean),
-        Taint::DerivedFromSecret
-    );
-    assert_eq!(
-        join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret),
-        Taint::DerivedFromSecret
-    );
+    assert_eq!(join_taint(Taint::Secret, Taint::DerivedFromSecret), Taint::Secret);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
 }
 
 #[test]
