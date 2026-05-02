@@ -110,3 +110,31 @@ path = "src/bin/admission_flow.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "expr_eval"
+path = "src/bin/expr_eval.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "accessor_traversal"
+path = "src/bin/accessor_traversal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "slot_value_roundtrip"
+path = "src/bin/slot_value_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_fuzz"
+path = "src/bin/admission_fuzz.rs"
+test = false
+doc = false
+bench = false
