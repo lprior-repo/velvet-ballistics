@@ -6,11 +6,69 @@ use bytes::Bytes;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::num::NonZeroUsize;
+use std::path::PathBuf;
+use std::process::Command;
+use std::time::Instant;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ResourceContract, RunId,
-    SlotBranch, SlotIdx, StepBudget, StepIdx, WorkflowDigest, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ResourceContract,
+    RunId, SlotBranch, SlotIdx, StepBudget, StepIdx, WorkflowDigest, WorkflowParts,
 };
 use vb_storage::{EventSeq, JournalEvent};
+
+struct GeneratedBinary {
+    path: PathBuf,
+    _temp_dir: PathBuf,
+}
+
+impl GeneratedBinary {
+    fn compile(workflow: &CompiledWorkflow, name: &str) -> Option<Self> {
+        let generated = vb_codegen::emit_rust_workflow(workflow).ok()?;
+        let temp_dir = std::env::temp_dir().join(format!(
+            "vb_bench_gen_{}_{}",
+            std::process::id(),
+            name
+        ));
+        std::fs::create_dir_all(&temp_dir).ok()?;
+        let source_path = temp_dir.join("generated.rs");
+        let binary_path = temp_dir.join("generated_bin");
+        let harness = format!(
+            "{}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match drive(slots) {{\n        Ok(value) => println!(\"ok:{{value:#?}}\"),\n        Err(e) => println!(\"err:{{e:#?}}\"),\n    }}\n}}\n",
+            generated
+        );
+        std::fs::write(&source_path, harness).ok()?;
+        let output = Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-Copt-level=3")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            eprintln!("rustc failed: {}", String::from_utf8_lossy(&output.stderr));
+            return None;
+        }
+        Some(Self {
+            path: binary_path,
+            _temp_dir: temp_dir,
+        })
+    }
+
+    fn run(&self) -> std::process::Output {
+        match Command::new(&self.path).output() {
+            Ok(output) => output,
+            Err(e) => {
+                eprintln!("generated binary failed: {e}");
+                std::process::Output {
+                    status: std::process::ExitStatus::default(),
+                    stdout: Vec::new(),
+                    stderr: Vec::new(),
+                }
+            }
+        }
+    }
+}
 
 const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballastics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
 const CHOOSE_WORKFLOW: &[u8] = b"version: velvet-ballastics/v1\nname: bench_choose\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n";
@@ -598,6 +656,99 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
     compiled_from_nodes("bench_finish_only", nodes, Box::from([]))
 }
 
+fn choose_100_workflow() -> Option<CompiledWorkflow> {
+    let mut nodes = Vec::with_capacity(103);
+    nodes.push(CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    });
+    let mut branches = Vec::with_capacity(100);
+    for i in 0..100 {
+        let target = if i == 0 { 101 } else { 102 };
+        branches.push(SlotBranch {
+            condition: SlotIdx::new(0),
+            target: StepIdx::new(target),
+        });
+    }
+    nodes.push(CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::ChooseSlot {
+            branches: branches.into_boxed_slice(),
+            otherwise: Some(StepIdx::new(102)),
+        },
+    });
+    nodes.push(CompiledNode {
+        id: StepIdx::new(102),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(103)),
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+    });
+    nodes.push(CompiledNode {
+        id: StepIdx::new(103),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(1),
+        },
+    });
+    let constants = vec![
+        vb_core::ConstValue::Bool(true),
+        vb_core::ConstValue::I64(42),
+    ];
+    compiled_from_nodes(
+        "bench_choose_100",
+        nodes,
+        constants.into_boxed_slice(),
+    )
+}
+
+fn expression_workflow() -> Option<CompiledWorkflow> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            kind: CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        },
+    ];
+    let constants = vec![
+        vb_core::ConstValue::I64(10),
+        vb_core::ConstValue::I64(3),
+        vb_core::ConstValue::I64(7),
+    ];
+    compiled_from_nodes(
+        "bench_expr",
+        nodes,
+        constants.into_boxed_slice(),
+    )
+}
+
 fn compiled_from_nodes(
     name: &str,
     nodes: Vec<CompiledNode>,
@@ -675,6 +826,278 @@ fn generated_benches(c: &mut Criterion) {
         },
     );
     group.finish();
+}
+
+fn ir_vs_generated_benches(c: &mut Criterion) {
+    let finish_1_workflow = finish_workflow();
+    let save_chain_1000 = save_chain_workflow(1000);
+    let choose_100_workflow = choose_100_workflow();
+    let expr_workflow = expression_workflow();
+
+    let gen_finish = finish_1_workflow
+        .as_ref()
+        .and_then(|w| GeneratedBinary::compile(w, "finish_1"));
+    let gen_chain_1000 = save_chain_1000
+        .as_ref()
+        .and_then(|w| GeneratedBinary::compile(w, "save_chain_1000"));
+    let gen_choose_100 = choose_100_workflow
+        .as_ref()
+        .and_then(|w| GeneratedBinary::compile(w, "choose_100"));
+    let gen_expr = expr_workflow
+        .as_ref()
+        .and_then(|w| GeneratedBinary::compile(w, "expr"));
+
+    let mut ir_group = c.benchmark_group("ir_vs_generated");
+    ir_group.measurement_time(std::time::Duration::from_secs(5));
+    ir_group.sample_size(100);
+
+    ir_group.bench_function(
+        metadata(
+            "ir_execution_1_step",
+            b"finish_1",
+            "fixture=finish_1;surface=ir_exec",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(plan) = finish_1_workflow.as_ref() {
+                    let mut frame = vb_core::new_run_frame(RunId::new(100), plan);
+                    let mut store = vb_core::ValueStore::new();
+                    black_box(if let Ok(run) = frame.as_mut() {
+                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                    } else {
+                        None
+                    })
+                } else {
+                    None
+                }
+            })
+        },
+    );
+
+    ir_group.bench_function(
+        metadata(
+            "ir_execution_1000_steps",
+            b"save_chain_1000",
+            "fixture=save_chain_1000;surface=ir_exec",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(plan) = save_chain_1000.as_ref() {
+                    let mut frame = vb_core::new_run_frame(RunId::new(101), plan);
+                    let mut store = vb_core::ValueStore::new();
+                    black_box(if let Ok(run) = frame.as_mut() {
+                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                    } else {
+                        None
+                    })
+                } else {
+                    None
+                }
+            })
+        },
+    );
+
+    ir_group.bench_function(
+        metadata(
+            "ir_execution_choose_100",
+            b"choose_100",
+            "fixture=choose_100;surface=ir_exec",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(plan) = choose_100_workflow.as_ref() {
+                    let mut frame = vb_core::new_run_frame(RunId::new(102), plan);
+                    let mut store = vb_core::ValueStore::new();
+                    black_box(if let Ok(run) = frame.as_mut() {
+                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                    } else {
+                        None
+                    })
+                } else {
+                    None
+                }
+            })
+        },
+    );
+
+    ir_group.bench_function(
+        metadata(
+            "ir_execution_expr",
+            b"expression",
+            "fixture=expression_workflow;surface=ir_exec",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(plan) = expr_workflow.as_ref() {
+                    let mut frame = vb_core::new_run_frame(RunId::new(103), plan);
+                    let mut store = vb_core::ValueStore::new();
+                    black_box(if let Ok(run) = frame.as_mut() {
+                        Some(vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store))
+                    } else {
+                        None
+                    })
+                } else {
+                    None
+                }
+            })
+        },
+    );
+
+    ir_group.finish();
+
+    let mut gen_group = c.benchmark_group("generated_execution");
+    gen_group.measurement_time(std::time::Duration::from_secs(5));
+    gen_group.sample_size(100);
+
+    if let Some(ref gen_bin) = gen_finish {
+        gen_group.bench_function(
+            metadata(
+                "generated_execution_1_step",
+                b"finish_1",
+                "fixture=finish_1;surface=generated_exec",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    black_box(start.elapsed())
+                })
+            },
+        );
+    }
+
+    if let Some(ref gen_bin) = gen_chain_1000 {
+        gen_group.bench_function(
+            metadata(
+                "generated_execution_1000_steps",
+                b"save_chain_1000",
+                "fixture=save_chain_1000;surface=generated_exec",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    black_box(start.elapsed())
+                })
+            },
+        );
+    }
+
+    if let Some(ref gen_bin) = gen_choose_100 {
+        gen_group.bench_function(
+            metadata(
+                "generated_execution_choose_100",
+                b"choose_100",
+                "fixture=choose_100;surface=generated_exec",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    black_box(start.elapsed())
+                })
+            },
+        );
+    }
+
+    if let Some(ref gen_bin) = gen_expr {
+        gen_group.bench_function(
+            metadata(
+                "generated_execution_expr",
+                b"expression",
+                "fixture=expression_workflow;surface=generated_exec",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    black_box(start.elapsed())
+                })
+            },
+        );
+    }
+
+    gen_group.finish();
+
+    let mut ratio_group = c.benchmark_group("ir_vs_generated_ratio");
+    ratio_group.measurement_time(std::time::Duration::from_secs(10));
+    ratio_group.sample_size(50);
+
+    if let Some(ref gen_bin) = gen_finish {
+        ratio_group.bench_function(
+            metadata(
+                "ir_vs_generated_1",
+                b"finish_1",
+                "fixture=finish_1;surface=ratio",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let ir_start = Instant::now();
+                    if let Some(plan) = finish_1_workflow.as_ref() {
+                        let mut frame = vb_core::new_run_frame(RunId::new(200), plan);
+                        let mut store = vb_core::ValueStore::new();
+                        if let Ok(run) = frame.as_mut() {
+                            #[allow(clippy::let_underscore_must_use)]
+                            let _ = vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        }
+                    }
+                    let ir_ns = ir_start.elapsed().as_nanos();
+
+                    let gen_start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    let gen_ns = gen_start.elapsed().as_nanos();
+
+                    #[allow(clippy::as_conversions)]
+                    black_box((ir_ns as f64) / (gen_ns as f64))
+                })
+            },
+        );
+    }
+
+    if let Some(ref gen_bin) = gen_chain_1000 {
+        ratio_group.bench_function(
+            metadata(
+                "ir_vs_generated_1000",
+                b"save_chain_1000",
+                "fixture=save_chain_1000;surface=ratio",
+            ),
+            |b| {
+                let bin_path = gen_bin.path.clone();
+                b.iter(|| {
+                    let ir_start = Instant::now();
+                    if let Some(plan) = save_chain_1000.as_ref() {
+                        let mut frame = vb_core::new_run_frame(RunId::new(201), plan);
+                        let mut store = vb_core::ValueStore::new();
+                        if let Ok(run) = frame.as_mut() {
+                            #[allow(clippy::let_underscore_must_use)]
+                            let _ = vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
+                        }
+                    }
+                    let ir_ns = ir_start.elapsed().as_nanos();
+
+                    let gen_start = Instant::now();
+                    #[allow(clippy::let_underscore_must_use)]
+                    let _ = Command::new(&bin_path).output();
+                    let gen_ns = gen_start.elapsed().as_nanos();
+
+                    #[allow(clippy::as_conversions)]
+                    black_box((ir_ns as f64) / (gen_ns as f64))
+                })
+            },
+        );
+    }
+
+    ratio_group.finish();
 }
 
 fn bench_expr(
@@ -787,6 +1210,7 @@ criterion_group!(
     expression_benches,
     slot_and_transition_benches,
     storage_and_ipc_benches,
-    generated_benches
+    generated_benches,
+    ir_vs_generated_benches
 );
 criterion_main!(benches);
