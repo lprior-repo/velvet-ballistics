@@ -35,7 +35,7 @@ fn core_errors_map_every_public_variant_to_an_exact_code() {
 fn runtime_errors_map_every_public_variant_to_an_exact_code() {
     let runtime = runtime_error_codes();
     assert_unique_codes(&runtime);
-    assert_eq!(runtime.len(), 14);
+    assert_eq!(runtime.len(), 16);
 }
 
 #[test]
@@ -363,6 +363,11 @@ fn runtime_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         RuntimeError::InvalidTimerFire,
         RuntimeError::UnsupportedFullRecoveryHydration,
         RuntimeError::InvalidRecoveryHydration,
+        RuntimeError::CommandQueueCapacityExceeded {
+            capacity: 0,
+            max: 65536,
+        },
+        RuntimeError::ActiveRunCapacityZero,
     ];
     samples
         .iter()
@@ -386,6 +391,8 @@ fn runtime_error_variant_name(error: &RuntimeError) -> &'static str {
         RuntimeError::InvalidTimerFire => "InvalidTimerFire",
         RuntimeError::UnsupportedFullRecoveryHydration => "UnsupportedFullRecoveryHydration",
         RuntimeError::InvalidRecoveryHydration => "InvalidRecoveryHydration",
+        RuntimeError::CommandQueueCapacityExceeded { .. } => "CommandQueueCapacityExceeded",
+        RuntimeError::ActiveRunCapacityZero => "ActiveRunCapacityZero",
     }
 }
 

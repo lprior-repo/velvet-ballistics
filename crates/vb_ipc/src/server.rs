@@ -990,12 +990,14 @@ impl IpcServerError {
 }
 
 #[cfg(test)]
+#[allow(clippy::let_underscore_must_use)]
 mod tests {
     use super::{
         IpcResponse, IpcResponseKind, IpcServer, IpcServerError, READ_CHUNK_BYTES,
         WorkflowResolutionError, WorkflowResolver, append_read_bytes, count_response,
         dispatch_command, dispatch_command_with_resolver, extract_payload, frame_error_response,
         frame_total_len, handle_complete_action, handle_list_events, read_buffer_header, serve_ipc,
+        serve_ipc_with_resolver,
     };
     use crate::client::IpcClient;
     use crate::{
@@ -1023,6 +1025,7 @@ mod tests {
 
     enum ServerStep {
         Serve,
+        ServeAndTick,
         Stop,
     }
 
@@ -1040,6 +1043,15 @@ mod tests {
                     if results.send(result).is_err() {
                         return;
                     }
+                }
+                ServerStep::ServeAndTick => {
+                    let result =
+                        serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                    if results.send(result).is_err() {
+                        return;
+                    }
+                    // Process runtime command queue
+                    let _ = runtime.tick_all();
                 }
                 ServerStep::Stop => return,
             }
@@ -1059,6 +1071,23 @@ mod tests {
         results: &Receiver<Result<bool, String>>,
     ) -> bool {
         assert_ok!(steps.send(ServerStep::Serve), "server step sends");
+        let result = results.recv();
+        assert_ok!(result, "server step returns");
+        let Ok(result) = result else {
+            return false;
+        };
+        assert_ok!(result, "server step succeeds: {result:?}");
+        let Ok(keep_running) = result else {
+            return false;
+        };
+        keep_running
+    }
+
+    fn request_server_turn_and_tick(
+        steps: &Sender<ServerStep>,
+        results: &Receiver<Result<bool, String>>,
+    ) -> bool {
+        assert_ok!(steps.send(ServerStep::ServeAndTick), "server step sends");
         let result = results.recv();
         assert_ok!(result, "server step returns");
         let Ok(result) = result else {
@@ -2817,5 +2846,733 @@ mod tests {
             header: 100,
             actual: 50,
         });
+    }
+
+    // ══ Full socket e2e tests ══
+
+    #[test]
+    fn e2e_submit_run_with_workflow_resolver_accepts_and_runs() {
+        let socket_path = ipc_test_socket("submit_run_e2e");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds for e2e");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            let mut resolver = StaticWorkflowResolver {
+                workflow: action_then_finish_workflow(),
+                error: None,
+            };
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+
+        // Server accepts client
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Submit a run
+        let run_id = RunId::new(77);
+        let Some(workflow) = action_then_finish_workflow() else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        let digest = workflow.digest();
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id,
+            workflow: digest,
+            input: Vec::new(),
+        });
+        assert_ok!(
+            client.send_command(IpcCommand::SubmitRun, 200, &payload),
+            "submit-run sends"
+        );
+        assert!(
+            request_server_turn_and_tick(&step_tx, &result_rx),
+            "server handles submit-run and ticks"
+        );
+        let submitted = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(submitted, "submit-run response decodes");
+        let Ok((submit_header, submit_response)) = submitted else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(submit_header.command, IpcCommand::SubmitRun);
+        assert_eq!(
+            submit_response,
+            IpcResponse::AcceptedRun {
+                run_id: run_id.as_u64()
+            }
+        );
+
+        // Inspect the run (submit already enqueued it)
+        let inspect_payload = IpcPayload::InspectRun { run_id };
+        assert_ok!(
+            client.send_command(IpcCommand::InspectRun, 201, &inspect_payload),
+            "inspect-run sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles inspect-run"
+        );
+        let inspected = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(inspected, "inspect-run response decodes");
+        let Ok((inspect_header, inspect_response)) = inspected else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(inspect_header.command, IpcCommand::InspectRun);
+        assert_eq!(
+            inspect_response,
+            IpcResponse::Inspected {
+                run_id: run_id.as_u64()
+            }
+        );
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_submit_run_without_resolver_returns_workflow_resolution_required() {
+        let socket_path = ipc_test_socket("submit_no_resolver");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Submit without resolver
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id: RunId::new(5),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+            input: Vec::new(),
+        });
+        assert_ok!(
+            client.send_command(IpcCommand::SubmitRun, 300, &payload),
+            "submit-run sends"
+        );
+        assert!(request_server_turn(&step_tx, &result_rx), "server handles");
+        let response = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(response, "response decodes");
+        let Ok((header, resp)) = response else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(header.command, IpcCommand::SubmitRun);
+        assert_eq!(resp, IpcResponse::WorkflowResolutionRequired);
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_cancel_run_accepts_and_cancels() {
+        let socket_path = ipc_test_socket("cancel_run_e2e");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            let mut resolver = StaticWorkflowResolver {
+                workflow: action_then_finish_workflow(),
+                error: None,
+            };
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Submit a run first
+        let run_id = RunId::new(88);
+        let Some(workflow) = action_then_finish_workflow() else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        let digest = workflow.digest();
+        let submit_payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id,
+            workflow: digest,
+            input: Vec::new(),
+        });
+        assert_ok!(
+            client.send_command(IpcCommand::SubmitRun, 400, &submit_payload),
+            "submit sends"
+        );
+        assert!(
+            request_server_turn_and_tick(&step_tx, &result_rx),
+            "server handles submit"
+        );
+        let submitted = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(submitted, "submit response decodes");
+
+        // Cancel the run
+        let cancel_payload = IpcPayload::CancelRun { run_id };
+        assert_ok!(
+            client.send_command(IpcCommand::CancelRun, 401, &cancel_payload),
+            "cancel-run sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles cancel"
+        );
+        let cancelled = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(cancelled, "cancel response decodes");
+        let Ok((cancel_header, cancel_response)) = cancelled else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(cancel_header.command, IpcCommand::CancelRun);
+        assert_eq!(
+            cancel_response,
+            IpcResponse::AcceptedRun {
+                run_id: run_id.as_u64()
+            }
+        );
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_cancel_nonexistent_run_returns_runtime_error() {
+        let socket_path = ipc_test_socket("cancel_nonexistent");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Cancel a run that was never submitted
+        let cancel_payload = IpcPayload::CancelRun {
+            run_id: RunId::new(99999),
+        };
+        assert_ok!(
+            client.send_command(IpcCommand::CancelRun, 500, &cancel_payload),
+            "cancel-run sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles cancel"
+        );
+        let cancelled = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(cancelled, "cancel response decodes");
+        let Ok((_cancel_header, cancel_response)) = cancelled else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            matches!(
+                cancel_response,
+                IpcResponse::RuntimeError { ref message } if message.contains("not found")
+            ),
+            "expected RuntimeError with 'not found', got {cancel_response:?}"
+        );
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_shutdown_command_returns_shutting_down() {
+        let socket_path = ipc_test_socket("shutdown_e2e");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result =
+                            serve_ipc(&mut server, &mut runtime, None).map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Send shutdown
+        assert_ok!(client.shutdown(600), "shutdown sends");
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles shutdown"
+        );
+        let response = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(response, "shutdown response decodes");
+        let Ok((shutdown_header, shutdown_response)) = response else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(shutdown_header.command, IpcCommand::Shutdown);
+        assert_eq!(shutdown_response, IpcResponse::ShuttingDown);
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_submit_run_with_mismatched_digest_returns_digest_mismatch() {
+        let socket_path = ipc_test_socket("digest_mismatch");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            let mut resolver = StaticWorkflowResolver {
+                workflow: action_then_finish_workflow(),
+                error: None,
+            };
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Submit with wrong digest
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id: RunId::new(33),
+            workflow: WorkflowDigest::from_bytes([0xAA; 32]),
+            input: Vec::new(),
+        });
+        assert_ok!(
+            client.send_command(IpcCommand::SubmitRun, 700, &payload),
+            "submit sends"
+        );
+        assert!(request_server_turn(&step_tx, &result_rx), "server handles");
+        let response = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(response, "response decodes");
+        let Ok((_header, resp)) = response else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(resp, IpcResponse::WorkflowDigestMismatch);
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_list_events_returns_typed_events_after_run() {
+        let socket_path = ipc_test_socket("list_typed_events");
+        let server = IpcServer::bind(&socket_path);
+        assert_ok!(server, "server binds");
+        let Ok(mut server) = server else {
+            return;
+        };
+
+        let (step_tx, step_rx) = std::sync::mpsc::channel();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default());
+            let mut resolver = StaticWorkflowResolver {
+                workflow: action_then_finish_workflow(),
+                error: None,
+            };
+            while let Ok(step) = step_rx.recv() {
+                match step {
+                    ServerStep::Serve => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                    }
+                    ServerStep::ServeAndTick => {
+                        let result = serve_ipc_with_resolver(
+                            &mut server,
+                            &mut runtime,
+                            None,
+                            Some(&mut resolver),
+                        )
+                        .map_err(|e| e.to_string());
+                        if result_tx.send(result).is_err() {
+                            return;
+                        }
+                        let _ = runtime.tick_all();
+                    }
+                    ServerStep::Stop => return,
+                }
+            }
+        });
+
+        let client = IpcClient::connect(&socket_path);
+        assert_ok!(client, "client connects");
+        let Ok(mut client) = client else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server accepts client"
+        );
+
+        // Submit a run
+        let run_id = RunId::new(55);
+        let Some(workflow) = action_then_finish_workflow() else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        let digest = workflow.digest();
+        let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id,
+            workflow: digest,
+            input: Vec::new(),
+        });
+        assert_ok!(
+            client.send_command(IpcCommand::SubmitRun, 800, &payload),
+            "submit sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles submit"
+        );
+        let _ = client.recv_response(MaxPayloadBytes::DEFAULT);
+
+        // List events (runtime hasn't processed yet, so events may be empty)
+        let list_payload = IpcPayload::ListEvents {
+            run_id,
+            from_sequence: 0,
+        };
+        assert_ok!(
+            client.send_command(IpcCommand::ListEvents, 801, &list_payload),
+            "list-events sends"
+        );
+        assert!(
+            request_server_turn(&step_tx, &result_rx),
+            "server handles list"
+        );
+        let listed = client.recv_response(MaxPayloadBytes::DEFAULT);
+        assert_ok!(listed, "list response decodes");
+        let Ok((list_header, list_response)) = listed else {
+            let _ = step_tx.send(ServerStep::Stop);
+            let _ = handle.join();
+            return;
+        };
+        assert_eq!(list_header.command, IpcCommand::ListEvents);
+        // Events list is returned successfully over IPC
+        assert!(
+            matches!(list_response, IpcResponse::Events { .. }),
+            "list response should be Events variant"
+        );
+
+        assert_ok!(step_tx.send(ServerStep::Stop), "server stops");
+        assert_ok!(handle.join(), "server thread joins");
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
+    }
+
+    #[test]
+    fn e2e_client_connect_to_stale_socket_returns_connect_failed() {
+        let socket_path = ipc_test_socket("stale_socket");
+        // Create and immediately remove a socket file
+        {
+            let server = IpcServer::bind(&socket_path);
+            assert_ok!(server, "server binds");
+            let Ok(server) = server else {
+                return;
+            };
+            drop(server);
+        }
+        // Socket is now gone
+
+        // Client should fail to connect
+        let result = IpcClient::connect(&socket_path);
+        assert!(result.is_err(), "connecting to stale socket must fail");
+        let Err(client_err) = result else {
+            return;
+        };
+        let msg = client_err.to_string();
+        assert!(
+            msg.contains("connect failed"),
+            "error should mention connect failed: {msg}"
+        );
+        let remove_result = std::fs::remove_file(&socket_path);
+        assert!(
+            remove_result.is_ok() || !socket_path.exists(),
+            "socket cleanup succeeds"
+        );
     }
 }

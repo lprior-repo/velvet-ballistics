@@ -106,6 +106,19 @@ pub enum RuntimeError {
     /// Durable recovery frame seed was internally inconsistent.
     #[error("invalid recovery frame hydration")]
     InvalidRecoveryHydration,
+
+    /// Command queue capacity exceeds the maximum allowed.
+    #[error("command queue capacity {capacity} exceeds maximum {max}")]
+    CommandQueueCapacityExceeded {
+        /// Requested capacity.
+        capacity: usize,
+        /// Maximum allowed capacity.
+        max: usize,
+    },
+
+    /// Active run capacity cannot be zero.
+    #[error("active run capacity cannot be zero")]
+    ActiveRunCapacityZero,
 }
 
 /// Result alias for runtime operations.
@@ -148,6 +161,10 @@ impl RuntimeError {
         DiagnosticCode::new(0x200D);
     /// Diagnostic code for invalid recovery hydration.
     pub const INVALID_RECOVERY_HYDRATION_CODE: DiagnosticCode = DiagnosticCode::new(0x200E);
+    /// Diagnostic code for command queue capacity exceeded.
+    pub const COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x200F);
+    /// Diagnostic code for active run capacity zero.
+    pub const ACTIVE_RUN_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2010);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -169,6 +186,8 @@ impl RuntimeError {
                 Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
             }
             Self::InvalidRecoveryHydration => Self::INVALID_RECOVERY_HYDRATION_CODE,
+            Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
+            Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
         }
     }
 

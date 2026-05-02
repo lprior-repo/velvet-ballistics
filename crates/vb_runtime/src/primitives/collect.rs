@@ -114,6 +114,11 @@ pub fn collect_next(
         remove_collect_state(run, collector_slot);
         return jump_to(run, done);
     }
+    if state.cursor > source_items.len() {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "collect cursor beyond source items",
+        });
+    }
     let page = copy_page_range(source_items, state.cursor, state.page_size)?;
     let page_len = page.len();
     let current_page = write_collected_page(run, store, collector_slot, page)?;
@@ -1319,5 +1324,74 @@ mod tests {
 
         assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
         assert_eq!(run.pc(), StepIdx::ZERO);
+    }
+
+    #[test]
+    fn collect_start_page_size_u32_max_returns_error() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1)]);
+        let result = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            100,
+            u32::MAX,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+        );
+        assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
+    }
+
+    #[test]
+    fn collect_start_page_size_at_limit_boundary() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        let output = SlotIdx::new(1);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
+        let result = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            2,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+        );
+        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+        assert_eq!(run.pc(), StepIdx::new(1));
+    }
+
+    #[test]
+    fn collect_start_page_size_exactly_one_over_limit() {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let source = SlotIdx::new(0);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
+        let result = collect_start(
+            &mut run,
+            &mut store,
+            source,
+            1,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+        );
+        assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
     }
 }
