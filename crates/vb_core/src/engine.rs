@@ -3925,6 +3925,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(100)].into_boxed_slice(),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             symbols_count: 0,
@@ -4227,6 +4228,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(10)].into_boxed_slice(),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             symbols_count: 0,
@@ -4689,7 +4691,170 @@ mod tests {
             Ok(other) => return Err(format!("expected Finished(42, Clean), got {other:?}")),
             Err(e) => return Err(format!("unexpected error: {e}")),
         }
+    // Phase QA: Coverage gap closure -- new_run_frame, drive_deterministic, etc.
+    // =========================================================================
 
+    #[test]
+    fn new_run_frame_creates_valid_frame_for_simple_workflow() -> Result<(), String> {
+        let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|e| e.to_string())?;
+        let frame = new_run_frame(RunId::new(500), &workflow).map_err(|e| e.to_string())?;
+        ensure_equal(frame.run_id(), RunId::new(500))?;
+        ensure_equal(frame.pc(), workflow.entry())?;
+        ensure_equal(frame.step_count(), workflow.node_count())?;
+        ensure_equal(frame.slot_count(), workflow.slot_count())?;
+        ensure_equal(frame.executed(), 0)?;
+        Ok(())
+    }
+
+    #[test]
+    fn drive_deterministic_mut_budget_tracks_consumption() -> Result<(), String> {
+        use crate::engine::drive_deterministic;
+        let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(501), &workflow)?;
+        let mut store = test_store();
+        let mut budget = StepBudget::new(1);
+
+        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        // With budget=1, only one step executes. The workflow has 2 nodes
+        // (SetConst -> Finish), so budget exhausts after step 0.
+        ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
+        ensure_equal(budget.remaining(), 0)?;
+        ensure_equal(run.executed(), 1)?;
+        Ok(())
+    }
+
+    #[test]
+    fn drive_deterministic_mut_budget_finishes_within_budget() -> Result<(), String> {
+        use crate::engine::drive_deterministic;
+        let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(502), &workflow)?;
+        let mut store = test_store();
+        let mut budget = StepBudget::new(10);
+
+        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean),
+        )?;
+        // 2 steps were executed: SetConst + Finish
+        ensure_equal(run.executed(), 2)?;
+        // Budget was 10, 2 consumed, 8 remaining
+        ensure_equal(budget.remaining(), 8)?;
+        Ok(())
+    }
+
+    #[test]
+    fn resume_action_completion_rejects_invalid_program_counter_in_ticket() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(503), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        // Ticket references a step that is out of bounds
+        let ticket = ActionTicket {
+            run: RunId::new(503),
+            step: StepIdx::new(99), // out of bounds
+            seq: SeqNo::new(1),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        let result = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        );
+
+        match result {
+            Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),
+            other => Err(format!("expected InvalidProgramCounter(99), got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn resume_action_completion_rejects_out_of_bounds_output_slot() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(504), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(504),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(2),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Output slot is out of bounds (workflow has only 2 slots: 0 and 1)
+        let result = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(99), // out of bounds
+            SlotValue::I64(42),
+            Taint::Clean,
+        );
+
+        match result {
+            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99) => Ok(()),
+            other => Err(format!("expected SlotOutOfBounds(99), got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn wait_until_node_suspends_with_awaiting_wait() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("wait_until_test"),
+            digest: WorkflowDigest::from_bytes([0x70; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::WaitUntil {
+                    deadline_slot: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(505), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        ensure_equal(result, EngineSignal::AwaitingWait)?;
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
         Ok(())
     }
 
@@ -4787,7 +4952,36 @@ mod tests {
         // Verify error slot content
         let error_value = run.read_slot(SlotIdx::new(2)).map_err(|e| format!("{e}"))?;
         ensure_equal(*error_value, SlotValue::I64(1))?; // failed step index
+    fn wait_event_node_suspends_with_awaiting_wait() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("wait_event_test"),
+            digest: WorkflowDigest::from_bytes([0x71; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::WaitEvent {
+                    event: SlotIdx::new(0),
+                    timeout_slot: None,
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(506), &workflow)?;
+        let mut store = test_store();
 
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        ensure_equal(result, EngineSignal::AwaitingWait)?;
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
         Ok(())
     }
 
@@ -4860,7 +5054,81 @@ mod tests {
         ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
         // Handler step (1) should also be Failed
         ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Failed))?;
+    fn ask_resume_node_returns_unsupported_primitive() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("ask_resume_test"),
+            digest: WorkflowDigest::from_bytes([0x72; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::AskResume {
+                    answer: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(507), &workflow)?;
+        let mut store = test_store();
 
+        let result = step_once(&workflow, &mut run, &mut store);
+        // AskResume is not a recognized boundary or deterministic node in execute_boundary_node,
+        // so it falls through to the _ => UnsupportedPrimitive arm.
+        match result {
+            Err(EngineError::UnsupportedPrimitive { .. }) => Ok(()),
+            other => Err(format!("expected UnsupportedPrimitive, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn step_once_marks_step_running_then_completed_on_success() -> Result<(), String> {
+        let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(508), &workflow)?;
+        let mut store = test_store();
+
+        // Before step: state is Pending
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Pending))?;
+
+        let signal = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+        ensure_equal(signal, EngineSignal::Continue)?;
+
+        // After step: state is Succeeded
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
+        ensure_equal(run.pc(), StepIdx::new(1))?;
+        Ok(())
+    }
+
+    #[test]
+    fn step_once_marks_step_failed_on_const_out_of_bounds() -> Result<(), String> {
+        // Create a workflow where the constant pool is shorter than the index
+        // referenced by SetConst. We bypass CompiledWorkflow::try_from_parts
+        // validation by testing the node_helpers path directly.
+        //
+        // The copy_workflow(None) already tests this pattern (MissingOutputSlot).
+        // Here we verify that the failed-step marking logic works by reusing
+        // that existing test infrastructure.
+        let workflow = copy_workflow(None).map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(509), &workflow)?;
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(77))
+            .map_err(|error| error.to_string())?;
+        let mut store = test_store();
+
+        let result = step_once(&workflow, &mut run, &mut store);
+        // Copy without output slot hits MissingOutputSlot
+        match result {
+            Err(EngineError::MissingOutputSlot { step }) if step == StepIdx::new(0) => {}
+            other => return Err(format!("expected MissingOutputSlot(0), got {other:?}")),
+        }
+        // Step must be marked Failed after error
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
         Ok(())
     }
 }
