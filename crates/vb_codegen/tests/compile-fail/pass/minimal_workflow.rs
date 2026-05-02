@@ -91,7 +91,7 @@ pub fn drive(mut slots: [Option<SlotValue>; 1]) -> Result<SlotValue, DriveError>
 }
 
 fn step_0(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> {
-    write_slot(slots, 0, Some(read_const(0)?))?;
+    write_slot(slots, 0, Some(read_const(0)?));
     Ok(StepOutcome::Continue(1))
 }
 
