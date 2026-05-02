@@ -4,6 +4,7 @@
 
 use crate::ids::StepIdx;
 use crate::workflow::{CompiledNodeKind, ResourceContract, WorkflowError};
+use std::fmt;
 
 /// Computed budget for an entire workflow, derived by walking the IR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,6 +145,27 @@ pub enum BudgetError {
     },
 }
 
+impl fmt::Display for BudgetError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TotalStepsExceeded { actual, limit } => {
+                write!(f, "total steps exceeded: {actual} > {limit}")
+            }
+            Self::TotalSlotsExceeded { actual, limit } => {
+                write!(f, "total slots exceeded: {actual} > {limit}")
+            }
+            Self::FanoutExceeded { actual, limit } => {
+                write!(f, "fanout exceeded: {actual} > {limit}")
+            }
+            Self::NestingDepthExceeded { actual, limit } => {
+                write!(f, "nesting depth exceeded: {actual} > {limit}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for BudgetError {}
+
 /// Counts the total number of reachable steps in the workflow by performing a
 /// DFS walk from the entry node. Each node is counted once.
 fn count_total_steps(
@@ -168,7 +190,10 @@ fn count_total_steps(
             return Err(WorkflowError::StepOutOfBounds { step: current });
         };
         *flag = true;
-        total = total.saturating_add(1);
+        total = match total.checked_add(1) {
+            Some(v) => v,
+            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+        };
 
         let node = match nodes.get(idx) {
             Some(n) => n,
@@ -381,9 +406,9 @@ fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) {
 #[cfg(test)]
 mod tests {
     use super::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
-    use crate::ids::{SlotIdx, StepIdx};
+    use crate::ids::{ExprIdx, SlotIdx, StepIdx};
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowError,
+        CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
     };
 
     #[test]
@@ -738,5 +763,130 @@ mod tests {
             max_queue_depth: 1,
             max_journal_batch_bytes: 1,
         }
+    }
+
+    #[test]
+    fn budget_single_node_workflow() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }];
+        let contract = test_contract(1, 1);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| {
+                b.max_total_steps == 1
+                    && b.max_fanout == 0
+                    && b.max_nesting_depth == 0
+            });
+
+        assert!(budget.is_some(), "single-node workflow budget mismatch");
+    }
+
+    #[test]
+    fn budget_error_display_formatting() {
+        let err = BudgetError::TotalStepsExceeded {
+            actual: 5,
+            limit: 3,
+        };
+        assert_eq!(format!("{err}"), "total steps exceeded: 5 > 3");
+
+        let err = BudgetError::TotalSlotsExceeded {
+            actual: 200,
+            limit: 100,
+        };
+        assert_eq!(format!("{err}"), "total slots exceeded: 200 > 100");
+
+        let err = BudgetError::FanoutExceeded {
+            actual: 10,
+            limit: 4,
+        };
+        assert_eq!(format!("{err}"), "fanout exceeded: 10 > 4");
+
+        let err = BudgetError::NestingDepthExceeded {
+            actual: 16,
+            limit: 8,
+        };
+        assert_eq!(format!("{err}"), "nesting depth exceeded: 16 > 8");
+    }
+
+    #[test]
+    fn budget_step_count_overflow_detected() {
+        // Construct a workflow where a node's next points out of bounds,
+        // verifying error propagation through the count path.
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(99)), // out of bounds
+            kind: CompiledNodeKind::Nop,
+        }];
+        let contract = test_contract(1, 0);
+        let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
+        match result {
+            Err(WorkflowError::StepOutOfBounds { .. }) => {}
+            other => panic!("expected StepOutOfBounds, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn budget_empty_nodes_rejected() {
+        let nodes: Vec<CompiledNode> = vec![];
+        let contract = test_contract(0, 0);
+        let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
+        match result {
+            Err(WorkflowError::EntryOutOfBounds { .. }) => {}
+            other => panic!("expected EntryOutOfBounds for empty nodes, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn budget_choose_fanout_counted() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Choose {
+                    branches: vec![
+                        ExprBranch {
+                            condition: ExprIdx::new(0),
+                            target: StepIdx::new(1),
+                        },
+                        ExprBranch {
+                            condition: ExprIdx::new(0),
+                            target: StepIdx::new(2),
+                        },
+                    ]
+                    .into_boxed_slice(),
+                    otherwise: None,
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
+        let contract = test_contract(3, 1);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_fanout == 2 && b.max_total_steps == 3);
+
+        assert!(budget.is_some(), "choose fanout budget mismatch");
     }
 }

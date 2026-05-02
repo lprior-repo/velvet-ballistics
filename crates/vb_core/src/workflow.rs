@@ -1171,16 +1171,28 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if entry_usize >= node_count {
         return Ok(());
     }
-    visited[entry_usize] = true;
+    let Some(entry_flag) = visited.get_mut(entry_usize) else {
+        return Err(WorkflowError::EntryOutOfBounds { entry: parts.entry });
+    };
+    *entry_flag = true;
     queue.push(entry_usize);
 
     let mut head = 0usize;
     while head < queue.len() {
-        let current = queue[head];
-        head = head.saturating_add(1);
+        let current = match queue.get(head) {
+            Some(&v) => v,
+            None => break,
+        };
+        head = match head.checked_add(1) {
+            Some(v) => v,
+            None => break,
+        };
 
         let mut targets: Vec<StepIdx> = Vec::new();
-        let node = &parts.nodes[current];
+        let node = match parts.nodes.get(current) {
+            Some(n) => n,
+            None => break,
+        };
         if let Some(next) = node.next {
             targets.push(next);
         }
@@ -1188,9 +1200,14 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 
         for target in targets {
             let target_usize = target.as_usize();
-            if target_usize < node_count && !visited[target_usize] {
-                visited[target_usize] = true;
-                queue.push(target_usize);
+            if target_usize < node_count {
+                let Some(flag) = visited.get_mut(target_usize) else {
+                    continue;
+                };
+                if !*flag {
+                    *flag = true;
+                    queue.push(target_usize);
+                }
             }
         }
     }

@@ -41,8 +41,10 @@ impl CapabilitySet {
     ///
     /// Rules:
     /// - `AnyWorkflow` grants everything.
-    /// - `Workflow(d)` grants `Action(_)` for any action when the digest matches the
-    ///   required workflow, and also matches `Workflow` capabilities with the same digest.
+    /// - `Workflow(d)` grants any `Action(_)` (all actions within the workflow are
+    ///   covered), and matches `Workflow` capabilities with the same digest.
+    ///   Note: `Action(ActionId)` does not carry a workflow digest, so a
+    ///   `Workflow` grant covers all actions unconditionally.
     /// - `Action(id)` grants only that specific action.
     #[must_use]
     pub fn grants(&self, cap: &Capability) -> bool {
@@ -54,13 +56,17 @@ impl CapabilitySet {
             match grant {
                 Capability::AnyWorkflow => return true,
                 Capability::Workflow(digest) => {
-                    if let Capability::Action(_action_id) = cap {
-                        return true;
-                    }
-                    if let Capability::Workflow(required_digest) = cap {
-                        if digest == required_digest {
-                            return true;
+                    // Workflow-scoped grant covers any action and matches the
+                    // same Workflow digest. Since Action(ActionId) does not carry
+                    // a workflow reference, all actions are covered.
+                    match cap {
+                        Capability::Action(_) => return true,
+                        Capability::Workflow(required_digest) => {
+                            if digest == required_digest {
+                                return true;
+                            }
                         }
+                        Capability::AnyWorkflow => {}
                     }
                 }
                 Capability::Action(granted_id) => {
@@ -183,5 +189,47 @@ mod tests {
         ]));
         // AnyWorkflow at index 0 short-circuits, so any capability is granted.
         assert!(granted.grants(&Capability::Action(ActionId::new(999))));
+    }
+
+    #[test]
+    fn capability_action_does_not_grant_any_workflow() {
+        let granted =
+            CapabilitySet::from_grants(Box::new([Capability::Action(ActionId::new(5))]));
+        assert!(!granted.grants(&Capability::AnyWorkflow));
+    }
+
+    #[test]
+    fn capability_action_does_not_grant_workflow() {
+        let granted =
+            CapabilitySet::from_grants(Box::new([Capability::Action(ActionId::new(5))]));
+        assert!(!granted.grants(&Capability::Workflow(WorkflowDigest::from_bytes([0; 32]))));
+    }
+
+    #[test]
+    fn capability_workflow_does_not_grant_any_workflow() {
+        let digest = WorkflowDigest::from_bytes([0xAA; 32]);
+        let granted = CapabilitySet::from_grants(Box::new([Capability::Workflow(digest)]));
+        assert!(!granted.grants(&Capability::AnyWorkflow));
+    }
+
+    #[test]
+    fn capability_workflow_does_not_grant_different_workflow() {
+        let digest_a = WorkflowDigest::from_bytes([0xAA; 32]);
+        let digest_b = WorkflowDigest::from_bytes([0xBB; 32]);
+        let granted = CapabilitySet::from_grants(Box::new([Capability::Workflow(digest_a)]));
+        assert!(!granted.grants(&Capability::Workflow(digest_b)));
+    }
+
+    #[test]
+    fn capability_grants_order_matters() {
+        // If Action(5) is before AnyWorkflow, Action(5) is checked first
+        // for Action(5), but AnyWorkflow still grants everything.
+        let granted = CapabilitySet::from_grants(Box::new([
+            Capability::Action(ActionId::new(5)),
+            Capability::AnyWorkflow,
+        ]));
+        assert!(granted.grants(&Capability::Action(ActionId::new(99))));
+        assert!(granted.grants(&Capability::Workflow(WorkflowDigest::from_bytes([1; 32]))));
+        assert!(granted.grants(&Capability::AnyWorkflow));
     }
 }
