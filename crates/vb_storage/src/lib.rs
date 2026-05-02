@@ -1644,6 +1644,42 @@ pub fn flush_profile(
     queue.flush_batch(journal)
 }
 
+/// Validates and persists a compiled workflow artifact.
+///
+/// Structure validation ensures the workflow can be reconstructed from its parts.
+/// Checksum validation recomputes the BLAKE3 digest from the serialized parts
+/// and compares it to the digest claimed by the workflow.
+///
+/// On success, the artifact is stored in the `compiled_ir` keyspace and its
+/// digest is returned. On failure, the storage is left unchanged.
+pub fn admit_compiled_artifact(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<vb_core::WorkflowDigest, JournalError> {
+    let parts = workflow.to_parts();
+
+    // Structure validation: must reconstruct successfully.
+    vb_core::CompiledWorkflow::try_from_parts(parts.clone())
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+
+    // Checksum validation: serialized bytes must hash to claimed digest.
+    let bytes = postcard::to_allocvec(&parts)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    let computed = blake3::hash(&bytes);
+    if computed.as_bytes() != workflow.digest().as_bytes() {
+        return Err(JournalError::ArtifactChecksumMismatch);
+    }
+
+    // Persist accepted artifact.
+    let record = CompiledIrRecord {
+        digest: workflow.digest(),
+        ir: bytes,
+    };
+    journal.put_compiled_ir(&record)?;
+
+    Ok(workflow.digest())
+}
+
 /// Storage errors.
 #[derive(Debug, Error)]
 pub enum JournalError {
@@ -1755,6 +1791,12 @@ pub enum JournalError {
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,
+    /// Artifact structure validation failed.
+    #[error("artifact structure validation failed")]
+    ArtifactMalformed,
+    /// Artifact digest checksum mismatch.
+    #[error("artifact checksum mismatch")]
+    ArtifactChecksumMismatch,
 }
 
 impl JournalError {
@@ -1802,6 +1844,10 @@ impl JournalError {
     pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x4014);
     /// Diagnostic code for postcard decode failed.
     pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4015);
+    /// Diagnostic code for artifact malformed.
+    pub const ARTIFACT_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4017);
+    /// Diagnostic code for artifact checksum mismatch.
+    pub const ARTIFACT_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4018);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -1829,6 +1875,8 @@ impl JournalError {
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
             Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
+            Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
+            Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
         }
     }
 }
@@ -9086,4 +9134,103 @@ fn open_store_uses_default_config() -> Result<(), Box<dyn std::error::Error>> {
         return Err("expected one replayed event".into());
     }
     Ok(())
+}
+
+#[test]
+fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::error::Error>> {
+    use crate::{FjallJournal, admit_compiled_artifact};
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        value::ConstValue,
+    };
+
+    let temp_dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(temp_dir.path(), None)?;
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("admit_test"),
+        digest: WorkflowDigest::from_bytes([7u8; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    let digest = workflow.digest();
+
+    let result = admit_compiled_artifact(&journal, &workflow)?;
+    assert_eq!(result, digest);
+
+    let loaded = journal.compiled_ir(digest)?;
+    assert!(loaded.is_some());
+    let record = loaded.unwrap();
+    assert_eq!(record.digest, digest);
+    Ok(())
+}
+
+#[test]
+fn admit_compiled_artifact_rejects_checksum_mismatch() {
+    use crate::{FjallJournal, JournalError, admit_compiled_artifact};
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        value::ConstValue,
+    };
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let mut parts = WorkflowParts {
+        name: Box::from("checksum_test"),
+        digest: WorkflowDigest::from_bytes([7u8; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    let _valid = CompiledWorkflow::try_from_parts(parts.clone()).expect("valid");
+    parts.digest = WorkflowDigest::from_bytes([8u8; 32]);
+    let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
+
+    let result = admit_compiled_artifact(&journal, &corrupted);
+    assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch)));
 }
