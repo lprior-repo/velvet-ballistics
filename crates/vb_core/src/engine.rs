@@ -2465,18 +2465,18 @@ mod tests {
     }
 
     #[test]
-    fn join_taint_secret_plus_derived_from_secret_is_derived_from_secret() {
+    fn join_taint_secret_plus_derived_from_secret_is_secret() {
         assert_eq!(
             join_taint(Taint::Secret, Taint::DerivedFromSecret),
-            Taint::DerivedFromSecret
+            Taint::Secret
         );
     }
 
     #[test]
-    fn join_taint_derived_from_secret_plus_secret_is_derived_from_secret() {
+    fn join_taint_derived_from_secret_plus_secret_is_secret() {
         assert_eq!(
             join_taint(Taint::DerivedFromSecret, Taint::Secret),
-            Taint::DerivedFromSecret
+            Taint::Secret
         );
     }
 
@@ -2819,7 +2819,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_expr_secret_and_derived_joins_to_derived_from_secret() -> Result<(), String> {
+    fn eval_expr_secret_and_derived_joins_to_secret() -> Result<(), String> {
         let (value, taint) = taint_eval_expr(
             vec![
                 ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -2835,7 +2835,7 @@ mod tests {
             Box::new([]),
         )?;
         ensure_equal(value, SlotValue::I64(7))?;
-        ensure_equal(taint, Taint::DerivedFromSecret)
+        ensure_equal(taint, Taint::Secret)
     }
 
     #[test]
@@ -3646,7 +3646,7 @@ mod tests {
             Box::new([]),
         )?;
         ensure_equal(value, SlotValue::I64(7))?;
-        ensure_equal(taint, Taint::DerivedFromSecret)
+        ensure_equal(taint, Taint::Secret)
     }
 
     // =========================================================================
