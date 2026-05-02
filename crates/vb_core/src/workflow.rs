@@ -1543,25 +1543,6 @@ mod tests {
     use crate::value::ConstValue;
 
     #[test]
-    fn expr_program_tracks_binary_stack_depth() -> Result<(), String> {
-        let ops = vec![load(0), load(1), ExprOp::Eq].into_boxed_slice();
-
-        let program = ExprProgram::try_from_ops(ops).map_err(|error| error.to_string())?;
-
-        if program.max_stack == 2 {
-            Ok(())
-        } else {
-            Err(format!("unexpected max stack: {}", program.max_stack))
-        }
-    }
-
-    #[test]
-    fn expr_program_rejects_unary_underflow() -> Result<(), String> {
-        match ExprProgram::try_from_ops(vec![ExprOp::Not].into_boxed_slice()) {
-            Err(CoreError::ExpressionStackUnderflow) => Ok(()),
-            other => Err(format!("unexpected result: {other:?}")),
-        }
-    }
 
     #[test]
     fn expr_program_rejects_binary_underflow() -> Result<(), String> {

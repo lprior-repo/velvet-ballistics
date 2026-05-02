@@ -13,6 +13,7 @@
 
 pub mod action;
 pub mod budget;
+pub mod capability;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
@@ -32,6 +33,7 @@ pub use action::{
     verify_idempotency,
 };
 pub use budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+pub use capability::{Capability, CapabilitySet};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{
     EngineSignal, StepBudget, build_list, build_object, drive_deterministic, eval_accessor,
