@@ -215,6 +215,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::StartsWith => Some("starts_with"),
         ExprOp::EndsWith => Some("ends_with"),
         ExprOp::Has => Some("has"),
+        ExprOp::Exists => Some("exists"),
         ExprOp::Length => Some("length"),
         ExprOp::Empty => Some("empty"),
         ExprOp::Append => Some("append"),
@@ -238,8 +239,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         | ExprOp::Add
         | ExprOp::Sub
         | ExprOp::Mul
-        | ExprOp::Div
-        | ExprOp::Exists => None,
+        | ExprOp::Div => None,
     }
 }
 
@@ -709,10 +709,7 @@ pub fn emit_expr_function(
             ExprOp::StartsWith => emit_unsupported_expr(out, "starts_with")?,
             ExprOp::EndsWith => emit_unsupported_expr(out, "ends_with")?,
             ExprOp::Has => emit_unsupported_expr(out, "has")?,
-            ExprOp::Exists => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _exists = !matches!(_v, SlotValue::Null); stack.push(SlotValue::Bool(_exists))?; }}")
-                    .map_err(fmt_err)?;
-            }
+            ExprOp::Exists => emit_unsupported_expr(out, "exists")?,
             ExprOp::Length => emit_unsupported_expr(out, "length")?,
             ExprOp::Empty => emit_unsupported_expr(out, "empty")?,
             ExprOp::Append => emit_unsupported_expr(out, "append")?,
@@ -740,6 +737,13 @@ pub fn emit_action_boundary(
     action: ActionId,
     input: SlotIdx,
 ) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    // Action boundary: action_id={}, input_slot={}",
+        action.get(),
+        input.get()
+    )
+    .map_err(fmt_err)?;
     writeln!(
         out,
         "    let _action_input = read_slot(slots, {})?;",
@@ -6135,11 +6139,14 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use crate::{CodegenError, emit_resource_contract, emit_rust_workflow};
+    use crate::{
+        CodegenError, compare_generated_to_ir, emit_action_boundary, emit_resource_contract,
+        emit_rust_workflow, validate_generated_subset,
+    };
     use proptest::prelude::*;
     use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotIdx, StepIdx,
-        WorkflowDigest, WorkflowParts,
+        ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
+        ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
     };
 
     fn arb_resource_contract() -> impl Strategy<Value = ResourceContract> {
@@ -6245,5 +6252,127 @@ mod proptests {
                 prop_assert!(source.contains("#![deny(unused_must_use)]"));
             }
         }
+    }
+
+    // =======================================================================
+    // Adversarial equivalence tests — codegen vs IR engine divergence
+    // =======================================================================
+
+    /// Verify that Exists is rejected by validate_generated_subset because
+    /// the generated code has no ValueStore to resolve object field emptiness.
+    #[test]
+    fn exists_expression_rejected_by_generated_subset() -> Result<(), String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Exists,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_exists_rejected"),
+            digest: WorkflowDigest::from_bytes([0xDA; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let result = validate_generated_subset(&workflow);
+        match result {
+            Err(CodegenError::UnsupportedIr { feature }) => {
+                assert_eq!(
+                    feature, "exists",
+                    "Exists must be rejected as unsupported with correct feature name"
+                );
+            }
+            other => {
+                return Err(format!(
+                    "expected UnsupportedIr(\"exists\"), got {other:?}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Verify that compare_generated_to_ir correctly counts action boundaries
+    /// when a workflow contains Do nodes.
+    #[test]
+    fn compare_generated_to_ir_counts_action_boundaries_for_do_workflow() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_do_action"),
+            digest: WorkflowDigest::from_bytes([0xEF; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::Do {
+                        action: ActionId::new(5),
+                        input: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_ok(),
+            "compare_generated_to_ir must accept Do workflow with action boundary markers, got: {result:?}"
+        );
+        // Verify the source actually contains the action boundary marker
+        assert!(
+            source.contains("Action boundary:"),
+            "generated source must contain 'Action boundary:' marker for Do nodes"
+        );
+        Ok(())
+    }
+
+    /// Verify that the action boundary comment includes the correct action and slot IDs.
+    #[test]
+    fn emit_action_boundary_includes_action_marker_comment() -> Result<(), String> {
+        let mut out = String::new();
+        emit_action_boundary(&mut out, ActionId::new(5), SlotIdx::new(2))
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("Action boundary: action_id=5, input_slot=2"),
+            "action boundary must include action_id and input_slot in comment, got: {out}"
+        );
+        Ok(())
     }
 }
