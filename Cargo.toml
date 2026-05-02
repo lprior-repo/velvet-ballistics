@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 members = [
     "crates/vb_core",
@@ -33,6 +35,7 @@ toml.workspace = true
 blake3.workspace = true
 bytes.workspace = true
 criterion.workspace = true
+iai-callgrind.workspace = true
 postcard.workspace = true
 saphyr.workspace = true
 tempfile.workspace = true
@@ -50,6 +53,9 @@ vb_yaml = { path = "crates/vb_yaml" }
 [[bench]]
 name = "velvet_ballastics"
 harness = false
+
+[[bench]]
+name = "iai_benches"
 
 [workspace.package]
 edition = "2024"
