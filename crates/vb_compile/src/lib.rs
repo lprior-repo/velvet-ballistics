@@ -1978,10 +1978,30 @@ fn validate_for_each_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
+    reject_unsupported_for_each_fields(body, index)?;
     reject_unknown_primitive_fields(body, index, "for_each", &["input", "item", "limit"])?;
     required_slot(body, index, "input")?;
     required_slot(body, index, "item")?;
     required_u32_field(body, index, "for_each", "limit")?;
+    Ok(())
+}
+
+fn reject_unsupported_for_each_fields(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let mapping = match body.as_mapping() {
+        Some(m) => m,
+        None => return Ok(()),
+    };
+    for (key, _) in mapping.iter() {
+        let Some(field) = key.as_str() else {
+            continue;
+        };
+        if field == "at_once" {
+            return Err(CompileError::UnsupportedStepPrimitive {
+                step,
+                primitive: "for_each",
+            });
+        }
+    }
     Ok(())
 }
 
@@ -2856,6 +2876,7 @@ fn compile_for_each(
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
+    reject_unsupported_for_each_fields(body, index)?;
     reject_unknown_primitive_fields(body, index, "for_each", &["input", "item", "limit"])?;
     let input = required_slot(body, index, "input")?;
     let item = required_slot(body, index, "item")?;
@@ -4637,6 +4658,28 @@ steps:
             matches!(next.kind, CompiledNodeKind::ForEachNext { iterator_slot, body, done } if iterator_slot == SlotIdx::new(1) && body == StepIdx::new(2) && done == StepIdx::new(3))
         );
         Ok(())
+    }
+
+    #[test]
+    fn compiler_rejects_for_each_with_unsupported_at_once_field() {
+        let source = "version: velvet-ballastics/v1\nname: for_each_unsupported\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: [1, 2, 3]\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      at_once: 5\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some("INVALID_FOR_EACH")
+            ),
+            "for_each with at_once must be rejected with INVALID_FOR_EACH, got: {result:?}"
+        );
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if matches!(errors.first(), Some(CompileError::UnsupportedStepPrimitive { step: 1, primitive: "for_each" }))
+            ),
+            "for_each with at_once must produce UnsupportedStepPrimitive error, got: {result:?}"
+        );
     }
 
     #[test]
