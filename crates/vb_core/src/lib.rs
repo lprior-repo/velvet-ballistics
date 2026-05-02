@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Hot in-memory execution core for Velvet Ballastics.
 //!
 //! This crate owns the compiled workflow IR, numeric identifiers, runtime slot

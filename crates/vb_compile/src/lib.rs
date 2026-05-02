@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold-path YAML compiler boundary.
 //!
 //! YAML enters the system only through this crate. The hot engine consumes only

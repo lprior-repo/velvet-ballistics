@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fjall append-only journal boundary with full recovery support.
 //!
 //! Provides digest-mismatch detection, full primitive replay (all node kinds),

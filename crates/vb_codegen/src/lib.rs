@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Generated Rust workflow mode for velvet-ballastics maxperf builds.
 //!
 //! Compiles `CompiledWorkflow` IR into native Rust source that passes the same

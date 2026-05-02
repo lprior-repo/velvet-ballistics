@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Bounded memory ingress and binary IPC for Velvet Ballastics.
 //!
 //! This crate deliberately exposes memory/IPC-shaped primitives only. HTTP is
