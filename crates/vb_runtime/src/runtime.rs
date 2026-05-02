@@ -374,6 +374,25 @@ mod tests {
                     run,
                     workflow: WorkflowDigest::from_bytes([2; 32]),
                 },
+                // Evidence chain: step 0 (SetConst)
+                RuntimeJournalEvent::StepStarted {
+                    run,
+                    step: StepIdx::new(0),
+                },
+                RuntimeJournalEvent::SlotWritten {
+                    run,
+                    slot: SlotIdx::new(0),
+                },
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step: StepIdx::new(0),
+                    output: SlotIdx::new(0),
+                },
+                // Evidence chain: step 1 (Finish)
+                RuntimeJournalEvent::StepStarted {
+                    run,
+                    step: StepIdx::new(1),
+                },
                 RuntimeJournalEvent::StepSucceeded {
                     run,
                     step: StepIdx::new(1),
@@ -422,8 +441,8 @@ mod tests {
         assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let events = runtime.drain_trace();
-        // Each submit produces RunSubmitted + ActionScheduled = 2 events per run
-        assert_eq!(events.len(), 4);
+        // Each submit produces: RunSubmitted + StepStarted + ActionScheduled = 3 events per run
+        assert_eq!(events.len(), 6);
     }
 
     // Helper: workflow that finishes immediately (SetConst -> Finish).

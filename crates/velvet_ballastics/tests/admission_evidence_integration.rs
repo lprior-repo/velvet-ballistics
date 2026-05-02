@@ -181,9 +181,9 @@ fn submit_artifact_then_run_succeeds() {
     let artifact_result =
         vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match artifact_result {
-        Ok(returned_digest) => {
+        Ok(artifact) => {
             assert_eq!(
-                returned_digest, digest,
+                artifact.digest, digest,
                 "submit_artifact should return the workflow digest"
             );
         }
@@ -265,8 +265,8 @@ fn run_without_artifact_under_relaxed_policy() {
     let result =
         vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match result {
-        Ok(returned) => {
-            assert_eq!(returned, digest);
+        Ok(artifact) => {
+            assert_eq!(artifact.digest, digest);
         }
         Err(err) => {
             fail_assert!("relaxed submit_artifact should succeed: {err}");
