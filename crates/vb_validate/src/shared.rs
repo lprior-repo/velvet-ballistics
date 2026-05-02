@@ -159,6 +159,18 @@ pub fn validate(parts: &WorkflowParts) -> ValidationResult<()> {
     ValidationPipeline::default().validate(parts)
 }
 
+/// Convenience function: runs all validation gates including gate 12 (action
+/// contract completeness) with default configuration.
+///
+/// This is the primary entry point for callers that want the full cold-path
+/// validation pipeline with action contract verification.
+pub fn validate_with_contracts(
+    parts: &WorkflowParts,
+    action_contracts: &[ActionContract],
+) -> ValidationResult<()> {
+    ValidationPipeline::default().validate_with_contracts(parts, action_contracts)
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

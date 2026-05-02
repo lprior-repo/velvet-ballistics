@@ -244,6 +244,10 @@ fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<()
 fn numeric_accessor_path(path: &str) -> bool {
     let mut saw_segment = false;
     for segment in path.split('.') {
+        // Reject empty segments (e.g., from "$slot.1..0") and non-numeric segments.
+        if segment.is_empty() {
+            return false;
+        }
         if segment.parse::<u32>().is_err() {
             return false;
         }

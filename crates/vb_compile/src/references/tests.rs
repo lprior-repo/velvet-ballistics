@@ -474,3 +474,55 @@ steps:
         "expected at least 2 accumulated reference errors",
     )
 }
+
+// ── SECURITY: accessor path traversal tests ──────────────────────────────
+
+/// SECURITY: Empty accessor path segment (double dot) must be rejected.
+///
+/// Attack vector: `$slot.1..0` creates an empty segment between dots.
+/// Before the fix, this passed through numeric_accessor_path because
+/// `"".parse::<u32>()` returns Err which was caught, but the overall
+/// function still returned false correctly. This test confirms the fix
+/// explicitly rejects empty segments.
+#[test]
+fn security_empty_accessor_segment_double_dot_rejected() -> Result<(), String> {
+    let source = br#"version: velvet-ballastics/v1
+name: empty_accessor_segment
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: $slot.0..1
+"#;
+    let error = adv_ref_parse_error(source)?;
+    adv_ensure(
+        matches!(error, CompileError::UnsupportedAccessorReference { .. }),
+        "empty accessor segment (double dot) should be rejected as unsupported accessor",
+    )
+}
+
+/// SECURITY: Accessor path with trailing dot must be rejected.
+#[test]
+fn security_trailing_dot_accessor_path_rejected() -> Result<(), String> {
+    let source = br#"version: velvet-ballastics/v1
+name: trailing_dot_accessor
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: $slot.0.
+"#;
+    let error = adv_ref_parse_error(source)?;
+    adv_ensure(
+        matches!(error, CompileError::UnsupportedAccessorReference { .. }),
+        "trailing dot accessor should be rejected",
+    )
+}
