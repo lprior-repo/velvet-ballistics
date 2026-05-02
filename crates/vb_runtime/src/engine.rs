@@ -2547,6 +2547,7 @@ mod tests {
             slot_count: 2,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+            symbols_count: 0,
         };
         let workflow = match CompiledWorkflow::try_from_parts(parts) {
             Ok(w) => w,
@@ -2634,6 +2635,7 @@ mod tests {
             slot_count: 1,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+            symbols_count: 0,
         };
         let workflow = match CompiledWorkflow::try_from_parts(parts) {
             Ok(w) => w,

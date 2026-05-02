@@ -2008,6 +2008,7 @@ mod tests {
             slot_count: 1,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
+            symbols_count: 0,
         };
         CompiledWorkflow::try_from_parts(parts).ok()
     }
