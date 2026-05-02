@@ -3,8 +3,9 @@ use std::io;
 use vb_codegen::CodegenError;
 use vb_compile::{CompileError, SourceMark};
 use vb_core::{
-    ActionError, ActionId, BlobId, ConstIdx, CoreError, DiagnosticCode, DiagnosticCodeParseError,
-    ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowError,
+    ActionError, ActionId, BlobId, Capability, CapabilitySet, ConstIdx, CoreError,
+    DiagnosticCode, DiagnosticCodeParseError, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx,
+    SymbolId, WorkflowDigest, WorkflowError,
 };
 use vb_expr::ExprError;
 use vb_ipc::IpcError;
@@ -28,7 +29,7 @@ fn validation_errors_map_every_public_variant_to_an_exact_code() {
 fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
-    assert_eq!(core.len(), 34);
+    assert_eq!(core.len(), 35);
 }
 
 #[test]
@@ -299,6 +300,11 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
         CoreError::BudgetExceeded { budget: "b", limit: 1 },
+        CoreError::CapabilityDenied {
+            action: ActionId::new(1),
+            required: Capability::Action(ActionId::new(1)),
+            granted: CapabilitySet::empty(),
+        },
     ];
     samples
         .iter()
@@ -346,6 +352,7 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
         CoreError::BudgetExceeded { .. } => "BudgetExceeded",
+        CoreError::CapabilityDenied { .. } => "CapabilityDenied",
     }
 }
 

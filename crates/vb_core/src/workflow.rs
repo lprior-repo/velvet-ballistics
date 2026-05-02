@@ -425,6 +425,38 @@ pub fn check_expr_stack_bound(ops: &[ExprOp], capacity: u8) -> CoreResult<u8> {
     Ok(required)
 }
 
+/// Checks that all action nodes in a compiled workflow have their capabilities satisfied.
+///
+/// For each `CompiledNodeKind::Do` node, the required capability `Action(action_id)`
+/// must be present in the granted set. Returns `Ok(())` if all capabilities are granted,
+/// or `Err(CoreError::CapabilityDenied)` on the first missing capability.
+pub fn check_capabilities(
+    nodes: &[CompiledNode],
+    granted: &crate::capability::CapabilitySet,
+) -> Result<(), CoreError> {
+    let mut i = 0;
+    while i < nodes.len() {
+        let Some(node) = nodes.get(i) else {
+            break;
+        };
+        if let CompiledNodeKind::Do { action, .. } = node.kind {
+            let required = crate::capability::Capability::Action(action);
+            if !granted.grants(&required) {
+                return Err(CoreError::CapabilityDenied {
+                    action,
+                    required,
+                    granted: granted.clone(),
+                });
+            }
+        }
+        i = match i.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    Ok(())
+}
+
 /// One compiled state-machine node.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledNode {
@@ -3501,6 +3533,167 @@ mod tests {
         match CompiledWorkflow::try_from_parts(parts) {
             Err(WorkflowError::UnreachableNode { step }) if step == StepIdx::new(1) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // =========================================================================
+    // Phase 41 tests -- check_capabilities admission wiring
+    // =========================================================================
+
+    #[test]
+    fn check_capabilities_granted_action_succeeds() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: crate::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        }];
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Action(crate::ids::ActionId::new(1)),
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn check_capabilities_missing_action_rejected() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: crate::ids::ActionId::new(2),
+                input: SlotIdx::new(0),
+            },
+        }];
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Action(crate::ids::ActionId::new(1)),
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        match result {
+            Err(CoreError::CapabilityDenied { action, .. }) => {
+                assert_eq!(action, crate::ids::ActionId::new(2));
+            }
+            other => panic!("expected CapabilityDenied, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_capabilities_any_workflow_grants_all() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Do {
+                    action: crate::ids::ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: None,
+                kind: CompiledNodeKind::Do {
+                    action: crate::ids::ActionId::new(99),
+                    input: SlotIdx::new(0),
+                },
+            },
+        ];
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::AnyWorkflow,
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn check_capabilities_workflow_scoped_grants_actions() {
+        let digest = WorkflowDigest::from_bytes([0xAB; 32]);
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: crate::ids::ActionId::new(5),
+                input: SlotIdx::new(0),
+            },
+        }];
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Workflow(digest),
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn check_capabilities_action_scoped_only_matches_exact() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: crate::ids::ActionId::new(10),
+                input: SlotIdx::new(0),
+            },
+        }];
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Action(crate::ids::ActionId::new(5)),
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        match result {
+            Err(CoreError::CapabilityDenied { action, .. }) => {
+                assert_eq!(action, crate::ids::ActionId::new(10));
+            }
+            other => panic!("expected CapabilityDenied, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_capabilities_multiple_actions_one_missing() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Do {
+                    action: crate::ids::ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                kind: CompiledNodeKind::Do {
+                    action: crate::ids::ActionId::new(2),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: Some(SlotIdx::new(2)),
+                next: None,
+                kind: CompiledNodeKind::Do {
+                    action: crate::ids::ActionId::new(3),
+                    input: SlotIdx::new(0),
+                },
+            },
+        ];
+        // Grants for actions 1 and 3 only, missing action 2.
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Action(crate::ids::ActionId::new(1)),
+            crate::capability::Capability::Action(crate::ids::ActionId::new(3)),
+        ]));
+        let result = super::check_capabilities(&nodes, &granted);
+        match result {
+            Err(CoreError::CapabilityDenied { action, .. }) => {
+                assert_eq!(action, crate::ids::ActionId::new(2));
+            }
+            other => panic!("expected CapabilityDenied for action 2, got {other:?}"),
         }
     }
 }

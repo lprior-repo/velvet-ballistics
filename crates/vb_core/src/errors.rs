@@ -2,8 +2,9 @@
 
 //! Typed core failures with stable diagnostic codes.
 
+use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::DiagnosticCode;
-use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+use crate::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -198,6 +199,16 @@ pub enum CoreError {
         /// The configured limit.
         limit: u64,
     },
+    /// A capability required by an action node was not granted.
+    #[error("capability denied: action {action:?} requires {required:?}")]
+    CapabilityDenied {
+        /// Action that was denied.
+        action: ActionId,
+        /// Required capability that was missing.
+        required: Capability,
+        /// Granted capability set at admission.
+        granted: CapabilitySet,
+    },
 }
 
 impl CoreError {
@@ -271,6 +282,8 @@ impl CoreError {
     pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1405);
     /// Budget exceeded diagnostic code.
     pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1406);
+    /// Capability denied diagnostic code.
+    pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1407);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -298,6 +311,8 @@ impl CoreError {
     pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
     /// Runtime code for budget exceeded failures.
     pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
+    /// Runtime code for capability denied failures.
+    pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = "CAPABILITY_DENIED";
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -337,6 +352,7 @@ impl CoreError {
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
+            Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
         }
     }
 
@@ -367,6 +383,7 @@ impl CoreError {
                 Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE)
             }
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
+            Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -680,6 +697,20 @@ mod tests {
     }
 
     #[test]
+    fn core_error_diagnostic_code_capability_denied() {
+        let error = CoreError::CapabilityDenied {
+            action: crate::ids::ActionId::new(5),
+            required: crate::capability::Capability::Action(crate::ids::ActionId::new(5)),
+            granted: crate::capability::CapabilitySet::empty(),
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1407));
+        assert_eq!(
+            error.to_string(),
+            "capability denied: action ActionId(5) requires Action(ActionId(5))"
+        );
+    }
+
+    #[test]
     fn core_error_runtime_codes_cover_section_17_core_mappings() {
         assert_eq!(
             CoreError::ConstOutOfBounds {
@@ -758,6 +789,15 @@ mod tests {
             .runtime_code(),
             Some("BUDGET_EXCEEDED")
         );
+        assert_eq!(
+            CoreError::CapabilityDenied {
+                action: crate::ids::ActionId::new(1),
+                required: crate::capability::Capability::Action(crate::ids::ActionId::new(1)),
+                granted: crate::capability::CapabilitySet::empty(),
+            }
+            .runtime_code(),
+            Some("CAPABILITY_DENIED")
+        );
     }
 
     #[test]
@@ -776,15 +816,16 @@ mod tests {
             CoreError::REPEAT_LIMIT_REACHED_RUNTIME_CODE,
             CoreError::COLLECT_LIMIT_REACHED_RUNTIME_CODE,
             CoreError::BUDGET_EXCEEDED_RUNTIME_CODE,
+            CoreError::CAPABILITY_DENIED_RUNTIME_CODE,
         ];
-        assert_eq!(codes.len(), 13);
+        assert_eq!(codes.len(), 14);
         assert_eq!(
             codes
                 .iter()
                 .copied()
                 .collect::<std::collections::BTreeSet<_>>()
                 .len(),
-            13
+            14
         );
     }
 
@@ -1142,6 +1183,38 @@ mod tests {
         }
         if limit != 1_024 {
             return Err(String::from("unexpected limit"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn core_error_capability_denied_exact_variant() -> Result<(), String> {
+        let action = crate::ids::ActionId::new(7);
+        let required = crate::capability::Capability::Action(action);
+        let granted = crate::capability::CapabilitySet::from_grants(Box::new([
+            crate::capability::Capability::Action(crate::ids::ActionId::new(1)),
+        ]));
+        let error = CoreError::CapabilityDenied {
+            action,
+            required: required,
+            granted: granted.clone(),
+        };
+        let CoreError::CapabilityDenied {
+            action: err_action,
+            required: err_required,
+            granted: err_granted,
+        } = error
+        else {
+            return Err(String::from("expected CapabilityDenied variant"));
+        };
+        if err_action != crate::ids::ActionId::new(7) {
+            return Err(String::from("unexpected action"));
+        }
+        if err_required != crate::capability::Capability::Action(crate::ids::ActionId::new(7)) {
+            return Err(String::from("unexpected required capability"));
+        }
+        if err_granted != granted {
+            return Err(String::from("unexpected granted set"));
         }
         Ok(())
     }

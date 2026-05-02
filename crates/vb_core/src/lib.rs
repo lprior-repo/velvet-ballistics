@@ -12,6 +12,7 @@
 //! no storage, no HTTP, and no YAML dependencies.
 
 pub mod action;
+pub mod capability;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
@@ -30,6 +31,7 @@ pub use action::{
     RetrySafety, SideEffect, propagate_action_taint, validate_idempotency_key_ingredients,
     verify_idempotency,
 };
+pub use capability::{Capability, CapabilitySet};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{
     EngineSignal, StepBudget, build_list, build_object, drive_deterministic, eval_accessor,
@@ -48,5 +50,5 @@ pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
     ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
-    check_expr_stack_bound,
+    check_capabilities, check_expr_stack_bound,
 };
