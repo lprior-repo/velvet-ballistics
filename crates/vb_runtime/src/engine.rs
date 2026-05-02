@@ -4,7 +4,7 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
-    Idempotency, propagate_action_taint,
+    Idempotency, RetrySafety, SideEffect, propagate_action_taint,
 };
 use vb_core::engine::{EngineSignal, StepBudget, step_once};
 use vb_core::errors::EngineError;
@@ -749,6 +749,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -759,6 +761,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -812,6 +816,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -852,6 +858,8 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let result = execute_do(
             &run,
@@ -1132,6 +1140,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -1142,6 +1152,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -1380,6 +1392,8 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         // When executing with an empty registry
         let result = execute_do(
@@ -1536,6 +1550,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -1546,6 +1562,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -1589,6 +1607,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -1599,6 +1619,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -1816,6 +1838,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -1826,6 +1850,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -2090,6 +2116,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             contract,
         ];
@@ -2130,6 +2158,8 @@ mod tests {
                 max_output_bytes: 0,
                 timeout_ms: 0,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
             ActionContract {
                 id: ActionId::new(99),
@@ -2139,6 +2169,8 @@ mod tests {
                 max_output_bytes: 1024,
                 timeout_ms: 5000,
                 idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
             },
         ];
         // When resolving ActionId(1) which is at index 1 but stored as ActionId(99)

@@ -4,7 +4,7 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionInput, ActionOutcome, ActionResult, ActionTicket,
-    Idempotency,
+    Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::ids::ActionId;
 
@@ -61,6 +61,8 @@ impl ActionRegistry {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         });
         *self
             .contracts
@@ -158,6 +160,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         }
     }
 
@@ -273,6 +277,8 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = test_input(1);
@@ -340,6 +346,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let result = registry.dispatch(&input, &wrong_contract);
         // Then it returns an UnknownAction error
@@ -461,6 +469,8 @@ mod tests {
             max_output_bytes: 4096,
             timeout_ms: 10000,
             idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
         };
         // When registering and resolving
         let mut registry = ActionRegistry::new();
@@ -571,6 +581,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let result = registry.register(contract);
         // Then it succeeds (65534 < 65535 = MAX_REGISTERED_ACTIONS)
@@ -590,6 +602,8 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = test_input(1);
@@ -622,6 +636,8 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = ActionInput {
