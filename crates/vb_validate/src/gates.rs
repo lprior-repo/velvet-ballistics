@@ -544,7 +544,7 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
     let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); slot_count];
 
     for node in parts.nodes.iter() {
-        let reads = node_reads(node);
+        let reads = node_reads(node, &parts.expressions);
         if let Some(output) = node.output {
             let out_usize = output.as_usize();
             if out_usize < slot_count {
@@ -608,15 +608,21 @@ fn detect_cycle_dfs(
 }
 
 /// Extracts all slot indices read by a node.
-fn node_reads(node: &CompiledNode) -> Vec<SlotIdx> {
+fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> {
     let mut reads = Vec::new();
     match &node.kind {
         CompiledNodeKind::Nop | CompiledNodeKind::SetConst { .. } => {}
         CompiledNodeKind::Copy { source } => {
             reads.push(*source);
         }
-        CompiledNodeKind::EvalExpr { .. } => {
-            // Expression reads are checked separately via LoadSlot ops.
+        CompiledNodeKind::EvalExpr { expr } => {
+            if let Some(expr_program) = expressions.get(expr.as_usize()) {
+                for op in expr_program.ops.iter() {
+                    if let ExprOp::LoadSlot(slot) = op {
+                        reads.push(*slot);
+                    }
+                }
+            }
         }
         CompiledNodeKind::BuildObject { fields } => {
             for (_, slot) in fields.iter() {
@@ -633,8 +639,13 @@ fn node_reads(node: &CompiledNode) -> Vec<SlotIdx> {
         }
         CompiledNodeKind::Choose { branches, .. } => {
             for branch in branches.iter() {
-                // condition is ExprIdx, not SlotIdx; skip
-                let _ = branch;
+                if let Some(expr_program) = expressions.get(branch.condition.as_usize()) {
+                    for op in expr_program.ops.iter() {
+                        if let ExprOp::LoadSlot(slot) = op {
+                            reads.push(*slot);
+                        }
+                    }
+                }
             }
         }
         CompiledNodeKind::ChooseSlot { branches, .. } => {
@@ -1301,5 +1312,282 @@ mod tests {
     fn compute_stack_depth_empty() {
         let ops: Vec<ExprOp> = vec![];
         assert_eq!(compute_stack_depth(&ops), Ok(0));
+    }
+
+    // ===== Adversarial tests: Gate 13 EvalExpr cycle detection =====
+
+    #[test]
+    fn gate_13_rejects_cycle_through_eval_expr() {
+        // slot 0 writes from an expression that loads slot 1,
+        // slot 1 writes from slot 0 => cycle through EvalExpr.
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(0),
+                    },
+                },
+            ],
+            2,
+        );
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
+            max_stack: 1,
+        }]);
+        assert!(
+            matches!(
+                validate_gate_13_no_slot_cycles(&parts),
+                Err(ValidationError::SlotDependencyCycle { .. })
+            ),
+            "gate 13 must detect cycle through EvalExpr LoadSlot"
+        );
+    }
+
+    #[test]
+    fn gate_13_accepts_linear_chain_through_eval_expr() {
+        // slot 0 <- const, slot 1 <- expr(slot 0) => no cycle
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: ExprIdx::new(0),
+                    },
+                },
+            ],
+            2,
+        );
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
+            max_stack: 1,
+        }]);
+        assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_13_rejects_three_slot_cycle_through_eval_expr() {
+        // slot 0 <- expr(slot 2), slot 1 <- slot 0, slot 2 <- slot 1 => cycle
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: None,
+                    kind: CompiledNodeKind::Copy {
+                        source: SlotIdx::new(1),
+                    },
+                },
+            ],
+            3,
+        );
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(2))]),
+            max_stack: 1,
+        }]);
+        assert!(
+            matches!(
+                validate_gate_13_no_slot_cycles(&parts),
+                Err(ValidationError::SlotDependencyCycle { .. })
+            ),
+            "gate 13 must detect 3-slot cycle through EvalExpr"
+        );
+    }
+
+    // ===== Adversarial tests: Gate 7 edge cases =====
+
+    #[test]
+    fn gate_07_rejects_underflow_binary_op_on_empty_stack() {
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::Eq]), // pops 2 from empty stack => underflow
+            max_stack: 0,
+        }]);
+        assert!(
+            matches!(
+                validate_gate_07_expression_stack_depth(&parts),
+                Err(ValidationError::ExpressionStackExceeded { .. })
+            ),
+            "gate 7 must reject binary op on empty stack (stack underflow)"
+        );
+    }
+
+    #[test]
+    fn gate_07_accepts_single_node_workflow_with_no_expressions() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
+    }
+
+    // ===== Adversarial tests: Gate 8 edge cases =====
+
+    #[test]
+    fn gate_08_accepts_accessor_with_empty_path() {
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        parts.accessors = Box::new([AccessorProgram {
+            root: SlotIdx::new(0),
+            path: Box::new([]),
+        }]);
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_08_rejects_max_value_index_segment() {
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        parts.accessors = Box::new([AccessorProgram {
+            root: SlotIdx::new(0),
+            path: Box::new([PathSegment::Index(u32::MAX)]),
+        }]);
+        assert!(
+            matches!(
+                validate_gate_08_accessor_path_segments(&parts),
+                Err(ValidationError::AccessorPathInvalid { .. })
+            ),
+            "gate 8 must reject u32::MAX index segment"
+        );
+    }
+
+    #[test]
+    fn gate_08_accepts_zero_index_segment() {
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        parts.accessors = Box::new([AccessorProgram {
+            root: SlotIdx::new(0),
+            path: Box::new([PathSegment::Index(0)]),
+        }]);
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
+    }
+
+    // ===== Adversarial tests: Gate 9 edge cases =====
+
+    #[test]
+    fn gate_09_accepts_slot_at_boundary_slot_count_minus_one() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_09_rejects_build_object_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::BuildObject {
+                fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(
+            matches!(
+                validate_gate_09_slot_references(&parts),
+                Err(ValidationError::SlotReferenceOutOfRange { .. })
+            ),
+            "gate 9 must reject BuildObject with out-of-range slot"
+        );
+    }
+
+    #[test]
+    fn gate_09_rejects_build_list_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::BuildList {
+                items: Box::new([SlotIdx::new(50)]),
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(
+            matches!(
+                validate_gate_09_slot_references(&parts),
+                Err(ValidationError::SlotReferenceOutOfRange { .. })
+            ),
+            "gate 9 must reject BuildList with out-of-range slot"
+        );
+    }
+
+    // ===== Adversarial tests: Gate 11 edge cases =====
+
+    #[test]
+    fn gate_11_accepts_together_with_empty_branches() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::TogetherStart {
+                    branches: Box::new([]),
+                    join: StepIdx::new(1),
+                },
+            },
+            finish_node(1, 0),
+        ];
+        let parts = make_parts(nodes, 1);
+        // Empty branches is structurally valid per gate 11 (no out-of-range steps)
+        assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_11_rejects_for_each_done_before_body() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(2),
+                done: StepIdx::new(1), // done < body => invalid span
+            },
+        }];
+        let parts = make_parts(nodes, 2);
+        assert!(
+            matches!(
+                validate_gate_11_loop_body_graph(&parts),
+                Err(ValidationError::LoopBodyStepOutOfRange { .. })
+            ),
+            "gate 11 must reject done step before body step"
+        );
+    }
+
+    #[test]
+    fn gate_11_accepts_single_node_workflow() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 }
