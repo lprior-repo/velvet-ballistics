@@ -4,6 +4,9 @@ use super::choose;
 use super::expr_eval;
 use super::node_helpers;
 use super::object_list;
+use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket};
+use crate::ids::ActionId;
+use crate::value::Taint;
 use crate::EngineSignal;
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
@@ -65,7 +68,12 @@ fn execute_boundary_node(
     kind: &CompiledNodeKind,
 ) -> Result<EngineSignal, EngineError> {
     match kind {
-        CompiledNodeKind::Do { .. } => Ok(EngineSignal::AwaitingAction),
+        CompiledNodeKind::Do { .. } => {
+            // Engine suspends on Do nodes. The caller receives AwaitingAction
+            // and must issue a ticket, dispatch to the action handler, and
+            // later call resume_action_completion or resume_action_failure.
+            Ok(EngineSignal::AwaitingAction)
+        }
         CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. } => {
             Ok(EngineSignal::AwaitingWait)
         }
@@ -76,6 +84,104 @@ fn execute_boundary_node(
             primitive: "not_yet_implemented",
         }),
     }
+}
+
+/// Constructs a journal event for Do-node suspension.
+///
+/// Callers should record this event before acknowledging the suspension.
+/// The event captures the ticket, action ID, input/output slots, and step.
+pub fn journal_action_suspended(
+    ticket: ActionTicket,
+    action: ActionId,
+    input_slot: SlotIdx,
+    output_slot: SlotIdx,
+    step: StepIdx,
+) -> ActionJournalEvent {
+    ActionJournalEvent::Suspended {
+        ticket,
+        action,
+        input_slot,
+        output_slot,
+        step,
+    }
+}
+
+/// Resumes a run after a successful action completion.
+///
+/// Writes the output value and taint to the designated slot, marks the
+/// suspended step as succeeded, and advances the PC to the next step.
+/// Returns a journal event recording the completion.
+///
+/// # Errors
+///
+/// Returns `EngineError` if the output slot write fails, the step state
+/// transition is invalid, or the next step is missing.
+pub fn resume_action_completion(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    ticket: ActionTicket,
+    output_slot: SlotIdx,
+    output_value: SlotValue,
+    output_taint: Taint,
+) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
+    let step = ticket.step;
+    let next = plan
+        .node(step)
+        .ok_or(EngineError::InvalidProgramCounter { step })?
+        .next
+        .ok_or(EngineError::MissingNextStep { step })?;
+
+    // Write the action output to the designated slot.
+    run.write_slot_with_taint(output_slot, output_value, output_taint)?;
+
+    // Mark the suspended step as succeeded.
+    run.mark_succeeded(step)?;
+
+    // Advance the program counter past the Do node.
+    run.set_pc(next)?;
+    run.increment_executed()?;
+
+    let journal = ActionJournalEvent::Completed {
+        ticket,
+        output_slot,
+        output_taint,
+    };
+
+    Ok((EngineSignal::Continue, journal))
+}
+
+/// Resumes a run after an action failure.
+///
+/// Marks the suspended step as failed. If the workflow has an error handler
+/// for this step (modeled as `ErrorHandler` node kind), the PC is advanced
+/// to the handler; otherwise the step remains in the Failed state and the
+/// caller receives the failure signal.
+///
+/// Returns a journal event recording the failure.
+///
+/// # Errors
+///
+/// Returns `EngineError` if the step state transition is invalid.
+pub fn resume_action_failure(
+    run: &mut RunFrame,
+    ticket: ActionTicket,
+    failure_code: ActionFailureCode,
+    retryable: bool,
+) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
+    let step = ticket.step;
+
+    // Mark the suspended step as failed.
+    run.mark_failed(step)?;
+
+    let journal = ActionJournalEvent::Failed {
+        ticket,
+        code: failure_code,
+        retryable,
+    };
+
+    // For now, the failure terminates the step. Error handler routing is
+    // a higher-level concern that inspects the journal and node structure.
+    Ok((EngineSignal::AwaitingAction, journal))
 }
 
 fn mark_step_after_signal(

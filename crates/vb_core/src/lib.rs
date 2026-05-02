@@ -32,9 +32,10 @@ pub mod value_store;
 pub mod workflow;
 
 pub use action::{
-    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionOutcome,
-    ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency, IdempotencyViolation,
-    RetrySafety, SideEffect, propagate_action_taint, validate_idempotency_key_ingredients,
+    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
+    ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,
+    IdempotencyViolation, RetrySafety, SideEffect, issue_action_ticket, propagate_action_taint,
+    validate_action_dispatch, validate_action_outcome, validate_idempotency_key_ingredients,
     verify_idempotency,
 };
 pub use budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
@@ -42,7 +43,8 @@ pub use capability::{Capability, CapabilitySet};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{
     EngineSignal, StepBudget, build_list, build_object, drive_deterministic, eval_accessor,
-    eval_expr, new_run_frame, run_until_blocked, step_once, validate_compiled_workflow,
+    eval_expr, journal_action_suspended, new_run_frame, resume_action_completion,
+    resume_action_failure, run_until_blocked, step_once, validate_compiled_workflow,
     validate_node_bounds, validate_resource_contract, validate_transition_target,
 };
 pub use errors::{CoreError, CoreResult, EngineError};

@@ -23,7 +23,7 @@ pub use object_list::build_object;
 pub use object_list::build_object as build_object_impl;
 pub use run_loop::{drive_deterministic, run_until_blocked};
 pub use signals::{EngineSignal, StepBudget};
-pub use step::step_once;
+pub use step::{journal_action_suspended, resume_action_completion, resume_action_failure, step_once};
 pub use validate::{
     validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
     validate_transition_target,
@@ -3707,6 +3707,430 @@ mod tests {
             false,
         )?;
         ensure_equal(budget.remaining(), 0)?;
+        Ok(())
+    }
+
+    // =========================================================================
+    // Phase 18-19 tests -- Do-node suspension, completion, failure resume
+    // =========================================================================
+
+    fn do_node_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+        let nodes = vec![
+            // Step 0: SetConst to populate the input slot
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            // Step 1: Do node (suspends here)
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            // Step 2: Finish with the action output
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+            },
+        ];
+        CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("do_node_test"),
+            digest: WorkflowDigest::from_bytes([0xA1; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(100)].into_boxed_slice(),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+    }
+
+    #[test]
+    fn do_node_suspends_with_awaiting_action() -> Result<(), String> {
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(200), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        ensure_equal(result, EngineSignal::AwaitingAction)?;
+        // The Do node is at step 1. The PC should be at step 1 (suspended there).
+        ensure_equal(run.pc(), StepIdx::new(1))?;
+        // The input slot should have been populated by SetConst.
+        ensure_equal(run.read_slot(SlotIdx::new(0)), Ok(&SlotValue::I64(100)))?;
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_completion_writes_output_and_advances() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(201), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let signal = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        ensure_equal(signal, EngineSignal::AwaitingAction)?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(201),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(1),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume with a successful completion.
+        let result =
+            resume_action_completion(&workflow, &mut run, ticket, SlotIdx::new(1), SlotValue::I64(999), Taint::Clean)
+                .map_err(|e| e.to_string())?;
+
+        let (signal, _journal) = result;
+        ensure_equal(signal, EngineSignal::Continue)?;
+        // Output slot should have the action result.
+        ensure_equal(run.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(999)))?;
+        // PC should have advanced past the Do node to step 2.
+        ensure_equal(run.pc(), StepIdx::new(2))?;
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_completion_with_taint_propagation() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(202), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(202),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(2),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume with secret-tainted output.
+        let result = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Secret,
+        )
+        .map_err(|e| e.to_string())?;
+
+        let (_signal, _journal) = result;
+        // Output slot should have secret taint.
+        ensure_equal(run.read_taint(SlotIdx::new(1)), Ok(Taint::Secret))?;
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_failure_marks_step_failed() -> Result<(), String> {
+        use crate::action::{ActionFailureCode, ActionTicket};
+        use crate::ids::SeqNo;
+        use crate::resume_action_failure;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(203), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(203),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(3),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume with failure.
+        let result = resume_action_failure(&mut run, ticket, ActionFailureCode::Timeout, true)
+            .map_err(|e| e.to_string())?;
+
+        let (_signal, journal) = result;
+        match journal {
+            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+                ensure_equal(code, ActionFailureCode::Timeout)?;
+                ensure_equal(retryable, true)?;
+            }
+            other => return Err(format!("expected Failed journal event, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_failure_non_retryable() -> Result<(), String> {
+        use crate::action::{ActionFailureCode, ActionTicket};
+        use crate::ids::SeqNo;
+        use crate::resume_action_failure;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(204), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(204),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(4),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume with a non-retryable failure.
+        let result = resume_action_failure(&mut run, ticket, ActionFailureCode::Rejected, false)
+            .map_err(|e| e.to_string())?;
+
+        let (_signal, journal) = result;
+        match journal {
+            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+                ensure_equal(code, ActionFailureCode::Rejected)?;
+                ensure_equal(retryable, false)?;
+            }
+            other => return Err(format!("expected Failed journal event, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_completion_then_finish() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(205), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(205),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(5),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume with completion.
+        let _ = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(777),
+            Taint::Clean,
+        )
+        .map_err(|e| e.to_string())?;
+
+        // PC should be at step 2 (Finish node). Continue execution.
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(777), Taint::Clean),
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn journal_action_suspended_captures_ticket_and_slots() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::journal_action_suspended;
+
+        let ticket = ActionTicket {
+            run: RunId::new(99),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 42,
+        };
+
+        let event = journal_action_suspended(
+            ticket,
+            ActionId::new(5),
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+            StepIdx::new(1),
+        );
+
+        match event {
+            crate::action::ActionJournalEvent::Suspended {
+                ticket: t,
+                action,
+                input_slot,
+                output_slot,
+                step,
+            } => {
+                ensure_equal(t.run, RunId::new(99))?;
+                ensure_equal(action, ActionId::new(5))?;
+                ensure_equal(input_slot, SlotIdx::new(0))?;
+                ensure_equal(output_slot, SlotIdx::new(1))?;
+                ensure_equal(step, StepIdx::new(1))?;
+            }
+            other => return Err(format!("expected Suspended, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn do_node_resume_completion_rejects_missing_next_step() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        // Build a workflow where the Do node has no next step.
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: None, // No next step - this should cause an error
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+        ];
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("do_no_next"),
+            digest: WorkflowDigest::from_bytes([0xB1; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10)].into_boxed_slice(),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|e| e.to_string())?;
+
+        let mut run = test_frame(RunId::new(206), &workflow)?;
+        let mut store = test_store();
+
+        // Run until suspension.
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(206),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(6),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        // Resume should fail because Do node has no next step.
+        let result = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        );
+
+        match result {
+            Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(1) => Ok(()),
+            other => Err(format!("expected MissingNextStep for step 1, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn do_node_resume_completion_journal_event_is_correct() -> Result<(), String> {
+        use crate::action::ActionTicket;
+        use crate::ids::SeqNo;
+        use crate::resume_action_completion;
+
+        let workflow = do_node_workflow().map_err(|e| e.to_string())?;
+        let mut run = test_frame(RunId::new(207), &workflow)?;
+        let mut store = test_store();
+
+        let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+
+        let ticket = ActionTicket {
+            run: RunId::new(207),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(7),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+
+        let (_signal, journal) = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|e| e.to_string())?;
+
+        match journal {
+            crate::action::ActionJournalEvent::Completed {
+                ticket: t,
+                output_slot,
+                output_taint,
+            } => {
+                ensure_equal(t.run, RunId::new(207))?;
+                ensure_equal(output_slot, SlotIdx::new(1))?;
+                ensure_equal(output_taint, Taint::DerivedFromSecret)?;
+            }
+            other => return Err(format!("expected Completed journal event, got {other:?}")),
+        }
         Ok(())
     }
 }

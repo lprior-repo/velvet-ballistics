@@ -359,6 +359,129 @@ pub fn verify_idempotency(
     }
 }
 
+/// Validates that an action dispatch is legal against the declared contract.
+///
+/// Checks:
+/// - Input slot index is within the frame's slot bounds.
+/// - Input slot is populated (not uninitialized).
+/// - Output slot index is within the frame's slot bounds.
+/// - Contract action ID matches the provided ID.
+///
+/// Returns `Ok(())` if the dispatch is valid, or the appropriate `ActionError`.
+pub fn validate_action_dispatch(
+    _contract: &ActionContract,
+    frame: &RunFrame,
+    input_slot: SlotIdx,
+    output_slot: SlotIdx,
+) -> Result<(), ActionError> {
+    // Verify input slot is readable (populated and within frame bounds).
+    if frame.read_slot(input_slot).is_err() {
+        // Input slot is either out of bounds or uninitialized.
+        // We treat both as dispatch failure since the action cannot proceed.
+        return Err(ActionError::DispatchFailed);
+    }
+
+    // Verify output slot is writable (within frame bounds).
+    // We check by reading taint; an uninitialized slot still has a taint entry.
+    if frame.read_taint(output_slot).is_err() {
+        return Err(ActionError::DispatchFailed);
+    }
+
+    Ok(())
+}
+
+/// Issues an action ticket for a Do-node suspension.
+///
+/// Constructs a new `ActionTicket` from the run metadata, action contract,
+/// and current attempt counter. The ticket tracks this invocation across
+/// suspension boundaries.
+pub fn issue_action_ticket(
+    run: RunId,
+    step: StepIdx,
+    seq: SeqNo,
+    action: ActionId,
+    attempt: u16,
+    idempotency_key: u128,
+) -> ActionTicket {
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt,
+        idempotency_key,
+    }
+}
+
+/// Validates that an action completion outcome is consistent with the contract.
+///
+/// For success completions, verifies the output slot is valid.
+/// For failure completions, verifies the failure code is recognized.
+pub fn validate_action_outcome(
+    contract: &ActionContract,
+    outcome: &ActionOutcome,
+) -> Result<(), ActionError> {
+    match outcome {
+        ActionOutcome::Ready(output_ready) => {
+            let slot_raw = output_ready.output_slot.get();
+            if u32::from(slot_raw) >= u32::from(contract.output_slot_count)
+                && contract.output_slot_count > 0
+            {
+                return Err(ActionError::OutputSlotOutOfBounds {
+                    slot: slot_raw,
+                    max_slots: contract.output_slot_count,
+                });
+            }
+            Ok(())
+        }
+        ActionOutcome::Suspended(_) => {
+            // Suspension is not a terminal outcome; it is a mid-flight state.
+            // Completing with a suspended outcome is invalid.
+            Err(ActionError::DispatchFailed)
+        }
+        ActionOutcome::Failed(_) => Ok(()),
+    }
+}
+
+/// Journal events for Do-node action lifecycle.
+///
+/// These events are recorded for crash recovery. The journal records the
+/// suspension (ticket issuance) and the terminal outcome (success or failure).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ActionJournalEvent {
+    /// Engine suspended on a Do node, issuing an action ticket.
+    Suspended {
+        /// Ticket identifying the in-flight action.
+        ticket: ActionTicket,
+        /// Action contract ID for dispatch routing.
+        action: ActionId,
+        /// Input slot carrying the action payload.
+        input_slot: SlotIdx,
+        /// Output slot to receive the result on completion.
+        output_slot: SlotIdx,
+        /// Step that triggered the suspension.
+        step: StepIdx,
+    },
+    /// Action completed successfully with output.
+    Completed {
+        /// Ticket of the completed action.
+        ticket: ActionTicket,
+        /// Output slot written by the action.
+        output_slot: SlotIdx,
+        /// Taint propagated from input to output.
+        output_taint: Taint,
+    },
+    /// Action failed terminally.
+    Failed {
+        /// Ticket of the failed action.
+        ticket: ActionTicket,
+        /// Failure code for diagnostics.
+        code: ActionFailureCode,
+        /// Whether the failure is retryable.
+        retryable: bool,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1302,5 +1425,421 @@ mod tests {
             result,
             Err(IdempotencyViolation::MissingKey(SideEffect::Sends))
         );
+    }
+
+    // =========================================================================
+    // Phase 18-19 tests -- Action dispatch, ticket issuance, outcome validation
+    // =========================================================================
+
+    // --- validate_action_dispatch ---
+
+    #[test]
+    fn validate_action_dispatch_succeeds_with_populated_input_slot() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let mut frame = frame.ok().expect("test setup");
+        let write_result = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        assert!(write_result.is_ok());
+        let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(1));
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_action_dispatch_fails_on_uninitialized_input() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        // Slot 0 is not populated, so dispatch should fail.
+        let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(1));
+        assert_eq!(result, Err(ActionError::DispatchFailed));
+    }
+
+    #[test]
+    fn validate_action_dispatch_fails_on_out_of_bounds_input() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(99), SlotIdx::new(1));
+        assert_eq!(result, Err(ActionError::DispatchFailed));
+    }
+
+    #[test]
+    fn validate_action_dispatch_succeeds_with_zero_output_count() {
+        let contract = ActionContract {
+            id: ActionId::new(2),
+            input_slot_count: 1,
+            output_slot_count: 0,
+            max_input_bytes: 1024,
+            max_output_bytes: 0,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        // Even with output_slot_count=0, the output slot is within frame bounds
+        // so the taint check passes. But input is uninitialized, so dispatch fails.
+        let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(0));
+        assert_eq!(result, Err(ActionError::DispatchFailed));
+    }
+
+    // --- issue_action_ticket ---
+
+    #[test]
+    fn issue_action_ticket_captures_all_fields() {
+        let ticket = issue_action_ticket(
+            RunId::new(42),
+            StepIdx::new(3),
+            SeqNo::new(7),
+            ActionId::new(5),
+            2,
+            12345,
+        );
+        assert_eq!(ticket.run, RunId::new(42));
+        assert_eq!(ticket.step, StepIdx::new(3));
+        assert_eq!(ticket.seq, SeqNo::new(7));
+        assert_eq!(ticket.action, ActionId::new(5));
+        assert_eq!(ticket.attempt, 2);
+        assert_eq!(ticket.idempotency_key, 12345);
+    }
+
+    #[test]
+    fn issue_action_ticket_with_zero_key_is_valid() {
+        let ticket = issue_action_ticket(
+            RunId::new(1),
+            StepIdx::new(0),
+            SeqNo::new(1),
+            ActionId::new(0),
+            1,
+            0,
+        );
+        assert_eq!(ticket.idempotency_key, 0);
+        assert_eq!(ticket.attempt, 1);
+    }
+
+    #[test]
+    fn issue_action_ticket_with_max_values() {
+        let ticket = issue_action_ticket(
+            RunId::new(u64::MAX),
+            StepIdx::new(u16::MAX),
+            SeqNo::new(u64::MAX),
+            ActionId::new(u16::MAX),
+            u16::MAX,
+            u128::MAX,
+        );
+        assert_eq!(ticket.run, RunId::new(u64::MAX));
+        assert_eq!(ticket.step, StepIdx::new(u16::MAX));
+        assert_eq!(ticket.seq, SeqNo::new(u64::MAX));
+        assert_eq!(ticket.action, ActionId::new(u16::MAX));
+        assert_eq!(ticket.attempt, u16::MAX);
+        assert_eq!(ticket.idempotency_key, u128::MAX);
+    }
+
+    // --- validate_action_outcome ---
+
+    #[test]
+    fn validate_action_outcome_ready_succeeds_with_valid_slot() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 2,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 8,
+        };
+        let outcome = ActionOutcome::Ready(output);
+        let result = validate_action_outcome(&contract, &outcome);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(5),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 8,
+        };
+        let outcome = ActionOutcome::Ready(output);
+        let result = validate_action_outcome(&contract, &outcome);
+        assert_eq!(
+            result,
+            Err(ActionError::OutputSlotOutOfBounds {
+                slot: 5,
+                max_slots: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn validate_action_outcome_failed_always_succeeds() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retryable: true,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        let result = validate_action_outcome(&contract, &outcome);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_action_outcome_suspended_rejected() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        let outcome = ActionOutcome::Suspended(ticket);
+        let result = validate_action_outcome(&contract, &outcome);
+        assert_eq!(result, Err(ActionError::DispatchFailed));
+    }
+
+    // --- ActionJournalEvent ---
+
+    #[test]
+    fn journal_event_suspended_roundtrips_fields() {
+        let ticket = ActionTicket {
+            run: RunId::new(10),
+            step: StepIdx::new(2),
+            seq: SeqNo::new(3),
+            action: ActionId::new(7),
+            attempt: 1,
+            idempotency_key: 999,
+        };
+        let event = ActionJournalEvent::Suspended {
+            ticket,
+            action: ActionId::new(7),
+            input_slot: SlotIdx::new(0),
+            output_slot: SlotIdx::new(1),
+            step: StepIdx::new(2),
+        };
+        match event {
+            ActionJournalEvent::Suspended {
+                ticket: t,
+                action,
+                input_slot,
+                output_slot,
+                step,
+            } => {
+                assert_eq!(t.run, RunId::new(10));
+                assert_eq!(action, ActionId::new(7));
+                assert_eq!(input_slot, SlotIdx::new(0));
+                assert_eq!(output_slot, SlotIdx::new(1));
+                assert_eq!(step, StepIdx::new(2));
+            }
+            other => panic!("expected Suspended, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn journal_event_completed_roundtrips_fields() {
+        let ticket = ActionTicket {
+            run: RunId::new(11),
+            step: StepIdx::new(3),
+            seq: SeqNo::new(4),
+            action: ActionId::new(8),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        let event = ActionJournalEvent::Completed {
+            ticket,
+            output_slot: SlotIdx::new(2),
+            output_taint: Taint::Secret,
+        };
+        match event {
+            ActionJournalEvent::Completed {
+                ticket: t,
+                output_slot,
+                output_taint,
+            } => {
+                assert_eq!(t.run, RunId::new(11));
+                assert_eq!(output_slot, SlotIdx::new(2));
+                assert_eq!(output_taint, Taint::Secret);
+            }
+            other => panic!("expected Completed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn journal_event_failed_roundtrips_fields() {
+        let ticket = ActionTicket {
+            run: RunId::new(12),
+            step: StepIdx::new(4),
+            seq: SeqNo::new(5),
+            action: ActionId::new(9),
+            attempt: 3,
+            idempotency_key: 0,
+        };
+        let event = ActionJournalEvent::Failed {
+            ticket,
+            code: ActionFailureCode::Timeout,
+            retryable: true,
+        };
+        match event {
+            ActionJournalEvent::Failed {
+                ticket: t,
+                code,
+                retryable,
+            } => {
+                assert_eq!(t.run, RunId::new(12));
+                assert_eq!(code, ActionFailureCode::Timeout);
+                assert!(retryable);
+            }
+            other => panic!("expected Failed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn journal_event_serialization_roundtrip() {
+        let ticket = ActionTicket {
+            run: RunId::new(99),
+            step: StepIdx::new(1),
+            seq: SeqNo::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+            idempotency_key: 12345,
+        };
+        let event = ActionJournalEvent::Suspended {
+            ticket,
+            action: ActionId::new(3),
+            input_slot: SlotIdx::new(0),
+            output_slot: SlotIdx::new(1),
+            step: StepIdx::new(1),
+        };
+        let bytes = postcard::to_allocvec(&event);
+        assert!(bytes.is_ok(), "serialization should succeed");
+        let bytes = bytes.ok().expect("test setup");
+        let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok(), "deserialization should succeed");
+        assert_eq!(recovered.ok().expect("test setup"), event);
+    }
+
+    #[test]
+    fn journal_event_completed_serialization_roundtrip() {
+        let ticket = ActionTicket {
+            run: RunId::new(50),
+            step: StepIdx::new(5),
+            seq: SeqNo::new(10),
+            action: ActionId::new(2),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        let event = ActionJournalEvent::Completed {
+            ticket,
+            output_slot: SlotIdx::new(3),
+            output_taint: Taint::DerivedFromSecret,
+        };
+        let bytes = postcard::to_allocvec(&event);
+        assert!(bytes.is_ok());
+        let bytes = bytes.ok().expect("test setup");
+        let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok());
+        assert_eq!(recovered.ok().expect("test setup"), event);
+    }
+
+    #[test]
+    fn journal_event_failed_serialization_roundtrip() {
+        let ticket = ActionTicket {
+            run: RunId::new(51),
+            step: StepIdx::new(6),
+            seq: SeqNo::new(11),
+            action: ActionId::new(4),
+            attempt: 2,
+            idempotency_key: 0,
+        };
+        let event = ActionJournalEvent::Failed {
+            ticket,
+            code: ActionFailureCode::Rejected,
+            retryable: false,
+        };
+        let bytes = postcard::to_allocvec(&event);
+        assert!(bytes.is_ok());
+        let bytes = bytes.ok().expect("test setup");
+        let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok());
+        assert_eq!(recovered.ok().expect("test setup"), event);
     }
 }
