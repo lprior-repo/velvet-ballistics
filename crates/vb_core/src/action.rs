@@ -6,6 +6,7 @@ use crate::frame::RunFrame;
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Declares how an action behaves with respect to repeated execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -184,16 +185,19 @@ pub enum ActionFailureCode {
 }
 
 /// Typed errors from the action subsystem.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ActionError {
     /// The requested action is not registered.
+    #[error("unknown action: {action:?}")]
     UnknownAction {
         /// Action identifier that was not found.
         action: ActionId,
     },
     /// The supplied ticket does not match any in-flight action.
+    #[error("invalid action ticket")]
     InvalidTicket,
     /// Input payload exceeds the contract's declared byte limit.
+    #[error("action payload too large: {actual_bytes} bytes, max {max_bytes}")]
     PayloadTooLarge {
         /// Declared maximum bytes.
         max_bytes: u32,
@@ -201,6 +205,7 @@ pub enum ActionError {
         actual_bytes: u32,
     },
     /// Output slot index exceeds the contract's declared output count.
+    #[error("action output slot out of bounds: {slot}, max {max_slots}")]
     OutputSlotOutOfBounds {
         /// Requested slot index.
         slot: u16,
@@ -208,14 +213,19 @@ pub enum ActionError {
         max_slots: u16,
     },
     /// Replay was blocked because the action is not idempotent.
+    #[error("non-idempotent action replay blocked")]
     NonIdempotentReplayBlocked,
     /// Completion was already recorded for this ticket.
+    #[error("action completion already recorded")]
     CompletionAlreadyRecorded,
     /// Action dispatch queue is at capacity.
+    #[error("action dispatch queue full")]
     QueueFull,
     /// Output encoding failed.
+    #[error("action output encoding failed")]
     EncodingFailed,
     /// Action dispatch failed internally.
+    #[error("action dispatch failed")]
     DispatchFailed,
 }
 

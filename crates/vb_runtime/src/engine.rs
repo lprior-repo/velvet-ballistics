@@ -20,13 +20,16 @@ use crate::primitives;
 pub type RuntimeEngineResult<T> = Result<T, RuntimeEngineError>;
 
 /// Errors from the runtime engine's action-aware execution.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RuntimeEngineError {
     /// Core engine error.
+    #[error("{0}")]
     Core(EngineError),
     /// Action subsystem error.
+    #[error("{0}")]
     Action(ActionError),
     /// Retry policy exhausted all attempts.
+    #[error("retry exhausted for action {action:?} after {attempts} attempts")]
     RetryExhausted {
         /// Action that exhausted retries.
         action: ActionId,
@@ -34,6 +37,7 @@ pub enum RuntimeEngineError {
         attempts: u16,
     },
     /// Taint propagation rejected a clean result from tainted input.
+    #[error("taint violation at step {step:?}")]
     TaintViolation {
         /// Step where the violation occurred.
         step: StepIdx,
