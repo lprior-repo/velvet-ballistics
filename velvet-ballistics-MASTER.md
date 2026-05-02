@@ -203,6 +203,8 @@ Strict nightly governance:
 | `cargo-deny` | Policy scan | Required release gate. |
 | `cargo-vet` | Supply-chain review | Required release gate. |
 | `cargo-geiger` | Unsafe scan | Required release gate. |
+| `blake3` | Digest computation for envelopes and artifacts | Required for compiled digests, journal digests, blob digests. |
+| `crc32c` | CRC32C header checksum for binary envelopes | Required for envelope header integrity. |
 
 `crossbeam-queue::ArrayQueue` is required for bounded MPMC queues because capacity is fixed at construction and admission can fail without allocating. `rtrb` is required for SPSC trace/action rings where single-producer/single-consumer ownership gives predictable bounded behavior.
 
@@ -665,6 +667,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompiledWorkflow {
+    // NOTE: current implementation uses u32; the contract prefers WorkflowId for type safety.
     pub workflow_id: u32,
     pub nodes: Box<[CompiledNode]>,
     pub expressions: Box<[ExprProgram]>,
@@ -699,7 +702,7 @@ pub enum CompiledNodeKind {
     ForEachJoin { output: SlotIdx },
     TogetherStart { branches: Box<[StepIdx]>, join: StepIdx },
     TogetherBranch { branch: u16, entry: StepIdx, join: StepIdx },
-    TogetherJoin { branch_count: u16 },
+    TogetherJoin { branch_count: u16, accumulator: SlotIdx },
     CollectStart { source: SlotIdx, limit: u32, page_size: u32, body: StepIdx, done: StepIdx },
     CollectPage { collector_slot: SlotIdx, body: StepIdx, done: StepIdx },
     CollectNext { collector_slot: SlotIdx, body: StepIdx, done: StepIdx },
@@ -709,7 +712,7 @@ pub enum CompiledNodeKind {
     ReduceFinish { accumulator: SlotIdx },
     RepeatStart { max_attempts: u16, body: StepIdx, done: StepIdx },
     RepeatAttempt { attempt_slot: SlotIdx, body: StepIdx, done: StepIdx },
-    RepeatCheck { attempt_slot: SlotIdx, done: StepIdx },
+    RepeatCheck { attempt_slot: SlotIdx, body: StepIdx, exhausted: StepIdx },
     RepeatFinish { result: SlotIdx },
     WaitUntil { deadline_slot: SlotIdx },
     WaitEvent { event: SlotIdx, timeout_slot: Option<SlotIdx> },
@@ -861,10 +864,10 @@ impl RunFrame {
     }
 
     pub fn write_slot(&mut self, slot: SlotIdx, value: SlotValue) -> CoreResult<()> {
-        self.slots
+        *self
+            .slots
             .get_mut(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })?
-            .replace(value);
+            .ok_or(CoreError::SlotOutOfBounds { slot })? = Some(value);
         Ok(())
     }
 
@@ -2496,3 +2499,985 @@ new velvet-ballistics spelling outside the exact allowlist
 25. Sanitizer nightly jobs pass for binary decoders, IPC, storage, runtime, and generated workflows.
 26. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead is closed with evidence.
 27. Mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed; represented tasks/probes alone are not acceptance evidence.
+
+---
+
+## 45. Normative Runtime Semantics
+
+Every `CompiledNodeKind` variant has exact behavior defined here. Two implementations (IR interpreter, generated Rust) must match on: terminal result, typed error variant and fields, final pc, slot values, slot taints, step states, journal event sequence, action tickets, retry counts, wait/ask scheduling, and replay behavior.
+
+### StepState Transition Contract
+
+Valid transitions:
+
+```text
+Pending    → Running, Succeeded, Failed, Cancelled, Skipped
+Running    → Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
+Waiting    → Running
+Asking     → Running
+Succeeded  → (terminal)
+Failed     → (terminal)
+Cancelled  → (terminal)
+Skipped    → (terminal)
+```
+
+Idempotent re-mark (`state == next`) is valid. All other transitions return `InternalInvariantViolation { reason: "invalid_state_transition" }`.
+
+### EngineSignal / RuntimeSignal
+
+Core engine signals: `Continue`, `Finished(SlotValue)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk`.
+
+Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq, action, attempt, idempotency_key }`.
+
+### Node Semantics
+
+#### Nop
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | None |
+| Slots written | None |
+| Taint | None |
+| StepState | Pending → Running → Succeeded |
+| Journal | None |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed |
+| Errors | `MissingNextStep` if `node.next` is None |
+
+#### SetConst { value: ConstIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Constant pool at `value` index |
+| Slots written | `node.output` with `Taint::Clean` |
+| Taint | Always Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed, const pool bounds |
+| Errors | `ConstOutOfBounds`, `MissingOutputSlot`, `MissingNextStep` |
+
+#### Copy { source: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `source` slot value and taint |
+| Slots written | `node.output` with source taint |
+| Taint | Propagated from source |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed |
+| Errors | `SlotOutOfBounds` (covers both out-of-bounds and uninitialized), `MissingOutputSlot`, `MissingNextStep` |
+
+#### EvalExpr { expr: ExprIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Expression program at `expr` index; expression may read arbitrary slots, constants, and accessors |
+| Slots written | `node.output` with `Taint::Clean` |
+| Taint | Always Clean (no taint join of expression operands) |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed, expression stack depth ≤ 64, expression ops ≤ 256 |
+| Errors | `ExprOutOfBounds`, `MissingOutputSlot`, `MissingNextStep`, any `ExprError` (stack overflow, type mismatch, division by zero, integer overflow) |
+
+#### BuildObject { fields: Box<[(SymbolId, SlotIdx)]> }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Each field's slot value |
+| Slots written | `node.output` with `SlotValue::Object(ObjectId)`, taint `Clean` |
+| Taint | Always Clean (no join of field taints) |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed, object field count bounds |
+| Errors | `SlotOutOfBounds` (any field slot), `MissingOutputSlot`, `MissingNextStep` |
+| Side effects | Allocates `ObjectId` in `ValueStore` |
+
+#### BuildList { items: Box<[SlotIdx]> }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Each item's slot value |
+| Slots written | `node.output` with `SlotValue::List(ListId)`, taint `Clean` |
+| Taint | Always Clean (no join of item taints) |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed, list item count bounds |
+| Errors | `SlotOutOfBounds` (any item slot), `MissingOutputSlot`, `MissingNextStep` |
+| Side effects | Allocates `ListId` in `ValueStore` |
+
+#### Jump { target: StepIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | None |
+| Slots written | None |
+| Taint | None |
+| StepState | Pending → Running → Succeeded |
+| Journal | None |
+| Suspension | Never |
+| Next pc | `target` |
+| Resource checks | Budget consumed |
+| Errors | None at this node (invalid target caught at next step's `InvalidProgramCounter`) |
+
+#### Finish { result: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `result` slot value |
+| Slots written | None (result is returned as signal, not written) |
+| Taint | Result taint passed through (no rejection of Secret/DerivedFromSecret) |
+| StepState | Pending → Running → Succeeded |
+| Journal | RunFinished |
+| Suspension | Terminal — run completes |
+| Next pc | No change |
+| Resource checks | Budget consumed |
+| Errors | `SlotOutOfBounds` (result slot uninitialized) |
+
+#### Do { action: ActionId, input: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `input` slot taint (runtime engine also reads slot value for ticket) |
+| Slots written | None at suspension time; output written on action completion |
+| Taint | Runtime engine checks: `DeterministicPure` rejects non-Clean input. Output taint via `propagate_action_taint()`. `AtLeastOnceExternal` upgrades Secret to DerivedFromSecret. |
+| StepState | Pending → Running (stays Running while awaiting action) |
+| Journal | ActionScheduled at suspension; ActionCompleted on resume |
+| Suspension | Returns `AwaitingAction(ActionTicket)` |
+| Next pc | No change at suspension; set to `node.next` on action completion |
+| Resource checks | Budget consumed, contract resolution, action ID validation |
+| Errors | `UnknownAction` (if contracts non-empty and action not found), `TaintViolation` (DeterministicPure with tainted input) |
+| Resume | Action completion writes output slot with value + taint, marks step Succeeded, advances pc |
+
+#### WaitUntil { deadline_slot: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `deadline_slot` (must be I64 or F64) |
+| Slots written | None |
+| Taint | None |
+| StepState | Pending → Running → Waiting |
+| Journal | WaitScheduled |
+| Suspension | Returns `AwaitingWait` |
+| Next pc | No change |
+| Resource checks | Budget consumed |
+| Errors | `TypeMismatch { expected: "deadline" }` if slot is not numeric |
+| Resume | Timer fire marks step Succeeded, sets pc to `node.next` |
+
+#### WaitEvent { event: SlotIdx, timeout_slot: Option<SlotIdx> }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `event` slot (numeric), optional `timeout_slot` (numeric) |
+| Slots written | None |
+| Taint | None |
+| StepState | Pending → Running → Waiting |
+| Journal | WaitScheduled |
+| Suspension | Returns `AwaitingWait` |
+| Next pc | No change |
+| Resource checks | Budget consumed |
+| Errors | `TypeMismatch` if event or timeout is not numeric |
+| Resume | Timer fire marks step Succeeded, sets pc to `node.next` |
+
+#### Ask { prompt: SlotIdx, timeout_slot: Option<SlotIdx> }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `prompt` slot (must be Symbol), optional `timeout_slot` (numeric) |
+| Slots written | None at suspension; answer written on AskResume |
+| Taint | None at suspension |
+| StepState | Pending → Running → Asking |
+| Journal | AskScheduled |
+| Suspension | Returns `AwaitingAsk` |
+| Next pc | No change |
+| Resource checks | Budget consumed |
+| Errors | `TypeMismatch { expected: "prompt" }` if prompt is not Symbol |
+| Resume | AskResume writes answer slot, marks step Succeeded, sets pc to `AskResume.next` |
+
+#### AskResume { answer: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `answer` slot value |
+| Slots written | `node.output` with answer value (if output is Some) |
+| Taint | Clean (write_slot, not write_slot_with_taint) |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten, AskAnswered |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Resource checks | Budget consumed |
+| Errors | `SlotOutOfBounds`, `MissingNextStep` |
+
+#### Choose { branches: Box<[ExprBranch]>, otherwise: Option<StepIdx> }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Each branch's `ExprIdx` expression evaluated in order |
+| Slots written | None (branches redirect control flow) |
+| Taint | No taint enforcement on branch conditions |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten for any internal expression evaluations |
+| Suspension | Never |
+| Next pc | First branch with `Bool(true)` → branch target. None match → `otherwise`. |
+| Resource checks | Budget consumed |
+| Errors | `TypeMismatch` if expression result is not Bool, `MissingNextStep` if no match and no `otherwise` |
+
+#### ChooseSlot { branches: Box<[SlotBranch]>, otherwise: Option<StepIdx> }
+
+Same as Choose but reads pre-materialized boolean slots instead of evaluating expressions.
+
+#### ForEachStart { input, item_slot, limit, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `input` slot (must be List) |
+| Slots written | `item_slot` with first item; `output` with tail list. If empty: `output` with empty list. |
+| Taint | Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Empty → `done`. Non-empty → `body`. |
+| Resource checks | `item_count <= limit`, else `IterationLimitExceeded` |
+| Errors | `TypeMismatch` if input is not List, `MissingOutputSlot`, iteration limit |
+
+#### ForEachNext { iterator_slot, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `iterator_slot` (must be List) |
+| Slots written | `output` with first item; `iterator_slot` with tail list |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Empty → `done`. Non-empty → `body`. |
+| Errors | `TypeMismatch` if iterator is not List |
+
+#### ForEachJoin { output: SlotIdx }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `materialized` slot (must be List) |
+| Slots written | `output` with list value |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Errors | `MissingOutputSlot`, `MissingNextStep`, `TypeMismatch` |
+
+#### TogetherStart { branches, join }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | None |
+| Slots written | `output` with empty list |
+| Taint | Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | First branch entry |
+| Resource checks | Branch count ≤ u16, branches non-empty |
+| Errors | `TogetherBranchLimitExceeded`, `InvalidCompiledWorkflow` if branches empty, `MissingOutputSlot` |
+
+#### TogetherBranch { branch, entry, join, accumulator }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `accumulator` slot (must be List); `output` for previous result |
+| Slots written | `accumulator` with appended result |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `entry` (branch 0) or `entry` for subsequent branches |
+| Errors | `TypeMismatch` if accumulator is not List |
+
+#### TogetherJoin { branch_count, accumulator }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `accumulator` slot (List), `output` for last result |
+| Slots written | `output` with final merged list |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Errors | `MissingOutputSlot`, `MissingNextStep` |
+
+#### CollectStart { source, limit, page_size, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `source` slot (must be List) |
+| Slots written | `collector_slot` with first page; pagination state in global table |
+| Taint | Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Empty → `done`. Non-empty → `body`. |
+| Resource checks | `item_count <= limit`, `page_size > 0`, `page_size <= limit` |
+| Errors | `TypeMismatch`, `CollectItemLimitExceeded`, `CollectPageLimitExceeded`, `InvalidCompiledWorkflow` |
+
+#### CollectPage { collector_slot, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `collector_slot` validation (must be List) |
+| Slots written | None |
+| StepState | Running → Succeeded |
+| Suspension | Never |
+| Next pc | `body` |
+| Errors | `TypeMismatch` if collector is not List |
+
+#### CollectNext { collector_slot, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `collector_slot` (List), pagination state |
+| Slots written | `collector_slot` with next page |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Cursor exhausted → `done`. Otherwise → `body`. |
+| Errors | `TypeMismatch`, `InvalidCompiledWorkflow` if pagination state missing |
+
+#### CollectFinish { collector_slot }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `collector_slot` (List) |
+| Slots written | `output` with collector value; pagination state removed |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Errors | `MissingOutputSlot`, `MissingNextStep` |
+
+#### ReduceStart { input, accumulator, initial, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Constant pool at `initial`; `input` slot (must be List) |
+| Slots written | `accumulator` with initial value; `output` with first item; `input` with tail list |
+| Taint | Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Empty → `done`. Non-empty → `body`. |
+| Errors | `ConstOutOfBounds`, `TypeMismatch`, `MissingOutputSlot` |
+
+#### ReduceNext { iterator_slot, accumulator, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `iterator_slot` (must be List) |
+| Slots written | `output` with next item; `iterator_slot` with tail |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Empty → `done`. Non-empty → `body`. |
+| Errors | `TypeMismatch` |
+
+#### ReduceFinish { accumulator }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `accumulator` slot |
+| Slots written | `output` with accumulator value |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Errors | `MissingOutputSlot`, `MissingNextStep` |
+
+#### RepeatStart { max_attempts, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | None |
+| Slots written | `output` with packed I64 `(max_attempts << 32) | 0` |
+| Taint | Clean |
+| StepState | Pending → Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `body` |
+| Resource checks | `max_attempts > 0` |
+| Errors | `MissingOutputSlot`, `InternalInvariantViolation` if max_attempts is 0 |
+
+#### RepeatAttempt { attempt_slot, body, done }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `attempt_slot` (must be I64 packed state) |
+| Slots written | None |
+| StepState | Running → Succeeded |
+| Suspension | Never |
+| Next pc | `body` |
+| Errors | `TypeMismatch`, `InternalInvariantViolation` if packed state invalid |
+
+#### RepeatCheck { attempt_slot, body, exhausted }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `attempt_slot` (I64 packed state) |
+| Slots written | `attempt_slot` with incremented attempt count |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | Attempts exhausted → `exhausted`. Otherwise → `body`. |
+| Errors | `MissingNextStep` if attempts remain but next is None |
+
+#### RepeatFinish { result }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | `result` slot |
+| Slots written | `output` with result value |
+| Taint | Clean |
+| StepState | Running → Succeeded |
+| Journal | SlotWritten |
+| Suspension | Never |
+| Next pc | `node.next` |
+| Errors | `MissingOutputSlot`, `MissingNextStep` |
+
+#### RetryCheck { policy_slot, body, exhausted }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | Retry policy (attempts remaining) |
+| Slots written | None |
+| StepState | Running → Succeeded |
+| Suspension | Never |
+| Next pc | Attempts remain → `body`. Exhausted → `exhausted`. |
+| Errors | None |
+
+#### ErrorHandler { body, handler }
+
+| Aspect | Behavior |
+|--------|----------|
+| Inputs read | None |
+| Slots written | None |
+| StepState | Failed step stays Failed; handler step becomes Running → Succeeded |
+| Journal | StepFailed on the failed step |
+| Suspension | Never |
+| Next pc | `handler` |
+| Errors | None at this node |
+
+---
+
+## 46. Expression Grammar, Type System, and Helper Signatures
+
+### Precedence Table
+
+Highest to lowest. All binary operators are left-associative.
+
+| Binding power (left/right) | Operators |
+|---------------------------|-----------|
+| 11 / 12 | Unary `not`, unary `-` (prefix) |
+| 11 / 12 | `*`, `/` |
+| 9 / 10 | `+`, `-` |
+| 7 / 8 | `>`, `>=`, `<`, `<=` |
+| 5 / 6 | `==`, `!=` |
+| 3 / 4 | `and` |
+| 1 / 2 | `or` |
+
+Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max helper args: 8. Max tokens: 256. Max source bytes: 4096. Stack depth: 64 (`ArrayVec<SlotValue, 64>`).
+
+### Type Rules
+
+| Operator | Accepted types | Return type | Error on mismatch |
+|----------|---------------|-------------|-------------------|
+| `+`, `-`, `*`, `/` | I64, I64 | I64 | `TypeMismatch { expected: "number" }`. Overflow → `IntegerOverflow`. Div-by-zero → `DivisionByZero`. |
+| `>`, `>=`, `<`, `<=` | I64, I64 | Bool | `TypeMismatch { expected: "number" }` |
+| `==`, `!=` | Any, Any | Bool | Never (accepts any `SlotValue` pair via `PartialEq`) |
+| `and`, `or` | Bool, Bool | Bool | `TypeMismatch { expected: "boolean" }`. **No short-circuit** — both operands evaluated before operator applies. |
+| `not` | Bool | Bool | `TypeMismatch { expected: "boolean" }` |
+| `-` (unary) | I64 | I64 | `TypeMismatch { expected: "number" }`. `i64::MIN` → `IntegerOverflow`. |
+
+### Null Comparison Rules
+
+`Null == Null` → `true`. `Null == <anything_else>` → `false`. Equality uses `SlotValue::PartialEq` which is derived. `I64(0) != F64(FiniteF64(0.0))` — different types are never equal.
+
+### F64 Status
+
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, and `ConstValue::F64` exist in the type system and constant pool. The typechecker accepts F64 in arithmetic and coercion. However, the expression pipeline has no float literal syntax, no `F64` variant in `ExprLiteral`, no `F64` arm in `literal_to_const`, and no F64 arithmetic in the evaluator. F64 values can only enter through runtime slot initialization or action outputs. The typechecker is more permissive than the evaluator — expressions that typecheck as F64 may fail at eval time.
+
+### Helper Signatures
+
+| Helper | Arity | Input types | Return | Implementation status |
+|--------|-------|-------------|--------|-----------------------|
+| `exists` | 1 | Any | Bool | Implemented: `!matches!(value, Null)` |
+| `length` | 1 | List or Null | I64 | Implemented: list item count, 0 for Null |
+| `count` | 1 | List or Null | I64 | Implemented: alias for `length` |
+| `empty` | 1 | List or Null | Bool | **Bug**: returns `true` for all lists regardless of length |
+| `unique` | 1 | List | List | **Bug**: no-op, returns input unchanged |
+| `contains` | 2 | List, T | Bool | Unimplemented: returns `UnknownHelper` at eval |
+| `starts_with` | 2 | Symbol, Symbol | Bool | Unimplemented |
+| `ends_with` | 2 | Symbol, Symbol | Bool | Unimplemented |
+| `has` | 2 | Object, Symbol | Bool | Unimplemented |
+| `append` | 2 | List, T | List | Unimplemented |
+| `append_if` | 3 | List, T, Bool | List | Unimplemented |
+| `merge` | 2 | Object, Object | Object | Unimplemented. Typechecker returns `List` (bug). |
+| `sum` | 1 | List | I64 | Unimplemented. Spec says 2 args (list, field). Code defines arity 1. |
+
+### Short-Circuit Policy
+
+`and` and `or` do **not** short-circuit. Both operands are popped from the expression stack and evaluated before the boolean operator applies. A type error in the second operand fires even when the first operand determines the result. The bytecode compiler emits both sub-expression bytecodes before the operator bytecode, so no bytecode-level short-circuit is possible either.
+
+---
+
+## 47. Taint Lattice and Propagation Rules
+
+### Lattice Ordering
+
+```text
+Clean < DerivedFromSecret < Secret
+```
+
+`join_taint` returns the input unchanged. The lattice ordering is enforced by the propagation rules below: Secret never downgrades to Clean, and Clean never upgrades without explicit action.
+
+### Propagation by Operation
+
+| Operation | Taint behavior |
+|-----------|---------------|
+| `SetConst` | Always `Clean` — constants are compile-time values with no secret origin |
+| `Copy` | Preserves source taint — `write_slot_with_taint(output, value, source_taint)` |
+| `EvalExpr` | Always `Clean` — `write_slot` (not `write_slot_with_taint`). No taint join of expression operands. |
+| `BuildObject` | Always `Clean` — no join of field taints |
+| `BuildList` | Always `Clean` — no join of item taints |
+| `Do` (DeterministicPure) | Output ≥ input. `TaintViolation` if input is not Clean. Clean input → Clean output. |
+| `Do` (IdempotentExternal) | Same propagation as DeterministicPure |
+| `Do` (AtLeastOnceExternal) | Secret input → `DerivedFromSecret` output. `DerivedFromSecret` input → `DerivedFromSecret`. Clean input → Clean. |
+| `Choose` / `ChooseSlot` | No taint tracking on branch conditions |
+| `Finish` | Result taint passed through. No rejection of Secret or DerivedFromSecret results. |
+
+### Control-Flow Taint
+
+v1 does **not** track control-flow taint. A secret value can choose which public value is returned without triggering a taint violation. Example:
+
+```yaml
+choose:
+  - if: "$secrets.token == 'x'"
+    then: return_a
+  - otherwise: return_b
+```
+
+Both `return_a` and `return_b` are Clean regardless of `$secrets.token` taint. This is an explicit v1 design decision. If control-flow taint is needed, it must be added as a v2 feature with a dedicated bead and evidence.
+
+### Secret Storage
+
+Secrets are referenced by `SymbolId` at runtime. The runtime never holds raw secret values — only taint markers. Secret values are resolved at compile time and stored as taint flags on the corresponding input slots.
+
+---
+
+## 48. Value Arena, Handle Lifetime, and Blob Contract
+
+### Arena Types
+
+| Arena | Storage type | Deduplication | Growth |
+|-------|-------------|---------------|--------|
+| Symbol | `Vec<Box<str>>` | None — same string yields different `SymbolId` on each insert | Append-only |
+| List | `Vec<Box<[SlotValue]>>` | None | Append-only |
+| Object | `Vec<(Box<[(SymbolId, SlotValue)]>, IndexMap<SymbolId, SlotValue>)>` | Duplicate keys: later value wins | Append-only |
+| Blob | `Vec<Box<[u8]>>` | None | Append-only |
+
+### Handle Validity
+
+A handle (`SymbolId`, `ListId`, `ObjectId`, `BlobId`) is valid if `id.as_usize() < arena.len()`. No generational indices. Handles are `Copy`. Handle validity lasts for the lifetime of the `ValueStore` — handles are not valid across different `ValueStore` instances.
+
+### Object Field Lookup
+
+Objects use a dual representation: primary `Box<[(SymbolId, SlotValue)]>` for serialization order, secondary `IndexMap<SymbolId, SlotValue>` for O(1) field lookup. Field order is insertion order.
+
+### Blob Size vs Envelope
+
+`ResourceContract.max_blob_bytes` is `u64` (default 16 MiB). Envelope `payload_len_u32` is `u32` (max ~4 GiB). **v1 design decision**: logical blobs are capped at `u32::MAX` bytes. No blob chunking in v1. A blob exceeding `u32::MAX` is rejected at admission.
+
+### No GC in v1
+
+Blobs, symbols, lists, and objects are write-once, read-many. No deletion, TTL, or garbage collection. Long-running servers must manage storage externally or restart.
+
+---
+
+## 49. Journal Event Payload Schemas and Crash-Consistency Ordering
+
+### TraceEvent Variants (hot ring)
+
+```text
+StepStarted   { run: RunId, step: StepIdx }
+StepEnded     { run: RunId, step: StepIdx }
+SlotWritten   { run: RunId, slot: SlotIdx }
+ActionScheduled { run: RunId, step: StepIdx }
+ActionCompleted { run: RunId, step: StepIdx }
+ActionFailed  { run: RunId, step: StepIdx, code: ActionFailureCode }
+AskAnswered   { run: RunId, step: StepIdx, slot: SlotIdx }
+RunSubmitted  { run: RunId }
+RunFinished   { run: RunId }
+RunFailed     { run: RunId }
+RunCancelled  { run: RunId }
+```
+
+### Runtime Journal Events (durable)
+
+```text
+RunSubmitted     { run: RunId, workflow: WorkflowDigest }
+SlotWritten      { run: RunId, slot: SlotIdx }
+ActionScheduled  { run: RunId, step: StepIdx, action: ActionId }
+ActionCompleted  { run: RunId, step: StepIdx, action: ActionId }
+WaitScheduled    { run: RunId, step: StepIdx }
+AskScheduled     { run: RunId, step: StepIdx }
+WaitResolved     { run: RunId, step: StepIdx }
+AskAnswered      { run: RunId, step: StepIdx, slot: SlotIdx }
+RunFinished      { run: RunId, result: SlotIdx }
+RunFailed        { run: RunId }
+RunCancelled     { run: RunId }
+```
+
+### Ordering Invariants
+
+1. `RunSubmitted` before any `StepStarted` or `SlotWritten`.
+2. `StepStarted` before `SlotWritten` for that step.
+3. `ActionScheduled` before external action dispatch.
+4. `ActionCompleted` before frame mutation on resume.
+5. `RunFinished` after final result slot is persisted.
+6. Timer resume: step marked `Running` then `Succeeded` before continuing drive loop.
+
+### Crash-Consistency Rule
+
+External side effects must not be dispatched until `ActionScheduled` is durably recorded under strict durability. For journaled mode, dispatch may occur after queue admission.
+
+### Trace Ring
+
+SPSC ring via `rtrb::RingBuffer`. On full, events are dropped and `dropped` counter incremented. `history: VecDeque` stores all successfully pushed events for snapshot queries. `drain_for_run` consumes non-matching events silently.
+
+---
+
+## 50. IPC Transport, Backpressure, and Error Codes
+
+### Transport
+
+- Socket type: Unix stream socket.
+- Max concurrent clients: 256.
+- Read chunk: 4096 bytes.
+- Backpressure: Bounded command queue (`ArrayQueue`). Queue full → `IpcError::Full` (E3001).
+- Per-connection: Non-blocking writes with writable-event polling via `mio`.
+- Pipelining: Not supported in v1 — one command per connection, response before next command.
+- Shutdown: `Shutdown` acknowledged. Pending runs are not forcibly cancelled.
+
+### IpcResponse Variants
+
+```text
+AcceptedRun { run_id: u64 }
+Healthy
+ShuttingDown
+TraceCount { count: u32 }
+Events { events: Vec<IpcTraceEvent> }
+Inspected { run_id: u64 }
+BadRequest
+PayloadError { diagnostic: u16, message: String }
+CommandPayloadMismatch
+WorkflowResolutionRequired
+WorkflowResolutionUnsupported
+WorkflowDigestMismatch
+CountOutOfRange { actual: usize, limit: u32 }
+FrameError { message: String }
+RuntimeError { message: String }
+```
+
+### IpcError Variants with Diagnostic Codes
+
+```text
+E3001  Full
+E3002  Disconnected
+E3003  PayloadTooLarge { actual, limit }
+E3004  InvalidMagic { actual }
+E3005  UnsupportedVersion { actual }
+E3006  UnknownCommand(u16)
+E3007  ReservedNonZero { actual }
+E3008  PayloadLengthMismatch { header, actual }
+E3009  HeaderEncodeFailed
+E300A  HeaderDecodeFailed
+E300B  PayloadLengthOutOfRange { actual }
+E300C  PayloadEncodeFailed
+E300D  PayloadDecodeFailed
+E300E  ResponseDecodeFailed
+```
+
+---
+
+## 51. Digest Canonicalization and Schema Versioning
+
+### Required Digests
+
+```text
+workflow_source_digest = BLAKE3(raw source bytes)
+compiled_digest       = BLAKE3(canonical compiled artifact payload)
+action_abi_digest     = BLAKE3(canonical sorted action contracts)
+policy_digest         = BLAKE3(canonical resource/durability/runtime policy)
+payload_digest        = BLAKE3(postcard payload bytes)
+```
+
+### Canonical Ordering for Stable Digests
+
+- Symbol IDs in definition order (index-based).
+- Constant pool in index order.
+- Accessor table in index order.
+- Compiled nodes in `StepIdx` order.
+- Object fields in insertion order (no sorting).
+- Action contracts sorted by `ActionId`.
+- `ResourceContract` fields in struct field order, encoded via Postcard.
+
+### Libraries
+
+`blake3 = "1"` and `crc32c = "0.6"` are required workspace dependencies for envelope digests and header checksums.
+
+---
+
+## 52. Fallible Allocation and No-Panic Enforcement
+
+### OOM Policy
+
+- Admission-time allocations must use fallible reservation paths where available.
+- Hot runtime code must not call allocation APIs that can grow implicitly.
+- OOM during admission returns `CoreError::AllocationFailed`.
+- OOM after run admission is a bug and must be prevented by reservation in turbo mode.
+- `vec![StepState::Pending; states_len]` in `RunFrame::new` can panic on OOM — acceptable for cold-path construction only if the frame is preallocated in turbo mode.
+
+### `FiniteF64` Deserialization
+
+Derived `Deserialize` for `FiniteF64` must reject NaN, `+inf`, and `-inf` in release mode. If the derive permits non-finite values through Postcard decode, a custom `Deserialize` impl is required that calls `FiniteF64::new` and maps failure to a typed deserialization error.
+
+---
+
+## 53. Hot/Cold Module Classification
+
+### Hot Path Modules
+
+No allocation after admission, no formatting, no maps, no string operations:
+
+- `vb_core::engine`
+- `vb_core::frame`
+- `vb_runtime::engine`
+- `vb_runtime::shard` (tick loop only)
+- `vb_runtime::frame_pool`
+- `vb_runtime::primitives::*`
+- `vb_ipc` decoder after header validation
+- Generated workflow code
+
+### Cold Path Modules
+
+Maps, formatting, and allocation allowed:
+
+- `vb_yaml`
+- `vb_validate`
+- `vb_compile` (except final IR validation helpers used by runtime)
+- `vb_runtime::action` (ActionRegistry, validation)
+- `vb_runtime::trace` (event rendering)
+- `vb_storage::recovery`
+- Diagnostics
+- CLI
+- Test and bench harnesses
+
+### Scanner Policy
+
+The banned-token scanner (Section 12) must be path-aware. `format!` is forbidden in hot modules but allowed in cold modules. `HashMap` is forbidden in hot modules but allowed in cold modules.
+
+---
+
+## 54. Single-Server Ownership and Database Locking
+
+- One active runtime process may own a database path at a time.
+- Startup must acquire an exclusive process lock (e.g., `flock`).
+- If the lock is already held, startup fails with a typed error.
+- No distributed coordination, leader election, replication, or multi-writer mode in v1.
+- Many IPC clients may connect to one server. One server owns the runtime and Fjall database.
+
+---
+
+## 55. Action Worker Model and Shard Non-Blocking Contract
+
+- `DeterministicPure` actions may execute inline only if bounded and non-blocking.
+- External actions must not block the shard loop.
+- External action dispatch uses explicit `Suspended` ticket path.
+- No per-action thread spawning unless through a bounded worker pool.
+- Worker pool size is configured and bounded.
+- Queue full returns `ActionError::QueueFull`.
+- Current implementation: `execute_do_without_contract` always creates an `ActionTicket` and returns `AwaitingAction`. The shard suspends the run. External completion arrives via `ShardCommand::ActionCompleted`.
+
+---
+
+## 56. Runtime Profile Defaults
+
+### ShardConfig Defaults
+
+```text
+command_queue_capacity: 1024
+trace_capacity: 4096
+step_budget_per_tick: 1000
+max_active_runs: 1024
+```
+
+### ResourceContract::DEFAULT
+
+```text
+max_steps: 1_000
+max_slots: 65_535 (u16::MAX)
+max_constants: 65_535
+max_accessors: 8_192
+max_expressions: 4_096
+max_expr_stack: 64
+max_step_budget_per_tick: u64::MAX
+max_input_bytes: 1 MiB
+max_output_bytes: 1 MiB
+max_blob_bytes: 16 MiB
+max_ipc_payload_bytes: 1 MiB
+max_retry_attempts: 65_535
+max_fanout: 65_535
+max_collect_items: 4_294_967_295 (u32::MAX)
+max_queue_depth: 1_024
+max_journal_batch_bytes: 1 MiB
+```
+
+### Named Profiles
+
+| Profile | Persistence | Allocation | Code path |
+|---------|-------------|------------|-----------|
+| `dev` | Volatile | On-demand | IR interpreter |
+| `test` | Volatile + deterministic tracing | On-demand | IR interpreter |
+| `turbo` | Journaled | Preallocated frames, bounded queues | IR interpreter |
+| `maxperf` | Strict | All preallocated | Generated Rust |
+
+---
+
+## 57. Feature Flag Policy
+
+- Default features: none (all code always compiled).
+- `generated` feature: enables generated workflow compilation support (codegen crate).
+- `bench` feature: enables benchmark-only harness code.
+- `volatile` feature: enables volatile storage mode (test-only).
+- Forbidden features: `json`, `http` in v1 runtime crates.
+- `maxperf` is a profile (Section 34), not a feature.
+
+---
+
+## 58. Platform Support
+
+v1 supported target: `x86_64-unknown-linux-gnu`. Unix domain sockets required. Other targets are non-release experimental unless a dedicated portability bead adds evidence.
+
+---
+
+## 59. Security and Threat Model
+
+### Trusted Components
+
+Compiled IR, Fjall database, runtime engine, generated Rust code.
+
+### Untrusted Inputs
+
+Workflow YAML source, IPC client payloads, action outputs, persisted bytes during recovery.
+
+### Threat Model
+
+| Threat | Mitigation |
+|--------|-----------|
+| Malformed YAML | Strict parser, typed validation errors |
+| Malformed IPC frames | Magic validation, length bounds, typed IPC errors, fuzz coverage |
+| Oversized payloads | Bounded frames, bounded queues, typed `PayloadTooLarge` |
+| Non-idempotent replay | `ActionReplayTracker` blocks re-execution, `Idempotency` policy |
+| Digest tampering | BLAKE3 digests on source, IR, blobs. Mismatch → typed error, no silent continue |
+| Secret leak via diagnostics | Taint tracking on action outputs. No raw secret values in hot state |
+| Local privilege escalation | Unix socket permissions. No authentication in v1 |
+| DoS via resource exhaustion | Bounded queues, bounded retries, bounded expression stacks, bounded trace rings |
+| Storage corruption | Fjall WAL replay, snapshot recovery, typed storage errors |
+
+---
+
+## 60. Evidence Artifact Format
+
+A bead is not closable without an evidence artifact:
+
+```toml
+# .evidence/<bead-id>.toml
+bead = "runtime-engine-setconst"
+phase = 13
+git_commit = "abc123..."
+rustc = "nightly-2026-04-28"
+
+[[commands]]
+command = "cargo +nightly fmt --all -- --check"
+exit = 0
+log = "logs/fmt.txt"
+
+[[commands]]
+command = "cargo +nightly nextest run -p vb_core"
+exit = 0
+log = "logs/nextest-vb-core.txt"
+
+[[benchmarks]]
+name = "transition_set"
+before = "1234ns"
+after = "987ns"
+file = "bench/transition_set.json"
+```
+
+---
+
+## 61. Fjall Storage Contract
+
+### Keyspace Profiles
+
+| Profile | Keyspaces | Tuning |
+|---------|-----------|--------|
+| `Hot` | run_event, index_status, index_workflow, index_action, run_header | Bloom filter (10 bits/key), no KV separation |
+| `Cold` | workflow_source, compiled_ir, run_snapshot | KV separation at 4096-byte threshold |
+| `Blob` | blob | KV separation at 1024-byte threshold |
+
+### Key Format
+
+All keys use prefix byte + big-endian numeric IDs. Fjall keys remain big-endian for lexicographic ordering. Record body envelopes are little-endian. String keys are forbidden on hot paths.
+
+### Write Path
+
+Writes use `Mutex<()>` write lock for ordering. Durability profiles:
+- `Volatile`: no Fjall writes during run (test/bench only).
+- `Journaled`: bounded group commit via `JournalWriterQueue`.
+- `Strict`: synchronous `persist(PersistMode::SyncAll)` after write.
+
+### Recovery
+
+- Full journal replay when no snapshot exists.
+- Snapshot + tail journal replay when snapshot exists.
+- `ActionReplayTracker` prevents non-idempotent re-execution during recovery.
+- Recovery never reparses YAML — loads by digest.
+
+### Atomic Cross-Keyspace Writes
+
+`OwnedWriteBatch` provides single-WAL-fsync atomicity for multi-keyspace writes. Recommended for event + index co-writes. Current implementation uses individual inserts with write lock.
+
+### Single-Writer Enforcement
+
+Fjall v3 acquires an exclusive file lock per database. Only one process may open a database path at a time. Second process receives a typed error on open.
+
+---
+
+## 62. No-Async Rule
+
+v1 runtime core must not depend on `tokio`, `async-std`, `smol`, `futures` executors, `async_trait`, or async task scheduling. `mio` is the only approved low-level eventing mechanism for IPC. Actions may block only in bounded action worker contexts or return `Suspended`. No async function may appear in `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.

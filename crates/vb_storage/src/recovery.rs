@@ -329,6 +329,20 @@ pub fn verify_digests(
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
     }
+    // TODO(Full digest): ActionAbiMismatch and PolicyDigestMismatch checks require
+    // (a) an action-ABI digest per action (ActionDigest or similar) available in the
+    //     compiled IR or action registry, and
+    // (b) a per-step policy digest recorded alongside each StepStarted/ActionScheduled event.
+    // Once the compiled IR carries `action_abi_digest: WorkflowDigest` per action and the
+    // journal records `policy_digest: WorkflowDigest` per step, this branch should:
+    //   for each ActionScheduled event in the journal:
+    //     let stored_abi = event.action_abi_digest;
+    //     let current_abi = action_registry.digest(event.action);
+    //     if stored_abi != current_abi { return Err(ActionAbiMismatch { action_id }) }
+    //   for each StepStarted event:
+    //     let stored_policy = event.policy_digest;
+    //     let current_policy = compiled_ir.policy_digest_at(event.step);
+    //     if stored_policy != current_policy { return Err(PolicyDigestMismatch { step }) }
     Ok(())
 }
 
@@ -344,6 +358,21 @@ pub fn recover_full_journal(
         return Err(RecoveryError::NoRecoveryData { run });
     }
     replay_events(&events, tracker)
+}
+
+/// Loads a snapshot from the journal, translating decode failures to
+/// `RecoveryError::CorruptSnapshot`.
+pub fn load_snapshot(
+    journal: &FjallJournal,
+    run: RunId,
+    seq: EventSeq,
+) -> RecoveryResult<RunSnapshot> {
+    match journal.snapshot(run, seq) {
+        Ok(Some(snapshot)) => Ok(snapshot),
+        Ok(None) => Err(RecoveryError::CorruptSnapshot { run, seq }),
+        Err(JournalError::PostcardDecodeFailed) => Err(RecoveryError::CorruptSnapshot { run, seq }),
+        Err(other) => Err(RecoveryError::Journal(other)),
+    }
 }
 
 /// Replays from a snapshot plus tail events.
