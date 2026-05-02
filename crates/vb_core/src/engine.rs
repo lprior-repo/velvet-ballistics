@@ -1900,4 +1900,479 @@ mod tests {
         )?;
         Ok(())
     }
+
+    // =========================================================================
+    // Phase 43 adversarial tests -- taint propagation
+    // =========================================================================
+
+    #[test]
+    fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Result<(), String> {
+        let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_eval_expr"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expression].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(200), &workflow)?;
+        // Write a secret-tainted value into slot 0 that the expression reads.
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
+            .map_err(|error| error.to_string())?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        match result {
+            Ok(EngineSignal::Finished(SlotValue::I64(99), Taint::Secret)) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
+        let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_eval_clean"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expression].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(201), &workflow)?;
+        // Write a clean value into slot 0.
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
+            .map_err(|error| error.to_string())?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        match result {
+            Ok(EngineSignal::Finished(SlotValue::I64(10), Taint::Clean)) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_build_object"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![
+                            (SymbolId::new(1), SlotIdx::new(0)),
+                            (SymbolId::new(2), SlotIdx::new(1)),
+                        ]
+                        .into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10), ConstValue::I64(20)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(202), &workflow)?;
+        let mut store = test_store();
+
+        // Step 0: SetConst I64(10) into slot 0 (Clean).
+        let s0 = step_once(&workflow, &mut run, &mut store);
+        match s0 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 0, got {other:?}")),
+        }
+        // Step 1: SetConst I64(20) into slot 1 (Clean). Override to Secret.
+        let s1 = step_once(&workflow, &mut run, &mut store);
+        match s1 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 1, got {other:?}")),
+        }
+        // Now override slot 1 taint to Secret before BuildObject reads it.
+        run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret)
+            .map_err(|error| error.to_string())?;
+        // Step 2: BuildObject joins taint from slot 0 (Clean) + slot 1 (Secret) -> Secret.
+        let s2 = step_once(&workflow, &mut run, &mut store);
+        match s2 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 2, got {other:?}")),
+        }
+        // Verify the output slot 2 has Secret taint.
+        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        ensure_equal(slot2_taint, Taint::Secret)?;
+        // Step 3: Finish carries the taint from slot 2.
+        let s3 = step_once(&workflow, &mut run, &mut store);
+        match s3 {
+            Ok(EngineSignal::Finished(SlotValue::Object(_), Taint::Secret)) => Ok(()),
+            Ok(EngineSignal::Finished(_, other_taint)) => {
+                Err(format!("expected Secret taint, got {other_taint:?}"))
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String> {
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_build_object_clean"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![
+                            (SymbolId::new(1), SlotIdx::new(0)),
+                            (SymbolId::new(2), SlotIdx::new(1)),
+                        ]
+                        .into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(10), ConstValue::I64(20)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(203), &workflow)?;
+        let mut store = test_store();
+
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+        match result {
+            Ok(EngineSignal::Finished(SlotValue::Object(_), Taint::Clean)) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_build_list"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(11), ConstValue::I64(22)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(204), &workflow)?;
+        let mut store = test_store();
+
+        // Step 0: SetConst I64(11) into slot 0.
+        let s0 = step_once(&workflow, &mut run, &mut store);
+        match s0 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 0, got {other:?}")),
+        }
+        // Override slot 0 taint to DerivedFromSecret.
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::DerivedFromSecret)
+            .map_err(|error| error.to_string())?;
+        // Step 1: SetConst I64(22) into slot 1 (Clean).
+        let s1 = step_once(&workflow, &mut run, &mut store);
+        match s1 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 1, got {other:?}")),
+        }
+        // Step 2: BuildList joins taint from slot 0 (DerivedFromSecret) + slot 1 (Clean).
+        let s2 = step_once(&workflow, &mut run, &mut store);
+        match s2 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 2, got {other:?}")),
+        }
+        // Verify output slot 2 has DerivedFromSecret taint.
+        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        ensure_equal(slot2_taint, Taint::DerivedFromSecret)?;
+        // Step 3: Finish carries the taint from slot 2.
+        let s3 = step_once(&workflow, &mut run, &mut store);
+        match s3 {
+            Ok(EngineSignal::Finished(SlotValue::List(_), Taint::DerivedFromSecret)) => Ok(()),
+            Ok(EngineSignal::Finished(_, other_taint)) => {
+                Err(format!("expected DerivedFromSecret taint, got {other_taint:?}"))
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String> {
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("taint_build_list_all_secret"),
+            digest: WorkflowDigest::from_bytes([0x43; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(11), ConstValue::I64(22)].into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: crate::ResourceContract::DEFAULT,
+        })
+        .map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(205), &workflow)?;
+        let mut store = test_store();
+
+        // Step 0: SetConst I64(11) into slot 0. Override to Secret.
+        let s0 = step_once(&workflow, &mut run, &mut store);
+        match s0 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 0, got {other:?}")),
+        }
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::Secret)
+            .map_err(|error| error.to_string())?;
+        // Step 1: SetConst I64(22) into slot 1. Override to Secret.
+        let s1 = step_once(&workflow, &mut run, &mut store);
+        match s1 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 1, got {other:?}")),
+        }
+        run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(22), Taint::Secret)
+            .map_err(|error| error.to_string())?;
+        // Step 2: BuildList joins taint from slot 0 (Secret) + slot 1 (Secret) -> Secret.
+        let s2 = step_once(&workflow, &mut run, &mut store);
+        match s2 {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from step 2, got {other:?}")),
+        }
+        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        ensure_equal(slot2_taint, Taint::Secret)?;
+        // Step 3: Finish carries Secret taint.
+        let s3 = step_once(&workflow, &mut run, &mut store);
+        match s3 {
+            Ok(EngineSignal::Finished(SlotValue::List(_), Taint::Secret)) => Ok(()),
+            Ok(EngineSignal::Finished(_, other_taint)) => {
+                Err(format!("expected Secret taint, got {other_taint:?}"))
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn engine_signal_finished_carries_correct_secret_taint() -> Result<(), String> {
+        // Write a secret-tainted value into slot 0 via SetConst, then override taint.
+        let workflow = tiny_workflow(ConstValue::I64(77)).map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(206), &workflow)?;
+        let mut store = test_store();
+
+        // First step sets slot 0 to I64(77) with Clean taint. Override to Secret.
+        let first = step_once(&workflow, &mut run, &mut store);
+        match first {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from first step, got {other:?}")),
+        }
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Secret)
+            .map_err(|error| error.to_string())?;
+
+        let second = step_once(&workflow, &mut run, &mut store);
+        match second {
+            Ok(EngineSignal::Finished(SlotValue::I64(77), Taint::Secret)) => Ok(()),
+            Ok(EngineSignal::Finished(value, taint)) => {
+                Err(format!("expected Finished(I64(77), Secret), got ({value:?}, {taint:?})"))
+            }
+            other => Err(format!("expected Finished, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn engine_signal_finished_carries_correct_derived_from_secret_taint() -> Result<(), String> {
+        let workflow = tiny_workflow(ConstValue::Bool(true)).map_err(|error| error.to_string())?;
+        let mut run = test_frame(RunId::new(207), &workflow)?;
+        let mut store = test_store();
+
+        let first = step_once(&workflow, &mut run, &mut store);
+        match first {
+            Ok(EngineSignal::Continue) => {}
+            other => return Err(format!("expected Continue from first step, got {other:?}")),
+        }
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::DerivedFromSecret)
+            .map_err(|error| error.to_string())?;
+
+        let second = step_once(&workflow, &mut run, &mut store);
+        match second {
+            Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)) => Ok(()),
+            Ok(EngineSignal::Finished(value, taint)) => {
+                Err(format!("expected Finished(Bool(true), DerivedFromSecret), got ({value:?}, {taint:?})"))
+            }
+            other => Err(format!("expected Finished, got {other:?}")),
+        }
+    }
 }
