@@ -64,8 +64,9 @@ pub(super) fn finish_run(
     result: SlotIdx,
 ) -> Result<EngineSignal, EngineError> {
     let value = *run.read_slot(result)?;
+    let taint = run.read_taint(result)?;
     run.increment_executed()?;
-    Ok(EngineSignal::Finished(value))
+    Ok(EngineSignal::Finished(value, taint))
 }
 
 use crate::EngineSignal;

@@ -87,7 +87,7 @@ fn mark_step_after_signal(
         EngineSignal::AwaitingWait => run.mark_waiting(step),
         EngineSignal::AwaitingAsk => run.mark_asking(step),
         EngineSignal::AwaitingAction => Ok(()),
-        EngineSignal::Continue | EngineSignal::Finished(_) => run.mark_succeeded(step),
+        EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),
         EngineSignal::StepBudgetExhausted => Ok(()),
     }
 }
@@ -100,11 +100,11 @@ fn eval_expr_node(
     store: &mut ValueStore,
     expr: ExprIdx,
 ) -> Result<EngineSignal, EngineError> {
-    let value = expr_eval::eval_expr_with_store(plan, run, store, expr)?;
+    let (value, taint) = expr_eval::eval_expr_with_store(plan, run, store, expr)?;
     let output = node
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
-    run.write_slot(output, value)?;
+    run.write_slot_with_taint(output, value, taint)?;
     node_helpers::jump_to_next(run, node.next, node.id)
 }
 
@@ -115,11 +115,11 @@ fn build_object_node(
     fields: &[(crate::ids::SymbolId, SlotIdx)],
     store: &mut ValueStore,
 ) -> Result<EngineSignal, EngineError> {
-    let handle = object_list::build_object(store, run, fields)?;
+    let (handle, taint) = object_list::build_object_with_taint(store, run, fields)?;
     let output = node
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
-    run.write_slot(output, SlotValue::Object(handle))?;
+    run.write_slot_with_taint(output, SlotValue::Object(handle), taint)?;
     node_helpers::jump_to_next(run, node.next, node.id)
 }
 
@@ -130,10 +130,10 @@ fn build_list_node(
     items: &[SlotIdx],
     store: &mut ValueStore,
 ) -> Result<EngineSignal, EngineError> {
-    let handle = object_list::build_list(store, run, items)?;
+    let (handle, taint) = object_list::build_list_with_taint(store, run, items)?;
     let output = node
         .output
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
-    run.write_slot(output, SlotValue::List(handle))?;
+    run.write_slot_with_taint(output, SlotValue::List(handle), taint)?;
     node_helpers::jump_to_next(run, node.next, node.id)
 }
