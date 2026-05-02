@@ -238,7 +238,9 @@ mod tests {
                 assert_eq!(r, required);
                 assert_eq!(g, granted);
             }
-            other => panic!("expected CapabilityDenied, got {other:?}"),
+            other => {
+                assert!(false, "expected CapabilityDenied, got {other:?}");
+            }
         }
     }
 
@@ -309,10 +311,9 @@ mod tests {
             caps.clone(),
         );
         assert!(result.is_ok());
-        let admission = result;
-        let admission = match admission {
+        let admission = match result {
             Ok(a) => a,
-            Err(e) => panic!("expected Ok, got {e:?}"),
+            Err(_) => return,
         };
         assert_eq!(admission.artifact_digest(), digest);
         assert_eq!(admission.run_id(), run_id);

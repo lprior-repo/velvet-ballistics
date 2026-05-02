@@ -3,6 +3,7 @@
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
+use vb_core::capability::CapabilitySet;
 use vb_core::engine::StepBudget;
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -40,6 +41,8 @@ pub enum ShardCommand {
         run: RunId,
         /// Compiled workflow to execute.
         workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
     },
     /// Submit a new run with runtime input slots already mapped by the caller.
     SubmitWithInputs {
@@ -49,6 +52,8 @@ pub enum ShardCommand {
         workflow: CompiledWorkflow,
         /// Initial slot values written before deterministic execution starts.
         inputs: Box<[(SlotIdx, SlotValue)]>,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
     },
     /// Resume a suspended run from its current program counter.
     Resume {
@@ -270,12 +275,13 @@ impl Shard {
         };
 
         match cmd {
-            ShardCommand::Submit { run, workflow } => self.handle_submit(run, workflow)?,
+            ShardCommand::Submit { run, workflow, caps } => self.handle_submit(run, workflow, caps)?,
             ShardCommand::SubmitWithInputs {
                 run,
                 workflow,
                 inputs,
-            } => self.handle_submit_with_inputs(run, workflow, &inputs)?,
+                caps,
+            } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
             ShardCommand::Resume { run } => self.handle_resume(run)?,
             ShardCommand::ActionCompleted { ticket, output } => {
                 self.handle_action_completion(ticket, output)?;
@@ -351,8 +357,8 @@ impl Shard {
         self.shutting_down
     }
 
-    fn handle_submit(&mut self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs(run, workflow, &[])
+    fn handle_submit(&mut self, run: RunId, workflow: CompiledWorkflow, caps: CapabilitySet) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs(run, workflow, &[], caps)
     }
 
     fn handle_submit_with_inputs(
@@ -360,6 +366,7 @@ impl Shard {
         run: RunId,
         workflow: CompiledWorkflow,
         inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         if self.runs.contains_key(&run) {
             return Err(RuntimeError::RunAlreadyExists);
@@ -370,7 +377,7 @@ impl Shard {
             });
         }
         let digest = workflow.digest();
-        let admission = self.build_admission(run, digest)?;
+        let admission = self.build_admission(run, digest, caps)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
@@ -396,16 +403,16 @@ impl Shard {
         &self,
         run: RunId,
         digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
         use crate::admission::{AdmissionError, admit_run};
-        use vb_core::capability::CapabilitySet;
 
         match admit_run(
             self.artifact_store.as_ref(),
             self.policy,
             digest,
             run,
-            CapabilitySet::empty(),
+            caps,
         ) {
             Ok(admission) => Ok(Some(admission)),
             Err(AdmissionError::ArtifactNotFound { digest }) => {
@@ -1206,7 +1213,7 @@ mod tests {
         let run = RunId::new(301);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1233,7 +1240,7 @@ mod tests {
         let run = RunId::new(302);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1266,6 +1273,7 @@ mod tests {
         let first = shard.enqueue(ShardCommand::Submit {
             run: RunId::new(1),
             workflow: workflow.clone(),
+            caps: CapabilitySet::empty(),
         });
         assert_eq!(first, Ok(()));
         assert_eq!(shard.tick(), Ok(true));
@@ -1273,6 +1281,7 @@ mod tests {
         let second = shard.enqueue(ShardCommand::Submit {
             run: RunId::new(2),
             workflow,
+            caps: CapabilitySet::empty(),
         });
         assert_eq!(second, Ok(()));
         assert_eq!(
@@ -1296,7 +1305,7 @@ mod tests {
         };
         let run = RunId::new(7);
 
-        let submitted = shard.enqueue(ShardCommand::Submit { run, workflow });
+        let submitted = shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() });
         assert_eq!(submitted, Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         let inspected = shard.enqueue(ShardCommand::Inspect {
@@ -1366,7 +1375,7 @@ mod tests {
         };
         let run = RunId::new(1);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1552,7 +1561,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
                 workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1571,7 +1580,7 @@ mod tests {
         let run = RunId::new(11);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1598,7 +1607,7 @@ mod tests {
         let run = RunId::new(12);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1619,7 +1628,7 @@ mod tests {
         let run = RunId::new(13);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1641,7 +1650,7 @@ mod tests {
         let run = RunId::new(14);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1699,13 +1708,13 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run,
                 workflow: workflow.clone(),
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
         // When submitting the same run ID again
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick returns RunAlreadyExists
@@ -1730,7 +1739,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
                 workflow: wf,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1742,7 +1751,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(2),
                 workflow: wf2,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick returns ActiveRunCapacityExceeded with capacity 1
@@ -1763,7 +1772,7 @@ mod tests {
         let run = RunId::new(10);
         // When submitting a run
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1800,7 +1809,7 @@ mod tests {
         let run = RunId::new(20);
         // When submitting a run
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1823,7 +1832,7 @@ mod tests {
         let run = RunId::new(30);
         // When submitting a run with a finishing workflow
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1891,7 +1900,7 @@ mod tests {
         };
         let run = RunId::new(55);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         let tick1 = shard.tick();
@@ -1930,7 +1939,7 @@ mod tests {
         };
         let run = RunId::new(56);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1964,7 +1973,7 @@ mod tests {
         };
         let run = RunId::new(60);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -1984,7 +1993,7 @@ mod tests {
         let run = RunId::new(61);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2006,7 +2015,7 @@ mod tests {
         let run = RunId::new(62);
 
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2043,7 +2052,7 @@ mod tests {
         };
         let run = RunId::new(70);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2078,7 +2087,7 @@ mod tests {
         };
         let run = RunId::new(71);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2105,7 +2114,7 @@ mod tests {
         };
         let run = RunId::new(73);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2139,7 +2148,7 @@ mod tests {
         };
         let run = RunId::new(72);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2160,7 +2169,7 @@ mod tests {
         };
         let run = RunId::new(80);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2194,7 +2203,7 @@ mod tests {
         };
         let run = RunId::new(81);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2218,14 +2227,14 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(100),
                 workflow: wf1,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(101),
                 workflow: wf2,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then both ticks succeed in FIFO order
@@ -2247,7 +2256,7 @@ mod tests {
         };
         let run = RunId::new(90);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2278,7 +2287,7 @@ mod tests {
         };
         let run = RunId::new(95);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2361,10 +2370,12 @@ mod tests {
         let a = ShardCommand::Submit {
             run: RunId::new(1),
             workflow: wf.clone(),
+            caps: CapabilitySet::empty(),
         };
         let b = ShardCommand::Submit {
             run: RunId::new(1),
             workflow: wf,
+            caps: CapabilitySet::empty(),
         };
         assert_eq!(a, b);
     }
@@ -2478,7 +2489,7 @@ mod tests {
         };
         let run = RunId::new(50);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2497,7 +2508,7 @@ mod tests {
         };
         let run = RunId::new(51);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2626,7 +2637,7 @@ mod tests {
         };
         let run = RunId::new(200);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2692,8 +2703,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run,
-                workflow: workflow.clone()
-            }),
+                workflow: workflow.clone(),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2701,7 +2712,7 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         // When re-submitting the same run ID
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then it succeeds (run was removed by cancel)
@@ -2718,7 +2729,7 @@ mod tests {
         };
         let run = RunId::new(202);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2813,14 +2824,14 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run,
-                workflow: workflow.clone()
-            }),
+                workflow: workflow.clone(),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
         // When submitting the same run ID without cancelling
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick returns RunAlreadyExists
@@ -2844,7 +2855,7 @@ mod tests {
         let run = RunId::new(204);
         // When submitting a run with zero budget
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2879,7 +2890,7 @@ mod tests {
         };
         let run = RunId::new(205);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2910,8 +2921,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(300),
-                workflow
-            }),
+                workflow,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick returns false (shutting down flag prevents processing)
@@ -2932,8 +2943,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run,
-                workflow: workflow.clone()
-            }),
+                workflow: workflow.clone(),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2942,8 +2953,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run,
-                workflow: workflow.clone()
-            }),
+                workflow: workflow.clone(),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -2965,7 +2976,7 @@ mod tests {
         };
         let run = RunId::new(302);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3002,7 +3013,7 @@ mod tests {
         };
         let run = RunId::new(303);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3029,7 +3040,7 @@ mod tests {
         };
         let run = RunId::new(304);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3057,7 +3068,7 @@ mod tests {
         };
         let run = RunId::new(305);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3079,7 +3090,7 @@ mod tests {
         };
         let run = RunId::new(306);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3110,8 +3121,8 @@ mod tests {
             assert_eq!(
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(400 + i),
-                    workflow
-                }),
+                    workflow,
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -3133,8 +3144,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(401),
-                workflow
-            }),
+                workflow,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3146,8 +3157,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(402),
-                workflow: workflow2
-            }),
+                workflow: workflow2,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3178,8 +3189,8 @@ mod tests {
             assert_eq!(
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(500 + i),
-                    workflow
-                }),
+                    workflow,
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -3193,8 +3204,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(504),
-                workflow
-            }),
+                workflow,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(
@@ -3219,16 +3230,16 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: run1,
-                workflow: wf1
-            }),
+                workflow: wf1,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: run2,
-                workflow: wf2
-            }),
+                workflow: wf2,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3316,16 +3327,16 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
-                workflow: wf1
-            }),
+                workflow: wf1,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(2),
-                workflow: wf2
-            }),
+                workflow: wf2,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3333,8 +3344,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(3),
-                workflow: wf3
-            }),
+                workflow: wf3,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(
@@ -3356,8 +3367,8 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
-                workflow
-            }),
+                workflow,
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3394,7 +3405,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
                 workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3418,13 +3429,13 @@ mod tests {
         };
         let run = RunId::new(42);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf1 }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf1 , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
         // When submitting the same run ID again with a different workflow
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf2 }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf2 , caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick returns RunAlreadyExists (cannot replace workflow)
@@ -3475,7 +3486,7 @@ mod tests {
         let run = RunId::new(u64::MAX);
         // When submitting a run with RunId::MAX
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3541,7 +3552,7 @@ mod tests {
         };
         let run = RunId::new(55);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf1 }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf1 , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3549,7 +3560,7 @@ mod tests {
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow: wf2 }),
+            shard.enqueue(ShardCommand::Submit { run, workflow: wf2 , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3571,7 +3582,7 @@ mod tests {
         let run = RunId::new(77);
         // When submitting a run that finishes immediately
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit { run, workflow }),
+            shard.enqueue(ShardCommand::Submit { run, workflow , caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3606,7 +3617,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
                 workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         // Then tick succeeds (trace drops are non-fatal)
@@ -3860,7 +3871,7 @@ mod tests {
                 shard.enqueue(ShardCommand::Submit {
                     run: run_id,
                     workflow,
-                }),
+                caps: CapabilitySet::empty() }),
                 Ok(()),
                 "enqueue should succeed for run {i}"
             );
@@ -3906,7 +3917,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: overflow_id,
                 workflow: overflow_workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(
@@ -3941,7 +3952,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run,
                 workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -3986,7 +3997,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: run2,
                 workflow: workflow2,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -4030,7 +4041,7 @@ mod tests {
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(i),
                     workflow,
-                }),
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -4047,7 +4058,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(10),
                 workflow: workflow_before,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -4059,7 +4070,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(11),
                 workflow: workflow_after,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
 
@@ -4125,7 +4136,7 @@ mod tests {
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(i),
                     workflow,
-                }),
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -4149,7 +4160,7 @@ mod tests {
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(i),
                     workflow,
-                }),
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -4186,7 +4197,7 @@ mod tests {
                 shard.enqueue(ShardCommand::Submit {
                     run: RunId::new(i),
                     workflow,
-                }),
+                caps: CapabilitySet::empty() }),
                 Ok(())
             );
             assert_eq!(shard.tick(), Ok(true));
@@ -4257,6 +4268,7 @@ mod tests {
         let result = shard.enqueue(ShardCommand::Submit {
             run: RunId::new(1),
             workflow,
+            caps: CapabilitySet::empty(),
         });
         assert_eq!(result, Ok(()));
         // Then the tick rejects the run because the artifact is not found
@@ -4283,6 +4295,7 @@ mod tests {
         let result = shard.enqueue(ShardCommand::Submit {
             run: RunId::new(1),
             workflow,
+            caps: CapabilitySet::empty(),
         });
         assert_eq!(result, Ok(()));
         // Then the tick accepts the run
@@ -4308,6 +4321,7 @@ mod tests {
         let result = shard.enqueue(ShardCommand::Submit {
             run: RunId::new(1),
             workflow,
+            caps: CapabilitySet::empty(),
         });
         assert_eq!(result, Ok(()));
         // Then the tick accepts the run despite missing artifact
@@ -4332,7 +4346,7 @@ mod tests {
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),
                 workflow,
-            }),
+            caps: CapabilitySet::empty() }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -4376,5 +4390,218 @@ mod tests {
                 granted: vb_core::capability::CapabilitySet::empty(),
             })
         );
+    }
+
+    // =========================================================================
+    // Phase 66 adversarial BDD tests — admission bypass vectors
+    // =========================================================================
+
+    #[test]
+    fn adversarial_admission_submit_with_caps_records_caps_in_admission() {
+        // Given a strict shard that admits the run with specific capabilities
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore { known: digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        let caps = CapabilitySet::from_grants(Box::new([vb_core::capability::Capability::AnyWorkflow]));
+        // When submitting with explicit capabilities
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(500),
+                workflow,
+                caps: caps.clone(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the admission record stores the granted capabilities
+        let state = shard.runs.get(&RunId::new(500));
+        assert!(state.is_some());
+        let state = match state {
+            Some(s) => s,
+            None => return,
+        };
+        let admission = match &state.admission {
+            Some(a) => a,
+            None => return,
+        };
+        assert_eq!(admission.granted_capabilities(), &caps);
+    }
+
+    #[test]
+    fn adversarial_admission_empty_caps_records_empty_in_admission() {
+        // Given a strict shard
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore { known: digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        // When submitting with empty capabilities
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(501),
+                workflow,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the admission record stores empty capabilities
+        let state = shard.runs.get(&RunId::new(501));
+        assert!(state.is_some());
+        let state = match state {
+            Some(s) => s,
+            None => return,
+        };
+        let admission = match &state.admission {
+            Some(a) => a,
+            None => return,
+        };
+        assert!(admission.granted_capabilities().is_empty());
+    }
+
+    #[test]
+    fn adversarial_admission_digest_from_different_workflow_rejected_under_strict() {
+        // Given a strict shard that knows digest A, but we submit workflow with digest B
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let wrong_digest = WorkflowDigest::from_bytes([0xFF; 32]);
+        let store = SingleDigestStore { known: wrong_digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        let digest = workflow.digest();
+        assert_ne!(digest, wrong_digest);
+        // When submitting the run
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(502),
+                workflow,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        // Then the tick rejects the run because the artifact digest does not match
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::AdmissionArtifactNotFound { digest })
+        );
+    }
+
+    #[test]
+    fn adversarial_admission_relaxed_allows_wrong_digest() {
+        // Given a relaxed shard that does not know the workflow digest
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let store = SingleDigestStore {
+            known: WorkflowDigest::from_bytes([0xFF; 32]),
+        };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = relaxed_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        // When submitting the run with relaxed policy
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(503),
+                workflow,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        // Then the tick accepts the run despite wrong digest
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    }
+
+    #[test]
+    fn adversarial_admission_check_capability_denied_for_action() {
+        // Verifies that check_capability correctly denies when action not in granted set
+        use crate::admission::{AdmissionError, check_capability};
+        use vb_core::capability::Capability;
+        let action = ActionId::new(42);
+        let required = Capability::Action(ActionId::new(42));
+        let granted = CapabilitySet::from_grants(Box::new([Capability::Action(ActionId::new(1))]));
+        let result = check_capability(action, &required, &granted);
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action: ActionId::new(42),
+                required: Capability::Action(ActionId::new(42)),
+                granted,
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_admission_check_capability_granted_for_matching_action() {
+        // Verifies that check_capability passes when action matches grant
+        use crate::admission::check_capability;
+        use vb_core::capability::Capability;
+        let action = ActionId::new(1);
+        let required = Capability::Action(ActionId::new(1));
+        let granted = CapabilitySet::from_grants(Box::new([Capability::Action(ActionId::new(1))]));
+        assert_eq!(check_capability(action, &required, &granted), Ok(()));
+    }
+
+    #[test]
+    fn adversarial_admission_check_capability_any_workflow_grants_all() {
+        // Verifies AnyWorkflow grants any action
+        use crate::admission::check_capability;
+        use vb_core::capability::Capability;
+        let action = ActionId::new(99);
+        let required = Capability::Action(ActionId::new(99));
+        let granted = CapabilitySet::from_grants(Box::new([Capability::AnyWorkflow]));
+        assert_eq!(check_capability(action, &required, &granted), Ok(()));
+    }
+
+    #[test]
+    fn adversarial_shard_submit_with_inputs_carries_caps() {
+        // Given a strict shard that admits the run
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore { known: digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        let caps = CapabilitySet::from_grants(Box::new([vb_core::capability::Capability::AnyWorkflow]));
+        // When submitting with inputs and capabilities
+        assert_eq!(
+            shard.enqueue(ShardCommand::SubmitWithInputs {
+                run: RunId::new(504),
+                workflow,
+                inputs: Box::new([]),
+                caps: caps.clone(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // Then the admission record stores the capabilities
+        let state = shard.runs.get(&RunId::new(504));
+        assert!(state.is_some());
+        let state = match state {
+            Some(s) => s,
+            None => return,
+        };
+        let admission = match &state.admission {
+            Some(a) => a,
+            None => return,
+        };
+        assert_eq!(admission.granted_capabilities(), &caps);
     }
 }

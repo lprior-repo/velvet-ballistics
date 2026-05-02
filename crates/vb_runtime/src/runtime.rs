@@ -2,6 +2,7 @@
 
 use std::num::NonZeroUsize;
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
+use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
@@ -53,7 +54,7 @@ impl Runtime {
     /// Submits a run using a compiled workflow.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Submit { run, workflow })
+        shard.enqueue(ShardCommand::Submit { run, workflow, caps: CapabilitySet::empty() })
     }
 
     /// Submits a run with inline workflow (same as submit_direct for now).
@@ -73,6 +74,7 @@ impl Runtime {
             run,
             workflow,
             inputs,
+            caps: CapabilitySet::empty(),
         })
     }
 
