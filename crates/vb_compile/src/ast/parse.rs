@@ -498,9 +498,11 @@ fn step_field<'a>(
 }
 
 fn parse_step_idx(node: &Yaml<'_>) -> Result<StepIdx, CompileError> {
-    let value = node
-        .as_integer()
-        .ok_or(CompileError::BranchTargetOutOfRange { value: -1 })?;
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step: 0,
+        field: "branch target",
+        expected: "an integer step index",
+    })?;
     let raw = u16::try_from(value).map_err(|_| CompileError::BranchTargetOutOfRange { value })?;
     Ok(StepIdx::new(raw))
 }
@@ -584,7 +586,7 @@ fn parse_action_idx(node: &Yaml<'_>, step: usize) -> Result<vb_core::ActionId, C
     let raw = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
         primitive: "run",
         field: "action",
-        value: usize::from(u16::MAX),
+        value: integer_error_value(value),
         limit: usize::from(u16::MAX),
     })?;
     Ok(vb_core::ActionId::new(raw))

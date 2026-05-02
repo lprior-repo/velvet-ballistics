@@ -3557,13 +3557,13 @@ fn required_action(
         field: "action",
         expected: "an integer action id",
     })?;
-    let value = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+    let raw = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
         primitive,
         field: "action",
-        value: usize::from(u16::MAX),
+        value: integer_error_value(value),
         limit: usize::from(u16::MAX),
     })?;
-    Ok(vb_core::ActionId::new(value))
+    Ok(vb_core::ActionId::new(raw))
 }
 
 fn required_choose_condition(

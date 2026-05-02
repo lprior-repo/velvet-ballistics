@@ -368,3 +368,132 @@ fn symbolic_condition(condition: &'static str) -> String {
         condition
     )
 }
+
+// ── SECURITY: compile-time parse hardening tests ──────────────────────────
+
+/// SECURITY: Verify that an out-of-range action ID reports the actual value,
+/// not a hardcoded sentinel. Before the fix, parse_action_idx always reported
+/// `u16::MAX` regardless of the actual overflow value.
+#[test]
+fn security_action_id_overflow_reports_actual_value() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: action_overflow
+when:
+  manual: {}
+steps:
+  - id: call
+    run:
+      action: 70000
+      input: 0
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+    match error {
+        CompileError::PrimitiveLoweringLimitExceeded { value, .. } if value == 70000 => Ok(()),
+        other => Err(format!(
+            "action overflow did not report actual value: {other:?}"
+        )),
+    }
+}
+
+/// SECURITY: Verify that a non-integer branch target produces a shape error
+/// instead of a misleading BranchTargetOutOfRange with sentinel value -1.
+/// Before the fix, parse_step_idx reported value:-1 for string targets.
+/// The validation pipeline reports the actual YAML field name (e.g. "on_true").
+#[test]
+fn security_non_integer_branch_target_reports_shape_error() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: bad_branch
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: "not_a_number"
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+    match error {
+        CompileError::StepFieldShape { field, .. }
+            if field == "on_true" || field == "branch target" =>
+        {
+            Ok(())
+        }
+        other => Err(format!(
+            "non-integer branch target did not produce StepFieldShape: {other:?}"
+        )),
+    }
+}
+
+/// SECURITY: Verify that negative branch targets still produce
+/// BranchTargetOutOfRange with the actual negative value.
+#[test]
+fn security_negative_branch_target_reports_actual_value() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: neg_branch
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: -5
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+    match error {
+        CompileError::BranchTargetOutOfRange { value: -5 } => Ok(()),
+        other => Err(format!(
+            "negative branch target did not report actual value: {other:?}"
+        )),
+    }
+}
+
+/// SECURITY: Verify that an out-of-range action ID at u16::MAX + 1 boundary
+/// reports the correct overflow value, not the limit value.
+#[test]
+fn security_action_id_boundary_overflow_reports_actual() -> Result<(), String> {
+    let error = parse_err(
+        br#"version: velvet-ballastics/v1
+name: action_boundary
+when:
+  manual: {}
+steps:
+  - id: call
+    run:
+      action: 65536
+      input: 0
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+    match error {
+        CompileError::PrimitiveLoweringLimitExceeded { value, limit, .. }
+            if value == 65536 && limit == 65535 =>
+        {
+            Ok(())
+        }
+        other => Err(format!(
+            "boundary action overflow did not report actual value: {other:?}"
+        )),
+    }
+}
