@@ -881,3 +881,563 @@ fn limits_max_steps_per_workflow_is_bounded() {
     let max = vb_core::limits::MAX_STEPS_PER_WORKFLOW;
     assert!(max <= 65535, "max steps must be bounded: got {max}");
 }
+
+// ---------------------------------------------------------------------------
+// Phase 13: CLI validate subcommand
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_validate_valid_minimal_workflow_succeeds() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("valid.yaml");
+    let workflow = "version: velvet-ballastics/v1
+name: validate_test
+when:
+  manual: {}
+steps:
+  - id: greet
+    save:
+      value: 42
+  - id: done
+    finish:
+      result: 0
+";
+    if !write_test_file(&workflow_path, workflow.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "validate valid workflow");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("valid"),
+        "validate should print 'valid': {stdout}"
+    );
+}
+
+#[test]
+fn cli_validate_invalid_yaml_returns_parse_error() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("broken.yaml");
+    if !write_test_file(&workflow_path, b"{{{not-yaml") {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "validate should fail on broken YAML"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("YAML parse error") || stderr.contains("YAML parse failed"),
+        "validate should report parse error: {stderr}"
+    );
+}
+
+#[test]
+fn cli_validate_undefined_step_reference_returns_validation_error() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("bad-ref.yaml");
+    let workflow = "version: velvet-ballastics/v1
+name: bad_ref_test
+when:
+  manual: {}
+steps:
+  - id: greet
+    save:
+      value: $steps.nonexistent
+  - id: done
+    finish:
+      result: 0
+";
+    if !write_test_file(&workflow_path, workflow.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "validate should fail on undefined step reference"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("compile error"),
+        "validate should report compile error for undefined step reference: {stderr}"
+    );
+}
+
+#[test]
+fn cli_validate_type_mismatch_returns_typed_error() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("type-mismatch.yaml");
+    let workflow = "version: velvet-ballastics/v1
+name: type_mismatch_test
+when:
+  manual: {}
+steps:
+  - id: greet
+    save:
+      output: message
+      value: \"hello\"
+    then: done
+  - id: done
+    finish:
+      result: 1 + \"not_a_number\"
+";
+    if !write_test_file(&workflow_path, workflow.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "validate should fail on type mismatch"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("compile error"),
+        "validate should report compile error: {stderr}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 14: CLI compile subcommand
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_compile_valid_workflow_produces_ir() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let ir_path = dir.path().join("workflow.vbir");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("compile"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("ir"),
+        std::ffi::OsStr::new("--out"),
+        ir_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "compile --emit ir");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("compiled IR written"),
+        "compile should report IR written: {stdout}"
+    );
+
+    let ir_bytes = match std::fs::read(&ir_path) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            assert!(test_failed(), "failed to read compiled IR: {err}");
+            return;
+        }
+    };
+    assert!(
+        !ir_bytes.is_empty(),
+        "compiled IR file should not be empty"
+    );
+
+    let parts_result = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&ir_bytes);
+    assert!(
+        parts_result.is_ok(),
+        "compiled IR should be valid postcard-encoded WorkflowParts: {parts_result:?}"
+    );
+}
+
+#[test]
+fn cli_compile_invalid_syntax_fails_with_clear_error() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("bad.yaml");
+    let ir_path = dir.path().join("bad.vbir");
+
+    if !write_test_file(&workflow_path, b"version: not-the-right-version\nsteps: []") {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("compile"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("ir"),
+        std::ffi::OsStr::new("--out"),
+        ir_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "compile should fail on invalid workflow"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("compile error"),
+        "compile should report compile error: {stderr}"
+    );
+}
+
+#[test]
+fn cli_compile_preserves_workflow_digest() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let ir_path = dir.path().join("workflow.vbir");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("compile"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("ir"),
+        std::ffi::OsStr::new("--out"),
+        ir_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "compile --emit ir");
+
+    let ir_bytes = match std::fs::read(&ir_path) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            assert!(test_failed(), "failed to read compiled IR: {err}");
+            return;
+        }
+    };
+    let parts = match postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&ir_bytes) {
+        Ok(parts) => parts,
+        Err(err) => {
+            assert!(test_failed(), "failed to decode WorkflowParts: {err}");
+            return;
+        }
+    };
+
+    let compile_result = vb_compile::compile_workflow(CLI_WORKFLOW.as_bytes());
+    match compile_result {
+        Ok(compiled) => {
+            assert_eq!(
+                parts.digest, compiled.digest(),
+                "compiled IR digest should match in-memory compile digest"
+            );
+        }
+        Err(err) => assert!(test_failed(), "in-memory compile should succeed: {err:?}"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 15: CLI run subcommand
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_run_minimal_workflow_completes() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "run --durability none");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("run completed"),
+        "run should report completion: {stdout}"
+    );
+}
+
+#[test]
+fn cli_run_strict_durability_writes_journal_events() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("strict-db");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run --durability strict");
+    let stdout = output_stdout(&run_output);
+    assert!(
+        stdout.contains("run completed"),
+        "strict run should complete: {stdout}"
+    );
+
+    let events_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&events_output, "events after strict run");
+    let events_stdout = output_stdout(&events_output);
+    assert!(
+        events_stdout.contains("RunAccepted"),
+        "strict run should produce RunAccepted event: {events_stdout}"
+    );
+    assert!(
+        events_stdout.contains("RunFinished"),
+        "strict run should produce RunFinished event: {events_stdout}"
+    );
+}
+
+#[test]
+fn cli_run_invalid_workflow_returns_error_exit_code() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("invalid.yaml");
+    let input_path = dir.path().join("input.bin");
+
+    if !write_test_file(&workflow_path, b"not-a-workflow-at-all") {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "run should fail on invalid workflow"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        !stderr.is_empty(),
+        "run should produce error output for invalid workflow"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 16: CLI inspect subcommand
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_inspect_compiled_run_shows_status_and_event_count() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("inspect-db");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run for inspect setup");
+
+    let inspect_output = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect_output, "inspect 1");
+    let stdout = output_stdout(&inspect_output);
+    assert!(
+        stdout.contains("status=finished"),
+        "inspect should show finished status: {stdout}"
+    );
+    assert!(
+        stdout.contains("events="),
+        "inspect should show event count: {stdout}"
+    );
+}
+
+#[test]
+fn cli_inspect_nonexistent_run_shows_no_events() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("empty-db");
+
+    // Open a journal at the path so the DB exists but has no run events.
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(test_failed(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    drop(journal);
+
+    let inspect_output = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("999"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect_output, "inspect nonexistent run");
+    let stdout = output_stdout(&inspect_output);
+    assert!(
+        stdout.contains("no events found"),
+        "inspect should report no events for nonexistent run: {stdout}"
+    );
+}
