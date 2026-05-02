@@ -1343,7 +1343,8 @@ impl CompileError {
 fn workflow_error_code(error: &WorkflowError) -> &'static str {
     match error {
         WorkflowError::ResourceContractExceeded { .. }
-        | WorkflowError::ResourceContractTooLarge { .. } => "LIMIT_EXCEEDED",
+        | WorkflowError::ResourceContractTooLarge { .. }
+        | WorkflowError::BudgetPolicyExceeded { .. } => "LIMIT_EXCEEDED",
         WorkflowError::StepOutOfBounds { .. } => "INVALID_THEN_TARGET",
         WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
         WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",

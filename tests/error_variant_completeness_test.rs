@@ -69,7 +69,7 @@ fn action_public_constructible_errors_have_exhaustive_variant_audits() {
 
 #[test]
 fn workflow_public_constructible_errors_have_exhaustive_variant_audits() {
-    assert_eq!(workflow_variant_count(), 13);
+    assert_eq!(workflow_variant_count(), 14);
 }
 
 #[test]
@@ -686,6 +686,7 @@ fn workflow_variant_count() -> usize {
         WorkflowError::UnreachableNode { step: step() },
         WorkflowError::BackwardEdge { from: step(), to: step() },
         WorkflowError::ImproperLoopNesting { inner: step(), outer_done: step() },
+        WorkflowError::BudgetPolicyExceeded { detail: "max_total_steps" },
     ];
     samples.iter().map(workflow_error_variant_name).count()
 }
@@ -705,6 +706,7 @@ fn workflow_error_variant_name(error: &WorkflowError) -> &'static str {
         WorkflowError::UnreachableNode { .. } => "UnreachableNode",
         WorkflowError::BackwardEdge { .. } => "BackwardEdge",
         WorkflowError::ImproperLoopNesting { .. } => "ImproperLoopNesting",
+        WorkflowError::BudgetPolicyExceeded { .. } => "BudgetPolicyExceeded",
     }
 }
 

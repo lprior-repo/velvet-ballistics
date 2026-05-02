@@ -31,6 +31,7 @@ impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        validate_budget(&parts)?;
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
@@ -316,6 +317,12 @@ pub enum WorkflowError {
         inner: StepIdx,
         /// Outer loop done step.
         outer_done: StepIdx,
+    },
+    /// Whole-workflow budget exceeded the boundedness policy.
+    #[error("budget policy exceeded: {detail}")]
+    BudgetPolicyExceeded {
+        /// Human-readable detail describing which dimension failed.
+        detail: &'static str,
     },
 }
 
@@ -618,6 +625,32 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_reachability(parts)?;
     validate_forward_edges(parts)?;
     Ok(())
+}
+
+fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+
+    let budget = WholeWorkflowBudget::compute(
+        &parts.nodes,
+        parts.entry,
+        &parts.resource_contract,
+    )?;
+
+    match BoundednessPolicy::DEFAULT.validate(&budget) {
+        Ok(()) => Ok(()),
+        Err(BudgetError::TotalStepsExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
+            detail: "max_total_steps",
+        }),
+        Err(BudgetError::TotalSlotsExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
+            detail: "max_total_slots",
+        }),
+        Err(BudgetError::FanoutExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
+            detail: "max_fanout",
+        }),
+        Err(BudgetError::NestingDepthExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
+            detail: "max_nesting_depth",
+        }),
+    }
 }
 
 fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowError> {

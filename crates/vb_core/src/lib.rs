@@ -12,6 +12,7 @@
 //! no storage, no HTTP, and no YAML dependencies.
 
 pub mod action;
+pub mod budget;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
@@ -30,6 +31,7 @@ pub use action::{
     RetrySafety, SideEffect, propagate_action_taint, validate_idempotency_key_ingredients,
     verify_idempotency,
 };
+pub use budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{
     EngineSignal, StepBudget, build_list, build_object, drive_deterministic, eval_accessor,
