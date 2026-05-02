@@ -30,6 +30,7 @@ pub mod diagnostic;
 pub mod gates;
 pub mod references;
 pub mod schema;
+pub mod shared;
 pub mod type_taint;
 
 /// Validation error codes matching the master contract (Section 16).
