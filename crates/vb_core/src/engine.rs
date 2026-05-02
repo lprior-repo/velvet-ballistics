@@ -1300,14 +1300,12 @@ mod tests {
     }
 
     #[test]
-    fn step_once_with_invalid_pc_returns_invalid_program_counter() -> Result<(), String> {
+    fn step_once_with_invalid_pc_rejected_by_set_pc() -> Result<(), String> {
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(103), &workflow)?;
-        let mut store = test_store();
 
-        let result = run
-            .set_pc(StepIdx::new(99))
-            .and_then(|()| step_once(&workflow, &mut run, &mut store));
+        // set_pc now validates bounds, rejecting out-of-bounds step 99
+        let result = run.set_pc(StepIdx::new(99));
 
         match result {
             Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),
@@ -1452,15 +1450,13 @@ mod tests {
     }
 
     #[test]
-    fn jump_node_to_out_of_bounds_target_returns_invalid_program_counter_on_next_step()
+    fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter()
     -> Result<(), String> {
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(108), &workflow)?;
-        let mut store = test_store();
 
-        let result = run
-            .set_pc(StepIdx::new(200))
-            .and_then(|()| step_once(&workflow, &mut run, &mut store));
+        // set_pc now validates bounds, rejecting out-of-bounds step 200
+        let result = run.set_pc(StepIdx::new(200));
 
         match result {
             Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(200) => Ok(()),

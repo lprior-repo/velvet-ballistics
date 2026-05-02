@@ -139,7 +139,14 @@ impl RunFrame {
     }
 
     /// Moves the program counter after bounds validation.
+    ///
+    /// Rejects step indices outside the frame's step array to prevent
+    /// staging an invalid PC that could lead to out-of-bounds state access
+    /// on the next `step_once` call.
     pub fn set_pc(&mut self, pc: StepIdx) -> CoreResult<()> {
+        if pc.as_usize() >= usize::from(self.step_count) {
+            return Err(CoreError::InvalidProgramCounter { step: pc });
+        }
         self.pc = pc;
         Ok(())
     }
@@ -593,14 +600,47 @@ mod tests {
         Ok(())
     }
 
-    // --- set_pc allows staging invalid PCs for engine-level validation ---
+    // --- set_pc rejects out-of-bounds PCs ---
 
     #[test]
-    fn frame_set_pc_allows_invalid_step_for_engine_validation() -> CoreResult<()> {
+    fn frame_set_pc_rejects_out_of_bounds_step() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
-        assert_eq!(frame.set_pc(StepIdx::new(9999)), Ok(()));
-        assert_eq!(frame.pc(), StepIdx::new(9999));
+        // Step 9999 is out of bounds for a frame with 3 steps
+        assert_eq!(
+            frame.set_pc(StepIdx::new(9999)),
+            Err(CoreError::InvalidProgramCounter {
+                step: StepIdx::new(9999)
+            })
+        );
+        // PC must remain unchanged after rejection
+        assert_eq!(frame.pc(), StepIdx::ZERO);
+
+        Ok(())
+    }
+
+    // --- set_pc accepts valid in-bounds PCs ---
+
+    #[test]
+    fn frame_set_pc_accepts_valid_step() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
+
+        // Step 0 through 4 are valid for a frame with 5 steps
+        assert_eq!(frame.set_pc(StepIdx::new(0)), Ok(()));
+        assert_eq!(frame.pc(), StepIdx::new(0));
+
+        assert_eq!(frame.set_pc(StepIdx::new(4)), Ok(()));
+        assert_eq!(frame.pc(), StepIdx::new(4));
+
+        // Step 5 (exactly at step_count) is out of bounds
+        assert_eq!(
+            frame.set_pc(StepIdx::new(5)),
+            Err(CoreError::InvalidProgramCounter {
+                step: StepIdx::new(5)
+            })
+        );
+        // PC must remain at last valid value
+        assert_eq!(frame.pc(), StepIdx::new(4));
 
         Ok(())
     }
