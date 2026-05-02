@@ -169,7 +169,12 @@ fn eval_i64_pair(
 
 fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
     let (left, right) = pop_i64_pair(stack)?;
-    let value = left.checked_div(right).ok_or(EngineError::DivisionByZero)?;
+    if right == 0 {
+        return Err(EngineError::DivisionByZero);
+    }
+    let value = left.checked_div(right).ok_or(EngineError::InvalidCompiledWorkflow {
+        reason: "integer division overflow",
+    })?;
     push_value(stack, SlotValue::I64(value))
 }
 
@@ -1066,6 +1071,79 @@ mod tests {
         let result_list_id = expect_list(result)?;
         let items = store.list(result_list_id)?;
         assert_eq!(items.len(), 2);
+        Ok(())
+    }
+
+    // ===== Security regression tests =====
+
+    #[test]
+    fn div_i64_min_div_neg_one_returns_overflow_not_division_by_zero() -> Result<(), EngineError> {
+        // SECURITY: i64::MIN / -1 overflows (result would be i64::MAX + 1).
+        // Previously, checked_div returned None and was mapped to DivisionByZero,
+        // which is the wrong error variant. The fix checks for zero first and maps
+        // the remaining None (overflow) to InvalidCompiledWorkflow.
+        let mut store = ValueStore::new();
+        let ops = vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Div,
+        ];
+        let result = eval_expr_ops_with_constants(
+            &ops,
+            vec![crate::value::ConstValue::I64(i64::MIN), crate::value::ConstValue::I64(-1)],
+            &mut store,
+        );
+        let Err(EngineError::InvalidCompiledWorkflow { reason }) = result else {
+            return Err(EngineError::TypeMismatch {
+                expected: "InvalidCompiledWorkflow (overflow)",
+                found: "wrong error variant",
+            });
+        };
+        assert!(
+            reason.contains("overflow"),
+            "reason should mention overflow, got: {reason}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn div_by_zero_still_returns_division_by_zero_error() -> Result<(), EngineError> {
+        // Ensure the fix does not break the legitimate division-by-zero path.
+        let mut store = ValueStore::new();
+        let ops = vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Div,
+        ];
+        let result = eval_expr_ops_with_constants(
+            &ops,
+            vec![crate::value::ConstValue::I64(42), crate::value::ConstValue::I64(0)],
+            &mut store,
+        );
+        assert_eq!(result, Err(EngineError::DivisionByZero));
+        Ok(())
+    }
+
+    #[test]
+    fn sum_overflow_on_individual_element_is_detected() -> Result<(), EngineError> {
+        // SECURITY: verify that sum() uses checked_add per element and does not
+        // silently overflow when accumulating list elements.
+        let mut store = ValueStore::new();
+        let list = store.insert_list(
+            vec![SlotValue::I64(i64::MAX), SlotValue::I64(1)].into_boxed_slice(),
+        )?;
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum];
+        let result = eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store);
+        let Err(EngineError::InvalidCompiledWorkflow { reason }) = result else {
+            return Err(EngineError::TypeMismatch {
+                expected: "InvalidCompiledWorkflow (sum overflow)",
+                found: "no error or wrong error",
+            });
+        };
+        assert!(
+            reason.contains("overflow"),
+            "reason should mention overflow, got: {reason}"
+        );
         Ok(())
     }
 }
