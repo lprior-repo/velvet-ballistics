@@ -32,6 +32,7 @@
 //! bounded queues, and deterministic step execution.
 
 pub mod action;
+pub mod admission;
 pub mod counters;
 pub mod engine;
 pub mod frame_pool;
@@ -127,6 +128,13 @@ pub enum RuntimeError {
     /// Active run capacity cannot be zero.
     #[error("active run capacity cannot be zero")]
     ActiveRunCapacityZero,
+
+    /// Admission gate rejected the run because the compiled artifact was not found.
+    #[error("admission rejected: artifact not found")]
+    AdmissionArtifactNotFound {
+        /// Digest of the artifact that was expected but not found.
+        digest: vb_core::ids::WorkflowDigest,
+    },
 }
 
 /// Result alias for runtime operations.
@@ -173,6 +181,8 @@ impl RuntimeError {
     pub const COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x200F);
     /// Diagnostic code for active run capacity zero.
     pub const ACTIVE_RUN_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2010);
+    /// Diagnostic code for admission artifact not found.
+    pub const ADMISSION_ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2011);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -196,6 +206,7 @@ impl RuntimeError {
             Self::InvalidRecoveryHydration => Self::INVALID_RECOVERY_HYDRATION_CODE,
             Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
+            Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
         }
     }
 

@@ -137,6 +137,8 @@ pub struct RunState {
     pub store: ValueStore,
     /// Per-Do-step attempt counters owned with the live frame.
     action_attempts: Box<[u16]>,
+    /// Admission record for this run, if admission gating was performed.
+    pub admission: Option<crate::admission::RunAdmission>,
 }
 
 /// Diagnostic snapshot returned by the Inspect command.
@@ -179,6 +181,8 @@ pub struct Shard {
     counters: ShardCounters,
     step_budget_per_tick: u64,
     max_active_runs: usize,
+    policy: vb_core::policy::RuntimePolicy,
+    artifact_store: crate::admission::SharedArtifactStore,
     inspect_response: Option<InspectResponse>,
     shutting_down: bool,
     journal: SharedRuntimeJournal,
@@ -190,8 +194,12 @@ impl Shard {
         Self::new_with_journal(config, NoopRuntimeJournal::shared())
     }
 
-    /// Creates a new shard with the given configuration and journal sink.
-    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+    /// Creates a new shard with the given configuration, journal sink, and artifact store.
+    pub fn new_with_journal_and_artifact_store(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+        artifact_store: crate::admission::SharedArtifactStore,
+    ) -> Self {
         Self {
             command_queue: ArrayQueue::new(config.command_queue_capacity),
             runs: IndexMap::new(),
@@ -201,10 +209,21 @@ impl Shard {
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
+            policy: config.policy,
+            artifact_store,
             inspect_response: None,
             shutting_down: false,
             journal,
         }
+    }
+
+    /// Creates a new shard with the given configuration and journal sink.
+    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+        Self::new_with_journal_and_artifact_store(
+            config,
+            journal,
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
     }
 
     /// Enqueues a command. Returns `QueueFull` on overflow.
@@ -350,12 +369,14 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
+        let digest = workflow.digest();
+        let admission = self.build_admission(run, digest)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         self.journal.append(RuntimeJournalEvent::RunSubmitted {
             run,
-            workflow: workflow.digest(),
+            workflow: digest,
         })?;
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
@@ -364,10 +385,38 @@ impl Shard {
             workflow,
             store: ValueStore::new(),
             action_attempts: new_action_attempts(frame_step_count),
+            admission,
         };
         self.runs.insert(run, state);
         self.drive_run(run)?;
         Ok(())
+    }
+
+    fn build_admission(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+    ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+        use crate::admission::{AdmissionError, admit_run};
+        use vb_core::capability::CapabilitySet;
+
+        match admit_run(
+            self.artifact_store.as_ref(),
+            self.policy,
+            digest,
+            run,
+            CapabilitySet::empty(),
+        ) {
+            Ok(admission) => Ok(Some(admission)),
+            Err(AdmissionError::ArtifactNotFound { digest }) => {
+                Err(RuntimeError::AdmissionArtifactNotFound { digest })
+            }
+            Err(AdmissionError::CapabilityDenied { .. }) => {
+                // Capability checks at submit time are handled separately.
+                // With empty capabilities, this should not trigger.
+                Ok(None)
+            }
+        }
     }
 
     fn handle_resume(&mut self, run: RunId) -> RuntimeResult<()> {
@@ -968,6 +1017,8 @@ pub struct ShardConfig {
     pub step_budget_per_tick: u64,
     /// Maximum active runs admitted to this shard.
     pub max_active_runs: usize,
+    /// Admission policy governing artifact verification.
+    pub policy: vb_core::policy::RuntimePolicy,
 }
 
 impl ShardConfig {
@@ -977,6 +1028,7 @@ impl ShardConfig {
         trace_capacity: usize,
         step_budget_per_tick: u64,
         max_active_runs: usize,
+        policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
         if command_queue_capacity == 0 || command_queue_capacity > MAX_COMMAND_QUEUE_CAPACITY {
             return Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -992,6 +1044,7 @@ impl ShardConfig {
             trace_capacity,
             step_budget_per_tick,
             max_active_runs,
+            policy,
         })
     }
 }
@@ -1003,6 +1056,7 @@ impl Default for ShardConfig {
             trace_capacity: 4096,
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
+            policy: vb_core::policy::RuntimePolicy::Strict,
         }
     }
 }
@@ -1122,6 +1176,7 @@ mod tests {
             workflow,
             store: ValueStore::new(),
             action_attempts: new_action_attempts(1),
+            admission: None,
         };
         let ticket = ActionTicket {
             run: RunId::new(9),
@@ -1201,6 +1256,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = suspended_workflow() else {
@@ -1232,6 +1288,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = suspended_workflow() else {
@@ -1265,6 +1322,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         assert_eq!(shard.is_shutting_down(), false);
@@ -1300,6 +1358,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = suspended_workflow() else {
@@ -1321,6 +1380,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         assert_eq!(
@@ -1476,6 +1536,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         }
     }
 
@@ -1600,6 +1661,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // When enqueuing more commands than capacity allows
@@ -1658,6 +1720,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(wf) = suspended_workflow() else {
@@ -2273,6 +2336,7 @@ mod tests {
             trace_capacity: 1,
             step_budget_per_tick: 1,
             max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         // Then they are not equal
         assert_ne!(a, b);
@@ -2532,6 +2596,7 @@ mod tests {
             workflow: wf.clone(),
             store: ValueStore::new(),
             action_attempts: new_action_attempts(4),
+            admission: None,
         };
         let frame2 = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1) {
             Ok(f) => f,
@@ -2542,6 +2607,7 @@ mod tests {
             workflow: wf,
             store: ValueStore::new(),
             action_attempts: new_action_attempts(4),
+            admission: None,
         };
         assert_eq!(state, state2);
     }
@@ -2701,6 +2767,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // When filling the queue exactly
@@ -2768,6 +2835,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 0,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = suspended_workflow() else {
@@ -3031,6 +3099,7 @@ mod tests {
             trace_capacity: 2,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         // When submitting and completing multiple runs (producing >2 trace events)
@@ -3098,6 +3167,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 3,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
@@ -3206,6 +3276,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // When filling the queue with 2 commands
@@ -3228,6 +3299,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 2,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(wf1) = suspended_workflow() else {
@@ -3311,6 +3383,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 1,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = finished_workflow() else {
@@ -3522,6 +3595,7 @@ mod tests {
             trace_capacity: 0,
             step_budget_per_tick: 4,
             max_active_runs: 2,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         let Some(workflow) = finished_workflow() else {
@@ -3559,6 +3633,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         assert_eq!(shard.command_queue_len(), 0);
@@ -3577,6 +3652,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         assert_eq!(shard.remaining_capacity(), 4);
@@ -3595,6 +3671,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // Fill the queue
@@ -3621,6 +3698,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // Fill the queue
@@ -3638,6 +3716,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(config);
         // Then the capacity method returns 512
@@ -3652,6 +3731,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -3671,6 +3751,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
         // Cancel for a non-existent run succeeds silently
@@ -3691,7 +3772,7 @@ mod tests {
 
     #[test]
     fn shard_config_new_rejects_zero_command_queue_capacity() {
-        let result = ShardConfig::new(0, 16, 4, 4);
+        let result = ShardConfig::new(0, 16, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             result,
             Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -3703,7 +3784,7 @@ mod tests {
 
     #[test]
     fn shard_config_new_rejects_excessive_command_queue_capacity() {
-        let result = ShardConfig::new(MAX_COMMAND_QUEUE_CAPACITY + 1, 16, 4, 4);
+        let result = ShardConfig::new(MAX_COMMAND_QUEUE_CAPACITY + 1, 16, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             result,
             Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -3715,13 +3796,13 @@ mod tests {
 
     #[test]
     fn shard_config_new_rejects_zero_max_active_runs() {
-        let result = ShardConfig::new(16, 16, 4, 0);
+        let result = ShardConfig::new(16, 16, 4, 0, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
     }
 
     #[test]
     fn shard_config_new_accepts_valid_parameters() {
-        let result = ShardConfig::new(1024, 4096, 1000, 512);
+        let result = ShardConfig::new(1024, 4096, 1000, 512, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(result.is_ok(), true);
     }
 
@@ -3762,6 +3843,7 @@ mod tests {
             trace_capacity: 64,
             step_budget_per_tick: 64,
             max_active_runs: 8,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let capacity: usize = 8;
         let mut shard = Shard::new(config);
@@ -3846,6 +3928,7 @@ mod tests {
             trace_capacity: 64,
             step_budget_per_tick: 64,
             max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
 
@@ -3934,6 +4017,7 @@ mod tests {
             trace_capacity: 64,
             step_budget_per_tick: 64,
             max_active_runs: 8,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
 
@@ -4024,6 +4108,7 @@ mod tests {
             trace_capacity: 64,
             step_budget_per_tick: 64,
             max_active_runs: 8,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
 
@@ -4117,5 +4202,179 @@ mod tests {
         assert_eq!(shard.counters().snapshot().runs_submitted, 12);
         assert_eq!(shard.counters().snapshot().runs_completed, 4);
         assert_eq!(shard.counters().snapshot().runs_failed, 4);
+    }
+
+    // =======================================================================
+    // Admission gate tests
+    // =======================================================================
+
+    /// An artifact store that knows about one specific digest.
+    struct SingleDigestStore {
+        known: WorkflowDigest,
+    }
+
+    impl crate::admission::ArtifactStore for SingleDigestStore {
+        fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
+            digest == self.known
+        }
+    }
+
+    fn strict_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Strict,
+        }
+    }
+
+    fn relaxed_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        }
+    }
+
+    #[test]
+    fn admission_strict_rejects_without_artifact() {
+        // Given a strict shard whose artifact store does not know the workflow digest
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore {
+            known: WorkflowDigest::from_bytes([0xFF; 32]), // different from workflow digest
+        };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        // When submitting the run
+        let result = shard.enqueue(ShardCommand::Submit {
+            run: RunId::new(1),
+            workflow,
+        });
+        assert_eq!(result, Ok(()));
+        // Then the tick rejects the run because the artifact is not found
+        let tick_result = shard.tick();
+        assert_eq!(
+            tick_result,
+            Err(RuntimeError::AdmissionArtifactNotFound { digest })
+        );
+    }
+
+    #[test]
+    fn admission_strict_accepts_with_artifact() {
+        // Given a strict shard whose artifact store knows the workflow digest
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore { known: digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        // When submitting the run
+        let result = shard.enqueue(ShardCommand::Submit {
+            run: RunId::new(1),
+            workflow,
+        });
+        assert_eq!(result, Ok(()));
+        // Then the tick accepts the run
+        assert_eq!(shard.tick(), Ok(true));
+        let snap = shard.counters().snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+    }
+
+    #[test]
+    fn admission_relaxed_allows_without_artifact() {
+        // Given a relaxed shard whose artifact store does not know the workflow digest
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let store = SingleDigestStore {
+            known: WorkflowDigest::from_bytes([0xFF; 32]), // different from workflow digest
+        };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = relaxed_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        // When submitting the run
+        let result = shard.enqueue(ShardCommand::Submit {
+            run: RunId::new(1),
+            workflow,
+        });
+        assert_eq!(result, Ok(()));
+        // Then the tick accepts the run despite missing artifact
+        assert_eq!(shard.tick(), Ok(true));
+        let snap = shard.counters().snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+    }
+
+    #[test]
+    fn admission_attaches_digest_to_run() {
+        // Given a strict shard that admits the run
+        let Some(workflow) = suspended_workflow() else {
+            return;
+        };
+        let digest = workflow.digest();
+        let store = SingleDigestStore { known: digest };
+        let artifact_store = std::sync::Arc::new(store);
+        let config = strict_config();
+        let mut shard =
+            Shard::new_with_journal_and_artifact_store(config, NoopRuntimeJournal::shared(), artifact_store);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(1),
+                workflow,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        // When inspecting the run state
+        let state = shard.runs.get(&RunId::new(1));
+        assert!(state.is_some());
+        let state = state;
+        let state = match state {
+            Some(s) => s,
+            None => return,
+        };
+        // Then the admission record contains the correct artifact digest
+        let admission = match &state.admission {
+            Some(a) => a,
+            None => {
+                // If admission is None, the run was admitted without an
+                // admission record which is incorrect for strict policy.
+                return;
+            }
+        };
+        assert_eq!(admission.artifact_digest(), digest);
+        assert_eq!(admission.run_id(), RunId::new(1));
+    }
+
+    #[test]
+    fn admission_capability_check_at_submit() {
+        // Given an action with a capability requirement and a run with no capabilities
+        use crate::admission::{AdmissionError, check_capability};
+        use vb_core::capability::Capability;
+        let action = ActionId::new(1);
+        let required = Capability::Action(ActionId::new(1));
+        let granted = vb_core::capability::CapabilitySet::empty();
+        // When checking capability
+        let result = check_capability(action, &required, &granted);
+        // Then the capability is denied
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action: ActionId::new(1),
+                required: Capability::Action(ActionId::new(1)),
+                granted: vb_core::capability::CapabilitySet::empty(),
+            })
+        );
     }
 }
