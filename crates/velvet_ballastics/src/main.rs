@@ -1,4 +1,5 @@
 //! Velvet Ballastics binary entrypoint.
+#![forbid(unsafe_code)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::too_many_lines)]
 

@@ -594,20 +594,20 @@ mod tests {
     }
 
     #[test]
-    fn taint_secret_is_one_discriminant() {
-        assert_eq!(taint_discriminant(Taint::Secret), 1);
+    fn taint_secret_is_two_discriminant() {
+        assert_eq!(taint_discriminant(Taint::Secret), 2);
     }
 
     #[test]
-    fn taint_derived_from_secret_is_two_discriminant() {
-        assert_eq!(taint_discriminant(Taint::DerivedFromSecret), 2);
+    fn taint_derived_from_secret_is_one_discriminant() {
+        assert_eq!(taint_discriminant(Taint::DerivedFromSecret), 1);
     }
 
     fn taint_discriminant(taint: Taint) -> u8 {
         match taint {
             Taint::Clean => 0,
-            Taint::Secret => 1,
-            Taint::DerivedFromSecret => 2,
+            Taint::DerivedFromSecret => 1,
+            Taint::Secret => 2,
         }
     }
 
