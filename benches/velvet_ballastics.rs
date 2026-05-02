@@ -10,10 +10,11 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram,
-    ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget, StepIdx, SymbolId,
-    Taint, WorkflowDigest, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp,
+    ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget, StepIdx,
+    SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
+use vb_runtime::journal::RuntimeJournal;
 use vb_storage::{EventSeq, JournalEvent};
 
 struct GeneratedBinary {
@@ -1788,6 +1789,591 @@ fn taint_full_workflow_bench(c: &mut Criterion) {
     group.finish();
 }
 
+// ===== Submit artifact flow benchmarks =====
+
+fn submit_artifact_benches(c: &mut Criterion) {
+    let workflow = match vb_compile::compile_workflow(SMALL_WORKFLOW) {
+        Ok(w) => Some(w),
+        Err(_) => None,
+    };
+    let mut group = c.benchmark_group("submit_artifact");
+
+    // Relaxed policy — no verification, just persist.
+    group.bench_function(
+        metadata(
+            "submit_artifact_relaxed",
+            SMALL_WORKFLOW,
+            "fixture=small_workflow;surface=submit_artifact;policy=relaxed",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = workflow {
+                    let dir = tempfile::tempdir();
+                    if let Ok(dir) = dir.as_ref() {
+                        if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
+                            let result =
+                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Relaxed);
+                            black_box(result.is_ok())
+                        } else {
+                            black_box(false)
+                        }
+                    } else {
+                        black_box(false)
+                    }
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    // Journaled policy — structure + checksum validation, no fsync.
+    group.bench_function(
+        metadata(
+            "submit_artifact_journaled",
+            SMALL_WORKFLOW,
+            "fixture=small_workflow;surface=submit_artifact;policy=journaled",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = workflow {
+                    let dir = tempfile::tempdir();
+                    if let Ok(dir) = dir.as_ref() {
+                        if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
+                            let result =
+                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Journaled);
+                            black_box(result.is_ok())
+                        } else {
+                            black_box(false)
+                        }
+                    } else {
+                        black_box(false)
+                    }
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    // Strict policy — full verification + fsync.
+    group.bench_function(
+        metadata(
+            "submit_artifact_strict",
+            SMALL_WORKFLOW,
+            "fixture=small_workflow;surface=submit_artifact;policy=strict",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = workflow {
+                    let dir = tempfile::tempdir();
+                    if let Ok(dir) = dir.as_ref() {
+                        if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
+                            let result =
+                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Strict);
+                            black_box(result.is_ok())
+                        } else {
+                            black_box(false)
+                        }
+                    } else {
+                        black_box(false)
+                    }
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    group.finish();
+}
+
+// ===== WholeWorkflowBudget::compute benchmarks =====
+
+fn budget_compute_benches(c: &mut Criterion) {
+    let small_nodes = match vb_compile::compile_workflow(SMALL_WORKFLOW) {
+        Ok(wf) => Some(wf),
+        Err(_) => None,
+    };
+    let chain_10 = save_chain_workflow(10);
+    let chain_1000 = save_chain_workflow(1000);
+    let mut group = c.benchmark_group("budget_compute");
+
+    group.bench_function(
+        metadata(
+            "budget_compute_small_workflow",
+            SMALL_WORKFLOW,
+            "fixture=small_workflow;surface=budget_compute",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = small_nodes {
+                    let parts = wf.to_parts();
+                    let result = vb_core::WholeWorkflowBudget::compute(
+                        black_box(&parts.nodes),
+                        black_box(parts.entry),
+                        black_box(&parts.resource_contract),
+                    );
+                    black_box(result.is_ok())
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    group.bench_function(
+        metadata(
+            "budget_compute_save_chain_10",
+            b"save_chain_10",
+            "fixture=save_chain_10;surface=budget_compute",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = chain_10 {
+                    let parts = wf.to_parts();
+                    let result = vb_core::WholeWorkflowBudget::compute(
+                        black_box(&parts.nodes),
+                        black_box(parts.entry),
+                        black_box(&parts.resource_contract),
+                    );
+                    black_box(result.is_ok())
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    group.bench_function(
+        metadata(
+            "budget_compute_save_chain_1000",
+            b"save_chain_1000",
+            "fixture=save_chain_1000;surface=budget_compute",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = chain_1000 {
+                    let parts = wf.to_parts();
+                    let result = vb_core::WholeWorkflowBudget::compute(
+                        black_box(&parts.nodes),
+                        black_box(parts.entry),
+                        black_box(&parts.resource_contract),
+                    );
+                    black_box(result.is_ok())
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    group.bench_function(
+        metadata(
+            "budget_validate_default_policy",
+            SMALL_WORKFLOW,
+            "fixture=small_workflow;surface=budget_validate",
+        ),
+        |b| {
+            b.iter(|| {
+                if let Some(ref wf) = small_nodes {
+                    let parts = wf.to_parts();
+                    let budget = vb_core::WholeWorkflowBudget::compute(
+                        &parts.nodes,
+                        parts.entry,
+                        &parts.resource_contract,
+                    );
+                    if let Ok(ref b) = budget {
+                        black_box(vb_core::BoundednessPolicy::DEFAULT.validate(b).is_ok())
+                    } else {
+                        black_box(false)
+                    }
+                } else {
+                    black_box(false)
+                }
+            })
+        },
+    );
+
+    group.finish();
+}
+
+// ===== Evidence chain event accumulation benchmarks =====
+
+fn evidence_chain_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("evidence_chain");
+
+    // Benchmark: accumulate N events into a VolatileRuntimeJournal.
+    group.bench_function(
+        metadata(
+            "evidence_chain_accumulate_100_events",
+            b"evidence_100",
+            "fixture=volatile_journal_100;surface=event_accumulate",
+        ),
+        |b| {
+            b.iter(|| {
+                let journal = vb_runtime::journal::VolatileRuntimeJournal::new();
+                let mut i = 0_u16;
+                while i < 100 {
+                    let run = RunId::new(u64::from(i));
+                    let event = if i % 5 == 0 {
+                        vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+                            run,
+                            workflow: WorkflowDigest::from_bytes([0x11; 32]),
+                        }
+                    } else if i % 5 == 1 {
+                        vb_runtime::journal::RuntimeJournalEvent::StepStarted {
+                            run,
+                            step: StepIdx::new(0),
+                        }
+                    } else if i % 5 == 2 {
+                        vb_runtime::journal::RuntimeJournalEvent::SlotWritten {
+                            run,
+                            slot: SlotIdx::new(0),
+                        }
+                    } else if i % 5 == 3 {
+                        vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {
+                            run,
+                            step: StepIdx::new(0),
+                            output: SlotIdx::new(0),
+                        }
+                    } else {
+                        vb_runtime::journal::RuntimeJournalEvent::RunFinished {
+                            run,
+                            result: SlotIdx::new(0),
+                        }
+                    };
+                    let _ = journal.append(black_box(event));
+                    i = i.saturating_add(1);
+                }
+                black_box(journal.snapshot().map(|e| e.len()))
+            })
+        },
+    );
+
+    // Benchmark: accumulate 1000 events.
+    group.bench_function(
+        metadata(
+            "evidence_chain_accumulate_1000_events",
+            b"evidence_1000",
+            "fixture=volatile_journal_1000;surface=event_accumulate",
+        ),
+        |b| {
+            b.iter(|| {
+                let journal = vb_runtime::journal::VolatileRuntimeJournal::new();
+                let mut i = 0_u16;
+                while i < 1000 {
+                    let run = RunId::new(u64::from(i));
+                    let event = if i % 5 == 0 {
+                        vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+                            run,
+                            workflow: WorkflowDigest::from_bytes([0x11; 32]),
+                        }
+                    } else if i % 5 == 1 {
+                        vb_runtime::journal::RuntimeJournalEvent::StepStarted {
+                            run,
+                            step: StepIdx::new(0),
+                        }
+                    } else if i % 5 == 2 {
+                        vb_runtime::journal::RuntimeJournalEvent::SlotWritten {
+                            run,
+                            slot: SlotIdx::new(0),
+                        }
+                    } else if i % 5 == 3 {
+                        vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {
+                            run,
+                            step: StepIdx::new(0),
+                            output: SlotIdx::new(0),
+                        }
+                    } else {
+                        vb_runtime::journal::RuntimeJournalEvent::RunFinished {
+                            run,
+                            result: SlotIdx::new(0),
+                        }
+                    };
+                    let _ = journal.append(black_box(event));
+                    i = i.saturating_add(1);
+                }
+                black_box(journal.snapshot().map(|e| e.len()))
+            })
+        },
+    );
+
+    // Benchmark: snapshot read after 100 events.
+    group.bench_function(
+        metadata(
+            "evidence_chain_snapshot_100_events",
+            b"evidence_snap_100",
+            "fixture=volatile_journal_snapshot_100;surface=event_snapshot",
+        ),
+        |b| {
+            let journal = vb_runtime::journal::VolatileRuntimeJournal::new();
+            let mut i = 0_u16;
+            while i < 100 {
+                let run = RunId::new(u64::from(i));
+                let event = vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: WorkflowDigest::from_bytes([0x22; 32]),
+                };
+                let _ = journal.append(event);
+                i = i.saturating_add(1);
+            }
+            b.iter(|| black_box(journal.snapshot().map(|e| e.len())))
+        },
+    );
+
+    group.finish();
+}
+
+// ===== Admission gate overhead benchmarks =====
+
+fn admission_gate_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("admission_gate");
+    let digest = WorkflowDigest::from_bytes([0xAB; 32]);
+    let always_present = vb_runtime::admission::AlwaysPresentArtifactStore::shared();
+    let any_workflow_caps =
+        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::AnyWorkflow]));
+    let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
+        vb_core::Capability::Action(vb_core::ActionId::new(1)),
+        vb_core::Capability::Action(vb_core::ActionId::new(2)),
+        vb_core::Capability::Action(vb_core::ActionId::new(3)),
+    ]));
+    let empty_caps = vb_core::CapabilitySet::empty();
+
+    // Relaxed policy — always succeeds, no artifact check.
+    group.bench_function(
+        metadata(
+            "admit_run_relaxed",
+            b"admission_relaxed",
+            "fixture=always_present;surface=admit_run;policy=relaxed",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = vb_runtime::admission::admit_run(
+                    black_box(always_present.as_ref()),
+                    black_box(vb_core::RuntimePolicy::Relaxed),
+                    black_box(digest),
+                    black_box(RunId::new(1)),
+                    black_box(any_workflow_caps.clone()),
+                );
+                black_box(result.is_ok())
+            })
+        },
+    );
+
+    // Strict policy with artifact present.
+    group.bench_function(
+        metadata(
+            "admit_run_strict_artifact_present",
+            b"admission_strict",
+            "fixture=always_present;surface=admit_run;policy=strict",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = vb_runtime::admission::admit_run(
+                    black_box(always_present.as_ref()),
+                    black_box(vb_core::RuntimePolicy::Strict),
+                    black_box(digest),
+                    black_box(RunId::new(2)),
+                    black_box(any_workflow_caps.clone()),
+                );
+                black_box(result.is_ok())
+            })
+        },
+    );
+
+    // Admission with multiple action capabilities.
+    group.bench_function(
+        metadata(
+            "admit_run_multiple_action_caps",
+            b"admission_multi_caps",
+            "fixture=always_present;surface=admit_run;policy=strict;caps=3_actions",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = vb_runtime::admission::admit_run(
+                    black_box(always_present.as_ref()),
+                    black_box(vb_core::RuntimePolicy::Strict),
+                    black_box(digest),
+                    black_box(RunId::new(3)),
+                    black_box(action_caps.clone()),
+                );
+                black_box(result.is_ok())
+            })
+        },
+    );
+
+    // Admission with empty capabilities.
+    group.bench_function(
+        metadata(
+            "admit_run_empty_caps",
+            b"admission_empty_caps",
+            "fixture=always_present;surface=admit_run;policy=relaxed;caps=empty",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = vb_runtime::admission::admit_run(
+                    black_box(always_present.as_ref()),
+                    black_box(vb_core::RuntimePolicy::Relaxed),
+                    black_box(digest),
+                    black_box(RunId::new(4)),
+                    black_box(empty_caps.clone()),
+                );
+                black_box(result.is_ok())
+            })
+        },
+    );
+
+    group.finish();
+}
+
+// ===== Capability check benchmarks =====
+
+fn capability_check_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("capability_check");
+
+    let any_workflow_caps =
+        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::AnyWorkflow]));
+    let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
+        vb_core::Capability::Action(vb_core::ActionId::new(1)),
+        vb_core::Capability::Action(vb_core::ActionId::new(2)),
+        vb_core::Capability::Action(vb_core::ActionId::new(3)),
+        vb_core::Capability::Action(vb_core::ActionId::new(4)),
+        vb_core::Capability::Action(vb_core::ActionId::new(5)),
+        vb_core::Capability::Action(vb_core::ActionId::new(6)),
+        vb_core::Capability::Action(vb_core::ActionId::new(7)),
+        vb_core::Capability::Action(vb_core::ActionId::new(8)),
+        vb_core::Capability::Action(vb_core::ActionId::new(9)),
+        vb_core::Capability::Action(vb_core::ActionId::new(10)),
+    ]));
+    let workflow_caps = vb_core::CapabilitySet::from_grants(Box::new([
+        vb_core::Capability::Workflow(WorkflowDigest::from_bytes([0xAA; 32])),
+    ]));
+    let empty_caps = vb_core::CapabilitySet::empty();
+    let mixed_caps = vb_core::CapabilitySet::from_grants(Box::new([
+        vb_core::Capability::Action(vb_core::ActionId::new(1)),
+        vb_core::Capability::Action(vb_core::ActionId::new(2)),
+        vb_core::Capability::Workflow(WorkflowDigest::from_bytes([0xBB; 32])),
+    ]));
+
+    // AnyWorkflow short-circuit.
+    group.bench_function(
+        metadata(
+            "capability_check_any_workflow_grants",
+            b"cap_any_workflow",
+            "fixture=any_workflow_set;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = any_workflow_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(99))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Action match from 10-element set (first element).
+    group.bench_function(
+        metadata(
+            "capability_check_action_match_first",
+            b"cap_action_first",
+            "fixture=action_set_10;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = action_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Action miss from 10-element set.
+    group.bench_function(
+        metadata(
+            "capability_check_action_miss",
+            b"cap_action_miss",
+            "fixture=action_set_10;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = action_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(99))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Workflow-scoped grant.
+    group.bench_function(
+        metadata(
+            "capability_check_workflow_scoped",
+            b"cap_workflow_scoped",
+            "fixture=workflow_set;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = workflow_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Empty set denies all.
+    group.bench_function(
+        metadata(
+            "capability_check_empty_denies",
+            b"cap_empty",
+            "fixture=empty_set;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = empty_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Mixed capability set check (action + workflow).
+    group.bench_function(
+        metadata(
+            "capability_check_mixed_set",
+            b"cap_mixed",
+            "fixture=mixed_set;surface=capability_check",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = mixed_caps
+                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(2))));
+                black_box(result)
+            })
+        },
+    );
+
+    // Full admission capability check via vb_runtime::admission::check_capability.
+    group.bench_function(
+        metadata(
+            "capability_check_admission_gate",
+            b"cap_admission",
+            "fixture=action_set_10;surface=admission_check_capability",
+        ),
+        |b| {
+            b.iter(|| {
+                let result = vb_runtime::admission::check_capability(
+                    black_box(vb_core::ActionId::new(1)),
+                    black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))),
+                    black_box(&action_caps),
+                );
+                black_box(result.is_ok())
+            })
+        },
+    );
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     parse_yaml_benches,
@@ -1801,6 +2387,11 @@ criterion_group!(
     taint_slot_loading_bench,
     taint_build_object_bench,
     taint_build_list_bench,
-    taint_full_workflow_bench
+    taint_full_workflow_bench,
+    submit_artifact_benches,
+    budget_compute_benches,
+    evidence_chain_benches,
+    admission_gate_benches,
+    capability_check_benches
 );
 criterion_main!(benches);
