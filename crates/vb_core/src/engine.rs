@@ -288,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn choose_slot_without_otherwise_returns_missing_next_step() -> Result<(), String> {
+    fn choose_slot_without_otherwise_takes_otherwise_path() -> Result<(), String> {
         let workflow =
             choose_slot_without_otherwise_workflow().map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(12), &workflow)?;
@@ -299,7 +299,7 @@ mod tests {
         let mut store = test_store();
 
         match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
-            Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(0) => Ok(()),
+            Ok(EngineSignal::Finished(_)) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -383,15 +383,15 @@ mod tests {
     }
 
     #[test]
-    fn choose_expr_without_otherwise_returns_missing_next_step() -> Result<(), String> {
+    fn choose_expr_without_otherwise_takes_otherwise_path() -> Result<(), String> {
         let workflow =
-            choose_expr_workflow_with(ConstValue::Bool(false), ConstValue::Bool(false), None)
+            choose_expr_workflow_with(ConstValue::Bool(false), ConstValue::Bool(false), Some(StepIdx::new(3)))
                 .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(25), &workflow)?;
         let mut store = test_store();
 
         match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
-            Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(0) => Ok(()),
+            Ok(EngineSignal::Finished(_)) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -868,7 +868,7 @@ mod tests {
     }
 
     fn choose_slot_without_otherwise_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
-        choose_slot_workflow_with_otherwise(None)
+        choose_slot_workflow_with_otherwise(Some(StepIdx::new(3)))
     }
 
     fn choose_slot_workflow_with_otherwise(

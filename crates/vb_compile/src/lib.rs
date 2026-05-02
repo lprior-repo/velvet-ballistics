@@ -1352,7 +1352,10 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
         WorkflowError::EmptyNodes
         | WorkflowError::EntryOutOfBounds { .. }
         | WorkflowError::NodeIdMismatch { .. }
-        | WorkflowError::EmptyBranchTable => "INVALID_COMPILED_WORKFLOW",
+        | WorkflowError::EmptyBranchTable
+        | WorkflowError::UnreachableNode { .. }
+        | WorkflowError::BackwardEdge { .. }
+        | WorkflowError::ImproperLoopNesting { .. } => "INVALID_COMPILED_WORKFLOW",
     }
 }
 
@@ -2573,11 +2576,17 @@ fn compile_step(
         StepPrimitive::Together => {
             return compile_together(body, index, last_step, id, source_ir_starts, builder);
         }
-        StepPrimitive::Collect => return compile_collect(body, index, last_step, id, builder),
-        StepPrimitive::Reduce => return compile_reduce(body, index, last_step, id, builder),
-        StepPrimitive::Repeat => return compile_repeat(body, index, last_step, id, builder),
-        StepPrimitive::Wait => compile_wait(body, index, last_step, id, builder),
-        StepPrimitive::Ask => return compile_ask(body, index, last_step, id, builder),
+        StepPrimitive::Collect => {
+            return compile_collect(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Reduce => {
+            return compile_reduce(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Repeat => {
+            return compile_repeat(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Wait => compile_wait(body, index, last_step, id, next, builder),
+        StepPrimitive::Ask => return compile_ask(body, index, last_step, id, next, builder),
         StepPrimitive::Finish => return compile_finish(body, index, last_step, id, builder),
     }?;
     Ok(vec![node])
@@ -2949,6 +2958,7 @@ fn compile_collect(
     index: usize,
     last_step: usize,
     id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -2959,7 +2969,7 @@ fn compile_collect(
     let body_step = checked_step_offset(id, 1, "collect", "body")?;
     let done = checked_step_offset(id, 2, "collect", "done")?;
     builder.record_slot(source);
-    lower_collect(
+    let mut nodes = lower_collect(
         id,
         source,
         limit,
@@ -2967,7 +2977,12 @@ fn compile_collect(
         body_step,
         done,
         &mut SlotCompiler::new(),
-    )
+    )?;
+    // CollectFinish (index 2) chains to the next step.
+    if let Some(finish) = nodes.get_mut(2) {
+        finish.next = next;
+    }
+    Ok(nodes)
 }
 
 fn compile_reduce(
@@ -2975,6 +2990,7 @@ fn compile_reduce(
     index: usize,
     last_step: usize,
     id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -2987,7 +3003,7 @@ fn compile_reduce(
     let done = checked_step_offset(id, 2, "reduce", "done")?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
-    lower_reduce(
+    let mut nodes = lower_reduce(
         id,
         input,
         accumulator,
@@ -2995,7 +3011,12 @@ fn compile_reduce(
         body_step,
         done,
         &mut SlotCompiler::new(),
-    )
+    )?;
+    // ReduceFinish (index 2) chains to the next step.
+    if let Some(finish) = nodes.get_mut(2) {
+        finish.next = next;
+    }
+    Ok(nodes)
 }
 
 fn compile_repeat(
@@ -3003,6 +3024,7 @@ fn compile_repeat(
     index: usize,
     last_step: usize,
     id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -3019,7 +3041,12 @@ fn compile_repeat(
         }
     })?)?;
     builder.record_slot(attempt_slot);
-    lower_repeat(id, max_attempts, body_step, done, &mut SlotCompiler::new())
+    let mut nodes = lower_repeat(id, max_attempts, body_step, done, &mut SlotCompiler::new())?;
+    // RepeatFinish (index 2) chains to the next step.
+    if let Some(finish) = nodes.get_mut(2) {
+        finish.next = next;
+    }
+    Ok(nodes)
 }
 
 fn compile_wait(
@@ -3027,6 +3054,7 @@ fn compile_wait(
     index: usize,
     last_step: usize,
     id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -3034,36 +3062,28 @@ fn compile_wait(
     let until = optional_slot_field(body, index, "until")?;
     let event = optional_slot_field(body, index, "event")?;
     let timeout = optional_slot_field(body, index, "timeout")?;
-    match (until, event, timeout) {
+    let mut node = match (until, event, timeout) {
         (Some(deadline), None, None) => {
             builder.record_slot(deadline);
-            Ok(lower_wait(
-                id,
-                deadline,
-                None,
-                false,
-                &mut SlotCompiler::new(),
-            ))
+            lower_wait(id, deadline, None, false, &mut SlotCompiler::new())
         }
         (None, Some(event_slot), timeout_slot) => {
             builder.record_slot(event_slot);
             if let Some(slot) = timeout_slot {
                 builder.record_slot(slot);
             }
-            Ok(lower_wait(
-                id,
-                event_slot,
-                timeout_slot,
-                true,
-                &mut SlotCompiler::new(),
-            ))
+            lower_wait(id, event_slot, timeout_slot, true, &mut SlotCompiler::new())
         }
-        _ => Err(CompileError::StepFieldShape {
-            step: index,
-            field: "wait",
-            expected: "until without timeout or event with optional timeout",
-        }),
-    }
+        _ => {
+            return Err(CompileError::StepFieldShape {
+                step: index,
+                field: "wait",
+                expected: "until without timeout or event with optional timeout",
+            });
+        }
+    };
+    node.next = next;
+    Ok(node)
 }
 
 fn compile_ask(
@@ -3071,6 +3091,7 @@ fn compile_ask(
     index: usize,
     last_step: usize,
     id: StepIdx,
+    next: Option<StepIdx>,
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
@@ -3083,7 +3104,19 @@ fn compile_ask(
     if let Some(slot) = timeout {
         builder.record_slot(slot);
     }
-    lower_ask(id, prompt, answer, timeout, &mut SlotCompiler::new())
+    let mut nodes = lower_ask(id, prompt, answer, timeout, &mut SlotCompiler::new())?;
+    // Ask (index 0) chains to AskResume for structural reachability.
+    if let (Some(ask_node), Some(resume_node)) = (nodes.get(0), nodes.get(1)) {
+        let resume_id = resume_node.id;
+        if let Some(ask_node) = nodes.get_mut(0) {
+            ask_node.next = Some(resume_id);
+        }
+    }
+    // AskResume (index 1) chains to the next step.
+    if let Some(resume) = nodes.get_mut(1) {
+        resume.next = next;
+    }
+    Ok(nodes)
 }
 
 fn compile_finish(
@@ -3461,14 +3494,14 @@ fn object_slot_value(
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use super::{
         compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
         lower_set,
     };
-    use vb_core::ConstValue;
+    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, WorkflowParts};
+    use vb_core::ConstValue;
     use vb_core::{CompiledWorkflow, ResourceContract};
 
     macro_rules! compile_test_fail {
