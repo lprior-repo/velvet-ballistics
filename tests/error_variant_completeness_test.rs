@@ -80,7 +80,7 @@ fn diagnostic_parse_public_constructible_errors_have_exhaustive_variant_audits()
 
 #[test]
 fn compile_public_constructible_errors_have_exhaustive_variant_audits() {
-    assert_eq!(compile_constructible_variant_count(), 69);
+    assert_eq!(compile_constructible_variant_count(), 71);
 }
 
 #[test]
@@ -739,7 +739,7 @@ fn compile_constructible_variant_count() -> usize {
     count.saturating_add(1)
 }
 
-fn compile_constructible_samples() -> [CompileError; 68] {
+fn compile_constructible_samples() -> [CompileError; 70] {
     [
         CompileError::SourceTooLarge {
             actual: 2,
@@ -917,6 +917,12 @@ fn compile_constructible_samples() -> [CompileError; 68] {
             expected: 1,
             actual: 2,
         },
+        CompileError::Validation(ValidationError::ControlFlowCycle),
+        CompileError::IdempotencyViolation {
+            action: ActionId::new(0),
+            side_effect: vb_core::SideEffect::Writes,
+            reason: b("unsafe retry"),
+        },
     ]
 }
 
@@ -992,6 +998,8 @@ fn compile_error_variant_name(error: &CompileError) -> &'static str {
         CompileError::ExpressionUnknownIdentifier { .. } => "ExpressionUnknownIdentifier",
         CompileError::ExpressionLoweringUnsupported { .. } => "ExpressionLoweringUnsupported",
         CompileError::ExpressionHelperArity { .. } => "ExpressionHelperArity",
+        CompileError::Validation(_) => "Validation",
+        CompileError::IdempotencyViolation { .. } => "IdempotencyViolation",
     }
 }
 
