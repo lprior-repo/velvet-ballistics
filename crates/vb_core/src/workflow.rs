@@ -3284,6 +3284,222 @@ mod tests {
             .map(|_| ())
             .map_err(|e| e.to_string())
     }
+
+    // =========================================================================
+    // Phase 46 adversarial tests -- IR structural validation edge cases
+    // =========================================================================
+
+    #[test]
+    fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("cycle_next"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    // Backward edge: node 1 -> node 0 creates a cycle.
+                    next: Some(StepIdx::new(0)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(2, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::BackwardEdge { from, to })
+                if from == StepIdx::new(1) && to == StepIdx::new(0) =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), String> {
+        // Two nodes with the same StepIdx (both claim to be step 0).
+        let parts = WorkflowParts {
+            name: Box::<str>::from("dup_step_idx"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                // Second node at index 1 but claims to be step 0 (duplicate id).
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(2, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::NodeIdMismatch { expected, actual })
+                if expected == StepIdx::new(1) && actual == StepIdx::new(0) =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
+        // Finish node references slot 99 but slot_count is only 1.
+        let parts = WorkflowParts {
+            name: Box::<str>::from("slot_oob_finish"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(99),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("slot_oob_list"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::BuildList {
+                    items: vec![SlotIdx::new(0), SlotIdx::new(50)].into_boxed_slice(),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 2, 0, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(50) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("slot_oob_output"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                // Output slot 200 is out of bounds for slot_count=1.
+                output: Some(SlotIdx::new(200)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(1, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(200) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
+        // Node 0 finishes immediately; node 1 is never reached.
+        let parts = WorkflowParts {
+            name: Box::<str>::from("unreachable"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: resource_contract(2, 1, 1, 0, 0),
+        };
+
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::UnreachableNode { step }) if step == StepIdx::new(1) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
 }
 
 #[cfg(test)]
