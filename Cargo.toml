@@ -56,6 +56,7 @@ harness = false
 
 [[bench]]
 name = "iai_benches"
+path = "benches/velvet_ballastics.rs"
 
 [workspace.package]
 edition = "2024"

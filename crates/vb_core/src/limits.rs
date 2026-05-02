@@ -81,3 +81,9 @@ pub const MAX_SYMBOL_BYTES_PER_VALUE: usize = 4_096;
 /// Maximum bytes in one runtime blob arena value.
 ///
 pub const MAX_BLOB_BYTES_PER_VALUE: usize = 16_777_216;
+
+/// Maximum deterministic steps per scheduler tick.
+///
+/// Set to `u64::MAX` so that the default `StepBudget::MAX` does not
+/// artificially bound the engine in single-workflow execution contexts.
+pub const MAX_STEP_BUDGET: u64 = u64::MAX;

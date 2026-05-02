@@ -4,18 +4,17 @@
 //! YAML enters the system only through this crate. The hot engine consumes only
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
-// NOTE: Duplicate validation with `vb_validate`
+// NOTE: Validation deduplication with `vb_validate` (DRIFT-5)
 // -----------------------------------------------
-// The modules below (schema, references, control_flow, type_taint) perform the
-// same *logical* validation passes as `vb_validate`, but they operate on the
-// compiler's own AST types (`WorkflowAst`, `Yaml`) rather than the standalone
-// `vb_validate::WorkflowDoc` / `WorkflowRefs` / `WorkflowFlow` / `WorkflowTypes`
-// types.  This means they cannot simply be replaced by calls into `vb_validate`
-// without first unifying the input types.
+// Reference validation is shared: this crate builds a `RefTables` from its AST
+// and calls `vb_validate::references::validate_single_reference` for each
+// reference, avoiding duplicate validation logic.
 //
-// Future work should converge on a single input representation so that both
-// crates share the same validation logic. Until then, both copies must be kept
-// in sync when validation rules change.
+// Control-flow and type/taint validation remain compile-local because they
+// need structured step/target indices and AST-specific type inference that the
+// standalone validator's string-based error model cannot represent. These
+// modules perform the same *logical* checks as `vb_validate` but on different
+// input types.
 
 pub mod ast;
 mod control_flow;

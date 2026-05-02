@@ -1,16 +1,23 @@
-use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, WorkflowAst};
+//! Reference validation for compiled workflow ASTs.
+//!
+//! Delegates core reference validation to `vb_validate::references` to avoid
+//! duplicating validation logic. Handles compile-specific references (slot
+//! accessors) locally since those are not part of the standalone validator's
+//! surface.
+
+use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
-use std::collections::HashSet;
+use vb_validate::references::{RefTables, validate_single_reference};
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
-    let tables = ReferenceTables::new(ast);
+    let tables = build_ref_tables(ast);
     let mut errors = Vec::new();
-    validate_value_entries(&ast.inputs, &tables, &mut errors);
-    validate_value_entries(&ast.vars, &tables, &mut errors);
-    validate_expression_entries(&ast.result, &tables, &mut errors);
-    validate_values(&ast.examples, &tables, &mut errors);
-    validate_steps(&ast.steps, &tables, &mut errors);
+    collect_references_from_value_entries(&ast.inputs, &tables, &mut errors);
+    collect_references_from_value_entries(&ast.vars, &tables, &mut errors);
+    collect_references_from_expression_entries(&ast.result, &tables, &mut errors);
+    collect_references_from_values(&ast.examples, &tables, &mut errors);
+    collect_references_from_steps(&ast.steps, &tables, &mut errors);
     if errors.is_empty() {
         Ok(())
     } else {
@@ -18,197 +25,195 @@ pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErro
     }
 }
 
-struct ReferenceTables<'a> {
-    inputs: HashSet<&'a str>,
-    vars: HashSet<&'a str>,
-    secrets: HashSet<&'a str>,
-    steps: HashSet<&'a str>,
+fn build_ref_tables(ast: &WorkflowAst) -> RefTables {
+    let inputs = entry_names_owned(&ast.inputs);
+    let vars = entry_names_owned(&ast.vars);
+    let secrets = secret_names_owned(&ast.secrets);
+    let step_ids = step_names_owned(&ast.steps);
+    RefTables::from_slices(&inputs, &vars, &secrets, &step_ids)
 }
 
-impl<'a> ReferenceTables<'a> {
-    fn new(ast: &'a WorkflowAst) -> Self {
-        Self {
-            inputs: entry_names(&ast.inputs),
-            vars: entry_names(&ast.vars),
-            secrets: entry_names(&ast.secrets),
-            steps: step_names(&ast.steps),
-        }
-    }
-}
-
-fn entry_names<T>(entries: &[AstMapEntry<T>]) -> HashSet<&str> {
-    let mut names = HashSet::with_capacity(entries.len());
+fn entry_names_owned<T>(entries: &[AstMapEntry<T>]) -> Vec<String> {
+    let mut names = Vec::with_capacity(entries.len());
     for entry in entries {
-        names.insert(entry.name.as_ref());
+        names.push(entry.name.as_ref().to_owned());
     }
     names
 }
 
-fn step_names(steps: &[StepAst]) -> HashSet<&str> {
-    let mut names = HashSet::with_capacity(steps.len());
+fn secret_names_owned(entries: &[AstMapEntry<Box<str>>]) -> Vec<String> {
+    let mut names = Vec::with_capacity(entries.len());
+    for entry in entries {
+        names.push(entry.name.as_ref().to_owned());
+    }
+    names
+}
+
+fn step_names_owned(steps: &[StepAst]) -> Vec<String> {
+    let mut names = Vec::with_capacity(steps.len());
     for step in steps {
-        names.insert(step.id.as_ref());
+        names.push(step.id.as_ref().to_owned());
     }
     names
 }
 
-fn validate_value_entries(
+fn collect_references_from_value_entries(
     entries: &[AstMapEntry<AstValue>],
-    tables: &ReferenceTables<'_>,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
     for entry in entries {
-        validate_value(&entry.value, tables, errors);
+        collect_references_from_value(&entry.value, tables, errors);
     }
 }
 
-fn validate_expression_entries(
+fn collect_references_from_expression_entries(
     entries: &[AstMapEntry<AstExpression>],
-    tables: &ReferenceTables<'_>,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
     for entry in entries {
-        validate_expression(&entry.value, tables, errors);
+        collect_references_from_expression(&entry.value, tables, errors);
     }
 }
 
-fn validate_values(
+fn collect_references_from_values(
     values: &[AstValue],
-    tables: &ReferenceTables<'_>,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
     for value in values {
-        validate_value(value, tables, errors);
+        collect_references_from_value(value, tables, errors);
     }
 }
 
-fn validate_steps(steps: &[StepAst], tables: &ReferenceTables<'_>, errors: &mut Vec<CompileError>) {
-    for step in steps {
-        validate_step_kind(&step.kind, tables, errors);
-    }
-}
-
-fn validate_step_kind(
-    kind: &StepKindAst,
-    tables: &ReferenceTables<'_>,
+fn collect_references_from_steps(
+    steps: &[StepAst],
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
+    for step in steps {
+        collect_references_from_step_kind(&step.kind, tables, errors);
+    }
+}
+
+fn collect_references_from_step_kind(
+    kind: &crate::ast::StepKindAst,
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    use crate::ast::StepKindAst;
     match kind {
         StepKindAst::Run { .. } => {}
-        StepKindAst::Save { fields } => validate_value_entries(fields, tables, errors),
-        StepKindAst::Choose { condition, .. } => validate_expression(condition, tables, errors),
+        StepKindAst::Save { fields } => collect_references_from_value_entries(fields, tables, errors),
+        StepKindAst::Choose { condition, .. } => {
+            collect_references_from_expression(condition, tables, errors);
+        }
         StepKindAst::ForEach { .. }
         | StepKindAst::Together { .. }
         | StepKindAst::Collect { .. }
         | StepKindAst::Repeat { .. } => {}
-        StepKindAst::Reduce { initial, .. } => validate_value(initial, tables, errors),
+        StepKindAst::Reduce { initial, .. } => {
+            collect_references_from_value(initial, tables, errors);
+        }
         StepKindAst::Wait { .. } | StepKindAst::Ask { .. } => {}
-        StepKindAst::Finish { result } => validate_expression(result, tables, errors),
+        StepKindAst::Finish { result } => {
+            collect_references_from_expression(result, tables, errors);
+        }
     }
 }
 
-fn validate_expression(
+fn collect_references_from_expression(
     expression: &AstExpression,
-    tables: &ReferenceTables<'_>,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
     match expression {
         AstExpression::Slot(_) => {}
         AstExpression::Reference(reference) => {
-            if let Err(e) = validate_reference(reference, tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
                 errors.push(e);
             }
         }
-        AstExpression::Parsed(expression) => validate_parsed_expression(expression, tables, errors),
-        AstExpression::Literal(value) => validate_value(value, tables, errors),
+        AstExpression::Parsed(expression) => {
+            collect_references_from_parsed_expression(expression, tables, errors);
+        }
+        AstExpression::Literal(value) => collect_references_from_value(value, tables, errors),
     }
 }
 
-fn validate_parsed_expression(
+fn collect_references_from_parsed_expression(
     expression: &ParsedExpression,
-    tables: &ReferenceTables<'_>,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
     match expression {
         ParsedExpression::Reference(reference) => {
-            if let Err(e) = validate_reference(reference, tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
                 errors.push(e);
             }
         }
-        ParsedExpression::Unary { expr, .. } => validate_parsed_expression(expr, tables, errors),
-        ParsedExpression::Binary { left, right, .. } => {
-            validate_parsed_expression(left, tables, errors);
-            validate_parsed_expression(right, tables, errors);
+        ParsedExpression::Unary { expr, .. } => {
+            collect_references_from_parsed_expression(expr, tables, errors);
         }
-        ParsedExpression::HelperCall { args, .. } => validate_parsed_args(args, tables, errors),
+        ParsedExpression::Binary { left, right, .. } => {
+            collect_references_from_parsed_expression(left, tables, errors);
+            collect_references_from_parsed_expression(right, tables, errors);
+        }
+        ParsedExpression::HelperCall { args, .. } => {
+            for arg in args {
+                collect_references_from_parsed_expression(arg, tables, errors);
+            }
+        }
         ParsedExpression::Literal(_) => {}
     }
 }
 
-fn validate_parsed_args(
-    args: &[ParsedExpression],
-    tables: &ReferenceTables<'_>,
+fn collect_references_from_value(
+    value: &AstValue,
+    tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
-    for arg in args {
-        validate_parsed_expression(arg, tables, errors);
-    }
-}
-
-fn validate_value(value: &AstValue, tables: &ReferenceTables<'_>, errors: &mut Vec<CompileError>) {
     match value {
         AstValue::Reference(reference) => {
-            if let Err(e) = validate_reference(reference, tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
                 errors.push(e);
             }
         }
-        AstValue::Sequence(values) => validate_values(values, tables, errors),
-        AstValue::Mapping(entries) => validate_value_entries(entries, tables, errors),
+        AstValue::Sequence(values) => collect_references_from_values(values, tables, errors),
+        AstValue::Mapping(entries) => collect_references_from_value_entries(entries, tables, errors),
         AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
     }
 }
 
-fn validate_reference(reference: &str, tables: &ReferenceTables<'_>) -> Result<(), CompileError> {
+/// Validates a reference from the compiler AST.
+///
+/// Handles compile-specific references (`$slot.*`) locally and delegates
+/// everything else to `vb_validate::references::validate_single_reference`.
+fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Ok(());
     };
     let Some((root, tail)) = body.split_once('.') else {
-        return validate_bare_reference(reference, body);
+        // Bare reference -- delegate to shared validation
+        return validate_single_reference(reference, tables)
+            .map_err(|e| map_validation_error(reference, e));
     };
-    validate_rooted_reference(reference, root, tail, tables)
-}
-
-fn validate_bare_reference(reference: &str, body: &str) -> Result<(), CompileError> {
-    if matches!(body, "now" | "random") {
-        Err(illegal_reference(reference))
-    } else {
-        Err(CompileError::UnknownReferenceRoot {
-            reference: Box::<str>::from(reference),
-            root: Box::<str>::from(body),
-        })
+    // Compile-specific: slot references are not in the standalone validator
+    if matches!(root, "slot" | "slots") {
+        return validate_slot_reference(reference, root, tail);
     }
-}
-
-fn validate_rooted_reference(
-    reference: &str,
-    root: &str,
-    tail: &str,
-    tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
-    match root {
-        "input" => validate_declared(reference, tail, "input", &tables.inputs),
-        "slot" | "slots" => validate_slot_reference(reference, root, tail),
-        "var" | "vars" => validate_declared(reference, tail, "var", &tables.vars),
-        "secrets" => validate_declared(reference, tail, "secrets", &tables.secrets),
-        "runtime" => Err(illegal_reference(reference)),
-        "step" | "steps" => validate_step_reference(reference, tail, tables),
-        _ => Err(CompileError::UnknownReferenceRoot {
-            reference: Box::<str>::from(reference),
-            root: Box::<str>::from(root),
-        }),
+    // Compile-specific: reject accessor paths after declared names
+    // (e.g., $vars.data.field is unsupported because the compiler
+    // does not support accessor traversal on vars/inputs/secrets)
+    if let Some(error) = check_accessor_path(reference, root, tail, tables) {
+        return Err(error);
     }
+    validate_single_reference(reference, tables)
+        .map_err(|e| map_validation_error(reference, e))
 }
 
+/// Validates a `$slot.*` reference (compile-specific).
 fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<(), CompileError> {
     let (slot, path) = match tail.split_once('.') {
         Some((slot, path)) => (slot, Some(path)),
@@ -217,8 +222,8 @@ fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<()
     if slot.parse::<u16>().is_err() {
         return Err(CompileError::UnknownReferenceName {
             kind: "slot",
-            reference: Box::<str>::from(reference),
-            name: Box::<str>::from(slot),
+            reference: Box::from(reference),
+            name: Box::from(slot),
         });
     }
     if let Some(path) = path {
@@ -227,9 +232,9 @@ fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<()
         }
         let accessor_root = format!("{root}.{slot}");
         return Err(CompileError::UnsupportedAccessorReference {
-            reference: Box::<str>::from(reference),
-            root: Box::<str>::from(accessor_root),
-            path: Box::<str>::from(path),
+            reference: Box::from(reference),
+            root: Box::from(accessor_root),
+            path: Box::from(path),
         });
     }
     Ok(())
@@ -246,58 +251,87 @@ fn numeric_accessor_path(path: &str) -> bool {
     saw_segment
 }
 
-fn validate_step_reference(
+/// Checks for unsupported accessor paths after declared names.
+///
+/// For example, `$vars.data.field` has an accessor path `field` after the
+/// declared name `data`, which the compiler does not support.
+fn check_accessor_path(
     reference: &str,
+    root: &str,
     tail: &str,
-    tables: &ReferenceTables<'_>,
-) -> Result<(), CompileError> {
-    let name = reference_name(tail);
-    if tables.steps.contains(name) {
-        Err(illegal_reference(reference))
-    } else {
-        Err(CompileError::UnknownReferenceName {
-            kind: "step",
-            reference: Box::<str>::from(reference),
-            name: Box::<str>::from(name),
-        })
+    tables: &RefTables,
+) -> Option<CompileError> {
+    // Only check accessor paths for name-rooted references
+    let (name, path) = match tail.split_once('.') {
+        Some((name, path)) => (name, path),
+        None => return None,
+    };
+    // Check if the root+name is declared; if so, the trailing path is unsupported
+    let is_declared = match root {
+        "input" | "inputs" => tables.contains_input(name),
+        "var" | "vars" => tables.contains_var(name),
+        "secrets" => tables.contains_secret(name),
+        _ => return None,
+    };
+    if is_declared {
+        let accessor_root = format!("{root}.{name}");
+        return Some(CompileError::UnsupportedAccessorReference {
+            reference: Box::from(reference),
+            root: Box::from(accessor_root),
+            path: Box::from(path),
+        });
     }
+    None
 }
 
-fn validate_declared(
-    reference: &str,
-    tail: &str,
-    kind: &'static str,
-    names: &HashSet<&str>,
-) -> Result<(), CompileError> {
-    let name = reference_name(tail);
-    if names.contains(name) {
-        if let Some((_, path)) = tail.split_once('.') {
-            return Err(CompileError::UnsupportedAccessorReference {
-                reference: Box::<str>::from(reference),
-                root: Box::<str>::from(format!("{kind}.{name}")),
-                path: Box::<str>::from(path),
-            });
+/// Maps a `vb_validate::ValidationError` from shared reference validation into
+/// a `CompileError` with source-location context.
+fn map_validation_error(reference: &str, error: vb_validate::ValidationError) -> CompileError {
+    match error {
+        vb_validate::ValidationError::DirectRuntimeReference => CompileError::IllegalReference {
+            reference: Box::from(reference),
+        },
+        vb_validate::ValidationError::FutureReference { .. } => CompileError::IllegalReference {
+            reference: Box::from(reference),
+        },
+        vb_validate::ValidationError::UnknownReference { .. } => {
+            let Some(body) = reference.strip_prefix('$') else {
+                return CompileError::UnknownReferenceRoot {
+                    reference: Box::from(reference),
+                    root: Box::from(reference),
+                };
+            };
+            let Some((root, tail)) = body.split_once('.') else {
+                return CompileError::UnknownReferenceRoot {
+                    reference: Box::from(reference),
+                    root: Box::from(body),
+                };
+            };
+            let name = match tail.split_once('.') {
+                Some((name, _)) => name,
+                None => tail,
+            };
+            let kind = match root {
+                "input" => "input",
+                "var" | "vars" => "var",
+                "secrets" => "secrets",
+                "step" | "steps" => "step",
+                _ => {
+                    return CompileError::UnknownReferenceRoot {
+                        reference: Box::from(reference),
+                        root: Box::from(root),
+                    };
+                }
+            };
+            CompileError::UnknownReferenceName {
+                kind,
+                reference: Box::from(reference),
+                name: Box::from(name),
+            }
         }
-        Ok(())
-    } else {
-        Err(CompileError::UnknownReferenceName {
-            kind,
-            reference: Box::<str>::from(reference),
-            name: Box::<str>::from(name),
-        })
-    }
-}
-
-fn reference_name(tail: &str) -> &str {
-    match tail.split_once('.') {
-        Some((name, _)) => name,
-        None => tail,
-    }
-}
-
-fn illegal_reference(reference: &str) -> CompileError {
-    CompileError::IllegalReference {
-        reference: Box::<str>::from(reference),
+        _ => CompileError::IllegalReference {
+            reference: Box::from(reference),
+        },
     }
 }
 
