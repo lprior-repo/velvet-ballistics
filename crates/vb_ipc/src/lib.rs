@@ -13,6 +13,10 @@
 //! not part of the hot control plane.
 
 pub mod client;
+pub mod client_conn;
+pub mod client_error;
+pub mod client_request;
+pub mod client_response;
 pub mod frame;
 pub mod server;
 
