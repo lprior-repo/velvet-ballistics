@@ -12,7 +12,10 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
 use crate::counters::ShardCounters;
-use crate::engine::{RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full};
+use crate::engine::{
+    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineResult, RuntimeSignal,
+    drive_deterministic_full,
+};
 use crate::frame_pool::FramePool;
 use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
@@ -481,6 +484,13 @@ impl Shard {
             .map_err(|_| RuntimeError::RunNotFound)?;
         self.trace_ring
             .push(TraceEvent::ActionCompleted { run, step });
+        // Evidence chain: emit StepSucceeded for legacy action completion.
+        // Legacy path has no output slot information.
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: SlotIdx::ZERO,
+        })?;
         self.drive_run(run)
     }
 
@@ -612,7 +622,9 @@ impl Shard {
             }
             PendingTimerKind::Ask => {}
         }
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick);
+        let mut evidence = EvidenceCollector::new();
+        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        self.flush_evidence(run, &mut evidence)?;
         self.apply_drive_result(run, state, result)
     }
 
@@ -636,7 +648,9 @@ impl Shard {
 
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {
         let mut state = self.take_run_state(run)?;
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick);
+        let mut evidence = EvidenceCollector::new();
+        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        self.flush_evidence(run, &mut evidence)?;
         self.apply_drive_result(run, state, result)
     }
 
@@ -650,6 +664,7 @@ impl Shard {
     fn drive_state(
         state: &mut RunState,
         step_budget_per_tick: u64,
+        evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = StepBudget::new(step_budget_per_tick);
         drive_deterministic_full(
@@ -659,7 +674,52 @@ impl Shard {
             &mut state.store,
             &[],
             RetryPolicy::NEVER,
+            evidence,
         )
+    }
+
+    /// Drains evidence events from the collector and emits them to the
+    /// journal and trace ring. This satisfies the Phase 40/44 evidence
+    /// chain requirement: StepStarted before SlotWritten for every step,
+    /// followed by StepSucceeded.
+    fn flush_evidence(
+        &mut self,
+        run: RunId,
+        evidence: &mut EvidenceCollector,
+    ) -> RuntimeResult<()> {
+        let events = evidence.drain();
+        for ev in events {
+            match ev {
+                EvidenceEvent::StepStarted { step } => {
+                    self.trace_ring.push(TraceEvent::StepStarted {
+                        run,
+                        step,
+                    });
+                    self.journal.append(RuntimeJournalEvent::StepStarted {
+                        run,
+                        step,
+                    })?;
+                }
+                EvidenceEvent::StepSucceeded { step, output } => {
+                    if let Some(slot) = output {
+                        self.trace_ring.push(TraceEvent::SlotWritten {
+                            run,
+                            slot,
+                        });
+                        self.journal.append(RuntimeJournalEvent::SlotWritten {
+                            run,
+                            slot,
+                        })?;
+                    }
+                    self.journal.append(RuntimeJournalEvent::StepSucceeded {
+                        run,
+                        step,
+                        output: output.unwrap_or(SlotIdx::ZERO),
+                    })?;
+                }
+            }
+        }
+        Ok(())
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -696,12 +756,8 @@ impl Shard {
             Some(slot) => slot,
             None => SlotIdx::ZERO,
         };
-        self.journal
-            .append(RuntimeJournalEvent::StepSucceeded {
-                run,
-                step: state.frame.pc(),
-                output: result,
-            })?;
+        // Note: StepSucceeded for the Finish step is now emitted by the evidence
+        // collector during flush_evidence, before apply_drive_result is called.
         self.journal
             .append(RuntimeJournalEvent::RunFinished { run, result })?;
         self.release_frame(state.frame);

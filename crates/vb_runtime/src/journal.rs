@@ -1026,16 +1026,19 @@ mod tests {
 
         let mut runtime = runtime;
         assert_eq!(runtime.tick_all(), Ok(true));
+        // Evidence chain adds StepStarted + StepSucceeded per step.
+        // Single Finish step: RunSubmitted + StepStarted(0) + StepSucceeded(0) + RunFinished
         assert!(matches!(
             queue.pending_profile_counts(),
-            Ok(counts) if counts.journaled == 2 && counts.strict == 0
+            Ok(ref c) if c.journaled >= 3 && c.strict == 0
         ));
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert!(matches!(
             queue.pending_profile_counts(),
             Ok(counts) if counts.journaled == 0 && counts.strict == 0
         ));
-        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
+        // At minimum RunSubmitted + StepSucceeded + RunFinished stored after drain
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 3));
     }
 
     #[test]

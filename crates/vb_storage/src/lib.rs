@@ -1732,12 +1732,12 @@ const ADMISSION_GATE_COUNT: u8 = 2;
 /// 3. Persistence: store the artifact in the `compiled_ir` keyspace.
 /// 4. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
-/// Returns the verified digest on success.
+/// Returns the `AcceptedArtifact` on success.
 pub fn submit_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
-) -> Result<vb_core::WorkflowDigest, JournalError> {
+) -> Result<AcceptedArtifact, JournalError> {
     match policy {
         vb_core::RuntimePolicy::Relaxed => {
             // No verification required, just persist.
@@ -1748,7 +1748,12 @@ pub fn submit_artifact(
                 ir: bytes,
             };
             journal.put_compiled_ir(&record)?;
-            Ok(workflow.digest())
+            Ok(AcceptedArtifact {
+                digest: workflow.digest(),
+                ir: record.ir,
+                verification: VerificationProof::new(workflow.digest(), 0, false),
+                accepted_at_seq: EventSeq::new(0),
+            })
         }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             let parts = workflow.to_parts();
@@ -1785,15 +1790,15 @@ pub fn submit_artifact(
                 journal.persist_strict()?;
             }
 
-            let _proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
-            let _artifact = AcceptedArtifact {
+            let proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+            let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 ir: record.ir,
-                verification: _proof,
+                verification: proof,
                 accepted_at_seq: EventSeq::new(0),
             };
 
-            Ok(workflow.digest())
+            Ok(artifact)
         }
     }
 }
@@ -9475,7 +9480,7 @@ fn submit_artifact_valid_workflow_succeeds() {
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
     assert!(result.is_ok(), "submit_artifact should succeed: {:?}", result);
-    assert_eq!(result.expect("ok").as_bytes(), digest.as_bytes());
+    assert_eq!(result.expect("ok").digest.as_bytes(), digest.as_bytes());
 
     // Verify it was stored.
     let loaded = journal.compiled_ir(digest).expect("load compiled ir");
@@ -9577,7 +9582,7 @@ fn submit_artifact_strict_policy_durable() {
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
     assert!(result.is_ok(), "strict submit should succeed: {:?}", result);
-    assert_eq!(result.expect("ok"), digest);
+    assert_eq!(result.expect("ok").digest, digest);
 
     // Under Strict, the data should be durably persisted (SyncAll).
     // Verify we can reload after persist.
@@ -9597,7 +9602,7 @@ fn submit_artifact_journaled_policy_not_durable() {
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
     assert!(result.is_ok(), "journaled submit should succeed: {:?}", result);
-    assert_eq!(result.expect("ok"), digest);
+    assert_eq!(result.expect("ok").digest, digest);
 
     // Under Journaled, data is persisted but without SyncAll barrier.
     let loaded = journal.compiled_ir(digest).expect("load compiled ir");
@@ -9617,16 +9622,217 @@ fn submit_artifact_duplicate_digest_replaces() {
     // First submit.
     let result1 = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
     assert!(result1.is_ok());
-    assert_eq!(result1.expect("ok"), digest);
+    assert_eq!(result1.expect("ok").digest, digest);
 
     // Second submit with same digest — should succeed (replace/overwrite).
     let result2 = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
     assert!(result2.is_ok(), "duplicate submit should succeed: {:?}", result2);
-    assert_eq!(result2.expect("ok"), digest);
+    assert_eq!(result2.expect("ok").digest, digest);
 
     // Verify only one record exists (replaced, not duplicated).
     let loaded = journal.compiled_ir(digest).expect("load compiled ir");
     assert!(loaded.is_some());
+}
+
+// =======================================================================
+// Adversarial admission tests - Phase 39 bypass vectors
+// =======================================================================
+
+#[test]
+fn submit_artifact_returns_accepted_artifact_with_correct_digest() {
+    use crate::{FjallJournal, submit_artifact};
+    use vb_core::RuntimePolicy;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+    let digest = workflow.digest();
+
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .expect("submit should succeed");
+    assert_eq!(artifact.digest, digest, "artifact digest must match workflow digest");
+    assert!(
+        !artifact.ir.is_empty(),
+        "artifact IR must be non-empty"
+    );
+    assert!(
+        artifact.verification.durable,
+        "strict policy must produce durable proof"
+    );
+    assert_eq!(
+        artifact.verification.gate_count, 2,
+        "strict policy must pass 2 gates"
+    );
+    assert_eq!(artifact.verification.digest, digest);
+}
+
+#[test]
+fn submit_artifact_journaled_proof_is_not_durable() {
+    use crate::{FjallJournal, submit_artifact};
+    use vb_core::RuntimePolicy;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
+        .expect("submit should succeed");
+    assert!(
+        !artifact.verification.durable,
+        "journaled policy must not produce durable proof"
+    );
+    assert_eq!(
+        artifact.verification.gate_count, 2,
+        "journaled policy must still pass 2 gates"
+    );
+}
+
+#[test]
+fn submit_artifact_relaxed_skips_gates() {
+    use crate::{FjallJournal, submit_artifact};
+    use vb_core::RuntimePolicy;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+        .expect("submit should succeed");
+    assert!(
+        !artifact.verification.durable,
+        "relaxed policy must not be durable"
+    );
+    assert_eq!(
+        artifact.verification.gate_count, 0,
+        "relaxed policy must skip all gates"
+    );
+}
+
+#[test]
+fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid() {
+    // This test verifies that an attacker cannot bypass the checksum gate
+    // by constructing a workflow that is structurally valid but has a
+    // dishonest digest that doesn't match the serialized content.
+    use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        value::ConstValue,
+    };
+    use vb_core::RuntimePolicy;
+    use vb_core::ids::ConstIdx;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    // Build a workflow and then change its digest to something wrong.
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    // The digest is intentionally wrong (all 0xFF)
+    let parts = WorkflowParts {
+        name: Box::from("spoofed_digest"),
+        digest: WorkflowDigest::from_bytes([0xFF; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    let spoofed = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
+    // Under Strict/Journaled, the checksum gate must reject this.
+    let result = submit_artifact(&journal, &spoofed, RuntimePolicy::Strict);
+    assert!(
+        matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+        "spoofed digest must be rejected, got {:?}",
+        result
+    );
+    // Under Relaxed, it should succeed (no checksum gate).
+    let result_relaxed = submit_artifact(&journal, &spoofed, RuntimePolicy::Relaxed);
+    assert!(
+        result_relaxed.is_ok(),
+        "relaxed policy should accept spoofed digest, got {:?}",
+        result_relaxed
+    );
+}
+
+#[test]
+fn submit_artifact_stale_digest_rejected() {
+    // Verify that submitting an artifact with a stale digest (from a different
+    // workflow version) is rejected by the checksum gate.
+    use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        value::ConstValue,
+    };
+    use vb_core::RuntimePolicy;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+    let original_digest = workflow.digest();
+
+    // Submit the valid artifact first.
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .expect("original submit should succeed");
+    assert_eq!(artifact.digest, original_digest);
+
+    // Now try to submit a different workflow claiming the same digest.
+    // Build a different workflow.
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("different_workflow"),
+        digest: original_digest, // claiming the SAME digest
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(9999)]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
+    // The stale workflow claims the same digest as the original but has different
+    // content (I64(9999) vs Bool(true)). Under Strict/Journaled policy, the
+    // checksum gate must reject this because the hash of the content won't match
+    // the claimed digest.
+    let stale_result = submit_artifact(&journal, &stale, RuntimePolicy::Strict);
+    assert!(
+        matches!(stale_result, Err(JournalError::ArtifactChecksumMismatch)),
+        "stale digest must be rejected by checksum gate, got {:?}",
+        stale_result
+    );
 }
 
 #[test]
