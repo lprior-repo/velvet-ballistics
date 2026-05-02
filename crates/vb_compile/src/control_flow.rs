@@ -12,7 +12,7 @@
 //! represent.
 
 use crate::ast::{StepAst, StepKindAst, WorkflowAst};
-use crate::{CompileError, CompileErrors, collect};
+use crate::errors::{collect, CompileError, CompileErrors};
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let table = StepTable::new(ast);

@@ -1,4 +1,4 @@
-use crate::{CompileError, CompileErrors, non_string_key_error, validate_public_name};
+use crate::errors::{non_string_key_error, validate_public_name, CompileError, CompileErrors};
 use saphyr::Yaml;
 
 pub(crate) fn validate_input_schemas(doc: &Yaml<'_>) -> Result<(), CompileErrors> {
