@@ -65,6 +65,7 @@ crc32c = "0.6"
 crossbeam-channel = "0.5"
 crossbeam-queue = "0.3"
 criterion = "0.8"
+trybuild = "1"
 fjall = { version = "3.1", default-features = false, features = ["lz4"] }
 iai-callgrind = "0.16"
 indoc = "2"
