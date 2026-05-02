@@ -1642,10 +1642,13 @@ dependencies = [
 name = "velvet-ballastics-fuzz"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "postcard",
+ "tempfile",
  "vb_core",
  "vb_expr",
  "vb_storage",
+ "vb_validate",
  "vb_yaml",
 ]
 

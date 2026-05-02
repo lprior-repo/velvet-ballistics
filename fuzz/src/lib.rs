@@ -438,6 +438,422 @@ pub fn fuzz_resource_budget(data: &[u8]) {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Target D: Verifier gates
+// ---------------------------------------------------------------------------
+
+/// Maximum number of nodes in a fuzz-generated workflow.
+const FUZZ_MAX_NODES: usize = 32;
+
+/// Exercises all plan verifier gates (7, 8, 9, 11, 13) on randomly constructed
+/// `WorkflowParts`. The target verifies that no gate panics regardless of input,
+/// including edge cases like empty nodes, max slot references, and various node
+/// kinds.
+pub fn fuzz_verifier_gates(data: &[u8]) {
+    if data.len() < 4 {
+        return;
+    }
+
+    let Some(&byte0) = data.first() else {
+        return;
+    };
+    let Some(&byte1) = data.get(1) else {
+        return;
+    };
+    let node_count = usize::from(byte0.wrapping_rem(16)).saturating_add(1).min(FUZZ_MAX_NODES);
+    let slot_count = u16::from(byte1.wrapping_rem(16)).saturating_add(1);
+
+    let mut nodes: Vec<vb_core::CompiledNode> = Vec::new();
+    for i in 0..node_count {
+        let Some(offset) = i.saturating_add(2).checked_rem(data.len()) else {
+            continue;
+        };
+        let kind_byte = data.get(offset).copied().unwrap_or(0);
+        let node = build_fuzz_node(i, kind_byte, node_count, slot_count, data);
+        nodes.push(node);
+    }
+
+    let parts = vb_core::WorkflowParts {
+        name: Box::<str>::from("fuzz_gates"),
+        digest: vb_core::WorkflowDigest::from_bytes([0xD0; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count,
+        entry: vb_core::StepIdx::ZERO,
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+    };
+
+    // Gate 7: Expression stack depth bounded.
+    drop(vb_validate::gates::validate_gate_07_expression_stack_depth(&parts));
+    // Gate 8: Accessor path segments are valid symbols.
+    drop(vb_validate::gates::validate_gate_08_accessor_path_segments(&parts));
+    // Gate 9: All referenced slots exist within declared slot_count.
+    drop(vb_validate::gates::validate_gate_09_slot_references(&parts));
+    // Gate 11: ForEach/Together body graph is well-formed.
+    drop(vb_validate::gates::validate_gate_11_loop_body_graph(&parts));
+    // Gate 13: No circular references in slot dependency graph.
+    drop(vb_validate::gates::validate_gate_13_no_slot_cycles(&parts));
+}
+
+/// Builds a single fuzz node based on a kind selector byte.
+fn build_fuzz_node(
+    index: usize,
+    kind_byte: u8,
+    node_count: usize,
+    slot_count: u16,
+    data: &[u8],
+) -> vb_core::CompiledNode {
+    let step_idx = vb_core::StepIdx::new(u16::try_from(index).unwrap_or(u16::MAX));
+    let next_step = if index.saturating_add(1) < node_count {
+        Some(vb_core::StepIdx::new(u16::try_from(index).unwrap_or(0).saturating_add(1)))
+    } else {
+        None
+    };
+
+    let max_slot = slot_count.saturating_sub(1);
+    let safe_slot = vb_core::SlotIdx::new(max_slot);
+
+    let kind = match kind_byte.wrapping_rem(8) {
+        0 => vb_core::CompiledNodeKind::Nop,
+        1 => vb_core::CompiledNodeKind::Finish {
+            result: safe_slot,
+        },
+        2 => vb_core::CompiledNodeKind::Copy {
+            source: safe_slot,
+        },
+        3 => vb_core::CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+        4 => {
+            // ForEachStart with body/done pointing within bounds.
+            let body_idx = u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            let done_idx = u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            vb_core::CompiledNodeKind::ForEachStart {
+                input: safe_slot,
+                item_slot: safe_slot,
+                limit: 10,
+                body: vb_core::StepIdx::new(body_idx),
+                done: vb_core::StepIdx::new(done_idx),
+            }
+        }
+        5 => {
+            // TogetherStart with branch/join within bounds.
+            let branch_idx =
+                u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                    .unwrap_or(0);
+            let join_idx = u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            let data_len = data.len();
+            let branch_count = if data_len > 4 {
+                usize::from(data.get(3).copied().unwrap_or(1).wrapping_rem(4)).saturating_add(1)
+            } else {
+                1
+            };
+            let mut branches: Vec<vb_core::StepIdx> = Vec::new();
+            for _ in 0..branch_count {
+                branches.push(vb_core::StepIdx::new(branch_idx));
+            }
+            vb_core::CompiledNodeKind::TogetherStart {
+                branches: branches.into_boxed_slice(),
+                join: vb_core::StepIdx::new(join_idx),
+            }
+        }
+        6 => {
+            // RepeatStart with body/done within bounds.
+            let body_idx = u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            let done_idx = u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            vb_core::CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: vb_core::StepIdx::new(body_idx),
+                done: vb_core::StepIdx::new(done_idx),
+            }
+        }
+        _ => {
+            // ChooseSlot with branches within bounds.
+            let target_idx =
+                u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                    .unwrap_or(0);
+            let otherwise_idx =
+                u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                    .unwrap_or(0);
+            vb_core::CompiledNodeKind::ChooseSlot {
+                branches: vec![vb_core::SlotBranch {
+                    condition: safe_slot,
+                    target: vb_core::StepIdx::new(target_idx),
+                }]
+                .into_boxed_slice(),
+                otherwise: Some(vb_core::StepIdx::new(otherwise_idx)),
+            }
+        }
+    };
+
+    let output = if kind_byte.is_multiple_of(3) {
+        Some(safe_slot)
+    } else {
+        None
+    };
+
+    vb_core::CompiledNode {
+        id: step_idx,
+        output,
+        next: next_step,
+        kind,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target E: Budget compute
+// ---------------------------------------------------------------------------
+
+/// Exercises `WholeWorkflowBudget::compute()` on randomly constructed
+/// `CompiledNode` arrays with various node kinds. The target verifies that
+/// compute never panics and that returned budget values are sane: non-zero for
+/// non-empty workflows, and all values bounded.
+pub fn fuzz_budget_compute(data: &[u8]) {
+    if data.len() < 3 {
+        return;
+    }
+
+    let Some(&byte0) = data.first() else {
+        return;
+    };
+    let Some(&byte1) = data.get(1) else {
+        return;
+    };
+    let node_count = usize::from(byte0.wrapping_rem(16)).saturating_add(1).min(FUZZ_MAX_NODES);
+    let slot_count = u16::from(byte1.wrapping_rem(16)).saturating_add(1);
+
+    let mut nodes: Vec<vb_core::CompiledNode> = Vec::new();
+    for i in 0..node_count {
+        let Some(offset) = i.saturating_add(2).checked_rem(data.len()) else {
+            continue;
+        };
+        let kind_byte = data.get(offset).copied().unwrap_or(0);
+        let node = build_fuzz_budget_node(i, kind_byte, node_count, slot_count);
+        nodes.push(node);
+    }
+
+    let contract = vb_core::ResourceContract {
+        max_slots: slot_count,
+        ..vb_core::ResourceContract::DEFAULT
+    };
+
+    let entry = vb_core::StepIdx::ZERO;
+    let result = vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract);
+
+    let Ok(budget) = result else {
+        return;
+    };
+
+    // Sanity: total steps must be non-zero for non-empty node arrays and bounded
+    // by the node count (each node counted at most once).
+    assert!(
+        budget.max_total_steps > 0,
+        "non-empty workflow must have at least one step"
+    );
+    assert!(
+        budget.max_total_steps <= u64::try_from(node_count).unwrap_or(u64::MAX),
+        "total steps {} exceeds node count {}",
+        budget.max_total_steps,
+        node_count
+    );
+
+    // Sanity: max_total_slots comes from the contract.
+    assert_eq!(
+        budget.max_total_slots,
+        u64::from(contract.max_slots),
+        "total slots must match contract"
+    );
+
+    // Sanity: fanout is bounded.
+    let max_reasonable_fanout = u16::try_from(node_count).unwrap_or(u16::MAX);
+    assert!(
+        budget.max_fanout <= max_reasonable_fanout,
+        "fanout {} exceeds node count {}",
+        budget.max_fanout,
+        max_reasonable_fanout
+    );
+}
+
+/// Builds a budget-friendly fuzz node (simpler node kinds for budget walks).
+fn build_fuzz_budget_node(
+    index: usize,
+    kind_byte: u8,
+    node_count: usize,
+    slot_count: u16,
+) -> vb_core::CompiledNode {
+    let step_idx = vb_core::StepIdx::new(u16::try_from(index).unwrap_or(u16::MAX));
+    let next_step = if index.saturating_add(1) < node_count {
+        Some(vb_core::StepIdx::new(u16::try_from(index).unwrap_or(0).saturating_add(1)))
+    } else {
+        None
+    };
+
+    let max_slot = slot_count.saturating_sub(1);
+    let safe_slot = vb_core::SlotIdx::new(max_slot);
+
+    let kind = match kind_byte.wrapping_rem(6) {
+        0 => vb_core::CompiledNodeKind::Nop,
+        1 => vb_core::CompiledNodeKind::Finish {
+            result: safe_slot,
+        },
+        2 => vb_core::CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+        3 => vb_core::CompiledNodeKind::Copy {
+            source: safe_slot,
+        },
+        4 => {
+            // ForEachStart to test nesting depth.
+            let body_idx = u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            let done_idx = u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            vb_core::CompiledNodeKind::ForEachStart {
+                input: safe_slot,
+                item_slot: safe_slot,
+                limit: 5,
+                body: vb_core::StepIdx::new(body_idx),
+                done: vb_core::StepIdx::new(done_idx),
+            }
+        }
+        _ => {
+            // TogetherStart to test fanout.
+            let branch_idx =
+                u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
+                    .unwrap_or(0);
+            let join_idx = u16::try_from(index.saturating_add(2).min(node_count.saturating_sub(1)))
+                .unwrap_or(0);
+            vb_core::CompiledNodeKind::TogetherStart {
+                branches: vec![
+                    vb_core::StepIdx::new(branch_idx),
+                    vb_core::StepIdx::new(branch_idx),
+                ]
+                .into_boxed_slice(),
+                join: vb_core::StepIdx::new(join_idx),
+            }
+        }
+    };
+
+    vb_core::CompiledNode {
+        id: step_idx,
+        output: Some(safe_slot),
+        next: next_step,
+        kind,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target F: Admission flow
+// ---------------------------------------------------------------------------
+
+/// Exercises `submit_artifact` with randomly constructed workflow parts, some
+/// valid and some invalid. The target verifies that admission never panics
+/// regardless of input.
+pub fn fuzz_admission_flow(data: &[u8]) {
+    if data.len() < 2 {
+        return;
+    }
+
+    // Build a minimal workflow from fuzz input.
+    let Some(&byte0) = data.first() else {
+        return;
+    };
+    let node_count = usize::from(byte0.wrapping_rem(4)).saturating_add(1);
+    let slot_count = u16::from(byte0.wrapping_rem(4)).saturating_add(1);
+    let max_slot = slot_count.saturating_sub(1);
+
+    let mut nodes: Vec<vb_core::CompiledNode> = Vec::new();
+    for i in 0..node_count {
+        let step_idx = vb_core::StepIdx::new(u16::try_from(i).unwrap_or(0));
+        let next_step = if i.saturating_add(1) < node_count {
+            Some(vb_core::StepIdx::new(u16::try_from(i).unwrap_or(0).saturating_add(1)))
+        } else {
+            None
+        };
+
+        if i.saturating_add(1) == node_count {
+            // Last node is always Finish.
+            nodes.push(vb_core::CompiledNode {
+                id: step_idx,
+                output: None,
+                next: None,
+                kind: vb_core::CompiledNodeKind::Finish {
+                    result: vb_core::SlotIdx::new(max_slot),
+                },
+            });
+        } else {
+            nodes.push(vb_core::CompiledNode {
+                id: step_idx,
+                output: Some(vb_core::SlotIdx::new(max_slot)),
+                next: next_step,
+                kind: vb_core::CompiledNodeKind::Nop,
+            });
+        }
+    }
+
+    // Compute correct digest for strict/journaled policies.
+    let parts_zeroed = vb_core::WorkflowParts {
+        name: Box::<str>::from("fuzz_admission"),
+        digest: vb_core::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![vb_core::ConstValue::Bool(true)].into_boxed_slice(),
+        slot_count,
+        entry: vb_core::StepIdx::ZERO,
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+    };
+
+    let Ok(hash_bytes) = postcard::to_allocvec(&parts_zeroed) else {
+        return;
+    };
+    let computed = blake3::hash(&hash_bytes);
+    let correct_parts = vb_core::WorkflowParts {
+        digest: vb_core::WorkflowDigest::from_bytes(*computed.as_bytes()),
+        ..parts_zeroed
+    };
+
+    let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(correct_parts) else {
+        return;
+    };
+
+    // Open a temporary journal.
+    let temp_dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(_) => return,
+    };
+    let journal = match vb_storage::FjallJournal::open(temp_dir.path(), None) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+
+    // Cycle through all policies to exercise different admission paths.
+    let policies = [
+        vb_core::RuntimePolicy::Relaxed,
+        vb_core::RuntimePolicy::Journaled,
+        vb_core::RuntimePolicy::Strict,
+    ];
+    for policy in policies {
+        drop(vb_storage::submit_artifact(&journal, &workflow, policy));
+    }
+
+    // Also test with an intentionally corrupted workflow (wrong digest).
+    let corrupted_parts = vb_core::WorkflowParts {
+        digest: vb_core::WorkflowDigest::from_bytes([0xFF; 32]),
+        ..workflow.to_parts()
+    };
+    if let Ok(corrupted) = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts) {
+        drop(vb_storage::submit_artifact(&journal, &corrupted, vb_core::RuntimePolicy::Strict));
+    }
+}
+
 fn selected_workflow(data: &[u8]) -> &'static [u8] {
     match data.first().copied() {
         Some(value) if value.is_multiple_of(2) => SMALL_WORKFLOW_A,
