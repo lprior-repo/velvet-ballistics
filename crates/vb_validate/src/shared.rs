@@ -7,6 +7,7 @@
 
 use crate::gates;
 use crate::ValidationResult;
+use vb_core::action::ActionContract;
 use vb_core::workflow::WorkflowParts;
 
 #[cfg(test)]
@@ -16,8 +17,12 @@ use crate::ValidationError;
 pub use gates::validate_gate_07_expression_stack_depth;
 pub use gates::validate_gate_08_accessor_path_segments;
 pub use gates::validate_gate_09_slot_references;
+pub use gates::validate_gate_10_node_kind_specific;
 pub use gates::validate_gate_11_loop_body_graph;
+pub use gates::validate_gate_12_action_contract_completeness;
 pub use gates::validate_gate_13_no_slot_cycles;
+pub use gates::validate_gate_14_slot_type_consistency;
+pub use gates::validate_gate_15_determinism_proof;
 
 /// Validation configuration controlling which gates are active.
 ///
@@ -32,10 +37,18 @@ pub struct ValidationPipeline {
     pub gate_08_accessor_paths: bool,
     /// Run Gate 9: slot references within bounds.
     pub gate_09_slot_references: bool,
+    /// Run Gate 10: node-kind-specific constraints.
+    pub gate_10_node_kind_specific: bool,
     /// Run Gate 11: loop body graph well-formed.
     pub gate_11_loop_body_graph: bool,
+    /// Run Gate 12: action contract completeness.
+    pub gate_12_action_contracts: bool,
     /// Run Gate 13: no slot dependency cycles.
     pub gate_13_no_slot_cycles: bool,
+    /// Run Gate 14: slot type consistency.
+    pub gate_14_slot_type_consistency: bool,
+    /// Run Gate 15: determinism proof.
+    pub gate_15_determinism_proof: bool,
 }
 
 impl Default for ValidationPipeline {
@@ -52,8 +65,12 @@ impl ValidationPipeline {
             gate_07_expression_stack: true,
             gate_08_accessor_paths: true,
             gate_09_slot_references: true,
+            gate_10_node_kind_specific: true,
             gate_11_loop_body_graph: true,
+            gate_12_action_contracts: true,
             gate_13_no_slot_cycles: true,
+            gate_14_slot_type_consistency: true,
+            gate_15_determinism_proof: true,
         }
     }
 
@@ -66,15 +83,23 @@ impl ValidationPipeline {
             gate_07_expression_stack: false,
             gate_08_accessor_paths: false,
             gate_09_slot_references: false,
+            gate_10_node_kind_specific: false,
             gate_11_loop_body_graph: false,
+            gate_12_action_contracts: false,
             gate_13_no_slot_cycles: false,
+            gate_14_slot_type_consistency: false,
+            gate_15_determinism_proof: false,
         }
     }
 
     /// Runs all enabled validation gates against the supplied workflow parts.
     ///
-    /// Gates execute in ascending order (7, 8, 9, 11, 13). The first failing
-    /// gate short-circuits the pipeline and returns its error.
+    /// Gates execute in ascending order (7, 8, 9, 10, 11, 13, 14, 15).
+    /// Gate 12 (action contract completeness) requires external action contract
+    /// data and is skipped by this method; use [`validate_with_contracts`]
+    /// instead to include gate 12.
+    ///
+    /// The first failing gate short-circuits the pipeline and returns its error.
     pub fn validate(&self, parts: &WorkflowParts) -> ValidationResult<()> {
         if self.gate_07_expression_stack {
             gates::validate_gate_07_expression_stack_depth(parts)?;
@@ -85,11 +110,42 @@ impl ValidationPipeline {
         if self.gate_09_slot_references {
             gates::validate_gate_09_slot_references(parts)?;
         }
+        if self.gate_10_node_kind_specific {
+            gates::validate_gate_10_node_kind_specific(parts)?;
+        }
         if self.gate_11_loop_body_graph {
             gates::validate_gate_11_loop_body_graph(parts)?;
         }
         if self.gate_13_no_slot_cycles {
             gates::validate_gate_13_no_slot_cycles(parts)?;
+        }
+        if self.gate_14_slot_type_consistency {
+            gates::validate_gate_14_slot_type_consistency(parts)?;
+        }
+        if self.gate_15_determinism_proof {
+            gates::validate_gate_15_determinism_proof(parts)?;
+        }
+        Ok(())
+    }
+
+    /// Runs all enabled validation gates including gate 12 (action contract
+    /// completeness).
+    ///
+    /// This is the same as [`validate`] but also runs gate 12 against the
+    /// provided action contracts. Gate 12 verifies that every Do node's
+    /// `action_id` has a matching contract and every contract has a matching
+    /// Do node.
+    pub fn validate_with_contracts(
+        &self,
+        parts: &WorkflowParts,
+        action_contracts: &[ActionContract],
+    ) -> ValidationResult<()> {
+        // Run all non-contract gates first.
+        self.validate(parts)?;
+
+        // Then run the contract gate if enabled.
+        if self.gate_12_action_contracts {
+            gates::validate_gate_12_action_contract_completeness(parts, action_contracts)?;
         }
         Ok(())
     }
@@ -147,8 +203,12 @@ mod tests {
         assert!(pipeline.gate_07_expression_stack);
         assert!(pipeline.gate_08_accessor_paths);
         assert!(pipeline.gate_09_slot_references);
+        assert!(pipeline.gate_10_node_kind_specific);
         assert!(pipeline.gate_11_loop_body_graph);
+        assert!(pipeline.gate_12_action_contracts);
         assert!(pipeline.gate_13_no_slot_cycles);
+        assert!(pipeline.gate_14_slot_type_consistency);
+        assert!(pipeline.gate_15_determinism_proof);
     }
 
     #[test]
@@ -157,8 +217,12 @@ mod tests {
         assert!(!pipeline.gate_07_expression_stack);
         assert!(!pipeline.gate_08_accessor_paths);
         assert!(!pipeline.gate_09_slot_references);
+        assert!(!pipeline.gate_10_node_kind_specific);
         assert!(!pipeline.gate_11_loop_body_graph);
+        assert!(!pipeline.gate_12_action_contracts);
         assert!(!pipeline.gate_13_no_slot_cycles);
+        assert!(!pipeline.gate_14_slot_type_consistency);
+        assert!(!pipeline.gate_15_determinism_proof);
     }
 
     #[test]

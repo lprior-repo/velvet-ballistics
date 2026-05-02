@@ -63,6 +63,11 @@ const CODE_ACCESSOR_PATH_INVALID: u16 = 0x0504;
 const CODE_SLOT_REFERENCE_OUT_OF_RANGE: u16 = 0x0505;
 const CODE_LOOP_BODY_STEP_OUT_OF_RANGE: u16 = 0x0506;
 const CODE_SLOT_DEPENDENCY_CYCLE: u16 = 0x0507;
+const CODE_NODE_KIND_CONSTRAINT_VIOLATION: u16 = 0x0508;
+const CODE_ACTION_CONTRACT_MISSING: u16 = 0x0509;
+const CODE_ACTION_CONTRACT_ORPHAN: u16 = 0x050A;
+const CODE_SLOT_TYPE_INCONSISTENCY: u16 = 0x050B;
+const CODE_NON_DETERMINISTIC_PATH: u16 = 0x050C;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -285,6 +290,36 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_SLOT_DEPENDENCY_CYCLE),
             format!("slot dependency cycle: slot {slot}, chain {chain}"),
         ),
+        ValidationError::NodeKindConstraintViolation { node_index, detail } => (
+            DiagnosticCode::new(CODE_NODE_KIND_CONSTRAINT_VIOLATION),
+            format!("node kind constraint violation: node {node_index}, {detail}"),
+        ),
+        ValidationError::ActionContractMissing {
+            action_id,
+            node_index,
+        } => (
+            DiagnosticCode::new(CODE_ACTION_CONTRACT_MISSING),
+            format!(
+                "action contract missing: action_id {action_id} referenced by Do node {node_index}"
+            ),
+        ),
+        ValidationError::ActionContractOrphan { action_id } => (
+            DiagnosticCode::new(CODE_ACTION_CONTRACT_ORPHAN),
+            format!("action contract orphan: action_id {action_id} has no corresponding Do node"),
+        ),
+        ValidationError::SlotTypeInconsistency { slot } => (
+            DiagnosticCode::new(CODE_SLOT_TYPE_INCONSISTENCY),
+            format!("slot type inconsistency: slot {slot} has incompatible writers"),
+        ),
+        ValidationError::NonDeterministicPath {
+            from_node,
+            to_node,
+        } => (
+            DiagnosticCode::new(CODE_NON_DETERMINISTIC_PATH),
+            format!(
+                "non-deterministic path: from node {from_node} to node {to_node} contains no suspension point"
+            ),
+        ),
     }
 }
 
@@ -480,6 +515,20 @@ mod tests {
             ValidationError::SlotDependencyCycle {
                 slot: 0,
                 chain: "slot 0 -> slot 1 -> slot 0".into(),
+            },
+            ValidationError::NodeKindConstraintViolation {
+                node_index: 0,
+                detail: "test".into(),
+            },
+            ValidationError::ActionContractMissing {
+                action_id: 1,
+                node_index: 0,
+            },
+            ValidationError::ActionContractOrphan { action_id: 2 },
+            ValidationError::SlotTypeInconsistency { slot: 0 },
+            ValidationError::NonDeterministicPath {
+                from_node: 0,
+                to_node: 1,
             },
         ]
     }

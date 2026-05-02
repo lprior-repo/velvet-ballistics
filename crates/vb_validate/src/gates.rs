@@ -11,7 +11,7 @@ pub use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
-pub use vb_core::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
+pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 
 // ---------------------------------------------------------------------------
 // Gate 7: Expression stack depth bounded
@@ -735,6 +735,445 @@ fn node_reads(node: &CompiledNode) -> Vec<SlotIdx> {
 }
 
 // ---------------------------------------------------------------------------
+// Gate 10: Node-kind-specific constraints
+// ---------------------------------------------------------------------------
+
+/// Validates node-kind-specific constraints that go beyond simple slot bounds
+/// checking.
+///
+/// Gate 10 (correctness): each node kind has specific structural requirements:
+/// - `Finish`: result slot exists and is within slot_count
+/// - `Choose`: branches reference valid expression indices, otherwise target
+///   is a valid step or None
+/// - `ChooseSlot`: branches reference valid slots, otherwise target valid
+/// - `ForEachStart`: iterator slot and body/done step indices valid
+/// - `TogetherStart`: branches and join step indices valid
+/// - `Do` (Action): action_id is valid, input slot in bounds
+/// - `SetConst`: const index within constant pool
+/// - `EvalExpr`: expression index within expression table
+pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationResult<()> {
+    let slot_count = usize::from(parts.slot_count);
+    let const_count = parts.constants.len();
+    let expr_count = parts.expressions.len();
+    let node_count = parts.nodes.len();
+
+    for (node_index, node) in parts.nodes.iter().enumerate() {
+        match &node.kind {
+            CompiledNodeKind::Finish { result } => {
+                let result_usize = result.as_usize();
+                if result_usize >= slot_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "Finish result slot {result_usize} out of range (slot_count {slot_count})"
+                        ),
+                    });
+                }
+            }
+            CompiledNodeKind::Choose {
+                branches,
+                otherwise,
+            } => {
+                for (branch_index, branch) in branches.iter().enumerate() {
+                    let expr_usize = branch.condition.as_usize();
+                    if expr_usize >= expr_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "Choose branch {branch_index} expr index {expr_usize} out of range (expr_count {expr_count})"
+                            ),
+                        });
+                    }
+                    let target_usize = branch.target.as_usize();
+                    if target_usize >= node_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "Choose branch {branch_index} target step {target_usize} out of range (node_count {node_count})"
+                            ),
+                        });
+                    }
+                }
+                if let Some(otherwise) = otherwise {
+                    let otherwise_usize = otherwise.as_usize();
+                    if otherwise_usize >= node_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "Choose otherwise target step {otherwise_usize} out of range (node_count {node_count})"
+                            ),
+                        });
+                    }
+                }
+            }
+            CompiledNodeKind::ChooseSlot {
+                branches,
+                otherwise,
+            } => {
+                for (branch_index, branch) in branches.iter().enumerate() {
+                    let cond_usize = branch.condition.as_usize();
+                    if cond_usize >= slot_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "ChooseSlot branch {branch_index} condition slot {cond_usize} out of range (slot_count {slot_count})"
+                            ),
+                        });
+                    }
+                    let target_usize = branch.target.as_usize();
+                    if target_usize >= node_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "ChooseSlot branch {branch_index} target step {target_usize} out of range (node_count {node_count})"
+                            ),
+                        });
+                    }
+                }
+                if let Some(otherwise) = otherwise {
+                    let otherwise_usize = otherwise.as_usize();
+                    if otherwise_usize >= node_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "ChooseSlot otherwise target step {otherwise_usize} out of range (node_count {node_count})"
+                            ),
+                        });
+                    }
+                }
+            }
+            CompiledNodeKind::SetConst { value } => {
+                let const_usize = value.as_usize();
+                if const_usize >= const_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "SetConst value index {const_usize} out of range (const_count {const_count})"
+                        ),
+                    });
+                }
+            }
+            CompiledNodeKind::EvalExpr { expr } => {
+                let expr_usize = expr.as_usize();
+                if expr_usize >= expr_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "EvalExpr expr index {expr_usize} out of range (expr_count {expr_count})"
+                        ),
+                    });
+                }
+            }
+            CompiledNodeKind::Do { action, input } => {
+                let input_usize = input.as_usize();
+                if input_usize >= slot_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "Do input slot {input_usize} out of range (slot_count {slot_count})"
+                        ),
+                    });
+                }
+                // Action ID must be valid (non-sentinel).
+                if action.get() == u16::MAX {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: String::from("Do action_id is sentinel value u16::MAX"),
+                    });
+                }
+            }
+            CompiledNodeKind::ForEachStart {
+                input,
+                item_slot,
+                body,
+                done,
+                ..
+            } => {
+                let input_usize = input.as_usize();
+                if input_usize >= slot_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "ForEachStart input slot {input_usize} out of range (slot_count {slot_count})"
+                        ),
+                    });
+                }
+                let item_usize = item_slot.as_usize();
+                if item_usize >= slot_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "ForEachStart item_slot {item_usize} out of range (slot_count {slot_count})"
+                        ),
+                    });
+                }
+                let body_usize = body.as_usize();
+                if body_usize >= node_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "ForEachStart body step {body_usize} out of range (node_count {node_count})"
+                        ),
+                    });
+                }
+                let done_usize = done.as_usize();
+                if done_usize >= node_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "ForEachStart done step {done_usize} out of range (node_count {node_count})"
+                        ),
+                    });
+                }
+            }
+            CompiledNodeKind::TogetherStart { branches, join } => {
+                for (branch_index, branch) in branches.iter().enumerate() {
+                    let branch_usize = branch.as_usize();
+                    if branch_usize >= node_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "TogetherStart branch {branch_index} step {branch_usize} out of range (node_count {node_count})"
+                            ),
+                        });
+                    }
+                }
+                let join_usize = join.as_usize();
+                if join_usize >= node_count {
+                    return Err(ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: format!(
+                            "TogetherStart join step {join_usize} out of range (node_count {node_count})"
+                        ),
+                    });
+                }
+            }
+            CompiledNodeKind::BuildObject { fields } => {
+                for (field_index, (_, slot)) in fields.iter().enumerate() {
+                    let slot_usize = slot.as_usize();
+                    if slot_usize >= slot_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "BuildObject field {field_index} slot {slot_usize} out of range (slot_count {slot_count})"
+                            ),
+                        });
+                    }
+                }
+            }
+            CompiledNodeKind::BuildList { items } => {
+                for (item_index, slot) in items.iter().enumerate() {
+                    let slot_usize = slot.as_usize();
+                    if slot_usize >= slot_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "BuildList item {item_index} slot {slot_usize} out of range (slot_count {slot_count})"
+                            ),
+                        });
+                    }
+                }
+            }
+            _ => {
+                // Other node kinds have their slot references already validated
+                // by gate 9 and their step references validated by gate 11.
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Gate 12: Action contract completeness
+// ---------------------------------------------------------------------------
+
+/// Validates that every Do node's action_id has a corresponding entry in the
+/// provided action contracts, and that no action contract references a
+/// non-existent Do node.
+///
+/// Gate 12 (contracts): the action contracts table must be in bijection with
+/// the set of Do nodes. Every Do node must reference a contracted action, and
+/// every contracted action must be used by at least one Do node.
+pub fn validate_gate_12_action_contract_completeness(
+    parts: &WorkflowParts,
+    action_contracts: &[vb_core::action::ActionContract],
+) -> ValidationResult<()> {
+    // Collect all action IDs referenced by Do nodes.
+    let mut do_action_ids: Vec<u16> = Vec::new();
+    for (node_index, node) in parts.nodes.iter().enumerate() {
+        if let CompiledNodeKind::Do { action, .. } = &node.kind {
+            let action_val = action.get();
+            // Check that this action_id has a corresponding contract.
+            let mut found = false;
+            for contract in action_contracts {
+                if contract.id.get() == action_val {
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                return Err(ValidationError::ActionContractMissing {
+                    action_id: usize::from(action_val),
+                    node_index,
+                });
+            }
+            if !do_action_ids.contains(&action_val) {
+                do_action_ids.push(action_val);
+            }
+        }
+    }
+
+    // Check that every contract has at least one Do node referencing it.
+    for contract in action_contracts {
+        let contract_id = contract.id.get();
+        let mut found = false;
+        for do_id in &do_action_ids {
+            if *do_id == contract_id {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return Err(ValidationError::ActionContractOrphan {
+                action_id: usize::from(contract_id),
+            });
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Gate 14: Slot type consistency
+// ---------------------------------------------------------------------------
+
+/// Validates that slots written by multiple nodes have compatible types.
+///
+/// Gate 14 (types): when multiple `SetConst` nodes write to the same slot, they
+/// must write compatible `ConstValue` types. Two `ConstValue` variants are
+/// compatible if they share the same discriminant (e.g., both I64, or both
+/// Bool). This catches cases where the same slot would receive an I64 from one
+/// writer and a Bool from another.
+pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
+    let slot_count = usize::from(parts.slot_count);
+    if slot_count == 0 {
+        return Ok(());
+    }
+
+    // For each slot, track the ConstValue discriminant written by SetConst nodes.
+    // 0 = unset, 1 = Null, 2 = Bool, 3 = I64, 4 = F64, 5 = Symbol
+    let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
+
+    for node in parts.nodes.iter() {
+        if let CompiledNodeKind::SetConst { value } = &node.kind {
+            let const_idx = value.as_usize();
+            if const_idx >= parts.constants.len() {
+                // Out-of-range const index; that is caught by gate 10.
+                continue;
+            }
+            if let Some(constant) = parts.constants.get(const_idx) {
+                let kind = const_value_discriminant(constant);
+                if let Some(slot) = node.output {
+                    let slot_usize = slot.as_usize();
+                    if slot_usize < slot_count {
+                        let existing = slot_const_kind.get(slot_usize).copied().ok_or(
+                            ValidationError::SlotTypeInconsistency { slot: slot_usize },
+                        )?;
+                        if existing == 0 {
+                            if let Some(entry) = slot_const_kind.get_mut(slot_usize) {
+                                *entry = kind;
+                            }
+                        } else if existing != kind {
+                            return Err(ValidationError::SlotTypeInconsistency {
+                                slot: slot_usize,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Returns a discriminant tag for a ConstValue variant.
+fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
+    match value {
+        vb_core::value::ConstValue::Null => 1,
+        vb_core::value::ConstValue::Bool(_) => 2,
+        vb_core::value::ConstValue::I64(_) => 3,
+        vb_core::value::ConstValue::F64(_) => 4,
+        vb_core::value::ConstValue::Symbol(_) => 5,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Gate 15: Determinism proof
+// ---------------------------------------------------------------------------
+
+/// Validates that every path between two non-deterministic nodes consists only
+/// of deterministic nodes, ensuring that the workflow can be faithfully
+/// replayed from journal evidence.
+///
+/// Gate 15 (determinism): non-deterministic nodes (Do/Action, Ask) are
+/// suspension points. All deterministic nodes (SetConst, Copy, EvalExpr,
+/// BuildObject, BuildList, Finish, Nop) can be replayed from journal evidence.
+/// This gate checks that between any two non-deterministic nodes on a control
+/// flow path, there are only deterministic nodes. A consecutive pair of
+/// non-deterministic nodes without an intervening deterministic-only region is
+/// flagged as an error because the second node's effects cannot be separated
+/// from the first's non-determinism in the journal.
+///
+/// Simplified: for each node, if it is non-deterministic, check that its `next`
+/// target (if any) is either deterministic or a valid suspension join. Two
+/// non-deterministic nodes may not be directly chained (node A's next = node B
+/// where both are non-deterministic).
+pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationResult<()> {
+    let node_count = parts.nodes.len();
+
+    for (node_index, node) in parts.nodes.iter().enumerate() {
+        if !is_non_deterministic(&node.kind) {
+            continue;
+        }
+
+        // Walk the `next` chain from this node. If we encounter another
+        // non-deterministic node without any intervening deterministic-only
+        // nodes, that is a violation. In practice, we check the immediate `next`
+        // edge: if a non-deterministic node's `next` points to another
+        // non-deterministic node, that is a direct chain violation.
+        if let Some(next_step) = node.next {
+            let next_usize = next_step.as_usize();
+            if next_usize < node_count {
+                if let Some(next_node) = parts.nodes.get(next_usize) {
+                    if is_non_deterministic(&next_node.kind) {
+                        return Err(ValidationError::NonDeterministicPath {
+                            from_node: node_index,
+                            to_node: next_usize,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Also check branch targets for Choose/ChooseSlot nodes. Choose nodes
+        // are deterministic (they evaluate expressions/slots), so they are not
+        // flagged here. But we check the Do and Ask node's own edges above.
+    }
+
+    Ok(())
+}
+
+/// Returns true if the node kind is non-deterministic (requires external input
+/// that cannot be replayed from journal evidence alone).
+fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. }
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -1301,5 +1740,801 @@ mod tests {
     fn compute_stack_depth_empty() {
         let ops: Vec<ExprOp> = vec![];
         assert_eq!(compute_stack_depth(&ops), Ok(0));
+    }
+
+    // ===== Gate 10 tests =====
+
+    #[test]
+    fn gate_10_accepts_valid_finish() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_10_rejects_finish_result_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(5), // out of range for slot_count=1
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_set_const_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::SetConst {
+                value: vb_core::ids::ConstIdx::new(99), // out of range for empty constants
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_accepts_set_const_in_range() {
+        let mut parts = make_parts(
+            vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: vb_core::ids::ConstIdx::new(0),
+                },
+            }],
+            1,
+        );
+        parts.constants = Box::new([vb_core::value::ConstValue::I64(42)]);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_10_rejects_eval_expr_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: vb_core::ids::ExprIdx::new(99), // out of range for empty expressions
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_accepts_eval_expr_in_range() {
+        let mut parts = make_parts(
+            vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ids::ExprIdx::new(0),
+                },
+            }],
+            1,
+        );
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
+            max_stack: 1,
+        }]);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_10_rejects_choose_expr_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([vb_core::workflow::ExprBranch {
+                    condition: vb_core::ids::ExprIdx::new(99),
+                    target: StepIdx::new(1),
+                }]),
+                otherwise: None,
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_choose_target_out_of_range() {
+        let mut parts = make_parts(vec![nop_node(0)], 1);
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
+            max_stack: 1,
+        }]);
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([vb_core::workflow::ExprBranch {
+                    condition: vb_core::ids::ExprIdx::new(0),
+                    target: StepIdx::new(99), // out of range
+                }]),
+                otherwise: None,
+            },
+        };
+        parts.nodes = Box::new([node]);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_choose_slot_condition_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: Box::new([vb_core::workflow::SlotBranch {
+                    condition: SlotIdx::new(99), // out of range
+                    target: StepIdx::new(0),
+                }]),
+                otherwise: None,
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_do_action_sentinel() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(u16::MAX), // sentinel
+                input: SlotIdx::new(0),
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_build_object_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::BuildObject {
+                fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_build_list_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            kind: CompiledNodeKind::BuildList {
+                items: Box::new([SlotIdx::new(99)]),
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_accepts_valid_for_each_start() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            nop_node(1),
+            finish_node(2, 0),
+        ];
+        let parts = make_parts(nodes, 2);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_10_rejects_for_each_input_slot_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(99), // out of range
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let parts = make_parts(vec![node], 2);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_rejects_for_each_body_step_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(99), // out of range
+                done: StepIdx::new(2),
+            },
+        };
+        let parts = make_parts(vec![node], 2);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_accepts_valid_together_start() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::TogetherStart {
+                    branches: Box::new([StepIdx::new(1)]),
+                    join: StepIdx::new(2),
+                },
+            },
+            nop_node(1),
+            finish_node(2, 0),
+        ];
+        let parts = make_parts(nodes, 1);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_10_rejects_together_join_out_of_range() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1)]),
+                join: StepIdx::new(99), // out of range
+            },
+        };
+        let parts = make_parts(vec![node], 1);
+        assert!(matches!(
+            validate_gate_10_node_kind_specific(&parts),
+            Err(ValidationError::NodeKindConstraintViolation { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_10_accepts_nop_workflow() {
+        let parts = make_parts(vec![nop_node(0), finish_node(1, 0)], 1);
+        assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+    }
+
+    // ===== Gate 12 tests =====
+
+    fn make_action_contract(id: u16) -> vb_core::action::ActionContract {
+        vb_core::action::ActionContract {
+            id: ActionId::new(id),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: vb_core::action::Idempotency::DeterministicPure,
+            side_effect: vb_core::action::SideEffect::None,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+        }
+    }
+
+    fn do_node(index: u16, action: u16, input: u16, output: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: Some(SlotIdx::new(output)),
+            next: Some(StepIdx::new(index.saturating_add(1))),
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(action),
+                input: SlotIdx::new(input),
+            },
+        }
+    }
+
+    #[test]
+    fn gate_12_accepts_matching_contracts() {
+        let nodes = vec![
+            do_node(0, 1, 0, 1),
+            finish_node(1, 0),
+        ];
+        let parts = make_parts(nodes, 2);
+        let contracts = vec![make_action_contract(1)];
+        assert_eq!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn gate_12_accepts_multiple_do_nodes_same_action() {
+        let nodes = vec![
+            do_node(0, 1, 0, 1),
+            do_node(1, 1, 0, 2),
+            finish_node(2, 0),
+        ];
+        let parts = make_parts(nodes, 3);
+        let contracts = vec![make_action_contract(1)];
+        assert_eq!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn gate_12_rejects_do_node_without_contract() {
+        let nodes = vec![
+            do_node(0, 1, 0, 1),
+            do_node(1, 99, 0, 2), // action 99 has no contract
+            finish_node(2, 0),
+        ];
+        let parts = make_parts(nodes, 3);
+        let contracts = vec![make_action_contract(1)];
+        assert!(matches!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Err(ValidationError::ActionContractMissing { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_12_rejects_orphan_contract() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts(nodes, 1);
+        let contracts = vec![
+            make_action_contract(1), // no Do node uses action 1
+        ];
+        assert!(matches!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Err(ValidationError::ActionContractOrphan { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_12_accepts_no_do_nodes_no_contracts() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let contracts: Vec<vb_core::action::ActionContract> = vec![];
+        assert_eq!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn gate_12_accepts_multiple_actions_with_matching_contracts() {
+        let nodes = vec![
+            do_node(0, 1, 0, 1),
+            do_node(1, 2, 0, 2),
+            finish_node(2, 0),
+        ];
+        let parts = make_parts(nodes, 3);
+        let contracts = vec![make_action_contract(1), make_action_contract(2)];
+        assert_eq!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn gate_12_rejects_first_do_missing_contract() {
+        let nodes = vec![
+            do_node(0, 5, 0, 1), // action 5 has no contract
+            finish_node(1, 0),
+        ];
+        let parts = make_parts(nodes, 2);
+        let contracts = vec![make_action_contract(1)];
+        assert!(matches!(
+            validate_gate_12_action_contract_completeness(&parts, &contracts),
+            Err(ValidationError::ActionContractMissing { action_id: 5, .. })
+        ));
+    }
+
+    // ===== Gate 14 tests =====
+
+    #[test]
+    fn gate_14_accepts_empty_slots() {
+        let parts = make_parts(vec![nop_node(0)], 0);
+        assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_14_accepts_single_set_const() {
+        let mut parts = make_parts(
+            vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: vb_core::ids::ConstIdx::new(0),
+                },
+            }],
+            1,
+        );
+        parts.constants = Box::new([vb_core::value::ConstValue::I64(42)]);
+        assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_14_accepts_compatible_set_const_writers() {
+        // Two SetConst nodes writing I64 to the same slot is fine.
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(1),
+                    },
+                },
+            ],
+            1,
+        );
+        parts.constants = Box::new([
+            vb_core::value::ConstValue::I64(42),
+            vb_core::value::ConstValue::I64(99),
+        ]);
+        assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_14_rejects_incompatible_set_const_writers() {
+        // SetConst writing I64 and another SetConst writing Bool to same slot.
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(1),
+                    },
+                },
+            ],
+            1,
+        );
+        parts.constants = Box::new([
+            vb_core::value::ConstValue::I64(42),
+            vb_core::value::ConstValue::Bool(true),
+        ]);
+        assert!(matches!(
+            validate_gate_14_slot_type_consistency(&parts),
+            Err(ValidationError::SlotTypeInconsistency { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_14_rejects_i64_vs_null_inconsistency() {
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(1),
+                    },
+                },
+            ],
+            1,
+        );
+        parts.constants = Box::new([
+            vb_core::value::ConstValue::I64(1),
+            vb_core::value::ConstValue::Null,
+        ]);
+        assert!(matches!(
+            validate_gate_14_slot_type_consistency(&parts),
+            Err(ValidationError::SlotTypeInconsistency { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_14_accepts_no_set_const_nodes() {
+        let parts = make_parts(vec![copy_node(0, 0, 1), finish_node(1, 0)], 2);
+        assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_14_accepts_different_slots_different_types() {
+        // Slot 0 gets I64, slot 1 gets Bool -- fine, different slots.
+        let mut parts = make_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: vb_core::ids::ConstIdx::new(1),
+                    },
+                },
+            ],
+            2,
+        );
+        parts.constants = Box::new([
+            vb_core::value::ConstValue::I64(42),
+            vb_core::value::ConstValue::Bool(false),
+        ]);
+        assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
+    }
+
+    // ===== Gate 15 tests =====
+
+    #[test]
+    fn gate_15_accepts_deterministic_workflow() {
+        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_15_accepts_do_followed_by_deterministic() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: vb_core::ids::ConstIdx::new(0),
+                },
+            },
+        ];
+        let parts = make_parts(nodes, 2);
+        assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_15_rejects_two_do_nodes_chained() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(2)),
+                next: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(2),
+                    input: SlotIdx::new(1),
+                },
+            },
+        ];
+        let parts = make_parts(nodes, 3);
+        assert!(matches!(
+            validate_gate_15_determinism_proof(&parts),
+            Err(ValidationError::NonDeterministicPath {
+                from_node: 0,
+                to_node: 1
+            })
+        ));
+    }
+
+    #[test]
+    fn gate_15_rejects_do_chained_to_ask() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(2)),
+                next: None,
+                kind: CompiledNodeKind::Ask {
+                    prompt: SlotIdx::new(1),
+                    timeout_slot: None,
+                },
+            },
+        ];
+        let parts = make_parts(nodes, 3);
+        assert!(matches!(
+            validate_gate_15_determinism_proof(&parts),
+            Err(ValidationError::NonDeterministicPath { .. })
+        ));
+    }
+
+    #[test]
+    fn gate_15_accepts_ask_followed_by_deterministic() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Ask {
+                    prompt: SlotIdx::new(0),
+                    timeout_slot: None,
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                kind: CompiledNodeKind::Copy {
+                    source: SlotIdx::new(1),
+                },
+            },
+        ];
+        let parts = make_parts(nodes, 2);
+        assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_15_accepts_do_with_no_next() {
+        // A Do node at the end of the workflow with no next is fine.
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(1)),
+            next: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        }];
+        let parts = make_parts(nodes, 2);
+        assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_15_accepts_all_deterministic_chain() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::SetConst {
+                    value: vb_core::ids::ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                kind: CompiledNodeKind::Copy {
+                    source: SlotIdx::new(0),
+                },
+            },
+            finish_node(2, 1),
+        ];
+        let parts = make_parts(nodes, 2);
+        assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
+    }
+
+    #[test]
+    fn gate_15_rejects_ask_followed_by_do() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                kind: CompiledNodeKind::Ask {
+                    prompt: SlotIdx::new(0),
+                    timeout_slot: None,
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(2)),
+                next: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(1),
+                },
+            },
+        ];
+        let parts = make_parts(nodes, 3);
+        assert!(matches!(
+            validate_gate_15_determinism_proof(&parts),
+            Err(ValidationError::NonDeterministicPath { .. })
+        ));
     }
 }

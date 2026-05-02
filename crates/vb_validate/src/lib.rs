@@ -189,6 +189,34 @@ pub enum ValidationError {
     // Gate 13: No slot dependency cycles
     #[error("SLOT_DEPENDENCY_CYCLE: slot {slot}, chain {chain}")]
     SlotDependencyCycle { slot: usize, chain: String },
+
+    // Gate 10: Node-kind-specific constraints
+    #[error("NODE_KIND_CONSTRAINT: node {node_index}, detail {detail}")]
+    NodeKindConstraintViolation {
+        node_index: usize,
+        detail: String,
+    },
+
+    // Gate 12: Action contract completeness
+    #[error("ACTION_CONTRACT_MISSING: action_id {action_id} referenced by Do node {node_index} has no contract")]
+    ActionContractMissing {
+        action_id: usize,
+        node_index: usize,
+    },
+
+    #[error("ACTION_CONTRACT_ORPHAN: action_id {action_id} in contract has no corresponding Do node")]
+    ActionContractOrphan { action_id: usize },
+
+    // Gate 14: Slot type consistency
+    #[error("SLOT_TYPE_INCONSISTENCY: slot {slot}, writers have incompatible kinds")]
+    SlotTypeInconsistency { slot: usize },
+
+    // Gate 15: Determinism proof
+    #[error("NON_DETERMINISTIC_PATH: from node {from_node} to node {to_node} contains no suspension point")]
+    NonDeterministicPath {
+        from_node: usize,
+        to_node: usize,
+    },
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;
