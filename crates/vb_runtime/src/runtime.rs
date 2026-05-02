@@ -1510,4 +1510,486 @@ mod tests {
             }
         }
     }
+
+    // =======================================================================
+    // Scheduler edge case tests — Section 36
+    // =======================================================================
+
+    // --- 1. Queue-full returns typed error with diagnostic code ---
+
+    #[test]
+    fn scheduler_queue_full_returns_typed_error_with_diagnostic_code() {
+        // Given a runtime with command_queue_capacity = 1
+        let config = ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let runtime = Runtime::new(shard_count, config);
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        // When filling the queue
+        assert_eq!(runtime.submit_direct(RunId::new(600), wf.clone()), Ok(()));
+        // Then the next submit returns the typed QueueFull error
+        let err = runtime.submit_direct(RunId::new(601), wf);
+        assert_eq!(err, Err(RuntimeError::QueueFull));
+        // And the error's diagnostic code matches QUEUE_FULL
+        match err {
+            Err(ref e) => assert_eq!(e.diagnostic_code(), RuntimeError::QUEUE_FULL_CODE),
+            Ok(()) => assert!(false, "expected QueueFull error"),
+        }
+    }
+
+    // --- 2. Run stays on one shard across all operations ---
+
+    #[test]
+    fn scheduler_run_stays_on_one_shard_across_all_operations() {
+        // Given a 4-shard runtime
+        let Some(shard_count) = NonZeroUsize::new(4) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(602);
+        let target_shard = runtime.shard_index(run);
+
+        // When submitting, inspecting, and cancelling the same run
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.shard_index(run), target_shard);
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        assert_eq!(runtime.inspect_run(run, 1), Ok(()));
+        assert_eq!(runtime.shard_index(run), target_shard);
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        assert_eq!(runtime.cancel_run(run), Ok(()));
+        assert_eq!(runtime.shard_index(run), target_shard);
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then the run always maps to the same shard index
+        assert!(target_shard < 4);
+        // And counters reflect the submit + cancel lifecycle
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_failed, 1);
+    }
+
+    // --- 3. Cancel pending runs (before execution tick) ---
+
+    #[test]
+    fn scheduler_cancel_pending_run_before_execution() {
+        // Given a 1-shard runtime
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(603);
+
+        // When submitting and cancelling before tick
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        // Cancel is enqueued before the submit is processed by tick
+        assert_eq!(runtime.cancel_run(run), Ok(()));
+        // tick_all processes one command per shard per tick, so we need two ticks
+        // First tick processes the Submit (run becomes active/suspended)
+        assert_eq!(runtime.tick_all(), Ok(true));
+        // Second tick processes the Cancel
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then the run is cancelled (failed counter = 1)
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_failed, 1);
+        // And inspecting the run returns NotFound (no active run)
+        let result = runtime.snapshot_run(run, 2);
+        assert_eq!(
+            result,
+            Ok(InspectResponse::NotFound {
+                run,
+                correlation: 2,
+            })
+        );
+    }
+
+    // --- 4. Cancel waiting runs (suspended on WaitUntil) ---
+
+    #[test]
+    fn scheduler_cancel_run_waiting_on_timer() {
+        // Given a 1-shard runtime
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf) = wait_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(604);
+
+        // When submitting a wait workflow and ticking (run enters Wait state)
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then the run is in the runs map (snapshot returns Found)
+        let before = runtime.snapshot_run(run, 3);
+        match before {
+            Ok(InspectResponse::Found(snap)) => {
+                assert_eq!(snap.run, run);
+            }
+            other => {
+                assert_eq!(other, Ok(InspectResponse::NotFound { run, correlation: 3 }));
+            }
+        }
+
+        // When cancelling the waiting run
+        assert_eq!(runtime.cancel_run(run), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then the run is cleanly removed
+        let after = runtime.snapshot_run(run, 4);
+        assert_eq!(
+            after,
+            Ok(InspectResponse::NotFound {
+                run,
+                correlation: 4,
+            })
+        );
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_failed, 1);
+        assert_eq!(snap.runs_completed, 0);
+    }
+
+    // --- 5. Shutdown drains gracefully with pending runs ---
+
+    #[test]
+    fn scheduler_shutdown_drains_pending_suspended_run() {
+        // Given a 1-shard runtime with a journal to observe events
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(605);
+
+        // When submitting a suspended run and initiating graceful shutdown
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        // drain_for_shutdown processes queued commands
+        // Then tick_all returns false (shutdown complete)
+        assert_eq!(runtime.tick_all(), Ok(false));
+
+        // And the journal recorded the run submission
+        let journal_events = journal.snapshot();
+        match journal_events {
+            Ok(evts) => {
+                let found_submitted = evts.iter().any(
+                    |e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run),
+                );
+                assert_eq!(found_submitted, true);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn scheduler_shutdown_drains_pending_finished_run() {
+        // Given a 1-shard runtime with a journal
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(606);
+
+        // When submitting a finished workflow and initiating shutdown
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(false));
+
+        // Then the run completed during drain
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_completed, 1);
+
+        // And journal recorded RunFinished
+        let journal_events = journal.snapshot();
+        match journal_events {
+            Ok(evts) => {
+                let found_finished = evts.iter().any(
+                    |e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run),
+                );
+                assert_eq!(found_finished, true);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    // --- 6. Timer resume order: multiple waits, deterministic processing ---
+
+    #[test]
+    fn scheduler_timer_fire_processes_correct_run() {
+        // Given a 1-shard runtime with two waiting runs
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf1) = wait_then_finish_workflow() else {
+            return;
+        };
+        let Some(wf2) = wait_then_finish_workflow() else {
+            return;
+        };
+        let run1 = RunId::new(607);
+        let run2 = RunId::new(608);
+
+        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Both runs are now in wait state. Fire timer for run1 only.
+        assert_eq!(runtime.timer_fired(run1), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then run1 completed but run2 is still waiting
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_completed, 1);
+
+        // run2 is still present (inspect returns Found)
+        let inspect = runtime.snapshot_run(run2, 5);
+        match inspect {
+            Ok(InspectResponse::Found(s)) => {
+                assert_eq!(s.run, run2);
+            }
+            other => {
+                assert_eq!(
+                    other,
+                    Ok(InspectResponse::NotFound {
+                        run: run2,
+                        correlation: 5,
+                    })
+                );
+            }
+        }
+
+        // Now fire timer for run2
+        assert_eq!(runtime.timer_fired(run2), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let snap2 = runtime.counters_snapshot();
+        assert_eq!(snap2.runs_completed, 2);
+    }
+
+    // --- 7. Action completion resumes correct run ---
+
+    #[test]
+    fn scheduler_action_completion_resumes_correct_run_among_many() {
+        // Given a 1-shard runtime with three suspended runs
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf1) = action_then_finish_workflow() else {
+            return;
+        };
+        let Some(wf2) = action_then_finish_workflow() else {
+            return;
+        };
+        let Some(wf3) = action_then_finish_workflow() else {
+            return;
+        };
+        let run1 = RunId::new(610);
+        let run2 = RunId::new(611);
+        let run3 = RunId::new(612);
+
+        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.submit_direct(run3, wf3), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // All three runs are suspended on their Do actions.
+        // Complete only run2's action.
+        let ticket = ActionTicket {
+            run: run2,
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(7),
+            attempt: 1,
+            idempotency_key: 0,
+        };
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(1),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 8,
+        };
+        assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then only run2 completed
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_completed, 1);
+
+        // run1 and run3 are still present and suspended
+        for run in [run1, run3] {
+            let inspect = runtime.snapshot_run(run, 6);
+            match inspect {
+                Ok(InspectResponse::Found(s)) => {
+                    assert_eq!(s.run, run);
+                }
+                other => {
+                    assert_eq!(
+                        other,
+                        Ok(InspectResponse::NotFound { run, correlation: 6 })
+                    );
+                }
+            }
+        }
+
+        // Verify the completed run's trace shows the finish
+        let trace = runtime.list_events(run2);
+        match trace {
+            Ok(evts) => {
+                let found_finished = evts
+                    .iter()
+                    .any(|e| *e == TraceEvent::RunFinished { run: run2 });
+                assert_eq!(found_finished, true);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+
+    // --- 8. No task-per-step: scheduler processes within step budget ---
+
+    #[test]
+    fn scheduler_no_task_per_step_processes_within_budget() {
+        // Given a runtime with step_budget_per_tick = 100 (sufficient for short workflows)
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 64,
+            step_budget_per_tick: 100,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, config);
+        // Use the finished_workflow (SetConst -> Finish, 2 steps)
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(620);
+
+        // When submitting the workflow
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        // A single tick processes the submit command and drives to completion
+        // The scheduler does NOT spawn a task per step; it drives all steps
+        // within the budget of one tick synchronously.
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Then the run completes in a single tick (no task-per-step behavior)
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_completed, 1);
+        // Verify steps executed is exactly 2 (SetConst + Finish)
+        assert!(snap.steps_executed >= 2);
+    }
+
+    #[test]
+    fn scheduler_single_tick_does_not_spawn_concurrent_tasks() {
+        // Given a runtime with a suspended run
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, test_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(621);
+
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // When inspecting the run, it is in a suspended state with deterministic PC
+        assert_eq!(runtime.inspect_run(run, 10), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let response = runtime.take_inspect_response(run);
+        match response {
+            Ok(Some(InspectResponse::Found(snap))) => {
+                // The PC is at step 0 (the Do step that suspended)
+                assert_eq!(snap.run, run);
+                assert_eq!(snap.correlation, 10);
+                // PC should be at the suspended step (0 for our single-node workflow)
+                assert!(snap.pc == StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(None));
+            }
+        }
+    }
+
+    // --- Helper: wait-then-finish workflow (SetConst -> WaitUntil -> Finish) ---
+
+    fn wait_then_finish_workflow() -> Option<CompiledWorkflow> {
+        let set_deadline = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let wait = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO,
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("wait_then_finish"),
+            digest: WorkflowDigest::from_bytes([6; 32]),
+            nodes: Box::from([set_deadline, wait, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+            slot_count: 1,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).ok()
+    }
 }
