@@ -288,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn choose_slot_without_otherwise_takes_otherwise_path() -> Result<(), String> {
+    fn choose_slot_otherwise_taken_when_no_branch_matches() -> Result<(), String> {
         let workflow =
             choose_slot_without_otherwise_workflow().map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(12), &workflow)?;
@@ -298,9 +298,13 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
-            Ok(EngineSignal::Finished(_)) => Ok(()),
-            other => Err(format!("unexpected result: {other:?}")),
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|error| error.to_string())?;
+
+        if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
+            Ok(())
+        } else {
+            Err(format!("unexpected result: {result:?}"))
         }
     }
 
@@ -383,16 +387,20 @@ mod tests {
     }
 
     #[test]
-    fn choose_expr_without_otherwise_takes_otherwise_path() -> Result<(), String> {
+    fn choose_expr_otherwise_taken_when_no_branch_matches() -> Result<(), String> {
         let workflow =
             choose_expr_workflow_with(ConstValue::Bool(false), ConstValue::Bool(false), Some(StepIdx::new(3)))
                 .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(25), &workflow)?;
         let mut store = test_store();
 
-        match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
-            Ok(EngineSignal::Finished(_)) => Ok(()),
-            other => Err(format!("unexpected result: {other:?}")),
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|error| error.to_string())?;
+
+        if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
+            Ok(())
+        } else {
+            Err(format!("unexpected result: {result:?}"))
         }
     }
 

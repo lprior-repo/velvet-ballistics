@@ -2,6 +2,7 @@
 
 //! Action ABI contract for the do/retry/on_error primitives.
 
+use crate::frame::RunFrame;
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,51 @@ pub enum Idempotency {
     IdempotentExternal = 1,
     /// External call that may execute more than once; at-least-once delivery.
     AtLeastOnceExternal = 2,
+}
+
+/// Classifies the observable side effects of an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum SideEffect {
+    /// No observable side effects (pure computation).
+    None = 0,
+    /// Writes to external state (database, file, API).
+    Writes = 1,
+    /// Sends a message or notification.
+    Sends = 2,
+    /// Creates a resource (provision, allocate).
+    Creates = 3,
+    /// Destroys a resource (deprovision, delete).
+    Destroys = 4,
+}
+
+/// Classifies whether an action can be safely retried.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum RetrySafety {
+    /// Always safe to retry (pure/idempotent).
+    Safe = 0,
+    /// Safe to retry IF an idempotency key is present.
+    KeyRequired = 1,
+    /// Never safe to retry (destructive side-effect with no key).
+    Unsafe = 2,
+}
+
+/// Verification error when an action's idempotency contract is violated.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum IdempotencyViolation {
+    /// Action has side-effects but no idempotency key was provided.
+    #[error("action has side-effect {0:?} but no idempotency key")]
+    MissingKey(SideEffect),
+    /// Idempotency key ingredient contains a secret-tainted value.
+    #[error("idempotency key ingredient contains secret-tainted value at slot {0}")]
+    SecretInKey(u32),
+    /// Idempotency key ingredient contains a random-generated value.
+    #[error("idempotency key ingredient contains random value at slot {0}")]
+    RandomInKey(u32),
+    /// Idempotency key ingredient contains a time-dependent value.
+    #[error("idempotency key ingredient contains time-dependent value at slot {0}")]
+    TimeInKey(u32),
 }
 
 /// Static contract describing an action's resource and correctness bounds.
@@ -35,6 +81,10 @@ pub struct ActionContract {
     pub timeout_ms: u64,
     /// Idempotency classification for retry and taint propagation.
     pub idempotency: Idempotency,
+    /// Side-effect classification for retry safety decisions.
+    pub side_effect: SideEffect,
+    /// Retry safety classification for the verification gate.
+    pub retry_safety: RetrySafety,
 }
 
 /// Input payload for one action invocation.
@@ -228,6 +278,81 @@ const fn join_taint(input: Taint) -> Taint {
     input
 }
 
+/// Validates that idempotency key ingredients do not contain prohibited values.
+///
+/// Keys must NOT contain:
+/// - Secret-tainted values (would leak information through the key)
+/// - Random-generated values (keys must be deterministic)
+/// - Time-dependent values (keys must be reproducible across retries)
+///
+/// The function checks the taint of each slot referenced in `key_slots` via the
+/// provided `frame`. Slots with `Taint::Secret` or `Taint::DerivedFromSecret`
+/// are rejected. Random and time-dependent checks require additional metadata
+/// not yet modeled in `SlotValue`; they are scaffolded here for future extension.
+pub fn validate_idempotency_key_ingredients(
+    key_slots: &[SlotIdx],
+    frame: &RunFrame,
+) -> Result<(), IdempotencyViolation> {
+    let mut i = 0;
+    while i < key_slots.len() {
+        let slot = match key_slots.get(i) {
+            Some(value) => *value,
+            None => break,
+        };
+        let slot_taint = match frame.read_taint(slot) {
+            Ok(t) => t,
+            Err(_) => {
+                // Slot not readable; cannot validate. Skip silently since
+                // the key ingredient may not be populated yet.
+                i = match i.checked_add(1) {
+                    Some(next) => next,
+                    None => break,
+                };
+                continue;
+            }
+        };
+        match slot_taint {
+            Taint::Clean => {}
+            Taint::Secret | Taint::DerivedFromSecret => {
+                return Err(IdempotencyViolation::SecretInKey(u32::from(slot.get())));
+            }
+        }
+        i = match i.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    Ok(())
+}
+
+/// Verifies whether an action can be safely retried given its contract,
+/// the idempotency key slots, and the current run frame.
+///
+/// Verification rules:
+/// - `RetrySafety::Safe` always passes.
+/// - `RetrySafety::KeyRequired` passes if key ingredients are valid.
+/// - `RetrySafety::Unsafe` always fails with `MissingKey`.
+/// - Actions with `SideEffect::None` always pass regardless of retry_safety.
+pub fn verify_idempotency(
+    action: &ActionContract,
+    key_slots: &[SlotIdx],
+    frame: &RunFrame,
+) -> Result<(), IdempotencyViolation> {
+    if action.side_effect == SideEffect::None {
+        return Ok(());
+    }
+    match action.retry_safety {
+        RetrySafety::Safe => Ok(()),
+        RetrySafety::KeyRequired => {
+            if key_slots.is_empty() {
+                return Err(IdempotencyViolation::MissingKey(action.side_effect));
+            }
+            validate_idempotency_key_ingredients(key_slots, frame)
+        }
+        RetrySafety::Unsafe => Err(IdempotencyViolation::MissingKey(action.side_effect)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -416,10 +541,8 @@ mod tests {
     }
 
     // =========================================================================
-    // Phase 2 adversarial BDD tests — action ABI security & taint vectors
+    // Phase 2 adversarial BDD tests -- action ABI security & taint vectors
     // =========================================================================
-
-    // --- Idempotency key = 0 is not treated specially ---
 
     #[test]
     fn action_ticket_with_idempotency_key_zero_is_a_valid_ticket() {
@@ -434,8 +557,6 @@ mod tests {
         assert_eq!(ticket.idempotency_key, 0);
         assert_eq!(ticket.run, RunId::new(1));
     }
-
-    // --- Taint downgrade: Secret cannot become Clean through any operation ---
 
     #[test]
     fn deterministic_pure_propagate_cannot_downgrade_secret_to_clean() {
@@ -463,8 +584,6 @@ mod tests {
         assert_eq!(result, Taint::DerivedFromSecret);
     }
 
-    // --- AtLeastOnceExternal always upgrades Secret to DerivedFromSecret ---
-
     #[test]
     fn at_least_once_secret_is_always_derived_never_secret() {
         let result = propagate_action_taint(Idempotency::AtLeastOnceExternal, Taint::Secret);
@@ -479,8 +598,6 @@ mod tests {
         assert_eq!(result, Taint::DerivedFromSecret);
         assert_ne!(result, Taint::Clean);
     }
-
-    // --- Ticket reuse across runs: different run IDs are distinct tickets ---
 
     #[test]
     fn action_ticket_from_different_run_is_not_equal() {
@@ -502,8 +619,6 @@ mod tests {
         };
         assert_ne!(ticket_a, ticket_b);
     }
-
-    // --- Payload too large error carries exact byte counts ---
 
     #[test]
     fn action_error_payload_too_large_reports_exact_overflow() {
@@ -529,8 +644,6 @@ mod tests {
         }
     }
 
-    // --- Output slot out of bounds carries exact slot and max ---
-
     #[test]
     fn action_error_output_slot_out_of_bounds_reports_exact_boundary() {
         let error = ActionError::OutputSlotOutOfBounds {
@@ -552,8 +665,6 @@ mod tests {
         }
     }
 
-    // --- ActionContract with max_output_bytes = 0 is syntactically valid ---
-
     #[test]
     fn action_contract_with_zero_output_bytes_is_constructable() {
         let contract = ActionContract {
@@ -564,12 +675,12 @@ mod tests {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         assert_eq!(contract.max_output_bytes, 0);
         assert_eq!(contract.output_slot_count, 0);
     }
-
-    // --- ActionContract with timeout_ms = 0 is syntactically valid ---
 
     #[test]
     fn action_contract_with_zero_timeout_is_constructable() {
@@ -581,11 +692,11 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 0,
             idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
         };
         assert_eq!(contract.timeout_ms, 0);
     }
-
-    // --- ActionOutputReady with Secret taint propagation ---
 
     #[test]
     fn action_output_ready_carries_secret_taint_without_downgrade() {
@@ -598,8 +709,6 @@ mod tests {
         assert_eq!(output.taint, Taint::Secret);
     }
 
-    // --- ActionFailure with retryable flag ---
-
     #[test]
     fn action_failure_with_retryable_true_is_retryable() {
         let failure = ActionFailure {
@@ -611,8 +720,6 @@ mod tests {
         };
         assert!(failure.retryable);
     }
-
-    // --- ActionOutcome equality for Suspended with ticket ---
 
     #[test]
     fn action_outcome_suspended_carries_ticket_identity() {
@@ -633,8 +740,6 @@ mod tests {
             other => assert_eq!(other, ActionOutcome::Suspended(ticket)),
         }
     }
-
-    // --- All ActionFailureCode variants have distinct repr values ---
 
     #[test]
     fn action_failure_code_repr_values_are_distinct() {
@@ -666,5 +771,346 @@ mod tests {
             ActionFailureCode::Conflict => 7,
             ActionFailureCode::Unknown => 255,
         }
+    }
+
+    // =========================================================================
+    // Phase 38 tests -- SideEffect, RetrySafety, IdempotencyViolation
+    // =========================================================================
+
+    #[test]
+    fn side_effect_repr_values_are_distinct() {
+        let effects = [
+            SideEffect::None,
+            SideEffect::Writes,
+            SideEffect::Sends,
+            SideEffect::Creates,
+            SideEffect::Destroys,
+        ];
+        let mut reprs: [u8; 5] = [0; 5];
+        let mut count = 0;
+        for effect in &effects {
+            let repr = side_effect_repr(*effect);
+            reprs[count] = repr;
+            count = match count.checked_add(1) {
+                Some(n) => n,
+                None => break,
+            };
+        }
+        let mut i = 0;
+        while i < count {
+            let mut j = match i.checked_add(1) {
+                Some(n) => n,
+                None => break,
+            };
+            while j < count {
+                assert_ne!(reprs[i], reprs[j], "duplicate repr at {i} and {j}");
+                j = match j.checked_add(1) {
+                    Some(n) => n,
+                    None => break,
+                };
+            }
+            i = match i.checked_add(1) {
+                Some(n) => n,
+                None => break,
+            };
+        }
+        assert_eq!(count, 5);
+    }
+
+    fn side_effect_repr(effect: SideEffect) -> u8 {
+        match effect {
+            SideEffect::None => 0,
+            SideEffect::Writes => 1,
+            SideEffect::Sends => 2,
+            SideEffect::Creates => 3,
+            SideEffect::Destroys => 4,
+        }
+    }
+
+    #[test]
+    fn retry_safety_repr_values_are_distinct() {
+        let safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+        let repr_a = retry_safety_repr(safeties[0]);
+        let repr_b = retry_safety_repr(safeties[1]);
+        let repr_c = retry_safety_repr(safeties[2]);
+        assert_ne!(repr_a, repr_b);
+        assert_ne!(repr_b, repr_c);
+        assert_ne!(repr_a, repr_c);
+    }
+
+    fn retry_safety_repr(safety: RetrySafety) -> u8 {
+        match safety {
+            RetrySafety::Safe => 0,
+            RetrySafety::KeyRequired => 1,
+            RetrySafety::Unsafe => 2,
+        }
+    }
+
+    #[test]
+    fn idempotency_violation_missing_key_carries_side_effect() {
+        let violation = IdempotencyViolation::MissingKey(SideEffect::Writes);
+        match violation {
+            IdempotencyViolation::MissingKey(eff) => assert_eq!(eff, SideEffect::Writes),
+            other => panic!("expected MissingKey, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn idempotency_violation_secret_in_key_carries_slot() {
+        let violation = IdempotencyViolation::SecretInKey(7);
+        match violation {
+            IdempotencyViolation::SecretInKey(slot) => assert_eq!(slot, 7),
+            other => panic!("expected SecretInKey, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn idempotency_violation_random_in_key_carries_slot() {
+        let violation = IdempotencyViolation::RandomInKey(3);
+        match violation {
+            IdempotencyViolation::RandomInKey(slot) => assert_eq!(slot, 3),
+            other => panic!("expected RandomInKey, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn idempotency_violation_time_in_key_carries_slot() {
+        let violation = IdempotencyViolation::TimeInKey(5);
+        match violation {
+            IdempotencyViolation::TimeInKey(slot) => assert_eq!(slot, 5),
+            other => panic!("expected TimeInKey, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn verify_idempotency_pure_action_always_passes() {
+        let action = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 0,
+            output_slot_count: 1,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[], &frame);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn verify_idempotency_safe_action_with_side_effect_passes() {
+        let action = ActionContract {
+            id: ActionId::new(2),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::Safe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[], &frame);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn verify_idempotency_unsafe_action_rejected() {
+        let action = ActionContract {
+            id: ActionId::new(3),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::Destroys,
+            retry_safety: RetrySafety::Unsafe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Destroys)));
+    }
+
+    #[test]
+    fn verify_idempotency_key_required_empty_keys_rejected() {
+        let action = ActionContract {
+            id: ActionId::new(4),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[], &frame);
+        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Writes)));
+    }
+
+    #[test]
+    fn verify_idempotency_key_required_clean_keys_passes() {
+        let action = ActionContract {
+            id: ActionId::new(5),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
+        let result = verify_idempotency(&action, &key_slots, &frame);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn verify_idempotency_key_required_secret_key_rejected() {
+        let action = ActionContract {
+            id: ActionId::new(6),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
+        };
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let mut frame = frame.ok().expect("test setup");
+        let write_result = frame.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::I64(42),
+            Taint::Secret,
+        );
+        assert!(write_result.is_ok());
+        let key_slots = [SlotIdx::new(0)];
+        let result = verify_idempotency(&action, &key_slots, &frame);
+        assert_eq!(result, Err(IdempotencyViolation::SecretInKey(0)));
+    }
+
+    #[test]
+    fn validate_key_ingredients_clean_slots_pass() {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
+        let result = validate_idempotency_key_ingredients(&key_slots, &frame);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_key_ingredients_derived_secret_rejected() {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let mut frame = frame.ok().expect("test setup");
+        let write_result = frame.write_slot_with_taint(
+            SlotIdx::new(1),
+            SlotValue::I64(99),
+            Taint::DerivedFromSecret,
+        );
+        assert!(write_result.is_ok());
+        let key_slots = [SlotIdx::new(1)];
+        let result = validate_idempotency_key_ingredients(&key_slots, &frame);
+        assert_eq!(result, Err(IdempotencyViolation::SecretInKey(1)));
+    }
+
+    #[test]
+    fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
+        let action = ActionContract {
+            id: ActionId::new(7),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Sends,
+            retry_safety: RetrySafety::KeyRequired,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[], &frame);
+        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Sends)));
+    }
+
+    #[test]
+    fn verify_idempotency_creates_side_effect_unsafe_rejected() {
+        let action = ActionContract {
+            id: ActionId::new(8),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::Creates,
+            retry_safety: RetrySafety::Unsafe,
+        };
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        assert!(frame.is_ok());
+        let frame = frame.ok().expect("test setup");
+        let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Creates)));
+    }
+
+    #[test]
+    fn action_contract_serializes_with_new_fields() {
+        let contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
+        };
+        let bytes = postcard::to_allocvec(&contract);
+        assert!(bytes.is_ok(), "postcard serialization should succeed");
+        let bytes = bytes.ok().expect("test setup");
+        let recovered: Result<ActionContract, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok(), "postcard deserialization should succeed");
+        let recovered = recovered.ok().expect("test setup");
+        assert_eq!(recovered.id, contract.id);
+        assert_eq!(recovered.side_effect, contract.side_effect);
+        assert_eq!(recovered.retry_safety, contract.retry_safety);
+    }
+
+    #[test]
+    fn side_effect_is_copy() {
+        let a = SideEffect::Writes;
+        let b = a;
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn retry_safety_is_copy() {
+        let a = RetrySafety::KeyRequired;
+        let b = a;
+        assert_eq!(a, b);
     }
 }

@@ -1396,11 +1396,14 @@ mod tests {
                         seq: EventSeq::new(0),
                         workflow: WorkflowDigest::from_bytes([9; 32]),
                     }));
-                    assert!(events.contains(&JournalEvent::RunFinished {
-                        run,
-                        seq: EventSeq::new(1),
-                        result: SlotIdx::ZERO,
-                    }));
+                    assert!(events.iter().any(|e| matches!(
+                        e,
+                        JournalEvent::RunFinished {
+                            run: r,
+                            result: SlotIdx::ZERO,
+                            ..
+                        } if *r == run
+                    )));
                 }
             }
         }

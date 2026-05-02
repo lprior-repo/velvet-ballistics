@@ -28,7 +28,7 @@ fn validation_errors_map_every_public_variant_to_an_exact_code() {
 fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
-    assert_eq!(core.len(), 33);
+    assert_eq!(core.len(), 34);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn action_public_constructible_errors_have_exhaustive_variant_audits() {
 
 #[test]
 fn workflow_public_constructible_errors_have_exhaustive_variant_audits() {
-    assert_eq!(workflow_variant_count(), 10);
+    assert_eq!(workflow_variant_count(), 13);
 }
 
 #[test]
@@ -298,6 +298,7 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::RepeatExhausted { max: 1 },
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
+        CoreError::BudgetExceeded { budget: "b", limit: 1 },
     ];
     samples
         .iter()
@@ -344,6 +345,7 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::CollectPageLimitExceeded => "CollectPageLimitExceeded",
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
+        CoreError::BudgetExceeded { .. } => "BudgetExceeded",
     }
 }
 
@@ -681,6 +683,9 @@ fn workflow_variant_count() -> usize {
         WorkflowError::ResourceContractExceeded { resource: "r" },
         WorkflowError::ResourceContractTooLarge { resource: "r" },
         WorkflowError::EmptyBranchTable,
+        WorkflowError::UnreachableNode { step: step() },
+        WorkflowError::BackwardEdge { from: step(), to: step() },
+        WorkflowError::ImproperLoopNesting { inner: step(), outer_done: step() },
     ];
     samples.iter().map(workflow_error_variant_name).count()
 }
@@ -697,6 +702,9 @@ fn workflow_error_variant_name(error: &WorkflowError) -> &'static str {
         WorkflowError::ResourceContractExceeded { .. } => "ResourceContractExceeded",
         WorkflowError::ResourceContractTooLarge { .. } => "ResourceContractTooLarge",
         WorkflowError::EmptyBranchTable => "EmptyBranchTable",
+        WorkflowError::UnreachableNode { .. } => "UnreachableNode",
+        WorkflowError::BackwardEdge { .. } => "BackwardEdge",
+        WorkflowError::ImproperLoopNesting { .. } => "ImproperLoopNesting",
     }
 }
 

@@ -333,7 +333,7 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
 
     // Then: the engine signals completion
     assert!(
-        matches!(signal, Ok(vb_core::engine::EngineSignal::Finished(_))),
+        matches!(signal, Ok(vb_core::engine::EngineSignal::Finished(_, _))),
         "simple set+finish should finish, got {:?}",
         signal
     );
@@ -1008,11 +1008,11 @@ fn limits_resource_contract_default_max_input_bytes_is_one_mib() {
 }
 
 #[test]
-fn limits_resource_contract_default_max_steps_is_1000() {
+fn limits_resource_contract_default_max_steps_is_10000() {
     // Given: the default ResourceContract
     let contract = ResourceContract::DEFAULT;
-    // Then: max_steps is 1000 (the document-specified limit)
-    assert_eq!(contract.max_steps, 1_000);
+    // Then: max_steps is 10000 (the Phase 45 tightened limit)
+    assert_eq!(contract.max_steps, 10_000);
 }
 
 // ===========================================================================

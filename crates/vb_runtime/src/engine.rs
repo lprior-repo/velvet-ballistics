@@ -4,7 +4,7 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
-    Idempotency, RetrySafety, SideEffect, propagate_action_taint,
+    Idempotency, propagate_action_taint,
 };
 use vb_core::engine::{EngineSignal, StepBudget, step_once};
 use vb_core::errors::EngineError;

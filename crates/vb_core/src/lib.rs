@@ -20,8 +20,9 @@ pub mod workflow;
 
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionOutcome,
-    ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,
-    propagate_action_taint,
+    ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency, IdempotencyViolation,
+    RetrySafety, SideEffect, propagate_action_taint, validate_idempotency_key_ingredients,
+    verify_idempotency,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{

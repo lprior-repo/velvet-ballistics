@@ -878,7 +878,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     black_box(if let Ok(run) = frame.as_mut() {
                         let signal =
                             vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
-                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_))))
+                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_, _))))
                     } else {
                         false
                     })
@@ -903,7 +903,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
                     black_box(if let Ok(run) = frame.as_mut() {
                         let signal =
                             vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
-                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_))))
+                        black_box(matches!(signal, Ok(vb_core::EngineSignal::Finished(_, _))))
                     } else {
                         false
                     })

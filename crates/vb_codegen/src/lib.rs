@@ -1684,7 +1684,7 @@ mod tests {
         let signal = run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store)
             .map_err(|e| e.to_string())?;
         match signal {
-            EngineSignal::Finished(value) => Ok(value),
+            EngineSignal::Finished(value, _) => Ok(value),
             other => Err(format!("expected finished signal, got {other:?}")),
         }
     }
@@ -5159,26 +5159,36 @@ mod tests {
     #[test]
     fn drive_function_initializes_pc_to_entry_step_nonzero() -> Result<(), String> {
         // Given a workflow with entry at step 1 (not 0)
+        // All nodes must be forward-reachable from entry
         let ops = vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))];
         let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
         let parts = WorkflowParts {
             name: Box::<str>::from("test_nonzero_entry"),
             digest: WorkflowDigest::from_bytes([0xE1; 32]),
             nodes: vec![
+                // Node 0 is a dead placeholder that's reachable via Jump from node 2
                 CompiledNode {
                     id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
                     output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
-                    id: StepIdx::new(1),
+                    id: StepIdx::new(2),
                     output: None,
                     next: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
+                    kind: CompiledNodeKind::Jump {
+                        target: StepIdx::new(0),
                     },
                 },
             ]
