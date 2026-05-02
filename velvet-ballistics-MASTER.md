@@ -1968,6 +1968,12 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 34 | Full benchmark suite | Criterion/iai suites, metadata, generated-vs-IR ratios. |
 | 35 | Maxperf | PGO, target-cpu-native, mandatory generated Rust, regression thresholds. |
 | 36 | Hardening | Full gates, sanitizer jobs, fuzz expansion, docs, bead evidence, release readiness. |
+| 37 | Whole-workflow boundedness | Static dataflow analyzer: compute `WholeWorkflowBudget` from IR, propagate bounds through nested loops/branches, reject if any budget exceeds policy. New `BoundednessPolicy` config. Tests: nested fanout, sequential sum, conditional max, unbounded rejection. |
+| 38 | Idempotency verification gate | `SideEffect` + `RetrySafety` classification per action. Verification gate rejects retry on side-effecting actions without idempotency key. Key ingredient validation (reject secrets, random, time in keys). New `IdempotencyViolation` error type. Tests: every side-effect class, key restriction, retry reachability. |
+| 39 | Accepted artifacts + admission | `AcceptedArtifact` record with `VerificationProof`. `RunAdmission` flow: artifact digest, input validation, capability check, secret availability, `RunAccepted` event. Runs bind to artifact by digest, not loose YAML. CLI `--strict` mode for AI-authored workflows. Tests: admission rejection paths, artifact binding, strict-mode warnings. |
+| 40 | Evidence chain completion | Slot value/taint snapshots in journal. Action input/output payload persistence for completed actions. Durability proof per primitive (each primitive must document what journal events constitute proof of completion). `VerificationProof.durable` field gates acceptance. Tests: crash recovery with evidence chain, payload reconstruction. |
+| 41 | Capability model | `Capability` struct. Actions declare required capabilities. Admission checks granted capabilities. `CapabilityDenied` rejection. Operator grants capabilities at run submission. Tests: missing capability rejection, granted capability acceptance. |
+| 42 | Validation deduplication | Eliminate duplicate validation between `vb_validate` and `vb_compile`. Single validation pipeline operating on a shared intermediate representation. Both crate APIs preserved for backward compatibility but backed by one implementation. |
 
 Round 2 current implementation state, observed in this tree and not a final release claim:
 
@@ -3481,3 +3487,335 @@ Fjall v3 acquires an exclusive file lock per database. Only one process may open
 ## 62. No-Async Rule
 
 v1 runtime core must not depend on `tokio`, `async-std`, `smol`, `futures` executors, `async_trait`, or async task scheduling. `mio` is the only approved low-level eventing mechanism for IPC. Actions may block only in bounded action worker contexts or return `Suspended`. No async function may appear in `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
+
+---
+
+## 63. Plan Verifier and Accepted Artifacts
+
+### Core Principle
+
+AI may propose workflows. Velvet verifies them. Only accepted artifacts run.
+
+The compiler does not merely check syntax. It acts as a safety gate: if Velvet cannot prove the plan is bounded, inspectable, retry-safe, and durable, the plan is rejected before execution. No accepted workflow has unknown bounds.
+
+### Verification Gate Pipeline
+
+```text
+YAML/Rust workflow definition
+  → strict YAML parser (gate 1: profile)
+  → schema validator (gate 2: shape)
+  → name/scope validator (gate 3: names)
+  → reference validator (gate 4: references)
+  → expression compiler (gate 5: expressions)
+  → control-flow validator (gate 6: CFG)
+  → boundedness analyzer (gate 7: bounded — section 64)
+  → resource budget checker (gate 8: budgets)
+  → action contract verifier (gate 9: contracts)
+  → taint/secret checker (gate 10: taint)
+  → idempotency verifier (gate 11: idempotency — section 65)
+  → durability checker (gate 12: durability)
+  → capability checker (gate 13: capabilities)
+  → result/output validator (gate 14: results)
+  → observability checker (gate 15: evidence)
+  → accepted artifact
+  → runtime admission (section 66)
+```
+
+A workflow must pass every gate to produce an accepted artifact. The runtime must not execute anything that is not an accepted artifact.
+
+### Accepted Artifact Record
+
+When a workflow passes all verification gates, the compiler persists a verifiable artifact:
+
+```rust
+pub struct AcceptedArtifact {
+    pub artifact_version: &'static str,  // "velvet.artifact/v1"
+    pub workflow_name: Box<str>,
+    pub workflow_version: &'static str,  // "velvet-ballastics/v1"
+    pub workflow_digest: WorkflowDigest, // BLAKE3 of YAML source
+    pub ir_digest: WorkflowDigest,       // BLAKE3 of compiled IR
+    pub action_contract_digest: WorkflowDigest, // BLAKE3 of action contracts
+    pub verified_at: u64,                // Unix timestamp
+    pub resource_budget: WholeWorkflowBudget, // section 64
+    pub capabilities: Box<[Capability]>, // section 66
+    pub warnings: Box<[VerificationWarning]>,
+    pub verification: VerificationProof,
+}
+
+pub struct VerificationProof {
+    pub bounded: bool,
+    pub taint_safe: bool,
+    pub retry_safe: bool,
+    pub durable: bool,
+    pub replayable: bool,
+    pub idempotency_proven: Vec<ActionId>,  // actions with proven idempotency
+    pub idempotency_attested: Vec<ActionId>, // actions with attested (not proven) idempotency
+}
+
+pub struct VerificationWarning {
+    pub code: u32,
+    pub message: Box<str>,
+    pub gate: u8, // which verification gate produced it
+}
+```
+
+Runs bind to this artifact by digest, not to loose YAML or unverified `CompiledWorkflow`.
+
+### Accepted Artifact Persistence
+
+Accepted artifacts are stored in the `compiled_ir` keyspace keyed by `ir_digest`. The storage layer already stores compiled IR by digest; the artifact record wraps the IR with verification metadata.
+
+### Strict Verification Mode
+
+For AI-authored workflows, strict mode is available:
+
+```text
+velvet validate flow.yaml --strict --json
+```
+
+Strict mode rejects not only errors but selected warnings:
+
+- unused secrets
+- unsafe shell actions
+- large fanout (branches > policy threshold)
+- missing examples
+- retry on side-effecting action without idempotency proof
+- possibly skipped references
+- opaque object where schema could be declared
+
+This is the workflow equivalent of compile-with-warnings-as-errors. AI agents should use `--strict` as the default.
+
+### Verification Gate Status
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| 1. YAML profile | Implemented | vb_yaml strict profile, 19 error variants |
+| 2. Shape/schema | Implemented | vb_validate + vb_compile schema validation |
+| 3. Name/scope | Implemented | ID grammar, reserved words enforcement |
+| 4. Reference | Implemented | Forward refs rejected, runtime refs rejected |
+| 5. Expression | Implemented | 30 opcodes, bytecode compiler, bounded stacks |
+| 6. Control flow | Implemented | Forward-only CFG, cycle rejection, reachability |
+| 7. Boundedness | Partial | Individual loop bounds exist; whole-workflow budget needed (section 64) |
+| 8. Resource budget | Partial | ResourceContract with 16 fields; whole-workflow computation needed |
+| 9. Action contract | Partial | Classification exists; compile-time schema validation needed |
+| 10. Secret/taint | Implemented | Compile-time + runtime taint, leak rejection, 3-level lattice |
+| 11. Idempotency | Stub | Enum exists; verification gate needed (section 65) |
+| 12. Durability | Partial | Journal events exist; slot/payload persistence gaps |
+| 13. Capability | Not started | No capability model exists |
+| 14. Output/result | Implemented | Result validation, finish semantics |
+| 15. Observability | Partial | Trace ring + counters; evidence chain gaps |
+
+---
+
+## 64. Whole-Workflow Boundedness Analysis
+
+### Principle
+
+No accepted workflow has unknown bounds. The compiler must compute a conservative whole-workflow budget before accepting any artifact.
+
+### Required Analysis
+
+The boundedness analyzer performs static dataflow analysis on the compiled IR to compute:
+
+```rust
+pub struct WholeWorkflowBudget {
+    pub max_steps_executable: u32,
+    pub max_action_tickets: u32,
+    pub max_parallel_in_flight: u16,
+    pub max_retries_per_action: u16,
+    pub max_gather_pages: u32,
+    pub max_gather_items: u32,
+    pub max_for_each_iterations: u32,
+    pub max_together_branches: u16,
+    pub max_repeat_attempts: u16,
+    pub max_run_time_seconds: u64,
+    pub max_result_bytes: u32,
+    pub max_total_slots_written: u32,
+}
+```
+
+### Boundedness Rules
+
+Reject if any of these conditions is true:
+
+1. `for_each` over a list with no declared `max` in schema or policy.
+2. `collect` without `pages`, `items`, or `time` limit.
+3. `repeat` without `times` or `time` limit.
+4. `try_again` without `max_attempts`.
+5. `wait` event without timeout.
+6. `ask` without timeout.
+7. `together` with branch count exceeding policy.
+8. Nested fanout that exceeds policy (e.g., `for_each` containing `together`).
+9. `finish` with result of unknown max size where policy requires proof.
+
+### Dataflow Propagation
+
+The analyzer propagates bounds through the IR:
+
+1. **Leaf bounds**: Each primitive contributes its declared bound.
+2. **Sequential composition**: `max_steps` and `max_tickets` are summed.
+3. **Nested loops**: Bounds multiply (outer `for_each` limit × inner action count).
+4. **Conditional branches**: Take the maximum across branches.
+5. **Parallel branches**: `max_parallel_in_flight` is the `together` branch count.
+
+The compiler must be able to state: "This workflow can create at most N action tickets under declared limits." Even if N is conservative, having a bound is the requirement.
+
+### Budget Validation
+
+The computed `WholeWorkflowBudget` is validated against policy limits:
+
+```rust
+pub struct BoundednessPolicy {
+    pub absolute_max_action_tickets: u32,     // default: 100_000
+    pub absolute_max_parallel: u16,           // default: 256
+    pub absolute_max_run_time_seconds: u64,   // default: 30 days
+    pub absolute_max_result_bytes: u32,       // default: 256 KiB
+    pub absolute_max_steps_executable: u32,   // default: 1_000_000
+}
+```
+
+If any computed budget exceeds policy, the workflow is rejected with a typed `UnboundedWorkflow` error identifying which limit was exceeded.
+
+---
+
+## 65. Idempotency Verification Gate
+
+### Principle
+
+Every retry requires idempotency proof. Unsafe retry is rejected by default.
+
+### Action Side-Effect Classification
+
+Every action carries a side-effect class and retry safety rating:
+
+```rust
+pub enum SideEffect {
+    Pure,
+    LocalRead,
+    LocalWrite,
+    ExternalRead,
+    ExternalWrite,
+    Process,
+    UnsafeShell,
+}
+
+pub enum RetrySafety {
+    Idempotent,                // safe to retry unconditionally
+    RequiresIdempotencyKey,    // safe with a valid idempotency key
+    NotRetrySafe,              // retry rejected by default
+    Unknown,                   // retry rejected
+}
+```
+
+### Idempotency Verification Rules
+
+| Side effect | Default retry rule |
+|-------------|-------------------|
+| `Pure` | Retry allowed |
+| `LocalRead` | Retry allowed if action declares `Idempotent` |
+| `ExternalRead` | Retry allowed if action declares `Idempotent` |
+| `ExternalWrite` | Requires idempotency proof |
+| `LocalWrite` | Requires idempotency proof or explicit policy override |
+| `Process` | Retry rejected by default |
+| `UnsafeShell` | Retry rejected by default |
+| `Unknown` | Retry rejected |
+
+### Idempotency Proof Requirements
+
+For side-effecting actions (`ExternalWrite`, `LocalWrite`), the verifier requires:
+
+```yaml
+idempotency:
+  required: true
+  field: idempotency_key
+  default: "$run.id:$step.id"
+```
+
+### Idempotency Key Restrictions
+
+Reject idempotency keys that contain:
+
+- `$secrets.*` — secret-tainted values in keys leak information
+- `$attempt.number` — unless explicitly allowed by policy
+- Random or time functions — keys must be deterministic
+
+Valid key ingredients:
+
+- Run ID
+- Workflow digest
+- Step ID or step index
+- Loop item index
+- Gather page cursor hash
+- Trigger unique key
+
+### Verification Gate Behavior
+
+The verifier checks each `Do` node in the IR:
+
+1. Look up the action's `SideEffect` and `RetrySafety`.
+2. If the action is reachable from a `RetryCheck` node, verify retry is allowed.
+3. If retry requires an idempotency key, verify the key is present and well-formed.
+4. If retry is not safe, verify no `RetryCheck` can reach this action.
+5. Emit `IdempotencyViolation` error if retry safety is not proven.
+
+### Terminology Note
+
+The verifier performs **idempotency attestation**, not idempotency proof. The verifier can require that an idempotency key is present and well-formed, and that the action contract declares idempotent behavior. It cannot prove that calling an external service twice with the same key will not create two side effects — that depends on external behavior. The word "proof" is reserved for properties the verifier can establish from the workflow alone.
+
+---
+
+## 66. Runtime Admission Gate
+
+### Principle
+
+The runtime only accepts verified artifacts. A run is not durable until `RunAccepted` is recorded.
+
+### Admission Flow
+
+```text
+load artifact by digest
+  → verify artifact digest matches stored IR
+  → validate input against declared input schema
+  → bind workflow digest to run
+  → check required capabilities are granted
+  → check required secrets are available (presence only, not values)
+  → allocate run frame from pool
+  → record RunAccepted event
+  → return run_id
+```
+
+If `RunAccepted` is recorded, the run is durable. If any step before it fails, the run was never admitted.
+
+### Admission Record
+
+```rust
+pub struct RunAdmission {
+    pub run: RunId,
+    pub artifact_digest: WorkflowDigest,
+    pub input_digest: WorkflowDigest,
+    pub capabilities_granted: Box<[Capability]>,
+    pub secrets_available: Box<[SymbolId]>,
+    pub admitted_at: u64,
+}
+```
+
+### Capability Model
+
+v1 capabilities are named permissions that actions declare and operators grant:
+
+```rust
+pub struct Capability {
+    pub name: Box<str>,  // e.g. "network.github", "secrets.read.github_token"
+    pub action: ActionId,
+}
+```
+
+Admission checks that every capability required by the artifact's actions has been granted. Ungranted capabilities cause `CapabilityDenied` rejection.
+
+### Secret Availability Check
+
+Admission checks that every secret declared in the workflow is available in the runtime's secret store. Missing secrets cause `SecretUnavailable` rejection. Secret values are never part of the artifact or admission record — only presence is checked.
+
+### Persistence of Admission
+
+`RunAccepted` journal event is recorded durably before the run begins execution. Under `Strict` durability, this means `SyncAll` before returning `run_id`. Under `Journaled` durability, the event is queued and the run may begin before the write hits disk (acknowledged data-loss window).
