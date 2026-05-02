@@ -45,9 +45,9 @@ use std::collections::HashSet;
 use std::str;
 use thiserror::Error;
 use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
+    AccessorProgram, ActionContract, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ConstIdx, ConstValue, ExprIdx, ExprProgram, Idempotency, ResourceContract, RetrySafety,
+    SideEffect, SlotBranch, SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
@@ -200,6 +200,23 @@ impl Default for YamlCompiler {
 /// programmatic use by downstream crates.
 pub fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
     YamlCompiler::default().compile(source)
+}
+
+/// Compiles YAML source and then verifies action contracts against the
+/// idempotency gate.
+///
+/// Performs the full compilation pipeline from [`compile_workflow`], then runs
+/// [`check_idempotency_gates`] on the supplied action contracts. Returns the
+/// compiled workflow only when both compilation and idempotency verification
+/// pass. This is the recommended entry point for runtime integrations that
+/// register action contracts before workflow deployment.
+pub fn compile_workflow_with_contracts(
+    source: &[u8],
+    contracts: &[ActionContract],
+) -> Result<CompiledWorkflow, CompileErrors> {
+    let workflow = compile_workflow(source)?;
+    check_idempotency_gates(contracts)?;
+    Ok(workflow)
 }
 
 /// Builds a slot layout from workflow parts.
@@ -650,6 +667,66 @@ pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, 
             feature: Box::leak(error.to_string().into_boxed_str()),
         }])
     })
+}
+
+/// Validates that all action contracts satisfy idempotency safety requirements.
+///
+/// Rejects any action whose static contract declares side effects combined with
+/// retry-unsafe or non-idempotent semantics. This gate runs at compile time so
+/// that workflows with unsafe action configurations are rejected before deployment.
+///
+/// Rules:
+/// - `SideEffect::None` always passes (pure computation).
+/// - `side_effect != None` AND `RetrySafety::Unsafe` is rejected.
+/// - `side_effect != None` AND `Idempotency::AtLeastOnceExternal` is rejected.
+/// - `side_effect != None` AND `RetrySafety::Safe` with `Idempotency::IdempotentExternal` passes.
+/// - `side_effect != None` AND `RetrySafety::KeyRequired` with `Idempotency::IdempotentExternal` passes.
+pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), CompileErrors> {
+    let mut errors = Vec::new();
+    let mut i = 0;
+    while i < contracts.len() {
+        let Some(contract) = contracts.get(i) else {
+            break;
+        };
+        if contract.side_effect == SideEffect::None {
+            i = match i.checked_add(1) {
+                Some(next) => next,
+                None => break,
+            };
+            continue;
+        }
+        if contract.retry_safety == RetrySafety::Unsafe {
+            errors.push(CompileError::IdempotencyViolation {
+                action: contract.id,
+                side_effect: contract.side_effect,
+                reason: Box::from("side-effecting action declares RetrySafety::Unsafe"),
+            });
+            i = match i.checked_add(1) {
+                Some(next) => next,
+                None => break,
+            };
+            continue;
+        }
+        if contract.idempotency == Idempotency::AtLeastOnceExternal {
+            errors.push(CompileError::IdempotencyViolation {
+                action: contract.id,
+                side_effect: contract.side_effect,
+                reason: Box::from(
+                    "side-effecting action declares Idempotency::AtLeastOnceExternal \
+                     without guaranteed idempotent retry",
+                ),
+            });
+        }
+        i = match i.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompileErrors(errors))
+    }
 }
 
 /// Mutable slot compiler state for building node arrays.
@@ -1261,6 +1338,16 @@ pub enum CompileError {
         /// Actual argument count.
         actual: usize,
     },
+    /// Side-effecting action lacks safe retry semantics.
+    #[error("action {action:?} has side-effect {side_effect:?} with unsafe retry: {reason}")]
+    IdempotencyViolation {
+        /// Action that failed the idempotency gate.
+        action: ActionId,
+        /// Side-effect classification of the action.
+        side_effect: SideEffect,
+        /// Human-readable reason for the rejection.
+        reason: Box<str>,
+    },
 }
 
 impl CompileError {
@@ -1338,6 +1425,7 @@ impl CompileError {
             | Self::ExpressionUnknownIdentifier { .. }
             | Self::ExpressionLoweringUnsupported { .. }
             | Self::ExpressionHelperArity { .. } => "INVALID_EXPRESSION",
+            Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
         }
     }
 
@@ -6815,5 +6903,202 @@ steps:
             result.is_err(),
             "constant pool overflow (65536 existing + 1 new) should produce an error",
         )
+    }
+
+    // =========================================================================
+    // Phase 65 tests -- idempotency verification gate
+    // =========================================================================
+
+    fn make_contract(
+        id: u16,
+        side_effect: vb_core::SideEffect,
+        retry_safety: vb_core::RetrySafety,
+        idempotency: vb_core::Idempotency,
+    ) -> vb_core::ActionContract {
+        vb_core::ActionContract {
+            id: ActionId::new(id),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency,
+            side_effect,
+            retry_safety,
+        }
+    }
+
+    #[test]
+    fn idempotency_no_side_effects_passes() -> Result<(), String> {
+        let contracts = [
+            make_contract(
+                1,
+                vb_core::SideEffect::None,
+                vb_core::RetrySafety::Safe,
+                vb_core::Idempotency::DeterministicPure,
+            ),
+            make_contract(
+                2,
+                vb_core::SideEffect::None,
+                vb_core::RetrySafety::Safe,
+                vb_core::Idempotency::DeterministicPure,
+            ),
+        ];
+        super::check_idempotency_gates(&contracts)
+            .map_err(|e| format!("expected Ok, got errors: {:?}", e.0))
+    }
+
+    #[test]
+    fn idempotency_side_effect_safe_retry_passes() -> Result<(), String> {
+        let contracts = [make_contract(
+            10,
+            vb_core::SideEffect::Writes,
+            vb_core::RetrySafety::Safe,
+            vb_core::Idempotency::IdempotentExternal,
+        )];
+        super::check_idempotency_gates(&contracts)
+            .map_err(|e| format!("expected Ok, got errors: {:?}", e.0))
+    }
+
+    #[test]
+    fn idempotency_side_effect_unsafe_retry_rejected() -> Result<(), String> {
+        let contracts = [make_contract(
+            20,
+            vb_core::SideEffect::Writes,
+            vb_core::RetrySafety::Unsafe,
+            vb_core::Idempotency::AtLeastOnceExternal,
+        )];
+        let result = super::check_idempotency_gates(&contracts);
+        match result {
+            Ok(()) => Err(String::from("expected error for unsafe retry, got Ok")),
+            Err(errors) => {
+                let first = errors.first().ok_or("errors should not be empty")?;
+                match first {
+                    CompileError::IdempotencyViolation {
+                        action,
+                        side_effect,
+                        ..
+                    } => {
+                        if *action != ActionId::new(20) {
+                            return Err(String::from("wrong action id"));
+                        }
+                        if *side_effect != vb_core::SideEffect::Writes {
+                            return Err(String::from("wrong side effect"));
+                        }
+                        Ok(())
+                    }
+                    other => Err(format!("expected IdempotencyViolation, got {other:?}")),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn idempotency_non_idempotent_side_effect_rejected() -> Result<(), String> {
+        let contracts = [make_contract(
+            30,
+            vb_core::SideEffect::Sends,
+            vb_core::RetrySafety::KeyRequired,
+            vb_core::Idempotency::AtLeastOnceExternal,
+        )];
+        let result = super::check_idempotency_gates(&contracts);
+        match result {
+            Ok(()) => Err(String::from(
+                "expected error for non-idempotent side effect, got Ok",
+            )),
+            Err(errors) => {
+                let first = errors.first().ok_or("errors should not be empty")?;
+                match first {
+                    CompileError::IdempotencyViolation {
+                        action,
+                        side_effect,
+                        reason,
+                    } => {
+                        if *action != ActionId::new(30) {
+                            return Err(String::from("wrong action id"));
+                        }
+                        if *side_effect != vb_core::SideEffect::Sends {
+                            return Err(String::from("wrong side effect"));
+                        }
+                        let reason_ref: &str = &reason;
+                        if !reason_ref.contains("AtLeastOnceExternal") {
+                            return Err(String::from(
+                                "reason should mention AtLeastOnceExternal",
+                            ));
+                        }
+                        Ok(())
+                    }
+                    other => Err(format!("expected IdempotencyViolation, got {other:?}")),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn idempotency_idempotent_side_effect_passes() -> Result<(), String> {
+        let contracts = [
+            make_contract(
+                40,
+                vb_core::SideEffect::Creates,
+                vb_core::RetrySafety::KeyRequired,
+                vb_core::Idempotency::IdempotentExternal,
+            ),
+            make_contract(
+                41,
+                vb_core::SideEffect::Destroys,
+                vb_core::RetrySafety::Safe,
+                vb_core::Idempotency::IdempotentExternal,
+            ),
+        ];
+        super::check_idempotency_gates(&contracts)
+            .map_err(|e| format!("expected Ok, got errors: {:?}", e.0))
+    }
+
+    #[test]
+    fn idempotency_mixed_actions_partial_rejection() -> Result<(), String> {
+        let contracts = [
+            make_contract(
+                50,
+                vb_core::SideEffect::None,
+                vb_core::RetrySafety::Safe,
+                vb_core::Idempotency::DeterministicPure,
+            ),
+            make_contract(
+                51,
+                vb_core::SideEffect::Writes,
+                vb_core::RetrySafety::Safe,
+                vb_core::Idempotency::IdempotentExternal,
+            ),
+            make_contract(
+                52,
+                vb_core::SideEffect::Destroys,
+                vb_core::RetrySafety::Unsafe,
+                vb_core::Idempotency::AtLeastOnceExternal,
+            ),
+        ];
+        let result = super::check_idempotency_gates(&contracts);
+        match result {
+            Ok(()) => Err(String::from("expected error for unsafe action, got Ok")),
+            Err(errors) => {
+                if errors.as_slice().len() != 1 {
+                    return Err(format!(
+                        "expected exactly 1 error, got {}",
+                        errors.as_slice().len()
+                    ));
+                }
+                let first = errors.first().ok_or("errors should not be empty")?;
+                match first {
+                    CompileError::IdempotencyViolation { action, .. } => {
+                        if *action != ActionId::new(52) {
+                            return Err(String::from(
+                                "expected violation for action 52 only",
+                            ));
+                        }
+                        Ok(())
+                    }
+                    other => Err(format!("expected IdempotencyViolation, got {other:?}")),
+                }
+            }
+        }
     }
 }
