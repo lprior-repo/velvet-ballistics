@@ -3548,8 +3548,8 @@ pub struct VerificationProof {
     pub retry_safe: bool,
     pub durable: bool,
     pub replayable: bool,
-    pub idempotency_proven: Vec<ActionId>,  // actions with proven idempotency
-    pub idempotency_attested: Vec<ActionId>, // actions with attested (not proven) idempotency
+    pub idempotency_keyed: Vec<ActionId>,   // actions with well-formed idempotency keys
+    pub idempotency_attested: Vec<ActionId>, // actions attested idempotent by contract (external claim)
 }
 
 pub struct VerificationWarning {
@@ -3599,7 +3599,7 @@ This is the workflow equivalent of compile-with-warnings-as-errors. AI agents sh
 | 8. Resource budget | Partial | ResourceContract with 16 fields; whole-workflow computation needed |
 | 9. Action contract | Partial | Classification exists; compile-time schema validation needed |
 | 10. Secret/taint | Implemented | Compile-time + runtime taint, leak rejection, 3-level lattice |
-| 11. Idempotency | Stub | Enum exists; verification gate needed (section 65) |
+| 11. Idempotency | Stub | `Idempotency` enum exists in `ActionContract` (Section 19) for taint/replay classification. Phase 38 adds `SideEffect` + `RetrySafety` enums and the verification gate (section 65). These extend, not replace, the existing `Idempotency` classification. |
 | 12. Durability | Partial | Journal events exist; slot/payload persistence gaps |
 | 13. Capability | Not started | No capability model exists |
 | 14. Output/result | Implemented | Result validation, finish semantics |
@@ -3633,6 +3633,21 @@ pub struct WholeWorkflowBudget {
     pub max_total_slots_written: u32,
 }
 ```
+
+### Relationship to `ResourceContract`
+
+`ResourceContract` (Section 13) defines per-workflow static limits: `max_steps`, `max_slots`, `max_retry_attempts`, `max_fanout`, `max_output_bytes`. These are declared by the workflow author and validated at compile time.
+
+`WholeWorkflowBudget` is a computed analysis result: the verifier derives it from `ResourceContract` plus the IR's actual loop bounds and nesting structure. The relationship:
+
+| `ResourceContract` field | `WholeWorkflowBudget` field | Relationship |
+|--------------------------|----------------------------|--------------|
+| `max_steps: u16` | `max_steps_executable: u32` | Computed budget cannot exceed `max_steps` × nesting depth factor |
+| `max_retry_attempts: u16` | `max_retries_per_action: u16` | Direct copy from contract |
+| `max_fanout: u16` | `max_together_branches: u16` | Direct copy from contract |
+| `max_output_bytes: u32` | `max_result_bytes: u32` | Computed budget cannot exceed `max_output_bytes` |
+
+`BoundednessPolicy` (below) provides absolute upper limits that apply ACROSS all workflows. `ResourceContract` limits apply WITHIN a single workflow. Validation order: `ResourceContract` ≤ `BoundednessPolicy`. If a computed `WholeWorkflowBudget` exceeds either, the workflow is rejected.
 
 ### Boundedness Rules
 
@@ -3684,19 +3699,31 @@ If any computed budget exceeds policy, the workflow is rejected with a typed `Un
 
 Every retry requires idempotency proof. Unsafe retry is rejected by default.
 
-### Action Side-Effect Classification
+### Relationship to Existing `Idempotency` Classification
 
-Every action carries a side-effect class and retry safety rating:
+The existing `Idempotency` enum (Section 19) classifies actions for taint propagation and replay behavior:
 
 ```rust
+// Section 19 — existing, in production
+pub enum Idempotency {
+    DeterministicPure,      // pure computation, no side effects
+    IdempotentExternal,     // external call, safe to repeat
+    AtLeastOnceExternal,    // external call, may execute more than once
+}
+```
+
+Phase 38 extends `ActionContract` with two additional fields. These do NOT replace `Idempotency` — they refine retry decisions that `Idempotency` alone cannot express:
+
+```rust
+// Phase 38 — extends ActionContract
 pub enum SideEffect {
-    Pure,
-    LocalRead,
-    LocalWrite,
-    ExternalRead,
-    ExternalWrite,
-    Process,
-    UnsafeShell,
+    Pure,           // no observable side effects (maps to DeterministicPure)
+    LocalRead,      // reads local state only
+    LocalWrite,     // writes local state
+    ExternalRead,   // reads external state
+    ExternalWrite,  // writes external state (maps to AtLeastOnceExternal)
+    Process,        // spawns or manages a process
+    UnsafeShell,    // arbitrary shell execution
 }
 
 pub enum RetrySafety {
@@ -3706,6 +3733,16 @@ pub enum RetrySafety {
     Unknown,                   // retry rejected
 }
 ```
+
+Mapping rules between the two classification systems:
+
+| `Idempotency` | Implies `SideEffect` | Implies `RetrySafety` |
+|----------------|---------------------|----------------------|
+| `DeterministicPure` | `Pure` | `Idempotent` |
+| `IdempotentExternal` | `ExternalRead` or `ExternalWrite` | `Idempotent` or `RequiresIdempotencyKey` (action-specific) |
+| `AtLeastOnceExternal` | `ExternalWrite` | `NotRetrySafe` unless key provided |
+
+Actions declare `Idempotency` at compile time (existing). Phase 38 adds `SideEffect` and `RetrySafety` as additional action contract fields. The verifier uses all three to make retry decisions.
 
 ### Idempotency Verification Rules
 
@@ -3818,4 +3855,42 @@ Admission checks that every secret declared in the workflow is available in the 
 
 ### Persistence of Admission
 
-`RunAccepted` journal event is recorded durably before the run begins execution. Under `Strict` durability, this means `SyncAll` before returning `run_id`. Under `Journaled` durability, the event is queued and the run may begin before the write hits disk (acknowledged data-loss window).
+`RunAccepted` journal event is recorded durably before the run begins execution. The existing storage layer already defines `JournalEvent::RunAccepted { run, seq, workflow }` (Section 49). Phase 39 extends this event with artifact digest and admission metadata. Under `Strict` durability, this means `SyncAll` before returning `run_id`. Under `Journaled` durability, the event is queued and the run may begin before the write hits disk (acknowledged data-loss window).
+
+### Migration from Existing Submit Flow
+
+The existing `Runtime::submit_direct(run, workflow: CompiledWorkflow)` and `ShardCommand::Submit { run, workflow }` bypass artifact verification — they accept a raw `CompiledWorkflow` with no digest binding, capability check, or secret availability check. These functions remain available for testing and internal use but are gated behind a `RuntimePolicy` flag:
+
+```rust
+pub struct RuntimePolicy {
+    pub require_accepted_artifact: bool,  // default: false (backward compatible)
+    pub strict_admission: bool,           // default: false
+}
+```
+
+When `require_accepted_artifact` is `true`, `submit_direct` is rejected with `AdmissionRequired`. New admission-aware functions replace it:
+
+```rust
+pub fn submit_artifact(&self, run: RunId, artifact_digest: WorkflowDigest, input: &[u8], capabilities: &[Capability]) -> RuntimeResult<()>
+```
+
+This migration path allows existing tests and benchmarks to continue using `submit_direct` while production deployments enforce the admission gate. The IPC protocol already defines `SubmitRun` which carries a workflow reference; Phase 39 extends it to carry an artifact digest.
+
+### Capability Model
+
+v1 capabilities are named permissions that actions declare and operators grant:
+
+```rust
+pub struct Capability {
+    pub name: Box<str>,  // e.g. "network.github", "secrets.read.github_token"
+    pub action: ActionId,
+}
+```
+
+`Capability` appears in two contexts with distinct semantics:
+1. **Declared requirement** (in `AcceptedArtifact`): the set of capabilities the artifact's actions require.
+2. **Granted permission** (in `RunAdmission`): the set of capabilities the operator has granted for this run.
+
+Admission checks that every declared requirement is satisfied by a granted permission. Ungranted capabilities cause `CapabilityDenied` rejection.
+
+Capability checking occurs at admission time (cold path) only. The runtime does not re-check capabilities during execution. `Box<str>` is acceptable because admission is cold-path.
