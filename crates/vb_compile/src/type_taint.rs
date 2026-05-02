@@ -196,6 +196,39 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                     errors.push(e);
                 }
             }
+            StepKindAst::ForEach { input, item, .. } => {
+                if let Err(e) = facts.read_slot(input.as_usize(), "for_each.input") {
+                    errors.push(e);
+                }
+                facts.write_slot(item.as_usize(), ValueFact::clean(ValueType::Any));
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
+            StepKindAst::Together { .. } => {
+                facts.write_slot(index, ValueFact::clean(ValueType::Any))
+            }
+            StepKindAst::Collect { source, .. } => {
+                if let Err(e) = facts.read_slot(source.as_usize(), "collect.source") {
+                    errors.push(e);
+                }
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
+            StepKindAst::Reduce {
+                input, accumulator, ..
+            } => {
+                if let Err(e) = facts.read_slot(input.as_usize(), "reduce.input") {
+                    errors.push(e);
+                }
+                facts.write_slot(accumulator.as_usize(), ValueFact::clean(ValueType::Any));
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
+            StepKindAst::Repeat { .. } => {
+                if let Some(attempt_slot) = index.checked_add(1) {
+                    facts.write_slot(attempt_slot, ValueFact::clean(ValueType::Any));
+                } else {
+                    errors.push(CompileError::SlotIndexOutOfRange { value: i64::MAX });
+                }
+                facts.write_slot(index, ValueFact::clean(ValueType::Any));
+            }
             StepKindAst::Wait { .. } => facts.write_slot(index, ValueFact::clean(ValueType::Any)),
             StepKindAst::Ask { answer, .. } => {
                 facts.write_slot(answer.as_usize(), ValueFact::clean(ValueType::Any));

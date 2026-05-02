@@ -271,6 +271,11 @@ fn parse_step_kind(
         "do" => parse_run(body, index).map(|kind| (StepPrimitiveAst::Do, kind)),
         "save" => parse_save(body).map(|kind| (StepPrimitiveAst::Save, kind)),
         "choose" => parse_choose(body, index).map(|kind| (StepPrimitiveAst::Choose, kind)),
+        "for_each" => parse_for_each(body, index).map(|kind| (StepPrimitiveAst::ForEach, kind)),
+        "together" => parse_together(body, index).map(|kind| (StepPrimitiveAst::Together, kind)),
+        "collect" => parse_collect(body, index).map(|kind| (StepPrimitiveAst::Collect, kind)),
+        "reduce" => parse_reduce(body, index).map(|kind| (StepPrimitiveAst::Reduce, kind)),
+        "repeat" => parse_repeat(body, index).map(|kind| (StepPrimitiveAst::Repeat, kind)),
         "wait" => parse_wait(body, index).map(|kind| (StepPrimitiveAst::Wait, kind)),
         "ask" => parse_ask(body, index).map(|kind| (StepPrimitiveAst::Ask, kind)),
         "finish" => parse_finish(body, index).map(|kind| (StepPrimitiveAst::Finish, kind)),
@@ -301,7 +306,19 @@ fn primitive_entry<'map, 'input>(
 fn is_supported_primitive(field: &str) -> bool {
     matches!(
         field,
-        "set" | "run" | "do" | "save" | "choose" | "wait" | "ask" | "finish"
+        "set"
+            | "run"
+            | "do"
+            | "save"
+            | "choose"
+            | "for_each"
+            | "together"
+            | "collect"
+            | "reduce"
+            | "repeat"
+            | "wait"
+            | "ask"
+            | "finish"
     )
 }
 
@@ -323,6 +340,46 @@ fn parse_choose(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileErr
         condition: parse_expression(step_field(body, index, "condition")?)?,
         on_true: parse_step_idx(step_field(body, index, "on_true")?)?,
         on_false: parse_step_idx(step_field(body, index, "on_false")?)?,
+    })
+}
+
+fn parse_for_each(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::ForEach {
+        input: parse_slot_idx(step_field(body, index, "input")?, index, "input")?,
+        item: parse_slot_idx(step_field(body, index, "item")?, index, "item")?,
+        limit: parse_u32_field(body, index, "limit")?,
+    })
+}
+
+fn parse_together(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Together {
+        branches: parse_step_idx_sequence(step_field(body, index, "branches")?, index, "branches")?,
+    })
+}
+
+fn parse_collect(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Collect {
+        source: parse_slot_idx(step_field(body, index, "source")?, index, "source")?,
+        limit: parse_u32_field(body, index, "limit")?,
+        page_size: parse_u32_field(body, index, "page_size")?,
+    })
+}
+
+fn parse_reduce(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Reduce {
+        input: parse_slot_idx(step_field(body, index, "input")?, index, "input")?,
+        accumulator: parse_slot_idx(
+            step_field(body, index, "accumulator")?,
+            index,
+            "accumulator",
+        )?,
+        initial: parse_value(step_field(body, index, "initial")?)?,
+    })
+}
+
+fn parse_repeat(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+    Ok(StepKindAst::Repeat {
+        max_attempts: parse_u16_field(body, index, "max_attempts")?,
     })
 }
 
@@ -460,6 +517,62 @@ fn parse_slot_idx(
     })?;
     let raw = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
     Ok(SlotIdx::new(raw))
+}
+
+fn parse_step_idx_sequence(
+    node: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+) -> Result<Vec<StepIdx>, CompileError> {
+    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
+        step,
+        field,
+        expected: "a sequence of integer step indexes",
+    })?;
+    let mut targets = Vec::with_capacity(sequence.len());
+    for item in sequence {
+        targets.push(parse_step_idx(item)?);
+    }
+    Ok(targets)
+}
+
+fn parse_u32_field(body: &Yaml<'_>, step: usize, field: &'static str) -> Result<u32, CompileError> {
+    let value = step_field(body, step, field)?.as_integer().ok_or({
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "a non-negative u32 integer",
+        }
+    })?;
+    u32::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive: field,
+        field,
+        value: integer_error_value(value),
+        limit: usize::try_from(u32::MAX).map_or(usize::MAX, |limit| limit),
+    })
+}
+
+fn parse_u16_field(body: &Yaml<'_>, step: usize, field: &'static str) -> Result<u16, CompileError> {
+    let value = step_field(body, step, field)?.as_integer().ok_or({
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "a non-negative u16 integer",
+        }
+    })?;
+    u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive: field,
+        field,
+        value: integer_error_value(value),
+        limit: usize::from(u16::MAX),
+    })
+}
+
+fn integer_error_value(value: i64) -> usize {
+    match usize::try_from(value) {
+        Ok(value) => value,
+        Err(_) => usize::MAX,
+    }
 }
 
 fn parse_action_idx(node: &Yaml<'_>, step: usize) -> Result<vb_core::ActionId, CompileError> {

@@ -2,7 +2,8 @@
 
 use std::num::NonZeroUsize;
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
-use vb_core::ids::{RunId, StepIdx};
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::CounterSnapshot;
@@ -57,6 +58,21 @@ impl Runtime {
     /// Submits a run with inline workflow (same as submit_direct for now).
     pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         self.submit_direct(run, workflow)
+    }
+
+    /// Submits a run with pre-mapped runtime input slots.
+    pub fn submit_compiled_with_inputs(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+        })
     }
 
     /// Cancels a run.

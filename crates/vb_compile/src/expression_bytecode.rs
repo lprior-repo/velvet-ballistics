@@ -80,6 +80,16 @@ fn lower_slot_reference(
     reference: &str,
     accessors: &mut Vec<AccessorProgram>,
 ) -> Result<ExprOp, CompileError> {
+    let (root, tail) = parse_slot_reference_parts(reference)?;
+    let (slot, path) = split_reference_tail(tail);
+    let root_slot = parse_slot_reference_index(reference, slot)?;
+    match path {
+        Some(path) => lower_accessor_reference(reference, root, slot, path, root_slot, accessors),
+        None => Ok(ExprOp::LoadSlot(root_slot)),
+    }
+}
+
+fn parse_slot_reference_parts(reference: &str) -> Result<(&str, &str), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Err(CompileError::UnknownReferenceRoot {
             reference: Box::<str>::from(reference),
@@ -98,12 +108,7 @@ fn lower_slot_reference(
             root: Box::<str>::from(root),
         });
     }
-    let (slot, path) = split_reference_tail(tail);
-    let root_slot = parse_slot_reference_index(reference, slot)?;
-    match path {
-        Some(path) => lower_accessor_reference(reference, root, slot, path, root_slot, accessors),
-        None => Ok(ExprOp::LoadSlot(root_slot)),
-    }
+    Ok((root, tail))
 }
 
 fn split_reference_tail(tail: &str) -> (&str, Option<&str>) {

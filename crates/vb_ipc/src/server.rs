@@ -1361,6 +1361,12 @@ mod tests {
                 run_id: run_id.as_u64()
             }
         );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let events = runtime.list_events(run_id);
+        assert!(matches!(
+            events,
+            Ok(ref records) if records.contains(&TraceEvent::RunSubmitted { run: run_id })
+        ));
     }
 
     #[test]
@@ -1397,6 +1403,12 @@ mod tests {
                 run_id: run_id.as_u64()
             }
         );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let events = runtime.list_events(run_id);
+        assert!(matches!(
+            events,
+            Ok(ref records) if records.contains(&TraceEvent::RunSubmitted { run: run_id })
+        ));
     }
 
     #[test]

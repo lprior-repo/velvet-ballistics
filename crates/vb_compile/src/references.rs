@@ -97,6 +97,11 @@ fn validate_step_kind(
         StepKindAst::Run { .. } => {}
         StepKindAst::Save { fields } => validate_value_entries(fields, tables, errors),
         StepKindAst::Choose { condition, .. } => validate_expression(condition, tables, errors),
+        StepKindAst::ForEach { .. }
+        | StepKindAst::Together { .. }
+        | StepKindAst::Collect { .. }
+        | StepKindAst::Repeat { .. } => {}
+        StepKindAst::Reduce { initial, .. } => validate_value(initial, tables, errors),
         StepKindAst::Wait { .. } | StepKindAst::Ask { .. } => {}
         StepKindAst::Finish { result } => validate_expression(result, tables, errors),
     }

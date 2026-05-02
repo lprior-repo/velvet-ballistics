@@ -1392,6 +1392,11 @@ fn control_field_code(field: &str) -> &'static str {
 fn step_field_shape_code(field: &str) -> &'static str {
     match field {
         "choose" | "condition" | "on_true" | "on_false" => "INVALID_CHOOSE",
+        "for_each" => "INVALID_FOR_EACH",
+        "together" | "branches" => "INVALID_TOGETHER",
+        "collect" => "INVALID_COLLECT",
+        "reduce" => "INVALID_REDUCE",
+        "repeat" => "INVALID_REPEAT",
         "finish" | "result" => "INVALID_FINISH",
         _ => "TYPE_MISMATCH",
     }
@@ -1808,6 +1813,8 @@ fn compiled_step_width(step: &Yaml<'_>, index: usize) -> Result<usize, CompileEr
     let StepSpec { primitive, body } = step_spec(step, index)?;
     match primitive {
         StepPrimitive::Ask => Ok(2),
+        StepPrimitive::ForEach | StepPrimitive::Together => Ok(2),
+        StepPrimitive::Collect | StepPrimitive::Reduce | StepPrimitive::Repeat => Ok(3),
         StepPrimitive::Finish => {
             let result = required_step_field(body, index, "result")?;
             if finish_result_slot(result, index)?.is_some() {
@@ -1875,13 +1882,14 @@ fn validate_phase_zero_step_shape(
             validate_save_shape(body, index, last_step, primitive.as_str())
         }
         StepPrimitive::Choose => validate_choose_shape(body, index, last_step),
+        StepPrimitive::ForEach => validate_for_each_shape(body, index, last_step),
+        StepPrimitive::Together => validate_together_shape(body, index, last_step),
+        StepPrimitive::Collect => validate_collect_shape(body, index, last_step),
+        StepPrimitive::Reduce => validate_reduce_shape(body, index, last_step),
+        StepPrimitive::Repeat => validate_repeat_shape(body, index, last_step),
         StepPrimitive::Wait => validate_wait_shape(body, index, last_step),
         StepPrimitive::Ask => validate_ask_shape(body, index, last_step),
         StepPrimitive::Finish => validate_finish_shape(body, index, last_step),
-        value => Err(CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: value.as_str(),
-        }),
     }
 }
 
@@ -1961,6 +1969,68 @@ fn validate_choose_shape(
     required_step_field(body, index, "condition")?;
     required_branch_target(body, index, "on_true")?;
     required_branch_target(body, index, "on_false")?;
+    Ok(())
+}
+
+fn validate_for_each_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "for_each", &["input", "item", "limit"])?;
+    required_slot(body, index, "input")?;
+    required_slot(body, index, "item")?;
+    required_u32_field(body, index, "for_each", "limit")?;
+    Ok(())
+}
+
+fn validate_together_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "together", &["branches"])?;
+    required_branch_targets(body, index, "branches")?;
+    Ok(())
+}
+
+fn validate_collect_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "collect", &["source", "limit", "page_size"])?;
+    required_slot(body, index, "source")?;
+    required_u32_field(body, index, "collect", "limit")?;
+    required_u32_field(body, index, "collect", "page_size")?;
+    Ok(())
+}
+
+fn validate_reduce_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "reduce", &["input", "accumulator", "initial"])?;
+    required_slot(body, index, "input")?;
+    required_slot(body, index, "accumulator")?;
+    let initial = required_step_field(body, index, "initial")?;
+    slot_value(initial, index)?;
+    Ok(())
+}
+
+fn validate_repeat_shape(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts"])?;
+    required_u16_field(body, index, "repeat", "max_attempts")?;
     Ok(())
 }
 
@@ -2478,13 +2548,16 @@ fn compile_step(
         StepPrimitive::Choose => {
             compile_choose(body, index, last_step, id, source_ir_starts, builder)
         }
+        StepPrimitive::ForEach => return compile_for_each(body, index, last_step, id, builder),
+        StepPrimitive::Together => {
+            return compile_together(body, index, last_step, id, source_ir_starts, builder);
+        }
+        StepPrimitive::Collect => return compile_collect(body, index, last_step, id, builder),
+        StepPrimitive::Reduce => return compile_reduce(body, index, last_step, id, builder),
+        StepPrimitive::Repeat => return compile_repeat(body, index, last_step, id, builder),
         StepPrimitive::Wait => compile_wait(body, index, last_step, id, builder),
         StepPrimitive::Ask => return compile_ask(body, index, last_step, id, builder),
         StepPrimitive::Finish => return compile_finish(body, index, last_step, id, builder),
-        value => Err(CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: value.as_str(),
-        }),
     }?;
     Ok(vec![node])
 }
@@ -2775,6 +2848,158 @@ fn compile_literal_choose(
     })
 }
 
+fn compile_for_each(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "for_each", &["input", "item", "limit"])?;
+    let input = required_slot(body, index, "input")?;
+    let item = required_slot(body, index, "item")?;
+    let limit = required_u32_field(body, index, "for_each", "limit")?;
+    let body_step = checked_step_offset(id, 1, "for_each", "body")?;
+    let done = checked_step_offset(id, 2, "for_each", "done")?;
+    builder.record_slot(input);
+    builder.record_slot(item);
+    lower_for_each(
+        id,
+        input,
+        item,
+        limit,
+        body_step,
+        done,
+        &mut SlotCompiler::new(),
+    )
+}
+
+fn compile_together(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    source_ir_starts: &[StepIdx],
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "together", &["branches"])?;
+    let branch_sources = required_branch_targets(body, index, "branches")?;
+    let mut branches = Vec::with_capacity(branch_sources.len());
+    for source in branch_sources {
+        branches.push(source_ir_start(source_ir_starts, source.as_usize())?);
+    }
+    let branch_count = u16::try_from(branches.len()).map_err(|_| {
+        CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: branches.len(),
+            limit: usize::from(u16::MAX),
+        }
+    })?;
+    let accumulator = alloc_workflow_slot(builder)?;
+    let join = checked_step_offset(id, 1, "together", "join")?;
+    Ok(vec![
+        CompiledNode {
+            id,
+            output: Some(accumulator),
+            next: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: branches.into_boxed_slice(),
+                join,
+            },
+        },
+        CompiledNode {
+            id: join,
+            output: Some(accumulator),
+            next: None,
+            kind: CompiledNodeKind::TogetherJoin {
+                branch_count,
+                accumulator,
+            },
+        },
+    ])
+}
+
+fn compile_collect(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "collect", &["source", "limit", "page_size"])?;
+    let source = required_slot(body, index, "source")?;
+    let limit = required_u32_field(body, index, "collect", "limit")?;
+    let page_size = required_u32_field(body, index, "collect", "page_size")?;
+    let body_step = checked_step_offset(id, 1, "collect", "body")?;
+    let done = checked_step_offset(id, 2, "collect", "done")?;
+    builder.record_slot(source);
+    lower_collect(
+        id,
+        source,
+        limit,
+        page_size,
+        body_step,
+        done,
+        &mut SlotCompiler::new(),
+    )
+}
+
+fn compile_reduce(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "reduce", &["input", "accumulator", "initial"])?;
+    let input = required_slot(body, index, "input")?;
+    let accumulator = required_slot(body, index, "accumulator")?;
+    let initial = slot_value(required_step_field(body, index, "initial")?, index)?;
+    let initial = builder.push_constant(initial)?;
+    let body_step = checked_step_offset(id, 1, "reduce", "body")?;
+    let done = checked_step_offset(id, 2, "reduce", "done")?;
+    builder.record_slot(input);
+    builder.record_slot(accumulator);
+    lower_reduce(
+        id,
+        input,
+        accumulator,
+        initial,
+        body_step,
+        done,
+        &mut SlotCompiler::new(),
+    )
+}
+
+fn compile_repeat(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts"])?;
+    let max_attempts = required_u16_field(body, index, "repeat", "max_attempts")?;
+    let body_step = checked_step_offset(id, 1, "repeat", "body")?;
+    let done = checked_step_offset(id, 2, "repeat", "done")?;
+    let attempt_slot = slot_idx_for_step(id.as_usize().checked_add(1).ok_or({
+        CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "repeat",
+            field: "attempt_slot",
+            value: id.as_usize(),
+            limit: usize::from(u16::MAX),
+        }
+    })?)?;
+    builder.record_slot(attempt_slot);
+    lower_repeat(id, max_attempts, body_step, done, &mut SlotCompiler::new())
+}
+
 fn compile_wait(
     body: &Yaml<'_>,
     index: usize,
@@ -3024,6 +3249,114 @@ fn required_slot(
     })?;
     let value = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
     Ok(SlotIdx::new(value))
+}
+
+fn required_u32_field(
+    body: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+    field: &'static str,
+) -> Result<u32, CompileError> {
+    let node = required_step_field(body, step, field)?;
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step,
+        field,
+        expected: "a non-negative u32 integer",
+    })?;
+    u32::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive,
+        field,
+        value: integer_error_value(value),
+        limit: usize::try_from(u32::MAX).map_or(usize::MAX, |limit| limit),
+    })
+}
+
+fn required_u16_field(
+    body: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+    field: &'static str,
+) -> Result<u16, CompileError> {
+    let node = required_step_field(body, step, field)?;
+    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+        step,
+        field,
+        expected: "a non-negative u16 integer",
+    })?;
+    u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
+        primitive,
+        field,
+        value: integer_error_value(value),
+        limit: usize::from(u16::MAX),
+    })
+}
+
+fn integer_error_value(value: i64) -> usize {
+    match usize::try_from(value) {
+        Ok(value) => value,
+        Err(_) => usize::MAX,
+    }
+}
+
+fn required_branch_targets(
+    body: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+) -> Result<Vec<StepIdx>, CompileError> {
+    let node = required_step_field(body, step, field)?;
+    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
+        step,
+        field,
+        expected: "a sequence of integer step indexes",
+    })?;
+    if sequence.is_empty() {
+        return Err(CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "at least one integer step index",
+        });
+    }
+    let mut targets = Vec::with_capacity(sequence.len());
+    let mut index = 0usize;
+    while index < sequence.len() {
+        let Some(node) = sequence.get(index) else {
+            return Err(CompileError::StepIndexOutOfRange { value: index });
+        };
+        let value = node.as_integer().ok_or(CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "a sequence of integer step indexes",
+        })?;
+        let value =
+            u16::try_from(value).map_err(|_| CompileError::BranchTargetOutOfRange { value })?;
+        targets.push(StepIdx::new(value));
+        index = index
+            .checked_add(1)
+            .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+    }
+    Ok(targets)
+}
+
+fn checked_step_offset(
+    id: StepIdx,
+    offset: u16,
+    primitive: &'static str,
+    field: &'static str,
+) -> Result<StepIdx, CompileError> {
+    id.checked_add(offset)
+        .ok_or(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value: id.as_usize(),
+            limit: usize::from(u16::MAX),
+        })
+}
+
+fn alloc_workflow_slot(builder: &mut WorkflowBuilder) -> Result<SlotIdx, CompileError> {
+    let value = builder.slot_count()?;
+    let slot = SlotIdx::new(value);
+    builder.record_slot(slot);
+    Ok(slot)
 }
 
 fn required_action(
@@ -4259,7 +4592,7 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_unsupported_master_primitives_with_exact_diagnostic() {
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic() {
         for (primitive, code) in [
             ("for_each", "INVALID_FOR_EACH"),
             ("together", "INVALID_TOGETHER"),
@@ -4276,15 +4609,117 @@ steps:
                 matches!(
                     result,
                     Err(ref errors)
-                        if matches!(
-                            errors.first(),
-                            Some(CompileError::UnsupportedStepPrimitive { step: 0, primitive: found })
-                                if *found == primitive && errors.first().map(CompileError::code) == Some(code)
-                        )
+                        if errors.first().map(CompileError::code) == Some(code)
                 ),
-                "primitive {primitive} should be recognized with exact unsupported diagnostic"
+                "primitive {primitive} should be rejected with exact invalid diagnostic"
             );
         }
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_for_each_to_loop_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: for_each_case\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: 1\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let start = workflow
+            .node(StepIdx::new(1))
+            .ok_or("missing for_each start")?;
+        let next = workflow
+            .node(StepIdx::new(2))
+            .ok_or("missing for_each next")?;
+
+        assert!(
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10 && body == StepIdx::new(2) && done == StepIdx::new(3))
+        );
+        assert!(
+            matches!(next.kind, CompiledNodeKind::ForEachNext { iterator_slot, body, done } if iterator_slot == SlotIdx::new(1) && body == StepIdx::new(2) && done == StepIdx::new(3))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_together_to_start_and_join_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: together_case\nwhen:\n  manual: {}\nsteps:\n  - id: fanout\n    together:\n      branches: [1]\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let start = workflow
+            .node(StepIdx::ZERO)
+            .ok_or("missing together start")?;
+        let join = workflow
+            .node(StepIdx::new(1))
+            .ok_or("missing together join")?;
+
+        assert!(
+            matches!(start.kind, CompiledNodeKind::TogetherStart { ref branches, join } if branches.as_ref() == [StepIdx::new(2)] && join == StepIdx::new(1))
+        );
+        assert!(
+            matches!(join.kind, CompiledNodeKind::TogetherJoin { branch_count, accumulator } if branch_count == 1 && accumulator == SlotIdx::ZERO)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_collect_to_collection_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: collect_case\nwhen:\n  manual: {}\nsteps:\n  - id: source\n    save:\n      value: 1\n  - id: collect_values\n    collect:\n      source: 0\n      limit: 5\n      page_size: 2\n  - id: done\n    finish:\n      result: 0\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+
+        assert!(
+            matches!(workflow.node(StepIdx::new(1)).map(|node| &node.kind), Some(CompiledNodeKind::CollectStart { source, limit, page_size, body, done }) if *source == SlotIdx::ZERO && *limit == 5 && *page_size == 2 && *body == StepIdx::new(2) && *done == StepIdx::new(3))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(2)).map(|node| &node.kind), Some(CompiledNodeKind::CollectPage { collector_slot, body, done }) if *collector_slot == SlotIdx::ZERO && *body == StepIdx::new(2) && *done == StepIdx::new(3))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(3)).map(|node| &node.kind), Some(CompiledNodeKind::CollectFinish { collector_slot }) if *collector_slot == SlotIdx::ZERO)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_reduce_to_reduction_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: reduce_case\nwhen:\n  manual: {}\nsteps:\n  - id: source\n    save:\n      value: 1\n  - id: reduce_values\n    reduce:\n      input: 0\n      accumulator: 1\n      initial: 0\n  - id: done\n    finish:\n      result: 1\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+
+        assert!(
+            matches!(workflow.node(StepIdx::new(1)).map(|node| &node.kind), Some(CompiledNodeKind::ReduceStart { input, accumulator, initial, body, done }) if *input == SlotIdx::ZERO && *accumulator == SlotIdx::new(1) && *initial == ConstIdx::new(1) && *body == StepIdx::new(2) && *done == StepIdx::new(3))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(2)).map(|node| &node.kind), Some(CompiledNodeKind::ReduceNext { iterator_slot, accumulator, body, done }) if *iterator_slot == SlotIdx::new(1) && *accumulator == SlotIdx::new(1) && *body == StepIdx::new(2) && *done == StepIdx::new(3))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(3)).map(|node| &node.kind), Some(CompiledNodeKind::ReduceFinish { accumulator }) if *accumulator == SlotIdx::new(1))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_lowers_yaml_repeat_to_attempt_nodes() -> Result<(), String> {
+        let workflow = YamlCompiler::default()
+            .compile(
+                b"version: velvet-ballastics/v1\nname: repeat_case\nwhen:\n  manual: {}\nsteps:\n  - id: poll\n    repeat:\n      max_attempts: 3\n  - id: done\n    finish:\n      result: 1\n",
+            )
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+
+        assert!(
+            matches!(workflow.node(StepIdx::ZERO).map(|node| &node.kind), Some(CompiledNodeKind::RepeatStart { max_attempts, body, done }) if *max_attempts == 3 && *body == StepIdx::new(1) && *done == StepIdx::new(2))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(1)).map(|node| &node.kind), Some(CompiledNodeKind::RepeatAttempt { attempt_slot, body, done }) if *attempt_slot == SlotIdx::new(1) && *body == StepIdx::new(1) && *done == StepIdx::new(2))
+        );
+        assert!(
+            matches!(workflow.node(StepIdx::new(2)).map(|node| &node.kind), Some(CompiledNodeKind::RepeatFinish { result }) if *result == SlotIdx::new(1))
+        );
+        Ok(())
     }
 
     #[test]
@@ -4374,7 +4809,12 @@ steps:
                 b"version: velvet-ballastics/v1\nname: run_case\nwhen:\n  manual: {}\nsteps:\n  - id: source_slot\n    save:\n      value: 1\n  - id: call_action\n    run:\n      action: 7\n      input: 0\n  - id: done\n    finish:\n      result: 1\n",
             )
             .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        assert_eq!(workflow.node_count(), 3);
+        assert_eq!(workflow.slot_count(), 2);
         let node = workflow.node(StepIdx::new(1)).ok_or("missing run node")?;
+        let finish = workflow
+            .node(StepIdx::new(2))
+            .ok_or("missing finish node")?;
 
         assert!(matches!(
             node.kind,
@@ -4383,6 +4823,10 @@ steps:
         ));
         assert_eq!(node.output, Some(SlotIdx::new(1)));
         assert_eq!(node.next, Some(StepIdx::new(2)));
+        assert!(matches!(
+            finish.kind,
+            CompiledNodeKind::Finish { result } if result == SlotIdx::new(1)
+        ));
         Ok(())
     }
 
@@ -4393,12 +4837,23 @@ steps:
                 b"version: velvet-ballastics/v1\nname: do_case\nwhen:\n  manual: {}\nsteps:\n  - id: source_slot\n    save:\n      value: 1\n  - id: call_action\n    do:\n      action: 11\n      input: 0\n  - id: done\n    finish:\n      result: 1\n",
             )
             .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        assert_eq!(workflow.node_count(), 3);
+        assert_eq!(workflow.slot_count(), 2);
         let node = workflow.node(StepIdx::new(1)).ok_or("missing do node")?;
+        let finish = workflow
+            .node(StepIdx::new(2))
+            .ok_or("missing finish node")?;
 
         assert!(matches!(
             node.kind,
             CompiledNodeKind::Do { action, input }
                 if action == ActionId::new(11) && input == SlotIdx::ZERO
+        ));
+        assert_eq!(node.output, Some(SlotIdx::new(1)));
+        assert_eq!(node.next, Some(StepIdx::new(2)));
+        assert!(matches!(
+            finish.kind,
+            CompiledNodeKind::Finish { result } if result == SlotIdx::new(1)
         ));
         Ok(())
     }

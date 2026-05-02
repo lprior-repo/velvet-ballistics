@@ -41,6 +41,15 @@ pub enum ShardCommand {
         /// Compiled workflow to execute.
         workflow: CompiledWorkflow,
     },
+    /// Submit a new run with runtime input slots already mapped by the caller.
+    SubmitWithInputs {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Initial slot values written before deterministic execution starts.
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+    },
     /// Resume a suspended run from its current program counter.
     Resume {
         /// Run identifier.
@@ -215,6 +224,11 @@ impl Shard {
 
         match cmd {
             ShardCommand::Submit { run, workflow } => self.handle_submit(run, workflow)?,
+            ShardCommand::SubmitWithInputs {
+                run,
+                workflow,
+                inputs,
+            } => self.handle_submit_with_inputs(run, workflow, &inputs)?,
             ShardCommand::Resume { run } => self.handle_resume(run)?,
             ShardCommand::ActionCompleted { ticket, output } => {
                 self.handle_action_completion(ticket, output)?
@@ -291,6 +305,15 @@ impl Shard {
     }
 
     fn handle_submit(&mut self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs(run, workflow, &[])
+    }
+
+    fn handle_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+    ) -> RuntimeResult<()> {
         if self.runs.contains_key(&run) {
             return Err(RuntimeError::RunAlreadyExists);
         }
@@ -299,7 +322,8 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
-        let frame = self.take_frame_for(run, &workflow)?;
+        let mut frame = self.take_frame_for(run, &workflow)?;
+        seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         self.journal.append(RuntimeJournalEvent::RunSubmitted {
             run,
@@ -660,6 +684,15 @@ impl Shard {
             pool.release(frame);
         }
     }
+}
+
+fn seed_input_slots(frame: &mut RunFrame, inputs: &[(SlotIdx, SlotValue)]) -> RuntimeResult<()> {
+    for (slot, value) in inputs {
+        frame
+            .write_slot_with_taint(*slot, *value, Taint::Clean)
+            .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+    }
+    Ok(())
 }
 
 fn validate_action_completion(state: &RunState, ticket: ActionTicket) -> RuntimeResult<()> {

@@ -1563,7 +1563,7 @@ velvet-ballastics/
   tests/
 ```
 
-Existing scaffold mismatch must be rebaselined before feature implementation continues. `vb-compiler`, `vb-core`, `vb-ipc`, `vb-storage`, or hyphenated internal crates must be split/renamed to the underscore crate contract above, while preserving migration references only where needed.
+Round 2 state: the workspace has been rebaselined to the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, `vb_codegen`, and `velvet_ballastics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
 ---
 
@@ -1966,6 +1966,22 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 35 | Maxperf | PGO, target-cpu-native, mandatory generated Rust, regression thresholds. |
 | 36 | Hardening | Full gates, sanitizer jobs, fuzz expansion, docs, bead evidence, release readiness. |
 
+Round 2 current implementation state, observed in this tree and not a final release claim:
+
+| Area | Round 2 state | Remaining gap before final DoD |
+|------|---------------|--------------------------------|
+| Naming/workspace | Canonical crate layout and package spelling are represented in the workspace. | Mechanical spelling gates and bead evidence still decide acceptance for future changes. |
+| Core/value/IR | `vb_core` exposes numeric IDs, handle-based `SlotValue`, `ValueStore`, taint/state APIs, bounded expression/accessor evaluation, resource contracts, and deterministic transition surfaces. | Full final primitive semantics still require end-to-end compiler/runtime/generated parity evidence. |
+| YAML/validation/compile | Strict YAML parsing, AST validation, reference/control/type-taint checks, slot/accessor/constant APIs, digesting, artifact emission, and mandatory lowering function surfaces exist. | Source-to-IR lowering must be proven for the full v1 primitive set, not only constructor/API coverage. |
+| Expression engine | Lexer/parser/typecheck/bytecode surfaces exist with bounded execution contracts. | Helper coverage, mutation resistance, and generated-mode equivalence require gate evidence. |
+| Storage/recovery | `vb_storage` exposes required keyspace names, key encoders, record envelope encode/decode, journal writer queue, snapshots, replay helpers, and recovery summary APIs. | Runtime admission/header persistence and full live-frame hydration must be proven end-to-end; recovery summaries alone are not final recovery acceptance. |
+| Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces and typed runtime errors. | Collect pagination state, strict persistence-before-ack behavior, shutdown/cancellation edge cases, and recovery hydration need executable evidence. |
+| IPC | `vb_ipc` exposes bounded frame/header/payload validation, typed payloads, memory ingress, client/server surfaces, and required command handlers. | Socket-loop fuzz/backpressure evidence and runtime integration gates remain required. |
+| Generated Rust | `vb_codegen` emits and checks a supported subset covering scalar constants, copies, expression math/comparisons, action dispatch, waits, asks, jumps, choices, handlers, and finish nodes. | Generated mode is not yet accepted for the full final IR; unsupported primitives/accessor traversal are intentionally rejected until equivalence tests prove parity. |
+| Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, supply-chain, benchmark metadata, and bead closure evidence are still required. |
+
+Round 2 status rule: a public function existing in a crate is only API surface evidence. It is not proof that the phase is complete unless the required tests, fuzz/property coverage, benchmark evidence where applicable, and bead closure evidence have actually passed.
+
 ---
 
 ## 36. Mandatory Tests
@@ -2342,20 +2358,39 @@ indexmap-valuestore-object-field-index
 ordered-float-finitef64-rejection-record
 ```
 
-Current black-hat/test-review gaps that are not optional phase polish require dedicated beads before implementation continues:
+Round 2 black-hat findings remediated in this master document:
+
+```text
+hot-slotvalue-handle-only-model
+finish-copy-out-compatible-with-copy-slotvalue
+runframe-constructor-and-taint-api-contract
+narrow-canonical-spelling-allowlist
+hot-function-length-hard-gate
+choose-ir-final-variant-disambiguation
+action-abi-type-and-binary-semantics
+persistence-record-envelope-byte-contract
+mvp-wording-removed-from-final-ir-contract
+```
+
+Current black-hat/test-review gaps that are not optional phase polish require dedicated beads before final acceptance:
 
 ```text
 generated-interpreter-suspension-error-parity
+generated-full-final-ir-equivalence
+compiler-full-v1-primitive-source-lowering
 runtime-collect-next-pagination-state
 runtime-admission-run-header-persistence
 runtime-journal-sequence-hydration
+runtime-full-live-frame-recovery-hydration
 unsafe-fuzz-cabi-isolation
 workspace-exact-assertion-sharpness
 rust-test-loop-removal
 silent-discard-elimination
 test-plan-current-api-mutation-refresh
-error-variant-completeness-audit
+full-gate-evidence-refresh
 ```
+
+The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in `tests/error_variant_completeness_test.rs` and `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
 
 Required first beads:
 

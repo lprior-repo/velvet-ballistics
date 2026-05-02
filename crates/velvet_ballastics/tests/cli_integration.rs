@@ -3,7 +3,7 @@
 //! These tests encode the exact scenarios from the manual truth-serum audit
 //! so they run on every `cargo test` invocation.
 
-use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
@@ -19,6 +19,28 @@ steps:
     finish:
       result: 0
 ";
+
+fn input_slot_parts() -> WorkflowParts {
+    let finish = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    };
+    WorkflowParts {
+        name: Box::from("cli-input"),
+        digest: WorkflowDigest::from_bytes([7u8; 32]),
+        nodes: Box::from([finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -684,6 +706,97 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
     assert!(
         inspect_stdout.contains("status=finished"),
         "inspect stdout should report finished run: {inspect_stdout}"
+    );
+}
+
+#[test]
+fn cli_run_maps_postcard_slot_values_from_input_bin() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.vbir");
+    let input_path = dir.path().join("input.bin");
+
+    let workflow_payload = match postcard::to_allocvec(&input_slot_parts()) {
+        Ok(payload) => payload,
+        Err(err) => {
+            assert!(test_failed(), "failed to encode workflow payload: {err}");
+            return;
+        }
+    };
+    if !write_test_file(&workflow_path, &workflow_payload) {
+        return;
+    }
+    let values: Box<[SlotValue]> = Box::from([SlotValue::I64(7)]);
+    let payload = match postcard::to_allocvec(&values) {
+        Ok(payload) => payload,
+        Err(err) => {
+            assert!(test_failed(), "failed to encode input payload: {err}");
+            return;
+        }
+    };
+    if !write_test_file(&input_path, &payload) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run-compiled"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run-compiled --durability none with input-bin");
+    let run_stdout = output_stdout(&run_output);
+    assert!(
+        run_stdout.contains("run completed"),
+        "run stdout should report completion: {run_stdout}"
+    );
+}
+
+#[test]
+fn cli_run_reports_exact_input_mapping_decode_failure() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(test_failed(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, b"not-postcard") {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(!run_output.status.success(), "malformed input should fail");
+    let stderr = output_stderr(&run_output);
+    assert!(
+        stderr.contains("INPUT_MAPPING_FAILED: input-bin decode failed"),
+        "stderr should contain exact input mapping diagnostic: {stderr}"
     );
 }
 

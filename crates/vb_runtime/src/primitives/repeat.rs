@@ -15,20 +15,44 @@ const REPEAT_SHIFT: u32 = 32;
 ///
 /// Layout: bits [47:32] = max_attempts, bits [15:0] = current_attempt.
 /// Both fields are u16 so the result always fits in 48 bits (well within i64).
-fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> i64 {
-    let high = u64::from(max_attempts) << REPEAT_SHIFT;
-    let low = u64::from(current_attempt);
-    let packed = high | low;
-    // packed is at most 0x0000_FFFF_0000_FFFF which is positive in i64.
-    i64::try_from(packed).unwrap_or(i64::MAX)
+fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> Result<i64, EngineError> {
+    if max_attempts == 0 || current_attempt > max_attempts {
+        return Err(invalid_repeat_state());
+    }
+    let Some(high) = i64::from(max_attempts).checked_shl(REPEAT_SHIFT) else {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "repeat_state_encode_overflow",
+        });
+    };
+    let Some(packed) = high.checked_add(i64::from(current_attempt)) else {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "repeat_state_encode_overflow",
+        });
+    };
+    Ok(packed)
 }
 
 /// Decodes a packed repeat-state I64 into (max_attempts, current_attempt).
-fn decode_repeat_state(packed: i64) -> (u16, u16) {
-    let bits = u64::try_from(packed).unwrap_or(0);
-    let max_attempts = u16::try_from(bits >> REPEAT_SHIFT).unwrap_or(u16::MAX);
-    let current_attempt = u16::try_from(bits & 0xFFFF).unwrap_or(u16::MAX);
-    (max_attempts, current_attempt)
+fn decode_repeat_state(packed: i64) -> Result<(u16, u16), EngineError> {
+    let Ok(bits) = u64::try_from(packed) else {
+        return Err(invalid_repeat_state());
+    };
+    let max_bits = bits >> REPEAT_SHIFT;
+    let low_bits = bits & 0xFFFF;
+    let reserved_bits = bits & 0xFFFF_0000;
+    if reserved_bits != 0 {
+        return Err(invalid_repeat_state());
+    }
+    let Ok(max_attempts) = u16::try_from(max_bits) else {
+        return Err(invalid_repeat_state());
+    };
+    let Ok(current_attempt) = u16::try_from(low_bits) else {
+        return Err(invalid_repeat_state());
+    };
+    if max_attempts == 0 || current_attempt > max_attempts {
+        return Err(invalid_repeat_state());
+    }
+    Ok((max_attempts, current_attempt))
 }
 
 /// Executes RepeatStart: initializes attempt counter and jumps to body.
@@ -43,7 +67,7 @@ pub fn repeat_start(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let attempt_output = require_output(output, run.pc())?;
-    let state = encode_repeat_state(max_attempts, 0);
+    let state = encode_repeat_state(max_attempts, 0)?;
     run.write_slot(attempt_output, SlotValue::I64(state))?;
     jump_to(run, body)
 }
@@ -58,7 +82,7 @@ pub fn repeat_attempt(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let packed = expect_i64(*run.read_slot(attempt_slot)?)?;
     // Validate that the slot contains a valid repeat state.
-    let (_max, _current) = decode_repeat_state(packed);
+    let (_max, _current) = decode_repeat_state(packed)?;
     // Slot already holds the correct packed state; just jump to body.
     jump_to(run, body)
 }
@@ -74,11 +98,11 @@ pub fn repeat_check(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let packed = expect_i64(*run.read_slot(attempt_slot)?)?;
-    let (max_attempts, current_attempt) = decode_repeat_state(packed);
+    let (max_attempts, current_attempt) = decode_repeat_state(packed)?;
 
     // Increment attempt, clamping at u16::MAX to avoid overflow.
     let next_attempt = current_attempt.saturating_add(1);
-    let updated = encode_repeat_state(max_attempts, next_attempt);
+    let updated = encode_repeat_state(max_attempts, next_attempt)?;
     run.write_slot(attempt_slot, SlotValue::I64(updated))?;
 
     if next_attempt >= max_attempts {
@@ -115,12 +139,30 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
     }
 }
 
+fn invalid_repeat_state() -> EngineError {
+    EngineError::InternalInvariantViolation {
+        reason: "invalid_repeat_state",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn fresh_frame() -> RunFrame {
         crate::test_harness::fresh_frame(8, 8)
+    }
+
+    fn encoded(max_attempts: u16, current_attempt: u16) -> i64 {
+        encode_repeat_state(max_attempts, current_attempt)
+            .ok()
+            .unwrap_or_else(|| panic!("encode must succeed"))
+    }
+
+    fn decoded(packed: i64) -> (u16, u16) {
+        decode_repeat_state(packed)
+            .ok()
+            .unwrap_or_else(|| panic!("decode must succeed"))
     }
 
     #[test]
@@ -143,7 +185,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => 0,
         };
-        let expected = encode_repeat_state(5, 0);
+        let expected = encoded(5, 0);
         assert_eq!(packed, expected);
     }
 
@@ -153,7 +195,7 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        let packed = encode_repeat_state(3, 1);
+        let packed = encoded(3, 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
@@ -170,7 +212,7 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(2);
         let next_body = StepIdx::new(1);
-        let packed = encode_repeat_state(5, 2);
+        let packed = encoded(5, 2);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
@@ -189,7 +231,7 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(2);
         let next_body = StepIdx::new(1);
-        let packed = encode_repeat_state(3, 2);
+        let packed = encoded(3, 2);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
@@ -232,10 +274,43 @@ mod tests {
     fn decode_repeat_state_roundtrips_with_encode() {
         let max_attempts: u16 = 7;
         let current_attempt: u16 = 3;
-        let packed = encode_repeat_state(max_attempts, current_attempt);
-        let (decoded_max, decoded_current) = decode_repeat_state(packed);
+        let packed = encoded(max_attempts, current_attempt);
+        let (decoded_max, decoded_current) = decoded(packed);
         assert_eq!(decoded_max, max_attempts);
         assert_eq!(decoded_current, current_attempt);
+    }
+
+    #[test]
+    fn repeat_attempt_rejects_negative_repeat_state() {
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        run.write_slot(attempt_slot, SlotValue::I64(-1))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
+
+        let result = repeat_attempt(&mut run, attempt_slot, StepIdx::new(1), StepIdx::new(2));
+
+        assert_eq!(result, Err(invalid_repeat_state()));
+    }
+
+    #[test]
+    fn repeat_check_rejects_reserved_repeat_state_bits() {
+        let mut run = fresh_frame();
+        let attempt_slot = SlotIdx::new(0);
+        let reserved_middle_bits = 1_i64 << 16;
+        run.write_slot(attempt_slot, SlotValue::I64(reserved_middle_bits))
+            .ok()
+            .unwrap_or_else(|| panic!("slot write must succeed"));
+
+        let result = repeat_check(
+            &mut run,
+            attempt_slot,
+            StepIdx::new(2),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
+        );
+
+        assert_eq!(result, Err(invalid_repeat_state()));
     }
 
     // BDD tests for repeat primitives
@@ -274,7 +349,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => return,
         };
-        let (max, current) = decode_repeat_state(packed);
+        let (max, current) = decoded(packed);
         assert_eq!(max, 10);
         assert_eq!(current, 0);
     }
@@ -334,7 +409,7 @@ mod tests {
         // Given a frame with attempts remaining
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        let packed = encode_repeat_state(5, 1);
+        let packed = encoded(5, 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -408,7 +483,7 @@ mod tests {
         // Given a frame with max_attempts=5, current=2
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        let packed = encode_repeat_state(5, 2);
+        let packed = encoded(5, 2);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -430,7 +505,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => return,
         };
-        let (max, current) = decode_repeat_state(updated);
+        let (max, current) = decoded(updated);
         assert_eq!(max, 5);
         assert_eq!(current, 3);
     }
@@ -441,7 +516,7 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
-        let packed = encode_repeat_state(3, 2);
+        let packed = encoded(3, 2);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -487,20 +562,18 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_repeat_state_zero_values() {
-        // Given zero values
-        let packed = encode_repeat_state(0, 0);
-        let (max, current) = decode_repeat_state(packed);
-        // Then both decode to 0
-        assert_eq!(max, 0);
-        assert_eq!(current, 0);
+    fn encode_repeat_state_zero_max_attempts_is_invalid() {
+        // Given zero max attempts
+        let result = encode_repeat_state(0, 0);
+        // Then it is rejected instead of silently encoding an invalid loop state.
+        assert_eq!(result, Err(invalid_repeat_state()));
     }
 
     #[test]
     fn encode_decode_repeat_state_max_values() {
         // Given max values
-        let packed = encode_repeat_state(u16::MAX, u16::MAX);
-        let (max, current) = decode_repeat_state(packed);
+        let packed = encoded(u16::MAX, u16::MAX);
+        let (max, current) = decoded(packed);
         // Then both decode to max
         assert_eq!(max, u16::MAX);
         assert_eq!(current, u16::MAX);
@@ -524,7 +597,7 @@ mod tests {
         // Given a frame with packed state
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        let packed = encode_repeat_state(3, 1);
+        let packed = encoded(3, 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -541,7 +614,7 @@ mod tests {
         // Given a frame with attempts remaining
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        let packed = encode_repeat_state(5, 1);
+        let packed = encoded(5, 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -564,7 +637,7 @@ mod tests {
         // Given a frame with exhausted attempts
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
-        let packed = encode_repeat_state(3, 2);
+        let packed = encoded(3, 2);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -609,7 +682,7 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
-        let packed = encode_repeat_state(2, 1);
+        let packed = encoded(2, 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
@@ -632,7 +705,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => return,
         };
-        let (max, current) = decode_repeat_state(updated);
+        let (max, current) = decoded(updated);
         assert_eq!(max, 2);
         assert_eq!(current, 2);
     }
@@ -640,8 +713,8 @@ mod tests {
     #[test]
     fn encode_repeat_state_one_zero() {
         // Given max_attempts=1, current=0
-        let packed = encode_repeat_state(1, 0);
-        let (max, current) = decode_repeat_state(packed);
+        let packed = encoded(1, 0);
+        let (max, current) = decoded(packed);
         assert_eq!(max, 1);
         assert_eq!(current, 0);
     }
@@ -663,7 +736,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => return,
         };
-        let (max, current) = decode_repeat_state(packed);
+        let (max, current) = decoded(packed);
         assert_eq!(max, 1);
         assert_eq!(current, 0);
     }
@@ -684,35 +757,23 @@ mod tests {
     // ── Adversarial BDD tests for repeat ────────────────────────────────
 
     #[test]
-    fn repeat_start_max_attempts_zero_encodes_zero() {
+    fn repeat_start_max_attempts_zero_is_invalid() {
         // Given a frame
         let mut run = fresh_frame();
         let output = SlotIdx::new(0);
         // When calling repeat_start with max_attempts=0
         let result = repeat_start(&mut run, 0, StepIdx::new(1), StepIdx::new(2), Some(output));
-        // Then it encodes max=0, current=0 and jumps to body
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        let packed = match *run
-            .read_slot(output)
-            .ok()
-            .unwrap_or_else(|| panic!("must read"))
-        {
-            SlotValue::I64(v) => v,
-            _ => return,
-        };
-        let (max, current) = decode_repeat_state(packed);
-        assert_eq!(max, 0);
-        assert_eq!(current, 0);
+        // Then it rejects the invalid repeat state.
+        assert_eq!(result, Err(invalid_repeat_state()));
     }
 
     #[test]
-    fn repeat_check_max_attempts_zero_routes_immediately_to_done() {
+    fn repeat_check_max_attempts_zero_state_is_invalid() {
         // Given a frame with max=0, current=0
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
-        let packed = encode_repeat_state(0, 0);
-        run.write_slot(attempt_slot, SlotValue::I64(packed))
+        run.write_slot(attempt_slot, SlotValue::I64(0))
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling repeat_check
@@ -723,11 +784,8 @@ mod tests {
             Some(StepIdx::new(1)),
             StepIdx::ZERO,
         );
-        // Then next_attempt=1 >= max=0, so it routes to done
-        // BUG: with max=0, next_attempt(1) >= max(0) is true, so it always routes to done.
-        // This means a repeat with max_attempts=0 can never execute the body.
-        assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        assert_eq!(run.pc(), done);
+        // Then it rejects the invalid repeat state instead of routing silently.
+        assert_eq!(result, Err(invalid_repeat_state()));
     }
 
     #[test]
@@ -737,7 +795,7 @@ mod tests {
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(5);
         // Simulate: start wrote max=1, current=0, body ran, now check
-        let packed = encode_repeat_state(1, 0);
+        let packed = encoded(1, 0);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write"));
@@ -760,7 +818,7 @@ mod tests {
             SlotValue::I64(v) => v,
             _ => return,
         };
-        let (max, current) = decode_repeat_state(updated);
+        let (max, current) = decoded(updated);
         assert_eq!(max, 1);
         assert_eq!(current, 1);
     }
@@ -771,7 +829,7 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let body = StepIdx::new(1);
-        let packed = encode_repeat_state(u16::MAX, u16::MAX - 1);
+        let packed = encoded(u16::MAX, u16::MAX - 1);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write"));
@@ -794,7 +852,7 @@ mod tests {
         let mut run = fresh_frame();
         let attempt_slot = SlotIdx::new(0);
         let done = StepIdx::new(2);
-        let packed = encode_repeat_state(u16::MAX, u16::MAX);
+        let packed = encoded(u16::MAX, u16::MAX);
         run.write_slot(attempt_slot, SlotValue::I64(packed))
             .ok()
             .unwrap_or_else(|| panic!("write"));
@@ -901,7 +959,7 @@ mod tests {
             _ => return,
         };
         // Then the current attempt is 0 (first attempt)
-        let (max, current) = decode_repeat_state(packed);
+        let (max, current) = decoded(packed);
         assert_eq!(max, 5);
         assert_eq!(current, 0);
     }

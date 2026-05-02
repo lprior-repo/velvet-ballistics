@@ -261,23 +261,17 @@ fn core_error_diagnostic_codes_are_unique() {
         .diagnostic_code(),
     ];
 
-    let mut left = 0usize;
-    while left < codes.len() {
-        let left_code = match codes.get(left).copied() {
-            Some(code) => code,
-            None => return,
-        };
-        let mut right = left + 1;
-        while right < codes.len() {
-            let right_code = match codes.get(right).copied() {
-                Some(code) => code,
-                None => return,
-            };
-            assert_ne!(left_code, right_code);
-            right += 1;
-        }
-        left += 1;
-    }
+    let duplicate = codes
+        .iter()
+        .enumerate()
+        .find_map(|(left_index, left_code)| {
+            codes
+                .iter()
+                .skip(left_index.saturating_add(1))
+                .find(|right_code| left_code == *right_code)
+        });
+
+    assert_eq!(duplicate, None);
 }
 
 #[test]

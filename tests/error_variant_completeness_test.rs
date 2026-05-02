@@ -18,41 +18,97 @@ use vb_validate::ValidationError;
 use vb_yaml::YamlError;
 
 #[test]
-fn diagnostic_error_enums_map_every_public_variant_to_an_exact_code() {
+fn validation_errors_map_every_public_variant_to_an_exact_code() {
     let validation = validation_error_codes();
     assert_unique_codes(&validation);
     assert_eq!(validation.len(), 36);
+}
 
+#[test]
+fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
     assert_eq!(core.len(), 33);
+}
 
+#[test]
+fn runtime_errors_map_every_public_variant_to_an_exact_code() {
     let runtime = runtime_error_codes();
     assert_unique_codes(&runtime);
     assert_eq!(runtime.len(), 14);
+}
 
+#[test]
+fn ipc_errors_map_every_public_variant_to_an_exact_code() {
     let ipc = ipc_error_codes();
     assert_unique_codes(&ipc);
     assert_eq!(ipc.len(), 14);
+}
 
+#[test]
+fn journal_errors_map_every_public_variant_to_an_exact_code() {
     let journal = journal_error_codes();
     assert_unique_codes(&journal);
     assert_eq!(journal.len(), 22);
 }
 
 #[test]
-fn public_constructible_error_enums_have_exhaustive_variant_audits() {
+fn yaml_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(yaml_variant_count(), 19);
+}
+
+#[test]
+fn expr_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(expr_variant_count(), 20);
+}
+
+#[test]
+fn action_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(action_variant_count(), 9);
+}
+
+#[test]
+fn workflow_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(workflow_variant_count(), 10);
+}
+
+#[test]
+fn diagnostic_parse_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(diagnostic_parse_variant_count(), 2);
+}
+
+#[test]
+fn compile_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(compile_constructible_variant_count(), 69);
+}
+
+#[test]
+fn codegen_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(codegen_constructible_variant_count(), 6);
+}
+
+#[test]
+fn runtime_engine_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(runtime_engine_variant_count(), 4);
+}
+
+#[test]
+fn workflow_resolution_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(workflow_resolution_variant_count(), 3);
+}
+
+#[test]
+fn ipc_client_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(ipc_client_constructible_variant_count(), 4);
+}
+
+#[test]
+fn ipc_server_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(ipc_server_constructible_variant_count(), 9);
+}
+
+#[test]
+fn recovery_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(recovery_constructible_variant_count(), 11);
 }
 
@@ -77,15 +133,15 @@ const EXTERNAL_WRAPPER_EXCEPTIONS: [&str; 6] = [
 ];
 
 fn assert_unique_codes(codes: &[(DiagnosticCode, &'static str)]) {
-    for (left_index, left) in codes.iter().enumerate() {
-        for right in codes.iter().skip(left_index.saturating_add(1)) {
-            assert_ne!(
-                left.0, right.0,
-                "duplicate diagnostic code for {} and {}",
-                left.1, right.1
-            );
-        }
-    }
+    let duplicate = codes.iter().enumerate().find_map(|(left_index, left)| {
+        codes
+            .iter()
+            .skip(left_index.saturating_add(1))
+            .find(|right| left.0 == right.0)
+            .map(|right| (left, right))
+    });
+
+    assert_eq!(duplicate, None, "duplicate diagnostic code found");
 }
 
 fn validation_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
@@ -136,14 +192,15 @@ fn validation_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         ValidationError::UnsupportedTrigger { trigger: s("t") },
         ValidationError::HttpTriggerOutOfCore,
     ];
-    let mut codes = Vec::with_capacity(samples.len());
-    for error in &samples {
-        codes.push((
-            vb_validate::diagnostic::error_code(error),
-            validation_error_variant_name(error),
-        ));
-    }
-    codes
+    samples
+        .iter()
+        .map(|error| {
+            (
+                vb_validate::diagnostic::error_code(error),
+                validation_error_variant_name(error),
+            )
+        })
+        .collect()
 }
 
 fn validation_error_variant_name(error: &ValidationError) -> &'static str {
@@ -242,15 +299,14 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
     ];
-    let mut codes = Vec::with_capacity(33);
-    for error in &samples {
-        codes.push((error.diagnostic_code(), core_error_variant_name(error)));
-    }
-    codes.push((
-        CoreError::TogetherBranchLimitExceeded { max: 1 }.diagnostic_code(),
-        "TogetherBranchLimitExceeded",
-    ));
-    codes
+    samples
+        .iter()
+        .map(|error| (error.diagnostic_code(), core_error_variant_name(error)))
+        .chain(std::iter::once((
+            CoreError::TogetherBranchLimitExceeded { max: 1 }.diagnostic_code(),
+            "TogetherBranchLimitExceeded",
+        )))
+        .collect()
 }
 
 fn core_error_variant_name(error: &CoreError) -> &'static str {
@@ -308,11 +364,10 @@ fn runtime_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         RuntimeError::UnsupportedFullRecoveryHydration,
         RuntimeError::InvalidRecoveryHydration,
     ];
-    let mut codes = Vec::with_capacity(samples.len());
-    for error in &samples {
-        codes.push((error.diagnostic_code(), runtime_error_variant_name(error)));
-    }
-    codes
+    samples
+        .iter()
+        .map(|error| (error.diagnostic_code(), runtime_error_variant_name(error)))
+        .collect()
 }
 
 fn runtime_error_variant_name(error: &RuntimeError) -> &'static str {
@@ -357,11 +412,10 @@ fn ipc_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         IpcError::PayloadDecodeFailed,
         IpcError::ResponseDecodeFailed,
     ];
-    let mut codes = Vec::with_capacity(samples.len());
-    for error in &samples {
-        codes.push((error.diagnostic_code(), ipc_error_variant_name(error)));
-    }
-    codes
+    samples
+        .iter()
+        .map(|error| (error.diagnostic_code(), ipc_error_variant_name(error)))
+        .collect()
 }
 
 fn ipc_error_variant_name(error: &IpcError) -> &'static str {
@@ -415,13 +469,14 @@ fn journal_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         JournalError::PostcardDecodeFailed,
         JournalError::QueueShutdown,
     ];
-    let mut codes = Vec::with_capacity(21);
-    codes.push((JournalError::FJALL_CODE, "Fjall"));
-    codes.push((JournalError::ENCODE_CODE, "Encode"));
-    for error in &samples {
-        codes.push((error.diagnostic_code(), journal_error_variant_name(error)));
-    }
-    codes
+    std::iter::once((JournalError::FJALL_CODE, "Fjall"))
+        .chain(std::iter::once((JournalError::ENCODE_CODE, "Encode")))
+        .chain(
+            samples
+                .iter()
+                .map(|error| (error.diagnostic_code(), journal_error_variant_name(error))),
+        )
+        .collect()
 }
 
 fn journal_error_variant_name(error: &JournalError) -> &'static str {
@@ -479,12 +534,7 @@ fn yaml_variant_count() -> usize {
         },
         YamlError::ForbiddenFeature { detail: "d" },
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = yaml_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(yaml_error_variant_name).count()
 }
 
 fn yaml_error_variant_name(error: &YamlError) -> &'static str {
@@ -540,11 +590,7 @@ fn expr_variant_count() -> usize {
         ExprError::BytecodeTooLong { len: 2, max: 1 },
         ExprError::ConstantPoolOverflow,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = expr_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
+    let count = samples.iter().map(expr_error_variant_name).count();
     let _ = expr_error_variant_name(&ExprError::UnsupportedLiteral { literal: s("lit") });
     count.saturating_add(1)
 }
@@ -594,12 +640,7 @@ fn action_variant_count() -> usize {
         ActionError::EncodingFailed,
         ActionError::DispatchFailed,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = action_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(action_error_variant_name).count()
 }
 
 fn action_error_variant_name(error: &ActionError) -> &'static str {
@@ -634,12 +675,7 @@ fn workflow_variant_count() -> usize {
         WorkflowError::ResourceContractTooLarge { resource: "r" },
         WorkflowError::EmptyBranchTable,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = workflow_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(workflow_error_variant_name).count()
 }
 
 fn workflow_error_variant_name(error: &WorkflowError) -> &'static str {
@@ -662,12 +698,7 @@ fn diagnostic_parse_variant_count() -> usize {
         DiagnosticCodeParseError::InvalidFormat,
         DiagnosticCodeParseError::UnsupportedCode,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = diagnostic_parse_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(diagnostic_parse_variant_name).count()
 }
 
 fn diagnostic_parse_variant_name(error: &DiagnosticCodeParseError) -> &'static str {
@@ -679,11 +710,7 @@ fn diagnostic_parse_variant_name(error: &DiagnosticCodeParseError) -> &'static s
 
 fn compile_constructible_variant_count() -> usize {
     let samples = compile_constructible_samples();
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = compile_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
+    let count = samples.iter().map(compile_error_variant_name).count();
     let _ = compile_error_variant_name(&compile_utf8_error());
     count.saturating_add(1)
 }
@@ -953,11 +980,7 @@ fn codegen_constructible_variant_count() -> usize {
         CodegenError::SemanticMismatch { detail: s("d") },
         CodegenError::TrybuildFixture { detail: s("d") },
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = codegen_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
+    let count = samples.iter().map(codegen_error_variant_name).count();
     let _ = codegen_error_variant_name(&codegen_io_error());
     count
 }
@@ -984,12 +1007,10 @@ fn runtime_engine_variant_count() -> usize {
         },
         RuntimeEngineError::TaintViolation { step: step() },
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = runtime_engine_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples
+        .iter()
+        .map(runtime_engine_error_variant_name)
+        .count()
 }
 
 fn runtime_engine_error_variant_name(error: &RuntimeEngineError) -> &'static str {
@@ -1007,12 +1028,10 @@ fn workflow_resolution_variant_count() -> usize {
         WorkflowResolutionError::NotFound,
         WorkflowResolutionError::InvalidArtifact,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = workflow_resolution_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples
+        .iter()
+        .map(workflow_resolution_error_variant_name)
+        .count()
 }
 
 fn workflow_resolution_error_variant_name(error: &WorkflowResolutionError) -> &'static str {
@@ -1032,12 +1051,7 @@ fn ipc_client_constructible_variant_count() -> usize {
         },
         IpcClientError::EncodeFailed,
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = ipc_client_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(ipc_client_error_variant_name).count()
 }
 
 fn ipc_client_error_variant_name(error: &IpcClientError) -> &'static str {
@@ -1063,12 +1077,7 @@ fn ipc_server_constructible_variant_count() -> usize {
             source: IpcError::Full,
         },
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = ipc_server_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(ipc_server_error_variant_name).count()
 }
 
 fn ipc_server_error_variant_name(error: &IpcServerError) -> &'static str {
@@ -1120,12 +1129,7 @@ fn recovery_constructible_variant_count() -> usize {
         },
         RecoveryError::FrameDimensionOverflow { run: run() },
     ];
-    let mut count = 0usize;
-    for error in &samples {
-        let _ = recovery_error_variant_name(error);
-        count = count.saturating_add(1);
-    }
-    count
+    samples.iter().map(recovery_error_variant_name).count()
 }
 
 fn recovery_error_variant_name(error: &RecoveryError) -> &'static str {

@@ -16,8 +16,8 @@ use std::fmt::Write;
 use std::process::Command;
 use thiserror::Error;
 use vb_core::{
-    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprOp,
-    ResourceContract, SlotIdx, StepIdx,
+    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprBranch,
+    ExprOp, ResourceContract, SlotBranch, SlotIdx, StepIdx,
 };
 
 /// Codegen failures with stable typed diagnostics.
@@ -308,193 +308,306 @@ pub fn emit_step_function(
     )
     .map_err(fmt_err)?;
 
-    match &node.kind {
-        CompiledNodeKind::Nop => {
-            if let Some(next) = node.next {
-                writeln!(out, "    Ok(StepOutcome::Continue({}))", next.get()).map_err(fmt_err)?;
-            } else {
-                writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err)?;
-            }
-        }
-        CompiledNodeKind::SetConst { value } => {
-            if let Some(output) = node.output {
-                writeln!(
-                    out,
-                    "    write_slot(slots, {}, Some(read_const({})?))?;",
-                    output.get(),
-                    value.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::Copy { source } => {
-            if let Some(output) = node.output {
-                writeln!(
-                    out,
-                    "    let copied = read_slot_optional(slots, {});\n    write_slot(slots, {}, copied)?;",
-                    source.get(),
-                    output.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::EvalExpr { expr } => {
-            if let Some(output) = node.output {
-                writeln!(
-                    out,
-                    "    write_slot(slots, {}, Some(eval_expr_{}(slots)?))?;",
-                    output.get(),
-                    expr.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::Finish { result } => {
-            writeln!(out, "    let value = read_slot(slots, {})?;", result.get())
-                .map_err(fmt_err)?;
-            writeln!(out, "    Ok(StepOutcome::Finished(value))").map_err(fmt_err)?;
-        }
-        CompiledNodeKind::Jump { target } => {
-            writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err)?;
-        }
-        CompiledNodeKind::Choose {
-            branches,
-            otherwise,
-        } => {
-            for branch in branches.iter() {
-                writeln!(
-                    out,
-                    "    if eval_expr_{}(slots)?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
-                    branch.condition.get(),
-                    branch.target.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            if let Some(fallback) = otherwise {
-                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get())
-                    .map_err(fmt_err)?;
-            } else {
-                writeln!(out, "    Err(DriveError::NoBranchMatched)").map_err(fmt_err)?;
-            }
-        }
-        CompiledNodeKind::ChooseSlot {
-            branches,
-            otherwise,
-        } => {
-            for branch in branches {
-                writeln!(
-                    out,
-                    "    if read_slot(slots, {})?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
-                    branch.condition.get(),
-                    branch.target.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            if let Some(fallback) = otherwise {
-                writeln!(out, "    Ok(StepOutcome::Continue({}))", fallback.get())
-                    .map_err(fmt_err)?;
-            } else {
-                writeln!(out, "    Err(DriveError::NoBranchMatched)").map_err(fmt_err)?;
-            }
-        }
-        CompiledNodeKind::Do { action, input } => {
-            emit_action_boundary(out, *action, *input)?;
-        }
-        CompiledNodeKind::BuildObject { fields: _ } => emit_unsupported_step(out, "BuildObject")?,
-        CompiledNodeKind::BuildList { items: _ } => emit_unsupported_step(out, "BuildList")?,
-        CompiledNodeKind::ForEachStart { .. } => emit_unsupported_step(out, "ForEachStart")?,
-        CompiledNodeKind::ForEachNext { .. } => emit_unsupported_step(out, "ForEachNext")?,
-        CompiledNodeKind::ForEachJoin { output: _ } => emit_unsupported_step(out, "ForEachJoin")?,
-        CompiledNodeKind::TogetherStart { .. } => emit_unsupported_step(out, "TogetherStart")?,
-        CompiledNodeKind::TogetherBranch { .. } => emit_unsupported_step(out, "TogetherBranch")?,
-        CompiledNodeKind::TogetherJoin { .. } => emit_unsupported_step(out, "TogetherJoin")?,
-        CompiledNodeKind::CollectStart { .. } => emit_unsupported_step(out, "CollectStart")?,
-        CompiledNodeKind::CollectPage { .. } => emit_unsupported_step(out, "CollectPage")?,
-        CompiledNodeKind::CollectNext { .. } => emit_unsupported_step(out, "CollectNext")?,
-        CompiledNodeKind::CollectFinish { .. } => emit_unsupported_step(out, "CollectFinish")?,
-        CompiledNodeKind::ReduceStart { .. } => emit_unsupported_step(out, "ReduceStart")?,
-        CompiledNodeKind::ReduceNext { .. } => emit_unsupported_step(out, "ReduceNext")?,
-        CompiledNodeKind::ReduceFinish { .. } => emit_unsupported_step(out, "ReduceFinish")?,
-        CompiledNodeKind::RepeatStart { .. } => emit_unsupported_step(out, "RepeatStart")?,
-        CompiledNodeKind::RepeatAttempt { .. } => emit_unsupported_step(out, "RepeatAttempt")?,
-        CompiledNodeKind::RepeatCheck { .. } => emit_unsupported_step(out, "RepeatCheck")?,
-        CompiledNodeKind::RepeatFinish { .. } => emit_unsupported_step(out, "RepeatFinish")?,
-        CompiledNodeKind::WaitUntil { deadline_slot } => {
-            writeln!(
-                out,
-                "    let _deadline = read_slot(slots, {})?;",
-                deadline_slot.get()
-            )
-            .map_err(fmt_err)?;
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::WaitEvent {
-            event,
-            timeout_slot,
-        } => {
-            writeln!(out, "    let _event = read_slot(slots, {})?;", event.get())
-                .map_err(fmt_err)?;
-            if let Some(timeout) = timeout_slot {
-                writeln!(
-                    out,
-                    "    let _timeout = read_slot(slots, {})?;",
-                    timeout.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::Ask {
-            prompt,
-            timeout_slot,
-        } => {
-            writeln!(
-                out,
-                "    let _prompt = read_slot(slots, {})?;",
-                prompt.get()
-            )
-            .map_err(fmt_err)?;
-            if let Some(timeout) = timeout_slot {
-                writeln!(
-                    out,
-                    "    let _timeout = read_slot(slots, {})?;",
-                    timeout.get()
-                )
-                .map_err(fmt_err)?;
-            }
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::AskResume { answer } => {
-            writeln!(out, "    let _answer_slot: u16 = {};", answer.get()).map_err(fmt_err)?;
-            write_next_or_error(out, node.next)?;
-        }
-        CompiledNodeKind::RetryCheck { .. } => emit_unsupported_step(out, "RetryCheck")?,
-        CompiledNodeKind::ErrorHandler { body, handler } => {
-            writeln!(
-                out,
-                "    // ErrorHandler: body={}, handler={}",
-                body.get(),
-                handler.get()
-            )
-            .map_err(fmt_err)?;
-            writeln!(out, "    match step_{}(slots) {{", body.get()).map_err(fmt_err)?;
-            writeln!(out, "        Ok(outcome) => Ok(outcome),").map_err(fmt_err)?;
-            writeln!(
-                out,
-                "        Err(_) => Ok(StepOutcome::Continue({})),",
-                handler.get()
-            )
-            .map_err(fmt_err)?;
-            writeln!(out, "    }}").map_err(fmt_err)?;
-        }
-    }
+    emit_step_body(out, node)?;
 
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
+}
+
+fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::Finish { .. }
+        | CompiledNodeKind::Jump { .. } => emit_linear_step_body(out, node),
+        CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {
+            emit_branch_step_body(out, &node.kind)
+        }
+        CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
+        unsupported => emit_unsupported_node_step(out, unsupported),
+    }
+}
+
+fn emit_linear_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::Nop => emit_nop_step(out, node.next),
+        CompiledNodeKind::SetConst { value } => {
+            emit_set_const_step(out, node.output, *value, node.next)
+        }
+        CompiledNodeKind::Copy { source } => emit_copy_step(out, node.output, *source, node.next),
+        CompiledNodeKind::EvalExpr { expr } => {
+            emit_eval_expr_step(out, node.output, *expr, node.next)
+        }
+        CompiledNodeKind::Finish { result } => emit_finish_step(out, *result),
+        CompiledNodeKind::Jump { target } => emit_continue_step(out, *target),
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
+    }
+}
+
+fn emit_branch_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    match kind {
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => emit_choose_step(out, branches, *otherwise),
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => emit_choose_slot_step(out, branches, *otherwise),
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
+    }
+}
+
+fn emit_boundary_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::Do { action, input } => emit_action_boundary(out, *action, *input),
+        CompiledNodeKind::WaitUntil { deadline_slot } => {
+            emit_wait_until_step(out, *deadline_slot, node.next)
+        }
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => emit_wait_event_step(out, *event, *timeout_slot, node.next),
+        CompiledNodeKind::Ask {
+            prompt,
+            timeout_slot,
+        } => emit_ask_step(out, *prompt, *timeout_slot, node.next),
+        CompiledNodeKind::AskResume { answer } => emit_ask_resume_step(out, *answer, node.next),
+        CompiledNodeKind::ErrorHandler { body, handler } => {
+            emit_error_handler_step(out, *body, *handler)
+        }
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
+    }
+}
+
+fn emit_nop_step(out: &mut String, next: Option<StepIdx>) -> CodegenResult<()> {
+    match next {
+        Some(next_step) => emit_continue_step(out, next_step),
+        None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
+    }
+}
+
+fn emit_set_const_step(
+    out: &mut String,
+    output: Option<SlotIdx>,
+    value: ConstIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    write_slot(slots, {}, Some(read_const({})?))?;",
+            output_slot.get(),
+            value.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_copy_step(
+    out: &mut String,
+    output: Option<SlotIdx>,
+    source: SlotIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    let copied = read_slot_optional(slots, {});\n    write_slot(slots, {}, copied)?;",
+            source.get(),
+            output_slot.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_eval_expr_step(
+    out: &mut String,
+    output: Option<SlotIdx>,
+    expr: vb_core::ExprIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    write_slot(slots, {}, Some(eval_expr_{}(slots)?))?;",
+            output_slot.get(),
+            expr.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_finish_step(out: &mut String, result: SlotIdx) -> CodegenResult<()> {
+    writeln!(out, "    let value = read_slot(slots, {})?;", result.get()).map_err(fmt_err)?;
+    writeln!(out, "    Ok(StepOutcome::Finished(value))").map_err(fmt_err)
+}
+
+fn emit_continue_step(out: &mut String, target: StepIdx) -> CodegenResult<()> {
+    writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err)
+}
+
+fn emit_choose_step(
+    out: &mut String,
+    branches: &[ExprBranch],
+    otherwise: Option<StepIdx>,
+) -> CodegenResult<()> {
+    for branch in branches {
+        writeln!(
+            out,
+            "    if eval_expr_{}(slots)?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
+            branch.condition.get(),
+            branch.target.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    emit_choice_fallback(out, otherwise)
+}
+
+fn emit_choose_slot_step(
+    out: &mut String,
+    branches: &[SlotBranch],
+    otherwise: Option<StepIdx>,
+) -> CodegenResult<()> {
+    for branch in branches {
+        writeln!(
+            out,
+            "    if read_slot(slots, {})?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
+            branch.condition.get(),
+            branch.target.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    emit_choice_fallback(out, otherwise)
+}
+
+fn emit_choice_fallback(out: &mut String, otherwise: Option<StepIdx>) -> CodegenResult<()> {
+    match otherwise {
+        Some(fallback) => emit_continue_step(out, fallback),
+        None => writeln!(out, "    Err(DriveError::NoBranchMatched)").map_err(fmt_err),
+    }
+}
+
+fn emit_wait_until_step(
+    out: &mut String,
+    deadline_slot: SlotIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _deadline = read_slot(slots, {})?;",
+        deadline_slot.get()
+    )
+    .map_err(fmt_err)?;
+    write_next_or_error(out, next)
+}
+
+fn emit_wait_event_step(
+    out: &mut String,
+    event: SlotIdx,
+    timeout_slot: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(out, "    let _event = read_slot(slots, {})?;", event.get()).map_err(fmt_err)?;
+    emit_optional_timeout_read(out, timeout_slot)?;
+    write_next_or_error(out, next)
+}
+
+fn emit_ask_step(
+    out: &mut String,
+    prompt: SlotIdx,
+    timeout_slot: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _prompt = read_slot(slots, {})?;",
+        prompt.get()
+    )
+    .map_err(fmt_err)?;
+    emit_optional_timeout_read(out, timeout_slot)?;
+    write_next_or_error(out, next)
+}
+
+fn emit_optional_timeout_read(
+    out: &mut String,
+    timeout_slot: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    if let Some(timeout) = timeout_slot {
+        writeln!(
+            out,
+            "    let _timeout = read_slot(slots, {})?;",
+            timeout.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    Ok(())
+}
+
+fn emit_ask_resume_step(
+    out: &mut String,
+    answer: SlotIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(out, "    let _answer_slot: u16 = {};", answer.get()).map_err(fmt_err)?;
+    write_next_or_error(out, next)
+}
+
+fn emit_error_handler_step(out: &mut String, body: StepIdx, handler: StepIdx) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    // ErrorHandler: body={}, handler={}",
+        body.get(),
+        handler.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    match step_{}(slots) {{", body.get()).map_err(fmt_err)?;
+    writeln!(out, "        Ok(outcome) => Ok(outcome),").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        Err(_) => Ok(StepOutcome::Continue({})),",
+        handler.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)
+}
+
+fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    let name = match kind {
+        CompiledNodeKind::BuildObject { .. } => "BuildObject",
+        CompiledNodeKind::BuildList { .. } => "BuildList",
+        CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
+        CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
+        CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
+        CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
+        CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
+        CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
+        CompiledNodeKind::CollectStart { .. } => "CollectStart",
+        CompiledNodeKind::CollectPage { .. } => "CollectPage",
+        CompiledNodeKind::CollectNext { .. } => "CollectNext",
+        CompiledNodeKind::CollectFinish { .. } => "CollectFinish",
+        CompiledNodeKind::ReduceStart { .. } => "ReduceStart",
+        CompiledNodeKind::ReduceNext { .. } => "ReduceNext",
+        CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish",
+        CompiledNodeKind::RepeatStart { .. } => "RepeatStart",
+        CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
+        CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
+        CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
+        CompiledNodeKind::RetryCheck { .. } => "RetryCheck",
+        _ => "UnsupportedStep",
+    };
+    emit_unsupported_step(out, name)
 }
 
 /// Generate an expression evaluator function.
@@ -1217,7 +1330,8 @@ mod tests {
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
         ConstValue, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId, SlotIdx,
-        SlotValue, StepIdx, ValueStore, WorkflowDigest, WorkflowParts, new_run_frame, step_once,
+        SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts, new_run_frame,
+        run_until_blocked, step_once,
     };
 
     // --- Workflow helpers ---
@@ -1508,6 +1622,50 @@ mod tests {
         Ok(stdout)
     }
 
+    fn generated_drive_stdout(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        init_source: &str,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let temp_dir =
+            std::env::temp_dir().join(format!("vb_codegen_drive_{}_{}", std::process::id(), name));
+        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+        let source_path = temp_dir.join("generated_drive.rs");
+        let binary_path = temp_dir.join("generated_drive_bin");
+        let harness = format!(
+            "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n{init_source}\n    match drive(slots) {{\n        Ok(value) => println!(\"ok:{{value:?}}\"),\n        Err(error) => println!(\"err:{{error:?}}\"),\n    }}\n}}\n"
+        );
+        std::fs::write(&source_path, harness).map_err(|e| e.to_string())?;
+
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+
+        let run = std::process::Command::new(&binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated run failed: {stdout}{stderr}"));
+        }
+
+        let cleanup = std::fs::remove_dir_all(&temp_dir);
+        if let Err(e) = cleanup {
+            return Err(e.to_string());
+        }
+        Ok(stdout)
+    }
+
     fn ir_action_suspend_signal(
         workflow: &CompiledWorkflow,
         input: SlotIdx,
@@ -1517,6 +1675,280 @@ mod tests {
             .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
         step_once(workflow, &mut run, &mut store).map_err(|e| e.to_string())
+    }
+
+    fn ir_drive_finished_value(workflow: &CompiledWorkflow) -> Result<SlotValue, String> {
+        let mut run = new_run_frame(RunId::new(2), workflow).map_err(|e| e.to_string())?;
+        let mut store = ValueStore::new();
+        let signal = run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        match signal {
+            EngineSignal::Finished(value) => Ok(value),
+            other => Err(format!("expected finished signal, got {other:?}")),
+        }
+    }
+
+    fn primitive_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Sub,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(2)),
+            vb_core::ExprOp::Eq,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(3)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(2)),
+            vb_core::ExprOp::Div,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(4)),
+            vb_core::ExprOp::Eq,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Add,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(4)),
+            vb_core::ExprOp::Eq,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Gt,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Gte,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Lt,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Lte,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(5)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(6)),
+            vb_core::ExprOp::Or,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(6)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(5)),
+            vb_core::ExprOp::NotEq,
+            vb_core::ExprOp::And,
+            vb_core::ExprOp::LoadConst(ConstIdx::new(5)),
+            vb_core::ExprOp::Not,
+            vb_core::ExprOp::And,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_primitive_expr_exec"),
+            digest: WorkflowDigest::from_bytes([0xE1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::I64(7),
+                ConstValue::I64(5),
+                ConstValue::I64(2),
+                ConstValue::I64(24),
+                ConstValue::I64(12),
+                ConstValue::Bool(false),
+                ConstValue::Bool(true),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn primitive_choose_workflow() -> Result<CompiledWorkflow, String> {
+        let false_expr = ExprProgram::try_from_ops(
+            vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let true_expr = ExprProgram::try_from_ops(
+            vec![vb_core::ExprOp::LoadConst(ConstIdx::new(1))].into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_primitive_choose_exec"),
+            digest: WorkflowDigest::from_bytes([0xE2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Choose {
+                        branches: vec![
+                            vb_core::ExprBranch {
+                                condition: vb_core::ExprIdx::new(0),
+                                target: StepIdx::new(1),
+                            },
+                            vb_core::ExprBranch {
+                                condition: vb_core::ExprIdx::new(1),
+                                target: StepIdx::new(2),
+                            },
+                        ]
+                        .into_boxed_slice(),
+                        otherwise: Some(StepIdx::new(3)),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(4)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(4)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(4)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![false_expr, true_expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Bool(false),
+                ConstValue::Bool(true),
+                ConstValue::I64(11),
+                ConstValue::I64(22),
+                ConstValue::I64(33),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn primitive_choose_slot_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_primitive_choose_slot_exec"),
+            digest: WorkflowDigest::from_bytes([0xE3; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::ChooseSlot {
+                        branches: vec![
+                            vb_core::SlotBranch {
+                                condition: SlotIdx::new(0),
+                                target: StepIdx::new(3),
+                            },
+                            vb_core::SlotBranch {
+                                condition: SlotIdx::new(1),
+                                target: StepIdx::new(4),
+                            },
+                        ]
+                        .into_boxed_slice(),
+                        otherwise: Some(StepIdx::new(5)),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(6)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(6)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(6)),
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(6),
+                    output: None,
+                    next: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Bool(false),
+                ConstValue::Bool(true),
+                ConstValue::I64(11),
+                ConstValue::I64(22),
+                ConstValue::I64(33),
+            ]
+            .into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
     // --- CodegenError exact-variant tests ---
@@ -2704,6 +3136,63 @@ mod tests {
     }
 
     #[test]
+    fn generated_expression_primitives_match_interpreter_finish() -> Result<(), String> {
+        let workflow = primitive_expression_workflow()?;
+
+        let ir_value = ir_drive_finished_value(&workflow)?;
+        assert_eq!(
+            ir_value,
+            SlotValue::Bool(true),
+            "interpreter must prove the primitive expression result"
+        );
+
+        let generated_stdout = generated_drive_stdout(&workflow, "expr_primitives", "")?;
+        assert_eq!(
+            generated_stdout, "ok:Bool(true)\n",
+            "generated expression primitives must match interpreter result"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_choose_primitive_matches_interpreter_branch() -> Result<(), String> {
+        let workflow = primitive_choose_workflow()?;
+
+        let ir_value = ir_drive_finished_value(&workflow)?;
+        assert_eq!(
+            ir_value,
+            SlotValue::I64(22),
+            "interpreter must take the first true expression branch"
+        );
+
+        let generated_stdout = generated_drive_stdout(&workflow, "choose_primitive", "")?;
+        assert_eq!(
+            generated_stdout, "ok:I64(22)\n",
+            "generated Choose branch must match interpreter result"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_choose_slot_primitive_matches_interpreter_branch() -> Result<(), String> {
+        let workflow = primitive_choose_slot_workflow()?;
+
+        let ir_value = ir_drive_finished_value(&workflow)?;
+        assert_eq!(
+            ir_value,
+            SlotValue::I64(22),
+            "interpreter must take the first true slot branch"
+        );
+
+        let generated_stdout = generated_drive_stdout(&workflow, "choose_slot_primitive", "")?;
+        assert_eq!(
+            generated_stdout, "ok:I64(22)\n",
+            "generated ChooseSlot branch must match interpreter result"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn emit_trybuild_fixture_writes_file_to_disk() -> Result<(), String> {
         // Given a minimal workflow and a temp fixture path
         let workflow = minimal_workflow()?;
@@ -3742,48 +4231,72 @@ mod tests {
     #[test]
     fn unsupported_list_codegen_is_typed_error() -> Result<(), String> {
         let workflow = unsupported_build_list_workflow()?;
-        let error = emit_rust_workflow(&workflow)
-            .err()
-            .ok_or("BuildList workflow unexpectedly generated source")?;
-
-        assert!(matches!(
-            error,
-            CodegenError::UnsupportedIr {
-                feature: "BuildList"
-            }
-        ));
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "BuildList",
+            "unsupported generated Rust IR feature: BuildList",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "BuildList",
+            "unsupported generated Rust IR feature: BuildList",
+        )?;
         Ok(())
     }
 
     #[test]
     fn unsupported_expression_codegen_is_rejected_before_emit() -> Result<(), String> {
         let workflow = unsupported_contains_expression_workflow()?;
-        let error = emit_rust_workflow(&workflow)
-            .err()
-            .ok_or("contains expression workflow unexpectedly generated source")?;
-
-        assert!(matches!(
-            error,
-            CodegenError::UnsupportedIr {
-                feature: "contains"
-            }
-        ));
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "contains",
+            "unsupported generated Rust IR feature: contains",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "contains",
+            "unsupported generated Rust IR feature: contains",
+        )?;
         Ok(())
     }
 
     #[test]
     fn unsupported_accessor_codegen_is_rejected_before_emit() -> Result<(), String> {
         let workflow = unsupported_accessor_traversal_workflow()?;
-        let error = emit_rust_workflow(&workflow)
-            .err()
-            .ok_or("accessor traversal workflow unexpectedly generated source")?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "accessor traversal",
+            "unsupported generated Rust IR feature: accessor traversal",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "accessor traversal",
+            "unsupported generated Rust IR feature: accessor traversal",
+        )?;
+        Ok(())
+    }
 
-        assert!(matches!(
-            error,
-            CodegenError::UnsupportedIr {
-                feature: "accessor traversal"
-            }
-        ));
+    fn assert_unsupported_ir<T>(
+        result: Result<T, CodegenError>,
+        expected_feature: &'static str,
+        expected_message: &'static str,
+    ) -> Result<(), String> {
+        let error = result
+            .err()
+            .ok_or_else(|| format!("{expected_feature} workflow unexpectedly succeeded"))?;
+        let message = error.to_string();
+
+        assert!(
+            matches!(
+                error,
+                CodegenError::UnsupportedIr { feature } if feature == expected_feature
+            ),
+            "unsupported IR must return exact typed feature {expected_feature}, got {message}"
+        );
+        assert_eq!(
+            message, expected_message,
+            "unsupported IR display diagnostic changed"
+        );
         Ok(())
     }
 

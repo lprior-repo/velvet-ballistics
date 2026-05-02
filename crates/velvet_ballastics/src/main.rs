@@ -9,8 +9,11 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const INPUT_MAPPING_FAILED_MESSAGE: &str =
-    "INPUT_MAPPING_FAILED: input-bin must be empty until workflow input decoding is wired";
+const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
+const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
+const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input slot index out of range";
 
 macro_rules! outln {
     ($($arg:tt)*) => {{
@@ -466,12 +469,15 @@ fn cmd_run(
         }
     };
 
-    if !input_data.is_empty() {
-        errln!("{}", INPUT_MAPPING_FAILED_MESSAGE);
-        return ExitCode::FAILURE;
-    }
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            errln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
 
-    run_compiled_workflow(&compiled, &input_data, *durability, db)
+    run_compiled_workflow(&compiled, inputs, *durability, db)
 }
 
 fn cmd_run_compiled(
@@ -505,12 +511,56 @@ fn cmd_run_compiled(
             }
         };
 
-    if !input_data.is_empty() {
-        errln!("{}", INPUT_MAPPING_FAILED_MESSAGE);
-        return ExitCode::FAILURE;
-    }
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            errln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
 
-    run_compiled_workflow(&compiled, &input_data, *durability, db)
+    run_compiled_workflow(&compiled, inputs, *durability, db)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InputMappingError {
+    DecodeFailed,
+    SlotCountExceeded,
+    SlotIndexOutOfRange,
+}
+
+impl std::fmt::Display for InputMappingError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+            Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+            Self::SlotIndexOutOfRange => INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+        })
+    }
+}
+
+fn map_runtime_inputs(
+    compiled: &vb_core::CompiledWorkflow,
+    input_data: &[u8],
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    if input_data.is_empty() {
+        return Ok(Box::from([]));
+    }
+    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+        .map_err(|_| InputMappingError::DecodeFailed)?;
+    if values.len() > usize::from(compiled.slot_count()) {
+        return Err(InputMappingError::SlotCountExceeded);
+    }
+    values
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, value)| {
+            let slot = u16::try_from(index).map_err(|_| InputMappingError::SlotIndexOutOfRange)?;
+            Ok((vb_core::SlotIdx::new(slot), value))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Vec::into_boxed_slice)
 }
 
 fn runtime_journal_for_mode(
@@ -549,7 +599,7 @@ fn open_storage_runtime_journal(
 
 fn run_compiled_workflow(
     compiled: &vb_core::CompiledWorkflow,
-    _input_data: &[u8],
+    inputs: Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>,
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
 ) -> ExitCode {
@@ -565,7 +615,7 @@ fn run_compiled_workflow(
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
 
-    if let Err(e) = runtime.submit_compiled(run_id, compiled.clone()) {
+    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
         errln!("runtime submit error: {e}");
         return ExitCode::FAILURE;
     }
@@ -1149,8 +1199,9 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, INPUT_MAPPING_FAILED_MESSAGE, ParseError, StorageWorkflowResolver,
-        parse_args, run_compiled_workflow,
+        Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StorageWorkflowResolver,
+        map_runtime_inputs, parse_args, run_compiled_workflow,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;
@@ -1272,9 +1323,48 @@ mod tests {
     #[test]
     fn input_mapping_failure_message_uses_stable_code() {
         assert_eq!(
-            INPUT_MAPPING_FAILED_MESSAGE,
-            "INPUT_MAPPING_FAILED: input-bin must be empty until workflow input decoding is wired"
+            INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+            "INPUT_MAPPING_FAILED: input-bin decode failed"
         );
+        assert_eq!(
+            INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+            "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
+        );
+    }
+
+    #[test]
+    fn map_runtime_inputs_decodes_slot_values() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        if let Some(compiled) = compiled {
+            let values: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::Bool(true)]);
+            let payload = postcard::to_allocvec(&values);
+            assert!(payload.is_ok(), "test payload should encode: {payload:?}");
+            let Ok(payload) = payload else {
+                return;
+            };
+            let mapped = map_runtime_inputs(&compiled, &payload);
+            assert!(mapped.is_ok(), "input mapping should decode: {mapped:?}");
+            if let Ok(mapped) = mapped {
+                assert_eq!(
+                    mapped.as_ref(),
+                    &[(vb_core::SlotIdx::ZERO, vb_core::SlotValue::Bool(true))]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn map_runtime_inputs_rejects_malformed_input_bin() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        if let Some(compiled) = compiled {
+            let mapped = map_runtime_inputs(&compiled, b"not-postcard");
+            assert_eq!(
+                mapped.map(|_| ()),
+                Err(super::InputMappingError::DecodeFailed)
+            );
+        }
     }
 
     #[test]
@@ -1285,8 +1375,12 @@ mod tests {
         assert!(dir.is_ok(), "test directory should be available: {dir:?}");
 
         if let (Some(compiled), Ok(dir)) = (compiled, dir) {
-            let code =
-                run_compiled_workflow(&compiled, &[], DurabilityMode::Journaled, Some(dir.path()));
+            let code = run_compiled_workflow(
+                &compiled,
+                Box::from([]),
+                DurabilityMode::Journaled,
+                Some(dir.path()),
+            );
             assert_eq!(code, std::process::ExitCode::SUCCESS);
 
             let journal = vb_storage::FjallJournal::open(dir.path(), None);

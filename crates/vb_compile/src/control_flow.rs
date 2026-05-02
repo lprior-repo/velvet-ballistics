@@ -105,10 +105,27 @@ fn push_successors(table: &StepTable<'_>, index: usize, stack: &mut Vec<usize>) 
         Some(
             StepKindAst::Run { .. }
             | StepKindAst::Save { .. }
+            | StepKindAst::ForEach { .. }
+            | StepKindAst::Collect { .. }
+            | StepKindAst::Reduce { .. }
+            | StepKindAst::Repeat { .. }
             | StepKindAst::Wait { .. }
             | StepKindAst::Ask { .. },
         ) => {
             push_next(table, index, stack);
+        }
+        Some(StepKindAst::Together { branches }) => {
+            push_next(table, index, stack);
+            let mut branch_index = 0usize;
+            while branch_index < branches.len() {
+                if let Some(branch) = branches.get(branch_index) {
+                    stack.push(branch.as_usize());
+                }
+                match branch_index.checked_add(1) {
+                    Some(next) => branch_index = next,
+                    None => return,
+                }
+            }
         }
         Some(StepKindAst::Choose {
             on_true, on_false, ..

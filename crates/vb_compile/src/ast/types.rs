@@ -103,6 +103,16 @@ pub enum StepPrimitiveAst {
     Save,
     /// `choose` branch primitive.
     Choose,
+    /// `for_each` bounded iteration primitive.
+    ForEach,
+    /// `together` bounded fanout primitive.
+    Together,
+    /// `collect` bounded collection primitive.
+    Collect,
+    /// `reduce` bounded reduction primitive.
+    Reduce,
+    /// `repeat` bounded repeat primitive.
+    Repeat,
     /// `wait` boundary primitive.
     Wait,
     /// `ask` boundary primitive.
@@ -135,6 +145,28 @@ pub enum StepKindAst {
         /// Target step when the condition is false.
         on_false: StepIdx,
     },
+    /// Low-level bounded `for_each` primitive.
+    ForEach {
+        input: SlotIdx,
+        item: SlotIdx,
+        limit: u32,
+    },
+    /// Low-level bounded `together` primitive.
+    Together { branches: Vec<StepIdx> },
+    /// Low-level bounded `collect` primitive.
+    Collect {
+        source: SlotIdx,
+        limit: u32,
+        page_size: u32,
+    },
+    /// Low-level bounded `reduce` primitive.
+    Reduce {
+        input: SlotIdx,
+        accumulator: SlotIdx,
+        initial: AstValue,
+    },
+    /// Low-level bounded `repeat` primitive.
+    Repeat { max_attempts: u16 },
     /// Wait boundary primitive.
     Wait {
         /// Deadline or event slot.
