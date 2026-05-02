@@ -93,6 +93,28 @@ pub enum RecoveryError {
         /// Run identifier.
         run: RunId,
     },
+    /// No RunAccepted event found in the journal for the requested run.
+    #[error("no RunAccepted event found for run {run:?} during digest verification")]
+    MissingRunAccepted {
+        /// Run identifier.
+        run: RunId,
+    },
+    /// Deserialized snapshot run does not match the requested run.
+    #[error("snapshot run mismatch: expected {expected:?}, found {found:?}")]
+    SnapshotRunMismatch {
+        /// Expected run identifier.
+        expected: RunId,
+        /// Found run identifier in the deserialized snapshot.
+        found: RunId,
+    },
+    /// Tail event belongs to a different run than the snapshot.
+    #[error("tail event run {event_run:?} does not match snapshot run {snapshot_run:?}")]
+    TailRunMismatch {
+        /// Run from the snapshot.
+        snapshot_run: RunId,
+        /// Run from the tail event.
+        event_run: RunId,
+    },
 }
 
 /// Result alias for recovery operations.
@@ -282,6 +304,9 @@ pub enum DigestCheck {
 }
 
 /// Verifies that the workflow source digest matches the stored record.
+///
+/// Returns `MissingRunAccepted` if no `RunAccepted` event is found in the
+/// journal for the given run, preventing silent digest bypass.
 pub fn check_workflow_source_digest(
     journal: &FjallJournal,
     run: RunId,
@@ -299,7 +324,7 @@ pub fn check_workflow_source_digest(
             return Ok(());
         }
     }
-    Ok(())
+    Err(RecoveryError::MissingRunAccepted { run })
 }
 
 /// Verifies that the compiled IR digest matches the expected value.
@@ -365,18 +390,28 @@ pub fn recover_full_journal(
 
 /// Loads a snapshot from the journal, translating decode failures to
 /// `RecoveryError::CorruptSnapshot`.
+///
+/// After deserialization, verifies that the snapshot's run field matches the
+/// requested run to detect raw key-value manipulation attacks.
 pub fn load_snapshot(
     journal: &FjallJournal,
     run: RunId,
     seq: EventSeq,
 ) -> RecoveryResult<RunSnapshot> {
-    match journal.snapshot(run, seq) {
-        Ok(Some(snapshot)) => Ok(snapshot),
+    let snapshot = match journal.snapshot(run, seq) {
+        Ok(Some(snapshot)) => snapshot,
         Ok(None) | Err(JournalError::PostcardDecodeFailed) => {
-            Err(RecoveryError::CorruptSnapshot { run, seq })
+            return Err(RecoveryError::CorruptSnapshot { run, seq });
         }
-        Err(other) => Err(RecoveryError::Journal(other)),
+        Err(other) => return Err(RecoveryError::Journal(other)),
+    };
+    if snapshot.run != run {
+        return Err(RecoveryError::SnapshotRunMismatch {
+            expected: run,
+            found: snapshot.run,
+        });
     }
+    Ok(snapshot)
 }
 
 /// Replays from a snapshot plus tail events.
@@ -386,9 +421,16 @@ pub fn recover_snapshot_plus_tail(
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<Vec<JournalEvent>> {
-    // Verify snapshot consistency
+    // Verify snapshot consistency and run binding
+    let snapshot_run = snapshot.run;
     let snapshot_seq = snapshot.seq;
     for event in tail_events {
+        if event.run_id() != snapshot_run {
+            return Err(RecoveryError::TailRunMismatch {
+                snapshot_run,
+                event_run: event.run_id(),
+            });
+        }
         if event.seq() <= snapshot_seq {
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
@@ -2174,15 +2216,19 @@ mod tests {
     }
 
     #[test]
-    fn check_workflow_source_digest_returns_ok_when_no_events() {
+    fn check_workflow_source_digest_returns_err_when_no_events() {
         // Given a journal with no events for the run
         // When check_workflow_source_digest is called
-        // Then it returns Ok (no RunAccepted event means no mismatch)
+        // Then it returns MissingRunAccepted (no RunAccepted event means verification fails)
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        check_workflow_source_digest(&journal, RunId::new(500), test_digest(1))
-            .expect("no events should succeed");
+        let result = check_workflow_source_digest(&journal, RunId::new(500), test_digest(1));
+        assert!(
+            matches!(result, Err(RecoveryError::MissingRunAccepted { run }) if run == RunId::new(500)),
+            "expected MissingRunAccepted, got {:?}",
+            result
+        );
     }
 
     // --- Section: Recovery Error Variant Exact-Assertion Tests ---
@@ -3483,11 +3529,10 @@ mod tests {
     }
 
     #[test]
-    fn adversarial_snapshot_plus_tail_events_from_different_run_injected() {
+    fn adversarial_snapshot_plus_tail_events_from_different_run_rejected() {
         // Given a snapshot for run A and a tail event for run B
         // When recover_snapshot_plus_tail replays them
-        // Then replay succeeds (cross-run validation is at a higher layer)
-        // but the returned events carry the different run id
+        // Then replay rejects the cross-run injection with TailRunMismatch
         let snapshot = RunSnapshot {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -3500,12 +3545,18 @@ mod tests {
             step: StepIdx::new(0),
         }];
         let mut tracker = ActionReplayTracker::new();
-        // recover_snapshot_plus_tail does not validate run_id consistency
-        // within the tail -- that is summarize_recovery_events' job
-        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
-            .expect("mixed-run tail events should replay");
-        assert_eq!(replayed.len(), 1);
-        assert_eq!(replayed[0].run_id(), RunId::new(2));
+        let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+        assert!(
+            matches!(
+                result,
+                Err(RecoveryError::TailRunMismatch {
+                    snapshot_run,
+                    event_run,
+                }) if snapshot_run == RunId::new(1) && event_run == RunId::new(2)
+            ),
+            "expected TailRunMismatch, got {:?}",
+            result
+        );
     }
 
     // --- Adversarial: Recovery Hydration Summary Edge Cases ---
@@ -5395,5 +5446,79 @@ mod tests {
             Some(RecoveredStepState::Running),
             "RetryScheduledEvent should produce Running step state"
         );
+    }
+
+    // --- Security tests for recovery hardening ---
+
+    /// SECURITY: check_workflow_source_digest returns MissingRunAccepted when
+    /// the journal has no RunAccepted event, preventing silent bypass.
+    #[test]
+    fn security_check_workflow_digest_rejects_missing_run_accepted() {
+        use crate::{FjallJournal, JournalEvent};
+
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        // Store an event that is NOT RunAccepted
+        let run = RunId::new(999);
+        let event = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+        };
+        journal.append_strict(&event).expect("append");
+        let result = check_workflow_source_digest(&journal, run, test_digest(1));
+        assert!(
+            matches!(result, Err(RecoveryError::MissingRunAccepted { .. })),
+            "expected MissingRunAccepted for run without RunAccepted, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: recover_snapshot_plus_tail rejects tail events from a different run.
+    #[test]
+    fn security_snapshot_plus_tail_rejects_cross_run_injection() {
+        let snapshot = RunSnapshot {
+            run: RunId::new(100),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![],
+        };
+        let tail = vec![JournalEvent::StepStarted {
+            run: RunId::new(200), // different run
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        }];
+        let mut tracker = ActionReplayTracker::new();
+        let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+        assert!(
+            matches!(
+                result,
+                Err(RecoveryError::TailRunMismatch {
+                    snapshot_run,
+                    event_run,
+                }) if snapshot_run == RunId::new(100) && event_run == RunId::new(200)
+            ),
+            "expected TailRunMismatch, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: recover_snapshot_plus_tail accepts tail events from the same run.
+    #[test]
+    fn security_snapshot_plus_tail_accepts_same_run_tail() {
+        let snapshot = RunSnapshot {
+            run: RunId::new(100),
+            seq: EventSeq::new(0),
+            workflow: test_digest(1),
+            slots: vec![],
+        };
+        let tail = vec![JournalEvent::StepStarted {
+            run: RunId::new(100), // same run as snapshot
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        }];
+        let mut tracker = ActionReplayTracker::new();
+        let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+        assert!(result.is_ok(), "same-run tail should be accepted, got {:?}", result);
     }
 }
