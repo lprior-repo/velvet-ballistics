@@ -5,6 +5,10 @@ use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{SlotValue, Taint};
 
 /// Bounded number of steps a caller may execute in one engine slice.
+///
+/// The hard ceiling is [`MAX_STEP_BUDGET`]. Any value provided to [`StepBudget::new`]
+/// that exceeds this ceiling is clamped, and [`StepBudget::try_take`] returns an
+/// error if the internal counter somehow exceeds the ceiling.
 pub struct StepBudget {
     remaining: u64,
 }
@@ -15,14 +19,28 @@ impl StepBudget {
         remaining: MAX_STEP_BUDGET,
     };
 
-    /// Creates a budget. Zero is valid and executes no transitions.
+    /// Creates a budget clamped to the hard ceiling. Zero is valid and
+    /// executes no transitions.
     #[must_use]
     pub const fn new(value: u64) -> Self {
-        Self { remaining: value }
+        Self {
+            remaining: if value > MAX_STEP_BUDGET {
+                MAX_STEP_BUDGET
+            } else {
+                value
+            },
+        }
     }
 
     /// Attempts to consume one transition from the budget.
+    ///
+    /// Returns `Ok(true)` when a transition was consumed, `Ok(false)` when the
+    /// budget is exhausted, and an error if the remaining counter somehow
+    /// exceeds the hard ceiling (a runtime invariant violation).
     pub fn try_take(&mut self) -> Result<bool, EngineError> {
+        if self.remaining > MAX_STEP_BUDGET {
+            return Err(EngineError::StepCounterOverflow);
+        }
         if self.remaining == 0 {
             Ok(false)
         } else {

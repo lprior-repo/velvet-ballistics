@@ -3652,4 +3652,61 @@ mod tests {
         ensure_equal(value, SlotValue::I64(7))?;
         ensure_equal(taint, Taint::DerivedFromSecret)
     }
+
+    // =========================================================================
+    // Phase 45 tests — StepBudget ceiling enforcement
+    // =========================================================================
+
+    #[test]
+    fn step_budget_new_clamps_to_hard_ceiling() -> Result<(), String> {
+        let ceiling = crate::limits::MAX_STEP_BUDGET;
+        // Request far more than the ceiling
+        let budget = StepBudget::new(u64::MAX);
+        ensure_equal(budget.remaining(), ceiling)?;
+        // Exact ceiling is allowed
+        let budget_at_ceiling = StepBudget::new(ceiling);
+        ensure_equal(budget_at_ceiling.remaining(), ceiling)?;
+        // Below ceiling is passed through
+        let budget_below = StepBudget::new(ceiling.saturating_sub(1));
+        ensure_equal(budget_below.remaining(), ceiling.saturating_sub(1))?;
+        Ok(())
+    }
+
+    #[test]
+    fn step_budget_max_equals_hard_ceiling() -> Result<(), String> {
+        let ceiling = crate::limits::MAX_STEP_BUDGET;
+        ensure_equal(StepBudget::MAX.remaining(), ceiling)?;
+        Ok(())
+    }
+
+    #[test]
+    fn step_budget_new_zero_allows_no_transitions() -> Result<(), String> {
+        let mut budget = StepBudget::new(0);
+        ensure_equal(
+            budget.try_take().map_err(|e| e.to_string())?,
+            false,
+        )?;
+        ensure_equal(budget.remaining(), 0)?;
+        Ok(())
+    }
+
+    #[test]
+    fn step_budget_exhausts_after_exact_count() -> Result<(), String> {
+        let count: u64 = 5;
+        let mut budget = StepBudget::new(count);
+        for i in 0..count {
+            ensure_equal(
+                budget.try_take().map_err(|e| e.to_string())?,
+                true,
+            )?;
+            ensure_equal(budget.remaining(), count.saturating_sub(i.saturating_add(1)))?;
+        }
+        // Now exhausted
+        ensure_equal(
+            budget.try_take().map_err(|e| e.to_string())?,
+            false,
+        )?;
+        ensure_equal(budget.remaining(), 0)?;
+        Ok(())
+    }
 }

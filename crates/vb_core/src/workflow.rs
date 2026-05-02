@@ -3968,4 +3968,48 @@ mod proptests {
             max_journal_batch_bytes: 1,
         }
     }
+
+    // =========================================================================
+    // Phase 45 tests — ResourceContract default values
+    // =========================================================================
+
+    #[test]
+    fn resource_contract_default_has_reasonable_max_steps() {
+        assert_eq!(ResourceContract::DEFAULT.max_steps, 10_000);
+    }
+
+    #[test]
+    fn resource_contract_default_has_reasonable_max_slots() {
+        assert_eq!(ResourceContract::DEFAULT.max_slots, 1_024);
+    }
+
+    #[test]
+    fn resource_contract_default_has_reasonable_max_fanout() {
+        assert_eq!(ResourceContract::DEFAULT.max_fanout, 64);
+    }
+
+    #[test]
+    fn resource_contract_default_has_reasonable_step_budget_per_tick() {
+        assert_eq!(ResourceContract::DEFAULT.max_step_budget_per_tick, 10_000);
+    }
+
+    #[test]
+    fn resource_contract_default_max_steps_is_not_u16_max() {
+        assert_ne!(ResourceContract::DEFAULT.max_steps, u16::MAX);
+    }
+
+    #[test]
+    fn resource_contract_default_max_slots_is_not_u16_max() {
+        assert_ne!(ResourceContract::DEFAULT.max_slots, u16::MAX);
+    }
+
+    #[test]
+    fn resource_contract_default_max_fanout_is_not_u16_max() {
+        assert_ne!(ResourceContract::DEFAULT.max_fanout, u16::MAX);
+    }
+
+    #[test]
+    fn resource_contract_default_max_retry_attempts_is_not_u16_max() {
+        assert_ne!(ResourceContract::DEFAULT.max_retry_attempts, u16::MAX);
+    }
 }
