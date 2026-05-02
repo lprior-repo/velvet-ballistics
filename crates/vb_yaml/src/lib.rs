@@ -20,6 +20,15 @@ pub mod events;
 pub mod profile;
 pub mod source_map;
 
+// AST submodules - split from ast.rs to enforce 300-line limit
+pub mod types;
+pub mod workflow_ast;
+pub mod step;
+pub mod step_parsing;
+pub mod step_primitive_parsing;
+pub mod step_metadata_parsing;
+pub mod trigger_ast;
+
 use thiserror::Error;
 
 /// YAML parsing error type.
