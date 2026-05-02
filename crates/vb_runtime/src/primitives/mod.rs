@@ -5,5 +5,6 @@ pub mod for_each;
 pub(crate) mod helpers;
 pub mod reduce;
 pub mod repeat;
+pub mod retry;
 pub mod together;
 pub mod wait_ask;
