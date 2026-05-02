@@ -630,6 +630,8 @@ mod tests {
     use super::*;
     use vb_core::ConstIdx;
     use vb_core::action::Idempotency;
+    use vb_core::action::RetrySafety;
+    use vb_core::action::SideEffect;
     use vb_core::engine::EngineSignal;
     use vb_core::errors::EngineError;
     use vb_core::value::SlotValue;
@@ -806,6 +808,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry_contracts: Vec<ActionContract> = vec![
             ActionContract {
@@ -2106,6 +2110,8 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
         };
         let registry: Vec<ActionContract> = vec![
             ActionContract {
