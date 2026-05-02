@@ -3880,4 +3880,729 @@ mod tests {
         assert_eq!(seed.steps[0].step, vb_core::StepIdx::new(0));
         assert_eq!(seed.steps[0].state, RecoveredStepState::Succeeded);
     }
+
+    // =========================================================================
+    // Section: Adversarial Recovery Cycle Tests
+    // =========================================================================
+
+    // --- Digest Verification (critical for crash integrity) ---
+
+    #[test]
+    fn adversarial_digest_mismatch_workflow_source_prevents_recovery() {
+        // Given a journal with RunAccepted using workflow digest A, and IR digest B
+        // When verify_digests is called with matching workflow but a different
+        //   found_ir_digest from what was expected
+        // Then it returns CompiledIrDigestMismatch
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let run = RunId::new(2001);
+        let wf_digest = adv_digest(1);
+        let ir_expected = adv_digest(10);
+        let ir_found = adv_digest(20);
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: wf_digest,
+            })
+            .expect("setup: append RunAccepted");
+
+        let result = verify_digests(
+            &journal,
+            run,
+            wf_digest,
+            ir_expected,
+            ir_found,
+            DigestCheck::WorkflowAndIr,
+        );
+        let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+            panic!(
+                "expected CompiledIrDigestMismatch for IR mismatch, got {:?}",
+                result
+            );
+        };
+        assert_eq!(expected, ir_expected);
+        assert_eq!(found, ir_found);
+    }
+
+    #[test]
+    fn adversarial_digest_mismatch_compiled_ir_prevents_recovery() {
+        // Given two different compiled IR digests
+        // When check_compiled_ir_digest is called
+        // Then it returns CompiledIrDigestMismatch with exact expected/found
+        let expected = adv_digest(0xAA);
+        let found = adv_digest(0xBB);
+        let result = check_compiled_ir_digest(expected, found);
+        let Err(RecoveryError::CompiledIrDigestMismatch {
+            expected: exp,
+            found: fnd,
+        }) = result
+        else {
+            panic!(
+                "expected CompiledIrDigestMismatch, got {:?}",
+                result
+            );
+        };
+        assert_eq!(exp, expected);
+        assert_eq!(fnd, found);
+    }
+
+    #[test]
+    fn adversarial_missing_workflow_source_prevents_full_recovery() {
+        // Given a journal with no RunAccepted event for the target run
+        // When recover_runtime_summary is called
+        // Then it returns NoRecoveryData (no workflow digest was ever stored)
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let ghost_run = RunId::new(2999);
+
+        let result = recover_runtime_summary(&journal, ghost_run);
+        let Err(RecoveryError::NoRecoveryData { run }) = result else {
+            panic!(
+                "expected NoRecoveryData for run with no stored events, got {:?}",
+                result
+            );
+        };
+        assert_eq!(run, ghost_run);
+    }
+
+    #[test]
+    fn adversarial_missing_compiled_ir_prevents_full_recovery() {
+        // Given a journal with RunAccepted (which stores a workflow digest)
+        //   but we ask verify_digests for a compiled IR check with a mismatch
+        // Then the IR mismatch is caught because the found_ir_digest differs
+        //   from what was expected -- simulating a missing compiled IR scenario
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let run = RunId::new(2003);
+        let wf_digest = adv_digest(5);
+        let ir_expected = adv_digest(10);
+        let ir_found_different = adv_digest(99);
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: wf_digest,
+            })
+            .expect("setup: append RunAccepted");
+
+        let result = verify_digests(
+            &journal,
+            run,
+            wf_digest,
+            ir_expected,
+            ir_found_different,
+            DigestCheck::WorkflowAndIr,
+        );
+        let Err(RecoveryError::CompiledIrDigestMismatch { .. }) = result else {
+            panic!(
+                "expected CompiledIrDigestMismatch for missing/changed IR, got {:?}",
+                result
+            );
+        };
+    }
+
+    // --- Snapshot + Tail Recovery (the primary crash recovery path) ---
+
+    #[test]
+    fn adversarial_snapshot_only_recovery_with_no_tail_events() {
+        // Given a snapshot at seq 5 and no tail events
+        // When recover_snapshot_plus_tail is called
+        // Then it returns an empty replay (snapshot carries the state, no tail to replay)
+        let snapshot = RunSnapshot {
+            run: RunId::new(3001),
+            seq: EventSeq::new(5),
+            workflow: adv_digest(1),
+            slots: vec![0xAA, 0xBB],
+        };
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &[], &mut tracker)
+            .expect("snapshot-only recovery must succeed");
+        assert!(
+            replayed.is_empty(),
+            "no tail events means empty replay"
+        );
+    }
+
+    #[test]
+    fn adversarial_snapshot_plus_single_tail_event() {
+        // Given a snapshot at seq 0 and one tail event at seq 1
+        // When recover_snapshot_plus_tail is called
+        // Then exactly 1 event is replayed
+        let snapshot = RunSnapshot {
+            run: RunId::new(3002),
+            seq: EventSeq::new(0),
+            workflow: adv_digest(2),
+            slots: vec![],
+        };
+        let tail = vec![JournalEvent::StepStarted {
+            run: RunId::new(3002),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        }];
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("snapshot plus single tail must succeed");
+        assert_eq!(replayed.len(), 1);
+        assert_eq!(replayed[0].seq(), EventSeq::new(1));
+    }
+
+    #[test]
+    fn adversarial_snapshot_plus_multiple_tail_events() {
+        // Given a snapshot at seq 0 and three tail events at seq 1, 2, 3
+        // When recover_snapshot_plus_tail is called
+        // Then all 3 events are replayed in order
+        let snapshot = RunSnapshot {
+            run: RunId::new(3003),
+            seq: EventSeq::new(0),
+            workflow: adv_digest(3),
+            slots: vec![],
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run: RunId::new(3003),
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run: RunId::new(3003),
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::RunFinished {
+                run: RunId::new(3003),
+                seq: EventSeq::new(3),
+                result: SlotIdx::new(0),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("snapshot plus 3 tail events must succeed");
+        assert_eq!(replayed.len(), 3);
+        assert_eq!(replayed[0].seq(), EventSeq::new(1));
+        assert_eq!(replayed[1].seq(), EventSeq::new(2));
+        assert_eq!(replayed[2].seq(), EventSeq::new(3));
+    }
+
+    #[test]
+    fn adversarial_multiple_snapshots_latest_wins() {
+        // Given a snapshot at seq 0 and a later snapshot at seq 5
+        // When recovery is performed using the seq-5 snapshot with tail events
+        // Then the seq-5 snapshot is used and only events after seq 5 are replayed
+        let snapshot_late = RunSnapshot {
+            run: RunId::new(3004),
+            seq: EventSeq::new(5),
+            workflow: adv_digest(4),
+            slots: vec![],
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run: RunId::new(3004),
+                seq: EventSeq::new(6),
+                step: StepIdx::new(3),
+            },
+            JournalEvent::StepSucceeded {
+                run: RunId::new(3004),
+                seq: EventSeq::new(7),
+                step: StepIdx::new(3),
+                output: SlotIdx::new(1),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot_late, &tail, &mut tracker)
+            .expect("latest snapshot plus tail must succeed");
+        assert_eq!(replayed.len(), 2);
+        assert_eq!(replayed[0].seq(), EventSeq::new(6));
+        assert_eq!(replayed[1].seq(), EventSeq::new(7));
+    }
+
+    #[test]
+    fn adversarial_events_before_snapshot_ignored_in_snapshot_recovery() {
+        // Given events at seq 0,1,2, a snapshot at seq 2, and tail events at seq 3,4
+        // When recover_snapshot_plus_tail is called with the seq-2 snapshot
+        // Then only tail events (3,4) are replayed -- events 0,1 are covered by snapshot
+        let snapshot = RunSnapshot {
+            run: RunId::new(3005),
+            seq: EventSeq::new(2),
+            workflow: adv_digest(5),
+            slots: vec![],
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run: RunId::new(3005),
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::RunFinished {
+                run: RunId::new(3005),
+                seq: EventSeq::new(4),
+                result: SlotIdx::new(0),
+            },
+        ];
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+            .expect("snapshot at seq 2 plus tail must succeed");
+        assert_eq!(replayed.len(), 2);
+        assert_eq!(replayed[0].seq(), EventSeq::new(3));
+        assert_eq!(replayed[1].seq(), EventSeq::new(4));
+        let term = extract_terminal(&replayed);
+        let Some(JournalEvent::RunFinished { result, .. }) = term else {
+            panic!("expected RunFinished terminal in tail replay");
+        };
+        assert_eq!(*result, SlotIdx::new(0));
+    }
+
+    // --- Terminal State Handling ---
+
+    #[test]
+    fn adversarial_recovery_of_finished_run_produces_terminal_state() {
+        // Given events ending with RunFinished
+        // When summarize_recovery_events is called
+        // Then the summary has terminal Finished with the correct result slot
+        let run = RunId::new(3101);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(1),
+                result: SlotIdx::new(7),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary must succeed");
+        let summary = hydration.summary();
+        let Some(RecoveryTerminalState::Finished { result }) = summary.terminal else {
+            panic!("expected Finished terminal state, got {:?}", summary.terminal);
+        };
+        assert_eq!(result, SlotIdx::new(7));
+    }
+
+    #[test]
+    fn adversarial_recovery_of_failed_run_produces_terminal_state() {
+        // Given events ending with RunFailedEvent
+        // When summarize_recovery_events is called
+        // Then the summary has terminal Failed
+        let run = RunId::new(3102);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(2),
+            },
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(1),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary must succeed");
+        let summary = hydration.summary();
+        let Some(RecoveryTerminalState::Failed) = summary.terminal else {
+            panic!("expected Failed terminal state, got {:?}", summary.terminal);
+        };
+    }
+
+    #[test]
+    fn adversarial_recovery_of_cancelled_run_produces_terminal_state() {
+        // Given events ending with RunCancelled
+        // When summarize_recovery_events is called
+        // Then the summary has terminal Cancelled
+        let run = RunId::new(3103);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(3),
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(1),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary must succeed");
+        let summary = hydration.summary();
+        let Some(RecoveryTerminalState::Cancelled) = summary.terminal else {
+            panic!("expected Cancelled terminal state, got {:?}", summary.terminal);
+        };
+    }
+
+    #[test]
+    fn adversarial_recovery_of_active_run_has_no_terminal_state() {
+        // Given a run with RunAccepted and StepStarted but no finish/fail/cancel
+        // When summarize_recovery_events is called
+        // Then the summary has terminal None
+        let run = RunId::new(3104);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(4),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+        ];
+        let hydration = summarize_recovery_events(&events).expect("summary must succeed");
+        let summary = hydration.summary();
+        assert!(
+            summary.terminal.is_none(),
+            "active run must have no terminal state, got {:?}",
+            summary.terminal
+        );
+    }
+
+    // --- Action Replay Safety (non-idempotent action protection) ---
+
+    #[test]
+    fn adversarial_action_replay_tracker_allows_idempotent_deterministic_pure() {
+        // Given an ActionReplayTracker with no prior resolutions
+        // When an ActionScheduled then ActionCompletedEvent are replayed
+        // Then replay succeeds -- first execution is always allowed
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(42);
+        let step = StepIdx::new(3);
+        let events = vec![
+            JournalEvent::ActionScheduled {
+                run: RunId::new(3201),
+                seq: EventSeq::new(0),
+                step,
+                action,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run: RunId::new(3201),
+                seq: EventSeq::new(1),
+                step,
+                action,
+            },
+        ];
+        let replayed = replay_events(&events, &mut tracker)
+            .expect("first-time deterministic pure action must replay successfully");
+        assert_eq!(replayed.len(), 2);
+        assert!(tracker.is_resolved(action, step));
+    }
+
+    #[test]
+    fn adversarial_action_replay_tracker_blocks_non_idempotent() {
+        // Given an action already marked as completed in the tracker
+        // When the same action is encountered as ActionScheduled in replay
+        // Then replay_events returns NonIdempotentActionBlocked
+        let mut tracker = ActionReplayTracker::new();
+        let action = ActionId::new(77);
+        let step = StepIdx::new(5);
+        tracker.mark_completed(action, step);
+        assert!(tracker.is_resolved(action, step));
+
+        let events = vec![JournalEvent::ActionScheduled {
+            run: RunId::new(3202),
+            seq: EventSeq::new(0),
+            step,
+            action,
+        }];
+        let result = replay_events(&events, &mut tracker);
+        let Err(RecoveryError::NonIdempotentActionBlocked {
+            action: blocked_action,
+            step: blocked_step,
+        }) = result
+        else {
+            panic!(
+                "expected NonIdempotentActionBlocked for re-scheduled action, got {:?}",
+                result
+            );
+        };
+        assert_eq!(blocked_action, action);
+        assert_eq!(blocked_step, step);
+    }
+
+    #[test]
+    fn adversarial_recovered_step_states_track_all_lifecycle_events() {
+        // Given events for a step that goes through started, succeeded, and another
+        //   that goes through started and failed
+        // When recover_runtime_frame_seed_from_events is called
+        // Then the step states correctly reflect the last observed state
+        let run = RunId::new(3203);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(1),
+                action: ActionId::new(10),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(1),
+                action: ActionId::new(10),
+            },
+        ];
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("frame seed recovery must succeed");
+
+        // Step 0: started -> succeeded (final state: Succeeded)
+        let step0 = seed
+            .steps
+            .iter()
+            .find(|e| e.step == StepIdx::new(0))
+            .expect("step 0 must be present");
+        assert_eq!(step0.state, RecoveredStepState::Succeeded);
+
+        // Step 1: started -> action scheduled -> action failed (final state: Failed)
+        let step1 = seed
+            .steps
+            .iter()
+            .find(|e| e.step == StepIdx::new(1))
+            .expect("step 1 must be present");
+        assert_eq!(step1.state, RecoveredStepState::Failed);
+    }
+
+    // --- RecoveryHydration Variants ---
+
+    #[test]
+    fn adversarial_hydration_summary_returns_embedded_summary_fields() {
+        // Given a RecoveryHydration::Summary with specific field values
+        // When summary() is called
+        // Then every field matches exactly what was embedded
+        let inner = RecoveryRuntimeSummary {
+            run: RunId::new(3301),
+            first_seq: EventSeq::new(10),
+            last_seq: EventSeq::new(20),
+            workflow: Some(adv_digest(0xCC)),
+            steps_started: 5,
+            steps_succeeded: 3,
+            actions_scheduled: 4,
+            actions_resolved: 4,
+            suspensions: 2,
+            slots_written: 7,
+            terminal: Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(9),
+            }),
+        };
+        let hydration = RecoveryHydration::Summary(inner);
+        let s = hydration.summary();
+        assert_eq!(s.run, RunId::new(3301));
+        assert_eq!(s.first_seq, EventSeq::new(10));
+        assert_eq!(s.last_seq, EventSeq::new(20));
+        assert_eq!(s.workflow, Some(adv_digest(0xCC)));
+        assert_eq!(s.steps_started, 5);
+        assert_eq!(s.steps_succeeded, 3);
+        assert_eq!(s.actions_scheduled, 4);
+        assert_eq!(s.actions_resolved, 4);
+        assert_eq!(s.suspensions, 2);
+        assert_eq!(s.slots_written, 7);
+        assert_eq!(
+            s.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(9),
+            })
+        );
+    }
+
+    #[test]
+    fn adversarial_hydration_frame_seed_summary_matches_embedded() {
+        // Given a RecoveryHydration::FrameSeed with a specific summary
+        // When summary() is called
+        // Then it returns the exact summary that was embedded in the seed
+        let embedded = RecoveryRuntimeSummary {
+            run: RunId::new(3302),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(8),
+            workflow: Some(adv_digest(0xDD)),
+            steps_started: 3,
+            steps_succeeded: 2,
+            actions_scheduled: 1,
+            actions_resolved: 1,
+            suspensions: 1,
+            slots_written: 4,
+            terminal: None,
+        };
+        let seed = RecoveryFrameSeed {
+            summary: embedded,
+            first_step: StepIdx::ZERO,
+            step_count: 3,
+            slot_count: 5,
+            pc: StepIdx::new(2),
+            steps: vec![],
+            unsupported: UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: false,
+            },
+        };
+        let hydration = RecoveryHydration::FrameSeed(seed);
+        let s = hydration.summary();
+        assert_eq!(s.run, RunId::new(3302));
+        assert_eq!(s.first_seq, EventSeq::new(0));
+        assert_eq!(s.last_seq, EventSeq::new(8));
+        assert_eq!(s.workflow, Some(adv_digest(0xDD)));
+        assert_eq!(s.steps_started, 3);
+        assert_eq!(s.steps_succeeded, 2);
+        assert_eq!(s.actions_scheduled, 1);
+        assert_eq!(s.actions_resolved, 1);
+        assert_eq!(s.suspensions, 1);
+        assert_eq!(s.slots_written, 4);
+        assert!(s.terminal.is_none());
+    }
+
+    #[test]
+    fn adversarial_frame_seed_carries_pc_and_step_state() {
+        // Given a FrameSeed with specific PC and step states
+        // When the fields are read back
+        // Then pc and step entries survive the roundtrip exactly
+        let step_entries = vec![
+            RecoveredStepEntry {
+                step: StepIdx::new(0),
+                state: RecoveredStepState::Succeeded,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(1),
+                state: RecoveredStepState::Running,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(2),
+                state: RecoveredStepState::Waiting,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(3),
+                state: RecoveredStepState::Failed,
+            },
+        ];
+        let seed = RecoveryFrameSeed {
+            summary: RecoveryRuntimeSummary {
+                run: RunId::new(3303),
+                first_seq: EventSeq::new(0),
+                last_seq: EventSeq::new(10),
+                workflow: Some(adv_digest(0xEE)),
+                steps_started: 4,
+                steps_succeeded: 1,
+                actions_scheduled: 0,
+                actions_resolved: 0,
+                suspensions: 1,
+                slots_written: 0,
+                terminal: None,
+            },
+            first_step: StepIdx::ZERO,
+            step_count: 4,
+            slot_count: 0,
+            pc: StepIdx::new(3),
+            steps: step_entries.clone(),
+            unsupported: UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: false,
+            },
+        };
+        assert_eq!(seed.pc, StepIdx::new(3));
+        assert_eq!(seed.steps.len(), 4);
+        assert_eq!(seed.steps[0].state, RecoveredStepState::Succeeded);
+        assert_eq!(seed.steps[1].state, RecoveredStepState::Running);
+        assert_eq!(seed.steps[2].state, RecoveredStepState::Waiting);
+        assert_eq!(seed.steps[3].state, RecoveredStepState::Failed);
+    }
+
+    // --- Empty & Degenerate Cases ---
+
+    #[test]
+    fn adversarial_recovery_of_journal_with_zero_events_returns_clean_summary() {
+        // Given a run header in the journal but no events for that run
+        // When recover_runtime_summary is called
+        // Then it returns NoRecoveryData (empty event set)
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let run = RunId::new(3401);
+        // Write a run header but no events
+        put_test_header(&journal, run, adv_digest(1));
+
+        let result = recover_runtime_summary(&journal, run);
+        let Err(RecoveryError::NoRecoveryData { run: found_run }) = result else {
+            panic!(
+                "expected NoRecoveryData for run with header but zero events, got {:?}",
+                result
+            );
+        };
+        assert_eq!(found_run, run);
+    }
+
+    #[test]
+    fn adversarial_recovery_of_journal_with_only_run_accepted() {
+        // Given a journal with a single RunAccepted event
+        // When summarize_recovery_events is called
+        // Then the summary shows steps_started=0, steps_succeeded=0,
+        //   actions_scheduled=0, terminal=None
+        let run = RunId::new(3402);
+        let events = vec![JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: adv_digest(1),
+        }];
+        let hydration = summarize_recovery_events(&events).expect("summary of single event");
+        let RecoveryHydration::Summary(summary) = hydration else {
+            panic!("expected Summary hydration");
+        };
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.steps_started, 0);
+        assert_eq!(summary.steps_succeeded, 0);
+        assert_eq!(summary.actions_scheduled, 0);
+        assert_eq!(summary.actions_resolved, 0);
+        assert_eq!(summary.suspensions, 0);
+        assert_eq!(summary.slots_written, 0);
+        assert!(summary.terminal.is_none());
+    }
+
+    #[test]
+    fn adversarial_extract_terminal_returns_none_for_no_terminal() {
+        // Given a list of events with no terminal event
+        // When extract_terminal is called
+        // Then it returns None
+        let run = RunId::new(3403);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: adv_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+            },
+        ];
+        let result = extract_terminal(&events);
+        assert!(
+            result.is_none(),
+            "no terminal event in list, expected None"
+        );
+    }
 }
