@@ -3,7 +3,7 @@ use std::io;
 use vb_codegen::CodegenError;
 use vb_compile::{CompileError, SourceMark};
 use vb_core::{
-    ActionError, ActionId, BlobId, Capability, CapabilitySet, ConstIdx, CoreError,
+    ActionError, ActionId, BlobId, ConstIdx, CoreError,
     DiagnosticCode, DiagnosticCodeParseError, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx,
     SymbolId, WorkflowDigest, WorkflowError,
 };
@@ -12,6 +12,7 @@ use vb_ipc::IpcError;
 use vb_ipc::client::IpcClientError;
 use vb_ipc::server::{IpcServerError, WorkflowResolutionError};
 use vb_runtime::RuntimeError;
+use vb_runtime::admission::AdmissionError;
 use vb_runtime::engine::RuntimeEngineError;
 use vb_storage::recovery::RecoveryError;
 use vb_storage::{EventSeq, JournalError};
@@ -22,21 +23,21 @@ use vb_yaml::YamlError;
 fn validation_errors_map_every_public_variant_to_an_exact_code() {
     let validation = validation_error_codes();
     assert_unique_codes(&validation);
-    assert_eq!(validation.len(), 36);
+    assert_eq!(validation.len(), 48);
 }
 
 #[test]
 fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
-    assert_eq!(core.len(), 35);
+    assert_eq!(core.len(), 34);
 }
 
 #[test]
 fn runtime_errors_map_every_public_variant_to_an_exact_code() {
     let runtime = runtime_error_codes();
     assert_unique_codes(&runtime);
-    assert_eq!(runtime.len(), 16);
+    assert_eq!(runtime.len(), 17);
 }
 
 #[test]
@@ -50,7 +51,7 @@ fn ipc_errors_map_every_public_variant_to_an_exact_code() {
 fn journal_errors_map_every_public_variant_to_an_exact_code() {
     let journal = journal_error_codes();
     assert_unique_codes(&journal);
-    assert_eq!(journal.len(), 22);
+    assert_eq!(journal.len(), 25);
 }
 
 #[test]
@@ -91,6 +92,11 @@ fn codegen_public_constructible_errors_have_exhaustive_variant_audits() {
 #[test]
 fn runtime_engine_public_constructible_errors_have_exhaustive_variant_audits() {
     assert_eq!(runtime_engine_variant_count(), 4);
+}
+
+#[test]
+fn admission_public_constructible_errors_have_exhaustive_variant_audits() {
+    assert_eq!(admission_variant_count(), 2);
 }
 
 #[test]
@@ -192,6 +198,53 @@ fn validation_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         ValidationError::LimitExceeded { resource: s("r") },
         ValidationError::UnsupportedTrigger { trigger: s("t") },
         ValidationError::HttpTriggerOutOfCore,
+        ValidationError::ExpressionStackExceeded {
+            declared: 2,
+            limit: 1,
+        },
+        ValidationError::ExpressionStackMismatch {
+            expr_index: 0,
+            declared: 1,
+            computed: 2,
+        },
+        ValidationError::AccessorSlotOutOfRange {
+            accessor_index: 0,
+            slot: 2,
+            slot_count: 1,
+        },
+        ValidationError::AccessorPathInvalid {
+            accessor_index: 0,
+            segment_index: 0,
+        },
+        ValidationError::SlotReferenceOutOfRange {
+            slot: 2,
+            slot_count: 1,
+            context: s("ctx"),
+        },
+        ValidationError::LoopBodyStepOutOfRange {
+            step: 0,
+            node_count: 1,
+            source_node: 0,
+            label: s("l"),
+        },
+        ValidationError::SlotDependencyCycle {
+            slot: 0,
+            chain: s("c"),
+        },
+        ValidationError::NodeKindConstraintViolation {
+            node_index: 0,
+            detail: s("d"),
+        },
+        ValidationError::ActionContractMissing {
+            action_id: 0,
+            node_index: 0,
+        },
+        ValidationError::ActionContractOrphan { action_id: 0 },
+        ValidationError::SlotTypeInconsistency { slot: 0 },
+        ValidationError::NonDeterministicPath {
+            from_node: 0,
+            to_node: 1,
+        },
     ];
     samples
         .iter()
@@ -242,6 +295,18 @@ fn validation_error_variant_name(error: &ValidationError) -> &'static str {
         ValidationError::LimitExceeded { .. } => "LimitExceeded",
         ValidationError::UnsupportedTrigger { .. } => "UnsupportedTrigger",
         ValidationError::HttpTriggerOutOfCore => "HttpTriggerOutOfCore",
+        ValidationError::ExpressionStackExceeded { .. } => "ExpressionStackExceeded",
+        ValidationError::ExpressionStackMismatch { .. } => "ExpressionStackMismatch",
+        ValidationError::AccessorSlotOutOfRange { .. } => "AccessorSlotOutOfRange",
+        ValidationError::AccessorPathInvalid { .. } => "AccessorPathInvalid",
+        ValidationError::SlotReferenceOutOfRange { .. } => "SlotReferenceOutOfRange",
+        ValidationError::LoopBodyStepOutOfRange { .. } => "LoopBodyStepOutOfRange",
+        ValidationError::SlotDependencyCycle { .. } => "SlotDependencyCycle",
+        ValidationError::NodeKindConstraintViolation { .. } => "NodeKindConstraintViolation",
+        ValidationError::ActionContractMissing { .. } => "ActionContractMissing",
+        ValidationError::ActionContractOrphan { .. } => "ActionContractOrphan",
+        ValidationError::SlotTypeInconsistency { .. } => "SlotTypeInconsistency",
+        ValidationError::NonDeterministicPath { .. } => "NonDeterministicPath",
     }
 }
 
@@ -300,11 +365,6 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
         CoreError::BudgetExceeded { budget: "b", limit: 1 },
-        CoreError::CapabilityDenied {
-            action: ActionId::new(1),
-            required: Capability::Action(ActionId::new(1)),
-            granted: CapabilitySet::empty(),
-        },
     ];
     samples
         .iter()
@@ -352,7 +412,6 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
         CoreError::BudgetExceeded { .. } => "BudgetExceeded",
-        CoreError::CapabilityDenied { .. } => "CapabilityDenied",
     }
 }
 
@@ -377,6 +436,9 @@ fn runtime_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
             max: 65536,
         },
         RuntimeError::ActiveRunCapacityZero,
+        RuntimeError::AdmissionArtifactNotFound {
+            digest: WorkflowDigest::from_bytes([0; 32]),
+        },
     ];
     samples
         .iter()
@@ -402,6 +464,7 @@ fn runtime_error_variant_name(error: &RuntimeError) -> &'static str {
         RuntimeError::InvalidRecoveryHydration => "InvalidRecoveryHydration",
         RuntimeError::CommandQueueCapacityExceeded { .. } => "CommandQueueCapacityExceeded",
         RuntimeError::ActiveRunCapacityZero => "ActiveRunCapacityZero",
+        RuntimeError::AdmissionArtifactNotFound { .. } => "AdmissionArtifactNotFound",
     }
 }
 
@@ -484,6 +547,11 @@ fn journal_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         JournalError::UnexpectedEof,
         JournalError::PostcardDecodeFailed,
         JournalError::QueueShutdown,
+        JournalError::ArtifactMalformed,
+        JournalError::ArtifactChecksumMismatch,
+        JournalError::ArtifactNotFound {
+            digest: WorkflowDigest::from_bytes([0; 32]),
+        },
     ];
     std::iter::once((JournalError::FJALL_CODE, "Fjall"))
         .chain(std::iter::once((JournalError::ENCODE_CODE, "Encode")))
@@ -519,6 +587,9 @@ fn journal_error_variant_name(error: &JournalError) -> &'static str {
         JournalError::UnexpectedEof => "UnexpectedEof",
         JournalError::PostcardDecodeFailed => "PostcardDecodeFailed",
         JournalError::QueueShutdown => "QueueShutdown",
+        JournalError::ArtifactMalformed => "ArtifactMalformed",
+        JournalError::ArtifactChecksumMismatch => "ArtifactChecksumMismatch",
+        JournalError::ArtifactNotFound { .. } => "ArtifactNotFound",
     }
 }
 
@@ -1177,6 +1248,27 @@ fn recovery_error_variant_name(error: &RecoveryError) -> &'static str {
         RecoveryError::CorruptSnapshot { .. } => "CorruptSnapshot",
         RecoveryError::TerminalStateMismatch { .. } => "TerminalStateMismatch",
         RecoveryError::FrameDimensionOverflow { .. } => "FrameDimensionOverflow",
+    }
+}
+
+fn admission_variant_count() -> usize {
+    let samples = [
+        AdmissionError::ArtifactNotFound {
+            digest: WorkflowDigest::from_bytes([0; 32]),
+        },
+        AdmissionError::CapabilityDenied {
+            action: ActionId::new(1),
+            required: vb_core::capability::Capability::Action(ActionId::new(1)),
+            granted: vb_core::capability::CapabilitySet::empty(),
+        },
+    ];
+    samples.iter().map(admission_error_variant_name).count()
+}
+
+fn admission_error_variant_name(error: &AdmissionError) -> &'static str {
+    match error {
+        AdmissionError::ArtifactNotFound { .. } => "ArtifactNotFound",
+        AdmissionError::CapabilityDenied { .. } => "CapabilityDenied",
     }
 }
 

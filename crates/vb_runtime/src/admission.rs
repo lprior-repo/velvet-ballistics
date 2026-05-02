@@ -5,6 +5,7 @@
 //! the reasons a submit may be rejected at the admission gate.
 
 use std::sync::Arc;
+use thiserror::Error;
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
@@ -64,14 +65,16 @@ impl RunAdmission {
 }
 
 /// Errors that can occur during run admission.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum AdmissionError {
     /// The required compiled artifact was not found in the journal.
+    #[error("admission rejected: compiled artifact not found for digest {digest:?}")]
     ArtifactNotFound {
         /// Digest of the artifact that was expected.
         digest: WorkflowDigest,
     },
     /// The run requires a capability that was not granted.
+    #[error("admission rejected: capability denied for action {action:?}")]
     CapabilityDenied {
         /// Action that required the capability.
         action: ActionId,
