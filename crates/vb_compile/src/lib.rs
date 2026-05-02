@@ -204,18 +204,22 @@ pub fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors
 }
 
 /// Compiles YAML source and then verifies action contracts against the
-/// idempotency gate.
+/// idempotency gate AND gate 12 (action contract completeness).
 ///
 /// Performs the full compilation pipeline from [`compile_workflow`], then runs
-/// [`check_idempotency_gates`] on the supplied action contracts. Returns the
-/// compiled workflow only when both compilation and idempotency verification
-/// pass. This is the recommended entry point for runtime integrations that
-/// register action contracts before workflow deployment.
+/// gate 12 to verify that every Do node has a matching contract and every
+/// contract has a matching Do node, and finally runs [`check_idempotency_gates`]
+/// on the supplied action contracts. Returns the compiled workflow only when
+/// all three checks pass. This is the recommended entry point for runtime
+/// integrations that register action contracts before workflow deployment.
 pub fn compile_workflow_with_contracts(
     source: &[u8],
     contracts: &[ActionContract],
 ) -> Result<CompiledWorkflow, CompileErrors> {
     let workflow = compile_workflow(source)?;
+    let parts = workflow.to_parts();
+    vb_validate::shared::validate_with_contracts(&parts, contracts)
+        .map_err(|e| CompileErrors(vec![e.into()]))?;
     check_idempotency_gates(contracts)?;
     Ok(workflow)
 }
@@ -628,14 +632,15 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
 
 /// Validates compiled workflow IR against structural and resource invariants.
 ///
-/// Runs the shared validation pipeline (gates 7-13) via
+/// Runs the shared validation pipeline (gates 7-15) via
 /// [`vb_validate::shared::validate`], then delegates to
 /// [`CompiledWorkflow::try_from_parts`] for core structural and budget checks.
-pub fn validate_ir(parts: WorkflowParts) -> Result<CompiledWorkflow, WorkflowError> {
-    vb_validate::shared::validate(&parts).map_err(|_| WorkflowError::ResourceContractExceeded {
-        resource: "validation_pipeline",
-    })?;
-    CompiledWorkflow::try_from_parts(parts)
+///
+/// Returns the specific validation error so callers can distinguish gate
+/// failures from structural errors.
+pub fn validate_ir(parts: WorkflowParts) -> Result<CompiledWorkflow, CompileErrors> {
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
 /// Computes the blake3 digest of a compiled workflow artifact.
@@ -7123,6 +7128,70 @@ steps:
                     other => Err(format!("expected IdempotencyViolation, got {other:?}")),
                 }
             }
+        }
+    }
+
+    // ── SECURITY: Gate 12 bypass prevention tests ──────────────────────
+
+    /// SECURITY: compile_workflow_with_contracts must reject mismatched contracts.
+    ///
+    /// Attack vector: Before the fix, `compile_workflow_with_contracts` did NOT
+    /// run gate 12 (action contract completeness). A caller could provide
+    /// contracts that had no corresponding Do nodes, or a workflow with Do
+    /// nodes that had no contracts, and both would be accepted.
+    ///
+    /// This test verifies that gate 12 is now run during
+    /// compile_workflow_with_contracts by providing an orphan contract
+    /// (one that has no matching Do node in the workflow).
+    #[test]
+    fn security_compile_with_contracts_rejects_orphan_contract() -> Result<(), String> {
+        use super::compile_workflow_with_contracts;
+
+        // A valid workflow that compiles successfully. The finish result
+        // uses a literal true (boolean) which avoids slot type issues.
+        let source = br#"version: velvet-ballastics/v1
+name: gate12_test
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: true
+"#;
+
+        // Contract 99 has no matching Do node -- gate 12 must reject it.
+        let contracts = vec![make_contract(
+            99,
+            vb_core::SideEffect::None,
+            vb_core::RetrySafety::Safe,
+            vb_core::Idempotency::DeterministicPure,
+        )];
+
+        let result = compile_workflow_with_contracts(source, &contracts);
+        match result {
+            Err(errors) => {
+                // Check that at least one error is ActionContractOrphan.
+                // The pipeline may collect errors in any order.
+                let found_orphan = errors.iter().any(|e| {
+                    matches!(
+                        e,
+                        CompileError::Validation(
+                            vb_validate::ValidationError::ActionContractOrphan { .. }
+                        )
+                    )
+                });
+                if found_orphan {
+                    Ok(())
+                } else {
+                    let first = errors.first().ok_or("errors should not be empty")?;
+                    Err(format!(
+                        "expected ActionContractOrphan, got {first:?}"
+                    ))
+                }
+            }
+            Ok(_) => Err(String::from(
+                "SECURITY: compile_workflow_with_contracts accepted orphan contract (gate 12 not run)",
+            )),
         }
     }
 }
