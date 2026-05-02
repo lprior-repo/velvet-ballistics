@@ -1662,13 +1662,20 @@ pub fn admit_compiled_artifact(
     vb_core::CompiledWorkflow::try_from_parts(parts.clone())
         .map_err(|_| JournalError::ArtifactMalformed)?;
 
-    // Checksum validation: serialize and verify digest.
-    let bytes = postcard::to_allocvec(&parts)
+    // Checksum validation: serialize the parts with a zeroed digest so the hash
+    // covers the structure but not the digest field itself, avoiding circular dependency.
+    let mut parts_for_hash = parts.clone();
+    parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    let bytes_for_hash = postcard::to_allocvec(&parts_for_hash)
         .map_err(|_| JournalError::ArtifactMalformed)?;
-    let computed = blake3::hash(&bytes);
-    if computed.as_bytes() != &workflow.digest().as_bytes() {
+    let computed = blake3::hash(&bytes_for_hash);
+    if *computed.as_bytes() != workflow.digest().as_bytes() {
         return Err(JournalError::ArtifactChecksumMismatch);
     }
+
+    // Full serialization for storage.
+    let bytes = postcard::to_allocvec(&parts)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
 
     // Persist accepted artifact.
     let record = CompiledIrRecord {
@@ -9164,9 +9171,13 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
             result: SlotIdx::new(0),
         },
     };
-    let parts = WorkflowParts {
+
+    // Compute a self-consistent digest: serialize with a placeholder, hash, then
+    // re-serialize with the correct digest so the hash matches on verification.
+    let placeholder = WorkflowDigest::from_bytes([0u8; 32]);
+    let mut parts = WorkflowParts {
         name: Box::from("admit_test"),
-        digest: WorkflowDigest::from_bytes([7u8; 32]),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::from([node, finish]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -9175,6 +9186,9 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
     };
+    let bytes = postcard::to_allocvec(&parts).map_err(|e| format!("postcard: {e}"))?;
+    let computed = blake3::hash(&bytes);
+    parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
     let workflow = CompiledWorkflow::try_from_parts(parts)?;
     let digest = workflow.digest();
 
