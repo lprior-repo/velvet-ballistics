@@ -37,6 +37,14 @@ impl StepBudget {
     /// Returns `Ok(true)` when a transition was consumed, `Ok(false)` when the
     /// budget is exhausted, and an error if the remaining counter somehow
     /// exceeds the hard ceiling (a runtime invariant violation).
+    ///
+    /// # Invariant guarantee
+    ///
+    /// The `remaining > MAX_STEP_BUDGET` overflow check is kept as a defense-in-depth
+    /// guard. The field is private and can only be set by [`Self::new`] (which clamps)
+    /// or [`Self::MAX`] (which uses `MAX_STEP_BUDGET` directly), and `try_take` only
+    /// ever decreases via `saturating_sub`. The check therefore cannot fire through
+    /// normal API use, but guards against future modifications or memory corruption.
     pub fn try_take(&mut self) -> Result<bool, EngineError> {
         if self.remaining > MAX_STEP_BUDGET {
             return Err(EngineError::StepCounterOverflow);

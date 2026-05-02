@@ -33,9 +33,8 @@ impl WholeWorkflowBudget {
         }
 
         let mut visited: Vec<bool> = vec![false; node_count];
-        let max_total_steps = count_total_steps(nodes, entry, &mut visited, node_count)?;
+        let max_total_steps = count_total_steps(nodes, entry, node_count)?;
 
-        visited.fill(false);
         let mut max_fanout: u16 = 0;
         let mut max_nesting_depth: u16 = 0;
         compute_fanout_and_depth(
@@ -166,18 +165,31 @@ impl fmt::Display for BudgetError {
 
 impl std::error::Error for BudgetError {}
 
-/// Counts the total number of reachable steps in the workflow by performing a
-/// DFS walk from the entry node. Each node is counted once.
+/// Counts the worst-case total number of runtime steps by performing a DFS walk
+/// from the entry node. Unlike a naive unique-node count, this function accounts
+/// for loop iteration limits: when a loop header (ForEachStart, CollectStart,
+/// RepeatStart, ReduceStart) is encountered, the body subgraph step count is
+/// multiplied by the iteration limit and added once for the header itself.
+///
+/// The algorithm works in two phases:
+/// 1. **Body counting phase**: A DFS walk counts unique nodes in each loop body
+///    region (nodes reachable from `body` but not from `done`). This avoids
+///    infinite recursion from back-edges.
+/// 2. **Worst-case multiplication**: Loop body counts are multiplied by the
+///    declared iteration limits and summed with non-loop node counts.
 fn count_total_steps(
     nodes: &[crate::workflow::CompiledNode],
     entry: StepIdx,
-    visited: &mut [bool],
     node_count: usize,
 ) -> Result<u64, WorkflowError> {
+    let mut visited: Vec<bool> = vec![false; node_count];
+    let mut total: u64 = 0;
+
+    // Phase 1: Walk the IR and compute worst-case steps. Loop headers trigger
+    // a body sub-count that is multiplied by the iteration limit.
     let mut stack: Vec<StepIdx> = Vec::new();
     stack.push(entry);
 
-    let mut total: u64 = 0;
     while let Some(current) = stack.pop() {
         let idx = current.as_usize();
         if idx >= node_count {
@@ -190,21 +202,196 @@ fn count_total_steps(
             return Err(WorkflowError::StepOutOfBounds { step: current });
         };
         *flag = true;
-        total = match total.checked_add(1) {
-            Some(v) => v,
-            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-        };
 
         let node = match nodes.get(idx) {
             Some(n) => n,
             None => return Err(WorkflowError::StepOutOfBounds { step: current }),
         };
-        push_successor_targets(&node.kind, &mut stack);
-        if let Some(next) = node.next {
-            stack.push(next);
+
+        total = match total.checked_add(1) {
+            Some(v) => v,
+            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+        };
+
+        match &node.kind {
+            CompiledNodeKind::ForEachStart {
+                limit,
+                body,
+                done,
+                ..
+            } => {
+                let body_count =
+                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
+                let iter_count = u64::from(*limit).max(1);
+                total = total.saturating_add(body_count.saturating_mul(iter_count));
+                stack.push(*done);
+            }
+            CompiledNodeKind::CollectStart {
+                limit,
+                body,
+                done,
+                ..
+            } => {
+                let body_count =
+                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
+                let iter_count = u64::from(*limit).max(1);
+                total = total.saturating_add(body_count.saturating_mul(iter_count));
+                stack.push(*done);
+            }
+            CompiledNodeKind::ReduceStart { body, done, .. } => {
+                let body_count =
+                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
+                // ReduceStart has no explicit limit. Use MAX_LIST_ITEMS_PER_VALUE
+                // as a conservative upper bound for the input list size.
+                let iter_count =
+                    u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+                total = total.saturating_add(body_count.saturating_mul(iter_count));
+                stack.push(*done);
+            }
+            CompiledNodeKind::RepeatStart {
+                max_attempts,
+                body,
+                done,
+            } => {
+                let body_count =
+                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
+                let iter_count = u64::from(*max_attempts).max(1);
+                total = total.saturating_add(body_count.saturating_mul(iter_count));
+                stack.push(*done);
+            }
+            _ => {
+                push_successor_targets(&node.kind, &mut stack);
+                if let Some(next) = node.next {
+                    stack.push(next);
+                }
+            }
         }
     }
     Ok(total)
+}
+
+/// Counts the worst-case total steps in a loop body region: all nodes reachable
+/// from `body` that are not at or past `done` (the loop exit). Nested loop
+/// headers within the body are recursively multiplied by their iteration limits.
+fn count_body_region_nodes(
+    nodes: &[crate::workflow::CompiledNode],
+    body: StepIdx,
+    done: StepIdx,
+    global_visited: &mut [bool],
+    node_count: usize,
+) -> Result<u64, WorkflowError> {
+    let done_idx = done.as_usize();
+    let mut region_visited: Vec<bool> = vec![false; node_count];
+    let mut stack: Vec<StepIdx> = Vec::new();
+    stack.push(body);
+
+    let mut count: u64 = 0;
+    while let Some(current) = stack.pop() {
+        let idx = current.as_usize();
+        if idx >= node_count {
+            return Err(WorkflowError::StepOutOfBounds { step: current });
+        }
+        // Stop at the done exit node -- it's not part of the body
+        if idx == done_idx {
+            continue;
+        }
+        if global_visited.get(idx).copied() == Some(true) {
+            continue;
+        }
+        if region_visited.get(idx).copied() == Some(true) {
+            continue;
+        }
+        let Some(flag) = region_visited.get_mut(idx) else {
+            return Err(WorkflowError::StepOutOfBounds { step: current });
+        };
+        *flag = true;
+
+        count = count.saturating_add(1);
+
+        let node = match nodes.get(idx) {
+            Some(n) => n,
+            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+        };
+
+        // Recursively handle nested loop headers within the body region
+        match &node.kind {
+            CompiledNodeKind::ForEachStart {
+                limit,
+                body: inner_body,
+                done: inner_done,
+                ..
+            } => {
+                let inner_body_count = count_body_region_nodes(
+                    nodes,
+                    *inner_body,
+                    *inner_done,
+                    global_visited,
+                    node_count,
+                )?;
+                let iter_count = u64::from(*limit).max(1);
+                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+                // Continue walking from inner_done within the outer body
+                stack.push(*inner_done);
+            }
+            CompiledNodeKind::CollectStart {
+                limit,
+                body: inner_body,
+                done: inner_done,
+                ..
+            } => {
+                let inner_body_count = count_body_region_nodes(
+                    nodes,
+                    *inner_body,
+                    *inner_done,
+                    global_visited,
+                    node_count,
+                )?;
+                let iter_count = u64::from(*limit).max(1);
+                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+                stack.push(*inner_done);
+            }
+            CompiledNodeKind::ReduceStart {
+                body: inner_body,
+                done: inner_done,
+                ..
+            } => {
+                let inner_body_count = count_body_region_nodes(
+                    nodes,
+                    *inner_body,
+                    *inner_done,
+                    global_visited,
+                    node_count,
+                )?;
+                let iter_count =
+                    u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+                stack.push(*inner_done);
+            }
+            CompiledNodeKind::RepeatStart {
+                max_attempts,
+                body: inner_body,
+                done: inner_done,
+            } => {
+                let inner_body_count = count_body_region_nodes(
+                    nodes,
+                    *inner_body,
+                    *inner_done,
+                    global_visited,
+                    node_count,
+                )?;
+                let iter_count = u64::from(*max_attempts).max(1);
+                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+                stack.push(*inner_done);
+            }
+            _ => {
+                push_successor_targets(&node.kind, &mut stack);
+                if let Some(next) = node.next {
+                    stack.push(next);
+                }
+            }
+        }
+    }
+    Ok(count)
 }
 
 /// Pushes all successor StepIdx targets from a node kind onto the stack,
@@ -406,6 +593,7 @@ fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) {
 #[cfg(test)]
 mod tests {
     use super::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+    use crate::engine::StepBudget;
     use crate::ids::{ExprIdx, SlotIdx, StepIdx};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
@@ -936,5 +1124,299 @@ mod tests {
             .filter(|b| b.max_fanout == 2 && b.max_total_steps == 3);
 
         assert!(budget.is_some(), "choose fanout budget mismatch");
+    }
+
+    // =========================================================================
+    // Security regression tests: loop-aware step counting
+    // =========================================================================
+
+    /// Verifies that a ForEachStart loop multiplies body steps by the limit.
+    /// Workflow: ForEachStart(limit=5, body=1, done=2) -> Nop -> Finish
+    /// Expected: 1 (header) + 5 * 1 (body * iterations) + 1 (Finish) = 7
+    #[test]
+    fn budget_foreach_loop_multiplies_body_steps() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 5,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
+        let contract = test_contract(3, 3);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_total_steps == 7);
+
+        assert!(
+            budget.is_some(),
+            "for-each loop should multiply body steps by limit"
+        );
+    }
+
+    /// Verifies that a RepeatStart loop multiplies body steps by max_attempts.
+    /// Workflow: RepeatStart(max=3, body=1, done=2) -> Nop -> Finish
+    /// Expected: 1 (header) + 3 * 1 (body * attempts) + 1 (Finish) = 5
+    #[test]
+    fn budget_repeat_loop_multiplies_body_steps() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::RepeatStart {
+                    max_attempts: 3,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
+        let contract = test_contract(3, 3);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_total_steps == 5);
+
+        assert!(
+            budget.is_some(),
+            "repeat loop should multiply body steps by max_attempts"
+        );
+    }
+
+    /// Verifies nested loop step counting multiplies correctly.
+    /// Outer ForEachStart(limit=10, body=1, done=4)
+    ///   Inner ForEachStart(limit=10, body=2, done=3)
+    ///     Nop (node 2)
+    ///   ForEachJoin (node 3)
+    /// ForEachJoin (node 4)
+    ///
+    /// Inner body: 1 (Nop), multiplied by 10 = 10. Inner loop = 1 + 10 + 1 (Join) = 12.
+    /// Outer body region: 1 (inner header) + 10 (inner body*iter) + 1 (inner Join) = 12.
+    ///   Wait, inner header counted as 1 in body, then inner body_count = 1, * 10 = 10.
+    ///   Then inner done (ForEachJoin) = 1. Total body region = 1 + 10 + 1 = 12.
+    /// Outer body * 10 = 12 * 10 = 120. Outer header = 1.
+    /// Outer done (ForEachJoin) = 1.
+    /// Total = 1 + 120 + 1 = 122.
+    #[test]
+    fn budget_nested_loop_multiplies_correctly() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(4),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(2),
+                    item_slot: SlotIdx::new(3),
+                    limit: 10,
+                    body: StepIdx::new(2),
+                    done: StepIdx::new(3),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: Some(SlotIdx::new(4)),
+                next: None,
+                kind: CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(4),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(4),
+                output: Some(SlotIdx::new(5)),
+                next: None,
+                kind: CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(5),
+                },
+            },
+        ];
+        let contract = test_contract(5, 6);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_total_steps == 122 && b.max_nesting_depth == 2);
+
+        assert!(
+            budget.is_some(),
+            "nested loop should multiply step counts at each nesting level"
+        );
+    }
+
+    /// Security regression: a workflow with loops that previously appeared as a
+    /// small step count (unique nodes only) now correctly reports the worst-case
+    /// multiplied count, which should exceed the default policy.
+    ///
+    /// ForEachStart(limit=1000, body=1, done=2) -> Nop -> Finish
+    /// Old: 3 steps (passed policy).
+    /// New: 1 + 1000*1 + 1 = 1002 steps (still under 1M policy, but realistic).
+    #[test]
+    fn budget_large_loop_counted_realistically() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 1000,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
+        let contract = test_contract(3, 3);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_total_steps == 1002);
+
+        assert!(
+            budget.is_some(),
+            "large loop should count 1002 steps not 3"
+        );
+
+        // The default policy (1M steps) should accept this
+        let budget_val = budget.as_ref().unwrap();
+        assert!(
+            BoundednessPolicy::DEFAULT.validate(budget_val).is_ok(),
+            "1002 steps should be within default policy"
+        );
+    }
+
+    /// Verifies that a CollectStart loop multiplies body steps by the limit.
+    #[test]
+    fn budget_collect_loop_multiplies_body_steps() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::CollectStart {
+                    source: SlotIdx::new(0),
+                    limit: 5,
+                    page_size: 2,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
+        let contract = test_contract(3, 3);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+            .ok()
+            .filter(|b| b.max_total_steps == 7);
+
+        assert!(
+            budget.is_some(),
+            "collect loop should multiply body steps by limit"
+        );
+    }
+
+    /// Verifies that StepBudget clamps values above MAX_STEP_BUDGET.
+    #[test]
+    fn step_budget_clamps_above_max() {
+        let budget = StepBudget::new(crate::limits::MAX_STEP_BUDGET + 100);
+        assert_eq!(
+            budget.remaining(),
+            crate::limits::MAX_STEP_BUDGET,
+            "budget should be clamped to MAX_STEP_BUDGET"
+        );
+    }
+
+    /// Verifies that StepBudget::MAX equals MAX_STEP_BUDGET.
+    #[test]
+    fn step_budget_max_equals_limit() {
+        assert_eq!(
+            StepBudget::MAX.remaining(),
+            crate::limits::MAX_STEP_BUDGET,
+            "StepBudget::MAX should equal MAX_STEP_BUDGET"
+        );
+    }
+
+    /// Verifies that StepBudget zero budget exhausts immediately.
+    #[test]
+    fn step_budget_zero_exhausts_immediately() {
+        let mut budget = StepBudget::new(0);
+        let result = budget.try_take();
+        assert!(
+            result.is_ok() && result.as_ref().map_err(|_| "").unwrap() == &false,
+            "zero budget should return Ok(false) immediately"
+        );
     }
 }

@@ -3927,6 +3927,7 @@ mod tests {
             slot_count: 2,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+            symbols_count: 0,
         })
     }
 
@@ -4228,6 +4229,7 @@ mod tests {
             slot_count: 2,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+            symbols_count: 0,
         })
         .map_err(|e| e.to_string())?;
 
