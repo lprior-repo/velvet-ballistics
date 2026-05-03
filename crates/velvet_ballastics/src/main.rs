@@ -47,6 +47,7 @@ velvet-ballastics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
+  explain    <workflow.yaml> [--json|--jsonl]          Explain validation errors in detail
   compile    <workflow.yaml> --emit <ir|rust> --out <file> [--json|--jsonl]  Compile a workflow
   run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
              [--step <id> --step-input <file>]                                 Run a single step in isolation
@@ -77,6 +78,10 @@ fn main() -> ExitCode {
             workflow,
             output: _,
         }) => cmd_validate(&workflow),
+        Ok(Command::Explain {
+            workflow,
+            output: _,
+        }) => cmd_explain(&workflow),
         Ok(Command::Compile {
             workflow,
             emit,
@@ -168,6 +173,11 @@ enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Explain {
+        workflow: PathBuf,
+        #[allow(dead_code)]
+        output: OutputFormat,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,6 +207,7 @@ enum ParseError {
     UnknownDurability(String),
     UnknownCommand(String),
     NoCommand,
+    InvalidSlot(String),
 }
 
 fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
@@ -209,6 +220,7 @@ fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
         "validate" => parse_validate(args),
+        "explain" => parse_explain(args),
         "compile" => parse_compile(args),
         "run" => parse_run(args),
         "run-compiled" => parse_run_compiled(args),
@@ -226,6 +238,12 @@ fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
     let output = parse_output_format(args);
     Ok(Command::Validate { workflow, output })
+}
+
+fn parse_explain(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let output = parse_output_format(args);
+    Ok(Command::Explain { workflow, output })
 }
 
 fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
@@ -1688,6 +1706,497 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     ExitCode::SUCCESS
 }
 
+
+fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let text = match std::str::from_utf8(&bytes) {
+        Ok(t) => t,
+        Err(e) => {
+            errln!("error: file is not valid UTF-8: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if let Err(e) = vb_yaml::parse_workflow_source(text) {
+        outln!("YAML Parse Error:");
+        outln!("  {e}");
+        outln!("");
+        outln!("The workflow file contains invalid YAML syntax.");
+        return ExitCode::FAILURE;
+    }
+
+    match vb_compile::compile_workflow(&bytes) {
+        Ok(_) => {
+            outln!("Workflow is valid. No errors to explain.");
+            ExitCode::SUCCESS
+        }
+        Err(errors) => {
+            outln!("Workflow has {} validation error(s):", errors.0.len());
+            outln!("");
+            for (i, err) in errors.0.iter().enumerate() {
+                if i > 0 {
+                    outln!("---");
+                }
+                explain_error(err);
+            }
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn explain_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
+        CompileError::SourceTooLarge { actual, limit } => {
+            outln!("Source Too Large");
+            outln!("  The workflow YAML source is {actual} bytes, exceeds limit of {limit}.");
+        }
+        CompileError::EmptySource => {
+            outln!("Empty Source");
+            outln!("  The workflow file contains no YAML document.");
+        }
+        CompileError::Parse(e) => {
+            outln!("YAML Parse Error");
+            outln!("  The YAML parser rejected the document: {e}");
+        }
+        CompileError::DocumentCount { count } => {
+            outln!("Multiple YAML Documents");
+            outln!("  Expected exactly one YAML document, but found {count}.");
+        }
+        CompileError::TopLevelNotMapping => {
+            outln!("Invalid Top-Level Structure");
+            outln!("  The top-level YAML document must be a mapping.");
+        }
+        CompileError::NonStringKey { mark } => {
+            outln!("Non-String Key");
+            outln!("  A mapping key at position {mark:?} is not a string.");
+        }
+        CompileError::DuplicateKey { key, mark } => {
+            outln!("Duplicate Key");
+            outln!("  The YAML mapping contains duplicate key '{key}' at {mark:?}.");
+        }
+        CompileError::AliasForbidden { mark } => {
+            outln!("YAML Alias Forbidden");
+            outln!("  YAML aliases are not allowed at {mark:?}.");
+        }
+        CompileError::AnchorForbidden { mark } => {
+            outln!("YAML Anchor Forbidden");
+            outln!("  YAML anchors are not allowed at {mark:?}.");
+        }
+        CompileError::MergeKeyForbidden { mark } => {
+            outln!("YAML Merge Key Forbidden");
+            outln!("  YAML merge keys are not allowed at {mark:?}.");
+        }
+        CompileError::TagForbidden { mark } => {
+            outln!("YAML Tag Forbidden");
+            outln!("  YAML tags are not allowed at {mark:?}.");
+        }
+        CompileError::BadValue => {
+            outln!("Invalid YAML Scalar");
+            outln!("  A YAML scalar value is malformed.");
+        }
+        CompileError::FloatForbidden => {
+            outln!("Floating-Point Numbers Forbidden");
+            outln!("  Floating-point YAML scalars are not allowed.");
+        }
+        CompileError::DepthLimit { depth, limit } => {
+            outln!("Nesting Depth Exceeded");
+            outln!("  YAML nesting depth of {depth} exceeds limit of {limit}.");
+        }
+        CompileError::NodeLimit { limit } => {
+            outln!("YAML Node Limit Exceeded");
+            outln!("  The workflow exceeds node limit of {limit}.");
+        }
+        CompileError::SequenceLimit { actual, limit } => {
+            outln!("Sequence Too Long");
+            outln!("  A sequence has {actual} items, exceeding limit of {limit}.");
+        }
+        CompileError::MappingLimit { actual, limit } => {
+            outln!("Mapping Too Large");
+            outln!("  A mapping has {actual} entries, exceeding limit of {limit}.");
+        }
+        CompileError::ScalarLimit { actual, limit } => {
+            outln!("Scalar Too Long");
+            outln!("  A scalar is {actual} chars, exceeding limit of {limit}.");
+        }
+        CompileError::MissingField { field } => {
+            outln!("Missing Required Field");
+            outln!("  Required workflow field '{field}' is missing.");
+        }
+        CompileError::UnknownTopLevelField { field } => {
+            outln!("Unknown Workflow Field");
+            outln!("  '{field}' is not a recognized Velvet workflow field.");
+        }
+        CompileError::InvalidVersion { actual } => {
+            outln!("Invalid Workflow Version");
+            outln!("  Found version '{actual}', but Velvet v1 requires 'velvet-ballastics/v1'.");
+        }
+        CompileError::InvalidTriggerCount { count } => {
+            outln!("Invalid Trigger Count");
+            outln!("  Workflow must declare exactly one trigger, but found {count}.");
+        }
+        CompileError::UnknownTriggerKind { trigger } => {
+            outln!("Unknown Trigger Kind");
+            outln!("  Trigger kind '{trigger}' is not recognized.");
+        }
+        CompileError::TriggerShape { trigger, expected } => {
+            outln!("Invalid Trigger Shape");
+            outln!("  Trigger '{trigger}' has the wrong structure.");
+        }
+        CompileError::UnknownTriggerField { trigger, field } => {
+            outln!("Unknown Trigger Field");
+            outln!("  Trigger '{trigger}' has unknown field '{field}'.");
+        }
+        CompileError::MissingTriggerField { trigger, field } => {
+            outln!("Missing Trigger Field");
+            outln!("  Trigger '{trigger}' is missing required field '{field}'.");
+        }
+        CompileError::InvalidTriggerField { trigger, field, expected } => {
+            outln!("Invalid Trigger Field");
+            outln!("  Trigger '{trigger}' field '{field}' is invalid.");
+        }
+        CompileError::FieldShape { field, expected } => {
+            outln!("Invalid Field Shape");
+            outln!("  Field '{field}' has the wrong structure.");
+        }
+        CompileError::UnknownInputSchemaField { field } => {
+            outln!("Unknown Input Schema Field");
+            outln!("  '{field}' is not a recognized input schema field.");
+        }
+        CompileError::InvalidInputSchema { field, expected } => {
+            outln!("Invalid Input Schema");
+            outln!("  Input schema field '{field}' is invalid.");
+        }
+        CompileError::UnsupportedTopLevelResult => {
+            outln!("Unsupported Top-Level Result");
+            outln!("  Non-empty top-level result mapping is not supported.");
+        }
+        CompileError::EmptySteps => {
+            outln!("Empty Steps");
+            outln!("  Workflow must contain at least one executable step.");
+        }
+        CompileError::InvalidName { field, value } => {
+            outln!("Invalid Name");
+            outln!("  '{value}' is not a valid Velvet v1 name for {field}.");
+        }
+        CompileError::MissingStepId { step } => {
+            outln!("Missing Step ID");
+            outln!("  Step at index {step} is missing its required 'id' field.");
+        }
+        CompileError::DuplicateStepId { id } => {
+            outln!("Duplicate Step ID");
+            outln!("  Step ID '{id}' appears more than once in the workflow.");
+        }
+        CompileError::StepShape { step } => {
+            outln!("Invalid Step Shape");
+            outln!("  Step at index {step} must be a YAML mapping.");
+        }
+        CompileError::UnknownStepField { step, field } => {
+            outln!("Unknown Step Field");
+            outln!("  Step {step} has unknown field '{field}'.");
+        }
+        CompileError::UnknownStepPrimitiveField { step, primitive, field } => {
+            outln!("Unknown Primitive Field");
+            outln!("  Step {step} primitive '{primitive}' has unknown field '{field}'.");
+        }
+        CompileError::MissingStepPrimitive { step } => {
+            outln!("Missing Step Primitive");
+            outln!("  Step {step} is missing a primitive action.");
+        }
+        CompileError::MultipleStepPrimitives { step } => {
+            outln!("Multiple Step Primitives");
+            outln!("  Step {step} contains multiple primitive fields.");
+        }
+        CompileError::UnsupportedStepPrimitive { step, primitive } => {
+            outln!("Unsupported Step Primitive");
+            outln!("  Step {step} primitive '{primitive}' is not supported.");
+        }
+        CompileError::UnsupportedStepControlField { step, field } => {
+            outln!("Unsupported Step Control Field");
+            outln!("  Step {step} control field '{field}' is not supported.");
+        }
+        CompileError::MissingStepField { step, field } => {
+            outln!("Missing Step Field");
+            outln!("  Step {step} is missing required field '{field}'.");
+        }
+        CompileError::StepFieldShape { step, field, expected } => {
+            outln!("Invalid Step Field Shape");
+            outln!("  Step {step} field '{field}' has wrong structure.");
+        }
+        CompileError::StepIndexOutOfRange { value } => {
+            outln!("Step Index Out of Range");
+            outln!("  Step index {value} exceeds the u16 representation limit.");
+        }
+        CompileError::SlotIndexOutOfRange { value } => {
+            outln!("Slot Index Out of Range");
+            outln!("  Slot index {value} is outside the valid u16 range.");
+        }
+        CompileError::BranchTargetOutOfRange { value } => {
+            outln!("Branch Target Out of Range");
+            outln!("  Branch target {value} is outside the valid u16 range.");
+        }
+        CompileError::BackwardBranchTarget { step, target } => {
+            outln!("Backward Branch Target");
+            outln!("  Step {step} branches to {target}, but forward branches are required.");
+        }
+        CompileError::PrimitiveLoweringLimitExceeded { primitive, field, value, limit } => {
+            outln!("Primitive Limit Exceeded");
+            outln!("  Primitive '{primitive}' field '{field}' value {value} exceeds limit {limit}.");
+        }
+        CompileError::LastStepMustFinish => {
+            outln!("Last Step Must Finish");
+            outln!("  The final step in a linear workflow must be a 'finish' step.");
+        }
+        CompileError::UnsupportedConstantValue { step } => {
+            outln!("Unsupported Constant Value");
+            outln!("  Step {step} constant value must be a scalar YAML value.");
+        }
+        CompileError::UnknownReferenceRoot { reference, root } => {
+            outln!("Unknown Reference Root");
+            outln!("  Reference '{reference}' uses unknown root '{root}'.");
+        }
+        CompileError::IllegalReference { reference } => {
+            outln!("Illegal Reference");
+            outln!("  Reference '{reference}' is not allowed in deterministic workflows.");
+        }
+        CompileError::UnknownReferenceName { kind, reference, name } => {
+            outln!("Unknown Reference");
+            outln!("  Reference '{reference}' refers to unknown {kind} '{name}'.");
+        }
+        CompileError::UnsupportedAccessorReference { reference, root, path } => {
+            outln!("Unsupported Accessor Reference");
+            outln!("  Accessor reference '{reference}' (root: {root}, path: {path}) is not supported.");
+        }
+        CompileError::UnknownStepTarget { step, target } => {
+            outln!("Unknown Step Target");
+            outln!("  Step {step} branches to undeclared step index {target}.");
+        }
+        CompileError::UnreachableStep { step } => {
+            outln!("Unreachable Step");
+            outln!("  Step {step} cannot be reached from the workflow entry point.");
+        }
+        CompileError::TypeMismatch { field, expected, found } => {
+            outln!("Type Mismatch");
+            outln!("  Field '{field}': expected {expected}, but found {found}.");
+        }
+        CompileError::Workflow(e) => {
+            outln!("Workflow IR Validation Error");
+            outln!("  {e}");
+        }
+        CompileError::Validation(e) => {
+            explain_validation_error(e);
+        }
+        _ => {
+            outln!("Compilation Error");
+            outln!("  {err}");
+        }
+    }
+}
+
+fn explain_validation_error(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
+        ValidationError::DuplicateKey => {
+            outln!("Duplicate Key");
+            outln!("  A YAML mapping contains duplicate keys, which is not allowed.");
+        }
+        ValidationError::ForbiddenYamlFeature => {
+            outln!("Forbidden YAML Feature");
+            outln!("  The workflow uses a YAML feature that is not allowed in Velvet.");
+        }
+        ValidationError::UnknownTopLevelField => {
+            outln!("Unknown Top-Level Field");
+            outln!("  The workflow contains an unrecognized top-level field.");
+        }
+        ValidationError::UnknownStepField => {
+            outln!("Unknown Step Field");
+            outln!("  A step contains an unrecognized field.");
+        }
+        ValidationError::MissingRequiredField { field } => {
+            outln!("Missing Required Field");
+            outln!("  Required field '{field}' is missing from the workflow.");
+        }
+        ValidationError::InvalidVersion { version } => {
+            outln!("Invalid Version");
+            outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballastics/v1'.");
+        }
+        ValidationError::InvalidId { id } => {
+            outln!("Invalid Identifier");
+            outln!("  '{id}' is not a valid Velvet identifier.");
+        }
+        ValidationError::ReservedId { id } => {
+            outln!("Reserved Identifier");
+            outln!("  '{id}' is a reserved identifier and cannot be used.");
+        }
+        ValidationError::DuplicateId { id } => {
+            outln!("Duplicate Identifier");
+            outln!("  The identifier '{id}' appears more than once.");
+        }
+        ValidationError::MultipleStepPrimitives => {
+            outln!("Multiple Step Primitives");
+            outln!("  A step contains multiple primitive actions.");
+        }
+        ValidationError::MissingStepPrimitive => {
+            outln!("Missing Step Primitive");
+            outln!("  A step is missing its primitive action.");
+        }
+        ValidationError::UnknownReference { reference } => {
+            outln!("Unknown Reference");
+            outln!("  Reference '{reference}' is not declared in the workflow.");
+        }
+        ValidationError::FutureReference { reference } => {
+            outln!("Future Reference");
+            outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
+        }
+        ValidationError::SecretNotDeclared { secret } => {
+            outln!("Undeclared Secret");
+            outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
+        }
+        ValidationError::DirectRuntimeReference => {
+            outln!("Direct Runtime Reference");
+            outln!("  References to runtime state are not allowed in this context.");
+        }
+        ValidationError::InvalidThenTarget => {
+            outln!("Invalid Branch Target");
+            outln!("  A 'then' branch targets an invalid step.");
+        }
+        ValidationError::ControlFlowCycle => {
+            outln!("Control Flow Cycle");
+            outln!("  The workflow contains a cycle in its control flow graph.");
+        }
+        ValidationError::UnreachableStep { step } => {
+            outln!("Unreachable Step");
+            outln!("  Step '{step}' cannot be reached from the workflow entry.");
+        }
+        ValidationError::InvalidChoose => {
+            outln!("Invalid Choose");
+            outln!("  The 'choose' (conditional) construct is invalid.");
+        }
+        ValidationError::InvalidForEach => {
+            outln!("Invalid ForEach");
+            outln!("  The 'for_each' loop construct is invalid.");
+        }
+        ValidationError::InvalidTogether => {
+            outln!("Invalid Together");
+            outln!("  The 'together' (parallel) construct is invalid.");
+        }
+        ValidationError::InvalidCollect => {
+            outln!("Invalid Collect");
+            outln!("  The 'collect' pagination construct is invalid.");
+        }
+        ValidationError::InvalidReduce => {
+            outln!("Invalid Reduce");
+            outln!("  The 'reduce' fold construct is invalid.");
+        }
+        ValidationError::InvalidRepeat => {
+            outln!("Invalid Repeat");
+            outln!("  The 'repeat' loop construct is invalid.");
+        }
+        ValidationError::InvalidWait => {
+            outln!("Invalid Wait");
+            outln!("  The 'wait' step is invalid.");
+        }
+        ValidationError::InvalidAsk => {
+            outln!("Invalid Ask");
+            outln!("  The 'ask' (interaction) step is invalid.");
+        }
+        ValidationError::InvalidFinish => {
+            outln!("Invalid Finish");
+            outln!("  The 'finish' step is invalid.");
+        }
+        ValidationError::InvalidRetry => {
+            outln!("Invalid Retry");
+            outln!("  The 'retry' construct is invalid.");
+        }
+        ValidationError::InvalidOnError => {
+            outln!("Invalid OnError");
+            outln!("  The 'on_error' error handler is invalid.");
+        }
+        ValidationError::SecretResultLeak => {
+            outln!("Secret Result Leak");
+            outln!("  A secret value may be exposed in the workflow result.");
+        }
+        ValidationError::TypeMismatch { expected, found } => {
+            outln!("Type Mismatch");
+            outln!("  Expected type: {expected}");
+            outln!("  Found type: {found}");
+        }
+        ValidationError::PayloadTooLarge => {
+            outln!("Payload Too Large");
+            outln!("  The workflow payload exceeds size limits.");
+        }
+        ValidationError::LimitRequired { resource } => {
+            outln!("Limit Required");
+            outln!("  Resource '{resource}' requires an explicit limit.");
+        }
+        ValidationError::LimitExceeded { resource } => {
+            outln!("Limit Exceeded");
+            outln!("  Resource '{resource}' has exceeded its configured limit.");
+        }
+        ValidationError::UnsupportedTrigger { trigger } => {
+            outln!("Unsupported Trigger");
+            outln!("  Trigger type '{trigger}' is not supported.");
+        }
+        ValidationError::HttpTriggerOutOfCore => {
+            outln!("HTTP Trigger Out of Core");
+            outln!("  HTTP triggers are not available in the core runtime.");
+        }
+        ValidationError::ExpressionStackExceeded { declared, limit } => {
+            outln!("Expression Stack Exceeded");
+            outln!("  Expression stack depth {declared} exceeds limit {limit}.");
+        }
+        ValidationError::ExpressionStackMismatch { expr_index, declared, computed } => {
+            outln!("Expression Stack Mismatch");
+            outln!("  Expression {expr_index}: declared {declared} stack slots, computed {computed}.");
+        }
+        ValidationError::AccessorSlotOutOfRange { accessor_index, slot, slot_count } => {
+            outln!("Accessor Slot Out of Range");
+            outln!("  Accessor {accessor_index} references slot {slot}, but slot_count is {slot_count}.");
+        }
+        ValidationError::AccessorPathInvalid { accessor_index, segment_index } => {
+            outln!("Accessor Path Invalid");
+            outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
+        }
+        ValidationError::SlotReferenceOutOfRange { slot, slot_count, context } => {
+            outln!("Slot Reference Out of Range");
+            outln!("  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}.");
+        }
+        ValidationError::LoopBodyStepOutOfRange { step, node_count, source_node, label: _ } => {
+            outln!("Loop Body Step Out of Range");
+            outln!("  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node}).");
+        }
+        ValidationError::SlotDependencyCycle { slot, chain } => {
+            outln!("Slot Dependency Cycle");
+            outln!("  Slot {slot} has a dependency cycle: {chain}.");
+        }
+        ValidationError::NodeKindConstraintViolation { node_index, detail } => {
+            outln!("Node Kind Constraint Violation");
+            outln!("  Node {node_index}: {detail}.");
+        }
+        ValidationError::ActionContractMissing { action_id, node_index } => {
+            outln!("Action Contract Missing");
+            outln!("  Do node {node_index} references action_id {action_id}, which has no contract.");
+        }
+        ValidationError::ActionContractOrphan { action_id } => {
+            outln!("Action Contract Orphan");
+            outln!("  Action contract {action_id} has no corresponding Do node.");
+        }
+        ValidationError::SlotTypeInconsistency { slot } => {
+            outln!("Slot Type Inconsistency");
+            outln!("  Slot {slot} has writers with incompatible type kinds.");
+        }
+        ValidationError::NonDeterministicPath { from_node, to_node } => {
+            outln!("Non-Deterministic Path");
+            outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
+        }
+    }
+}
+
+
 fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
@@ -2027,6 +2536,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     match error {
+        ParseError::InvalidSlot(slot) => {
+            writeln!(handle, "invalid slot: {slot}\n\n{HELP}")
+        }
         ParseError::MissingArgument(name) => {
             writeln!(handle, "missing argument: {name}\n\n{HELP}")
         }
