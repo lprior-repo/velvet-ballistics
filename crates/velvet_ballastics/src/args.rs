@@ -4,65 +4,124 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+/// Structured output format for CLI commands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum OutputFormat {
+    /// Human-readable text output (default).
+    #[default]
+    Text,
+    /// JSON object output.
+    Json,
+    /// JSON Lines output (one JSON object per line).
+    Jsonl,
+}
+
 #[derive(Debug)]
-pub enum Command {
+pub(crate) enum Command {
     Help,
     Version,
-    Validate { workflow: PathBuf },
+    Validate {
+        workflow: PathBuf,
+        #[allow(dead_code)]
+        output: OutputFormat,
+    },
     Compile {
         workflow: PathBuf,
         emit: EmitTarget,
         out: PathBuf,
+        output: OutputFormat,
     },
     Run {
         workflow: PathBuf,
         input_bin: PathBuf,
         durability: DurabilityMode,
         db: Option<PathBuf>,
+        step: Option<StepTarget>,
+        output: OutputFormat,
     },
     RunCompiled {
         workflow: PathBuf,
         input_bin: PathBuf,
         durability: DurabilityMode,
         db: Option<PathBuf>,
+        output: OutputFormat,
     },
-    IpcServe { socket: PathBuf, db: PathBuf },
-    Inspect { run_id: String, db: PathBuf },
-    Events { run_id: String, db: PathBuf },
-    Replay { run_id: String, db: PathBuf },
-    BenchRun { workflow: PathBuf },
-    Doctor { db: PathBuf },
+    IpcServe {
+        socket: PathBuf,
+        db: PathBuf,
+    },
+    Inspect {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    Events {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    Replay {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    BenchRun {
+        workflow: PathBuf,
+        output: OutputFormat,
+    },
+    Doctor {
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    Explain {
+        workflow: PathBuf,
+        #[allow(dead_code)]
+        output: OutputFormat,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EmitTarget {
+pub(crate) enum EmitTarget {
     Ir,
     Rust,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DurabilityMode {
+pub(crate) enum DurabilityMode {
     Strict,
     Journaled,
     None,
 }
 
+/// Single-step isolation target for `run --step`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StepTarget {
+    pub(crate) step_id: u16,
+    pub(crate) step_input: PathBuf,
+}
+
 #[derive(Debug)]
-pub enum ParseError {
+#[allow(dead_code)]
+pub(crate) enum ParseError {
     MissingArgument(&'static str),
     UnknownEmitTarget(String),
     UnknownDurability(String),
     UnknownCommand(String),
     NoCommand,
+    InvalidSlot(String),
 }
 
-pub fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
-    let subcommand = args.get(1).and_then(|s| s.to_str()).ok_or(ParseError::NoCommand)?;
+pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
+    let subcommand = args
+        .get(1)
+        .and_then(|s| s.to_str())
+        .ok_or(ParseError::NoCommand)?;
 
     match subcommand {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
         "validate" => parse_validate(args),
+        "explain" => parse_explain(args),
         "compile" => parse_compile(args),
         "run" => parse_run(args),
         "run-compiled" => parse_run_compiled(args),
@@ -78,7 +137,14 @@ pub fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    Ok(Command::Validate { workflow })
+    let output = parse_output_format(args);
+    Ok(Command::Validate { workflow, output })
+}
+
+fn parse_explain(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let output = parse_output_format(args);
+    Ok(Command::Explain { workflow, output })
 }
 
 fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
@@ -90,42 +156,73 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
         other => return Err(ParseError::UnknownEmitTarget(other.into())),
     };
     let out = named_flag(args, "--out").ok_or(ParseError::MissingArgument("--out"))?;
+    let output = parse_output_format(args);
     Ok(Command::Compile {
         workflow,
         emit,
         out: PathBuf::from(out),
+        output,
     })
 }
 
 fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    let input_bin = named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
-    let durability_raw = named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
+    let input_bin =
+        named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
+    let durability_raw =
+        named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     let db = parse_optional_run_db(args, durability)?;
+    let step = parse_optional_step(args)?;
+    let output = parse_output_format(args);
     Ok(Command::Run {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
         db,
+        step,
+        output,
     })
+}
+
+fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseError> {
+    let step_raw = match named_flag(args, "--step") {
+        Some(s) => s,
+        None => return Ok(None),
+    };
+    let step_id = step_raw
+        .parse::<u16>()
+        .map_err(|_| ParseError::MissingArgument("--step"))?;
+    let step_input =
+        named_flag(args, "--step-input").ok_or(ParseError::MissingArgument("--step-input"))?;
+    Ok(Some(StepTarget {
+        step_id,
+        step_input: PathBuf::from(step_input),
+    }))
 }
 
 fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.vbir")?;
-    let input_bin = named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
-    let durability_raw = named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
+    let input_bin =
+        named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
+    let durability_raw =
+        named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     let db = parse_optional_run_db(args, durability)?;
+    let output = parse_output_format(args);
     Ok(Command::RunCompiled {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
         db,
+        output,
     })
 }
 
-fn parse_optional_run_db(args: &[OsString], durability: DurabilityMode) -> Result<Option<PathBuf>, ParseError> {
+fn parse_optional_run_db(
+    args: &[OsString],
+    durability: DurabilityMode,
+) -> Result<Option<PathBuf>, ParseError> {
     let db = named_flag(args, "--db").map(PathBuf::from);
     if durability == DurabilityMode::None {
         return Ok(db);
@@ -148,38 +245,49 @@ fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
 fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Inspect {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Events {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Replay {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    Ok(Command::BenchRun { workflow })
+    let output = parse_output_format(args);
+    Ok(Command::BenchRun { workflow, output })
 }
 
 fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    Ok(Command::Doctor { db: PathBuf::from(db) })
+    let output = parse_output_format(args);
+    Ok(Command::Doctor {
+        db: PathBuf::from(db),
+        output,
+    })
 }
 
 fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
@@ -191,6 +299,23 @@ fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
+/// Parse --json or --jsonl output format flags.
+/// Returns OutputFormat::Text by default.
+fn parse_output_format(args: &[OsString]) -> OutputFormat {
+    if contains_flag(args, "--jsonl") {
+        OutputFormat::Jsonl
+    } else if contains_flag(args, "--json") {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Text
+    }
+}
+
+/// Check if args contain a specific flag.
+fn contains_flag(args: &[OsString], flag: &str) -> bool {
+    args.iter().any(|arg| arg == flag)
+}
+
 fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<PathBuf, ParseError> {
     args.get(index)
         .and_then(|s| s.to_str())
@@ -198,7 +323,11 @@ fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<Pat
         .ok_or(ParseError::MissingArgument(name))
 }
 
-fn positional_str(args: &[OsString], index: usize, name: &'static str) -> Result<String, ParseError> {
+fn positional_str(
+    args: &[OsString],
+    index: usize,
+    name: &'static str,
+) -> Result<String, ParseError> {
     args.get(index)
         .and_then(|s| s.to_str())
         .map(String::from)
@@ -208,7 +337,10 @@ fn positional_str(args: &[OsString], index: usize, name: &'static str) -> Result
 fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
     for (i, arg) in args.iter().enumerate() {
         if arg == flag {
-            return args.get(i.checked_add(1)?).and_then(|v| v.to_str()).map(String::from);
+            return args
+                .get(i.checked_add(1)?)
+                .and_then(|v| v.to_str())
+                .map(String::from);
         }
     }
     None
@@ -218,17 +350,25 @@ impl std::fmt::Display for ParseError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingArgument(name) => write!(formatter, "missing argument: {name}"),
-            Self::UnknownEmitTarget(target) => write!(formatter, "unknown emit target: {target} (expected: ir, rust)"),
-            Self::UnknownDurability(mode) => write!(formatter, "unknown durability mode: {mode} (expected: strict, journaled, none)"),
+            Self::UnknownEmitTarget(target) => {
+                write!(formatter, "unknown emit target: {target} (expected: ir, rust)")
+            }
+            Self::UnknownDurability(mode) => {
+                write!(
+                    formatter,
+                    "unknown durability mode: {mode} (expected: strict, journaled, none)"
+                )
+            }
             Self::UnknownCommand(cmd) => write!(formatter, "unknown command: {cmd}"),
             Self::NoCommand => write!(formatter, "no command provided"),
+            Self::InvalidSlot(slot) => write!(formatter, "invalid slot: {slot}"),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_args, Command, DurabilityMode, ParseError};
+    use super::{parse_args, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget};
     use std::ffi::OsString;
     use std::path::PathBuf;
 
@@ -239,11 +379,29 @@ mod tests {
     #[test]
     fn parse_run_accepts_db_for_journaled_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics", "run", "workflow.yaml",
-            "--input-bin", "input.bin", "--durability", "journaled", "--db", "journal-db",
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
+            "--db",
+            "journal-db",
         ]));
-        assert!(matches!(parsed, Ok(Command::Run { .. })), "unexpected parse result: {parsed:?}");
-        if let Ok(Command::Run { workflow, input_bin, durability, db }) = parsed {
+
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run {
+            workflow,
+            input_bin,
+            durability,
+            db,
+            ..
+        }) = parsed
+        {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(input_bin, PathBuf::from("input.bin"));
             assert_eq!(durability, DurabilityMode::Journaled);
@@ -254,22 +412,228 @@ mod tests {
     #[test]
     fn parse_run_compiled_requires_db_for_strict_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics", "run-compiled", "workflow.vbir",
-            "--input-bin", "input.bin", "--durability", "strict",
+            "velvet-ballastics",
+            "run-compiled",
+            "workflow.vbir",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "strict",
         ]));
-        assert!(matches!(parsed, Err(ParseError::MissingArgument("--db"))), "unexpected parse result: {parsed:?}");
+
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--db"))),
+            "unexpected parse result: {parsed:?}"
+        );
     }
 
     #[test]
     fn parse_run_none_mode_keeps_db_optional() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics", "run", "workflow.yaml",
-            "--input-bin", "input.bin", "--durability", "none",
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
         ]));
-        assert!(matches!(parsed, Ok(Command::Run { .. })), "unexpected parse result: {parsed:?}");
+
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
         if let Ok(Command::Run { durability, db, .. }) = parsed {
             assert_eq!(durability, DurabilityMode::None);
             assert_eq!(db, None);
         }
+    }
+
+    #[test]
+    fn parse_run_without_step_flags_produces_none_step() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run { step, .. }) = parsed {
+            assert!(step.is_none());
+        }
+    }
+
+    #[test]
+    fn parse_run_step_requires_step_input() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--step",
+            "0",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--step-input"))),
+            "unexpected parse result: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn step_target_holds_step_id_and_path() {
+        let target = StepTarget {
+            step_id: 5,
+            step_input: PathBuf::from("data.bin"),
+        };
+        assert_eq!(target.step_id, 5);
+        assert_eq!(target.step_input, PathBuf::from("data.bin"));
+    }
+
+    #[test]
+    fn parse_validate_accepts_json_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "validate",
+            "workflow.yaml",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Validate { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Validate { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_explain_accepts_jsonl_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "explain",
+            "workflow.yaml",
+            "--jsonl",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Explain { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Explain { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Jsonl);
+        }
+    }
+
+    #[test]
+    fn parse_compile_includes_output_format() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "ir",
+            "--out",
+            "output.vbir",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Compile { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Compile {
+            workflow,
+            emit,
+            out,
+            output,
+        }) = parsed
+        {
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(emit, EmitTarget::Ir);
+            assert_eq!(out, PathBuf::from("output.vbir"));
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_run_with_step_flags() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--step",
+            "3",
+            "--step-input",
+            "step-data.bin",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run { step, .. }) = parsed {
+            assert!(step.is_some());
+            let target = step.expect("step target");
+            assert_eq!(target.step_id, 3);
+            assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
+        }
+    }
+
+    #[test]
+    fn parse_inspect_includes_output_format() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "inspect",
+            "42",
+            "--db",
+            "test-db",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Inspect { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Inspect {
+            run_id, db, output, ..
+        }) = parsed
+        {
+            assert_eq!(run_id, "42");
+            assert_eq!(db, PathBuf::from("test-db"));
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_help_command() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "help"]));
+        assert!(matches!(parsed, Ok(Command::Help)));
+    }
+
+    #[test]
+    fn parse_version_command() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "--version"]));
+        assert!(matches!(parsed, Ok(Command::Version)));
+    }
+
+    #[test]
+    fn parse_no_command_returns_error() {
+        let parsed = parse_args(&args(&["velvet-ballastics"]));
+        assert!(matches!(parsed, Err(ParseError::NoCommand)));
+    }
+
+    #[test]
+    fn parse_unknown_command_returns_error() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "foobar"]));
+        assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
     }
 }
