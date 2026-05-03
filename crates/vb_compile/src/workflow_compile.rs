@@ -1,51 +1,57 @@
-#![forbid(unsafe_code)]
-//! Step compilation primitives and shared types.
-//!
-//! Defines StepPrimitive, StepSpec, and the step_spec parser.
-
-use saphyr::Yaml;
-
-use super::slot_compiler::CompileError;
-
-const RESERVED_NAMES: &[&str] = &[
-    "input",
-    "inputs",
-    "vars",
-    "secrets",
-    "steps",
-    "result",
-    "when",
-    "item",
-    "error",
-    "summary",
-    "cursor",
-    "page",
-    "event",
-    "attempt",
-    "attempts",
-    "true",
-    "false",
-    "null",
-    "run",
-    "do",
-    "set",
-    "save",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
-    "try_again",
-    "on_error",
-    "then",
-    "finish",
-];
+fn compile_step(
+    step: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    source_ir_starts: &[StepIdx],
+    builder: &mut WorkflowBuilder,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    let StepSpec { primitive, body } = step_spec(step, index)?;
+    let node = match primitive {
+        StepPrimitive::Run | StepPrimitive::Do => compile_run(
+            body,
+            index,
+            last_step,
+            id,
+            next,
+            primitive.as_str(),
+            builder,
+        ),
+        StepPrimitive::Set | StepPrimitive::Save => compile_save(
+            body,
+            index,
+            last_step,
+            id,
+            next,
+            primitive.as_str(),
+            builder,
+        ),
+        StepPrimitive::Choose => {
+            compile_choose(body, index, last_step, id, source_ir_starts, builder)
+        }
+        StepPrimitive::ForEach => return compile_for_each(body, index, last_step, id, builder),
+        StepPrimitive::Together => {
+            return compile_together(body, index, last_step, id, source_ir_starts, builder);
+        }
+        StepPrimitive::Collect => {
+            return compile_collect(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Reduce => {
+            return compile_reduce(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Repeat => {
+            return compile_repeat(body, index, last_step, id, next, builder);
+        }
+        StepPrimitive::Wait => compile_wait(body, index, last_step, id, next, builder),
+        StepPrimitive::Ask => return compile_ask(body, index, last_step, id, next, builder),
+        StepPrimitive::Finish => return compile_finish(body, index, last_step, id, builder),
+    }?;
+    Ok(vec![node])
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StepPrimitive {
+enum StepPrimitive {
     Set,
     Run,
     Do,
@@ -62,8 +68,7 @@ pub enum StepPrimitive {
 }
 
 impl StepPrimitive {
-    #[must_use]
-    pub fn from_field(field: &str) -> Option<Self> {
+    fn from_field(field: &str) -> Option<Self> {
         match field {
             "set" => Some(Self::Set),
             "run" => Some(Self::Run),
@@ -82,8 +87,7 @@ impl StepPrimitive {
         }
     }
 
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::Set => "set",
             Self::Run => "run",
@@ -102,19 +106,45 @@ impl StepPrimitive {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct StepSpec<'a> {
-    pub primitive: StepPrimitive,
-    pub body: &'a Yaml<'a>,
+fn compile_run(
+    body: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    primitive: &'static str,
+    builder: &mut WorkflowBuilder,
+) -> Result<CompiledNode, CompileError> {
+    reject_last_non_finish(index, last_step)?;
+    reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
+    let action = required_action(body, index, primitive)?;
+    let input = required_slot(body, index, "input")?;
+    let output = slot_idx_for_step(index)?;
+    builder.record_slot(input);
+    builder.record_slot(output);
+    Ok(lower_do(
+        id,
+        action,
+        input,
+        Some(output),
+        Some(required_next_step(next, index)?),
+        &mut SlotCompiler::new(),
+    ))
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ChooseCondition {
-    Slot(vb_core::SlotIdx),
+struct StepSpec<'a> {
+    primitive: StepPrimitive,
+    body: &'a Yaml<'a>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ChooseCondition {
+    Slot(SlotIdx),
     Literal(bool),
 }
 
-pub fn step_spec<'a>(step: &'a Yaml<'a>, index: usize) -> Result<StepSpec<'a>, CompileError> {
+fn step_spec<'a>(step: &'a Yaml<'a>, index: usize) -> Result<StepSpec<'a>, CompileError> {
     let Some(mapping) = step.as_mapping() else {
         return Err(CompileError::StepShape { step: index });
     };
@@ -170,13 +200,3 @@ fn validate_step_display_name(body: &Yaml<'_>, step: usize) -> Result<(), Compil
     }
 }
 
-#[allow(clippy::unnecessary_wraps)]
-pub fn non_string_key_error() -> CompileError {
-    CompileError::NonStringKey {
-        mark: super::SourceMark::unavailable(),
-    }
-}
-
-pub fn is_reserved_name(value: &str) -> bool {
-    RESERVED_NAMES.contains(&value)
-}

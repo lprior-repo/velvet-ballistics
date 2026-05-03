@@ -1,20 +1,3 @@
-#![forbid(unsafe_code)]
-//! Compilation error types and code mapping.
-//!
-//! Defines CompileError, CompileErrors, and diagnostic code helpers.
-
-use thiserror::Error;
-use vb_core::{ActionId, SideEffect};
-
-use super::SourceMark;
-
-#[derive(Debug, Clone, Copy)]
-pub enum SideEffect {
-    None,
-}
-
-/// YAML compiler errors.
-#[derive(Debug, Clone, Error)]
 pub enum CompileError {
     /// Source exceeded configured byte limit.
     #[error("YAML source exceeds byte limit: actual={actual}, limit={limit}")]
@@ -126,7 +109,7 @@ pub enum CompileError {
     },
     /// Compiled IR validation failed.
     #[error("compiled workflow IR failed validation: {0}")]
-    Workflow(#[from] vb_core::WorkflowError),
+    Workflow(#[from] WorkflowError),
     /// Shared validation pipeline gate failure.
     #[error("validation gate failure: {0}")]
     Validation(#[from] vb_validate::ValidationError),
@@ -514,7 +497,6 @@ pub enum CompileError {
         reason: Box<str>,
     },
 }
-
 impl CompileError {
     /// Stable machine-readable validation diagnostic code.
     #[must_use]
@@ -602,28 +584,24 @@ impl CompileError {
     }
 }
 
-// ============================================================================
-// Diagnostic code helpers
-// ============================================================================
-
-fn workflow_error_code(error: &vb_core::WorkflowError) -> &'static str {
+fn workflow_error_code(error: &WorkflowError) -> &'static str {
     match error {
-        vb_core::WorkflowError::ResourceContractExceeded { .. }
-        | vb_core::WorkflowError::ResourceContractTooLarge { .. }
-        | vb_core::WorkflowError::BudgetPolicyExceeded { .. } => "LIMIT_EXCEEDED",
-        vb_core::WorkflowError::StepOutOfBounds { .. } => "INVALID_THEN_TARGET",
-        vb_core::WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
-        vb_core::WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
-        vb_core::WorkflowError::Expression(_) => "INVALID_EXPRESSION",
-        vb_core::WorkflowError::EmptyNodes
-        | vb_core::WorkflowError::EntryOutOfBounds { .. }
-        | vb_core::WorkflowError::NodeIdMismatch { .. }
-        | vb_core::WorkflowError::EmptyBranchTable
-        | vb_core::WorkflowError::UnreachableNode { .. }
-        | vb_core::WorkflowError::BackwardEdge { .. }
-        | vb_core::WorkflowError::ImproperLoopNesting { .. }
-        | vb_core::WorkflowError::SymbolOutOfBounds { .. }
-        | vb_core::WorkflowError::AccessorPathTooDeep { .. } => "INVALID_COMPILED_WORKFLOW",
+        WorkflowError::ResourceContractExceeded { .. }
+        | WorkflowError::ResourceContractTooLarge { .. }
+        | WorkflowError::BudgetPolicyExceeded { .. } => "LIMIT_EXCEEDED",
+        WorkflowError::StepOutOfBounds { .. } => "INVALID_THEN_TARGET",
+        WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
+        WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
+        WorkflowError::Expression(_) => "INVALID_EXPRESSION",
+        WorkflowError::EmptyNodes
+        | WorkflowError::EntryOutOfBounds { .. }
+        | WorkflowError::NodeIdMismatch { .. }
+        | WorkflowError::EmptyBranchTable
+        | WorkflowError::UnreachableNode { .. }
+        | WorkflowError::BackwardEdge { .. }
+        | WorkflowError::ImproperLoopNesting { .. }
+        | WorkflowError::SymbolOutOfBounds { .. }
+        | WorkflowError::AccessorPathTooDeep { .. } => "INVALID_COMPILED_WORKFLOW",
     }
 }
 
@@ -646,16 +624,6 @@ fn invalid_name_code(_field: &str, value: &str) -> &'static str {
     } else {
         "INVALID_ID"
     }
-}
-
-fn is_reserved_name(value: &str) -> bool {
-    const RESERVED_NAMES: &[&str] = &[
-        "input", "inputs", "vars", "secrets", "steps", "result", "when", "item", "error",
-        "summary", "cursor", "page", "event", "attempt", "attempts", "true", "false", "null",
-        "run", "do", "set", "save", "choose", "for_each", "together", "collect", "reduce",
-        "repeat", "wait", "ask", "try_again", "on_error", "then", "finish",
-    ];
-    RESERVED_NAMES.contains(&value)
 }
 
 fn primitive_code(primitive: &str) -> &'static str {
@@ -705,12 +673,8 @@ fn unknown_reference_code(kind: &str) -> &'static str {
     }
 }
 
-// ============================================================================
-// CompileErrors wrapper
-// ============================================================================
-
 /// Multiple compilation errors collected in one pass (railway programming).
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
 impl CompileErrors {
@@ -761,3 +725,11 @@ impl std::fmt::Display for CompileErrors {
         Ok(())
     }
 }
+
+/// Appends an error to the collector, if the result is `Err`.
+fn collect(errors: &mut Vec<CompileError>, result: Result<(), CompileError>) {
+    if let Err(error) = result {
+        errors.push(error);
+    }
+}
+

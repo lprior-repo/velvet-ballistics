@@ -1262,10 +1262,10 @@ mod tests {
     }
 
     #[test]
-    fn eval_helper_contains_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Contains is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Contains
-        // Then: the result is Err(UnknownOperator) via the helper dispatch
+    fn eval_helper_contains_returns_type_mismatch() -> ExprResult<()> {
+        // Given: Contains is a multi-arg helper that requires ValueStore context
+        // When: eval_expr_op encounters ExprOp::Contains in pure vb_expr path
+        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1277,23 +1277,18 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Contains".into(),
-            });
-        };
         assert!(
-            op.contains("Contains"),
-            "op should mention Contains, got: {op}"
+            matches!(result, Err(ExprError::TypeMismatch { .. })),
+            "expected TypeMismatch for Contains, got: {result:?}"
         );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_append_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Append is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Append
-        // Then: the result is Err(UnknownOperator)
+    fn eval_helper_append_returns_type_mismatch() -> ExprResult<()> {
+        // Given: Append is a multi-arg helper that requires ValueStore context
+        // When: eval_expr_op encounters ExprOp::Append in pure vb_expr path
+        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1305,20 +1300,18 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Append".into(),
-            });
-        };
-        assert!(op.contains("Append"), "op should mention Append, got: {op}");
+        assert!(
+            matches!(result, Err(ExprError::TypeMismatch { .. })),
+            "expected TypeMismatch for Append, got: {result:?}"
+        );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_merge_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Merge is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Merge
-        // Then: the result is Err(UnknownOperator)
+    fn eval_helper_merge_returns_type_mismatch() -> ExprResult<()> {
+        // Given: Merge is a multi-arg helper that requires ValueStore context
+        // When: eval_expr_op encounters ExprOp::Merge in pure vb_expr path
+        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1330,12 +1323,10 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Merge".into(),
-            });
-        };
-        assert!(op.contains("Merge"), "op should mention Merge, got: {op}");
+        assert!(
+            matches!(result, Err(ExprError::TypeMismatch { .. })),
+            "expected TypeMismatch for Merge, got: {result:?}"
+        );
         Ok(())
     }
 

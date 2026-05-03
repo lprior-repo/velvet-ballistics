@@ -1,9 +1,45 @@
-#![forbid(unsafe_code)]
-//! Workflow trigger validation.
+fn validate_top_level_keys(doc: &Yaml<'_>) -> Result<(), CompileError> {
+    let Some(mapping) = doc.as_mapping() else {
+        return Err(CompileError::TopLevelNotMapping);
+    };
+    for (key, _) in mapping {
+        let Some(field) = key.as_str() else {
+            return Err(non_string_key_error());
+        };
+        if !is_top_level_field(field) {
+            return Err(CompileError::UnknownTopLevelField {
+                field: Box::<str>::from(field),
+            });
+        }
+    }
+    Ok(())
+}
 
-use saphyr::{Mapping, Yaml};
+fn is_top_level_field(field: &str) -> bool {
+    matches!(
+        field,
+        "version"
+            | "name"
+            | "when"
+            | "steps"
+            | "inputs"
+            | "vars"
+            | "secrets"
+            | "result"
+            | "examples"
+    )
+}
 
-use super::slot_compiler::CompileError;
+fn validate_workflow_version(doc: &Yaml<'_>) -> Result<(), CompileError> {
+    let version = required_string_field(doc, "version")?;
+    if version == WORKFLOW_VERSION {
+        Ok(())
+    } else {
+        Err(CompileError::InvalidVersion {
+            actual: Box::<str>::from(version),
+        })
+    }
+}
 
 fn validate_workflow_trigger(doc: &Yaml<'_>) -> Result<(), CompileError> {
     let triggers = required_mapping_field(doc, "when")?;
@@ -79,7 +115,7 @@ fn validate_event_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {
 fn trigger_mapping<'a>(
     trigger: &str,
     node: &'a Yaml<'a>,
-) -> Result<&'a Mapping<'a>, CompileError> {
+) -> Result<&'a saphyr::Mapping<'a>, CompileError> {
     node.as_mapping().ok_or_else(|| CompileError::TriggerShape {
         trigger: Box::<str>::from(trigger),
         expected: "a mapping",
@@ -88,7 +124,7 @@ fn trigger_mapping<'a>(
 
 fn reject_unknown_trigger_fields(
     trigger: &'static str,
-    mapping: &Mapping<'_>,
+    mapping: &saphyr::Mapping<'_>,
     allowed: &[&str],
 ) -> Result<(), CompileError> {
     for (key, _) in mapping {
@@ -139,16 +175,36 @@ fn is_webhook_method(method: &str) -> bool {
     matches!(method, "GET" | "POST" | "PUT" | "PATCH" | "DELETE")
 }
 
-fn non_string_key_error() -> CompileError {
-    CompileError::NonStringKey {
-        mark: super::SourceMark::unavailable(),
-    }
+fn required_string_field<'a>(
+    doc: &'a Yaml<'a>,
+    field: &'static str,
+) -> Result<&'a str, CompileError> {
+    let node = doc
+        .as_mapping_get(field)
+        .ok_or(CompileError::MissingField { field })?;
+    node.as_str().ok_or(CompileError::FieldShape {
+        field,
+        expected: "a string",
+    })
+}
+
+fn required_sequence_field<'a>(
+    doc: &'a Yaml<'a>,
+    field: &'static str,
+) -> Result<&'a saphyr::Sequence<'a>, CompileError> {
+    let node = doc
+        .as_mapping_get(field)
+        .ok_or(CompileError::MissingField { field })?;
+    node.as_sequence().ok_or(CompileError::FieldShape {
+        field,
+        expected: "a sequence",
+    })
 }
 
 fn required_mapping_field<'a>(
     doc: &'a Yaml<'a>,
     field: &'static str,
-) -> Result<&'a Mapping<'a>, CompileError> {
+) -> Result<&'a saphyr::Mapping<'a>, CompileError> {
     let node = doc
         .as_mapping_get(field)
         .ok_or(CompileError::MissingField { field })?;
@@ -158,5 +214,4 @@ fn required_mapping_field<'a>(
     })
 }
 
-// Re-export for use by workflow_validators
-pub use super::workflow_validators::validate_workflow_trigger;
+#[derive(Debug, Default)]
