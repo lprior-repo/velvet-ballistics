@@ -271,14 +271,138 @@ fn check_resource_bounds(parts: &WorkflowParts) -> Certificate {
 }
 
 // ---------------------------------------------------------------------------
-// Certificate 4: Taint Flow (stub)
+// Certificate 4: Taint Flow
 // ---------------------------------------------------------------------------
 
-fn check_taint_flow(_parts: &WorkflowParts) -> Certificate {
-    Certificate {
-        kind: CertificateKind::TaintFlow,
-        status: CertificateStatus::Warn("taint analysis not yet implemented".into()),
-        details: "Full taint propagation analysis is not yet available.".into(),
+fn check_taint_flow(parts: &WorkflowParts) -> Certificate {
+    let overlay = super::taint_overlay::compute_taint_overlay(parts);
+
+    // No secret sources at all -- clean pass.
+    if overlay.sources.is_empty() {
+        return Certificate {
+            kind: CertificateKind::TaintFlow,
+            status: CertificateStatus::Pass,
+            details: "No secret source nodes (WaitEvent/Ask) found in workflow.".into(),
+        };
+    }
+
+    // Collect source step indices for human-readable messages.
+    let source_labels: Vec<String> = overlay
+        .sources
+        .iter()
+        .map(|s| format!("step {}", s.get()))
+        .collect();
+
+    // Check for direct paths from secret source to Finish.
+    let dangerous_paths: Vec<&super::taint_overlay::TaintPathSegment> = overlay
+        .paths
+        .iter()
+        .filter(|seg| seg.status == super::taint_overlay::TaintPathStatus::Dangerous)
+        .collect();
+
+    if !overlay.finish_safe {
+        // At least one secret source can reach a Finish node.
+        // Determine whether the path is direct (source -> Finish) or indirect
+        // (source -> ... -> Finish).
+        let direct_to_finish = dangerous_paths
+            .iter()
+            .any(|seg| overlay.sinks.contains(&seg.to));
+
+        // For direct vs indirect: check if any path goes through intermediate
+        // nodes before reaching a sink.
+        let sink_set: std::collections::HashSet<StepIdx> =
+            overlay.sinks.iter().copied().collect();
+        let has_indirect = dangerous_paths.iter().any(|seg| {
+            // This segment reaches a sink but there are other segments from the
+            // same source to non-sink nodes -- meaning it goes through
+            // intermediaries.
+            !sink_set.contains(&seg.to) && seg.status == super::taint_overlay::TaintPathStatus::Dangerous
+        });
+
+        if has_indirect {
+            Certificate {
+                kind: CertificateKind::TaintFlow,
+                status: CertificateStatus::Fail(format!(
+                    "secret value from {} flows to Finish node through intermediate nodes",
+                    source_labels.join(", "),
+                )),
+                details: format!(
+                    "Indirect taint propagation: {} source(s), {} dangerous path segment(s), {} sink(s)",
+                    overlay.sources.len(),
+                    dangerous_paths.len(),
+                    overlay.sinks.len(),
+                ),
+            }
+        } else if direct_to_finish {
+            Certificate {
+                kind: CertificateKind::TaintFlow,
+                status: CertificateStatus::Fail(format!(
+                    "secret value from {} flows directly to Finish node",
+                    source_labels.join(", "),
+                )),
+                details: format!(
+                    "Direct taint: {} source(s), {} sink(s)",
+                    overlay.sources.len(),
+                    overlay.sinks.len(),
+                ),
+            }
+        } else {
+            // Dangerous paths exist but none directly land on a sink via a
+            // single segment -- still a failure because the overlay reports
+            // finish_safe == false.
+            Certificate {
+                kind: CertificateKind::TaintFlow,
+                status: CertificateStatus::Fail(format!(
+                    "secret value from {} reaches Finish node",
+                    source_labels.join(", "),
+                )),
+                details: format!(
+                    "{} source(s), {} path segment(s), {} sink(s)",
+                    overlay.sources.len(),
+                    overlay.paths.len(),
+                    overlay.sinks.len(),
+                ),
+            }
+        }
+    } else {
+        // finish_safe is true: sources exist but none reach a Finish node.
+        // This is a warning because secret nodes are present but contained.
+        let warning_paths: Vec<&super::taint_overlay::TaintPathSegment> = overlay
+            .paths
+            .iter()
+            .filter(|seg| seg.status == super::taint_overlay::TaintPathStatus::Warning)
+            .collect();
+
+        if warning_paths.is_empty() {
+            // Sources exist but they have no outgoing edges at all.
+            Certificate {
+                kind: CertificateKind::TaintFlow,
+                status: CertificateStatus::Warn(format!(
+                    "secret source(s) at {} have no outgoing propagation paths",
+                    source_labels.join(", "),
+                )),
+                details: format!(
+                    "{} secret source node(s) present but isolated; no taint propagation detected",
+                    overlay.sources.len(),
+                ),
+            }
+        } else {
+            // Sources propagate to non-Finish nodes -- uncertain containment.
+            Certificate {
+                kind: CertificateKind::TaintFlow,
+                status: CertificateStatus::Warn(format!(
+                    "secret value from {} propagates to {} non-Finish node(s) but does not reach Finish",
+                    source_labels.join(", "),
+                    warning_paths.len(),
+                )),
+                details: format!(
+                    "Indirect/uncertain propagation: {} source(s), {} warning segment(s), {} sink(s)",
+                    overlay.sources.len(),
+                    warning_paths.len(),
+                    overlay.sinks.len(),
+                ),
+            }
+        }
     }
 }
 

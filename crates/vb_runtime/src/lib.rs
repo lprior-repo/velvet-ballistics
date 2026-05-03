@@ -36,6 +36,7 @@ pub mod admission;
 pub mod counters;
 pub mod engine;
 pub mod frame_pool;
+pub mod idempotency;
 pub mod journal;
 pub mod primitives;
 pub mod recovery;

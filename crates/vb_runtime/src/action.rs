@@ -761,50 +761,95 @@ mod tests {
     }
 
     // ========================================================================
-    // IdempotencyTracker tests — TODO: implement IdempotencyTracker, then
-    // uncomment these tests.
+    // IdempotencyTracker tests
     // ========================================================================
 
-    // #[test]
-    // fn idempotency_tracker_new_is_empty() {
-    //     let tracker = IdempotencyTracker::new();
-    //     assert_eq!(tracker.is_empty(), true);
-    //     assert_eq!(tracker.len(), 0);
-    // }
-    //
-    // #[test]
-    // fn idempotency_tracker_record_completion_succeeds() {
-    //     let mut tracker = IdempotencyTracker::new();
-    //     assert_eq!(tracker.record_completion(42), Ok(()));
-    //     assert_eq!(tracker.is_completed(42), true);
-    //     assert_eq!(tracker.len(), 1);
-    // }
-    //
-    // #[test]
-    // fn idempotency_tracker_duplicate_completion_returns_error() {
-    //     let mut tracker = IdempotencyTracker::new();
-    //     assert_eq!(tracker.record_completion(99), Ok(()));
-    //     assert_eq!(
-    //         tracker.record_completion(99),
-    //         Err(ActionError::CompletionAlreadyRecorded)
-    //     );
-    // }
-    //
-    // #[test]
-    // fn idempotency_tracker_different_keys_are_independent() {
-    //     let mut tracker = IdempotencyTracker::new();
-    //     assert_eq!(tracker.record_completion(1), Ok(()));
-    //     assert_eq!(tracker.record_completion(2), Ok(()));
-    //     assert_eq!(tracker.is_completed(1), true);
-    //     assert_eq!(tracker.is_completed(2), true);
-    //     assert_eq!(tracker.is_completed(3), false);
-    //     assert_eq!(tracker.len(), 2);
-    // }
-    //
-    // #[test]
-    // fn idempotency_tracker_default_matches_new() {
-    //     let default = IdempotencyTracker::default();
-    //     let new = IdempotencyTracker::new();
-    //     assert_eq!(default, new);
-    // }
+    #[test]
+    fn idempotency_tracker_new_is_empty() {
+        use crate::idempotency::IdempotencyTracker;
+        let tracker = IdempotencyTracker::new();
+        assert_eq!(tracker.is_empty(), true);
+        assert_eq!(tracker.len(), 0);
+    }
+
+    #[test]
+    fn idempotency_tracker_record_completion_succeeds() {
+        use crate::idempotency::IdempotencyTracker;
+        let mut tracker = IdempotencyTracker::new();
+        let ticket = ActionTicket {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 42,
+        };
+        assert_eq!(tracker.mark_completed(&ticket), Ok(()));
+        assert_eq!(tracker.is_completed(&ticket), true);
+        assert_eq!(tracker.len(), 1);
+    }
+
+    #[test]
+    fn idempotency_tracker_duplicate_completion_returns_error() {
+        use crate::idempotency::IdempotencyTracker;
+        let mut tracker = IdempotencyTracker::new();
+        let ticket = ActionTicket {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 99,
+        };
+        assert_eq!(tracker.mark_completed(&ticket), Ok(()));
+        assert_eq!(
+            tracker.mark_completed(&ticket),
+            Err(ActionError::CompletionAlreadyRecorded)
+        );
+    }
+
+    #[test]
+    fn idempotency_tracker_different_keys_are_independent() {
+        use crate::idempotency::IdempotencyTracker;
+        let mut tracker = IdempotencyTracker::new();
+        let ticket_a = ActionTicket {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 1,
+        };
+        let ticket_b = ActionTicket {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 2,
+        };
+        let ticket_c = ActionTicket {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 3,
+        };
+        assert_eq!(tracker.mark_completed(&ticket_a), Ok(()));
+        assert_eq!(tracker.mark_completed(&ticket_b), Ok(()));
+        assert_eq!(tracker.is_completed(&ticket_a), true);
+        assert_eq!(tracker.is_completed(&ticket_b), true);
+        assert_eq!(tracker.is_completed(&ticket_c), false);
+        assert_eq!(tracker.len(), 2);
+    }
+
+    #[test]
+    fn idempotency_tracker_default_matches_new() {
+        use crate::idempotency::IdempotencyTracker;
+        let default = IdempotencyTracker::default();
+        let new = IdempotencyTracker::new();
+        assert_eq!(default.len(), new.len());
+        assert_eq!(default.is_empty(), new.is_empty());
+    }
 }
