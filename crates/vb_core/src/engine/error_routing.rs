@@ -255,6 +255,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         }
     }
 
@@ -291,6 +292,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         }
     }
 
@@ -377,6 +379,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let plan = CompiledWorkflow::try_from_parts(parts).ok().expect("valid workflow");
         let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).ok().expect("valid frame");

@@ -733,6 +733,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,

@@ -11,7 +11,11 @@ members = [
     "crates/vb_runtime",
     "crates/vb_ipc",
     "crates/vb_codegen",
+    "crates/vb_ui",
     "crates/velvet_ballastics",
+    "crates/flow-core",
+    "crates/flow-step-plugin",
+    "crates/flow-editor-makepad",
     "fuzz",
 ]
 resolver = "2"

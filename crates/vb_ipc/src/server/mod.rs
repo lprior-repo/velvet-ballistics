@@ -22,7 +22,7 @@ pub mod trace;
 
 use crate::{
     IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
-    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload,
+    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, RunSummary, SubmitRunPayload,
 };
 pub use error::IpcServerError;
 use handlers::{
@@ -51,7 +51,7 @@ struct ClientConnection {
 }
 
 /// Response payload sent back to IPC clients after command processing.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum IpcResponse {
     /// Command accepted and dispatched with a run identifier acknowledgement.
     AcceptedRun { run_id: u64 },
@@ -83,6 +83,10 @@ pub enum IpcResponse {
     FrameError { message: String },
     /// Runtime rejected the command.
     RuntimeError { message: String },
+    /// List of run summaries.
+    RunList { runs: Vec<RunSummary> },
+    /// Runtime metrics snapshot.
+    Metrics(crate::RuntimeMetrics),
 }
 
 /// Resolves compiled workflows for IPC submit commands.

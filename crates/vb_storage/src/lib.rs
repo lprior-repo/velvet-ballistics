@@ -10073,6 +10073,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
     let computed = blake3::hash(&hash_bytes);
@@ -10137,6 +10138,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
 
@@ -10193,6 +10195,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     // Compute digest from content with digest field zeroed.
@@ -10277,6 +10280,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
@@ -10310,6 +10314,7 @@ fn submit_artifact_malformed_ir_rejected() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     // try_from_parts must reject this -- the same validation gate
     // that submit_artifact uses to produce ArtifactMalformed.
@@ -10515,6 +10520,7 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
         slot_count: 1,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         symbols_count: 0,
     };
     let spoofed = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
@@ -10588,6 +10594,7 @@ fn submit_artifact_stale_digest_rejected() {
         slot_count: 1,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         symbols_count: 0,
     };
     let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");

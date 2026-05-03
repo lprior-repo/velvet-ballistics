@@ -26,6 +26,7 @@ pub struct CompiledWorkflow {
     symbols_count: u32,
     entry: StepIdx,
     resource_contract: ResourceContract,
+    step_names: Box<[Box<str>]>,
 }
 
 impl CompiledWorkflow {
@@ -44,6 +45,7 @@ impl CompiledWorkflow {
             symbols_count: parts.symbols_count,
             entry: parts.entry,
             resource_contract: parts.resource_contract,
+            step_names: parts.step_names,
         })
     }
 
@@ -107,6 +109,12 @@ impl CompiledWorkflow {
         self.constants.get(constant.as_usize())
     }
 
+    /// Returns the human-readable step name for a given step index.
+    #[must_use]
+    pub fn step_name(&self, step: StepIdx) -> Option<&str> {
+        self.step_names.get(step.as_usize()).map(|s| s.as_ref())
+    }
+
     /// Explicit compiled resource bounds for admission and allocation.
     #[must_use]
     pub const fn resource_contract(&self) -> ResourceContract {
@@ -127,6 +135,7 @@ impl CompiledWorkflow {
             symbols_count: self.symbols_count,
             entry: self.entry,
             resource_contract: self.resource_contract,
+            step_names: self.step_names.clone(),
         }
     }
 }
@@ -231,6 +240,8 @@ pub struct WorkflowParts {
     pub entry: StepIdx,
     /// Explicit resource bounds carried with the compiled artifact.
     pub resource_contract: ResourceContract,
+    /// Human-readable step names indexed by StepIdx.
+    pub step_names: Box<[Box<str>]>,
 }
 
 /// Bounded accessor program for slot-rooted path traversal.
@@ -2183,6 +2194,7 @@ mod tests {
             symbols_count,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, max_slots, 0, 0, 0),
+        step_names: Box::new([]),
         }
     }
 
@@ -2232,6 +2244,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract,
+            step_names: Box::default(),
         }
     }
 
@@ -2308,6 +2321,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(3, validated_slot_count, 1, 1, 1),
+        step_names: Box::new([]),
         }
     }
 
@@ -2353,6 +2367,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2382,6 +2397,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(5),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2411,6 +2427,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 0, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2539,6 +2556,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(0, 0, 0, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2570,6 +2588,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(1), // exactly at len
             resource_contract: resource_contract(1, 0, 0, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2772,6 +2791,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(0, 0, 0, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3097,6 +3117,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(max_steps, slot_count, 1, 0, 0),
+        step_names: Box::new([]),
         }
     }
 
@@ -3305,6 +3326,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(4, 3, 1, 0, 0),
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -3396,6 +3418,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(6, 5, 1, 0, 0),
+        step_names: Box::new([]),
         };
         match CompiledWorkflow::try_from_parts(parts) {
             Err(WorkflowError::ImproperLoopNesting { inner, outer_done }) => {
@@ -3496,6 +3519,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(6, 5, 1, 0, 0),
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -3531,6 +3555,7 @@ mod tests {
             symbols_count: 43,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -3566,6 +3591,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -3612,6 +3638,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3661,6 +3688,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3697,6 +3725,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3728,6 +3757,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 2, 0, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3760,6 +3790,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3804,6 +3835,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3847,6 +3879,7 @@ mod tests {
             symbols_count: 3, // Only symbols 0, 1, 2 exist; SymbolId(5) is out of bounds
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3885,6 +3918,7 @@ mod tests {
             symbols_count: 3,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         CompiledWorkflow::try_from_parts(parts)
@@ -3921,6 +3955,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -3963,6 +3998,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4009,6 +4045,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         CompiledWorkflow::try_from_parts(parts)
@@ -4045,6 +4082,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         CompiledWorkflow::try_from_parts(parts)
@@ -4077,6 +4115,7 @@ mod tests {
             symbols_count: 5,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4108,6 +4147,7 @@ mod tests {
             symbols_count: 5,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         CompiledWorkflow::try_from_parts(parts)
@@ -4138,6 +4178,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4220,6 +4261,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4270,6 +4312,7 @@ mod tests {
             symbols_count: 2,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         CompiledWorkflow::try_from_parts(parts)
@@ -4311,6 +4354,7 @@ mod tests {
             symbols_count: 2,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4344,6 +4388,7 @@ mod tests {
             symbols_count: 42,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(1, 1, 1, 0, 0),
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -4404,6 +4449,7 @@ mod tests {
             symbols_count: 10,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(2, 1, 2, 0, 0),
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4443,6 +4489,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: contract,
+        step_names: Box::new([]),
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
@@ -4525,6 +4572,7 @@ mod proptests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
+        step_names: Box::new([]),
         }
     }
 
@@ -4576,6 +4624,7 @@ mod proptests {
                 symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, slot_count, 1, 0, 0),
+        step_names: Box::new([]),
             };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
@@ -4631,6 +4680,7 @@ mod proptests {
                 symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(2, slot_count, 1, 0, 0),
+        step_names: Box::new([]),
             };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
@@ -4703,6 +4753,7 @@ mod proptests {
                 symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
+        step_names: Box::new([]),
             };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
@@ -4789,6 +4840,7 @@ mod proptests {
                 symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
+        step_names: Box::new([]),
             };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
@@ -4822,6 +4874,7 @@ mod proptests {
             let valid_parts = build_valid_chain(usize::from(actual_steps));
             let parts = WorkflowParts {
                 resource_contract: resource_contract(max_steps_declared, 1, 1, 0, 0),
+        step_names: Box::new([]),
                 ..valid_parts
             };
             let result = CompiledWorkflow::try_from_parts(parts);
@@ -4867,6 +4920,7 @@ mod proptests {
                 symbols_count: 0,
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, declared_slots, 1, 0, 0),
+        step_names: Box::new([]),
             };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {

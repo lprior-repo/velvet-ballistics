@@ -62,6 +62,10 @@ pub enum IpcCommand {
     Health = 10,
     /// Request graceful shutdown.
     Shutdown = 11,
+    /// List active runs.
+    ListRuns = 12,
+    /// Query runtime metrics (queue depths, shard load, throughput).
+    GetMetrics = 13,
 }
 
 impl IpcCommand {
@@ -79,6 +83,8 @@ impl IpcCommand {
             9 => Ok(Self::DrainTrace),
             10 => Ok(Self::Health),
             11 => Ok(Self::Shutdown),
+            12 => Ok(Self::ListRuns),
+            13 => Ok(Self::GetMetrics),
             other => Err(IpcError::UnknownCommand(other)),
         }
     }
@@ -98,6 +104,8 @@ impl IpcCommand {
             Self::DrainTrace => 9,
             Self::Health => 10,
             Self::Shutdown => 11,
+            Self::ListRuns => 12,
+            Self::GetMetrics => 13,
         }
     }
 }
@@ -336,10 +344,122 @@ pub enum IpcPayload {
         /// Maximum records to return.
         max_records: u32,
     },
+    /// List active and recent runs.
+    ListRuns {
+        /// Maximum number of runs to return.
+        limit: u32,
+        /// Filter to runs matching this workflow digest (optional).
+        workflow: Option<WorkflowDigest>,
+    },
     /// Health probe.
     Health,
     /// Graceful shutdown request.
     Shutdown,
+    /// Query runtime metrics.
+    GetMetrics,
+}
+
+/// Run state reported in list-run responses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RunListState {
+    /// Run is actively executing or suspended on this shard.
+    Active,
+    /// Run finished successfully.
+    Finished,
+    /// Run failed.
+    Failed,
+    /// Run was cancelled.
+    Cancelled,
+}
+
+/// Summary of a run for list-run responses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunSummary {
+    /// Run identifier.
+    pub run_id: RunId,
+    /// Compiled workflow digest.
+    pub workflow: WorkflowDigest,
+    /// Current run state.
+    pub state: RunListState,
+    /// Submitted sequence number (0 for active in-memory runs).
+    pub submitted_seq: u64,
+    /// Finished sequence number, if the run reached a terminal state.
+    pub finished_seq: Option<u64>,
+    /// Number of steps in the workflow.
+    pub step_count: u16,
+    /// Steps that reached a terminal state (Succeeded, Failed, Skipped, or Cancelled).
+    pub steps_completed: u16,
+}
+
+/// Runtime metrics response.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeMetrics {
+    /// Per-shard metrics.
+    pub shards: Vec<ShardMetrics>,
+    /// Journal metrics.
+    pub journal: JournalMetrics,
+    /// IPC connection metrics.
+    pub ipc: IpcMetrics,
+    /// Aggregate totals across all shards.
+    pub totals: AggregateMetrics,
+}
+
+/// Per-shard metrics snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShardMetrics {
+    /// Shard index.
+    pub shard_id: u32,
+    /// Number of active runs on this shard.
+    pub active_runs: u32,
+    /// Number of commands waiting in the ready queue.
+    pub ready_queue_depth: u32,
+    /// Remaining capacity in the command queue.
+    pub action_queue_depth: u32,
+    /// Number of pending timers.
+    pub timer_count: u32,
+    /// Free frames in the frame pool.
+    pub frame_pool_free: u32,
+    /// Total capacity of the frame pool.
+    pub frame_pool_total: u32,
+    /// Trace ring fill percentage (0.0 - 100.0).
+    pub trace_ring_fill_pct: f32,
+    /// Total steps executed on this shard.
+    pub steps_total: u64,
+    /// Total actions completed on this shard.
+    pub actions_total: u64,
+}
+
+/// Journal metrics snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JournalMetrics {
+    /// Journal writer queue depth.
+    pub writer_queue_depth: u32,
+    /// Total events written.
+    pub total_events: u64,
+    /// Total runs recorded.
+    pub total_runs: u64,
+}
+
+/// IPC connection metrics.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IpcMetrics {
+    /// Currently connected IPC clients.
+    pub connected_clients: u32,
+    /// Total IPC commands processed.
+    pub commands_processed: u64,
+}
+
+/// Aggregate totals across all shards.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AggregateMetrics {
+    /// Total runs currently active across all shards.
+    pub runs_active: u32,
+    /// Total runs waiting (suspended on actions or timers).
+    pub runs_waiting: u32,
+    /// Total runs failed since startup.
+    pub runs_failed_total: u64,
+    /// Total runs finished since startup.
+    pub runs_finished_total: u64,
 }
 
 /// Typed IPC action output payload carried by `CompleteAction`.
@@ -850,7 +970,9 @@ mod tests {
         assert_eq!(IpcCommand::from_u16(9), Ok(IpcCommand::DrainTrace));
         assert_eq!(IpcCommand::from_u16(10), Ok(IpcCommand::Health));
         assert_eq!(IpcCommand::from_u16(11), Ok(IpcCommand::Shutdown));
-        assert_eq!(IpcCommand::from_u16(12), Err(IpcError::UnknownCommand(12)));
+        assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
+        assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::GetMetrics));
+        assert_eq!(IpcCommand::from_u16(14), Err(IpcError::UnknownCommand(14)));
     }
 
     #[test]
@@ -1726,6 +1848,8 @@ mod tests {
         assert_eq!(IpcCommand::DrainTrace.as_u16(), 9);
         assert_eq!(IpcCommand::Health.as_u16(), 10);
         assert_eq!(IpcCommand::Shutdown.as_u16(), 11);
+        assert_eq!(IpcCommand::ListRuns.as_u16(), 12);
+        assert_eq!(IpcCommand::GetMetrics.as_u16(), 13);
     }
 
     #[test]
@@ -2654,17 +2778,17 @@ fn frame_validation_zero_command_id_returns_unknown_command() {
 
 #[test]
 fn frame_validation_unrecognized_command_id_returns_typed_error() {
-    // Given: valid magic and version but command=13 (not defined)
+    // Given: valid magic and version but command=99 (not defined)
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
-    header_bytes[6..8].copy_from_slice(&13u16.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&99u16.to_le_bytes());
 
     // When: decoding the header
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    // Then: UnknownCommand(13)
-    assert_eq!(result, Err(IpcError::UnknownCommand(13)));
+    // Then: UnknownCommand(99)
+    assert_eq!(result, Err(IpcError::UnknownCommand(99)));
 }
 
 #[test]
@@ -2784,6 +2908,8 @@ fn frame_validation_roundtrip_all_commands_preserve_command_identity() {
         IpcCommand::DrainTrace,
         IpcCommand::Health,
         IpcCommand::Shutdown,
+        IpcCommand::ListRuns,
+        IpcCommand::GetMetrics,
     ];
 
     for command in commands {
@@ -2868,7 +2994,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=13u16) {
             let parsed = IpcCommand::from_u16(cmd);
             prop_assert_ok!(parsed);
             let Ok(command) = parsed else { return Ok(()) };
@@ -2897,7 +3023,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=11u16) {
+        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=13u16) {
             // Given: any valid command id
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(())
@@ -2940,7 +3066,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=11u16, payload_len in 0u32..=1024u32) {
+        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=13u16, payload_len in 0u32..=1024u32) {
             // Given: any valid command and payload length up to 1 KiB
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(())

@@ -45,6 +45,7 @@ fn empty_plan_with_expr(
         symbols_count: 10,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     })
     .map_err(|_| EngineError::InvalidCompiledWorkflow {
         reason: "workflow parts",

@@ -828,6 +828,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         }
     }
 
@@ -943,6 +944,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1019,6 +1021,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1047,6 +1050,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1084,6 +1088,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1131,6 +1136,7 @@ mod tests {
             symbols_count: 100,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1202,6 +1208,7 @@ mod tests {
             symbols_count: 3,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -1248,6 +1255,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let run = test_frame(RunId::new(117), &workflow)?;
@@ -1380,6 +1388,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1429,6 +1438,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1469,6 +1479,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1562,6 +1573,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1598,6 +1610,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1635,6 +1648,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1680,6 +1694,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1729,6 +1744,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -1775,6 +1791,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -2013,6 +2030,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(200), &workflow)?;
@@ -2066,6 +2084,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(201), &workflow)?;
@@ -2141,6 +2160,7 @@ mod tests {
             symbols_count: 3,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(202), &workflow)?;
@@ -2240,6 +2260,7 @@ mod tests {
             symbols_count: 3,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(203), &workflow)?;
@@ -2308,6 +2329,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(204), &workflow)?;
@@ -2403,6 +2425,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(205), &workflow)?;
@@ -2541,6 +2564,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = RunFrame::new(RunId::new(250), StepIdx::new(0), 1, slot_count)
@@ -3313,6 +3337,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(350), &workflow)?;
@@ -3370,6 +3395,7 @@ mod tests {
             symbols_count: 10,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(351), &workflow)?;
@@ -3430,6 +3456,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(360), &workflow)?;
@@ -3489,6 +3516,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(361), &workflow)?;
@@ -3568,6 +3596,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(380), &workflow)?;
@@ -3607,6 +3636,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(381), &workflow)?;
@@ -3678,6 +3708,7 @@ mod tests {
             symbols_count: 3,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(390), &workflow)?;
@@ -3754,6 +3785,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(391), &workflow)?;
@@ -3928,6 +3960,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
     }
 
@@ -4230,6 +4263,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         })
         .map_err(|e| e.to_string())?;
 
@@ -4379,6 +4413,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
@@ -4445,6 +4480,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
@@ -4497,6 +4533,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
@@ -4678,6 +4715,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(305), &workflow)?;
@@ -4853,6 +4891,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(505), &workflow)?;
@@ -4940,6 +4979,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(306), &workflow)?;
@@ -4987,6 +5027,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(506), &workflow)?;
@@ -5047,6 +5088,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(307), &workflow)?;
@@ -5095,6 +5137,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let mut run = test_frame(RunId::new(507), &workflow)?;

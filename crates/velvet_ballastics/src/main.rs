@@ -1488,6 +1488,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::default(),
         };
         CompiledWorkflow::try_from_parts(parts).ok()
     }

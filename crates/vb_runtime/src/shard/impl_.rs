@@ -94,6 +94,30 @@ impl Shard {
         self.command_queue.capacity()
     }
 
+    /// Returns the number of active runs on this shard.
+    #[must_use]
+    pub fn active_run_count(&self) -> usize {
+        self.runs.len()
+    }
+
+    /// Returns the number of pending timers on this shard.
+    #[must_use]
+    pub fn pending_timer_count(&self) -> usize {
+        self.pending_timers.len()
+    }
+
+    /// Returns frame pool metrics across all pools: (free, total_capacity).
+    #[must_use]
+    pub fn frame_pool_metrics(&self) -> (usize, usize) {
+        let mut free = 0usize;
+        let mut total = 0usize;
+        for pool in self.frame_pools.values() {
+            free = free.saturating_add(pool.available());
+            total = total.saturating_add(pool.capacity());
+        }
+        (free, total)
+    }
+
     /// Processes one command from the queue. Returns false if the shard should shut down.
     pub fn tick(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
