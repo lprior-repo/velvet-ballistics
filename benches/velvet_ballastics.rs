@@ -10,12 +10,20 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram,
-    ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget, StepIdx, SymbolId, Taint,
-    WorkflowDigest, WorkflowParts,
+    ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ExprIdx, ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue,
+    StepBudget, StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
 use vb_runtime::journal::RuntimeJournal;
 use vb_storage::{EventSeq, JournalEvent};
+
+fn cap(action: ActionId) -> Capability {
+    Capability::new("".into(), action)
+}
+
+fn any_workflow_cap() -> Capability {
+    Capability::new("".into(), ActionId::new(0))
+}
 
 struct GeneratedBinary {
     path: PathBuf,
@@ -2092,6 +2100,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                         vb_runtime::journal::RuntimeJournalEvent::SlotWritten {
                             run,
                             slot: SlotIdx::new(0),
+                            value: vec![],
                         }
                     } else if i % 5 == 3 {
                         vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {
@@ -2140,6 +2149,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                         vb_runtime::journal::RuntimeJournalEvent::SlotWritten {
                             run,
                             slot: SlotIdx::new(0),
+                            value: vec![],
                         }
                     } else if i % 5 == 3 {
                         vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {
@@ -2194,11 +2204,11 @@ fn admission_gate_benches(c: &mut Criterion) {
     let digest = WorkflowDigest::from_bytes([0xAB; 32]);
     let always_present = vb_runtime::admission::AlwaysPresentArtifactStore::shared();
     let any_workflow_caps =
-        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::AnyWorkflow]));
+        vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
     let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
-        vb_core::Capability::Action(vb_core::ActionId::new(1)),
-        vb_core::Capability::Action(vb_core::ActionId::new(2)),
-        vb_core::Capability::Action(vb_core::ActionId::new(3)),
+        cap(ActionId::new(1)),
+        cap(ActionId::new(2)),
+        cap(ActionId::new(3)),
     ]));
     let empty_caps = vb_core::CapabilitySet::empty();
 
@@ -2295,28 +2305,23 @@ fn capability_check_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("capability_check");
 
     let any_workflow_caps =
-        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::AnyWorkflow]));
+        vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
     let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
-        vb_core::Capability::Action(vb_core::ActionId::new(1)),
-        vb_core::Capability::Action(vb_core::ActionId::new(2)),
-        vb_core::Capability::Action(vb_core::ActionId::new(3)),
-        vb_core::Capability::Action(vb_core::ActionId::new(4)),
-        vb_core::Capability::Action(vb_core::ActionId::new(5)),
-        vb_core::Capability::Action(vb_core::ActionId::new(6)),
-        vb_core::Capability::Action(vb_core::ActionId::new(7)),
-        vb_core::Capability::Action(vb_core::ActionId::new(8)),
-        vb_core::Capability::Action(vb_core::ActionId::new(9)),
-        vb_core::Capability::Action(vb_core::ActionId::new(10)),
+        cap(ActionId::new(1)),
+        cap(ActionId::new(2)),
+        cap(ActionId::new(3)),
+        cap(ActionId::new(4)),
+        cap(ActionId::new(5)),
+        cap(ActionId::new(6)),
+        cap(ActionId::new(7)),
+        cap(ActionId::new(8)),
+        cap(ActionId::new(9)),
+        cap(ActionId::new(10)),
     ]));
-    let workflow_caps =
-        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::Workflow(
-            WorkflowDigest::from_bytes([0xAA; 32]),
-        )]));
     let empty_caps = vb_core::CapabilitySet::empty();
     let mixed_caps = vb_core::CapabilitySet::from_grants(Box::new([
-        vb_core::Capability::Action(vb_core::ActionId::new(1)),
-        vb_core::Capability::Action(vb_core::ActionId::new(2)),
-        vb_core::Capability::Workflow(WorkflowDigest::from_bytes([0xBB; 32])),
+        cap(ActionId::new(1)),
+        cap(ActionId::new(2)),
     ]));
 
     // AnyWorkflow short-circuit.
@@ -2328,8 +2333,8 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = any_workflow_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(99),
+                let result = any_workflow_caps.grants(black_box(&cap(
+                    ActionId::new(99),
                 )));
                 black_box(result)
             })
@@ -2345,8 +2350,8 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(1),
+                let result = action_caps.grants(black_box(&cap(
+                    ActionId::new(1),
                 )));
                 black_box(result)
             })
@@ -2362,25 +2367,8 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(99),
-                )));
-                black_box(result)
-            })
-        },
-    );
-
-    // Workflow-scoped grant.
-    group.bench_function(
-        metadata(
-            "capability_check_workflow_scoped",
-            b"cap_workflow_scoped",
-            "fixture=workflow_set;surface=capability_check",
-        ),
-        |b| {
-            b.iter(|| {
-                let result = workflow_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(1),
+                let result = action_caps.grants(black_box(&cap(
+                    ActionId::new(99),
                 )));
                 black_box(result)
             })
@@ -2396,8 +2384,8 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = empty_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(1),
+                let result = empty_caps.grants(black_box(&cap(
+                    ActionId::new(1),
                 )));
                 black_box(result)
             })
@@ -2413,8 +2401,8 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = mixed_caps.grants(black_box(&vb_core::Capability::Action(
-                    vb_core::ActionId::new(2),
+                let result = mixed_caps.grants(black_box(&cap(
+                    ActionId::new(2),
                 )));
                 black_box(result)
             })
@@ -2431,8 +2419,8 @@ fn capability_check_benches(c: &mut Criterion) {
         |b| {
             b.iter(|| {
                 let result = vb_runtime::admission::check_capability(
-                    black_box(vb_core::ActionId::new(1)),
-                    black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))),
+                    black_box(ActionId::new(1)),
+                    black_box(&cap(ActionId::new(1))),
                     black_box(&action_caps),
                 );
                 black_box(result.is_ok())

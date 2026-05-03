@@ -233,7 +233,6 @@ impl RunFrame {
                                 reason: "taint_slots_diverged",
                             });
                     }
-                    }
                     idx = idx.saturating_add(1);
                 }
                 Ok(Taint::Clean)
@@ -251,7 +250,6 @@ impl RunFrame {
                             .ok_or(CoreError::InternalInvariantViolation {
                                 reason: "taint_slots_diverged",
                             });
-                    }
                     }
                     idx = idx.saturating_add(1);
                 }
