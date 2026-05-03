@@ -332,12 +332,16 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {
             emit_branch_step_body(out, &node.kind)
         }
+        CompiledNodeKind::BuildObject { .. } | CompiledNodeKind::BuildList { .. } => {
+            emit_construct_step_body(out, node)
+        }
         CompiledNodeKind::Do { .. }
         | CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
+        CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
         unsupported => emit_unsupported_node_step(out, unsupported),
     }
 }
@@ -587,6 +591,128 @@ fn emit_error_handler_step(out: &mut String, body: StepIdx, handler: StepIdx) ->
     )
     .map_err(fmt_err)?;
     writeln!(out, "    }}").map_err(fmt_err)
+}
+
+fn emit_construct_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::BuildObject { fields } => {
+            emit_build_object_step(out, fields, node.output, node.next)
+        }
+        CompiledNodeKind::BuildList { items } => {
+            emit_build_list_step(out, items, node.output, node.next)
+        }
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
+    }
+}
+
+fn emit_build_object_step(
+    out: &mut String,
+    fields: &[(vb_core::SymbolId, SlotIdx)],
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    // BuildObject: {} field(s)",
+        fields.len()
+    )
+    .map_err(fmt_err)?;
+    for (i, (sym, slot)) in fields.iter().enumerate() {
+        writeln!(
+            out,
+            "    let _f{} = (_sym_{}, read_slot(slots, {})?)",
+            i,
+            sym.get(),
+            slot.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    if let Some(output_slot) = output {
+        let handle = fields.len().saturating_add(1) as u32;
+        writeln!(
+            out,
+            "    write_slot(slots, {}, Some(SlotValue::Object({})))?;",
+            output_slot.get(),
+            handle
+        )
+        .map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_build_list_step(
+    out: &mut String,
+    items: &[SlotIdx],
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    writeln!(out, "    // BuildList: {} item(s)", items.len()).map_err(fmt_err)?;
+    for (i, slot) in items.iter().enumerate() {
+        writeln!(
+            out,
+            "    let _item{} = read_slot(slots, {})?;",
+            i,
+            slot.get()
+        )
+        .map_err(fmt_err)?;
+    }
+    if let Some(output_slot) = output {
+        let handle = items.len().saturating_add(1) as u32;
+        writeln!(
+            out,
+            "    write_slot(slots, {}, Some(SlotValue::List({})))?;",
+            output_slot.get(),
+            handle
+        )
+        .map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_retry_check_step_body(
+    out: &mut String,
+    kind: &CompiledNodeKind,
+) -> CodegenResult<()> {
+    let CompiledNodeKind::RetryCheck {
+        policy_slot,
+        body,
+        exhausted,
+    } = kind
+    else {
+        return emit_unsupported_step(out, "RetryCheck");
+    };
+    emit_retry_check_step(out, *policy_slot, *body, *exhausted)
+}
+
+fn emit_retry_check_step(
+    out: &mut String,
+    policy_slot: SlotIdx,
+    body: StepIdx,
+    exhausted: StepIdx,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _policy = read_slot(slots, {})?;",
+        policy_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _retry_count = match _policy {{ SlotValue::I64(n) => n, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }};"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _limit = i64::from(CONTRACT_MAX_RETRY_ATTEMPTS);"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if _retry_count < _limit {{ Ok(StepOutcome::Continue({})) }} else {{ Ok(StepOutcome::Continue({})) }}",
+        body.get(),
+        exhausted.get()
+    )
+    .map_err(fmt_err)
 }
 
 fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
@@ -6610,3 +6736,5 @@ mod proptests {
         Ok(())
     }
 }
+
+// TEST APPEND
