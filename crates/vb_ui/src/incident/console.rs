@@ -28,15 +28,16 @@ impl IncidentConsole {
 
     pub fn dismiss(&mut self, index: usize) {
         if self.incidents.get(index).is_some() {
-            if self.selected == Some(index) {
-                self.selected = None;
-            }
             self.incidents.remove(index);
-            if let Some(sel) = self.selected
-                && sel >= self.incidents.len()
-            {
-                self.selected = None;
-            }
+            self.selected = self.selected.and_then(|sel| {
+                if sel == index {
+                    None
+                } else if sel > index {
+                    Some(sel.saturating_sub(1))
+                } else {
+                    Some(sel)
+                }
+            });
         }
     }
 

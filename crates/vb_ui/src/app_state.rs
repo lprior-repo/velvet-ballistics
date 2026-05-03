@@ -19,10 +19,13 @@ pub struct AppState {
     pub current_screen: Screen,
     pub connected: bool,
     pub selected_run_id: Option<u64>,
+    pub selected_workflow_name: Option<String>,
     pub selected_workflow_digest: Option<[u8; 32]>,
     pub replay: ReplayData,
     pub system: SystemData,
     pub incident: IncidentData,
+    pub verification: VerificationData,
+    pub workflow: WorkflowData,
 }
 
 /// Replay Theater screen data.
@@ -55,7 +58,24 @@ pub enum HealthLevel {
 pub struct IncidentData {
     pub active_incidents: u32,
     pub critical_count: u32,
+    pub warning_count: u32,
     pub selected_incident: Option<u64>,
+}
+
+/// Verification screen data.
+pub struct VerificationData {
+    pub total_checks: u32,
+    pub pass_count: u32,
+    pub warn_count: u32,
+    pub fail_count: u32,
+    /// True when all checks pass (no warnings or failures).
+    pub all_clean: bool,
+}
+
+/// Workflow Graph screen data.
+pub struct WorkflowData {
+    pub name: Option<String>,
+    pub node_count: u32,
 }
 
 impl AppState {
@@ -64,10 +84,13 @@ impl AppState {
             current_screen: Screen::RunReplay,
             connected: false,
             selected_run_id: None,
+            selected_workflow_name: None,
             selected_workflow_digest: None,
             replay: ReplayData::new(),
             system: SystemData::new(),
             incident: IncidentData::new(),
+            verification: VerificationData::new(),
+            workflow: WorkflowData::new(),
         }
     }
 
@@ -123,6 +146,28 @@ impl ReplayData {
             step_state: None,
         }
     }
+
+    /// Returns "N events" for the event count label.
+    pub fn event_count_text(&self) -> String {
+        format!("{} events", self.total_events)
+    }
+
+    /// Returns the speed as a human string (e.g. "1.0x").
+    pub fn speed_text(&self) -> String {
+        if self.playback_speed < 10.0 {
+            format!("{:.1}x", self.playback_speed)
+        } else {
+            format!("{:.0}x", self.playback_speed)
+        }
+    }
+
+    /// Returns the run ID display string or "--".
+    pub fn run_id_text(run_id: Option<u64>) -> String {
+        match run_id {
+            Some(id) => id.to_string(),
+            None => String::from("--"),
+        }
+    }
 }
 
 impl SystemData {
@@ -134,6 +179,23 @@ impl SystemData {
             overall_health: HealthLevel::Healthy,
         }
     }
+
+    /// Returns "N active runs across M shards" for the lanes hint.
+    pub fn lanes_hint_text(&self) -> String {
+        format!(
+            "{} active runs across {} shards",
+            self.total_active_runs, self.shard_count
+        )
+    }
+
+    /// Returns health as a display string.
+    pub fn health_text(&self) -> &'static str {
+        match self.overall_health {
+            HealthLevel::Healthy => "HEALTHY",
+            HealthLevel::Degraded => "DEGRADED",
+            HealthLevel::Critical => "CRITICAL",
+        }
+    }
 }
 
 impl IncidentData {
@@ -141,7 +203,73 @@ impl IncidentData {
         Self {
             active_incidents: 0,
             critical_count: 0,
+            warning_count: 0,
             selected_incident: None,
         }
+    }
+}
+
+impl VerificationData {
+    fn new() -> Self {
+        Self {
+            total_checks: 0,
+            pass_count: 0,
+            warn_count: 0,
+            fail_count: 0,
+            all_clean: true,
+        }
+    }
+
+    /// Returns a human-readable summary string for the verification badge.
+    pub fn status_badge_text(&self) -> String {
+        if self.all_clean {
+            String::from("PASS (all panels clean)")
+        } else {
+            let clean = self.pass_count;
+            let total = self.total_checks;
+            format!("PASS ({}/{total} panels clean)", clean.saturating_sub(self.fail_count))
+        }
+    }
+
+    /// Returns the worst risk level as a human-readable string.
+    pub fn worst_risk_text(&self) -> &'static str {
+        if self.fail_count > 0 {
+            "HIGH RISK"
+        } else if self.warn_count > 0 {
+            "WARNING"
+        } else {
+            "CLEAN"
+        }
+    }
+}
+
+impl WorkflowData {
+    fn new() -> Self {
+        Self {
+            name: None,
+            node_count: 0,
+        }
+    }
+
+    /// Returns the workflow name or "unknown".
+    pub fn display_name(&self) -> &str {
+        self.name.as_deref().unwrap_or("unknown")
+    }
+
+    /// Returns "N nodes" string.
+    pub fn node_hint(&self) -> String {
+        format!("{} nodes", self.node_count)
+    }
+}
+
+impl Default for VerificationData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for WorkflowData {
+    fn default() -> Self {
+        Self::new()
     }
 }
