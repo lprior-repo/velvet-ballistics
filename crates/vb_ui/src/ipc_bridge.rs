@@ -14,7 +14,7 @@ use vb_core::ids::RunId;
 use vb_core::WorkflowDigest;
 use vb_ipc::client::IpcClient;
 use vb_ipc::server::IpcResponse;
-use vb_ipc::{IpcCommand, IpcPayload, MaxPayloadBytes};
+use vb_ipc::{IpcCommand, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
 
 /// Request from the UI thread to the background IPC thread.
 #[derive(Debug)]
@@ -291,24 +291,66 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 }
             }
 
-            // ── Stubs: not yet wired ──────────────────────────────────────
-
-            IpcRequest::SubmitRun { .. } => {
-                tx.send(IpcReply::NotImplemented(
-                    "SubmitRun not yet implemented".into(),
-                )).ok();
+            IpcRequest::SubmitRun { run_id, workflow, input } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+                        run_id,
+                        workflow,
+                        input,
+                    });
+                    match send_and_recv(c, IpcCommand::SubmitRun, corr, &payload) {
+                        Ok(response) => {
+                            tx.send(reply_from_submit(response, run_id)).ok();
+                        }
+                        Err(e) => {
+                            tx.send(IpcReply::Error(e)).ok();
+                        }
+                    }
+                } else {
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
+                }
             }
 
-            IpcRequest::AnswerAsk { .. } => {
-                tx.send(IpcReply::NotImplemented(
-                    "AnswerAsk not yet implemented".into(),
-                )).ok();
+            IpcRequest::AnswerAsk { run_id, ticket, answer } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::AnswerAsk {
+                        run_id,
+                        ticket,
+                        answer,
+                    };
+                    match send_and_recv(c, IpcCommand::AnswerAsk, corr, &payload) {
+                        Ok(response) => {
+                            tx.send(reply_from_answer(response, run_id)).ok();
+                        }
+                        Err(e) => {
+                            tx.send(IpcReply::Error(e)).ok();
+                        }
+                    }
+                } else {
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
+                }
             }
 
-            IpcRequest::DrainTrace { .. } => {
-                tx.send(IpcReply::NotImplemented(
-                    "DrainTrace not yet implemented".into(),
-                )).ok();
+            IpcRequest::DrainTrace { run_id, max_records } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::DrainTrace {
+                        run_id,
+                        max_records,
+                    };
+                    match send_and_recv(c, IpcCommand::DrainTrace, corr, &payload) {
+                        Ok(response) => {
+                            tx.send(reply_from_drain_trace(response)).ok();
+                        }
+                        Err(e) => {
+                            tx.send(IpcReply::Error(e)).ok();
+                        }
+                    }
+                } else {
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
+                }
             }
 
             IpcRequest::Shutdown => {
@@ -366,6 +408,50 @@ fn reply_from_response(response: IpcResponse) -> IpcReply {
         IpcResponse::ShuttingDown => IpcReply::ShuttingDown,
         IpcResponse::RuntimeError { message } => IpcReply::Error(message),
         other => IpcReply::Error(format!("Unexpected health response: {other:?}")),
+    }
+}
+
+/// Maps an `IpcResponse` from a submit-run command into a UI-friendly reply.
+fn reply_from_submit(response: IpcResponse, run_id: RunId) -> IpcReply {
+    match response {
+        IpcResponse::AcceptedRun { .. } => IpcReply::RunAccepted(run_id),
+        IpcResponse::RuntimeError { message } => IpcReply::Error(message),
+        IpcResponse::WorkflowResolutionRequired => {
+            IpcReply::Error("Workflow resolution required".into())
+        }
+        IpcResponse::WorkflowResolutionUnsupported => {
+            IpcReply::Error("Workflow resolution unsupported".into())
+        }
+        IpcResponse::WorkflowDigestMismatch => {
+            IpcReply::Error("Workflow digest mismatch".into())
+        }
+        IpcResponse::PayloadError { message, .. } => IpcReply::Error(message),
+        IpcResponse::CommandPayloadMismatch => {
+            IpcReply::Error("Command/payload mismatch".into())
+        }
+        other => IpcReply::Error(format!("Unexpected submit response: {other:?}")),
+    }
+}
+
+/// Maps an `IpcResponse` from an answer-ask command into a UI-friendly reply.
+fn reply_from_answer(response: IpcResponse, run_id: RunId) -> IpcReply {
+    match response {
+        IpcResponse::AcceptedRun { .. } => IpcReply::RunAccepted(run_id),
+        IpcResponse::RuntimeError { message } => IpcReply::Error(message),
+        IpcResponse::BadRequest => IpcReply::Error("Bad request".into()),
+        IpcResponse::PayloadError { message, .. } => IpcReply::Error(message),
+        other => IpcReply::Error(format!("Unexpected answer response: {other:?}")),
+    }
+}
+
+/// Maps an `IpcResponse` from a drain-trace command into a UI-friendly reply.
+fn reply_from_drain_trace(response: IpcResponse) -> IpcReply {
+    match response {
+        IpcResponse::TraceCount { count } => IpcReply::TraceCount(count),
+        IpcResponse::RuntimeError { message } => IpcReply::Error(message),
+        IpcResponse::BadRequest => IpcReply::Error("Bad request".into()),
+        IpcResponse::PayloadError { message, .. } => IpcReply::Error(message),
+        other => IpcReply::Error(format!("Unexpected drain-trace response: {other:?}")),
     }
 }
 
@@ -431,7 +517,7 @@ mod tests {
     }
 
     #[test]
-    fn bridge_submit_run_returns_not_implemented() {
+    fn bridge_submit_run_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
         bridge
             .send(IpcRequest::SubmitRun {
@@ -445,10 +531,7 @@ mod tests {
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
         while std::time::Instant::now() < deadline {
             replies.extend(bridge.poll());
-            if replies
-                .iter()
-                .any(|r| matches!(r, IpcReply::NotImplemented(_)))
-            {
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
                 break;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -456,12 +539,12 @@ mod tests {
 
         let found = replies
             .iter()
-            .any(|r| matches!(r, IpcReply::NotImplemented(m) if m.contains("SubmitRun")));
-        assert!(found, "expected NotImplemented for SubmitRun");
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for SubmitRun");
     }
 
     #[test]
-    fn bridge_answer_ask_returns_not_implemented() {
+    fn bridge_answer_ask_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
         bridge
             .send(IpcRequest::AnswerAsk {
@@ -475,10 +558,7 @@ mod tests {
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
         while std::time::Instant::now() < deadline {
             replies.extend(bridge.poll());
-            if replies
-                .iter()
-                .any(|r| matches!(r, IpcReply::NotImplemented(_)))
-            {
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
                 break;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -486,12 +566,12 @@ mod tests {
 
         let found = replies
             .iter()
-            .any(|r| matches!(r, IpcReply::NotImplemented(m) if m.contains("AnswerAsk")));
-        assert!(found, "expected NotImplemented for AnswerAsk");
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for AnswerAsk");
     }
 
     #[test]
-    fn bridge_drain_trace_returns_not_implemented() {
+    fn bridge_drain_trace_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
         bridge
             .send(IpcRequest::DrainTrace {
@@ -504,10 +584,7 @@ mod tests {
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
         while std::time::Instant::now() < deadline {
             replies.extend(bridge.poll());
-            if replies
-                .iter()
-                .any(|r| matches!(r, IpcReply::NotImplemented(_)))
-            {
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
                 break;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -515,8 +592,8 @@ mod tests {
 
         let found = replies
             .iter()
-            .any(|r| matches!(r, IpcReply::NotImplemented(m) if m.contains("DrainTrace")));
-        assert!(found, "expected NotImplemented for DrainTrace");
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for DrainTrace");
     }
 
     #[test]
@@ -558,6 +635,92 @@ mod tests {
     #[test]
     fn reply_from_response_unexpected_maps_to_error() {
         let reply = reply_from_response(IpcResponse::AcceptedRun { run_id: 42 });
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_submit_accepted_run() {
+        let run_id = RunId::new(7);
+        let reply = reply_from_submit(IpcResponse::AcceptedRun { run_id: 7 }, run_id);
+        assert!(matches!(reply, IpcReply::RunAccepted(rid) if rid == run_id));
+    }
+
+    #[test]
+    fn reply_from_submit_runtime_error() {
+        let reply = reply_from_submit(
+            IpcResponse::RuntimeError {
+                message: "fail".into(),
+            },
+            RunId::new(1),
+        );
+        assert!(matches!(reply, IpcReply::Error(ref e) if e == "fail"));
+    }
+
+    #[test]
+    fn reply_from_submit_workflow_resolution_required() {
+        let reply = reply_from_submit(IpcResponse::WorkflowResolutionRequired, RunId::new(1));
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_submit_unexpected_maps_to_error() {
+        let reply = reply_from_submit(IpcResponse::Healthy, RunId::new(1));
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_answer_accepted_run() {
+        let run_id = RunId::new(3);
+        let reply = reply_from_answer(IpcResponse::AcceptedRun { run_id: 3 }, run_id);
+        assert!(matches!(reply, IpcReply::RunAccepted(rid) if rid == run_id));
+    }
+
+    #[test]
+    fn reply_from_answer_runtime_error() {
+        let reply = reply_from_answer(
+            IpcResponse::RuntimeError {
+                message: "err".into(),
+            },
+            RunId::new(1),
+        );
+        assert!(matches!(reply, IpcReply::Error(ref e) if e == "err"));
+    }
+
+    #[test]
+    fn reply_from_answer_bad_request() {
+        let reply = reply_from_answer(IpcResponse::BadRequest, RunId::new(1));
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_answer_unexpected_maps_to_error() {
+        let reply = reply_from_answer(IpcResponse::Healthy, RunId::new(1));
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_drain_trace_count() {
+        let reply = reply_from_drain_trace(IpcResponse::TraceCount { count: 42 });
+        assert!(matches!(reply, IpcReply::TraceCount(42)));
+    }
+
+    #[test]
+    fn reply_from_drain_trace_runtime_error() {
+        let reply = reply_from_drain_trace(IpcResponse::RuntimeError {
+            message: "boom".into(),
+        });
+        assert!(matches!(reply, IpcReply::Error(ref e) if e == "boom"));
+    }
+
+    #[test]
+    fn reply_from_drain_trace_bad_request() {
+        let reply = reply_from_drain_trace(IpcResponse::BadRequest);
+        assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    #[test]
+    fn reply_from_drain_trace_unexpected_maps_to_error() {
+        let reply = reply_from_drain_trace(IpcResponse::Healthy);
         assert!(matches!(reply, IpcReply::Error(_)));
     }
 }
