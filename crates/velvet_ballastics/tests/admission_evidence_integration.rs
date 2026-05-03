@@ -463,40 +463,42 @@ fn evidence_chain_after_execution() {
 
 #[test]
 fn capability_check_rejects_unauthorized_action() {
-    // Given: a capability set that does NOT grant Action(7)
+    // Given: a capability set that does NOT grant action 7
     let empty_caps = vb_core::CapabilitySet::empty();
-    let required = vb_core::Capability::Action(ActionId::new(7));
+    let required = vb_core::Capability::new("action".into(), ActionId::new(7));
 
     // When: checking if the capability is granted
     let granted = empty_caps.grants(&required);
 
     // Then: it is rejected
-    assert!(!granted, "empty capability set should not grant Action(7)");
+    assert!(!granted, "empty capability set should not grant action(7)");
 
     // Also verify with a specific but different action grant
-    let wrong_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::Action(
+    let wrong_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new(
+        "action".into(),
         ActionId::new(99),
     )]));
     assert!(
         !wrong_caps.grants(&required),
-        "Capability::Action(99) should not grant Action(7)"
+        "Capability for action(99) should not grant action(7)"
     );
 
-    // Verify AnyWorkflow does grant it
+    // Verify a broader capability prefix does grant it
     let any_caps =
-        vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::AnyWorkflow]));
+        vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new("action".into(), ActionId::new(7))]));
     assert!(
         any_caps.grants(&required),
-        "AnyWorkflow should grant any action"
+        "exact action capability should grant action(7)"
     );
 
-    // Verify Workflow-scoped grant grants any action
-    let wf_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::Workflow(
-        WorkflowDigest::from_bytes([0u8; 32]),
+    // Verify hierarchical prefix grants it
+    let prefix_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new(
+        "act".into(),
+        ActionId::new(7),
     )]));
     assert!(
-        wf_caps.grants(&required),
-        "Workflow-scoped grant should grant Action(7)"
+        prefix_caps.grants(&required),
+        "prefix capability should grant action(7)"
     );
 
     // Verify the workflow requiring the action can be constructed
@@ -575,6 +577,11 @@ fn budget_validation_rejects_oversized_workflow() {
         max_total_slots: 10,
         max_fanout: 1,
         max_nesting_depth: 1,
+        absolute_max_action_tickets: 1,
+        absolute_max_parallel: 1,
+        absolute_max_run_time_seconds: 60,
+        absolute_max_result_bytes: 1024,
+        absolute_max_steps_executable: 2,
     };
 
     // When: creating a 3-node workflow that exceeds the step limit
@@ -583,6 +590,18 @@ fn budget_validation_rejects_oversized_workflow() {
         max_total_slots: 5,
         max_fanout: 0,
         max_nesting_depth: 0,
+        max_steps_executable: 3,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
     };
 
     // Then: validation rejects the budget

@@ -7037,6 +7037,7 @@ steps:
             idempotency,
             side_effect,
             retry_safety,
+            required_capabilities: Box::new([]),
         }
     }
 

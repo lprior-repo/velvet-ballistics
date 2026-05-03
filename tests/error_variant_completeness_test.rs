@@ -477,6 +477,7 @@ fn runtime_error_variant_name(error: &RuntimeError) -> &'static str {
         RuntimeError::CommandQueueCapacityExceeded { .. } => "CommandQueueCapacityExceeded",
         RuntimeError::ActiveRunCapacityZero => "ActiveRunCapacityZero",
         RuntimeError::AdmissionArtifactNotFound { .. } => "AdmissionArtifactNotFound",
+        RuntimeError::AdmissionCapabilityDenied { .. } => "AdmissionCapabilityDenied",
     }
 }
 
@@ -1280,7 +1281,7 @@ fn admission_variant_count() -> usize {
         },
         AdmissionError::CapabilityDenied {
             action: ActionId::new(1),
-            required: vb_core::capability::Capability::Action(ActionId::new(1)),
+            required: vb_core::capability::Capability::new("test".into(), ActionId::new(1)),
             granted: vb_core::capability::CapabilitySet::empty(),
         },
     ];

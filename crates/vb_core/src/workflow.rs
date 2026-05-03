@@ -179,7 +179,7 @@ impl ResourceContract {
         max_expr_stack: 64,
         max_step_budget_per_tick: 10_000,
         max_input_bytes: 1_048_576,
-        max_output_bytes: 1_048_576,
+        max_output_bytes: 262_144,
         max_blob_bytes: 16_777_216,
         max_ipc_payload_bytes: 1_048_576,
         max_retry_attempts: 3,
