@@ -228,12 +228,11 @@ fn submit_artifact_then_run_succeeds() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(
-            shard_count,
-            test_config(),
-            vb_runtime::journal::NoopRuntimeJournal::shared(),
-        );
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
     let run_id = RunId::new(1);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}
@@ -278,8 +277,7 @@ fn run_without_artifact_under_relaxed_policy() {
     };
 
     // When: submitting under Relaxed policy (no verification required)
-    let result =
-        vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
+    let result = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match result {
         Ok(artifact) => {
             assert_eq!(artifact.digest, digest);
@@ -295,12 +293,11 @@ fn run_without_artifact_under_relaxed_policy() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(
-            shard_count,
-            test_config(),
-            vb_runtime::journal::NoopRuntimeJournal::shared(),
-        );
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
     let run_id = RunId::new(2);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}
@@ -427,9 +424,7 @@ fn evidence_chain_after_execution() {
             {
                 found_run_submitted = true;
             }
-            vb_runtime::journal::RuntimeJournalEvent::RunFinished { run, .. }
-                if *run == run_id =>
-            {
+            vb_runtime::journal::RuntimeJournalEvent::RunFinished { run, .. } if *run == run_id => {
                 found_run_finished = true;
             }
             vb_runtime::journal::RuntimeJournalEvent::StepSucceeded { run, .. }
@@ -437,9 +432,7 @@ fn evidence_chain_after_execution() {
             {
                 found_step_succeeded = true;
             }
-            vb_runtime::journal::RuntimeJournalEvent::SlotWritten { run, .. }
-                if *run == run_id =>
-            {
+            vb_runtime::journal::RuntimeJournalEvent::SlotWritten { run, .. } if *run == run_id => {
                 found_slot_written = true;
             }
             _ => {}
@@ -478,16 +471,12 @@ fn capability_check_rejects_unauthorized_action() {
     let granted = empty_caps.grants(&required);
 
     // Then: it is rejected
-    assert!(
-        !granted,
-        "empty capability set should not grant Action(7)"
-    );
+    assert!(!granted, "empty capability set should not grant Action(7)");
 
     // Also verify with a specific but different action grant
-    let wrong_caps =
-        vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::Action(ActionId::new(
-            99,
-        ))]));
+    let wrong_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::Action(
+        ActionId::new(99),
+    )]));
     assert!(
         !wrong_caps.grants(&required),
         "Capability::Action(99) should not grant Action(7)"
@@ -523,12 +512,11 @@ fn capability_check_rejects_unauthorized_action() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(
-            shard_count,
-            test_config(),
-            vb_runtime::journal::NoopRuntimeJournal::shared(),
-        );
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
     let run_id = RunId::new(4);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}
@@ -551,10 +539,7 @@ fn capability_check_rejects_unauthorized_action() {
 
     // The run should have been submitted but not completed (suspended on action)
     let snap = runtime.counters_snapshot();
-    assert_eq!(
-        snap.runs_submitted, 1,
-        "run should have been submitted"
-    );
+    assert_eq!(snap.runs_submitted, 1, "run should have been submitted");
     assert_eq!(
         snap.runs_completed, 0,
         "run should be suspended waiting for action, not completed"
@@ -737,12 +722,8 @@ fn taint_propagates_through_expression_eval() {
 
     // When: evaluating the expression that loads slot 0
     let mut store = vb_core::value_store::ValueStore::new();
-    let eval_result = vb_core::engine::eval_expr_with_store(
-        &workflow,
-        &frame,
-        &mut store,
-        ExprIdx::new(0),
-    );
+    let eval_result =
+        vb_core::engine::eval_expr_with_store(&workflow, &frame, &mut store, ExprIdx::new(0));
 
     // Then: the result value is correct and the taint has propagated
     match eval_result {
@@ -783,7 +764,8 @@ fn taint_propagates_through_expression_eval() {
     // Set the PC to step 0 and start execution
     let mut budget = vb_core::engine::StepBudget::new(100);
     let mut store2 = vb_core::value_store::ValueStore::new();
-    let signal = vb_core::engine::drive_deterministic(&workflow, &mut frame2, &mut budget, &mut store2);
+    let signal =
+        vb_core::engine::drive_deterministic(&workflow, &mut frame2, &mut budget, &mut store2);
 
     match signal {
         Ok(vb_core::engine::EngineSignal::Finished(value, taint)) => {

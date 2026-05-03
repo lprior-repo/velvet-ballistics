@@ -3,11 +3,11 @@
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 
 use crate::bytecode::{
-    check_expr_stack_bound, compile_expr, compile_expr_to_bytecode, compile_expr_with_pool,
-    compile_expr_with_resolver, const_fold_expr, push_constant, ReferenceResolver,
+    ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
+    compile_expr_with_pool, compile_expr_with_resolver, const_fold_expr, push_constant,
 };
-use crate::parser::parse_expr;
 use crate::lexer::lex_expr;
+use crate::parser::parse_expr;
 
 fn resolve_test_reference(reference: &str) -> Option<SlotIdx> {
     match reference {
@@ -230,7 +230,9 @@ fn compile(source: &str) -> crate::ExprResult<crate::bytecode::ExprProgram> {
     compile_expr_to_bytecode(&ast)
 }
 
-fn compile_with_pool(source: &str) -> crate::ExprResult<(crate::bytecode::ExprProgram, Vec<ConstValue>)> {
+fn compile_with_pool(
+    source: &str,
+) -> crate::ExprResult<(crate::bytecode::ExprProgram, Vec<ConstValue>)> {
     let tokens = lex_expr(source)?;
     let ast = parse_expr(&tokens)?;
     let mut constants = Vec::new();

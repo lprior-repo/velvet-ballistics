@@ -261,7 +261,10 @@ mod tests {
         let required = Capability::Action(ActionId::new(1));
         let granted = CapabilitySet::empty();
         let result = check_capability(action, &required, &granted);
-        assert!(matches!(result, Err(AdmissionError::CapabilityDenied { .. })));
+        assert!(matches!(
+            result,
+            Err(AdmissionError::CapabilityDenied { .. })
+        ));
     }
 
     #[test]
@@ -354,10 +357,7 @@ mod tests {
         let run_id = RunId::new(1);
         let caps = CapabilitySet::empty();
         let result = admit_run(&store, RuntimePolicy::Strict, digest, run_id, caps);
-        assert_eq!(
-            result,
-            Err(AdmissionError::ArtifactNotFound { digest })
-        );
+        assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
     }
 
     #[test]
@@ -374,9 +374,6 @@ mod tests {
         let run_id = RunId::new(1);
         let caps = CapabilitySet::empty();
         let result = admit_run(&store, RuntimePolicy::Journaled, digest, run_id, caps);
-        assert_eq!(
-            result,
-            Err(AdmissionError::ArtifactNotFound { digest })
-        );
+        assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
     }
 }

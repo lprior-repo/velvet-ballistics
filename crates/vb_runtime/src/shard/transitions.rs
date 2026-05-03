@@ -3,9 +3,9 @@
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
 
+use crate::RuntimeResult;
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
-use crate::RuntimeResult;
 
 use crate::shard::types::{PendingTimer, PendingTimerKind, RunState, Shard};
 
@@ -28,34 +28,52 @@ impl Shard {
         };
         // Note: StepSucceeded for the Finish step is now emitted by the evidence
         // collector during flush_evidence, before apply_drive_result is called.
-        self.journal.append(RuntimeJournalEvent::RunFinished { run, result })?;
+        self.journal
+            .append(RuntimeJournalEvent::RunFinished { run, result })?;
         self.release_frame(state.frame);
         Ok(())
     }
 
     /// Transitions a run to awaiting an external action response.
-    pub(crate) fn await_action(&mut self, run: RunId, mut state: RunState, ticket: ActionTicket) -> RuntimeResult<()> {
+    pub(crate) fn await_action(
+        &mut self,
+        run: RunId,
+        mut state: RunState,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
-        self.trace_ring.push(TraceEvent::ActionScheduled { run, step });
-        self.journal.append(RuntimeJournalEvent::ActionScheduled { run, step, action: ticket.action })?;
+        self.trace_ring
+            .push(TraceEvent::ActionScheduled { run, step });
+        self.journal.append(RuntimeJournalEvent::ActionScheduled {
+            run,
+            step,
+            action: ticket.action,
+        })?;
         self.runs.insert(run, state);
         Ok(())
     }
 
     /// Transitions a run to awaiting a timer (wait or ask timeout).
-    pub(crate) fn await_timer(&mut self, run: RunId, state: RunState, kind: PendingTimerKind) -> RuntimeResult<()> {
+    pub(crate) fn await_timer(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         if crate::shard::helpers::timer_registration_required(&state, step) {
             self.pending_timers.insert(run, PendingTimer { step, kind });
             match kind {
                 PendingTimerKind::Wait => {
-                    self.journal.append(RuntimeJournalEvent::WaitScheduled { run, step })?;
+                    self.journal
+                        .append(RuntimeJournalEvent::WaitScheduled { run, step })?;
                 }
                 PendingTimerKind::Ask => {
-                    self.journal.append(RuntimeJournalEvent::AskScheduled { run, step })?;
+                    self.journal
+                        .append(RuntimeJournalEvent::AskScheduled { run, step })?;
                 }
             }
         }
@@ -68,7 +86,8 @@ impl Shard {
         self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
-        self.journal.append(RuntimeJournalEvent::RunFailed { run })?;
+        self.journal
+            .append(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
         Ok(())
     }

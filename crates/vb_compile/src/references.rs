@@ -111,7 +111,9 @@ fn collect_references_from_step_kind(
         | StepKindAst::Repeat { .. }
         | StepKindAst::Wait { .. }
         | StepKindAst::Ask { .. } => {}
-        StepKindAst::Save { fields } => collect_references_from_value_entries(fields, tables, errors),
+        StepKindAst::Save { fields } => {
+            collect_references_from_value_entries(fields, tables, errors)
+        }
         StepKindAst::Choose { condition, .. } => {
             collect_references_from_expression(condition, tables, errors);
         }
@@ -182,7 +184,9 @@ fn collect_references_from_value(
             }
         }
         AstValue::Sequence(values) => collect_references_from_values(values, tables, errors),
-        AstValue::Mapping(entries) => collect_references_from_value_entries(entries, tables, errors),
+        AstValue::Mapping(entries) => {
+            collect_references_from_value_entries(entries, tables, errors)
+        }
         AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
     }
 }
@@ -210,8 +214,7 @@ fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(),
     if let Some(error) = check_accessor_path(reference, root, tail, tables) {
         return Err(error);
     }
-    validate_single_reference(reference, tables)
-        .map_err(|e| map_validation_error(reference, &e))
+    validate_single_reference(reference, tables).map_err(|e| map_validation_error(reference, &e))
 }
 
 /// Validates a `$slot.*` reference (compile-specific).

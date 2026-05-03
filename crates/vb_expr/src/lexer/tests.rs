@@ -1,7 +1,9 @@
 //! Lexer tests.
 
-use crate::lexer::{lex_expr, lex_expr_spanned, BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp};
 use crate::ExprError;
+use crate::lexer::{
+    BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp, lex_expr, lex_expr_spanned,
+};
 
 #[test]
 fn lexes_integer_literal() -> crate::ExprResult<()> {

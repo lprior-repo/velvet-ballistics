@@ -13,11 +13,12 @@
 //! - [`tests`] - Comprehensive test suite
 
 pub mod parse;
+pub mod parse_fields;
 pub mod parse_steps;
 pub mod parse_trigger;
-pub mod parse_fields;
+#[cfg(test)]
+mod tests;
 pub mod types;
-#[cfg(test)] mod tests;
 
 // Re-export all types from the types submodule
 pub use types::*;

@@ -195,8 +195,12 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
     let mut store = vb_core::ValueStore::new();
 
     // The evaluator must return a Result -- it must never panic.
-    let _result =
-        vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, vb_core::ExprIdx::new(0));
+    let _result = vb_core::engine::eval_expr_with_store(
+        &workflow,
+        &run,
+        &mut store,
+        vb_core::ExprIdx::new(0),
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +228,9 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
     let max_ops = slot_count_usize.min(FUZZ_MAX_EXPR_OPS);
     let mut ops: Vec<vb_core::ExprOp> = Vec::new();
     for i in 0..max_ops {
-        ops.push(vb_core::ExprOp::LoadSlot(vb_core::SlotIdx::new(u16::try_from(i).unwrap_or(0))));
+        ops.push(vb_core::ExprOp::LoadSlot(vb_core::SlotIdx::new(
+            u16::try_from(i).unwrap_or(0),
+        )));
     }
 
     let Ok(expr) = vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice()) else {
@@ -266,7 +272,11 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
     };
 
     // Write random taint levels into each slot.
-    const TAINT_LEVELS: [vb_core::Taint; 3] = [vb_core::Taint::Clean, vb_core::Taint::Secret, vb_core::Taint::DerivedFromSecret];
+    const TAINT_LEVELS: [vb_core::Taint; 3] = [
+        vb_core::Taint::Clean,
+        vb_core::Taint::Secret,
+        vb_core::Taint::DerivedFromSecret,
+    ];
     const TAINT_LEVELS_LEN: usize = TAINT_LEVELS.len();
     let mut max_input_taint = vb_core::Taint::Clean;
     let data_len = data.len();
@@ -289,8 +299,12 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
     }
 
     let mut store = vb_core::ValueStore::new();
-    let result =
-        vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, vb_core::ExprIdx::new(0));
+    let result = vb_core::engine::eval_expr_with_store(
+        &workflow,
+        &run,
+        &mut store,
+        vb_core::ExprIdx::new(0),
+    );
 
     if let Ok((_value, output_taint)) = result {
         // Invariant: output taint must be >= max input taint.
@@ -471,7 +485,9 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
     let Some(&byte1) = data.get(1) else {
         return;
     };
-    let node_count = usize::from(byte0.wrapping_rem(16)).saturating_add(1).min(FUZZ_MAX_NODES);
+    let node_count = usize::from(byte0.wrapping_rem(16))
+        .saturating_add(1)
+        .min(FUZZ_MAX_NODES);
     let slot_count = u16::from(byte1.wrapping_rem(16)).saturating_add(1);
 
     let mut nodes: Vec<vb_core::CompiledNode> = Vec::new();
@@ -498,9 +514,13 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
     };
 
     // Gate 7: Expression stack depth bounded.
-    drop(vb_validate::gates::validate_gate_07_expression_stack_depth(&parts));
+    drop(vb_validate::gates::validate_gate_07_expression_stack_depth(
+        &parts,
+    ));
     // Gate 8: Accessor path segments are valid symbols.
-    drop(vb_validate::gates::validate_gate_08_accessor_path_segments(&parts));
+    drop(vb_validate::gates::validate_gate_08_accessor_path_segments(
+        &parts,
+    ));
     // Gate 9: All referenced slots exist within declared slot_count.
     drop(vb_validate::gates::validate_gate_09_slot_references(&parts));
     // Gate 11: ForEach/Together body graph is well-formed.
@@ -519,7 +539,9 @@ fn build_fuzz_node(
 ) -> vb_core::CompiledNode {
     let step_idx = vb_core::StepIdx::new(u16::try_from(index).unwrap_or(u16::MAX));
     let next_step = if index.saturating_add(1) < node_count {
-        Some(vb_core::StepIdx::new(u16::try_from(index).unwrap_or(0).saturating_add(1)))
+        Some(vb_core::StepIdx::new(
+            u16::try_from(index).unwrap_or(0).saturating_add(1),
+        ))
     } else {
         None
     };
@@ -529,12 +551,8 @@ fn build_fuzz_node(
 
     let kind = match kind_byte.wrapping_rem(8) {
         0 => vb_core::CompiledNodeKind::Nop,
-        1 => vb_core::CompiledNodeKind::Finish {
-            result: safe_slot,
-        },
-        2 => vb_core::CompiledNodeKind::Copy {
-            source: safe_slot,
-        },
+        1 => vb_core::CompiledNodeKind::Finish { result: safe_slot },
+        2 => vb_core::CompiledNodeKind::Copy { source: safe_slot },
         3 => vb_core::CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
@@ -640,7 +658,9 @@ pub fn fuzz_budget_compute(data: &[u8]) {
     let Some(&byte1) = data.get(1) else {
         return;
     };
-    let node_count = usize::from(byte0.wrapping_rem(16)).saturating_add(1).min(FUZZ_MAX_NODES);
+    let node_count = usize::from(byte0.wrapping_rem(16))
+        .saturating_add(1)
+        .min(FUZZ_MAX_NODES);
     let slot_count = u16::from(byte1.wrapping_rem(16)).saturating_add(1);
 
     let mut nodes: Vec<vb_core::CompiledNode> = Vec::new();
@@ -704,7 +724,9 @@ fn build_fuzz_budget_node(
 ) -> vb_core::CompiledNode {
     let step_idx = vb_core::StepIdx::new(u16::try_from(index).unwrap_or(u16::MAX));
     let next_step = if index.saturating_add(1) < node_count {
-        Some(vb_core::StepIdx::new(u16::try_from(index).unwrap_or(0).saturating_add(1)))
+        Some(vb_core::StepIdx::new(
+            u16::try_from(index).unwrap_or(0).saturating_add(1),
+        ))
     } else {
         None
     };
@@ -714,15 +736,11 @@ fn build_fuzz_budget_node(
 
     let kind = match kind_byte.wrapping_rem(6) {
         0 => vb_core::CompiledNodeKind::Nop,
-        1 => vb_core::CompiledNodeKind::Finish {
-            result: safe_slot,
-        },
+        1 => vb_core::CompiledNodeKind::Finish { result: safe_slot },
         2 => vb_core::CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
-        3 => vb_core::CompiledNodeKind::Copy {
-            source: safe_slot,
-        },
+        3 => vb_core::CompiledNodeKind::Copy { source: safe_slot },
         4 => {
             // ForEachStart to test nesting depth.
             let body_idx = u16::try_from(index.saturating_add(1).min(node_count.saturating_sub(1)))
@@ -789,7 +807,9 @@ pub fn fuzz_admission_flow(data: &[u8]) {
     for i in 0..node_count {
         let step_idx = vb_core::StepIdx::new(u16::try_from(i).unwrap_or(0));
         let next_step = if i.saturating_add(1) < node_count {
-            Some(vb_core::StepIdx::new(u16::try_from(i).unwrap_or(0).saturating_add(1)))
+            Some(vb_core::StepIdx::new(
+                u16::try_from(i).unwrap_or(0).saturating_add(1),
+            ))
         } else {
             None
         };
@@ -871,7 +891,11 @@ pub fn fuzz_admission_flow(data: &[u8]) {
         ..workflow.to_parts()
     };
     if let Ok(corrupted) = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts) {
-        drop(vb_storage::submit_artifact(&journal, &corrupted, vb_core::RuntimePolicy::Strict));
+        drop(vb_storage::submit_artifact(
+            &journal,
+            &corrupted,
+            vb_core::RuntimePolicy::Strict,
+        ));
     }
 }
 
@@ -906,10 +930,7 @@ pub fn fuzz_expr_eval(data: &[u8]) {
             }
             // The evaluator must return a Result -- it must never panic.
             drop(vb_core::engine::eval_expr_with_store(
-                &workflow,
-                &run,
-                &mut store,
-                expr_idx,
+                &workflow, &run, &mut store, expr_idx,
             ));
             i = i.saturating_add(1);
             if i == 0 {

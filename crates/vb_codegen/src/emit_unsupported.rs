@@ -12,7 +12,6 @@ pub fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> 
         CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
         CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
         CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
-        CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
         CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
         CompiledNodeKind::CollectStart { .. } => "CollectStart",
         CompiledNodeKind::CollectPage { .. } => "CollectPage",

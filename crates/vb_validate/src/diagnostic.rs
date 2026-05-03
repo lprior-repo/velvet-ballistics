@@ -311,10 +311,7 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_SLOT_TYPE_INCONSISTENCY),
             format!("slot type inconsistency: slot {slot} has incompatible writers"),
         ),
-        ValidationError::NonDeterministicPath {
-            from_node,
-            to_node,
-        } => (
+        ValidationError::NonDeterministicPath { from_node, to_node } => (
             DiagnosticCode::new(CODE_NON_DETERMINISTIC_PATH),
             format!(
                 "non-deterministic path: from node {from_node} to node {to_node} contains no suspension point"

@@ -4,8 +4,8 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::types::*;
     use super::super::parse::parse_workflow_ast;
+    use super::super::types::*;
     use crate::YamlError;
 
     fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
@@ -557,7 +557,10 @@ mod tests {
     fn missing_version_is_error() {
         let yaml = "name: test\nwhen:\n  manual: {}\nsteps: []\n";
         let result = parse_workflow_ast(yaml);
-        assert!(matches!(result, Err(YamlError::MissingField { field: "version" })));
+        assert!(matches!(
+            result,
+            Err(YamlError::MissingField { field: "version" })
+        ));
     }
 
     #[test]
@@ -571,7 +574,12 @@ mod tests {
               - id: s1
         "};
         let result = parse_workflow_ast(yaml);
-        assert!(matches!(result, Err(YamlError::MissingField { field: "step primitive (set/save/do/choose/foreach/together/collect/reduce/repeat/wait/ask/finish)" })));
+        assert!(matches!(
+            result,
+            Err(YamlError::MissingField {
+                field: "step primitive (set/save/do/choose/foreach/together/collect/reduce/repeat/wait/ask/finish)"
+            })
+        ));
     }
 
     #[test]

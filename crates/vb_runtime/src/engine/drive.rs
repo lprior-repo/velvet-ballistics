@@ -12,7 +12,9 @@ use vb_core::workflow::CompiledWorkflow;
 use crate::engine::execute::execute_node_full;
 use crate::engine::helpers::mark_step_after_signal;
 use crate::engine::signal::runtime_from_core;
-use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal, RuntimeEngineResult};
+use crate::engine::types::{
+    EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
+};
 use crate::primitives;
 
 /// Enhanced drive loop that handles all node kinds including
@@ -45,8 +47,7 @@ pub fn drive_deterministic_full(
 
         run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
 
-        let signal =
-            execute_node_full(plan, run, store, node, contracts, retry_policy)?;
+        let signal = execute_node_full(plan, run, store, node, contracts, retry_policy)?;
 
         match mark_step_after_signal(run, pc, &signal) {
             Ok(()) => {}

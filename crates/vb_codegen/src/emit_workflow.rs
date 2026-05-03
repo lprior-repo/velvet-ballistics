@@ -7,7 +7,7 @@ pub use constants::emit_constants;
 pub use resource::emit_resource_contract;
 
 use std::fmt::Write;
-use crate::{fmt_err, CodegenResult, CodegenError};
+use crate::{helpers, CodegenError, CodegenResult};
 use vb_core::{CompiledWorkflow, SlotIdx, StepIdx};
 
 /// Top-level codegen entry point for the supported generated-mode IR subset.
@@ -19,21 +19,21 @@ pub fn emit_rust_workflow(workflow: &CompiledWorkflow) -> CodegenResult<String> 
     crate::validate_generated_subset(workflow)?;
 
     let mut out = String::with_capacity(4096);
-    crate::write_header(&mut out)?;
+    helpers::write_header(&mut out)?;
     emit_ids(&mut out, workflow)?;
     emit_resource_contract(&mut out, workflow.resource_contract())?;
     emit_constants(&mut out, workflow)?;
-    crate::emit_drive_function(&mut out, workflow)?;
+    emit_drive_function(&mut out, workflow)?;
     for step_idx in 0..workflow.node_count() {
         let step = StepIdx::new(step_idx);
         if let Some(node) = workflow.node(step) {
-            crate::emit_step_function(&mut out, node, workflow)?;
+            crate::emit_steps::emit_step_function(&mut out, node, workflow)?;
         }
     }
     for expr_idx in 0..u16::MAX {
         let idx = vb_core::ExprIdx::new(expr_idx);
         if workflow.expression(idx).is_some() {
-            crate::emit_expr_function(&mut out, idx, workflow)?;
+            crate::emit_expr::emit_expr_function(&mut out, idx, workflow)?;
         } else {
             break;
         }

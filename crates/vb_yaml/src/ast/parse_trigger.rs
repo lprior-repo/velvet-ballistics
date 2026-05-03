@@ -2,8 +2,8 @@
 
 use crate::{YamlError, YamlResult};
 
-use super::types::*;
 use super::parse::{lookup, require_str_in};
+use super::types::*;
 
 /// Parse the trigger declaration from a workflow node.
 pub(super) fn parse_trigger(node: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {

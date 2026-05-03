@@ -12,7 +12,10 @@ use crate::{RuntimeError, RuntimeResult};
 use crate::shard::types::{InspectSnapshot, PendingTimer, PendingTimerKind};
 
 /// Seeds input slots on a frame before deterministic execution.
-pub fn seed_input_slots(frame: &mut RunFrame, inputs: &[(SlotIdx, SlotValue)]) -> RuntimeResult<()> {
+pub fn seed_input_slots(
+    frame: &mut RunFrame,
+    inputs: &[(SlotIdx, SlotValue)],
+) -> RuntimeResult<()> {
     for (slot, value) in inputs {
         frame
             .write_slot_with_taint(*slot, *value, Taint::Clean)
@@ -22,7 +25,10 @@ pub fn seed_input_slots(frame: &mut RunFrame, inputs: &[(SlotIdx, SlotValue)]) -
 }
 
 /// Validates that an action completion matches the expected ticket.
-pub fn validate_action_completion(state: &crate::shard::types::RunState, ticket: ActionTicket) -> RuntimeResult<()> {
+pub fn validate_action_completion(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
     if state.frame.step_state(ticket.step) != Ok(StepState::Running) {
         return Err(RuntimeError::InvalidActionCompletion);
     }
@@ -36,13 +42,19 @@ pub fn validate_action_completion(state: &crate::shard::types::RunState, ticket:
 }
 
 /// Advances PC after an action completes successfully.
-pub fn advance_after_action_completion(state: &mut crate::shard::types::RunState, step: StepIdx) -> RuntimeResult<()> {
+pub fn advance_after_action_completion(
+    state: &mut crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<()> {
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
     match node.next {
         Some(next) => {
-            state.frame.set_pc(next).map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            state
+                .frame
+                .set_pc(next)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
             Ok(())
         }
         None => Ok(()),
@@ -56,29 +68,43 @@ pub fn timer_registration_required(state: &crate::shard::types::RunState, step: 
     };
     match node.kind {
         CompiledNodeKind::WaitUntil { .. } => true,
-        CompiledNodeKind::WaitEvent { timeout_slot, .. } | CompiledNodeKind::Ask { timeout_slot, .. } => {
-            timeout_slot.is_some()
-        }
+        CompiledNodeKind::WaitEvent { timeout_slot, .. }
+        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
         _ => false,
     }
 }
 
 /// Advances state after a timer fires.
-pub fn advance_after_timer_fire(state: &mut crate::shard::types::RunState, timer: PendingTimer) -> RuntimeResult<()> {
+pub fn advance_after_timer_fire(
+    state: &mut crate::shard::types::RunState,
+    timer: PendingTimer,
+) -> RuntimeResult<()> {
     let Some(node) = state.workflow.node(timer.step) else {
         return Err(RuntimeError::InvalidTimerFire);
     };
     match (timer.kind, &node.kind) {
-        (PendingTimerKind::Wait, CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. })
+        (
+            PendingTimerKind::Wait,
+            CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. },
+        )
         | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
-    state.frame.mark_running(timer.step).map_err(|_| RuntimeError::InvalidTimerFire)?;
-    state.frame.mark_succeeded(timer.step).map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_running(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_succeeded(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
     let Some(next) = node.next else {
         return Err(RuntimeError::InvalidTimerFire);
     };
-    state.frame.set_pc(next).map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .set_pc(next)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
     Ok(())
 }
 
@@ -111,34 +137,52 @@ pub fn retry_metadata_exists(state: &crate::shard::types::RunState, step: StepId
 }
 
 /// Extracts retry policy from the step's retry check node.
-pub fn retry_policy_after_action(state: &crate::shard::types::RunState, step: StepIdx) -> RuntimeResult<RetryPolicy> {
+pub fn retry_policy_after_action(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<RetryPolicy> {
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
     let Some(next) = node.next else {
-        return Err(RuntimeError::UnsupportedOperation { operation: "retry_metadata_missing" });
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
     };
     let Some(retry_node) = state.workflow.node(next) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
     let CompiledNodeKind::RetryCheck { policy_slot, .. } = retry_node.kind else {
-        return Err(RuntimeError::UnsupportedOperation { operation: "retry_metadata_missing" });
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
     };
-    let SlotValue::I64(max_attempts) = *state
-        .frame
-        .read_slot(policy_slot)
-        .map_err(|_| RuntimeError::UnsupportedOperation { operation: "retry_policy_slot_unreadable" })?
+    let SlotValue::I64(max_attempts) =
+        *state
+            .frame
+            .read_slot(policy_slot)
+            .map_err(|_| RuntimeError::UnsupportedOperation {
+                operation: "retry_policy_slot_unreadable",
+            })?
     else {
-        return Err(RuntimeError::UnsupportedOperation { operation: "retry_policy_slot_not_i64" });
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_slot_not_i64",
+        });
     };
     let max_attempts =
         u16::try_from(max_attempts).map_err(|_| RuntimeError::UnsupportedOperation {
             operation: "retry_policy_attempts_out_of_range",
         })?;
     if max_attempts == 0 {
-        return Err(RuntimeError::UnsupportedOperation { operation: "retry_policy_attempts_zero" });
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_attempts_zero",
+        });
     }
-    Ok(RetryPolicy { max_attempts, base_delay_ms: 0, exponential_backoff: false })
+    Ok(RetryPolicy {
+        max_attempts,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    })
 }
 
 /// Records a retry attempt and returns true if more retries are allowed.
@@ -159,12 +203,17 @@ pub fn record_retry_attempt(
     }
     *attempt = attempt
         .checked_add(1)
-        .ok_or(RuntimeError::UnsupportedOperation { operation: "retry_attempt_overflow" })?;
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "retry_attempt_overflow",
+        })?;
     Ok(true)
 }
 
 /// Finds the error handler step for a failed step.
-pub fn find_error_handler_for_failure(workflow: &CompiledWorkflow, failed: StepIdx) -> Option<StepIdx> {
+pub fn find_error_handler_for_failure(
+    workflow: &CompiledWorkflow,
+    failed: StepIdx,
+) -> Option<StepIdx> {
     if let Some(handler) = error_handler_on_node(workflow, failed, failed) {
         return Some(handler);
     }
@@ -191,7 +240,11 @@ pub fn find_error_handler_for_failure(workflow: &CompiledWorkflow, failed: StepI
     None
 }
 
-fn error_handler_on_node(workflow: &CompiledWorkflow, candidate: StepIdx, failed: StepIdx) -> Option<StepIdx> {
+fn error_handler_on_node(
+    workflow: &CompiledWorkflow,
+    candidate: StepIdx,
+    failed: StepIdx,
+) -> Option<StepIdx> {
     let node = workflow.node(candidate)?;
     match node.kind {
         CompiledNodeKind::ErrorHandler { body, handler }
@@ -215,7 +268,11 @@ pub fn result_slot_for_finished_run(state: &crate::shard::types::RunState) -> Op
 }
 
 /// Creates a snapshot from run state.
-pub fn snapshot_from_state(run: RunId, correlation: u64, state: &crate::shard::types::RunState) -> InspectSnapshot {
+pub fn snapshot_from_state(
+    run: RunId,
+    correlation: u64,
+    state: &crate::shard::types::RunState,
+) -> InspectSnapshot {
     InspectSnapshot {
         run,
         correlation,

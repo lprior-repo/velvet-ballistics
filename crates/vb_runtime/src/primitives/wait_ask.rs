@@ -16,6 +16,7 @@ pub fn wait_until(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let deadline = *run.read_slot(deadline_slot)?;
     validate_numeric(deadline, "deadline")?;
+    run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
@@ -35,6 +36,7 @@ pub fn wait_event(
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
     }
+    run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
@@ -55,6 +57,7 @@ pub fn ask(
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
     }
+    run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingAsk)
 }
 
@@ -564,7 +567,7 @@ mod tests {
     }
 
     #[test]
-    fn wait_until_does_not_increment_executed_counter() {
+    fn wait_until_increments_executed_counter() {
         // Given a frame with a deadline
         let mut run = fresh_frame();
         let deadline = SlotIdx::new(0);
@@ -574,13 +577,13 @@ mod tests {
         let before = run.executed();
         // When calling wait_until
         let result = wait_until(&mut run, deadline);
-        // Then executed counter is NOT incremented (signal is not Continue)
+        // Then executed counter IS incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
-        assert_eq!(run.executed(), before);
+        assert_eq!(run.executed(), before + 1);
     }
 
     #[test]
-    fn ask_does_not_increment_executed_counter() {
+    fn ask_increments_executed_counter() {
         // Given a frame with a prompt
         let mut run = fresh_frame();
         let prompt = SlotIdx::new(0);
@@ -590,13 +593,13 @@ mod tests {
         let before = run.executed();
         // When calling ask
         let result = ask(&mut run, prompt, None);
-        // Then executed counter is NOT incremented
+        // Then executed counter IS incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
-        assert_eq!(run.executed(), before);
+        assert_eq!(run.executed(), before + 1);
     }
 
     #[test]
-    fn wait_event_does_not_increment_executed_counter() {
+    fn wait_event_increments_executed_counter() {
         // Given a frame with an event
         let mut run = fresh_frame();
         let event = SlotIdx::new(0);
@@ -606,9 +609,9 @@ mod tests {
         let before = run.executed();
         // When calling wait_event
         let result = wait_event(&mut run, event, None);
-        // Then executed counter is NOT incremented
+        // Then executed counter IS incremented
         assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
-        assert_eq!(run.executed(), before);
+        assert_eq!(run.executed(), before + 1);
     }
 
     #[test]

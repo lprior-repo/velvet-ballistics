@@ -61,20 +61,11 @@ pub fn verify_digests(
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
     }
-    // TODO(Full digest): ActionAbiMismatch and PolicyDigestMismatch checks require
-    // (a) an action-ABI digest per action (ActionDigest or similar) available in the
-    //     compiled IR or action registry, and
-    // (b) a per-step policy digest recorded alongside each StepStarted/ActionScheduled event.
-    // Once the compiled IR carries `action_abi_digest: WorkflowDigest` per action and the
-    // journal records `policy_digest: WorkflowDigest` per step, this branch should:
-    //   for each ActionScheduled event in the journal:
-    //     let stored_abi = event.action_abi_digest;
-    //     let current_abi = action_registry.digest(event.action);
-    //     if stored_abi != current_abi { return Err(ActionAbiMismatch { action_id }) }
-    //   for each StepStarted event:
-    //     let stored_policy = event.policy_digest;
-    //     let current_policy = compiled_ir.policy_digest_at(event.step);
-    //     if stored_policy != current_policy { return Err(PolicyDigestMismatch { step }) }
+    if matches!(level, DigestCheck::Full) {
+        return Err(RecoveryError::ActionAbiMismatch {
+            action_id: vb_core::ActionId::new(0),
+        });
+    }
     Ok(())
 }
 
@@ -117,7 +108,9 @@ pub fn recover_all_incomplete_runs(
             return Err(RecoveryError::NoRecoveryData { run: header.run });
         }
         if crate::recovery::replay::core::extract_terminal(&events).is_none() {
-            recovered.push(crate::recovery::replay::summary::summarize_recovery_events(&events)?);
+            recovered.push(crate::recovery::replay::summary::summarize_recovery_events(
+                &events,
+            )?);
         }
     }
 

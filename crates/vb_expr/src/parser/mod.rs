@@ -5,8 +5,8 @@ use crate::{ExprError, ExprResult};
 
 pub use types::{ExprAst, ExprHelper, ExprLiteral};
 
-pub mod types;
 pub mod tests;
+pub mod types;
 
 /// Maximum nesting depth for the parser.
 const MAX_DEPTH: u8 = 64;

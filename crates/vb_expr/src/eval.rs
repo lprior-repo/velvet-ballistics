@@ -193,24 +193,49 @@ fn eval_helper_op(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
 ) -> ExprResult<()> {
     match op {
-        ExprOp::Exists => eval_helper_stack(stack, ExprHelper::Exists),
-        ExprOp::Length => eval_helper_stack(stack, ExprHelper::Length),
-        ExprOp::Empty => eval_helper_stack(stack, ExprHelper::Empty),
-        ExprOp::Count => eval_helper_stack(stack, ExprHelper::Count),
-        ExprOp::Unique => eval_helper_stack(stack, ExprHelper::Unique),
+        ExprOp::Exists => eval_helper_stack_1(stack, ExprHelper::Exists),
+        ExprOp::Length => eval_helper_stack_1(stack, ExprHelper::Length),
+        ExprOp::Empty => eval_helper_stack_1(stack, ExprHelper::Empty),
+        ExprOp::Count => eval_helper_stack_1(stack, ExprHelper::Count),
+        ExprOp::Unique => eval_helper_stack_1(stack, ExprHelper::Unique),
+        ExprOp::Contains => eval_helper_stack_2(stack, ExprHelper::Contains),
+        ExprOp::StartsWith => eval_helper_stack_2(stack, ExprHelper::StartsWith),
+        ExprOp::EndsWith => eval_helper_stack_2(stack, ExprHelper::EndsWith),
+        ExprOp::Has => eval_helper_stack_2(stack, ExprHelper::Has),
+        ExprOp::Append => eval_helper_stack_2(stack, ExprHelper::Append),
+        ExprOp::AppendIf => eval_helper_stack_3(stack, ExprHelper::AppendIf),
+        ExprOp::Merge => eval_helper_stack_2(stack, ExprHelper::Merge),
+        ExprOp::Sum => eval_helper_stack_1(stack, ExprHelper::Sum),
         _ => Err(ExprError::UnknownOperator {
             op: format!("{op:?}"),
         }),
     }
 }
 
-fn eval_helper_stack(
+fn eval_helper_stack_1(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     helper: ExprHelper,
 ) -> ExprResult<()> {
     let value = pop_value(stack)?;
-    let args = [value];
-    let result = eval_helper(helper, &args)?;
+    let result = eval_helper(helper, &[value])?;
+    push_value(stack, result)
+}
+
+fn eval_helper_stack_2(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    helper: ExprHelper,
+) -> ExprResult<()> {
+    let (right, left) = pop_pair(stack)?;
+    let result = eval_helper(helper, &[left, right])?;
+    push_value(stack, result)
+}
+
+fn eval_helper_stack_3(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    helper: ExprHelper,
+) -> ExprResult<()> {
+    let (third, second, first) = pop_triple(stack)?;
+    let result = eval_helper(helper, &[first, second, third])?;
     push_value(stack, result)
 }
 
@@ -221,9 +246,14 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         ExprHelper::Length | ExprHelper::Count => eval_helper_length(args),
         ExprHelper::Empty => eval_helper_empty(args),
         ExprHelper::Unique => eval_helper_unique(args),
-        _ => Err(ExprError::UnknownHelper {
-            helper: crate::parser::helper_name(helper).into(),
-        }),
+        ExprHelper::Contains => eval_helper_contains(args),
+        ExprHelper::StartsWith => eval_helper_starts_with(args),
+        ExprHelper::EndsWith => eval_helper_ends_with(args),
+        ExprHelper::Has => eval_helper_has(args),
+        ExprHelper::Append => eval_helper_append(args),
+        ExprHelper::AppendIf => eval_helper_append_if(args),
+        ExprHelper::Merge => eval_helper_merge(args),
+        ExprHelper::Sum => eval_helper_sum(args),
     }
 }
 
@@ -251,7 +281,10 @@ fn two_args(args: &[SlotValue], helper: ExprHelper) -> ExprResult<(&SlotValue, &
     Ok((left, right))
 }
 
-fn three_args(args: &[SlotValue], helper: ExprHelper) -> ExprResult<(&SlotValue, &SlotValue, &SlotValue)> {
+fn three_args(
+    args: &[SlotValue],
+    helper: ExprHelper,
+) -> ExprResult<(&SlotValue, &SlotValue, &SlotValue)> {
     if args.len() != 3 {
         return Err(ExprError::HelperArityMismatch {
             helper: crate::parser::helper_name(helper).into(),
@@ -313,6 +346,83 @@ fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
     }
 }
 
+fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, _item_val) = two_args(args, ExprHelper::Contains)?;
+    let _list_id = expect_list(*list_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list contains check".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_starts_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (text_val, prefix_val) = two_args(args, ExprHelper::StartsWith)?;
+    let _text_id = expect_symbol(*text_val)?;
+    let _prefix_id = expect_symbol(*prefix_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for text operations".into(),
+        found: "symbol handle without store".into(),
+    })
+}
+
+fn eval_helper_ends_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (text_val, suffix_val) = two_args(args, ExprHelper::EndsWith)?;
+    let _text_id = expect_symbol(*text_val)?;
+    let _suffix_id = expect_symbol(*suffix_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for text operations".into(),
+        found: "symbol handle without store".into(),
+    })
+}
+
+fn eval_helper_has(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (obj_val, key_val) = two_args(args, ExprHelper::Has)?;
+    let _obj_id = expect_object(*obj_val)?;
+    let _key_id = expect_symbol(*key_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for object field lookup".into(),
+        found: "object handle without store".into(),
+    })
+}
+
+fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, _item_val) = two_args(args, ExprHelper::Append)?;
+    let _list_id = expect_list(*list_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list append".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, _item_val, cond_val) = three_args(args, ExprHelper::AppendIf)?;
+    let _list_id = expect_list(*list_val)?;
+    let _ = expect_bool(*cond_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list append".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_merge(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (left_val, right_val) = two_args(args, ExprHelper::Merge)?;
+    let _left_id = expect_object(*left_val)?;
+    let _right_id = expect_object(*right_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for object merge".into(),
+        found: "object handle without store".into(),
+    })
+}
+
+fn eval_helper_sum(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Sum)?;
+    let _list_id = expect_list(*value)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list sum".into(),
+        found: "list handle without store".into(),
+    })
+}
+
 fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     value: SlotValue,
@@ -334,6 +444,15 @@ fn pop_pair(
     Ok((left, right))
 }
 
+fn pop_triple(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+) -> ExprResult<(SlotValue, SlotValue, SlotValue)> {
+    let third = pop_value(stack)?;
+    let second = pop_value(stack)?;
+    let first = pop_value(stack)?;
+    Ok((first, second, third))
+}
+
 fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     match value {
         SlotValue::Bool(b) => Ok(b),
@@ -349,6 +468,36 @@ fn expect_i64(value: SlotValue) -> ExprResult<i64> {
         SlotValue::I64(n) => Ok(n),
         other => Err(ExprError::TypeMismatch {
             expected: "number".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
+    match value {
+        SlotValue::Symbol(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "text".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
+    match value {
+        SlotValue::List(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
+    match value {
+        SlotValue::Object(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "object".into(),
             found: other.type_name().into(),
         }),
     }
@@ -1218,8 +1367,8 @@ mod tests {
     // ===== Security regression tests =====
 
     #[test]
-    fn eval_binary_op_i64_min_div_neg_one_is_integer_overflow_not_division_by_zero() -> ExprResult<()>
-    {
+    fn eval_binary_op_i64_min_div_neg_one_is_integer_overflow_not_division_by_zero()
+    -> ExprResult<()> {
         // SECURITY: i64::MIN / -1 overflows (mathematical result exceeds i64::MAX).
         // Previously, checked_div mapped None -> DivisionByZero, which is incorrect.
         // The fix checks for zero explicitly and maps overflow to IntegerOverflow.

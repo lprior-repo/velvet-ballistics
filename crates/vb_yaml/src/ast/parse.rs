@@ -7,12 +7,10 @@ use saphyr::LoadableYamlNode;
 
 use crate::{YamlError, YamlResult};
 
-use super::types::*;
+use super::parse_fields::{parse_examples, parse_inputs, parse_result, parse_secrets, parse_vars};
 use super::parse_steps::parse_steps;
 use super::parse_trigger::parse_trigger;
-use super::parse_fields::{
-    parse_inputs, parse_vars, parse_secrets, parse_result, parse_examples,
-};
+use super::types::*;
 
 // ---------------------------------------------------------------------------
 // Helpers that work on &Yaml<'_> using as_mapping_get

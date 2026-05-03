@@ -76,7 +76,6 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         CompiledNodeKind::ForEachNext { .. } => Some("ForEachNext"),
         CompiledNodeKind::ForEachJoin { .. } => Some("ForEachJoin"),
         CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
-        CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
         CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
         CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
         CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),

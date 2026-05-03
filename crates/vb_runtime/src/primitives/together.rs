@@ -798,9 +798,7 @@ mod tests {
         let mut run = fresh_frame_with(u16::MAX, 2);
         let mut store = ValueStore::new();
         let output = SlotIdx::new(0);
-        let branches: Vec<StepIdx> = (0..u16::MAX)
-            .map(|i| StepIdx::new(i))
-            .collect();
+        let branches: Vec<StepIdx> = (0..u16::MAX).map(|i| StepIdx::new(i)).collect();
         // When calling together_start with exactly u16::MAX branches
         let result = together_start(
             &mut run,
@@ -819,9 +817,7 @@ mod tests {
         let mut run = fresh_frame_with(u16::MAX, 2);
         let mut store = ValueStore::new();
         let output = SlotIdx::new(0);
-        let mut branches: Vec<StepIdx> = (0..u16::MAX)
-            .map(|i| StepIdx::new(i))
-            .collect();
+        let mut branches: Vec<StepIdx> = (0..u16::MAX).map(|i| StepIdx::new(i)).collect();
         branches.push(StepIdx::new(0));
         // When calling together_start with u16::MAX + 1 branches
         let result = together_start(
@@ -1227,9 +1223,13 @@ mod tests {
             .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
             .ok()
             .unwrap_or_else(|| panic!("insert"));
-        run.write_slot_with_taint(accumulator, SlotValue::List(list_id), Taint::DerivedFromSecret)
-            .ok()
-            .unwrap_or_else(|| panic!("write"));
+        run.write_slot_with_taint(
+            accumulator,
+            SlotValue::List(list_id),
+            Taint::DerivedFromSecret,
+        )
+        .ok()
+        .unwrap_or_else(|| panic!("write"));
         run.write_slot_with_taint(output, SlotValue::I64(20), Taint::Secret)
             .ok()
             .unwrap_or_else(|| panic!("write"));
@@ -1360,13 +1360,7 @@ mod tests {
         let mut store = ValueStore::new();
         let output = SlotIdx::new(0);
         // When calling together_start with empty branches
-        let result = together_start(
-            &mut run,
-            &mut store,
-            &[],
-            StepIdx::new(2),
-            Some(output),
-        );
+        let result = together_start(&mut run, &mut store, &[], StepIdx::new(2), Some(output));
         // Then it returns InvalidCompiledWorkflow (fail-fast: cannot start with 0 branches)
         match result {
             Err(EngineError::InvalidCompiledWorkflow { reason }) => {

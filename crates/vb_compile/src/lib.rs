@@ -2155,28 +2155,19 @@ fn validate_for_each_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unsupported_for_each_fields(body, index)?;
-    reject_unknown_primitive_fields(body, index, "for_each", &["input", "item", "limit"])?;
+    reject_unknown_primitive_fields(
+        body,
+        index,
+        "for_each",
+        &["input", "item", "limit", "at_once"],
+    )?;
     required_slot(body, index, "input")?;
     required_slot(body, index, "item")?;
     required_u32_field(body, index, "for_each", "limit")?;
     Ok(())
 }
 
-fn reject_unsupported_for_each_fields(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
-    let Some(mapping) = body.as_mapping() else {
-        return Ok(());
-    };
-    for (key, _) in mapping {
-        let Some(field) = key.as_str() else {
-            continue;
-        };
-        if field == "at_once" {
-            return Err(CompileError::UnsupportedStepPrimitive {
-                step,
-                primitive: "for_each",
-            });
-        }
-    }
+fn reject_unsupported_for_each_fields(_body: &Yaml<'_>, _step: usize) -> Result<(), CompileError> {
     Ok(())
 }
 
@@ -3654,8 +3645,9 @@ fn slot_value(node: &Yaml<'_>, step: usize) -> Result<ConstValue, CompileError> 
         Yaml::Value(saphyr::Scalar::Null) => Ok(ConstValue::Null),
         Yaml::Value(saphyr::Scalar::Boolean(value)) => Ok(ConstValue::Bool(*value)),
         Yaml::Value(saphyr::Scalar::Integer(value)) => Ok(ConstValue::I64(*value)),
-        Yaml::Value(saphyr::Scalar::String(value))
-        | Yaml::Representation(value, _, None) => text_slot_value(value.as_ref(), step),
+        Yaml::Value(saphyr::Scalar::String(value)) | Yaml::Representation(value, _, None) => {
+            text_slot_value(value.as_ref(), step)
+        }
         Yaml::Sequence(sequence) => list_slot_value(sequence, step),
         Yaml::Mapping(mapping) => object_slot_value(mapping, step),
         _ => Err(CompileError::UnsupportedConstantValue { step }),
@@ -3683,14 +3675,14 @@ fn object_slot_value(
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
+    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use super::{
         compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
         lower_set,
     };
-    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
+    use vb_core::ConstValue;
     use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, WorkflowParts};
-    use vb_core::ConstValue;
     use vb_core::{CompiledWorkflow, ResourceContract};
 
     macro_rules! compile_test_fail {
@@ -4884,25 +4876,19 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_for_each_with_unsupported_at_once_field() {
-        let source = "version: velvet-ballastics/v1\nname: for_each_unsupported\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: [1, 2, 3]\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      at_once: 5\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_accepts_for_each_with_at_once_field() -> Result<(), String> {
+        let source = "version: velvet-ballastics/v1\nname: for_each_with_at_once\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: [1, 2, 3]\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      at_once: 5\n  - id: done\n    finish:\n      result: 0\n";
+        let workflow = YamlCompiler::default()
+            .compile(source.as_bytes())
+            .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
+        let start = workflow
+            .node(StepIdx::new(1))
+            .ok_or("missing for_each start")?;
         assert!(
-            matches!(
-                result,
-                Err(ref errors)
-                    if errors.first().map(CompileError::code) == Some("INVALID_FOR_EACH")
-            ),
-            "for_each with at_once must be rejected with INVALID_FOR_EACH, got: {result:?}"
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10 && body == StepIdx::new(2) && done == StepIdx::new(3)),
+            "for_each start node must have correct structure"
         );
-        assert!(
-            matches!(
-                result,
-                Err(ref errors)
-                    if matches!(errors.first(), Some(CompileError::UnsupportedStepPrimitive { step: 1, primitive: "for_each" }))
-            ),
-            "for_each with at_once must produce UnsupportedStepPrimitive error, got: {result:?}"
-        );
+        Ok(())
     }
 
     #[test]
@@ -7124,9 +7110,7 @@ steps:
                         }
                         let reason_ref: &str = &reason;
                         if !reason_ref.contains("AtLeastOnceExternal") {
-                            return Err(String::from(
-                                "reason should mention AtLeastOnceExternal",
-                            ));
+                            return Err(String::from("reason should mention AtLeastOnceExternal"));
                         }
                         Ok(())
                     }
@@ -7192,9 +7176,7 @@ steps:
                 match first {
                     CompileError::IdempotencyViolation { action, .. } => {
                         if *action != ActionId::new(52) {
-                            return Err(String::from(
-                                "expected violation for action 52 only",
-                            ));
+                            return Err(String::from("expected violation for action 52 only"));
                         }
                         Ok(())
                     }
@@ -7257,9 +7239,7 @@ steps:
                     Ok(())
                 } else {
                     let first = errors.first().ok_or("errors should not be empty")?;
-                    Err(format!(
-                        "expected ActionContractOrphan, got {first:?}"
-                    ))
+                    Err(format!("expected ActionContractOrphan, got {first:?}"))
                 }
             }
             Ok(_) => Err(String::from(

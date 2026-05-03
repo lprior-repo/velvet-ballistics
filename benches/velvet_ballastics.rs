@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp,
-    ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget, StepIdx,
-    SymbolId, Taint, WorkflowDigest, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram,
+    ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget, StepIdx, SymbolId, Taint,
+    WorkflowDigest, WorkflowParts,
 };
 use vb_runtime::journal::RuntimeJournal;
 use vb_storage::{EventSeq, JournalEvent};
@@ -589,8 +589,8 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(step.saturating_add(1))),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
@@ -620,8 +620,8 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -630,8 +630,8 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             output: None,
             next: None,
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ChooseSlot {
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::from([SlotBranch {
                     condition: SlotIdx::new(0),
                     target: StepIdx::new(2),
@@ -644,8 +644,8 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(4)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
@@ -654,8 +654,8 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(4)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(2),
             },
         },
@@ -664,8 +664,8 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             output: None,
             next: None,
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
         },
@@ -760,8 +760,8 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -770,8 +770,8 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::EvalExpr {
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
@@ -780,8 +780,8 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             output: None,
             next: None,
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
         },
@@ -1462,8 +1462,8 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(field_idx)),
             next: Some(StepIdx::new(field_idx.saturating_add(1))),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(field_idx),
             },
         });
@@ -1524,9 +1524,7 @@ fn taint_build_object_bench(c: &mut Criterion) {
             metadata(
                 &format!("build_object_{field_count}_fields_taint"),
                 &field_count.to_le_bytes(),
-                &format!(
-                    "fixture=build_object_{field_count};surface=build_object_taint"
-                ),
+                &format!("fixture=build_object_{field_count};surface=build_object_taint"),
             ),
             |b| {
                 b.iter(|| {
@@ -1579,8 +1577,8 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(idx)),
             next: Some(StepIdx::new(idx.saturating_add(1))),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(idx),
             },
         });
@@ -1634,9 +1632,7 @@ fn taint_build_list_bench(c: &mut Criterion) {
             metadata(
                 &format!("build_list_{item_count}_items_taint"),
                 &item_count.to_le_bytes(),
-                &format!(
-                    "fixture=build_list_{item_count};surface=build_list_taint"
-                ),
+                &format!("fixture=build_list_{item_count};surface=build_list_taint"),
             ),
             |b| {
                 b.iter(|| {
@@ -1693,8 +1689,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -1703,8 +1699,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
@@ -1713,8 +1709,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(2)),
             next: Some(StepIdx::new(3)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::EvalExpr {
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
@@ -1723,8 +1719,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(3)),
             next: Some(StepIdx::new(4)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::BuildObject {
+            error_slot: None,
+            kind: CompiledNodeKind::BuildObject {
                 fields: Box::from([
                     (SymbolId::new(0), SlotIdx::new(0)),
                     (SymbolId::new(1), SlotIdx::new(2)),
@@ -1736,8 +1732,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: Some(SlotIdx::new(4)),
             next: Some(StepIdx::new(5)),
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::BuildList {
+            error_slot: None,
+            kind: CompiledNodeKind::BuildList {
                 items: Box::from([SlotIdx::new(0), SlotIdx::new(2), SlotIdx::new(0)]),
             },
         },
@@ -1746,8 +1742,8 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             output: None,
             next: None,
             on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
         },
@@ -1759,10 +1755,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
         nodes: nodes.into_boxed_slice(),
         expressions: vec![program].into_boxed_slice(),
         accessors: Box::from([]),
-        constants: Box::from([
-            vb_core::ConstValue::I64(10),
-            vb_core::ConstValue::I64(3),
-        ]),
+        constants: Box::from([vb_core::ConstValue::I64(10), vb_core::ConstValue::I64(3)]),
         slot_count: 5,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
@@ -1869,8 +1862,11 @@ fn submit_artifact_benches(c: &mut Criterion) {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
                         if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
-                            let result =
-                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Relaxed);
+                            let result = vb_storage::submit_artifact(
+                                black_box(&journal),
+                                wf,
+                                vb_core::RuntimePolicy::Relaxed,
+                            );
                             black_box(result.is_ok())
                         } else {
                             black_box(false)
@@ -1898,8 +1894,11 @@ fn submit_artifact_benches(c: &mut Criterion) {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
                         if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
-                            let result =
-                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Journaled);
+                            let result = vb_storage::submit_artifact(
+                                black_box(&journal),
+                                wf,
+                                vb_core::RuntimePolicy::Journaled,
+                            );
                             black_box(result.is_ok())
                         } else {
                             black_box(false)
@@ -1927,8 +1926,11 @@ fn submit_artifact_benches(c: &mut Criterion) {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
                         if let Ok(journal) = vb_storage::FjallJournal::open(dir.path(), None) {
-                            let result =
-                                vb_storage::submit_artifact(black_box(&journal), wf, vb_core::RuntimePolicy::Strict);
+                            let result = vb_storage::submit_artifact(
+                                black_box(&journal),
+                                wf,
+                                vb_core::RuntimePolicy::Strict,
+                            );
                             black_box(result.is_ok())
                         } else {
                             black_box(false)
@@ -2301,9 +2303,10 @@ fn capability_check_benches(c: &mut Criterion) {
         vb_core::Capability::Action(vb_core::ActionId::new(9)),
         vb_core::Capability::Action(vb_core::ActionId::new(10)),
     ]));
-    let workflow_caps = vb_core::CapabilitySet::from_grants(Box::new([
-        vb_core::Capability::Workflow(WorkflowDigest::from_bytes([0xAA; 32])),
-    ]));
+    let workflow_caps =
+        vb_core::CapabilitySet::from_grants(Box::new([vb_core::Capability::Workflow(
+            WorkflowDigest::from_bytes([0xAA; 32]),
+        )]));
     let empty_caps = vb_core::CapabilitySet::empty();
     let mixed_caps = vb_core::CapabilitySet::from_grants(Box::new([
         vb_core::Capability::Action(vb_core::ActionId::new(1)),
@@ -2320,8 +2323,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = any_workflow_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(99))));
+                let result = any_workflow_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(99),
+                )));
                 black_box(result)
             })
         },
@@ -2336,8 +2340,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                let result = action_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(1),
+                )));
                 black_box(result)
             })
         },
@@ -2352,8 +2357,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(99))));
+                let result = action_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(99),
+                )));
                 black_box(result)
             })
         },
@@ -2368,8 +2374,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = workflow_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                let result = workflow_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(1),
+                )));
                 black_box(result)
             })
         },
@@ -2384,8 +2391,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = empty_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(1))));
+                let result = empty_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(1),
+                )));
                 black_box(result)
             })
         },
@@ -2400,8 +2408,9 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = mixed_caps
-                    .grants(black_box(&vb_core::Capability::Action(vb_core::ActionId::new(2))));
+                let result = mixed_caps.grants(black_box(&vb_core::Capability::Action(
+                    vb_core::ActionId::new(2),
+                )));
                 black_box(result)
             })
         },

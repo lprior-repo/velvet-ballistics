@@ -7,11 +7,11 @@
 use crate::{ValidationError, ValidationResult};
 
 // Re-export the core types we need so callers only depend on vb_validate.
+pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 pub use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
-pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 
 // ---------------------------------------------------------------------------
 // Gate 7: Expression stack depth bounded
@@ -111,7 +111,11 @@ fn push_count(_op: &ExprOp) -> u8 {
 }
 
 /// Returns the net stack effect of a single expression opcode.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::as_conversions)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::as_conversions
+)]
 fn stack_effect(_op: &ExprOp) -> i8 {
     // pop_count and push_count return small u8 values (max 3).
     // We know push <= 1 and pop <= 3, so the result is always in i8 range.
@@ -217,9 +221,7 @@ fn validate_node_slots(
         }
         CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {}
         CompiledNodeKind::ForEachStart {
-            input,
-            item_slot,
-            ..
+            input, item_slot, ..
         } => {
             check_slot(*input, node_index, slot_count)?;
             check_slot(*item_slot, node_index, slot_count)?;
@@ -250,9 +252,7 @@ fn validate_node_slots(
             check_slot(*collector_slot, node_index, slot_count)?;
         }
         CompiledNodeKind::ReduceStart {
-            input,
-            accumulator,
-            ..
+            input, accumulator, ..
         } => {
             check_slot(*input, node_index, slot_count)?;
             check_slot(*accumulator, node_index, slot_count)?;
@@ -330,11 +330,7 @@ fn validate_expr_slots(
     Ok(())
 }
 
-fn check_slot(
-    slot: SlotIdx,
-    node_index: usize,
-    slot_count: usize,
-) -> ValidationResult<()> {
+fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> ValidationResult<()> {
     if slot.as_usize() >= slot_count {
         return Err(ValidationError::SlotReferenceOutOfRange {
             slot: slot.as_usize(),
@@ -360,9 +356,7 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
     let node_count = parts.nodes.len();
     for (index, node) in parts.nodes.iter().enumerate() {
         match &node.kind {
-            CompiledNodeKind::ForEachStart {
-                body, done, ..
-            } => {
+            CompiledNodeKind::ForEachStart { body, done, .. } => {
                 check_step_in_range(*body, node_count, index, "for_each body")?;
                 check_step_in_range(*done, node_count, index, "for_each done")?;
                 check_loop_span(index, *body, *done, node_count)?;
@@ -388,9 +382,7 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
                 check_step_in_range(*join, node_count, index, "together_branch join")?;
             }
             CompiledNodeKind::TogetherJoin { .. } => {}
-            CompiledNodeKind::CollectStart {
-                body, done, ..
-            } => {
+            CompiledNodeKind::CollectStart { body, done, .. } => {
                 check_step_in_range(*body, node_count, index, "collect body")?;
                 check_step_in_range(*done, node_count, index, "collect done")?;
                 check_loop_span(index, *body, *done, node_count)?;
@@ -403,9 +395,7 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
                 check_step_in_range(*body, node_count, index, "collect_next body")?;
                 check_step_in_range(*done, node_count, index, "collect_next done")?;
             }
-            CompiledNodeKind::ReduceStart {
-                body, done, ..
-            } => {
+            CompiledNodeKind::ReduceStart { body, done, .. } => {
                 check_step_in_range(*body, node_count, index, "reduce body")?;
                 check_step_in_range(*done, node_count, index, "reduce done")?;
                 check_loop_span(index, *body, *done, node_count)?;
@@ -414,9 +404,7 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
                 check_step_in_range(*body, node_count, index, "reduce_next body")?;
                 check_step_in_range(*done, node_count, index, "reduce_next done")?;
             }
-            CompiledNodeKind::RepeatStart {
-                body, done, ..
-            } => {
+            CompiledNodeKind::RepeatStart { body, done, .. } => {
                 check_step_in_range(*body, node_count, index, "repeat body")?;
                 check_step_in_range(*done, node_count, index, "repeat done")?;
                 check_loop_span(index, *body, *done, node_count)?;
@@ -428,7 +416,9 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
             CompiledNodeKind::RepeatCheck { done, .. } => {
                 check_step_in_range(*done, node_count, index, "repeat_check done")?;
             }
-            CompiledNodeKind::RetryCheck { body, exhausted, .. } => {
+            CompiledNodeKind::RetryCheck {
+                body, exhausted, ..
+            } => {
                 check_step_in_range(*body, node_count, index, "retry_check body")?;
                 check_step_in_range(*exhausted, node_count, index, "retry_check exhausted")?;
             }
@@ -583,12 +573,13 @@ fn detect_cycle_dfs(
 
     let neighbors = adjacency.get(slot).map_or(&[][..], |v| v.as_slice());
     for &neighbor in neighbors {
-        let color = visited.get(neighbor).copied().ok_or(
-            ValidationError::SlotDependencyCycle {
+        let color = visited
+            .get(neighbor)
+            .copied()
+            .ok_or(ValidationError::SlotDependencyCycle {
                 slot,
                 chain: format!("slot {slot} -> slot {neighbor}"),
-            },
-        )?;
+            })?;
         if color == 1 {
             // Gray = cycle found.
             return Err(ValidationError::SlotDependencyCycle {
@@ -681,9 +672,7 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
             reads.push(*collector_slot);
         }
         CompiledNodeKind::ReduceStart {
-            input,
-            accumulator,
-            ..
+            input, accumulator, ..
         } => {
             reads.push(*input);
             reads.push(*accumulator);
@@ -1087,9 +1076,10 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                 if let Some(slot) = node.output {
                     let slot_usize = slot.as_usize();
                     if slot_usize < slot_count {
-                        let existing = slot_const_kind.get(slot_usize).copied().ok_or(
-                            ValidationError::SlotTypeInconsistency { slot: slot_usize },
-                        )?;
+                        let existing = slot_const_kind
+                            .get(slot_usize)
+                            .copied()
+                            .ok_or(ValidationError::SlotTypeInconsistency { slot: slot_usize })?;
                         if existing == 0 {
                             if let Some(entry) = slot_const_kind.get_mut(slot_usize) {
                                 *entry = kind;
@@ -1195,10 +1185,7 @@ mod tests {
     use vb_core::workflow::ResourceContract;
 
     // Helper: build minimal WorkflowParts with just nodes and slot_count.
-    fn make_parts(
-        nodes: Vec<CompiledNode>,
-        slot_count: u16,
-    ) -> WorkflowParts {
+    fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         WorkflowParts {
             name: Box::from("test"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

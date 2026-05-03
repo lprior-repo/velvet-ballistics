@@ -9,10 +9,10 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::action::{
-    execute_do, execute_do_without_contract, resolve_contract, execute_retry_check,
+    execute_do, execute_do_without_contract, execute_retry_check, resolve_contract,
 };
 use crate::engine::signal::runtime_from_core;
-use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeSignal, RuntimeEngineResult};
+use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives;
 
 /// Executes one compiled node with full primitive dispatch.

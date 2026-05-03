@@ -4,11 +4,11 @@
 //! - Runtime summary construction from events
 //! - Frame seed building for live-frame reconstruction
 
-use crate::recovery::types::{
-    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
-    RecoveredStepEntry, RecoveredStepState, UnsupportedRecoveryState,
-};
 use crate::JournalEvent;
+use crate::recovery::types::{
+    RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
+};
 use vb_core::{RunId, SlotIdx, StepIdx};
 
 /// Applies an event's effects to a runtime summary.
@@ -42,9 +42,8 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Cancelled);
         }
         JournalEvent::RunFinished { result, .. } => {
-            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Finished {
-                result: *result,
-            });
+            summary.terminal =
+                Some(crate::recovery::types::RecoveryTerminalState::Finished { result: *result });
         }
         JournalEvent::RunFailedEvent { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Failed);
@@ -55,9 +54,7 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
 /// Builds a summary-only recovery product from already ordered journal events.
 pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<RecoveryHydration> {
     let Some(first) = events.first() else {
-        return Err(RecoveryError::NoRecoveryData {
-            run: RunId::new(0),
-        });
+        return Err(RecoveryError::NoRecoveryData { run: RunId::new(0) });
     };
     let run = first.run_id();
     let mut summary = RecoveryRuntimeSummary {

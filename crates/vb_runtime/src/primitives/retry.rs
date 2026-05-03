@@ -216,8 +216,8 @@ impl RetryState {
             .map_err(|_| RetryPolicyError::InvalidRetryState)?;
         let current_attempt = u16::try_from((packed >> 16) & 0xFFFF_i64)
             .map_err(|_| RetryPolicyError::InvalidRetryState)?;
-        let remaining = u16::try_from(packed & 0xFFFF_i64)
-            .map_err(|_| RetryPolicyError::InvalidRetryState)?;
+        let remaining =
+            u16::try_from(packed & 0xFFFF_i64).map_err(|_| RetryPolicyError::InvalidRetryState)?;
         // current_attempt must be >= 1 unless this is a zero-initialized state
         if current_attempt == 0 && remaining > 0 {
             return Err(RetryPolicyError::InvalidRetryState);
@@ -230,7 +230,11 @@ impl RetryState {
     }
 
     /// Writes the retry state to a frame slot.
-    pub fn write_to_slot(&self, frame: &mut RunFrame, slot: SlotIdx) -> Result<(), RetryPolicyError> {
+    pub fn write_to_slot(
+        &self,
+        frame: &mut RunFrame,
+        slot: SlotIdx,
+    ) -> Result<(), RetryPolicyError> {
         let packed = self.encode()?;
         frame
             .write_slot(slot, SlotValue::I64(packed))
@@ -465,7 +469,9 @@ mod tests {
 
     #[test]
     fn retry_state_from_policy_initializes_correctly() {
-        let policy = RetryPolicy::new(5, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(5, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState::from_policy(&policy);
         assert_eq!(state.current_attempt(), 1);
         assert_eq!(state.remaining(), 5);
@@ -503,7 +509,9 @@ mod tests {
             current_delay_ms: 200,
         };
         let packed = state.encode().ok().expect("encode must succeed");
-        let decoded = RetryState::decode(packed).ok().expect("decode must succeed");
+        let decoded = RetryState::decode(packed)
+            .ok()
+            .expect("decode must succeed");
         assert_eq!(decoded.current_attempt(), 2);
         assert_eq!(decoded.remaining(), 3);
         assert_eq!(decoded.current_delay_ms(), 200);
@@ -517,7 +525,9 @@ mod tests {
             current_delay_ms: u32::MAX,
         };
         let packed = state.encode().ok().expect("encode must succeed");
-        let decoded = RetryState::decode(packed).ok().expect("decode must succeed");
+        let decoded = RetryState::decode(packed)
+            .ok()
+            .expect("decode must succeed");
         assert_eq!(decoded.current_attempt(), u16::MAX);
         assert_eq!(decoded.remaining(), u16::MAX);
         assert_eq!(decoded.current_delay_ms(), u32::MAX);
@@ -554,7 +564,9 @@ mod tests {
         };
         let write_result = state.write_to_slot(&mut frame, slot);
         assert!(write_result.is_ok());
-        let read_state = RetryState::read_from_slot(&frame, slot).ok().expect("read must succeed");
+        let read_state = RetryState::read_from_slot(&frame, slot)
+            .ok()
+            .expect("read must succeed");
         assert_eq!(read_state.current_attempt(), 1);
         assert_eq!(read_state.remaining(), 5);
         assert_eq!(read_state.current_delay_ms(), 0);
@@ -644,14 +656,18 @@ mod tests {
 
     #[test]
     fn compute_delay_none_is_zero() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::None).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::None)
+            .ok()
+            .expect("must succeed");
         assert_eq!(compute_delay(&policy, 1), 0);
         assert_eq!(compute_delay(&policy, 5), 0);
     }
 
     #[test]
     fn compute_delay_fixed_is_constant() {
-        let policy = RetryPolicy::new(3, 250, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 250, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         assert_eq!(compute_delay(&policy, 1), 250);
         assert_eq!(compute_delay(&policy, 2), 250);
         assert_eq!(compute_delay(&policy, 3), 250);
@@ -659,8 +675,9 @@ mod tests {
 
     #[test]
     fn compute_delay_exponential_backoff_doubles() {
-        let policy =
-            RetryPolicy::new(5, 100, 2, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(5, 100, 2, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         // After attempt 1: delay = 100 * 2^0 = 100
         assert_eq!(compute_delay(&policy, 1), 100);
         // After attempt 2: delay = 100 * 2^1 = 200
@@ -673,8 +690,9 @@ mod tests {
 
     #[test]
     fn compute_delay_exponential_backoff_with_multiplier_3() {
-        let policy =
-            RetryPolicy::new(4, 50, 3, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(4, 50, 3, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         // After attempt 1: delay = 50 * 3^0 = 50
         assert_eq!(compute_delay(&policy, 1), 50);
         // After attempt 2: delay = 50 * 3^1 = 150
@@ -685,8 +703,9 @@ mod tests {
 
     #[test]
     fn compute_delay_exponential_saturates_at_u32_max() {
-        let policy =
-            RetryPolicy::new(100, u32::MAX, 2, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(100, u32::MAX, 2, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         let delay = compute_delay(&policy, 1);
         assert_eq!(delay, u32::MAX);
     }
@@ -695,7 +714,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_retriable_with_remaining_attempts() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 1,
             remaining: 2,
@@ -733,7 +754,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_exhausted_when_remaining_zero() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 3,
             remaining: 0,
@@ -747,15 +770,14 @@ mod tests {
             encoded_len: 0,
         };
         let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
-        assert_eq!(
-            decision,
-            RetryDecision::Exhausted { max_attempts: 3 }
-        );
+        assert_eq!(decision, RetryDecision::Exhausted { max_attempts: 3 });
     }
 
     #[test]
     fn evaluate_retry_not_retriable_unsafe() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 1,
             remaining: 2,
@@ -774,7 +796,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_not_retriable_failure_flag_false() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 1,
             remaining: 2,
@@ -793,7 +817,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_full_cycle_three_attempts() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
             retryable: true,
@@ -891,18 +917,16 @@ mod tests {
             current_delay_ms: 100,
         };
         let decision4 = evaluate_retry(&state4, &policy, &failure, RetrySafety::Safe);
-        assert_eq!(
-            decision4,
-            RetryDecision::Exhausted { max_attempts: 3 }
-        );
+        assert_eq!(decision4, RetryDecision::Exhausted { max_attempts: 3 });
     }
 
     // ── evaluate_retry with exponential backoff ───────────────────────
 
     #[test]
     fn evaluate_retry_exponential_backoff_increments_delay() {
-        let policy =
-            RetryPolicy::new(4, 100, 2, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(4, 100, 2, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::ExternalUnavailable,
             retryable: true,
@@ -979,7 +1003,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_unsafe_safety_rejects_retryable_failure() {
-        let policy = RetryPolicy::new(10, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(10, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 1,
             remaining: 9,
@@ -1010,10 +1036,14 @@ mod tests {
     fn retry_start_writes_initial_state() {
         let mut frame = fresh_frame();
         let slot = SlotIdx::new(0);
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let result = retry_start(&mut frame, &policy, slot);
         assert!(result.is_ok());
-        let state = RetryState::read_from_slot(&frame, slot).ok().expect("must read");
+        let state = RetryState::read_from_slot(&frame, slot)
+            .ok()
+            .expect("must read");
         assert_eq!(state.current_attempt(), 1);
         assert_eq!(state.remaining(), 3);
         assert_eq!(state.current_delay_ms(), 0);
@@ -1023,8 +1053,12 @@ mod tests {
     fn retry_on_failure_writes_updated_state_on_retry() {
         let mut frame = fresh_frame();
         let slot = SlotIdx::new(0);
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
-        retry_start(&mut frame, &policy, slot).ok().expect("start must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
+        retry_start(&mut frame, &policy, slot)
+            .ok()
+            .expect("start must succeed");
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
@@ -1058,7 +1092,9 @@ mod tests {
         }
 
         // Verify slot was updated
-        let read_state = RetryState::read_from_slot(&frame, slot).ok().expect("must read");
+        let read_state = RetryState::read_from_slot(&frame, slot)
+            .ok()
+            .expect("must read");
         assert_eq!(read_state.current_attempt(), 2);
         assert_eq!(read_state.remaining(), 2);
         assert_eq!(read_state.current_delay_ms(), 100);
@@ -1068,8 +1104,12 @@ mod tests {
     fn retry_on_failure_does_not_modify_slot_on_exhaustion() {
         let mut frame = fresh_frame();
         let slot = SlotIdx::new(0);
-        let policy = RetryPolicy::new(1, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
-        retry_start(&mut frame, &policy, slot).ok().expect("start must succeed");
+        let policy = RetryPolicy::new(1, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
+        retry_start(&mut frame, &policy, slot)
+            .ok()
+            .expect("start must succeed");
 
         // First failure with max_attempts=1: remaining goes from 1 to 0.
         let failure = ActionFailure {
@@ -1106,18 +1146,19 @@ mod tests {
         let decision2 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
             .ok()
             .expect("evaluate must succeed");
-        assert_eq!(
-            decision2,
-            RetryDecision::Exhausted { max_attempts: 1 }
-        );
+        assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
     #[test]
     fn retry_on_failure_does_not_modify_slot_on_not_retriable() {
         let mut frame = fresh_frame();
         let slot = SlotIdx::new(0);
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
-        retry_start(&mut frame, &policy, slot).ok().expect("start must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
+        retry_start(&mut frame, &policy, slot)
+            .ok()
+            .expect("start must succeed");
 
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
@@ -1132,7 +1173,9 @@ mod tests {
         assert_eq!(decision, RetryDecision::NotRetriable);
 
         // Verify slot was NOT modified
-        let read_state = RetryState::read_from_slot(&frame, slot).ok().expect("must read");
+        let read_state = RetryState::read_from_slot(&frame, slot)
+            .ok()
+            .expect("must read");
         assert_eq!(read_state.current_attempt(), 1);
         assert_eq!(read_state.remaining(), 3);
     }
@@ -1181,10 +1224,7 @@ mod tests {
             current_delay_ms: 0,
         };
         let decision2 = evaluate_retry(&state_after, &policy, &failure, RetrySafety::Safe);
-        assert_eq!(
-            decision2,
-            RetryDecision::Exhausted { max_attempts: 1 }
-        );
+        assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
     // ── All ActionFailureCode variants with retryable=true/false ──────
@@ -1267,7 +1307,9 @@ mod tests {
 
     #[test]
     fn evaluate_retry_non_retriable_does_not_consume_attempt() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let state = RetryState {
             current_attempt: 1,
             remaining: 3,
@@ -1323,7 +1365,9 @@ mod tests {
             .ok()
             .expect("write must succeed");
 
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
+            .ok()
+            .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
             retryable: true,
@@ -1410,7 +1454,9 @@ mod tests {
             .expect("must succeed");
         let mut frame = fresh_frame();
         let slot = SlotIdx::new(0);
-        retry_start(&mut frame, &policy, slot).ok().expect("start must succeed");
+        retry_start(&mut frame, &policy, slot)
+            .ok()
+            .expect("start must succeed");
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
@@ -1472,10 +1518,7 @@ mod tests {
         let decision3 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
             .ok()
             .expect("must succeed");
-        assert_eq!(
-            decision3,
-            RetryDecision::Exhausted { max_attempts: 2 }
-        );
+        assert_eq!(decision3, RetryDecision::Exhausted { max_attempts: 2 });
 
         // Exhaustion produces the correct error
         let error = exhaustion_error(2);
@@ -1486,7 +1529,9 @@ mod tests {
 
     #[test]
     fn retry_policy_with_max_attempts_handles_boundary() {
-        let policy = RetryPolicy::new(u16::MAX, 10, 1, DelayStrategy::None).ok().expect("must succeed");
+        let policy = RetryPolicy::new(u16::MAX, 10, 1, DelayStrategy::None)
+            .ok()
+            .expect("must succeed");
         let state = RetryState::from_policy(&policy);
         assert_eq!(state.remaining(), u16::MAX);
         assert!(!state.is_exhausted());
@@ -1542,14 +1587,18 @@ mod tests {
 
     #[test]
     fn compute_delay_exponential_with_zero_base_is_zero() {
-        let policy = RetryPolicy::new(3, 0, 2, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 0, 2, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         assert_eq!(compute_delay(&policy, 1), 0);
         assert_eq!(compute_delay(&policy, 5), 0);
     }
 
     #[test]
     fn compute_delay_exponential_with_multiplier_one_is_fixed() {
-        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         assert_eq!(compute_delay(&policy, 1), 100);
         assert_eq!(compute_delay(&policy, 2), 100);
         assert_eq!(compute_delay(&policy, 3), 100);
@@ -1557,7 +1606,9 @@ mod tests {
 
     #[test]
     fn compute_delay_exponential_zero_attempt_is_base() {
-        let policy = RetryPolicy::new(3, 100, 2, DelayStrategy::ExponentialBackoff).ok().expect("must succeed");
+        let policy = RetryPolicy::new(3, 100, 2, DelayStrategy::ExponentialBackoff)
+            .ok()
+            .expect("must succeed");
         assert_eq!(compute_delay(&policy, 0), 100);
     }
 }

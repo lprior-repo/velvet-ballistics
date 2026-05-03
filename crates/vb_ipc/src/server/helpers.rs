@@ -1,13 +1,13 @@
 //! Buffer and frame helper functions.
 
-use super::error::IpcServerError;
-use crate::IpcFrameHeader;
-use crate::IpcError;
-use crate::{MaxPayloadBytes, IPC_HEADER_LEN};
 use super::IpcResponse;
-use mio::net::UnixStream;
+use super::error::IpcServerError;
+use crate::IpcError;
+use crate::IpcFrameHeader;
+use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
 use mio::Registry;
 use mio::Token;
+use mio::net::UnixStream;
 use std::io::Write;
 
 /// Appends read bytes into the read buffer with bounds checking.

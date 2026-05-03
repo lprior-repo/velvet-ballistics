@@ -10,7 +10,10 @@ use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJourn
 use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
-use super::{AskAnswer, AskTicket, InspectResponse, InspectSnapshot, RunState, Shard, ShardCommand, ShardConfig, MAX_COMMAND_QUEUE_CAPACITY};
+use super::{
+    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
+    Shard, ShardCommand, ShardConfig,
+};
 
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
@@ -123,7 +126,12 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let frame = match vb_core::frame::RunFrame::new(super::RunId::new(9), vb_core::ids::StepIdx::ZERO, 1, 1) {
+    let frame = match vb_core::frame::RunFrame::new(
+        super::RunId::new(9),
+        vb_core::ids::StepIdx::ZERO,
+        1,
+        1,
+    ) {
         Ok(frame) => frame,
         Err(_) => return,
     };
@@ -147,9 +155,15 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         base_delay_ms: 0,
         exponential_backoff: false,
     };
-    assert_eq!(super::record_retry_attempt(&mut state, ticket, policy), Ok(true));
+    assert_eq!(
+        super::record_retry_attempt(&mut state, ticket, policy),
+        Ok(true)
+    );
     assert_eq!(state.action_attempts.get(0).copied(), Some(2));
-    assert_eq!(super::record_retry_attempt(&mut state, ticket, policy), Ok(false));
+    assert_eq!(
+        super::record_retry_attempt(&mut state, ticket, policy),
+        Ok(false)
+    );
 }
 
 #[test]
@@ -162,7 +176,11 @@ fn action_failed_routes_to_nearby_error_handler() {
     let run = super::RunId::new(301);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -189,7 +207,11 @@ fn action_failed_without_error_handler_fails_run() {
     let run = super::RunId::new(302);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -254,7 +276,11 @@ fn inspect_command_stores_retrievable_snapshot() {
     };
     let run = super::RunId::new(7);
 
-    let submitted = shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() });
+    let submitted = shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: vb_core::capability::CapabilitySet::empty(),
+    });
     assert_eq!(submitted, Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     let inspected = shard.enqueue(ShardCommand::Inspect {
@@ -324,7 +350,11 @@ fn counters_reflect_submitted_after_submit_tick() {
     };
     let run = super::RunId::new(1);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -553,7 +583,11 @@ fn cancelled_run_releases_frame_to_dimension_pool() {
     let run = super::RunId::new(11);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -580,7 +614,11 @@ fn cancel_cleans_pending_timer() {
     let run = super::RunId::new(12);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -601,7 +639,11 @@ fn finish_cleans_pending_timer_after_timer_fire() {
     let run = super::RunId::new(13);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -623,7 +665,11 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() {
     let run = super::RunId::new(14);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -688,7 +734,11 @@ fn submit_returns_run_already_exists_for_duplicate() {
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID again
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     // Then tick returns RunAlreadyExists
@@ -748,7 +798,11 @@ fn shard_submit_creates_run_state_in_runs_map() {
     let run = super::RunId::new(10);
     // When submitting a run
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -785,7 +839,11 @@ fn shard_submit_records_run_submitted_trace_event() {
     let run = super::RunId::new(20);
     // When submitting a run
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -808,7 +866,11 @@ fn shard_submit_drives_run_immediately_for_finished_workflow() {
     let run = super::RunId::new(30);
     // When submitting a run with a finishing workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -876,7 +938,11 @@ fn shard_action_completed_marks_step_succeeded() {
     };
     let run = super::RunId::new(55);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     let tick1 = shard.tick();
@@ -915,7 +981,11 @@ fn shard_action_completed_records_trace_event() {
     };
     let run = super::RunId::new(56);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -949,7 +1019,11 @@ fn shard_timer_rejects_run_without_pending_timer() {
     };
     let run = super::RunId::new(60);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -969,7 +1043,11 @@ fn shard_wait_suspension_registers_pending_timer() {
     let run = super::RunId::new(61);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -991,7 +1069,11 @@ fn shard_timer_fired_advances_timed_wait_to_finish() {
     let run = super::RunId::new(62);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1028,7 +1110,11 @@ fn shard_cancel_removes_run_from_runs_map() {
     };
     let run = super::RunId::new(70);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1063,7 +1149,11 @@ fn shard_cancel_records_run_cancelled_trace_event() {
     };
     let run = super::RunId::new(71);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1090,7 +1180,11 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
     };
     let run = super::RunId::new(73);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1124,7 +1218,11 @@ fn shard_cancel_increments_failed_counter() {
     };
     let run = super::RunId::new(72);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1145,7 +1243,11 @@ fn shard_inspect_captures_current_pc() {
     };
     let run = super::RunId::new(80);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1179,7 +1281,11 @@ fn shard_inspect_captures_executed_count() {
     };
     let run = super::RunId::new(81);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1234,7 +1340,11 @@ fn shard_resume_continues_suspended_run() {
     };
     let run = super::RunId::new(90);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1265,7 +1375,11 @@ fn shard_take_inspect_response_clears_after_take() {
     };
     let run = super::RunId::new(95);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1361,16 +1475,24 @@ fn shard_command_equality_submit() {
 #[test]
 fn shard_command_equality_cancel() {
     // Given two identical Cancel commands
-    let a = ShardCommand::Cancel { run: super::RunId::new(1) };
-    let b = ShardCommand::Cancel { run: super::RunId::new(1) };
+    let a = ShardCommand::Cancel {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::Cancel {
+        run: super::RunId::new(1),
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_equality_differs_run_id() {
     // Given two Cancel commands with different run IDs
-    let a = ShardCommand::Cancel { run: super::RunId::new(1) };
-    let b = ShardCommand::Cancel { run: super::RunId::new(2) };
+    let a = ShardCommand::Cancel {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::Cancel {
+        run: super::RunId::new(2),
+    };
     assert_ne!(a, b);
 }
 
@@ -1427,16 +1549,24 @@ fn shard_command_equality_action_completed() {
 #[test]
 fn shard_command_equality_timer_fired() {
     // Given two identical TimerFired commands
-    let a = ShardCommand::TimerFired { run: super::RunId::new(1) };
-    let b = ShardCommand::TimerFired { run: super::RunId::new(1) };
+    let a = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_equality_resume() {
     // Given two identical Resume commands
-    let a = ShardCommand::Resume { run: super::RunId::new(1) };
-    let b = ShardCommand::Resume { run: super::RunId::new(1) };
+    let a = ShardCommand::Resume {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::Resume {
+        run: super::RunId::new(1),
+    };
     assert_eq!(a, b);
 }
 
@@ -1467,7 +1597,11 @@ fn shard_finished_workflow_sets_completed_counter() {
     };
     let run = super::RunId::new(50);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1486,7 +1620,11 @@ fn shard_finished_workflow_produces_run_finished_trace() {
     };
     let run = super::RunId::new(51);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1576,7 +1714,12 @@ fn run_state_equality() {
     let Some(wf) = suspended_workflow() else {
         return;
     };
-    let frame = match vb_core::frame::RunFrame::new(super::RunId::new(1), vb_core::ids::StepIdx::ZERO, 4, 1) {
+    let frame = match vb_core::frame::RunFrame::new(
+        super::RunId::new(1),
+        vb_core::ids::StepIdx::ZERO,
+        4,
+        1,
+    ) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -1587,7 +1730,12 @@ fn run_state_equality() {
         action_attempts: super::new_action_attempts(4),
         admission: None,
     };
-    let frame2 = match vb_core::frame::RunFrame::new(super::RunId::new(1), vb_core::ids::StepIdx::ZERO, 4, 1) {
+    let frame2 = match vb_core::frame::RunFrame::new(
+        super::RunId::new(1),
+        vb_core::ids::StepIdx::ZERO,
+        4,
+        1,
+    ) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -1615,7 +1763,11 @@ fn shard_cancel_then_inspect_returns_not_found() {
     };
     let run = super::RunId::new(200);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1691,7 +1843,11 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
     assert_eq!(shard.tick(), Ok(true));
     // When re-submitting the same run ID
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     // Then it succeeds (run was removed by cancel)
@@ -1708,7 +1864,11 @@ fn shard_snapshot_run_for_active_run_returns_found() {
     };
     let run = super::RunId::new(202);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1811,7 +1971,11 @@ fn shard_submit_two_runs_same_id_second_fails() {
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID without cancelling
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     // Then tick returns RunAlreadyExists
@@ -1835,7 +1999,11 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
     let run = super::RunId::new(204);
     // When submitting a run with zero budget
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1870,7 +2038,11 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
     };
     let run = super::RunId::new(205);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1959,7 +2131,11 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
     };
     let run = super::RunId::new(302);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -1996,7 +2172,11 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
     };
     let run = super::RunId::new(303);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2023,7 +2203,11 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
     };
     let run = super::RunId::new(304);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2051,7 +2235,11 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(305);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2073,7 +2261,11 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(306);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2414,13 +2606,21 @@ fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() {
     };
     let run = super::RunId::new(42);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf1, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID again with a different workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf2, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     // Then tick returns RunAlreadyExists (cannot replace workflow)
@@ -2467,7 +2667,11 @@ fn shard_run_id_max_u64_accepted_as_valid_identifier() {
     let run = super::RunId::new(u64::MAX);
     // When submitting a run with RunId::MAX
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2527,7 +2731,11 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     };
     let run = super::RunId::new(55);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf1, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2535,7 +2743,11 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: wf2, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2555,7 +2767,11 @@ fn shard_trace_ring_records_submit_and_finish_events_in_order() {
     let run = super::RunId::new(77);
     // When submitting a run that finishes immediately
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -2761,7 +2977,13 @@ fn shard_config_new_rejects_zero_command_queue_capacity() {
 
 #[test]
 fn shard_config_new_rejects_excessive_command_queue_capacity() {
-    let result = ShardConfig::new(MAX_COMMAND_QUEUE_CAPACITY + 1, 16, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(
+        MAX_COMMAND_QUEUE_CAPACITY + 1,
+        16,
+        4,
+        4,
+        vb_core::policy::RuntimePolicy::Relaxed,
+    );
     assert_eq!(
         result,
         Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -2779,7 +3001,13 @@ fn shard_config_new_rejects_zero_max_active_runs() {
 
 #[test]
 fn shard_config_new_accepts_valid_parameters() {
-    let result = ShardConfig::new(1024, 4096, 1000, 512, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(
+        1024,
+        4096,
+        1000,
+        512,
+        vb_core::policy::RuntimePolicy::Relaxed,
+    );
     assert_eq!(result.is_ok(), true);
 }
 

@@ -220,7 +220,10 @@ fn yaml_profile_rejects_anchors() {
     let yaml =
         "version: &velvet \"velvet-ballastics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let result = vb_yaml::validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)), "anchors should be rejected");
+    assert!(
+        matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)),
+        "anchors should be rejected"
+    );
 }
 
 #[test]
@@ -922,10 +925,7 @@ steps:
         return;
     }
 
-    let output = match run_cli(&[
-        std::ffi::OsStr::new("validate"),
-        workflow_path.as_os_str(),
-    ]) {
+    let output = match run_cli(&[std::ffi::OsStr::new("validate"), workflow_path.as_os_str()]) {
         Some(output) => output,
         None => return,
     };
@@ -951,10 +951,7 @@ fn cli_validate_invalid_yaml_returns_parse_error() {
         return;
     }
 
-    let output = match run_cli(&[
-        std::ffi::OsStr::new("validate"),
-        workflow_path.as_os_str(),
-    ]) {
+    let output = match run_cli(&[std::ffi::OsStr::new("validate"), workflow_path.as_os_str()]) {
         Some(output) => output,
         None => return,
     };
@@ -995,10 +992,7 @@ steps:
         return;
     }
 
-    let output = match run_cli(&[
-        std::ffi::OsStr::new("validate"),
-        workflow_path.as_os_str(),
-    ]) {
+    let output = match run_cli(&[std::ffi::OsStr::new("validate"), workflow_path.as_os_str()]) {
         Some(output) => output,
         None => return,
     };
@@ -1041,10 +1035,7 @@ steps:
         return;
     }
 
-    let output = match run_cli(&[
-        std::ffi::OsStr::new("validate"),
-        workflow_path.as_os_str(),
-    ]) {
+    let output = match run_cli(&[std::ffi::OsStr::new("validate"), workflow_path.as_os_str()]) {
         Some(output) => output,
         None => return,
     };
@@ -1104,10 +1095,7 @@ fn cli_compile_valid_workflow_produces_ir() {
             return;
         }
     };
-    assert!(
-        !ir_bytes.is_empty(),
-        "compiled IR file should not be empty"
-    );
+    assert!(!ir_bytes.is_empty(), "compiled IR file should not be empty");
 
     let parts_result = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&ir_bytes);
     assert!(
@@ -1202,7 +1190,8 @@ fn cli_compile_preserves_workflow_digest() {
     match compile_result {
         Ok(compiled) => {
             assert_eq!(
-                parts.digest, compiled.digest(),
+                parts.digest,
+                compiled.digest(),
                 "compiled IR digest should match in-memory compile digest"
             );
         }

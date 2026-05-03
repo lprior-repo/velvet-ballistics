@@ -11,9 +11,9 @@ use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledNode;
 
 use crate::engine::{
-    compute_idempotency_key, drive_deterministic_full, execute_do, execute_do_without_contract,
-    execute_error_handler, execute_retry_check, resolve_contract, resume_action_outcome,
-    EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal,
+    EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal, compute_idempotency_key,
+    drive_deterministic_full, execute_do, execute_do_without_contract, execute_error_handler,
+    execute_retry_check, resolve_contract, resume_action_outcome,
 };
 use vb_core::action::ActionFailure;
 use vb_core::action::ActionFailureCode;
@@ -755,7 +755,6 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
 // =====================================================================
 // Proptest tests
 // =====================================================================
-
 
 #[cfg(test)]
 mod proptests {

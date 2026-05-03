@@ -8,11 +8,12 @@
 use tempfile::TempDir;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
-    extract_terminal, is_terminal_event, recover_full_journal, recover_runtime_summary,
-    ActionReplayTracker, RecoveryError, RecoveryHydration, RecoveryTerminalState,
+    ActionReplayTracker, RecoveryError, RecoveryHydration, RecoveryTerminalState, extract_terminal,
+    is_terminal_event, recover_full_journal, recover_runtime_summary,
 };
-use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent,
-    JournalWriterQueue, StorageLimits};
+use vb_storage::{
+    EventSeq, FjallConfig, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
+};
 
 /// Helper: creates a deterministic workflow digest from a single byte.
 fn test_digest(byte: u8) -> WorkflowDigest {
@@ -141,8 +142,7 @@ fn full_round_trip_recovery_reads_all_events_in_order() {
     );
 
     // Verify every event is present in order with matching fields.
-    for (i, (original, recovered_event)) in
-        original_events.iter().zip(recovered.iter()).enumerate()
+    for (i, (original, recovered_event)) in original_events.iter().zip(recovered.iter()).enumerate()
     {
         assert_eq!(
             original, recovered_event,
@@ -164,8 +164,8 @@ fn full_round_trip_recovery_reconstructs_summary() {
     }
 
     let journal = open_journal(&dir);
-    let hydration = recover_runtime_summary(&journal, run)
-        .expect("recover_runtime_summary should succeed");
+    let hydration =
+        recover_runtime_summary(&journal, run).expect("recover_runtime_summary should succeed");
 
     match hydration {
         RecoveryHydration::Summary(summary) => {
@@ -263,8 +263,7 @@ fn partial_write_recovery_reads_events_written_before_crash() {
         "recovered partial event count must match"
     );
 
-    for (i, (original, recovered_event)) in
-        partial_events.iter().zip(recovered.iter()).enumerate()
+    for (i, (original, recovered_event)) in partial_events.iter().zip(recovered.iter()).enumerate()
     {
         assert_eq!(
             original, recovered_event,
@@ -357,8 +356,8 @@ fn partial_write_with_only_run_accepted_is_recoverable() {
         Some(JournalEvent::RunAccepted { .. })
     ));
 
-    let hydration = recover_runtime_summary(&journal, run)
-        .expect("summary recovery should succeed");
+    let hydration =
+        recover_runtime_summary(&journal, run).expect("summary recovery should succeed");
     match hydration {
         RecoveryHydration::Summary(summary) => {
             assert_eq!(summary.run, run);
@@ -454,9 +453,7 @@ fn journaled_durability_appears_after_flush() {
         }
 
         // Flush the queue to persist journaled writes.
-        let report = queue
-            .drain_all(&journal)
-            .expect("drain_all should succeed");
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
         assert_eq!(report.drained, 2, "both events should be drained");
         assert_eq!(report.written, 2, "both events should be written");
     }
@@ -516,9 +513,7 @@ fn journaled_queue_shutdown_drains_all_events() {
         }
 
         // Shutdown drains all remaining writes.
-        let report = queue
-            .shutdown(&journal)
-            .expect("shutdown should succeed");
+        let report = queue.shutdown(&journal).expect("shutdown should succeed");
         assert_eq!(report.drained, 3, "all three events should be drained");
         assert_eq!(report.written, 3, "all three events should be written");
     }
@@ -814,9 +809,7 @@ fn terminal_event_identification_after_recovery() {
         .expect("events_for_run should succeed");
 
     // The last event should be terminal.
-    let last = recovered
-        .last()
-        .expect("should have at least one event");
+    let last = recovered.last().expect("should have at least one event");
     assert!(
         is_terminal_event(last),
         "last event must be terminal (RunFinished)"
@@ -895,10 +888,10 @@ fn recovery_across_multiple_runs_is_isolated() {
     assert_eq!(recovered_b.first().map(|e| e.run_id()), Some(run_b));
 
     // Verify terminal states differ.
-    let summary_a = recover_runtime_summary(&journal, run_a)
-        .expect("summary for run A should succeed");
-    let summary_b = recover_runtime_summary(&journal, run_b)
-        .expect("summary for run B should succeed");
+    let summary_a =
+        recover_runtime_summary(&journal, run_a).expect("summary for run A should succeed");
+    let summary_b =
+        recover_runtime_summary(&journal, run_b).expect("summary for run B should succeed");
 
     match summary_a {
         RecoveryHydration::Summary(s) => {

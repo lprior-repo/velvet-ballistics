@@ -13,9 +13,9 @@
 //! - Snapshot-plus-tail journal recovery
 //! - Full journal recovery when no snapshot available
 
-pub mod types;
-pub mod replay;
 pub mod recover;
+pub mod replay;
+pub mod types;
 
 #[cfg(test)]
 mod tests;
@@ -25,9 +25,9 @@ mod tests;
 // ============================================================================
 
 pub use types::{
-    ActionReplayTracker, DigestCheck, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
-    RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RecoveredStepEntry,
-    RecoveredStepState, RunSnapshot, UnsupportedRecoveryState,
+    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
+    RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
+    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
 };
 
 // ============================================================================
@@ -35,9 +35,9 @@ pub use types::{
 // ============================================================================
 
 pub use replay::{
-    extract_terminal, is_terminal_event, recover_full_journal, load_snapshot,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
-    recover_runtime_frame_seed_from_events,
+    extract_terminal, is_terminal_event, load_snapshot, recover_full_journal,
+    recover_runtime_frame_seed_from_events, recover_snapshot_plus_tail, replay_events,
+    summarize_recovery_events,
 };
 
 // ============================================================================
@@ -45,6 +45,6 @@ pub use replay::{
 // ============================================================================
 
 pub use recover::{
-    check_workflow_source_digest, check_compiled_ir_digest, verify_digests,
-    recover_runtime_summary, recover_runtime_frame_seed, recover_all_incomplete_runs,
+    check_compiled_ir_digest, check_workflow_source_digest, recover_all_incomplete_runs,
+    recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
 };

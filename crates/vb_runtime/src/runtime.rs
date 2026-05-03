@@ -54,7 +54,11 @@ impl Runtime {
     /// Submits a run using a compiled workflow.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: CapabilitySet::empty() })
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: CapabilitySet::empty(),
+        })
     }
 
     /// Submits a run with inline workflow (same as submit_direct for now).
@@ -1659,7 +1663,13 @@ mod tests {
                 assert_eq!(snap.run, run);
             }
             other => {
-                assert_eq!(other, Ok(InspectResponse::NotFound { run, correlation: 3 }));
+                assert_eq!(
+                    other,
+                    Ok(InspectResponse::NotFound {
+                        run,
+                        correlation: 3
+                    })
+                );
             }
         }
 
@@ -1874,7 +1884,10 @@ mod tests {
                 other => {
                     assert_eq!(
                         other,
-                        Ok(InspectResponse::NotFound { run, correlation: 6 })
+                        Ok(InspectResponse::NotFound {
+                            run,
+                            correlation: 6
+                        })
                     );
                 }
             }

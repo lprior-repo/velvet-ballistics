@@ -5,9 +5,7 @@
 //! - Non-idempotent action blocking
 //! - Snapshot-plus-tail replay
 
-use crate::recovery::types::{
-    ActionReplayTracker, RecoveryError, RecoveryResult,
-};
+use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{RunId, StepIdx};
 

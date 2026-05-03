@@ -322,7 +322,12 @@ impl StorageRuntimeJournal {
                 Some(JournalEvent::StepStarted { run, seq, step })
             }
             RuntimeJournalEvent::StepSucceeded { run, step, output } => {
-                Some(JournalEvent::StepSucceeded { run, seq, step, output })
+                Some(JournalEvent::StepSucceeded {
+                    run,
+                    seq,
+                    step,
+                    output,
+                })
             }
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }

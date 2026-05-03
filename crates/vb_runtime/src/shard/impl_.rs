@@ -9,13 +9,19 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
 use crate::counters::ShardCounters;
-use crate::engine::{EvidenceCollector, EvidenceEvent, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full, RetryPolicy};
+use crate::engine::{
+    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineResult, RuntimeSignal,
+    drive_deterministic_full,
+};
 use crate::frame_pool::FramePool;
 use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{InspectResponse, InspectSnapshot, RunState, Shard, ShardCommand, ShardConfig, MAX_COMMAND_QUEUE_CAPACITY};
+use crate::shard::types::{
+    InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState, Shard, ShardCommand,
+    ShardConfig,
+};
 
 impl Shard {
     /// Creates a new shard with the given configuration.
@@ -99,7 +105,11 @@ impl Shard {
         };
 
         match cmd {
-            ShardCommand::Submit { run, workflow, caps } => self.handle_submit(run, workflow, caps)?,
+            ShardCommand::Submit {
+                run,
+                workflow,
+                caps,
+            } => self.handle_submit(run, workflow, caps)?,
             ShardCommand::SubmitWithInputs {
                 run,
                 workflow,
@@ -152,7 +162,11 @@ impl Shard {
     #[must_use]
     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
         match self.runs.get(&run) {
-            Some(state) => InspectResponse::Found(crate::shard::helpers::snapshot_from_state(run, correlation, state)),
+            Some(state) => InspectResponse::Found(crate::shard::helpers::snapshot_from_state(
+                run,
+                correlation,
+                state,
+            )),
             None => InspectResponse::NotFound { run, correlation },
         }
     }
@@ -172,18 +186,24 @@ impl Shard {
     /// journal and trace ring. This satisfies the Phase 40/44 evidence
     /// chain requirement: StepStarted before SlotWritten for every step,
     /// followed by StepSucceeded.
-    pub(crate) fn flush_evidence(&mut self, run: RunId, evidence: &mut EvidenceCollector) -> RuntimeResult<()> {
+    pub(crate) fn flush_evidence(
+        &mut self,
+        run: RunId,
+        evidence: &mut EvidenceCollector,
+    ) -> RuntimeResult<()> {
         let events = evidence.drain();
         for ev in events {
             match ev {
                 EvidenceEvent::StepStarted { step } => {
                     self.trace_ring.push(TraceEvent::StepStarted { run, step });
-                    self.journal.append(RuntimeJournalEvent::StepStarted { run, step })?;
+                    self.journal
+                        .append(RuntimeJournalEvent::StepStarted { run, step })?;
                 }
                 EvidenceEvent::StepSucceeded { step, output } => {
                     if let Some(slot) = output {
                         self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
-                        self.journal.append(RuntimeJournalEvent::SlotWritten { run, slot })?;
+                        self.journal
+                            .append(RuntimeJournalEvent::SlotWritten { run, slot })?;
                     }
                     self.journal.append(RuntimeJournalEvent::StepSucceeded {
                         run,

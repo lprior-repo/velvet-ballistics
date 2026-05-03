@@ -7,15 +7,25 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
-use crate::engine::{EvidenceCollector, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full, RetryPolicy};
+use crate::engine::{
+    EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
+};
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{AskAnswer, InspectResponse, InspectSnapshot, PendingTimer, PendingTimerKind, RunState, Shard, ShardCommand, ShardConfig};
+use crate::shard::types::{
+    AskAnswer, InspectResponse, InspectSnapshot, PendingTimer, PendingTimerKind, RunState, Shard,
+    ShardCommand, ShardConfig,
+};
 
 impl Shard {
-    pub(crate) fn handle_submit(&mut self, run: RunId, workflow: CompiledWorkflow, caps: CapabilitySet) -> RuntimeResult<()> {
+    pub(crate) fn handle_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
         self.handle_submit_with_inputs(run, workflow, &[], caps)
     }
 
@@ -39,7 +49,10 @@ impl Shard {
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
-        self.journal.append(RuntimeJournalEvent::RunSubmitted { run, workflow: digest })?;
+        self.journal.append(RuntimeJournalEvent::RunSubmitted {
+            run,
+            workflow: digest,
+        })?;
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
         let state = RunState {
@@ -97,24 +110,50 @@ impl Shard {
             .mark_succeeded(ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
-        self.trace_ring.push(TraceEvent::SlotWritten { run, slot: output.output_slot });
-        self.trace_ring.push(TraceEvent::ActionCompleted { run, step: ticket.step });
-        self.journal.append(RuntimeJournalEvent::SlotWritten { run, slot: output.output_slot })?;
-        self.journal.append(RuntimeJournalEvent::StepSucceeded { run, step: ticket.step, output: output.output_slot })?;
-        self.journal.append(RuntimeJournalEvent::ActionCompleted { run, step: ticket.step, action: ticket.action })?;
+        self.trace_ring.push(TraceEvent::SlotWritten {
+            run,
+            slot: output.output_slot,
+        });
+        self.trace_ring.push(TraceEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+        });
+        self.journal.append(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot: output.output_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: ticket.step,
+            output: output.output_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+            action: ticket.action,
+        })?;
         self.drive_run(run)
     }
 
-    pub(crate) fn handle_legacy_action_completion(&mut self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
+    pub(crate) fn handle_legacy_action_completion(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<()> {
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
             .mark_succeeded(step)
             .map_err(|_| RuntimeError::RunNotFound)?;
-        self.trace_ring.push(TraceEvent::ActionCompleted { run, step });
+        self.trace_ring
+            .push(TraceEvent::ActionCompleted { run, step });
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
-        self.journal.append(RuntimeJournalEvent::StepSucceeded { run, step, output: SlotIdx::ZERO })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: SlotIdx::ZERO,
+        })?;
         self.drive_run(run)
     }
 
@@ -130,19 +169,36 @@ impl Shard {
         {
             let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
             crate::shard::helpers::validate_action_completion(state, ticket)?;
-            if failure.retryable && crate::shard::helpers::retry_metadata_exists(state, ticket.step) {
+            if failure.retryable && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+            {
                 let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
-                self.trace_ring.push(TraceEvent::ActionFailed { run, step: ticket.step, code: failure.code });
+                self.trace_ring.push(TraceEvent::ActionFailed {
+                    run,
+                    step: ticket.step,
+                    code: failure.code,
+                });
                 if crate::shard::helpers::record_retry_attempt(state, ticket, policy)? {
-                    state.frame.set_pc(ticket.step).map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                    state
+                        .frame
+                        .set_pc(ticket.step)
+                        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
                     retry_now = true;
                 }
             }
             if !retry_now {
-                match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
+                match crate::shard::helpers::find_error_handler_for_failure(
+                    &state.workflow,
+                    ticket.step,
+                ) {
                     Some(handler) => {
-                        state.frame.mark_failed(ticket.step).map_err(|_| RuntimeError::InvalidActionCompletion)?;
-                        state.frame.set_pc(handler).map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                        state
+                            .frame
+                            .mark_failed(ticket.step)
+                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                        state
+                            .frame
+                            .set_pc(handler)
+                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
                     }
                     None => {
                         fail_without_handler = true;
@@ -154,12 +210,20 @@ impl Shard {
             return self.drive_run(run);
         }
         if fail_without_handler {
-            self.trace_ring.push(TraceEvent::ActionFailed { run, step: ticket.step, code: failure.code });
+            self.trace_ring.push(TraceEvent::ActionFailed {
+                run,
+                step: ticket.step,
+                code: failure.code,
+            });
             let state = self.take_run_state(run)?;
             self.fail_run_state(run, state)?;
             return Ok(());
         }
-        self.trace_ring.push(TraceEvent::ActionFailed { run, step: ticket.step, code: failure.code });
+        self.trace_ring.push(TraceEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            code: failure.code,
+        });
         self.drive_run(run)
     }
 
@@ -187,10 +251,25 @@ impl Shard {
             .frame
             .set_pc(answer.ticket.resume_step)
             .map_err(|_| RuntimeError::RunNotFound)?;
-        self.trace_ring.push(TraceEvent::AskAnswered { run, step: answer.ticket.ask_step, slot: answer.answer_slot });
-        self.journal.append(RuntimeJournalEvent::AskAnswered { run, step: answer.ticket.ask_step, slot: answer.answer_slot })?;
-        self.journal.append(RuntimeJournalEvent::SlotWritten { run, slot: answer.answer_slot })?;
-        self.journal.append(RuntimeJournalEvent::StepSucceeded { run, step: answer.ticket.ask_step, output: answer.answer_slot })?;
+        self.trace_ring.push(TraceEvent::AskAnswered {
+            run,
+            step: answer.ticket.ask_step,
+            slot: answer.answer_slot,
+        });
+        self.journal.append(RuntimeJournalEvent::AskAnswered {
+            run,
+            step: answer.ticket.ask_step,
+            slot: answer.answer_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot: answer.answer_slot,
+        })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: answer.ticket.ask_step,
+            output: answer.answer_slot,
+        })?;
         self.drive_run(run)
     }
 
@@ -203,7 +282,10 @@ impl Shard {
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
         match timer.kind {
             PendingTimerKind::Wait => {
-                self.journal.append(RuntimeJournalEvent::WaitResolved { run, step: timer.step })?;
+                self.journal.append(RuntimeJournalEvent::WaitResolved {
+                    run,
+                    step: timer.step,
+                })?;
             }
             PendingTimerKind::Ask => {}
         }
@@ -216,7 +298,8 @@ impl Shard {
     pub(crate) fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         if self.runs.contains_key(&run) {
-            self.journal.append(RuntimeJournalEvent::RunCancelled { run })?;
+            self.journal
+                .append(RuntimeJournalEvent::RunCancelled { run })?;
         }
         if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);

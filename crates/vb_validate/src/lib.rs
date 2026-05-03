@@ -148,7 +148,9 @@ pub enum ValidationError {
     #[error("EXPRESSION_STACK_EXCEEDED: declared {declared}, limit {limit}")]
     ExpressionStackExceeded { declared: usize, limit: usize },
 
-    #[error("EXPRESSION_STACK_MISMATCH: expr {expr_index}, declared {declared}, computed {computed}")]
+    #[error(
+        "EXPRESSION_STACK_MISMATCH: expr {expr_index}, declared {declared}, computed {computed}"
+    )]
     ExpressionStackMismatch {
         expr_index: usize,
         declared: usize,
@@ -156,7 +158,9 @@ pub enum ValidationError {
     },
 
     // Gate 8: Accessor path segments valid
-    #[error("ACCESSOR_SLOT_OUT_OF_RANGE: accessor {accessor_index}, slot {slot}, slot_count {slot_count}")]
+    #[error(
+        "ACCESSOR_SLOT_OUT_OF_RANGE: accessor {accessor_index}, slot {slot}, slot_count {slot_count}"
+    )]
     AccessorSlotOutOfRange {
         accessor_index: usize,
         slot: usize,
@@ -178,7 +182,9 @@ pub enum ValidationError {
     },
 
     // Gate 11: Loop body graph well-formed
-    #[error("LOOP_BODY_STEP_OUT_OF_RANGE: step {step}, node_count {node_count}, source_node {source_node}, label {label}")]
+    #[error(
+        "LOOP_BODY_STEP_OUT_OF_RANGE: step {step}, node_count {node_count}, source_node {source_node}, label {label}"
+    )]
     LoopBodyStepOutOfRange {
         step: usize,
         node_count: usize,
@@ -192,19 +198,17 @@ pub enum ValidationError {
 
     // Gate 10: Node-kind-specific constraints
     #[error("NODE_KIND_CONSTRAINT: node {node_index}, detail {detail}")]
-    NodeKindConstraintViolation {
-        node_index: usize,
-        detail: String,
-    },
+    NodeKindConstraintViolation { node_index: usize, detail: String },
 
     // Gate 12: Action contract completeness
-    #[error("ACTION_CONTRACT_MISSING: action_id {action_id} referenced by Do node {node_index} has no contract")]
-    ActionContractMissing {
-        action_id: usize,
-        node_index: usize,
-    },
+    #[error(
+        "ACTION_CONTRACT_MISSING: action_id {action_id} referenced by Do node {node_index} has no contract"
+    )]
+    ActionContractMissing { action_id: usize, node_index: usize },
 
-    #[error("ACTION_CONTRACT_ORPHAN: action_id {action_id} in contract has no corresponding Do node")]
+    #[error(
+        "ACTION_CONTRACT_ORPHAN: action_id {action_id} in contract has no corresponding Do node"
+    )]
     ActionContractOrphan { action_id: usize },
 
     // Gate 14: Slot type consistency
@@ -212,11 +216,10 @@ pub enum ValidationError {
     SlotTypeInconsistency { slot: usize },
 
     // Gate 15: Determinism proof
-    #[error("NON_DETERMINISTIC_PATH: from node {from_node} to node {to_node} contains no suspension point")]
-    NonDeterministicPath {
-        from_node: usize,
-        to_node: usize,
-    },
+    #[error(
+        "NON_DETERMINISTIC_PATH: from node {from_node} to node {to_node} contains no suspension point"
+    )]
+    NonDeterministicPath { from_node: usize, to_node: usize },
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;

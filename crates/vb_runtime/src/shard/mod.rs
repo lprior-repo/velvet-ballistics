@@ -8,8 +8,8 @@ pub mod transitions;
 pub mod types;
 
 pub use types::{
-    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, RunState, Shard, ShardCommand,
-    ShardConfig, MAX_COMMAND_QUEUE_CAPACITY,
+    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
+    Shard, ShardCommand, ShardConfig,
 };
 
 // Re-export vb_core types needed by tests

@@ -3,9 +3,8 @@ use std::io;
 use vb_codegen::CodegenError;
 use vb_compile::{CompileError, SourceMark};
 use vb_core::{
-    ActionError, ActionId, BlobId, ConstIdx, CoreError,
-    DiagnosticCode, DiagnosticCodeParseError, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx,
-    SymbolId, WorkflowDigest, WorkflowError,
+    ActionError, ActionId, BlobId, ConstIdx, CoreError, DiagnosticCode, DiagnosticCodeParseError,
+    ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowError,
 };
 use vb_expr::ExprError;
 use vb_ipc::IpcError;
@@ -371,7 +370,10 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::RepeatExhausted { max: 1 },
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
-        CoreError::BudgetExceeded { budget: "b", limit: 1 },
+        CoreError::BudgetExceeded {
+            budget: "b",
+            limit: 1,
+        },
     ];
     samples
         .iter()
@@ -770,9 +772,17 @@ fn workflow_variant_count() -> usize {
         WorkflowError::ResourceContractTooLarge { resource: "r" },
         WorkflowError::EmptyBranchTable,
         WorkflowError::UnreachableNode { step: step() },
-        WorkflowError::BackwardEdge { from: step(), to: step() },
-        WorkflowError::ImproperLoopNesting { inner: step(), outer_done: step() },
-        WorkflowError::BudgetPolicyExceeded { detail: "max_total_steps" },
+        WorkflowError::BackwardEdge {
+            from: step(),
+            to: step(),
+        },
+        WorkflowError::ImproperLoopNesting {
+            inner: step(),
+            outer_done: step(),
+        },
+        WorkflowError::BudgetPolicyExceeded {
+            detail: "max_total_steps",
+        },
     ];
     samples.iter().map(workflow_error_variant_name).count()
 }

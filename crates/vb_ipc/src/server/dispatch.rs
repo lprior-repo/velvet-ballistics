@@ -25,13 +25,13 @@ pub fn serve_ipc_with_resolver(
 }
 
 use super::handlers::{
-    handle_answer_ask, handle_cancel_run, handle_complete_action,
-    handle_fail_action, handle_health, handle_inspect_run, handle_list_events, handle_shutdown,
-    handle_submit_run, handle_submit_run_inline,
+    handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
+    handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
+    handle_submit_run_inline,
 };
 use super::trace::handle_drain_trace;
-use crate::server::IpcResponse;
 use crate::IpcCommand;
+use crate::server::IpcResponse;
 
 #[cfg(test)]
 pub fn dispatch_command(

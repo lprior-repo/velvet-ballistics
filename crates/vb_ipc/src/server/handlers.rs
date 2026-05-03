@@ -8,12 +8,10 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
-use crate::{
-    IpcActionOutputPayload, IpcCommand, IpcPayload, SubmitRunPayload,
-};
-use crate::server::{WorkflowResolutionError, WorkflowResolver, IpcResponse};
-use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
 use super::trace::typed_events_response;
+use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
+use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
+use crate::{IpcActionOutputPayload, IpcCommand, IpcPayload, SubmitRunPayload};
 
 /// Decodes a postcard-encoded payload and preserves the typed IPC decode error.
 pub fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {

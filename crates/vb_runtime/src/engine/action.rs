@@ -12,7 +12,7 @@ use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::Taint;
 
 use crate::engine::signal::runtime_from_core;
-use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeSignal, RuntimeEngineResult};
+use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
 /// Backward-compatible execute_do.
 pub fn execute_do(

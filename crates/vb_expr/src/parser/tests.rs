@@ -1,8 +1,8 @@
 //! BDD parser tests.
 
-use crate::lexer::{lex_expr, BinaryOp, UnaryOp};
-use crate::parser::{parse_expr, ExprAst, ExprHelper, ExprLiteral};
 use crate::ExprError;
+use crate::lexer::{BinaryOp, UnaryOp, lex_expr};
+use crate::parser::{ExprAst, ExprHelper, ExprLiteral, parse_expr};
 
 fn parse(source: &str) -> crate::ExprResult<ExprAst> {
     let tokens = lex_expr(source)?;

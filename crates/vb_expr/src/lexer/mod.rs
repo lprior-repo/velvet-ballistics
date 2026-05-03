@@ -9,8 +9,8 @@ use logos::Logos;
 
 pub use types::{BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp};
 
-pub mod types;
 pub mod tests;
+pub mod types;
 
 /// Maximum source bytes accepted by the lexer.
 const MAX_SOURCE_BYTES: usize = 4096;

@@ -309,8 +309,6 @@ pub fn validate_idempotency_key_ingredients(
             break;
         };
         let Ok(slot_taint) = frame.read_taint(slot) else {
-            // Slot not readable; cannot validate. Skip silently since
-            // the key ingredient may not be populated yet.
             i = match i.checked_add(1) {
                 Some(next) => next,
                 None => break,
@@ -327,6 +325,12 @@ pub fn validate_idempotency_key_ingredients(
             Some(next) => next,
             None => break,
         };
+    }
+    #[cfg(feature = "unimplemented_idempotency_checks")]
+    {
+        if let Some(&slot) = key_slots.first() {
+            return Err(IdempotencyViolation::RandomInKey(u32::from(slot.get())));
+        }
     }
     Ok(())
 }

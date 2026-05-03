@@ -1,9 +1,9 @@
 //! BDD typecheck tests.
 
+use crate::ExprError;
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
-use crate::typecheck::{typecheck_expr, ExprType, TypeContext};
-use crate::ExprError;
+use crate::typecheck::{ExprType, TypeContext, typecheck_expr};
 
 fn check(source: &str) -> crate::ExprResult<ExprType> {
     let tokens = lex_expr(source)?;

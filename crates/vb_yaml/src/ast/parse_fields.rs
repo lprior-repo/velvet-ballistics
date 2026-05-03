@@ -2,8 +2,8 @@
 
 use crate::{YamlError, YamlResult};
 
+use super::parse::{lookup, opt_str, require_str_in};
 use super::types::*;
-use super::parse::{lookup, require_str_in, opt_str};
 
 // ---------------------------------------------------------------------------
 // Inputs

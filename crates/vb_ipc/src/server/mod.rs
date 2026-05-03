@@ -20,15 +20,14 @@ pub mod impl_;
 pub mod ticket;
 pub mod trace;
 
+use crate::{
+    IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
+    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload,
+};
 pub use error::IpcServerError;
 use handlers::{
-    handle_answer_ask, handle_cancel_run, handle_complete_action,
-    handle_fail_action, handle_health, handle_inspect_run, handle_list_events,
-    handle_shutdown, handle_submit_run,
-};
-use crate::{
-    IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload, IpcTraceEvent,
-    IpcTraceEventKind, SubmitRunPayload, MaxPayloadBytes, IPC_HEADER_LEN,
+    handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
+    handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
 };
 
 const SERVER_TOKEN: mio::Token = mio::Token(0);

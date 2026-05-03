@@ -1175,7 +1175,9 @@ mod tests {
         let item_slot = SlotIdx::new(1);
         let output_slot = SlotIdx::new(2);
         let body = StepIdx::new(1);
-        let items: Vec<SlotValue> = (0..DEFAULT_FANOUT).map(|i| SlotValue::I64(i64::try_from(i).unwrap_or(0))).collect();
+        let items: Vec<SlotValue> = (0..DEFAULT_FANOUT)
+            .map(|i| SlotValue::I64(i64::try_from(i).unwrap_or(0)))
+            .collect();
         list_in_slot(&mut run, &mut store, input, items);
 
         // When calling for_each_start with limit = DEFAULT_FANOUT
@@ -1215,7 +1217,9 @@ mod tests {
             .map(|n| n.checked_add(1))
             .flatten()
             .unwrap_or(DEFAULT_FANOUT as usize + 1);
-        let items: Vec<SlotValue> = (0..count).map(|i| SlotValue::I64(i64::try_from(i).unwrap_or(0))).collect();
+        let items: Vec<SlotValue> = (0..count)
+            .map(|i| SlotValue::I64(i64::try_from(i).unwrap_or(0)))
+            .collect();
         list_in_slot(&mut run, &mut store, input, items);
 
         // When calling for_each_start with limit = DEFAULT_FANOUT
@@ -1802,11 +1806,7 @@ mod tests {
         assert_eq!(outer_result, Ok(vb_core::EngineSignal::Continue));
 
         // Inner list: [1, 2, 3] -- exceeds inner's limit of 1
-        let inner_items = vec![
-            SlotValue::I64(1),
-            SlotValue::I64(2),
-            SlotValue::I64(3),
-        ];
+        let inner_items = vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)];
         list_in_slot(&mut run, &mut store, inner_input, inner_items);
 
         // Start inner with limit=1 -- must fail because 3 > 1

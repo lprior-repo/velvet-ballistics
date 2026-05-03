@@ -11,13 +11,13 @@
 )]
 mod tests {
     use crate::recovery::{
-        check_compiled_ir_digest, check_workflow_source_digest, extract_terminal,
-        is_terminal_event, recover_all_incomplete_runs, recover_full_journal,
-        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events, recover_runtime_summary,
-        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
         ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
         RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
-        RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
+        RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
+        check_workflow_source_digest, extract_terminal, is_terminal_event,
+        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+        recover_runtime_frame_seed_from_events, recover_runtime_summary,
+        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -482,7 +482,8 @@ mod tests {
             },
         ];
 
-        let replayed = replay_events(&events, &mut tracker).expect("first execution should succeed");
+        let replayed =
+            replay_events(&events, &mut tracker).expect("first execution should succeed");
         assert_eq!(replayed.len(), 2);
         assert!(tracker.is_resolved(action, step));
     }
@@ -519,7 +520,8 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std::error::Error>> {
+    fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std::error::Error>>
+    {
         let run = RunId::new(901);
         let action = ActionId::new(4);
         let step = StepIdx::new(2);
@@ -760,9 +762,15 @@ mod tests {
             result: SlotIdx::new(0),
         };
 
-        journal.append_journaled(&accepted).expect("setup: append accepted");
-        journal.append_journaled(&started).expect("setup: append started");
-        journal.append_journaled(&finished).expect("setup: append finished");
+        journal
+            .append_journaled(&accepted)
+            .expect("setup: append accepted");
+        journal
+            .append_journaled(&started)
+            .expect("setup: append started");
+        journal
+            .append_journaled(&finished)
+            .expect("setup: append finished");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = recover_full_journal(&journal, run, &mut tracker)
@@ -898,7 +906,8 @@ mod tests {
     #[test]
     fn check_workflow_source_digest_returns_mismatch_when_digests_differ() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let journal =
+            crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(100);
         let stored_digest = test_digest(1);
@@ -907,7 +916,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: stored_digest,
         };
-        journal.append_journaled(&event).expect("setup: append event");
+        journal
+            .append_journaled(&event)
+            .expect("setup: append event");
 
         let wrong_digest = test_digest(2);
         let result = check_workflow_source_digest(&journal, run, wrong_digest);
@@ -921,7 +932,8 @@ mod tests {
     #[test]
     fn check_workflow_source_digest_succeeds_when_digests_match() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let journal =
+            crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(101);
         let digest = test_digest(5);
@@ -930,9 +942,12 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        journal.append_journaled(&event).expect("setup: append event");
+        journal
+            .append_journaled(&event)
+            .expect("setup: append event");
 
-        check_workflow_source_digest(&journal, run, digest).expect("matching digest should succeed");
+        check_workflow_source_digest(&journal, run, digest)
+            .expect("matching digest should succeed");
     }
 
     #[test]
@@ -954,7 +969,8 @@ mod tests {
     #[test]
     fn verify_digests_returns_ok_when_all_match() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let journal =
+            crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(200);
         let digest = test_digest(7);
@@ -963,7 +979,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        journal.append_journaled(&event).expect("setup: append event");
+        journal
+            .append_journaled(&event)
+            .expect("setup: append event");
 
         verify_digests(
             &journal,
@@ -979,7 +997,8 @@ mod tests {
     #[test]
     fn verify_digests_returns_mismatch_when_ir_differs() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let journal =
+            crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(201);
         let digest = test_digest(7);
@@ -988,7 +1007,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        journal.append_journaled(&event).expect("setup: append event");
+        journal
+            .append_journaled(&event)
+            .expect("setup: append event");
 
         let result = verify_digests(
             &journal,
@@ -1007,7 +1028,8 @@ mod tests {
     #[test]
     fn recover_full_journal_returns_no_recovery_data_when_empty() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-        let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let journal =
+            crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(999);
         let mut tracker = ActionReplayTracker::new();

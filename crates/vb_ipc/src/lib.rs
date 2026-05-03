@@ -2711,7 +2711,9 @@ fn frame_validation_header_claims_more_data_than_available_returns_error() {
     // Read header successfully
     let decoded_header = crate::frame::read_frame_header(&mut cursor);
     assert_ok!(decoded_header, "header read should succeed");
-    let Ok(decoded_header) = decoded_header else { return };
+    let Ok(decoded_header) = decoded_header else {
+        return;
+    };
 
     // When: reading payload with only 5 bytes available (header claimed 200)
     let short_data = vec![0u8; 5];
@@ -2747,7 +2749,8 @@ fn frame_validation_valid_frame_parse_succeeds() {
 #[test]
 fn frame_validation_roundtrip_encode_decode_preserves_all_fields() {
     // Given: a frame with all fields populated and a non-trivial payload
-    let original_header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
+    let original_header =
+        IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
     let encoded = original_header.encode();
     assert_ok!(encoded, "header should encode");
     let Ok(encoded) = encoded else { return };
@@ -2794,7 +2797,11 @@ fn frame_validation_roundtrip_all_commands_preserve_command_identity() {
         // Then: the command identity is preserved
         assert_ok!(result, "frame should decode for {command:?}");
         let Ok(frame) = result else { return };
-        assert_eq!(frame.header().command, command, "command should roundtrip for {command:?}");
+        assert_eq!(
+            frame.header().command,
+            command,
+            "command should roundtrip for {command:?}"
+        );
     }
 }
 
@@ -2843,7 +2850,8 @@ fn frame_validation_read_frame_payload_bounded_rejects_truncated_data() {
     let mut cursor = std::io::Cursor::new(data.as_slice());
 
     // When: reading bounded payload
-    let result = crate::frame::read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+    let result =
+        crate::frame::read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
 
     // Then: PayloadDecodeFailed (short read)
     assert_eq!(result, Err(IpcError::PayloadDecodeFailed));

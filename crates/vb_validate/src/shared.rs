@@ -5,8 +5,8 @@
 //! `vb_validate` crate call this pipeline so that structural validation
 //! lives in exactly one place.
 
-use crate::gates;
 use crate::ValidationResult;
+use crate::gates;
 use vb_core::action::ActionContract;
 use vb_core::workflow::WorkflowParts;
 
@@ -181,10 +181,7 @@ mod tests {
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
 
-    fn make_parts(
-        nodes: Vec<CompiledNode>,
-        slot_count: u16,
-    ) -> WorkflowParts {
+    fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         WorkflowParts {
             name: Box::from("test"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

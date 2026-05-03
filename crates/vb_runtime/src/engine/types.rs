@@ -47,9 +47,7 @@ impl EvidenceCollector {
     /// Creates a new empty collector.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            events: Vec::new(),
-        }
+        Self { events: Vec::new() }
     }
 
     /// Records a StepStarted event.
@@ -59,7 +57,8 @@ impl EvidenceCollector {
 
     /// Records a StepSucceeded event.
     pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>) {
-        self.events.push(EvidenceEvent::StepSucceeded { step, output });
+        self.events
+            .push(EvidenceEvent::StepSucceeded { step, output });
     }
 
     /// Drains all collected events, returning them for processing.

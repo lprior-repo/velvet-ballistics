@@ -4,9 +4,9 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::trace::TraceEvent;
 
 use super::handlers::decode_payload;
-use crate::{IpcTraceEvent, IpcTraceEventKind};
 use crate::IpcPayload;
 use crate::server::IpcResponse;
+use crate::{IpcTraceEvent, IpcTraceEventKind};
 
 enum IpcResponseKind {
     Trace,
