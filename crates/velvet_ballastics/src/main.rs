@@ -73,7 +73,7 @@ fn main() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
-        Ok(Command::Validate { workflow, output }) => cmd_validate(&workflow, output),
+        Ok(Command::Validate { workflow, output: _ }) => cmd_validate(&workflow),
         Ok(Command::Compile {
             workflow,
             emit,
@@ -1067,7 +1067,7 @@ fn run_compiled_workflow(
     let traces = runtime.drain_trace();
     outln!(
         "run {}: submitted={} completed={} failed={} steps={}",
-        run_id.as_u64(),
+        run_id.get(),
         counters.runs_submitted,
         counters.runs_completed,
         counters.runs_failed,
@@ -1486,8 +1486,8 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
             serde_json::json!({
                 "seq": seq.get(),
                 "type": "RunAccepted",
-                "run": run.as_u64(),
-                "workflow": workflow.to_string()
+                "run": run.get(),
+                "workflow": format!("{:?}", workflow)
             })
         }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {

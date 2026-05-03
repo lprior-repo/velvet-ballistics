@@ -105,10 +105,10 @@ impl ActionTicketDisplay {
         };
 
         vec![
-            format!("Run: {}", self.run.as_u64()),
+            format!("Run: {}", self.run.get()),
             format!("Step: {}", self.step.get()),
             format!("Action: {}", self.action.get()),
-            format!("Seq: {}", self.seq.as_u64()),
+            format!("Seq: {}", self.seq.get()),
             format!("Attempt: {}", self.attempt),
             format!("Idempotency key: {:032x}", self.idempotency_key),
             format!(

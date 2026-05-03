@@ -64,7 +64,7 @@ pub fn run_compiled_workflow(
     let traces = runtime.drain_trace();
     outln!(
         "run {}: submitted={} completed={} failed={} steps={}",
-        run_id.as_u64(),
+        run_id.get(),
         counters.runs_submitted,
         counters.runs_completed,
         counters.runs_failed,

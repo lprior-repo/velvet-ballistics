@@ -94,6 +94,34 @@ impl SeqNo {
     }
 }
 
+impl WorkflowId {
+    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    pub fn as_u32(self) -> u32 {
+        self.0
+    }
+}
+
+impl BlobId {
+    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
+impl RunId {
+    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
+impl SeqNo {
+    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
 impl StepIdx {
     /// Zero step index.
     pub const ZERO: Self = Self(0);

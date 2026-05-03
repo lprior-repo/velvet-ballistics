@@ -105,7 +105,7 @@ pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
     match runtime.cancel_run(run_id) {
         Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
+            run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
@@ -122,7 +122,7 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
     match runtime.snapshot_run(run_id, 0) {
         Ok(vb_runtime::shard::InspectResponse::Found(_snapshot)) => IpcResponse::Inspected {
-            run_id: run_id.as_u64(),
+            run_id: run_id.get(),
         },
         Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => IpcResponse::RuntimeError {
             message: String::from("run not found"),
@@ -175,7 +175,7 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
 
     match runtime.answer_ask(answer) {
         Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
+            run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
@@ -206,7 +206,7 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
         .complete_action_with_output(action_ticket, decoded_output.into_action_output(output_len))
     {
         Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
+            run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
@@ -238,7 +238,7 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
     match runtime.fail_action(action_ticket, failure) {
         Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.as_u64(),
+            run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),
@@ -272,7 +272,7 @@ pub fn submit_resolved_workflow(
     };
     match result {
         Ok(()) => IpcResponse::AcceptedRun {
-            run_id: submit.run_id.as_u64(),
+            run_id: submit.run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: e.to_string(),

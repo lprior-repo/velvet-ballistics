@@ -58,8 +58,8 @@ pub fn resolve_contract(
 }
 
 pub fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
-    let run_part = u128::from(run.as_u64());
-    let seq_part = u128::from(seq.as_u64()) << 64;
+    let run_part = u128::from(run.get());
+    let seq_part = u128::from(seq.get()) << 64;
     let action_part = u128::from(u32::from(action.get())) << 80;
     match run_part.checked_add(seq_part) {
         Some(combined) => match combined.checked_add(action_part) {

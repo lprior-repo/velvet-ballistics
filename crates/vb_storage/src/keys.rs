@@ -71,7 +71,7 @@ pub fn index_status_key(
     key.try_push(state).map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&timestamp.to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&run.as_u64().to_be_bytes())
+    key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
@@ -84,9 +84,9 @@ pub fn index_workflow_key(
     let mut key = ArrayVec::<u8, INDEX_WORKFLOW_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_WORKFLOW)
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&workflow.as_u32().to_be_bytes())
+    key.try_extend_from_slice(&workflow.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&run.as_u64().to_be_bytes())
+    key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
@@ -102,7 +102,7 @@ pub fn index_action_key(
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&action.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&run.as_u64().to_be_bytes())
+    key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&step.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -145,7 +145,7 @@ fn sequenced_run_key(
     let mut key = ArrayVec::<u8, JOURNAL_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&run.as_u64().to_be_bytes())
+    key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&seq.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -172,7 +172,7 @@ fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], Jour
     let mut key = ArrayVec::<u8, RUN_ONLY_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_extend_from_slice(&run.as_u64().to_be_bytes())
+    key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }

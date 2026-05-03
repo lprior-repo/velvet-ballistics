@@ -28,6 +28,7 @@ pub mod error;
 pub mod events;
 pub mod headers;
 pub mod indexes;
+pub mod journal;
 pub mod keys;
 pub mod queue;
 pub mod records;
@@ -58,6 +59,9 @@ pub use batch::JournalWriteBatch;
 
 // Queue
 pub use queue::JournalWriterQueue;
+
+// Types
+pub use types::JournalWriterFlushReport;
 
 // Codec
 pub use codec::{
@@ -95,6 +99,6 @@ pub fn replay_journal(
 pub fn flush_profile(
     queue: &JournalWriterQueue,
     journal: &FjallJournal,
-) -> Result<queue::JournalWriterFlushReport, JournalError> {
+) -> Result<JournalWriterFlushReport, JournalError> {
     queue.flush_batch(journal)
 }

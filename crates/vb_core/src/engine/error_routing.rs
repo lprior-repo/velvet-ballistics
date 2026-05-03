@@ -98,7 +98,9 @@ pub fn route_error_handler(
     error: &EngineError,
 ) -> Result<ErrorHandlerOutcome, EngineError> {
     let node = plan.node(failed_step).ok_or(EngineError::InvalidProgramCounter { step: failed_step })?;
-    let handler_step = node.on_error.ok_or(ErrorHandlerOutcome::NoHandler)?;
+    let Some(handler_step) = node.on_error else {
+        return Ok(ErrorHandlerOutcome::NoHandler);
+    };
 
     if let Some(error_slot) = node.error_slot {
         write_error_slot(run, error_slot, error, failed_step)?;

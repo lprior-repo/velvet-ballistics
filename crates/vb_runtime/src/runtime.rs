@@ -348,7 +348,7 @@ impl Runtime {
     }
 
     fn shard_index(&self, run: RunId) -> usize {
-        let hash = run.as_u64();
+        let hash = run.get();
         let Ok(count) = u64::try_from(self.shard_count) else {
             return 0;
         };

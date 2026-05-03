@@ -19,7 +19,7 @@ impl FjallJournal {
         let value = crate::codec::encode_record(
             MAGIC_INDEX_RECORD,
             crate::records::RecordKind::RunHeader,
-            record.run.as_u64(),
+            record.run.get(),
             record,
             crate::constants::MAX_RUN_HEADER_BYTES,
         )?;
