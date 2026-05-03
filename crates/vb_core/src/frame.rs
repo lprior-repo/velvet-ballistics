@@ -216,33 +216,46 @@ impl RunFrame {
             .ok_or(CoreError::SlotOutOfBounds { slot })
     }
 
-    pub(crate) fn find_handle_taint(&self, value: &SlotValue) -> Taint {
+    #[allow(dead_code)]
+    pub(crate) fn find_handle_taint(&self, value: &SlotValue) -> CoreResult<Taint> {
         match value {
             SlotValue::Object(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
                     if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx) {
                         if *vid == *id {
-                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
+                            return self
+                                .taint
+                                .get(idx)
+                                .copied()
+                                .ok_or(CoreError::InternalInvariantViolation {
+                                    reason: "taint_slots_diverged",
+                                });
                         }
                     }
                     idx = idx.saturating_add(1);
                 }
-                Taint::Clean
+                Ok(Taint::Clean)
             }
             SlotValue::List(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
                     if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx) {
                         if *vid == *id {
-                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
+                            return self
+                                .taint
+                                .get(idx)
+                                .copied()
+                                .ok_or(CoreError::InternalInvariantViolation {
+                                    reason: "taint_slots_diverged",
+                                });
                         }
                     }
                     idx = idx.saturating_add(1);
                 }
-                Taint::Clean
+                Ok(Taint::Clean)
             }
-            _ => Taint::Clean,
+            _ => Ok(Taint::Clean),
         }
     }
 
