@@ -11,8 +11,10 @@
 use indexmap::IndexMap;
 use smol_str::SmolStr;
 
-use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+
+#[cfg(test)]
+use vb_core::ids::StepIdx;
 
 // ---------------------------------------------------------------------------
 // Flow-core types (re-exported or used directly). These match the flow_core
