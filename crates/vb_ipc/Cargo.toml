@@ -15,6 +15,7 @@ serde.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 vb_runtime = { path = "../vb_runtime" }
+vb_validate = { path = "../vb_validate" }
 
 [dev-dependencies]
 proptest = { workspace = true }

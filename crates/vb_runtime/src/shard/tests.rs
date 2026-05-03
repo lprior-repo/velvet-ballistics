@@ -3042,3 +3042,1057 @@ fn runtime_error_active_run_capacity_zero_has_diagnostic_code() {
         RuntimeError::ACTIVE_RUN_CAPACITY_ZERO_CODE
     );
 }
+
+// =========================================================================
+// Additional lifecycle tests — expanded coverage per handle_* method
+// =========================================================================
+
+/// Workflow: SetConst(slot1=2) -> Do(action=0, input=slot0) -> RetryCheck(policy_slot=slot1, body=step1, exhausted=step3) -> Finish(result=slot0)
+/// Layout:
+///   [0] SetConst(slot1 = const[0] = I64(2))
+///   [1] Do(action=0, input=slot0)
+///   [2] RetryCheck(policy_slot=slot1, body=step1, exhausted=step3)
+///   [3] Finish(result=slot0)
+fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_policy = CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: Some(SlotIdx::new(1)),
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let action = CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let retry_check = CompiledNode {
+        id: vb_core::ids::StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(1),
+            body: vb_core::ids::StepIdx::new(1),
+            exhausted: vb_core::ids::StepIdx::new(3),
+        },
+    };
+    let finish = CompiledNode {
+        id: vb_core::ids::StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("do_with_retry"),
+        digest: WorkflowDigest::from_bytes([6; 32]),
+        nodes: Box::from([set_policy, action, retry_check, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::value::ConstValue::I64(2)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+/// Workflow: SetConst(slot0=true) -> Ask(prompt=slot0, timeout=Some(slot1)) -> AskResume(answer=slot2) -> Finish(result=slot2)
+fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_prompt = CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let set_timeout = CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(vb_core::ids::StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+    };
+    let ask = CompiledNode {
+        id: vb_core::ids::StepIdx::new(2),
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(3)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+    };
+    let resume = CompiledNode {
+        id: vb_core::ids::StepIdx::new(3),
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(4)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(2),
+        },
+    };
+    let finish = CompiledNode {
+        id: vb_core::ids::StepIdx::new(4),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("ask_then_finish"),
+        digest: WorkflowDigest::from_bytes([7; 32]),
+        nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([
+            vb_core::value::ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
+            vb_core::value::ConstValue::I64(10),
+        ]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn retryable_failure() -> vb_core::action::ActionFailure {
+    vb_core::action::ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retryable: true,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// handle_submit: valid workflow with inputs via SubmitWithInputs
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_submit_with_inputs_seeds_slots_and_drives() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(700);
+    let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+#[test]
+fn shard_submit_with_inputs_rejects_duplicate_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(701);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(false))]);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+}
+
+#[test]
+fn shard_submit_with_inputs_rejects_capacity_exceeded() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(wf1) = suspended_workflow() else {
+        return;
+    };
+    let Some(wf2) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(1),
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let inputs = Box::from([]);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run: super::RunId::new(2),
+            workflow: wf2,
+            inputs,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
+    );
+}
+
+// ---------------------------------------------------------------------------
+// handle_resume: resume a waiting run after timer was already removed
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() {
+    // Submit a timed wait workflow, which enters a wait-suspended state with a pending timer.
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(710);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When resuming while the run is waiting, drive_run re-drives and re-suspends
+    // because the WaitUntil deadline hasn't been met (no timer fire).
+    assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    // Run is still active (re-suspended)
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    match shard.take_inspect_response() {
+        Some(InspectResponse::Found(snap)) => {
+            assert_eq!(snap.run, run);
+        }
+        other => assert_eq!(other, None),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// handle_cancel: cancel a finished run (no-op, already removed)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(720);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+    // When cancelling the already-finished run
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    // Then no additional counter increment
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_completion: full ActionCompleted (not legacy)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_action_completed_full_writes_slot_and_advances() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(730);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete the action using the full ActionCompleted command (not legacy).
+    let ticket = vb_core::action::ActionTicket {
+        run,
+        step: vb_core::ids::StepIdx::ZERO,
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: vb_core::value::SlotValue::I64(42),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 8,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // The trace ring should contain ActionCompleted and SlotWritten
+    let events = shard.trace_ring_mut().drain();
+    let found_action = events.iter().any(|e| {
+        *e == TraceEvent::ActionCompleted {
+            run,
+            step: vb_core::ids::StepIdx::ZERO,
+        }
+    });
+    let found_slot = events
+        .iter()
+        .any(|e| *e == TraceEvent::SlotWritten {
+            run,
+            slot: SlotIdx::new(0),
+        });
+    assert_eq!(found_action, true);
+    assert_eq!(found_slot, true);
+}
+
+#[test]
+fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(731);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete with wrong step index (step 99 does not exist or is not running)
+    let ticket = vb_core::action::ActionTicket {
+        run,
+        step: vb_core::ids::StepIdx::new(99),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: vb_core::value::SlotValue::I64(1),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 8,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_failure: retryable failure triggers retry
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_action_failure_retryable_with_retry_check_retries_action() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = do_with_retry_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(740);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Run is suspended on the Do action at step 1
+
+    // When failing with a retryable failure and retry metadata exists
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Then the run re-enters suspension on the same Do action (retry)
+    let events = shard.trace_ring_mut().drain();
+    let found_action_failed = events.iter().any(|e| {
+        *e == TraceEvent::ActionFailed {
+            run,
+            step: vb_core::ids::StepIdx::new(1),
+            code: ActionFailureCode::Timeout,
+        }
+    });
+    assert_eq!(found_action_failed, true);
+
+    // The run is still in the runs map (re-suspended on Do)
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    match shard.take_inspect_response() {
+        Some(InspectResponse::Found(snap)) => {
+            assert_eq!(snap.run, run);
+        }
+        other => assert_eq!(other, None),
+    }
+}
+
+#[test]
+fn shard_action_failure_retryable_exhaustion_fails_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = do_with_retry_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(741);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // First retryable failure: retries (attempt counter goes to 2)
+    let ticket1 = vb_core::action::ActionTicket {
+        run,
+        step: vb_core::ids::StepIdx::new(1),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Second retryable failure: retries (attempt counter goes to 2, then tries add to 2, max=2, returns false => exhausts)
+    let ticket2 = vb_core::action::ActionTicket {
+        run,
+        step: vb_core::ids::StepIdx::new(1),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 2,
+        idempotency_key: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // The retry policy max_attempts is 2, so after recording attempt 2 the policy is exhausted.
+    // With no error handler, the run should fail.
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(shard.counters().snapshot().runs_completed, 0);
+}
+
+#[test]
+fn shard_action_failure_non_retryable_without_handler_fails_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(742);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
+    let failure = vb_core::action::ActionFailure {
+        code: ActionFailureCode::Rejected,
+        retryable: false,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+#[test]
+fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = action_with_error_handler_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(743);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail the action at step 1 (inside the error handler body)
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let failure = vb_core::action::ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retryable: false,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // The error handler at step 2 runs and the workflow finishes successfully
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_failure: failure with wrong run in ticket
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(1),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail an action with a ticket that references a different run
+    let ticket = action_ticket(super::RunId::new(999), vb_core::ids::StepIdx::ZERO);
+    let failure = timeout_failure();
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// handle_ask_answer: valid answer completes the ask workflow
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_ask_answer_completes_ask_workflow() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = ask_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(750);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Run is now waiting on an ask with a pending timer
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When answering the ask
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: vb_core::ids::StepIdx::new(2),
+            resume_step: vb_core::ids::StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::I64(99),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Then the run completes
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    // Pending timer was cleaned up by the answer
+    assert_eq!(shard.pending_timers.len(), 0);
+}
+
+#[test]
+fn shard_ask_answer_produces_ask_answered_trace_event() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = ask_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(751);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: vb_core::ids::StepIdx::new(2),
+            resume_step: vb_core::ids::StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::Bool(true),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = shard.trace_ring_mut().drain();
+    let found_ask_answered = events.iter().any(|e| {
+        *e == TraceEvent::AskAnswered {
+            run,
+            step: vb_core::ids::StepIdx::new(2),
+            slot: SlotIdx::new(2),
+        }
+    });
+    assert_eq!(found_ask_answered, true);
+}
+
+#[test]
+fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = ask_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(752);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Answer with a wrong ask_step that doesn't match the suspended state
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: vb_core::ids::StepIdx::new(99),
+            resume_step: vb_core::ids::StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::Bool(true),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// handle_timer: wait timer fires and completes
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
+    let config = small_config();
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(760);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+    // Journal should contain WaitResolved
+    assert!(
+        matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::WaitResolved { run, step: vb_core::ids::StepIdx::new(1) }))
+    );
+}
+
+#[test]
+fn shard_timer_fire_for_ask_timeout_fails_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_ask_without_answer_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(761);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(shard.counters().snapshot().runs_completed, 0);
+}
+
+// ---------------------------------------------------------------------------
+// handle_cancel: cancel cleans up pending ask timer
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_cancel_removes_pending_ask_timer() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_ask_without_answer_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(770);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+// ---------------------------------------------------------------------------
+// handle_submit: trace event includes correct run id
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_submit_trace_event_contains_submitted_run_id() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(780);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = shard.trace_ring_mut().drain();
+    let found = events
+        .iter()
+        .any(|e| matches!(e, TraceEvent::RunSubmitted { run: r } if *r == run));
+    assert_eq!(found, true);
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_failure: failure with wrong step returns invalid completion
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_action_failure_with_wrong_step_returns_invalid_completion() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(790);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail with a step that isn't running
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(99));
+    let failure = timeout_failure();
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_completion: legacy completion with wrong step
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_legacy_action_completed_with_wrong_step_returns_error() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(791);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Legacy completion with a step that isn't running
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompletedLegacy {
+            run,
+            step: vb_core::ids::StepIdx::new(5),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// handle_ask_answer: answering after run was cancelled returns run not found
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_ask_answer_after_cancel_returns_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = ask_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(792);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: vb_core::ids::StepIdx::new(2),
+            resume_step: vb_core::ids::StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::Bool(true),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// handle_action_failure: failure after run was cancelled
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_action_failure_after_cancel_returns_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(793);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
+    let failure = timeout_failure();
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// handle_resume: resume after cancel returns run not found
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shard_resume_after_cancel_returns_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(794);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}

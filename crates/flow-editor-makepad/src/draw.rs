@@ -1,5 +1,5 @@
 //! Drawing primitives for the flow editor canvas.
-//! Stubs for now — actual Makepad GPU draw calls to be implemented.
+//! Constants and helper types for node, edge, port, and grid rendering.
 
 /// Port rendering constants
 pub mod port {
@@ -24,10 +24,22 @@ pub mod edge {
     pub const DEFAULT_WIDTH: f32 = 2.0;
     pub const PARTICLE_SPEED: f64 = 50.0;
     pub const PARTICLE_SIZE: f64 = 3.0;
+    /// Bezier control point horizontal offset as a fraction of horizontal distance.
+    pub const BEZIER_CP_FRACTION: f64 = 0.4;
+    /// Minimum control point offset so short edges still curve visibly.
+    pub const BEZIER_CP_MIN: f64 = 40.0;
 }
 
 /// Grid rendering constants
 pub mod grid {
     pub const MAJOR_SPACING: f64 = 100.0;
     pub const MINOR_SPACING: f64 = 20.0;
+}
+
+/// Viewport limits
+pub mod viewport {
+    pub const ZOOM_MIN: f64 = 0.1;
+    pub const ZOOM_MAX: f64 = 8.0;
+    pub const ZOOM_STEP: f64 = 1.1;
+    pub const CLICK_THRESHOLD: f64 = 4.0;
 }
