@@ -6,10 +6,10 @@
 
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
-use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx};
+use crate::ids::{ExprIdx, RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledWorkflow, ExprOp};
+use crate::workflow::CompiledWorkflow;
 
 pub mod choose;
 pub mod ops;
@@ -57,7 +57,7 @@ pub enum ReplayError {
 // Expression stack
 // ---------------------------------------------------------------------------
 
-struct ReplayExprStack {
+pub struct ReplayExprStack {
     values: [SlotValue; crate::limits::MAX_EXPRESSION_STACK_USIZE],
     len: u8,
     capacity: u8,

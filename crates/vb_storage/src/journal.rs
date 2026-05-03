@@ -14,15 +14,15 @@ use crate::{
     constants::{
         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_WORKFLOW_SOURCE, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
+        KEYSPACE_WORKFLOW_SOURCE, MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT,
         MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
     keys::{
-        blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
-        run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
+        compiled_ir_key,
+        run_event_key, workflow_source_key,
     },
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
     types::{EventSeq, FjallConfig, KeyspaceProfile},

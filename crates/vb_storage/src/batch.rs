@@ -4,7 +4,7 @@
 //! atomically with a single WAL fsync.
 
 use crate::{
-    codec::{decode_record, encode_record},
+    codec::encode_record,
     constants::{
         MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
         MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,

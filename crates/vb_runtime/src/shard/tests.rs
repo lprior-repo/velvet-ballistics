@@ -3188,7 +3188,7 @@ fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn retryable_failure() -> vb_core::action::ActionFailure {
     vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: true,
+        retry_policy: vb_core::action::RetryPolicy::Retryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -3613,7 +3613,7 @@ fn shard_action_failure_non_retryable_without_handler_fails_run() {
     let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Rejected,
-        retryable: false,
+        retry_policy: vb_core::action::RetryPolicy::NonRetryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -3648,7 +3648,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
     let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: false,
+        retry_policy: vb_core::action::RetryPolicy::NonRetryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,

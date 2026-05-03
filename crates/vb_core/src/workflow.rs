@@ -366,6 +366,14 @@ pub enum WorkflowError {
         /// Maximum allowed path depth.
         max: usize,
     },
+    /// A jump creates a cycle that would cause infinite execution.
+    #[error("jump cycle detected: {step:?} jumps to {target:?} which is already in the current traversal path")]
+    JumpCycle {
+        /// Step issuing the jump.
+        step: StepIdx,
+        /// Jump target creating the cycle.
+        target: StepIdx,
+    },
 }
 
 /// Bounded postfix expression bytecode program.
@@ -1438,7 +1446,7 @@ fn collect_choose_slot_targets(
     otherwise: Option<StepIdx>,
     targets: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         targets.push(branch.target);
     }
     if let Some(fallback) = otherwise {
@@ -1451,7 +1459,7 @@ fn collect_choose_expr_targets(
     otherwise: Option<StepIdx>,
     targets: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         targets.push(branch.target);
     }
     if let Some(fallback) = otherwise {
@@ -1464,7 +1472,7 @@ fn collect_together_start_targets(
     join: StepIdx,
     targets: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         targets.push(*branch);
     }
     targets.push(join);
@@ -1567,7 +1575,7 @@ fn validate_choose_slot_edges(
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
-    for branch in branches.as_ref() {
+    for branch in branches {
         validate_forward_target(branch.target, ci, cid)?;
     }
     if let Some(fallback) = *otherwise {
@@ -1582,7 +1590,7 @@ fn validate_choose_expr_edges(
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
-    for branch in branches.as_ref() {
+    for branch in branches {
         validate_forward_target(branch.target, ci, cid)?;
     }
     if let Some(fallback) = *otherwise {
@@ -4998,10 +5006,12 @@ mod tests {
         let kind = CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
+            error_slot: None,
         };
-        let CompiledNodeKind::ErrorHandler { body, handler } = kind else {
+        let CompiledNodeKind::ErrorHandler { body, handler, error_slot } = kind else {
             panic!("expected ErrorHandler");
         };
+        assert_eq!(error_slot, None);
         assert_eq!(body, StepIdx::new(1));
         assert_eq!(handler, StepIdx::new(2));
     }

@@ -1530,7 +1530,9 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
         | WorkflowError::BackwardEdge { .. }
         | WorkflowError::ImproperLoopNesting { .. }
         | WorkflowError::SymbolOutOfBounds { .. }
-        | WorkflowError::AccessorPathTooDeep { .. } => "INVALID_COMPILED_WORKFLOW",
+        | WorkflowError::AccessorPathTooDeep { .. }
+        | WorkflowError::StepCountOverflow { .. }
+        | WorkflowError::JumpCycle { .. } => "INVALID_COMPILED_WORKFLOW",
     }
 }
 

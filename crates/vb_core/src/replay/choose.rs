@@ -2,7 +2,7 @@
 
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
-use crate::ids::{SlotIdx, StepIdx};
+use crate::ids::StepIdx;
 use crate::value::SlotValue;
 
 use super::{ReplayAction, ReplayError, eval_expr_for_replay, slot_to_replay_err};

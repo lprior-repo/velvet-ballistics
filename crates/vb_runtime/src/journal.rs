@@ -839,7 +839,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(6),
                     slot: SlotIdx::new(5),
-                    value: None,
+                    value: Some(Vec::new()),
                 },
             ]
         );

@@ -4088,14 +4088,14 @@ mod tests {
         };
 
         // Resume with failure.
-        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Timeout, true)
+        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Timeout, crate::action::RetryPolicy::Retryable)
             .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
-            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+            crate::action::ActionJournalEvent::Failed { code, retry_policy, .. } => {
                 ensure_equal(code, ActionFailureCode::Timeout)?;
-                ensure_equal(retryable, true)?;
+                ensure_equal(retry_policy, crate::action::RetryPolicy::Retryable)?;
             }
             other => return Err(format!("expected Failed journal event, got {other:?}")),
         }
@@ -4126,14 +4126,14 @@ mod tests {
         };
 
         // Resume with a non-retryable failure.
-        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Rejected, false)
+        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Rejected, crate::action::RetryPolicy::NonRetryable)
             .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
-            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+            crate::action::ActionJournalEvent::Failed { code, retry_policy, .. } => {
                 ensure_equal(code, ActionFailureCode::Rejected)?;
-                ensure_equal(retryable, false)?;
+                ensure_equal(retry_policy, crate::action::RetryPolicy::NonRetryable)?;
             }
             other => return Err(format!("expected Failed journal event, got {other:?}")),
         }
@@ -4594,6 +4594,7 @@ mod tests {
                     kind: CompiledNodeKind::ErrorHandler {
                         body: StepIdx::new(1),
                         handler: StepIdx::new(3),
+                        error_slot: None,
                     },
                 },
                 // Node 1: SetConst 42 -> slot 0
@@ -4859,6 +4860,7 @@ mod tests {
                     kind: CompiledNodeKind::ErrorHandler {
                         body: StepIdx::new(1),
                         handler: StepIdx::new(3),
+                        error_slot: None,
                     },
                 },
                 // Node 1: Copy from uninitialized slot (fails at runtime), has on_error -> handler

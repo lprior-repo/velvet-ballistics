@@ -117,6 +117,7 @@ enum Command {
     Version,
     Validate {
         workflow: PathBuf,
+        #[allow(dead_code)]
         output: OutputFormat,
     },
     Compile {
@@ -793,7 +794,7 @@ fn write_step_inputs(frame: &mut vb_core::RunFrame, inputs: &[vb_core::SlotValue
     for (i, value) in inputs.iter().enumerate() {
         if let Ok(slot) = u16::try_from(i) {
             let slot_idx = vb_core::SlotIdx::new(slot);
-            let _ = frame.write_slot(slot_idx, *value);
+            drop(frame.write_slot(slot_idx, *value));
         }
     }
 }
@@ -1362,7 +1363,7 @@ fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                 match output {
                     OutputFormat::Json => {
                         let event_list: Vec<serde_json::Value> =
-                            events.iter().map(|e| event_to_json(e)).collect();
+                            events.iter().map(event_to_json).collect();
                         json_out(
                             &serde_json::json!({
                                 "run_id": run_id,
@@ -1630,7 +1631,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
             match output {
                 OutputFormat::Json => {
                     let event_list: Vec<serde_json::Value> =
-                        events.iter().map(|e| event_to_json(e)).collect();
+                        events.iter().map(event_to_json).collect();
                     json_out(
                         &serde_json::json!({
                             "run_id": run_id,
@@ -1808,7 +1809,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 
 fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let mut checks = Vec::new();
-    let mut success = true;
+    let _success = true;
 
     // Check 1: can we open the journal?
     let journal = match vb_storage::FjallJournal::open(db, None) {

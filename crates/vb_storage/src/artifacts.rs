@@ -3,14 +3,9 @@
 //! Provides storage, retrieval, listing, and removal of compiled artifacts.
 
 use crate::{
-    codec::decode_record,
-    constants::{
-        MAGIC_COMPILED_ARTIFACT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
-        MAX_WORKFLOW_SOURCE_BYTES, PREFIX_COMPILED_IR,
-    },
+    constants::{DIGEST_BYTES, PREFIX_COMPILED_IR},
     error::JournalError,
-    keys::{compiled_ir_key, workflow_source_key},
-    records::{CompiledIrRecord, WorkflowSourceRecord},
+    keys::compiled_ir_key,
 };
 
 use crate::journal::FjallJournal;
@@ -18,12 +13,12 @@ use crate::journal::FjallJournal;
 impl FjallJournal {
     /// Returns all stored compiled IR artifact digests.
     pub fn list_artifacts(&self) -> Result<Vec<vb_core::WorkflowDigest>, JournalError> {
-        let prefix = [crate::constants::PREFIX_COMPILED_IR];
+        let prefix = [PREFIX_COMPILED_IR];
         let mut digests = Vec::new();
         for item in self.compiled_ir.prefix(prefix) {
             let raw_key = item.key()?;
             let digest_bytes = raw_key.get(1..).ok_or(JournalError::UnexpectedEof)?;
-            let digest_array = <[u8; crate::constants::DIGEST_BYTES]>::try_from(digest_bytes)
+            let digest_array = <[u8; DIGEST_BYTES]>::try_from(digest_bytes)
                 .map_err(|_| JournalError::UnexpectedEof)?;
             digests.push(vb_core::WorkflowDigest::from_bytes(digest_array));
         }

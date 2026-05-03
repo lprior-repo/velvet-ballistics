@@ -337,19 +337,24 @@ fn count_total_steps(
     node_count: usize,
 ) -> Result<u64, WorkflowError> {
     let mut visited: Vec<bool> = vec![false; node_count];
+    let mut jump_edges: std::collections::HashSet<(u16, u16)> =
+        std::collections::HashSet::new();
+    let mut in_path: std::collections::HashSet<u16> = std::collections::HashSet::new();
     let mut total: u64 = 0;
 
-    // Phase 1: Walk the IR and compute worst-case steps. Loop headers trigger
-    // a body sub-count that is multiplied by the iteration limit.
     let mut stack: Vec<StepIdx> = Vec::new();
     stack.push(entry);
 
     while let Some(current) = stack.pop() {
+        let current_u16 = current.get();
+        in_path.remove(&current_u16);
         total = visit_node_for_total_steps(
             nodes,
             current,
             node_count,
             &mut visited,
+            &mut jump_edges,
+            &mut in_path,
             total,
             &mut stack,
         )?;
@@ -358,11 +363,14 @@ fn count_total_steps(
 }
 
 /// Visits a single node during step counting and updates the total and stack.
+#[allow(clippy::too_many_arguments)]
 fn visit_node_for_total_steps(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
     node_count: usize,
     visited: &mut [bool],
+    jump_edges: &mut std::collections::HashSet<(u16, u16)>,
+    in_path: &mut std::collections::HashSet<u16>,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, WorkflowError> {
@@ -468,6 +476,24 @@ fn visit_node_for_total_steps(
                 WorkflowError::StepCountOverflow { actual }
             })?;
         }
+        CompiledNodeKind::Jump { target } => {
+            let from = current.get();
+            let to = target.get();
+            if in_path.contains(&to) {
+                return Err(WorkflowError::JumpCycle {
+                    step: current,
+                    target: *target,
+                });
+            }
+            if !jump_edges.insert((from, to)) {
+                return Err(WorkflowError::JumpCycle {
+                    step: current,
+                    target: *target,
+                });
+            }
+            in_path.insert(to);
+            stack.push(*target);
+        }
         _ => {
             push_successor_targets(&node.kind, stack);
             if let Some(next) = node.next {
@@ -480,6 +506,7 @@ fn visit_node_for_total_steps(
 
 /// Counts body region steps for a loop header and adds multiplied iterations to total.
 #[inline]
+#[allow(clippy::too_many_arguments)]
 fn count_and_push_loop_body(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
@@ -540,6 +567,7 @@ fn count_body_region_nodes(
 }
 
 /// Visits a single node in a body region during step counting.
+#[allow(clippy::too_many_arguments)]
 fn visit_body_region_node(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
@@ -651,6 +679,7 @@ fn visit_body_region_node(
 
 /// Counts a nested loop body within a region and adds multiplied iterations.
 #[inline]
+#[allow(clippy::too_many_arguments)]
 fn count_nested_for_region(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
@@ -658,7 +687,7 @@ fn count_nested_for_region(
     iter_count: u64,
     global_visited: &mut [bool],
     node_count: usize,
-    mut count: u64,
+    count: u64,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, BudgetError> {
     let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
@@ -748,11 +777,11 @@ fn node_kind_has_no_successors(kind: &CompiledNodeKind) -> bool {
 
 /// Push Choose successors: all branch targets + optional fallback.
 fn push_expr_choose_successors(
-    branches: &Box<[crate::workflow::ExprBranch]>,
+    branches: &[crate::workflow::ExprBranch],
     otherwise: Option<StepIdx>,
     stack: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         stack.push(branch.target);
     }
     if let Some(fallback) = otherwise {
@@ -762,11 +791,11 @@ fn push_expr_choose_successors(
 
 /// Push ChooseSlot successors: all slot branch targets + optional fallback.
 fn push_slot_choose_successors(
-    branches: &Box<[crate::workflow::SlotBranch]>,
+    branches: &[crate::workflow::SlotBranch],
     otherwise: Option<StepIdx>,
     stack: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         stack.push(branch.target);
     }
     if let Some(fallback) = otherwise {
@@ -787,11 +816,11 @@ fn push_repeat_check_successors(done: StepIdx, stack: &mut Vec<StepIdx>) {
 
 /// Push TogetherStart successors: all branch targets + join.
 fn push_together_start_successors(
-    branches: &Box<[StepIdx]>,
+    branches: &[StepIdx],
     join: StepIdx,
     stack: &mut Vec<StepIdx>,
 ) {
-    for branch in branches.as_ref() {
+    for branch in branches {
         stack.push(*branch);
     }
     stack.push(join);

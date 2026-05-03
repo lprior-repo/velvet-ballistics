@@ -163,6 +163,9 @@ impl RunFrame {
 
     /// Adds to the parallel in-flight counter.
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
+        if self.max_parallel_in_flight == u16::MAX {
+            return Ok(());
+        }
         self.parallel_in_flight = self
             .parallel_in_flight
             .checked_add(count)
@@ -173,7 +176,11 @@ impl RunFrame {
     }
 
     /// Subtracts from the parallel in-flight counter.
+    /// If max_parallel_in_flight is u16::MAX (unlimited), skip tracking.
     pub fn sub_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
+        if self.max_parallel_in_flight == u16::MAX {
+            return Ok(());
+        }
         self.parallel_in_flight = self
             .parallel_in_flight
             .checked_sub(count)

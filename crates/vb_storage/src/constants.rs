@@ -66,7 +66,7 @@ pub(crate) const RUN_ONLY_KEY_BYTES: usize = 9;
 pub(crate) const INDEX_STATUS_KEY_BYTES: usize = 18;
 pub(crate) const INDEX_WORKFLOW_KEY_BYTES: usize = 13;
 pub(crate) const INDEX_ACTION_KEY_BYTES: usize = 13;
-pub(crate) const RUN_EVENT_PREFIX_BYTES: usize = 9;
+pub(crate) const _RUN_EVENT_PREFIX_BYTES: usize = 9;
 /// Digest byte width used by storage keys and record payload checksums.
 pub const DIGEST_BYTES: usize = 32;
 /// Record header bytes length.
@@ -85,4 +85,4 @@ pub const MAX_RUN_HEADER_BYTES: u32 = 65_536;
 pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 /// Maximum blob payload bytes accepted by the default blob APIs.
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
-const PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;
+const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;

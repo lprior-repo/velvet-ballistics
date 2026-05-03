@@ -18,14 +18,14 @@ use crate::primitives::collect::CollectStates;
 
 fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> u16 {
     let mut max_branches: u16 = 0;
-    for i in 0..u16::from(plan.node_count()) {
+    for i in 0..plan.node_count() {
         let step = StepIdx::new(i);
-        if let Some(node) = plan.node(step) {
-            if let CompiledNodeKind::TogetherStart { branches, .. } = &node.kind {
-                let branch_count = u16::try_from(branches.len()).unwrap_or(u16::MAX);
-                if branch_count > max_branches {
-                    max_branches = branch_count;
-                }
+        if let Some(node) = plan.node(step)
+            && let CompiledNodeKind::TogetherStart { branches, .. } = &node.kind
+        {
+            let branch_count = u16::try_from(branches.len()).unwrap_or(u16::MAX);
+            if branch_count > max_branches {
+                max_branches = branch_count;
             }
         }
     }

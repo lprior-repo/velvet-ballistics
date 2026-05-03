@@ -7,7 +7,7 @@ use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
-use super::{ReplayError, ReplayExprStack, eval_expr_for_replay, slot_to_replay_err};
+use super::{ReplayError, eval_expr_for_replay, slot_to_replay_err};
 
 /// Internal action returned by `replay_step`.
 pub enum ReplayAction {
@@ -188,7 +188,7 @@ fn replay_build_object(
         })?;
         let slot_taint = run.read_taint(*slot).map_err(slot_to_replay_err)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
-        entries.push(ObjectField { key: *key, value });
+        entries.push(ObjectField { key: *key, value, taint: slot_taint });
         index = index.checked_add(1).ok_or(ReplayError::Internal {
             reason: "build_object field index overflow",
         })?;

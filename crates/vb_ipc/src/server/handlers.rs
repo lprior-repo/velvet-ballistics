@@ -584,7 +584,7 @@ fn collect_edges_from_node(
                 edge_type: String::from("loop_exit"),
             });
         }
-        vb_core::workflow::CompiledNodeKind::ErrorHandler { body, handler } => {
+        vb_core::workflow::CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             edges.push(crate::EdgeDescriptor {
                 from: step,
                 to: body.get(),
