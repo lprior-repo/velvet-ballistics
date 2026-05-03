@@ -3673,3 +3673,750 @@ No mode starts components it doesn't need. The `validate` command never opens Fj
 ### Future Extension
 
 If `velvet-ballastics` ever supports distributed operation (v2+), the binary gains additional roles (log-server, controller, ingress) but the converged model persists: a single binary, configured by role, no separate services to deploy.
+
+---
+
+## 54. AI-Native CLI Control Plane
+
+The CLI is the AI-native control plane. The UI is for humans to see the system. The CLI is for humans and AI agents to operate, verify, repair, replay, and explain the system.
+
+North star:
+
+1. Anything the UI can show, the CLI can emit as structured data.
+2. Anything an operator can inspect, an AI agent can inspect safely.
+3. Anything that fails produces a machine-readable explanation.
+
+### Dual-Personality Design
+
+The CLI has two modes of output:
+
+**Human mode** — Pretty, readable, fast:
+
+```text
+velvet-ballastics verify workflow.yaml
+velvet-ballastics run issue_triage --input input.vbin
+velvet-ballastics inspect run_123
+velvet-ballastics replay run_123
+```
+
+Output is colored, summarized, and ergonomic.
+
+**AI mode** — Stable, structured, boring:
+
+```text
+velvet-ballastics verify workflow.yaml --emit yaml
+velvet-ballastics inspect run_123 --emit yaml
+velvet-ballastics replay run_123 --explain --emit yaml
+velvet-ballastics incident run_123 --emit yaml
+```
+
+No fragile pretty text. No hidden state. No "look at the dashboard." AI mode emits schemas that are documented and versioned.
+
+### Lifecycle Command Surface
+
+Command groups mirror the system lifecycle:
+
+```text
+velvet-ballastics validate workflow.yaml
+velvet-ballastics verify   workflow.yaml
+velvet-ballastics compile  workflow.yaml
+velvet-ballastics graph    workflow.yaml
+velvet-ballastics simulate workflow.yaml
+velvet-ballastics run-compiled workflow.vbir
+velvet-ballastics submit   issue_triage
+velvet-ballastics inspect  run_123
+velvet-ballastics events   run_123
+velvet-ballastics replay   run_123
+velvet-ballastics incident run_123
+velvet-ballastics action list
+velvet-ballastics action inspect github.issue.create
+velvet-ballastics system status
+velvet-ballastics doctor
+velvet-ballastics ai context run_123
+```
+
+The CLI is not just "run workflow." It is a compiler/debugger/operator interface.
+
+### verify Is the Hero Command
+
+`verify` is the flagship. It answers: *is this workflow safe to run, and if not, what must change?*
+
+```text
+velvet-ballastics verify workflow.yaml --profile strict
+```
+
+Human output:
+
+```text
+✓ structure valid
+✓ bounded execution
+✓ resource budget computed
+✓ no secret-to-result flow
+✓ all external actions strict-durable safe
+✓ replay policy safe
+
+compiled digest: 8c13...
+max transitions: 842
+max action calls: 4
+max frame bytes: 19.2 KiB
+```
+
+AI output (`--emit yaml`):
+
+```yaml
+schema_version: velvet-ballastics/cli-output/v1
+kind: VerificationReport
+workflow:
+  name: issue_triage
+  source_digest: blake3:...
+  compiled_digest: blake3:...
+profile: strict
+status: pass
+certificates:
+  structural:
+    status: pass
+    invalid_edges: []
+    unreachable_steps: []
+  boundedness:
+    status: pass
+    max_ir_transitions: 842
+    max_action_calls: 4
+    max_retries: 3
+  resources:
+    status: pass
+    max_slots: 48
+    max_expr_stack: 6
+    max_frame_bytes: 19648
+    max_result_bytes: 32768
+  taint:
+    status: pass
+    public_result_secret_reachable: false
+    forbidden_paths: []
+  actions:
+    status: pass
+    external_actions:
+      - action: github.issue.create
+        action_id: 7
+        idempotency: IdempotentExternal
+        strict_safe: true
+  durability:
+    status: pass
+    journal_before_dispatch: true
+    completion_before_frame_mutation: true
+```
+
+### Structured Diagnostics with Repair Hints
+
+When validation fails, the CLI emits structured repair hints — not just text:
+
+```yaml
+schema_version: velvet-ballastics/cli-output/v1
+kind: DiagnosticReport
+status: fail
+diagnostics:
+  - code: ACTION_REQUIRES_IDEMPOTENCY
+    severity: error
+    path: $.steps[2].do
+    span:
+      line_start: 18
+      column_start: 5
+      line_end: 29
+      column_end: 12
+    message: Strict durability requires idempotency for external action http.request.
+    repair:
+      kind: add_field
+      path: $.steps[2].do.idempotency
+      value: required
+    explanation: The action may be retried after crash recovery, so it needs a durable idempotency key.
+```
+
+This lets an AI agent read error → patch YAML → verify again. No guessing.
+
+### explain Command
+
+```text
+velvet-ballastics explain workflow.yaml --emit yaml
+```
+
+Output includes: what the workflow does, what actions it calls, what secrets it touches, what can fail, what is durable, what is safe to retry, what resource bounds exist.
+
+```yaml
+kind: WorkflowExplanation
+summary: "Classifies a support ticket, creates a GitHub issue, and sends a Slack notification."
+steps:
+  - id: classify
+    kind: do
+    action: ai.classify_ticket
+    reads:
+      - $input.message
+    writes:
+      - $classify
+    max_calls: 1
+    taint:
+      input: Clean
+      output: Clean
+  - id: create_issue
+    kind: do
+    action: github.issue.create
+    idempotency: IdempotentExternal
+    strict_durable: true
+failure_modes:
+  - step: create_issue
+    errors:
+      - RATE_LIMITED
+      - PERMISSION_DENIED
+      - TIMEOUT
+durability:
+  side_effects_journaled_before_dispatch: true
+  replay_safe: true
+```
+
+### graph Command
+
+```text
+velvet-ballastics graph workflow.yaml --emit yaml
+```
+
+Emits a graph artifact consumable by Makepad UI, Figma/Miro prototype importers, AI reasoning, CLI summaries, and documentation generators. One source, many consumers.
+
+```yaml
+kind: WorkflowGraph
+nodes:
+  - step_idx: 0
+    id: classify
+    kind: do
+    action: ai.classify_ticket
+    output_slot: 8
+    badges:
+      strict_safe: true
+      secret_sensitive: false
+  - step_idx: 1
+    id: create_issue
+    kind: do
+    action: github.issue.create
+    output_slot: 15
+edges:
+  - from: classify
+    to: create_issue
+    kind: then
+  - from: create_issue
+    to: done
+    kind: then
+```
+
+### simulate Command
+
+```text
+velvet-ballastics simulate workflow.yaml --input input.vbin --mocks mocks.yaml --emit yaml
+```
+
+Runs deterministically with mocked actions. Output:
+
+```yaml
+kind: SimulationReport
+status: finished
+events:
+  - seq: 1
+    kind: RunAccepted
+  - seq: 2
+    kind: StepStarted
+    step: classify
+  - seq: 3
+    kind: ActionScheduled
+    action: ai.classify_ticket
+  - seq: 4
+    kind: ActionCompleted
+    action: ai.classify_ticket
+    source: mock
+  - seq: 5
+    kind: SlotWritten
+    slot: 8
+    value_summary:
+      type: object
+      fields:
+        priority: high
+result:
+  type: object
+  fields:
+    status: ok
+taint:
+  public_result_secret_reachable: false
+```
+
+This lets AI agents test before running.
+
+### Runtime Commands
+
+**Submit:**
+
+```text
+velvet-ballastics submit issue_triage --input-bin input.vbin --emit yaml
+```
+
+```yaml
+kind: SubmitRunResult
+status: accepted
+run_id: 123
+workflow:
+  name: issue_triage
+  compiled_digest: blake3:...
+durability:
+  profile: strict
+  run_accepted_durable: true
+```
+
+**Inspect:**
+
+```text
+velvet-ballastics inspect run_123 --emit yaml
+```
+
+```yaml
+kind: RunInspection
+run_id: 123
+status: awaiting_action
+current_step:
+  idx: 2
+  id: create_issue
+action_ticket:
+  action: github.issue.create
+  action_id: 7
+  attempt: 1
+  idempotency_key_hash: blake3:...
+  scheduled_durable: true
+  dispatch_state: started
+replay:
+  safe_to_replay: true
+  reason: idempotent_external_action
+```
+
+**Events:**
+
+```text
+velvet-ballastics events run_123 --tail 20 --emit yaml
+```
+
+```yaml
+kind: RunEvents
+run_id: 123
+events:
+  - seq: 11
+    kind: StepStarted
+    step_idx: 2
+    timestamp: 1710000000
+  - seq: 12
+    kind: ActionScheduled
+    action_id: 7
+    ticket: ...
+```
+
+**Replay:**
+
+```text
+velvet-ballastics replay run_123 --explain --emit yaml
+```
+
+```yaml
+kind: ReplayReport
+run_id: 123
+status: replayed
+loaded:
+  snapshot_seq: 80
+  journal_tail_events: 17
+result:
+  divergence: false
+  reconstructed_pc: 4
+  reconstructed_status: awaiting_action
+action_recovery:
+  pending:
+    - action: github.issue.create
+      ticket: ...
+      policy: retry_with_same_idempotency_key
+```
+
+### incident Command
+
+```text
+velvet-ballastics incident run_123 --emit yaml
+```
+
+Produces the AI-safe black box report:
+
+```yaml
+kind: IncidentReport
+run_id: 123
+status: failed
+failure:
+  code: ACTION_TIMEOUT
+  step: create_issue
+  action: github.issue.create
+  retryable: true
+side_effect_certainty:
+  scheduled_durable: true
+  completion_durable: false
+  external_effect: uncertain
+  safe_to_retry: true
+  reason: same_idempotency_key
+journal_tail:
+  - seq: 14
+    kind: ActionScheduled
+  - seq: 15
+    kind: ActionFailed
+slot_diffs:
+  - slot: 12
+    before: null
+    after:
+      type: object
+      redacted: false
+taint:
+  secret_leak_detected: false
+repair_hints:
+  - kind: increase_timeout
+    path: $.steps[2].do.timeout_ms
+    current: 5000
+    suggested: 15000
+  - kind: add_backoff
+    path: $.steps[2].do.retry.backoff_ms
+    suggested: 500
+```
+
+### Action Discovery
+
+```text
+velvet-ballastics action list --emit yaml
+```
+
+```yaml
+kind: ActionList
+actions:
+  - name: github.issue.create
+    action_id: 7
+    idempotency: IdempotentExternal
+    strict_safe: true
+    input_schema_digest: blake3:...
+  - name: ai.classify_ticket
+    action_id: 12
+    idempotency: DeterministicPure
+    strict_safe: true
+    input_schema_digest: blake3:...
+```
+
+```text
+velvet-ballastics action inspect github.issue.create --emit yaml
+```
+
+```yaml
+kind: ActionDescription
+name: github.issue.create
+idempotency: IdempotentExternal
+strict_safe: true
+requires:
+  secrets:
+    - github_token
+input_schema:
+  repo:
+    type: symbol
+    required: true
+  title:
+    type: symbol
+    required: true
+output_schema:
+  issue_number:
+    type: i64
+  url:
+    type: symbol
+failure_codes:
+  - RATE_LIMITED
+  - PERMISSION_DENIED
+  - INVALID_INPUT
+examples:
+  - name: minimal
+    yaml: |
+      do:
+        action: github.issue.create
+        with:
+          repo: $input.repo
+          title: $input.title
+```
+
+### doctor Command
+
+```text
+velvet-ballastics doctor --emit yaml
+```
+
+Checks: runtime daemon reachable, Fjall DB healthy, action packs loaded, action ABI digest, compiled workflows available, IPC socket permissions, strict durability available, journal writer healthy.
+
+```yaml
+kind: DoctorReport
+status: pass
+checks:
+  - name: ipc_socket
+    status: pass
+  - name: fjall_store
+    status: pass
+  - name: action_registry
+    status: pass
+    action_count: 12
+  - name: strict_durability
+    status: pass
+```
+
+### ai context Command
+
+Specifically for AI agents. Emits a compact, redacted packet:
+
+```text
+velvet-ballastics ai context run_123 --emit yaml
+```
+
+```yaml
+kind: AiContextPacket
+safe_for_model: true
+run:
+  id: 123
+  status: failed
+workflow:
+  name: issue_triage
+  compiled_digest: blake3:...
+failure:
+  code: ACTION_TIMEOUT
+  step: create_issue
+  replay_safe: true
+redactions:
+  secrets_redacted: 2
+  blobs_summarized: 1
+suggested_next_commands:
+  - velvet-ballastics replay run_123 --explain --emit yaml
+  - velvet-ballastics events run_123 --tail 50 --emit yaml
+  - velvet-ballastics verify workflow.yaml --profile strict --emit yaml
+```
+
+This is a stable AI interface, not a gimmick.
+
+### Output Format Contract
+
+```text
+--emit text      # Human-readable (default)
+--emit yaml      # AI-structured
+--emit postcard  # Machine binary
+```
+
+JSON may follow as a cold adapter, but YAML and binary are canonical for v1.
+
+Rules:
+
+1. Every structured output has `schema_version`.
+2. Every output has `kind`.
+3. Every diagnostic has `code`, `path`, `span`, `message`, `repair`.
+4. Secret values are never emitted unless explicit `--unsafe` flag.
+5. Large blobs are summarized by digest/type/size.
+6. Exit codes are stable and documented.
+
+Stable exit codes:
+
+| Code | Meaning |
+|------|---------|
+| 0 | success |
+| 1 | validation failed |
+| 2 | verification failed |
+| 3 | compile failed |
+| 4 | runtime failed |
+| 5 | storage error |
+| 6 | IPC error |
+| 7 | action policy error |
+| 8 | replay divergence |
+
+AI agents can branch on exit codes. No parsing error text.
+
+### CLI-UI Parity Rule
+
+No UI-only truth. If the UI shows taint graphs, replay timelines, action tickets, queue pressure, certificate status, or incident repair, the CLI must expose it too.
+
+Backend emits typed artifacts:
+
+- `VerificationReport`
+- `WorkflowGraph`
+- `RunInspection`
+- `RunEvents`
+- `ReplayReport`
+- `IncidentReport`
+- `SystemStatus`
+- `ActionDescription`
+
+CLI and UI are views over those same artifacts. Makepad UI consumes the same data.
+
+### CLI Build Order
+
+1. `validate --emit yaml`
+2. `verify --emit yaml`
+3. `compile --emit ir/cert/graph`
+4. `simulate --emit yaml`
+5. `run`/`submit`
+6. `inspect --emit yaml`
+7. `events --emit yaml`
+8. `replay --explain --emit yaml`
+9. `incident --emit yaml`
+10. `system status --emit yaml`
+11. Makepad UI consumes the same data
+
+Build CLI before fancy UI. The UI should not invent concepts — it visualizes proven backend artifacts.
+
+### The Killer Demo
+
+```text
+velvet-ballastics verify issue-triage.yaml --profile strict --emit yaml
+velvet-ballastics simulate issue-triage.yaml --input example.vbin --mocks mocks.yaml --emit yaml
+velvet-ballastics submit issue_triage --input-bin prod.vbin --emit yaml
+velvet-ballastics incident run_123 --emit yaml
+```
+
+Then hand the output to an AI and ask: *What failed, is it safe to retry, and what should I change?* If the AI can answer correctly from the CLI packet, the design works.
+
+---
+
+## 55. Workflow Command-Center Front-End
+
+### Vision
+
+A mission control–style front-end for the durable workflow system. The UI should feel like a game: alive, causal, and inspectable, rather than a CRUD dashboard. When an operator opens the application they must immediately understand the state of the system — what is running, blocked or failed, where bottlenecks are forming, whether sensitive data is flowing to forbidden sinks, and whether replaying an execution is safe.
+
+Two metaphors guide the design:
+
+1. **Air traffic control** for durable workflows — track many independent runs, see queue depths and shard health, spot collisions before they happen.
+2. **Mission control** for automation — monitor subsystem health and intervene during incidents.
+
+Bad metaphors to avoid: kanban boards, generic forms dashboards, low-code builders. Focus on flow of state, movement of events, replay of decisions, and subsystem health.
+
+### Visual Theme Reference
+
+The visual identity is defined by the two reference images at:
+
+- `docs/ui-reference/control-center-theme-a.png` — Grid-based multi-panel layout with process flow diagram, activity feed, metrics dashboard, and detailed log table. Deep navy/black background, bright green/red/yellow/cyan accents for status encoding. Flat design with monospaced data fonts.
+- `docs/ui-reference/control-center-theme-b.png` — Status indicator sidebar with shield icons, central workflow canvas with color-coded nodes, real-time metrics panel, and bottom KPI strip. Dark theme with green/yellow/red/purple/cyan accent palette. Geometric nodes, rounded corners, high contrast.
+
+Core aesthetic rules:
+
+- Dark background (near-black/deep navy), high-contrast accent colors.
+- Color encodes meaning: green = healthy/success, amber = warning/retry, red = failed/critical, cyan = informational/in-progress, purple = active/secret-tainted.
+- Monospaced fonts for data. Sans-serif for labels.
+- Flat design, no gratuitous gradients or 3D effects.
+- Negative space between panels. Data-dense but not cluttered.
+- Subtle animation pulses for live state (queue bars, moving packets, node glows), not decorative animation.
+
+### Core Questions the UI Must Answer
+
+At all times the UI must answer these instantly:
+
+1. **What is running?** Which workflows are active, where are they executing, what state is each run in?
+2. **What is blocked?** Which runs are waiting for external events, retries, or timers?
+3. **What failed and why?** Error code, context, replay safety.
+4. **Did side effects occur?** Durable action tickets and idempotency information.
+5. **Where is pressure building?** Queue depths, shard utilization, storage health.
+6. **Did secrets leak?** Taint propagation overlays showing secret-sensitive paths and sinks.
+7. **What changed since the last good run?** Diff slot values, taint status, certificates between runs.
+
+### Primary Screens
+
+#### A. System Overview ("World Map")
+
+The entire runtime as a living machine. Four panels:
+
+- **Left — Topology/System map:** Shards with identifiers and health indicators. Each shard displays active runs, ready queue depth, action completion queue depth, timer counts, frame pool usage, trace ring fill, and per-shard throughput metrics. Motion cues (pulses on queue bars, glowing packets between lanes) indicate work moving through the system.
+- **Centre — Activity lanes:** Horizontal lanes per shard, visualizing active runs flowing across steps. Blocked runs blink red, waiting runs glow blue, retries pulse amber. Lane height/intensity conveys queue pressure.
+- **Right — Alerts, incidents, and pressure:** Stack of alert cards summarizing current incidents, replay divergences, and blocked reconciliation. Cards are clickable to open the Run Inspector.
+- **Bottom — Event ticker:** Scrolling strip of recent system events (RunAccepted, StepStarted, ActionScheduled, etc.) with color-coded severity. Clicking an event jumps to the corresponding run.
+
+Smooth panning, zooming, inertial scrolling, and heat-bar overlays. Simulation-like overview where operators watch workflows move through shards in real time.
+
+#### B. Workflow Graph / Authoring View
+
+Individual workflow definition as a structured graph (not freeform whiteboard). YAML is source of truth; the canvas is a projection supporting structured editing.
+
+Each node card shows:
+
+- Step ID, primitive type (Task, Choice, Wait, Pass, Parallel, Map, Succeed, Fail), and action name for Task nodes.
+- Retry policy, timeout, resource impact.
+- Taint sensitivity and strict-safety status.
+- Inline badges: action id, retry count (R3), timeout (T5s), secret participation (S), strict-durable safety (D), recent failures (!).
+
+Edges labelled with transition type (normal, branch condition, error route, retry route, join). Historical branch frequencies on hover. Minimap for navigation. Scrubber overlays run-time state onto the design graph for replaying past executions.
+
+Inspector pane: YAML source, compiled IR details, input/output slots, resource contracts, retry/catch policies, taint information, last-run statistics. Diff two workflow versions directly on the graph.
+
+#### C. Run Inspector / Replay Theater
+
+The hero feature — a replayable mission log for a single execution. Unifies graph, timeline, event log, and inspectors:
+
+- **Left:** Workflow graph with nodes coloured by runtime state (green = succeeded, blue = waiting, amber = retrying, red = failed, grey = not executed, purple = secret-tainted, white/teal = verification-safe). Selecting a node opens a details drawer.
+- **Centre:** Timeline/playback control showing every journal event (RunAccepted, StepStarted, SlotWritten, ActionScheduled, ActionCompleted, ActionFailed, WaitScheduled, AskScheduled, RetryScheduled, RunFinished, RunFailed). Play, pause, step forward/backward, jump to failure, jump to action, jump to replay divergence, change playback speed. Event scrubber drives the graph overlay.
+- **Right:** Detail inspectors for selected node/event — slot diffs, taint diffs, action ticket details (run, step, attempt, idempotency key hash, timestamps, outcome, replay safety, duplicate completions). Slot diff panel shows how individual slot values change at each event.
+- **Bottom:** Event log with timestamps and severity, clickable to sync timeline. Tabs switch between event stream, slot changes, taint flows, action tickets, and system counters.
+
+Time-travel debugging for durable workflows: scrub any run like a video replay and see every state transition, durable event, ticket, secret flow, and resource change.
+
+#### D. Verification / Certificate View
+
+Pre-flight certificates: structural validity, boundedness, resource bounds, taint flow, and action policy. Answers "is this workflow safe?" and surfaces proofs.
+
+Panels:
+
+- **Structure:** Unreachable steps, invalid transitions, incorrect joins, cycle analysis.
+- **Boundedness:** Max transitions, max retries, fan-out, timer waits, action count.
+- **Resources:** Slot count, max frame size, max action payload, max result size, queue requirements.
+- **Taint/secret flow:** Source-to-sink graph. Purple paths = tainted flow; shield icons = safe outputs.
+- **Action policy:** Idempotency classification, timeout coverage, missing caps, strict-durability eligibility.
+- **Replay/durability:** Journaled vs strict profile differences, potential divergence points, worst-case recovery.
+
+Each panel: summary pass/fail, numeric bounds, interactive overlays on the graph.
+
+#### E. Incident / Failure Console
+
+Tactical incident board, not a log list. Top: failure code, offending step, run ID, workflow digest, replay safety, side-effect certainty. Tabs: cause, timeline, state diff, replay behaviour, repair suggestions.
+
+Highlights the failure path, shows slot diffs just before failure, proposes recovery (increase timeout, reduce payload, add retry backoff, pin idempotency, fix secret leak). AI assistance can summarise or generate repro steps.
+
+### AI Companion Panel
+
+Not a generic chat sidebar. The AI copilot receives structured artifacts: graph model, certificates, event stream, slot diffs, error packets, taint graph, resource counters.
+
+Useful actions:
+
+- Explain a failure and summarise what changed in a run.
+- Show all secret-sensitive paths and identify leaks.
+- Explain why strict-durability eligibility failed.
+- Suggest bounded retry policies, minimal reproductions, or resource optimisations.
+
+Prompts presented as buttons, not free-form chat. Responses shown alongside referenced data. AI output always maps back to YAML, compiled IR, journal events, or certificates — never hidden UI state.
+
+### Front-End Data Contract
+
+Backend must expose machine-readable artifacts consumed by both CLI and UI:
+
+| Artifact | Consumer |
+|----------|----------|
+| `WorkflowGraph` | CLI `graph`, UI authoring canvas, AI |
+| `VerificationReport` | CLI `verify`, UI certificate view, AI |
+| `RunInspection` | CLI `inspect`, UI run inspector |
+| `RunEvents` | CLI `events`, UI timeline/event ticker |
+| `ReplayReport` | CLI `replay`, UI replay theater |
+| `IncidentReport` | CLI `incident`, UI incident console, AI |
+| `SystemStatus` | CLI `system status`, UI system overview |
+| `ActionDescription` | CLI `action inspect`, UI action panels, AI |
+
+These artifacts are delivered via streaming APIs or websockets so the UI remains live and responsive. The CLI emits the same artifacts in YAML or postcard format.
+
+### Front-End Build Order
+
+| Phase | Deliverable | Why first |
+|-------|-------------|-----------|
+| 1 | Run Inspector / Replay Theater | Immediate debugging value; exercises the hardest backend APIs first. |
+| 2 | Verification / Certificate View | Differentiates the product via static analysis and safety proofs. |
+| 3 | System Overview (World Map) | Macro health visibility once individual runs are inspectable. |
+| 4 | Authoring Canvas | Full editing lifecycle; requires incremental layout and careful UX. |
+
+Phase 1 surfaces the hardest problems early: mapping journal events to graph changes, aligning time series with visual layout, implementing diff inspectors. It also provides immediate debugging value before any other screen exists.
+
+### Technology
+
+The front-end is built with Makepad, consuming the same artifact types emitted by the CLI. The Makepad UI does not invent concepts — it visualizes proven backend artifacts. Both CLI and UI are views over the same typed data.
