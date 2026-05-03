@@ -7864,7 +7864,7 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      until: 0\n  - id: done\n    finish:\n      result: 0\n",
         );
-        assert!(matches!(result, Ok(_)), "wait with until should compile");
+        assert!(result.is_ok(), "wait with until should compile");
     }
 
     #[test]
@@ -7875,8 +7875,8 @@ steps:
         let without_timeout = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      event: 0\n  - id: done\n    finish:\n      result: 0\n",
         );
-        assert!(matches!(with_timeout, Ok(_)), "wait with event + timeout should compile");
-        assert!(matches!(without_timeout, Ok(_)), "wait with event alone should compile");
+        assert!(with_timeout.is_ok(), "wait with event + timeout should compile");
+        assert!(without_timeout.is_ok(), "wait with event alone should compile");
     }
 
     #[test]
@@ -7917,7 +7917,7 @@ steps:
         let result = YamlCompiler::default().compile(
             b"version: velvet-ballastics/v1\nname: repeat_case\nwhen:\n  manual: {}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: 3\n  - id: done\n    finish:\n      result: 1\n",
         );
-        assert!(matches!(result, Ok(_)), "repeat with max_attempts should compile");
+        assert!(result.is_ok(), "repeat with max_attempts should compile");
     }
 
     #[test]
