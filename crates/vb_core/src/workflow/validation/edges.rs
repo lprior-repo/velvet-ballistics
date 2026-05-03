@@ -176,3 +176,408 @@ fn push_loop_span(
     spans.push((ci, done_idx));
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ids::{SlotIdx, StepIdx, ConstIdx};
+    use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowDigest, WorkflowParts};
+    use crate::value::ConstValue;
+
+    fn nop_node(id: u16, next: Option<u16>) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: next.map(StepIdx::new),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }
+    }
+
+    fn finish_node(id: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+        }
+    }
+
+    fn make_parts(nodes: Vec<CompiledNode>) -> WorkflowParts {
+        let max_steps = u16::try_from(nodes.len()).map_or(u16::MAX, |v| v);
+        WorkflowParts {
+            name: Box::<str>::from("edges_test"),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract {
+                max_steps,
+                max_slots: 10,
+                max_constants: 10,
+                max_accessors: 10,
+                max_expressions: 10,
+                max_expr_stack: 64,
+                max_step_budget_per_tick: 10_000,
+                max_input_bytes: 1_048_576,
+                max_output_bytes: 1_048_576,
+                max_blob_bytes: 16_777_216,
+                max_ipc_payload_bytes: 1_048_576,
+                max_retry_attempts: 3,
+                max_fanout: 64,
+                max_collect_items: 1_024,
+                max_queue_depth: 1_024,
+                max_journal_batch_bytes: 1_048_576,
+            },
+            step_names: Box::new([]),
+        }
+    }
+
+    // -- validate_forward_edges: forward next edges --
+
+    #[test]
+    fn forward_edges_accepts_linear_chain() {
+        let parts = make_parts(vec![
+            nop_node(0, Some(1)),
+            nop_node(1, Some(2)),
+            finish_node(2),
+        ]);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    #[test]
+    fn forward_edges_rejects_backward_next() {
+        let parts = make_parts(vec![
+            nop_node(0, Some(1)),
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: Some(StepIdx::new(0)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            },
+        ]);
+        let result = validate_forward_edges(&parts);
+        assert!(matches!(
+            result,
+            Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(1) && to == StepIdx::new(0)
+        ));
+    }
+
+    #[test]
+    fn forward_edges_accepts_jump_backward() {
+        let nodes = vec![
+            nop_node(0, Some(1)),
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Jump { target: StepIdx::new(0) },
+            },
+        ];
+        let parts = make_parts(nodes);
+        // Jump is allowed to point backward
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    // -- validate_forward_edges: kind-specific edges --
+
+    #[test]
+    fn forward_edges_accepts_choose_slot_forward_branches() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ChooseSlot {
+                    branches: vec![crate::workflow::SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    }].into_boxed_slice(),
+                    otherwise: Some(StepIdx::new(2)),
+                },
+            },
+            finish_node(1),
+            finish_node(2),
+        ];
+        let parts = make_parts(nodes);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    #[test]
+    fn forward_edges_rejects_choose_slot_backward_branch() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ChooseSlot {
+                    branches: vec![crate::workflow::SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(0),
+                    }].into_boxed_slice(),
+                    otherwise: None,
+                },
+            },
+        ];
+        let parts = make_parts(nodes);
+        let result = validate_forward_edges(&parts);
+        assert!(matches!(
+            result,
+            Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0)
+        ));
+    }
+
+    // -- validate_forward_edges: loop span (done target) --
+
+    #[test]
+    fn forward_edges_accepts_for_each_done_forward() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            nop_node(1, None),
+            finish_node(2),
+        ];
+        let parts = make_parts(nodes);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    #[test]
+    fn forward_edges_rejects_for_each_done_backward() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(0),
+                    done: StepIdx::new(0),
+                },
+            },
+            nop_node(0, None),
+        ];
+        let parts = make_parts(nodes);
+        let result = validate_forward_edges(&parts);
+        assert!(matches!(result, Err(WorkflowError::BackwardEdge { .. })));
+    }
+
+    // -- validate_forward_edges: error handler forward target --
+
+    #[test]
+    fn forward_edges_accepts_error_handler_forward() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ErrorHandler {
+                    body: StepIdx::new(1),
+                    handler: StepIdx::new(2),
+                },
+            },
+            nop_node(1, None),
+            finish_node(2),
+        ];
+        let parts = make_parts(nodes);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    #[test]
+    fn forward_edges_rejects_error_handler_backward() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ErrorHandler {
+                    body: StepIdx::new(0),
+                    handler: StepIdx::new(2),
+                },
+            },
+            nop_node(0, None),
+        ];
+        let parts = make_parts(nodes);
+        let result = validate_forward_edges(&parts);
+        assert!(matches!(result, Err(WorkflowError::BackwardEdge { .. })));
+    }
+
+    // -- validate_forward_edges: self-loop on next --
+
+    #[test]
+    fn forward_edges_rejects_self_loop_via_next() {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(0)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }];
+        let parts = make_parts(nodes);
+        let result = validate_forward_edges(&parts);
+        assert!(matches!(
+            result,
+            Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0)
+        ));
+    }
+
+    // -- Loop nesting: properly nested loops --
+
+    #[test]
+    fn forward_edges_accepts_properly_nested_loops() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(4),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(1),
+                    item_slot: SlotIdx::new(2),
+                    limit: 10,
+                    body: StepIdx::new(2),
+                    done: StepIdx::new(3),
+                },
+            },
+            nop_node(2, None),
+            finish_node(3),
+            finish_node(4),
+        ];
+        let parts = make_parts(nodes);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    #[test]
+    fn forward_edges_rejects_improperly_nested_loops() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(3),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(1),
+                    item_slot: SlotIdx::new(2),
+                    limit: 10,
+                    body: StepIdx::new(2),
+                    done: StepIdx::new(4),
+                },
+            },
+            nop_node(2, None),
+            finish_node(3),
+            finish_node(4),
+        ];
+        let parts = make_parts(nodes);
+        let result = validate_forward_edges(&parts);
+        // Inner loop (at 1) has done=4, which exceeds outer done=3
+        assert!(matches!(
+            result,
+            Err(WorkflowError::ImproperLoopNesting { inner, outer_done })
+            if inner == StepIdx::new(1) && outer_done == StepIdx::new(3)
+        ));
+    }
+
+    // -- Non-loop kinds do not create loop spans --
+
+    #[test]
+    fn forward_edges_accepts_nop_chain_without_loops() {
+        let parts = make_parts(vec![
+            nop_node(0, Some(1)),
+            nop_node(1, Some(2)),
+            nop_node(2, Some(3)),
+            finish_node(3),
+        ]);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+
+    // -- TogetherStart loop span validation --
+
+    #[test]
+    fn forward_edges_accepts_together_start_forward_join() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::TogetherStart {
+                    branches: vec![StepIdx::new(1)].into_boxed_slice(),
+                    join: StepIdx::new(2),
+                },
+            },
+            nop_node(1, None),
+            finish_node(2),
+        ];
+        let parts = make_parts(nodes);
+        assert_eq!(validate_forward_edges(&parts), Ok(()));
+    }
+}

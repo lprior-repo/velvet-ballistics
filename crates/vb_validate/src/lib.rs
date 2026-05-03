@@ -33,6 +33,32 @@ pub mod schema;
 pub mod shared;
 pub mod type_taint;
 
+// Individual gate modules (test-only until migration from gates.rs completes).
+#[cfg(test)]
+mod fact_table;
+#[cfg(test)]
+mod gate_07_stack;
+#[cfg(test)]
+mod gate_08_accessor;
+#[cfg(test)]
+mod gate_09_slots;
+#[cfg(test)]
+mod gate_10_node;
+#[cfg(test)]
+mod gate_11_loop;
+#[cfg(test)]
+mod gate_12_14_15;
+#[cfg(test)]
+mod gate_13_cycles;
+#[cfg(test)]
+mod secret_leak;
+#[cfg(test)]
+mod taint_prop;
+#[cfg(test)]
+mod type_check;
+#[cfg(test)]
+mod type_sigs;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {
