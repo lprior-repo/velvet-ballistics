@@ -178,10 +178,6 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
         CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
         CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
-        CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
-        CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
-        CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
-        CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
         CompiledNodeKind::ReduceStart { .. } => Some("ReduceStart"),
         CompiledNodeKind::ReduceNext { .. } => Some("ReduceNext"),
         CompiledNodeKind::ReduceFinish { .. } => Some("ReduceFinish"),
@@ -204,6 +200,10 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. }
         | CompiledNodeKind::RetryCheck { .. }
+        | CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectPage { .. }
+        | CompiledNodeKind::CollectNext { .. }
+        | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
     }
