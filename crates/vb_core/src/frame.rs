@@ -216,6 +216,56 @@ impl RunFrame {
             .ok_or(CoreError::SlotOutOfBounds { slot })
     }
 
+    pub(crate) fn find_handle_taint(&self, value: &SlotValue) -> Taint {
+        match value {
+            SlotValue::Object(id) => {
+                let mut idx = 0usize;
+                while idx < usize::from(self.slot_count) {
+                    if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx) {
+                        if *vid == *id {
+                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
+                        }
+                    }
+                    idx = idx.saturating_add(1);
+                }
+                Taint::Clean
+            }
+            SlotValue::List(id) => {
+                let mut idx = 0usize;
+                while idx < usize::from(self.slot_count) {
+                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx) {
+                        if *vid == *id {
+                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
+                        }
+                    }
+                    idx = idx.saturating_add(1);
+                }
+                Taint::Clean
+            }
+            _ => Taint::Clean,
+        }
+    }
+                    }
+                    idx = idx.saturating_add(1);
+                }
+                Taint::Clean
+            }
+            SlotValue::List(id) => {
+                let mut idx = 0usize;
+                while idx < usize::from(self.slot_count) {
+                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx) {
+                        if *vid == *id {
+                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
+                        }
+                    }
+                    idx = idx.saturating_add(1);
+                }
+                Taint::Clean
+            }
+            _ => Taint::Clean,
+        }
+    }
+
     /// Writes a slot taint marker.
     ///
     /// Rejects taint writes to uninitialized slots to prevent a taint/value

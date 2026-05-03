@@ -238,6 +238,33 @@ fn one_arg(args: &[SlotValue], helper: ExprHelper) -> ExprResult<&SlotValue> {
     args.first().ok_or(ExprError::StackUnderflow)
 }
 
+fn two_args(args: &[SlotValue], helper: ExprHelper) -> ExprResult<(&SlotValue, &SlotValue)> {
+    if args.len() != 2 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 2,
+            actual: args.len(),
+        });
+    }
+    let left = args.first().ok_or(ExprError::StackUnderflow)?;
+    let right = args.get(1).ok_or(ExprError::StackUnderflow)?;
+    Ok((left, right))
+}
+
+fn three_args(args: &[SlotValue], helper: ExprHelper) -> ExprResult<(&SlotValue, &SlotValue, &SlotValue)> {
+    if args.len() != 3 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 3,
+            actual: args.len(),
+        });
+    }
+    let first = args.first().ok_or(ExprError::StackUnderflow)?;
+    let second = args.get(1).ok_or(ExprError::StackUnderflow)?;
+    let third = args.get(2).ok_or(ExprError::StackUnderflow)?;
+    Ok((first, second, third))
+}
+
 fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Exists)?;
     Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
