@@ -8,10 +8,10 @@
 //! slot because the `SlotValue` type system does not support arbitrary strings.
 //! If no handler exists, the run fails.
 
+use crate::CoreError;
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{SlotIdx, StepIdx};
-use crate::CoreError;
 use crate::value::SlotValue;
 use crate::workflow::CompiledWorkflow;
 
@@ -88,9 +88,7 @@ fn error_code_string(error: &EngineError) -> Box<str> {
             EngineError::ExpressionStackUnderflow => "EXPRESSION_STACK_UNDERFLOW",
             EngineError::InvalidCompiledWorkflow { .. } => "INVALID_COMPILED_WORKFLOW",
             EngineError::UnsupportedPrimitive { .. } => "UNSUPPORTED_PRIMITIVE",
-            EngineError::UnsupportedAccessorTraversal { .. } => {
-                "UNSUPPORTED_ACCESSOR_TRAVERSAL"
-            }
+            EngineError::UnsupportedAccessorTraversal { .. } => "UNSUPPORTED_ACCESSOR_TRAVERSAL",
             EngineError::ObjectFieldNotFound { .. } => "OBJECT_FIELD_NOT_FOUND",
             EngineError::ListIndexOutOfBounds { .. } => "LIST_INDEX_OUT_OF_BOUNDS",
             EngineError::InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
@@ -103,9 +101,7 @@ fn error_code_string(error: &EngineError) -> Box<str> {
             EngineError::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
             EngineError::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
             EngineError::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
-            EngineError::TogetherBranchLimitExceeded { .. } => {
-                "TOGETHER_BRANCH_LIMIT_EXCEEDED"
-            }
+            EngineError::TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
             EngineError::BudgetExceeded { .. } => "BUDGET_EXCEEDED",
             &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
         }
@@ -168,8 +164,7 @@ fn write_error_slot(
 ) -> Result<(), EngineError> {
     // Write the failed step index as an I64 value to the error slot.
     // The handler can read this to determine which step failed.
-    let step_value =
-        SlotValue::I64(i64::from(failed_step.get()));
+    let step_value = SlotValue::I64(i64::from(failed_step.get()));
     run.write_slot(error_slot, step_value)?;
 
     // Only the step index is written. The error code and message are not
@@ -188,15 +183,16 @@ fn has_error_handler(node: &CompiledNode) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        ErrorHandlerOutcome, ErrorSlotData, error_code_string, has_error_handler, route_error_handler,
+        ErrorHandlerOutcome, ErrorSlotData, error_code_string, has_error_handler,
+        route_error_handler,
     };
     use crate::errors::EngineError;
     use crate::frame::RunFrame;
+    use crate::ids::{ConstIdx, WorkflowDigest};
     use crate::ids::{RunId, SlotIdx, StepIdx};
     use crate::value::SlotValue;
-    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
-    use crate::ids::{ConstIdx, WorkflowDigest};
     use crate::workflow::ResourceContract;
+    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     fn test_parts_with_error_handler() -> WorkflowParts {
         // Node 0: SetConst (normal step with error handler -> node 2)
@@ -247,7 +243,8 @@ mod tests {
                         result: SlotIdx::new(2),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
@@ -284,7 +281,8 @@ mod tests {
                         result: SlotIdx::new(0),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
@@ -299,30 +297,43 @@ mod tests {
     #[test]
     fn route_error_handler_routes_to_handler_when_configured() {
         let parts = test_parts_with_error_handler();
-        let plan = CompiledWorkflow::try_from_parts(parts).ok().expect("valid workflow");
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4).ok().expect("valid frame");
+        let plan = CompiledWorkflow::try_from_parts(parts)
+            .ok()
+            .expect("valid workflow");
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4)
+            .ok()
+            .expect("valid frame");
         let error = EngineError::DivisionByZero;
 
         let outcome = route_error_handler(&plan, &mut run, StepIdx::new(0), &error)
-            .ok().expect("routing should succeed");
+            .ok()
+            .expect("routing should succeed");
 
         assert_eq!(outcome, ErrorHandlerOutcome::Routed);
         // PC should be at handler step (node 2)
         assert_eq!(run.pc(), StepIdx::new(2));
         // Error slot (slot 1) should have the failed step index
-        let error_value = run.read_slot(SlotIdx::new(1)).ok().expect("slot should be written");
+        let error_value = run
+            .read_slot(SlotIdx::new(1))
+            .ok()
+            .expect("slot should be written");
         assert_eq!(*error_value, SlotValue::I64(0)); // failed_step index
     }
 
     #[test]
     fn route_error_handler_returns_no_handler_when_not_configured() {
         let parts = test_parts_without_error_handler();
-        let plan = CompiledWorkflow::try_from_parts(parts).ok().expect("valid workflow");
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).ok().expect("valid frame");
+        let plan = CompiledWorkflow::try_from_parts(parts)
+            .ok()
+            .expect("valid workflow");
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2)
+            .ok()
+            .expect("valid frame");
         let error = EngineError::DivisionByZero;
 
         let outcome = route_error_handler(&plan, &mut run, StepIdx::new(0), &error)
-            .ok().expect("routing should succeed");
+            .ok()
+            .expect("routing should succeed");
 
         assert_eq!(outcome, ErrorHandlerOutcome::NoHandler);
         // PC should remain unchanged
@@ -332,15 +343,25 @@ mod tests {
     #[test]
     fn route_error_handler_writes_error_slot_with_failed_step_index() {
         let parts = test_parts_with_error_handler();
-        let plan = CompiledWorkflow::try_from_parts(parts).ok().expect("valid workflow");
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4).ok().expect("valid frame");
+        let plan = CompiledWorkflow::try_from_parts(parts)
+            .ok()
+            .expect("valid workflow");
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4)
+            .ok()
+            .expect("valid frame");
 
-        let error = EngineError::SlotOutOfBounds { slot: SlotIdx::new(99) };
+        let error = EngineError::SlotOutOfBounds {
+            slot: SlotIdx::new(99),
+        };
         let _ = route_error_handler(&plan, &mut run, StepIdx::new(0), &error)
-            .ok().expect("routing should succeed");
+            .ok()
+            .expect("routing should succeed");
 
         // Verify error slot content
-        let error_value = run.read_slot(SlotIdx::new(1)).ok().expect("error slot should be written");
+        let error_value = run
+            .read_slot(SlotIdx::new(1))
+            .ok()
+            .expect("error slot should be written");
         assert_eq!(*error_value, SlotValue::I64(0)); // StepIdx(0).get() as i64
     }
 
@@ -371,7 +392,8 @@ mod tests {
                         result: SlotIdx::new(0),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
@@ -381,12 +403,17 @@ mod tests {
             resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
         };
-        let plan = CompiledWorkflow::try_from_parts(parts).ok().expect("valid workflow");
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).ok().expect("valid frame");
+        let plan = CompiledWorkflow::try_from_parts(parts)
+            .ok()
+            .expect("valid workflow");
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2)
+            .ok()
+            .expect("valid frame");
 
         let error = EngineError::DivisionByZero;
         let outcome = route_error_handler(&plan, &mut run, StepIdx::new(0), &error)
-            .ok().expect("routing should succeed");
+            .ok()
+            .expect("routing should succeed");
 
         assert_eq!(outcome, ErrorHandlerOutcome::Routed);
         assert_eq!(run.pc(), StepIdx::new(1));
@@ -419,16 +446,37 @@ mod tests {
     #[test]
     fn error_code_string_covers_all_variants() {
         let cases: Vec<(EngineError, &str)> = vec![
-            (EngineError::InvalidProgramCounter { step: StepIdx::new(0) }, "INVALID_PROGRAM_COUNTER"),
-            (EngineError::MissingNextStep { step: StepIdx::new(0) }, "MISSING_NEXT_STEP"),
-            (EngineError::SlotOutOfBounds { slot: SlotIdx::new(0) }, "SLOT_OUT_OF_BOUNDS"),
+            (
+                EngineError::InvalidProgramCounter {
+                    step: StepIdx::new(0),
+                },
+                "INVALID_PROGRAM_COUNTER",
+            ),
+            (
+                EngineError::MissingNextStep {
+                    step: StepIdx::new(0),
+                },
+                "MISSING_NEXT_STEP",
+            ),
+            (
+                EngineError::SlotOutOfBounds {
+                    slot: SlotIdx::new(0),
+                },
+                "SLOT_OUT_OF_BOUNDS",
+            ),
             (EngineError::DivisionByZero, "DIVISION_BY_ZERO"),
             (EngineError::NonFiniteNumber, "NON_FINITE_NUMBER"),
             (EngineError::StepBudgetExhausted, "STEP_BUDGET_EXHAUSTED"),
             (EngineError::QueueFull, "QUEUE_FULL"),
             (EngineError::AllocationFailed, "ALLOCATION_FAILED"),
-            (EngineError::ExpressionStackUnderflow, "EXPRESSION_STACK_UNDERFLOW"),
-            (EngineError::ResourceLimitExceeded { resource: "test" }, "RESOURCE_LIMIT_EXCEEDED"),
+            (
+                EngineError::ExpressionStackUnderflow,
+                "EXPRESSION_STACK_UNDERFLOW",
+            ),
+            (
+                EngineError::ResourceLimitExceeded { resource: "test" },
+                "RESOURCE_LIMIT_EXCEEDED",
+            ),
         ];
 
         for (error, expected_code) in cases {

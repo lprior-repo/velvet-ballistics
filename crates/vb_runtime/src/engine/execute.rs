@@ -27,24 +27,48 @@ pub fn execute_node_full(
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &node.kind {
         CompiledNodeKind::ForEachStart {
-            input, item_slot, limit, body, done,
+            input,
+            item_slot,
+            limit,
+            body,
+            done,
         } => crate::primitives::for_each::for_each_start(
-            run, store, *input, *item_slot, *limit, *body, *done, node.output,
+            run,
+            store,
+            *input,
+            *item_slot,
+            *limit,
+            *body,
+            *done,
+            node.output,
         )
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core),
 
-        CompiledNodeKind::ForEachNext { iterator_slot, body, done } => {
-            crate::primitives::for_each::for_each_next(
-                run, store, *iterator_slot, *body, *done, node.output,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::ForEachNext {
+            iterator_slot,
+            body,
+            done,
+        } => crate::primitives::for_each::for_each_next(
+            run,
+            store,
+            *iterator_slot,
+            *body,
+            *done,
+            node.output,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
         CompiledNodeKind::ForEachJoin { output } => {
             let step = node.id;
-            match crate::primitives::for_each::for_each_join(run, *output, node.output, node.next, step) {
+            match crate::primitives::for_each::for_each_join(
+                run,
+                *output,
+                node.output,
+                node.next,
+                step,
+            ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }
@@ -56,113 +80,185 @@ pub fn execute_node_full(
                 .map(runtime_from_core)
         }
 
-        CompiledNodeKind::TogetherBranch { branch, entry, join, accumulator } => {
-            crate::primitives::together::together_branch(
-                run, store, *branch, *entry, *join, *accumulator, node.output,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::TogetherBranch {
+            branch,
+            entry,
+            join,
+            accumulator,
+        } => crate::primitives::together::together_branch(
+            run,
+            store,
+            *branch,
+            *entry,
+            *join,
+            *accumulator,
+            node.output,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
-        CompiledNodeKind::TogetherJoin { branch_count, accumulator } => {
+        CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        } => {
             let step = node.id;
             match crate::primitives::together::together_join(
-                run, store, *branch_count, *accumulator, node.output, node.next, step,
+                run,
+                store,
+                *branch_count,
+                *accumulator,
+                node.output,
+                node.next,
+                step,
             ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }
         }
 
-        CompiledNodeKind::CollectStart { source, limit, page_size, body, done } => {
-            crate::primitives::collect::collect_start(
-                run, store, collect_states, *source, *limit, *page_size,
-                *body, *done, node.output, None,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::CollectStart {
+            source,
+            limit,
+            page_size,
+            body,
+            done,
+        } => crate::primitives::collect::collect_start(
+            run,
+            store,
+            collect_states,
+            *source,
+            *limit,
+            *page_size,
+            *body,
+            *done,
+            node.output,
+            None,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
-        CompiledNodeKind::CollectPage { collector_slot, body, done } => {
-            crate::primitives::collect::collect_page(
-                run, store, collect_states, *collector_slot, *body, *done,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::CollectPage {
+            collector_slot,
+            body,
+            done,
+        } => crate::primitives::collect::collect_page(
+            run,
+            store,
+            collect_states,
+            *collector_slot,
+            *body,
+            *done,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
-        CompiledNodeKind::CollectNext { collector_slot, body, done } => {
-            crate::primitives::collect::collect_next(
-                run, store, collect_states, *collector_slot, *body, *done,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::CollectNext {
+            collector_slot,
+            body,
+            done,
+        } => crate::primitives::collect::collect_next(
+            run,
+            store,
+            collect_states,
+            *collector_slot,
+            *body,
+            *done,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
         CompiledNodeKind::CollectFinish { collector_slot } => {
             let step = node.id;
             match crate::primitives::collect::collect_finish(
-                run, collect_states, *collector_slot, node.output, node.next, step,
+                run,
+                collect_states,
+                *collector_slot,
+                node.output,
+                node.next,
+                step,
             ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }
         }
 
-        CompiledNodeKind::ReduceStart { input, accumulator, initial, body, done } => {
-            crate::primitives::reduce::reduce_start(
-                plan, run, store, *input, *accumulator, *initial, *body, *done, node.output,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body,
+            done,
+        } => crate::primitives::reduce::reduce_start(
+            plan,
+            run,
+            store,
+            *input,
+            *accumulator,
+            *initial,
+            *body,
+            *done,
+            node.output,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
-        CompiledNodeKind::ReduceNext { iterator_slot, accumulator, body, done } => {
-            crate::primitives::reduce::reduce_next(
-                run, store, *iterator_slot, *accumulator, *body, *done, node.output,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            accumulator,
+            body,
+            done,
+        } => crate::primitives::reduce::reduce_next(
+            run,
+            store,
+            *iterator_slot,
+            *accumulator,
+            *body,
+            *done,
+            node.output,
+        )
+        .map_err(RuntimeEngineError::Core)
+        .map(runtime_from_core),
 
         CompiledNodeKind::ReduceFinish { accumulator } => {
             let step = node.id;
             match crate::primitives::reduce::reduce_finish(
-                run, *accumulator, node.output, node.next, step,
+                run,
+                *accumulator,
+                node.output,
+                node.next,
+                step,
             ) {
                 Ok(signal) => Ok(runtime_from_core(signal)),
                 Err(e) => Err(RuntimeEngineError::Core(e)),
             }
         }
 
-        CompiledNodeKind::RepeatStart { max_attempts, body, done } => {
-            crate::primitives::repeat::repeat_start(
-                run, *max_attempts, *body, *done, node.output,
-            )
+        CompiledNodeKind::RepeatStart {
+            max_attempts,
+            body,
+            done,
+        } => crate::primitives::repeat::repeat_start(run, *max_attempts, *body, *done, node.output)
             .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
+            .map(runtime_from_core),
 
-        CompiledNodeKind::RepeatAttempt { attempt_slot, body, done } => {
-            crate::primitives::repeat::repeat_attempt(run, *attempt_slot, *body, *done)
+        CompiledNodeKind::RepeatAttempt {
+            attempt_slot,
+            body,
+            done,
+        } => crate::primitives::repeat::repeat_attempt(run, *attempt_slot, *body, *done)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
+
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            crate::primitives::repeat::repeat_check(run, *attempt_slot, *done, node.next, node.id)
                 .map_err(RuntimeEngineError::Core)
                 .map(runtime_from_core)
         }
 
-        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
-            crate::primitives::repeat::repeat_check(
-                run, *attempt_slot, *done, node.next, node.id,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
-        }
-
         CompiledNodeKind::RepeatFinish { result } => {
-            crate::primitives::repeat::repeat_finish(
-                run, *result, node.output, node.next, node.id,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
+            crate::primitives::repeat::repeat_finish(run, *result, node.output, node.next, node.id)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
         }
 
         CompiledNodeKind::WaitUntil { deadline_slot } => {
@@ -171,24 +267,24 @@ pub fn execute_node_full(
                 .map(runtime_from_core)
         }
 
-        CompiledNodeKind::WaitEvent { event, timeout_slot } => {
-            crate::primitives::wait_ask::wait_event(run, *event, *timeout_slot)
-                .map_err(RuntimeEngineError::Core)
-                .map(runtime_from_core)
-        }
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => crate::primitives::wait_ask::wait_event(run, *event, *timeout_slot)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
 
-        CompiledNodeKind::Ask { prompt, timeout_slot } => {
-            crate::primitives::wait_ask::ask(run, *prompt, *timeout_slot)
-                .map_err(RuntimeEngineError::Core)
-                .map(runtime_from_core)
-        }
+        CompiledNodeKind::Ask {
+            prompt,
+            timeout_slot,
+        } => crate::primitives::wait_ask::ask(run, *prompt, *timeout_slot)
+            .map_err(RuntimeEngineError::Core)
+            .map(runtime_from_core),
 
         CompiledNodeKind::AskResume { answer } => {
-            crate::primitives::wait_ask::ask_resume(
-                run, *answer, node.output, node.next, node.id,
-            )
-            .map_err(RuntimeEngineError::Core)
-            .map(runtime_from_core)
+            crate::primitives::wait_ask::ask_resume(run, *answer, node.output, node.next, node.id)
+                .map_err(RuntimeEngineError::Core)
+                .map(runtime_from_core)
         }
 
         CompiledNodeKind::Do { action, input } => {
@@ -197,22 +293,34 @@ pub fn execute_node_full(
                 execute_do_without_contract(run, node.id, *action, *input, seq)
             } else {
                 execute_do(
-                    run, node.id, *action, *input, seq,
+                    run,
+                    node.id,
+                    *action,
+                    *input,
+                    seq,
                     resolve_contract(*action, contracts)?,
                     contracts,
                 )
             }
         }
 
-        CompiledNodeKind::RetryCheck { policy_slot: _, body, exhausted } => {
+        CompiledNodeKind::RetryCheck {
+            policy_slot: _,
+            body,
+            exhausted,
+        } => {
             let target = execute_retry_check(1, retry_policy, *body, *exhausted);
             run.set_pc(target).map_err(RuntimeEngineError::Core)?;
             run.increment_executed().map_err(RuntimeEngineError::Core)?;
             Ok(RuntimeSignal::Continue)
         }
 
-        CompiledNodeKind::ErrorHandler { body: handler_body, handler: _ } => {
-            run.set_pc(*handler_body).map_err(RuntimeEngineError::Core)?;
+        CompiledNodeKind::ErrorHandler {
+            body: handler_body,
+            handler: _,
+        } => {
+            run.set_pc(*handler_body)
+                .map_err(RuntimeEngineError::Core)?;
             run.increment_executed().map_err(RuntimeEngineError::Core)?;
             Ok(RuntimeSignal::Continue)
         }

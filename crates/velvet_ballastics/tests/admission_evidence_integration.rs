@@ -487,8 +487,10 @@ fn capability_check_rejects_unauthorized_action() {
     );
 
     // Verify a broader capability prefix does grant it
-    let any_caps =
-        vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new("action".into(), ActionId::new(7))]));
+    let any_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new(
+        "action".into(),
+        ActionId::new(7),
+    )]));
     assert!(
         any_caps.grants(&required),
         "exact action capability should grant action(7)"

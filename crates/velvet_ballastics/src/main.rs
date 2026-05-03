@@ -234,11 +234,11 @@ fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseErr
         Some(s) => s,
         None => return Ok(None),
     };
-    let step_id = step_raw.parse::<u16>().map_err(|_| {
-        ParseError::MissingArgument("--step")
-    })?;
-    let step_input = named_flag(args, "--step-input")
-        .ok_or(ParseError::MissingArgument("--step-input"))?;
+    let step_id = step_raw
+        .parse::<u16>()
+        .map_err(|_| ParseError::MissingArgument("--step"))?;
+    let step_input =
+        named_flag(args, "--step-input").ok_or(ParseError::MissingArgument("--step-input"))?;
     Ok(Some(StepTarget {
         step_id,
         step_input: PathBuf::from(step_input),
@@ -1437,10 +1437,10 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 mod tests {
     use super::{
         Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget,
-        StorageWorkflowResolver, build_step_frame, compile_bytes, decode_step_inputs,
-        execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
-        run_compiled_workflow, signal_name, write_step_inputs,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
+        build_step_frame, compile_bytes, decode_step_inputs, execute_step_isolated,
+        map_runtime_inputs, node_kind_name, parse_args, run_compiled_workflow, signal_name,
+        write_step_inputs,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;
@@ -1781,11 +1781,15 @@ mod tests {
     fn node_kind_name_returns_correct_labels() {
         assert_eq!(node_kind_name(&CompiledNodeKind::Nop), "Nop");
         assert_eq!(
-            node_kind_name(&CompiledNodeKind::SetConst { value: ConstIdx::new(0) }),
+            node_kind_name(&CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0)
+            }),
             "SetConst"
         );
         assert_eq!(
-            node_kind_name(&CompiledNodeKind::Finish { result: SlotIdx::ZERO }),
+            node_kind_name(&CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO
+            }),
             "Finish"
         );
     }
@@ -1821,10 +1825,8 @@ mod tests {
         let compiled = finish_workflow();
         assert!(compiled.is_some(), "test workflow should compile");
         if let Some(compiled) = compiled {
-            let mut frame = build_step_frame(&compiled, StepIdx::ZERO)
-                .expect("frame should build");
-            let inputs: Box<[vb_core::SlotValue]> =
-                Box::from([vb_core::SlotValue::I64(42)]);
+            let mut frame = build_step_frame(&compiled, StepIdx::ZERO).expect("frame should build");
+            let inputs: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::I64(42)]);
             write_step_inputs(&mut frame, &inputs);
             assert_eq!(
                 frame.read_slot(SlotIdx::ZERO),
@@ -1838,12 +1840,9 @@ mod tests {
         let compiled = finish_workflow();
         assert!(compiled.is_some(), "test workflow should compile");
         if let Some(compiled) = compiled {
-            let node = compiled.node(StepIdx::ZERO)
-                .expect("step 0 must exist");
+            let node = compiled.node(StepIdx::ZERO).expect("step 0 must exist");
             let inputs: Box<[vb_core::SlotValue]> = Box::from([]);
-            let code = execute_step_isolated(
-                &compiled, StepIdx::ZERO, node, &inputs,
-            );
+            let code = execute_step_isolated(&compiled, StepIdx::ZERO, node, &inputs);
             assert_eq!(code, std::process::ExitCode::SUCCESS);
         }
     }

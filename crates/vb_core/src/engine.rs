@@ -25,7 +25,9 @@ pub use object_list::build_object;
 pub use object_list::build_object as build_object_impl;
 pub use run_loop::{drive_deterministic, run_until_blocked};
 pub use signals::{EngineSignal, StepBudget};
-pub use step::{journal_action_suspended, resume_action_completion, resume_action_failure, step_once};
+pub use step::{
+    journal_action_suspended, resume_action_completion, resume_action_failure, step_once,
+};
 pub use validate::{
     validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
     validate_transition_target,
@@ -390,9 +392,12 @@ mod tests {
 
     #[test]
     fn choose_expr_otherwise_taken_when_no_branch_matches() -> Result<(), String> {
-        let workflow =
-            choose_expr_workflow_with(ConstValue::Bool(false), ConstValue::Bool(false), Some(StepIdx::new(3)))
-                .map_err(|error| error.to_string())?;
+        let workflow = choose_expr_workflow_with(
+            ConstValue::Bool(false),
+            ConstValue::Bool(false),
+            Some(StepIdx::new(3)),
+        )
+        .map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(25), &workflow)?;
         let mut store = test_store();
 
@@ -1518,8 +1523,7 @@ mod tests {
     }
 
     #[test]
-    fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter()
-    -> Result<(), String> {
+    fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter() -> Result<(), String> {
         let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(108), &workflow)?;
 
@@ -1994,9 +1998,11 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Result<(), String> {
-        let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Result<(), String>
+    {
+        let expression =
+            ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("taint_eval_expr"),
             digest: WorkflowDigest::from_bytes([0x43; 32]),
@@ -2049,8 +2055,9 @@ mod tests {
 
     #[test]
     fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
-        let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+        let expression =
+            ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+                .map_err(|error| error.to_string())?;
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("taint_eval_clean"),
             digest: WorkflowDigest::from_bytes([0x43; 32]),
@@ -2188,7 +2195,9 @@ mod tests {
             other => return Err(format!("expected Continue from step 2, got {other:?}")),
         }
         // Verify the output slot 2 has Secret taint.
-        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        let slot2_taint = run
+            .read_taint(SlotIdx::new(2))
+            .map_err(|error| error.to_string())?;
         ensure_equal(slot2_taint, Taint::Secret)?;
         // Step 3: Finish carries the taint from slot 2.
         let s3 = step_once(&workflow, &mut run, &mut store);
@@ -2342,8 +2351,12 @@ mod tests {
             other => return Err(format!("expected Continue from step 0, got {other:?}")),
         }
         // Override slot 0 taint to DerivedFromSecret.
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::DerivedFromSecret)
-            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::I64(11),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|error| error.to_string())?;
         // Step 1: SetConst I64(22) into slot 1 (Clean).
         let s1 = step_once(&workflow, &mut run, &mut store);
         match s1 {
@@ -2357,15 +2370,17 @@ mod tests {
             other => return Err(format!("expected Continue from step 2, got {other:?}")),
         }
         // Verify output slot 2 has DerivedFromSecret taint.
-        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        let slot2_taint = run
+            .read_taint(SlotIdx::new(2))
+            .map_err(|error| error.to_string())?;
         ensure_equal(slot2_taint, Taint::DerivedFromSecret)?;
         // Step 3: Finish carries the taint from slot 2.
         let s3 = step_once(&workflow, &mut run, &mut store);
         match s3 {
             Ok(EngineSignal::Finished(SlotValue::List(_), Taint::DerivedFromSecret)) => Ok(()),
-            Ok(EngineSignal::Finished(_, other_taint)) => {
-                Err(format!("expected DerivedFromSecret taint, got {other_taint:?}"))
-            }
+            Ok(EngineSignal::Finished(_, other_taint)) => Err(format!(
+                "expected DerivedFromSecret taint, got {other_taint:?}"
+            )),
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -2453,7 +2468,9 @@ mod tests {
             Ok(EngineSignal::Continue) => {}
             other => return Err(format!("expected Continue from step 2, got {other:?}")),
         }
-        let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+        let slot2_taint = run
+            .read_taint(SlotIdx::new(2))
+            .map_err(|error| error.to_string())?;
         ensure_equal(slot2_taint, Taint::Secret)?;
         // Step 3: Finish carries Secret taint.
         let s3 = step_once(&workflow, &mut run, &mut store);
@@ -2485,9 +2502,9 @@ mod tests {
         let second = step_once(&workflow, &mut run, &mut store);
         match second {
             Ok(EngineSignal::Finished(SlotValue::I64(77), Taint::Secret)) => Ok(()),
-            Ok(EngineSignal::Finished(value, taint)) => {
-                Err(format!("expected Finished(I64(77), Secret), got ({value:?}, {taint:?})"))
-            }
+            Ok(EngineSignal::Finished(value, taint)) => Err(format!(
+                "expected Finished(I64(77), Secret), got ({value:?}, {taint:?})"
+            )),
             other => Err(format!("expected Finished, got {other:?}")),
         }
     }
@@ -2503,15 +2520,19 @@ mod tests {
             Ok(EngineSignal::Continue) => {}
             other => return Err(format!("expected Continue from first step, got {other:?}")),
         }
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::DerivedFromSecret)
-            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::Bool(true),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|error| error.to_string())?;
 
         let second = step_once(&workflow, &mut run, &mut store);
         match second {
             Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)) => Ok(()),
-            Ok(EngineSignal::Finished(value, taint)) => {
-                Err(format!("expected Finished(Bool(true), DerivedFromSecret), got ({value:?}, {taint:?})"))
-            }
+            Ok(EngineSignal::Finished(value, taint)) => Err(format!(
+                "expected Finished(Bool(true), DerivedFromSecret), got ({value:?}, {taint:?})"
+            )),
             other => Err(format!("expected Finished, got {other:?}")),
         }
     }
@@ -2541,7 +2562,8 @@ mod tests {
         store: &mut ValueStore,
     ) -> Result<(SlotValue, Taint), String> {
         let expression = ExprProgram::try_from_ops(ops).map_err(|error| error.to_string())?;
-        let slot_count = u16::try_from(slots.len()).map_err(|_| "too many slots")?
+        let slot_count = u16::try_from(slots.len())
+            .map_err(|_| "too many slots")?
             .max(1);
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("taint_test"),
@@ -2669,7 +2691,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let signal = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+        let signal =
+            step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         ensure_equal(signal, EngineSignal::Continue)?;
         ensure_equal(run.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(55)))?;
         ensure_equal(run.read_taint(SlotIdx::new(1)), Ok(Taint::Secret))?;
@@ -2680,13 +2703,21 @@ mod tests {
     fn copy_propagates_derived_from_secret_taint() -> Result<(), String> {
         let workflow = copy_workflow(Some(SlotIdx::new(1))).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(302), &workflow)?;
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(33), Taint::DerivedFromSecret)
-            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::I64(33),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let signal = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+        let signal =
+            step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         ensure_equal(signal, EngineSignal::Continue)?;
-        ensure_equal(run.read_taint(SlotIdx::new(1)), Ok(Taint::DerivedFromSecret))?;
+        ensure_equal(
+            run.read_taint(SlotIdx::new(1)),
+            Ok(Taint::DerivedFromSecret),
+        )?;
         Ok(())
     }
 
@@ -2698,7 +2729,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let mut store = test_store();
 
-        let signal = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+        let signal =
+            step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         ensure_equal(signal, EngineSignal::Continue)?;
         ensure_equal(run.read_taint(SlotIdx::new(1)), Ok(Taint::Clean))?;
         Ok(())
@@ -3028,7 +3060,8 @@ mod tests {
     #[test]
     fn eval_expr_length_preserves_secret_taint_on_list() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+        let list = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length].into_boxed_slice(),
@@ -3044,7 +3077,8 @@ mod tests {
     #[test]
     fn eval_expr_empty_preserves_secret_taint_on_list() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![].into_boxed_slice())
+        let list = store
+            .insert_list(vec![].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Empty].into_boxed_slice(),
@@ -3060,8 +3094,12 @@ mod tests {
     #[test]
     fn eval_expr_contains_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let haystack = store.insert_symbol("hello world").map_err(|error| error.to_string())?;
-        let needle = store.insert_symbol("world").map_err(|error| error.to_string())?;
+        let haystack = store
+            .insert_symbol("hello world")
+            .map_err(|error| error.to_string())?;
+        let needle = store
+            .insert_symbol("world")
+            .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
                 ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -3084,8 +3122,12 @@ mod tests {
     #[test]
     fn eval_expr_starts_with_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let text = store.insert_symbol("hello world").map_err(|error| error.to_string())?;
-        let prefix = store.insert_symbol("hello").map_err(|error| error.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|error| error.to_string())?;
+        let prefix = store
+            .insert_symbol("hello")
+            .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
                 ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -3108,8 +3150,12 @@ mod tests {
     #[test]
     fn eval_expr_ends_with_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let text = store.insert_symbol("hello world").map_err(|error| error.to_string())?;
-        let suffix = store.insert_symbol("world").map_err(|error| error.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|error| error.to_string())?;
+        let suffix = store
+            .insert_symbol("world")
+            .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
                 ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -3132,7 +3178,8 @@ mod tests {
     #[test]
     fn eval_expr_has_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
+        let list = store
+            .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
@@ -3153,11 +3200,18 @@ mod tests {
     #[test]
     fn eval_expr_exists_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let sym = store.insert_symbol("key").map_err(|error| error.to_string())?;
-        let obj = store.insert_object(
-            vec![ObjectField { key: sym, value: SlotValue::Bool(true) }].into_boxed_slice(),
-        )
-        .map_err(|error| error.to_string())?;
+        let sym = store
+            .insert_symbol("key")
+            .map_err(|error| error.to_string())?;
+        let obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key: sym,
+                    value: SlotValue::Bool(true),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Exists].into_boxed_slice(),
             Box::new([]),
@@ -3172,7 +3226,10 @@ mod tests {
     #[test]
     fn eval_expr_sum_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+            )
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum].into_boxed_slice(),
@@ -3188,7 +3245,8 @@ mod tests {
     #[test]
     fn eval_expr_count_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+        let list = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Count].into_boxed_slice(),
@@ -3204,7 +3262,8 @@ mod tests {
     #[test]
     fn eval_expr_append_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
@@ -3225,7 +3284,8 @@ mod tests {
     #[test]
     fn eval_expr_append_if_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
@@ -3247,7 +3307,10 @@ mod tests {
     #[test]
     fn eval_expr_unique_preserves_secret_taint() -> Result<(), String> {
         let mut store = test_store();
-        let list = store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice(),
+            )
             .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique].into_boxed_slice(),
@@ -3263,16 +3326,30 @@ mod tests {
     #[test]
     fn eval_expr_merge_preserves_secret_taint_from_left() -> Result<(), String> {
         let mut store = test_store();
-        let sym1 = store.insert_symbol("a").map_err(|error| error.to_string())?;
-        let sym2 = store.insert_symbol("b").map_err(|error| error.to_string())?;
-        let obj1 = store.insert_object(
-            vec![ObjectField { key: sym1, value: SlotValue::I64(1) }].into_boxed_slice(),
-        )
-        .map_err(|error| error.to_string())?;
-        let obj2 = store.insert_object(
-            vec![ObjectField { key: sym2, value: SlotValue::I64(2) }].into_boxed_slice(),
-        )
-        .map_err(|error| error.to_string())?;
+        let sym1 = store
+            .insert_symbol("a")
+            .map_err(|error| error.to_string())?;
+        let sym2 = store
+            .insert_symbol("b")
+            .map_err(|error| error.to_string())?;
+        let obj1 = store
+            .insert_object(
+                vec![ObjectField {
+                    key: sym1,
+                    value: SlotValue::I64(1),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
+        let obj2 = store
+            .insert_object(
+                vec![ObjectField {
+                    key: sym2,
+                    value: SlotValue::I64(2),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
             vec![
                 ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -3458,7 +3535,8 @@ mod tests {
             resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
         };
-        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(360), &workflow)?;
         let mut store = test_store();
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
@@ -3518,7 +3596,8 @@ mod tests {
             resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
         };
-        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(361), &workflow)?;
         let mut store = test_store();
 
@@ -3598,7 +3677,8 @@ mod tests {
             resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
         };
-        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(380), &workflow)?;
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
             .map_err(|error| error.to_string())?;
@@ -3638,7 +3718,8 @@ mod tests {
             resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
         };
-        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(381), &workflow)?;
         let mut store = test_store();
 
@@ -3718,11 +3799,18 @@ mod tests {
         ensure_equal(s0, EngineSignal::Continue)?;
         let s1 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         ensure_equal(s1, EngineSignal::Continue)?;
-        run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::DerivedFromSecret)
-            .map_err(|error| error.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(1),
+            SlotValue::I64(20),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|error| error.to_string())?;
         let s2 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         ensure_equal(s2, EngineSignal::Continue)?;
-        ensure_equal(run.read_taint(SlotIdx::new(2)), Ok(Taint::DerivedFromSecret))?;
+        ensure_equal(
+            run.read_taint(SlotIdx::new(2)),
+            Ok(Taint::DerivedFromSecret),
+        )?;
         let s3 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
         match s3 {
             EngineSignal::Finished(SlotValue::Object(_), Taint::DerivedFromSecret) => Ok(()),
@@ -3880,10 +3968,7 @@ mod tests {
     #[test]
     fn step_budget_new_zero_allows_no_transitions() -> Result<(), String> {
         let mut budget = StepBudget::new(0);
-        ensure_equal(
-            budget.try_take().map_err(|e| e.to_string())?,
-            false,
-        )?;
+        ensure_equal(budget.try_take().map_err(|e| e.to_string())?, false)?;
         ensure_equal(budget.remaining(), 0)?;
         Ok(())
     }
@@ -3893,17 +3978,14 @@ mod tests {
         let count: u64 = 5;
         let mut budget = StepBudget::new(count);
         for i in 0..count {
+            ensure_equal(budget.try_take().map_err(|e| e.to_string())?, true)?;
             ensure_equal(
-                budget.try_take().map_err(|e| e.to_string())?,
-                true,
+                budget.remaining(),
+                count.saturating_sub(i.saturating_add(1)),
             )?;
-            ensure_equal(budget.remaining(), count.saturating_sub(i.saturating_add(1)))?;
         }
         // Now exhausted
-        ensure_equal(
-            budget.try_take().map_err(|e| e.to_string())?,
-            false,
-        )?;
+        ensure_equal(budget.try_take().map_err(|e| e.to_string())?, false)?;
         ensure_equal(budget.remaining(), 0)?;
         Ok(())
     }
@@ -4006,9 +4088,15 @@ mod tests {
         };
 
         // Resume with a successful completion.
-        let result =
-            resume_action_completion(&workflow, &mut run, ticket, SlotIdx::new(1), SlotValue::I64(999), Taint::Clean)
-                .map_err(|e| e.to_string())?;
+        let result = resume_action_completion(
+            &workflow,
+            &mut run,
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(999),
+            Taint::Clean,
+        )
+        .map_err(|e| e.to_string())?;
 
         let (signal, _journal) = result;
         ensure_equal(signal, EngineSignal::Continue)?;
@@ -4083,12 +4171,20 @@ mod tests {
         };
 
         // Resume with failure.
-        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Timeout, true)
-            .map_err(|e| e.to_string())?;
+        let result = resume_action_failure(
+            &workflow,
+            &mut run,
+            ticket,
+            ActionFailureCode::Timeout,
+            true,
+        )
+        .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
-            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+            crate::action::ActionJournalEvent::Failed {
+                code, retryable, ..
+            } => {
                 ensure_equal(code, ActionFailureCode::Timeout)?;
                 ensure_equal(retryable, true)?;
             }
@@ -4121,12 +4217,20 @@ mod tests {
         };
 
         // Resume with a non-retryable failure.
-        let result = resume_action_failure(&workflow, &mut run, ticket, ActionFailureCode::Rejected, false)
-            .map_err(|e| e.to_string())?;
+        let result = resume_action_failure(
+            &workflow,
+            &mut run,
+            ticket,
+            ActionFailureCode::Rejected,
+            false,
+        )
+        .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
-            crate::action::ActionJournalEvent::Failed { code, retryable, .. } => {
+            crate::action::ActionJournalEvent::Failed {
+                code, retryable, ..
+            } => {
                 ensure_equal(code, ActionFailureCode::Rejected)?;
                 ensure_equal(retryable, false)?;
             }
@@ -4295,7 +4399,9 @@ mod tests {
 
         match result {
             Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(1) => Ok(()),
-            other => Err(format!("expected MissingNextStep for step 1, got {other:?}")),
+            other => Err(format!(
+                "expected MissingNextStep for step 1, got {other:?}"
+            )),
         }
     }
 
@@ -4405,7 +4511,8 @@ mod tests {
                         result: SlotIdx::new(2),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(99)].into_boxed_slice(),
@@ -4472,7 +4579,8 @@ mod tests {
                         result: SlotIdx::new(2),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42), ConstValue::I64(999)].into_boxed_slice(),
@@ -4525,7 +4633,8 @@ mod tests {
                         result: SlotIdx::new(0),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42)].into_boxed_slice(),
@@ -4707,7 +4816,8 @@ mod tests {
                         result: SlotIdx::new(1),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42), ConstValue::I64(100)].into_boxed_slice(),
@@ -4971,7 +5081,8 @@ mod tests {
                         result: SlotIdx::new(0),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(100)].into_boxed_slice(),
@@ -5080,7 +5191,8 @@ mod tests {
                         result: SlotIdx::new(0),
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42)].into_boxed_slice(),
@@ -5101,7 +5213,9 @@ mod tests {
             Err(e) => {
                 let msg = format!("{e}");
                 if !msg.contains("slot") {
-                    return Err(format!("expected slot-related error from handler, got: {msg}"));
+                    return Err(format!(
+                        "expected slot-related error from handler, got: {msg}"
+                    ));
                 }
             }
             Ok(other) => return Err(format!("expected error, got {other:?}")),

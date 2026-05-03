@@ -8,7 +8,7 @@ use crate::workflow::{CompiledWorkflow, ExprOp};
 
 use super::accessors::eval_load_accessor;
 use super::ops::eval_expr_operator;
-use super::stack::{push_value, ExprStack};
+use super::stack::{ExprStack, push_value};
 
 fn expression_op(ops: &[ExprOp], index: usize) -> Result<ExprOp, EngineError> {
     ops.get(index)

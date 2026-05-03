@@ -1,7 +1,7 @@
 //! Journal event types and record kind identifiers.
 
 use crate::{EventSeq, RecordKind};
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -76,6 +76,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Slot index.
         slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
+        value: Option<Vec<u8>>,
     },
     /// Wait was scheduled.
     WaitScheduledEvent {
@@ -198,6 +200,17 @@ impl JournalEvent {
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
             Self::RunFinished { .. } => RecordKind::RunFinished,
             Self::RunFailedEvent { .. } => RecordKind::RunFailed,
+        }
+    }
+
+    /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.
+    #[must_use]
+    pub fn slot_value(&self) -> Option<SlotValue> {
+        match self {
+            Self::SlotWrittenEvent { value: Some(bytes), .. } => {
+                postcard::from_bytes(bytes).ok()
+            }
+            _ => None,
         }
     }
 }

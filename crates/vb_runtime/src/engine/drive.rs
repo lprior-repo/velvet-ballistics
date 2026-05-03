@@ -49,7 +49,13 @@ pub fn drive_deterministic_full(
         run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
 
         let signal = execute_node_full(
-            plan, run, store, node, contracts, retry_policy, collect_states,
+            plan,
+            run,
+            store,
+            node,
+            contracts,
+            retry_policy,
+            collect_states,
         )?;
 
         match mark_step_after_signal(run, pc, &signal) {
@@ -81,7 +87,13 @@ pub fn drive_with_actions(
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();
     drive_deterministic_full(
-        plan, run, budget, &mut store, contracts, retry_policy,
-        &mut evidence, &mut collect_states,
+        plan,
+        run,
+        budget,
+        &mut store,
+        contracts,
+        retry_policy,
+        &mut evidence,
+        &mut collect_states,
     )
 }

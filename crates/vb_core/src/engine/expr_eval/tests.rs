@@ -1,7 +1,9 @@
 //! Tests for expression evaluation.
 
 use crate::errors::EngineError;
-use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use crate::ids::{
+    AccessorIdx, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest,
+};
 use crate::limits::MAX_EXPRESSION_STACK;
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::{ObjectField, ValueStore};
@@ -96,10 +98,7 @@ fn contains_finds_substring() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_constants(
         &ops,
-        vec![
-            ConstValue::Symbol(haystack),
-            ConstValue::Symbol(needle),
-        ],
+        vec![ConstValue::Symbol(haystack), ConstValue::Symbol(needle)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));
@@ -118,10 +117,7 @@ fn contains_rejects_missing_substring() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_constants(
         &ops,
-        vec![
-            ConstValue::Symbol(haystack),
-            ConstValue::Symbol(needle),
-        ],
+        vec![ConstValue::Symbol(haystack), ConstValue::Symbol(needle)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(false));
@@ -140,10 +136,7 @@ fn starts_with_matches_prefix() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_constants(
         &ops,
-        vec![
-            ConstValue::Symbol(text),
-            ConstValue::Symbol(prefix),
-        ],
+        vec![ConstValue::Symbol(text), ConstValue::Symbol(prefix)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));
@@ -162,10 +155,7 @@ fn ends_with_matches_suffix() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_constants(
         &ops,
-        vec![
-            ConstValue::Symbol(text),
-            ConstValue::Symbol(suffix),
-        ],
+        vec![ConstValue::Symbol(text), ConstValue::Symbol(suffix)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));
@@ -254,7 +244,12 @@ fn append_adds_to_list() -> Result<(), EngineError> {
     )?;
     let result_list_id = match result {
         SlotValue::List(id) => id,
-        other => return Err(EngineError::TypeMismatch { expected: "list", found: other.type_name() }),
+        other => {
+            return Err(EngineError::TypeMismatch {
+                expected: "list",
+                found: other.type_name(),
+            });
+        }
     };
     let items = store.list(result_list_id)?;
     assert_eq!(items.len(), 2);
@@ -280,7 +275,12 @@ fn append_if_conditionally_adds() -> Result<(), EngineError> {
     )?;
     let result_list_id = match result {
         SlotValue::List(id) => id,
-        other => return Err(EngineError::TypeMismatch { expected: "list", found: other.type_name() }),
+        other => {
+            return Err(EngineError::TypeMismatch {
+                expected: "list",
+                found: other.type_name(),
+            });
+        }
     };
     let items = store.list(result_list_id)?;
     assert_eq!(items.len(), 2);
@@ -320,7 +320,12 @@ fn merge_combines_objects() -> Result<(), EngineError> {
     )?;
     let result_obj_id = match result {
         SlotValue::Object(id) => id,
-        other => return Err(EngineError::TypeMismatch { expected: "object", found: other.type_name() }),
+        other => {
+            return Err(EngineError::TypeMismatch {
+                expected: "object",
+                found: other.type_name(),
+            });
+        }
     };
     let merged = store.object(result_obj_id)?;
     assert_eq!(merged.len(), 2);
@@ -362,7 +367,12 @@ fn unique_removes_duplicates() -> Result<(), EngineError> {
     let result = eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store)?;
     let result_list_id = match result {
         SlotValue::List(id) => id,
-        other => return Err(EngineError::TypeMismatch { expected: "list", found: other.type_name() }),
+        other => {
+            return Err(EngineError::TypeMismatch {
+                expected: "list",
+                found: other.type_name(),
+            });
+        }
     };
     let items = store.list(result_list_id)?;
     assert_eq!(items.len(), 2);
@@ -417,9 +427,8 @@ fn div_by_zero_still_returns_division_by_zero_error() -> Result<(), EngineError>
 #[test]
 fn sum_overflow_on_individual_element_is_detected() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
-    let list = store.insert_list(
-        vec![SlotValue::I64(i64::MAX), SlotValue::I64(1)].into_boxed_slice(),
-    )?;
+    let list =
+        store.insert_list(vec![SlotValue::I64(i64::MAX), SlotValue::I64(1)].into_boxed_slice())?;
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum];
     let result = eval_expr_ops_with_store(&ops, vec![SlotValue::List(list)], vec![], &mut store);
     let Err(EngineError::InvalidCompiledWorkflow { reason }) = result else {

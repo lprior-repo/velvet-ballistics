@@ -1,11 +1,11 @@
 //! Proptest property tests for core types: FiniteF64, Taint lattice, ValueStore, SlotValue.
 
 use proptest::prelude::*;
+use vb_core::Taint::{Clean, DerivedFromSecret, Secret};
 use vb_core::errors::CoreError;
 use vb_core::ids::{BlobId, ListId, ObjectId, SymbolId};
 use vb_core::value::{FiniteF64, SlotValue, Taint, join_taint};
 use vb_core::value_store::ValueStore;
-use vb_core::Taint::{Clean, DerivedFromSecret, Secret};
 
 // ---------------------------------------------------------------------------
 // Strategies

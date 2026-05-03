@@ -11,6 +11,7 @@ rtrb.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }
+postcard.workspace = true
 
 [dev-dependencies]
 proptest = { workspace = true }

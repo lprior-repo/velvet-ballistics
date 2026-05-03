@@ -34,9 +34,7 @@ pub struct CapabilitySet {
 
 impl CapabilitySet {
     pub fn empty() -> Self {
-        Self {
-            grants: Vec::new(),
-        }
+        Self { grants: Vec::new() }
     }
 
     pub fn from_grants(grants: Box<[Capability]>) -> Self {

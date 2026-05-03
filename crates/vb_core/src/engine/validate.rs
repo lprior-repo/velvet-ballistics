@@ -1058,8 +1058,7 @@ mod tests {
                     on_error: None,
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherStart {
-                        branches: vec![StepIdx::new(1), StepIdx::new(2)]
-                            .into_boxed_slice(),
+                        branches: vec![StepIdx::new(1), StepIdx::new(2)].into_boxed_slice(),
                         join: StepIdx::new(3),
                     },
                 },

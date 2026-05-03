@@ -2,6 +2,7 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
+use postcard;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -226,8 +227,21 @@ impl Shard {
                 EvidenceEvent::StepSucceeded { step, output } => {
                     if let Some(slot) = output {
                         self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
-                        self.journal
-                            .append(RuntimeJournalEvent::SlotWritten { run, slot })?;
+                        // Get the frame to read the slot value
+                        if let Some(state) = self.runs.get(&run) {
+                            if let Ok(value) = state.frame.read_slot(slot) {
+                                let encoded = postcard::to_allocvec(value)
+                                    .map_err(|_| RuntimeError::EncodeFailed)?;
+                                self.journal
+                                    .append(RuntimeJournalEvent::SlotWritten { run, slot, value: encoded })?;
+                            } else {
+                                self.journal
+                                    .append(RuntimeJournalEvent::SlotWritten { run, slot, value: vec![] })?;
+                            }
+                        } else {
+                            self.journal
+                                .append(RuntimeJournalEvent::SlotWritten { run, slot, value: vec![] })?;
+                        }
                     }
                     self.journal.append(RuntimeJournalEvent::StepSucceeded {
                         run,

@@ -296,11 +296,13 @@ fn copy_page_range(
     start: usize,
     page_size: usize,
 ) -> Result<Box<[SlotValue]>, EngineError> {
-    let remaining = items.len().checked_sub(start).ok_or(
-        EngineError::InternalInvariantViolation {
-            reason: "collect cursor beyond item count",
-        },
-    )?;
+    let remaining =
+        items
+            .len()
+            .checked_sub(start)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect cursor beyond item count",
+            })?;
     let count = page_size.min(remaining);
     let mut page = Vec::with_capacity(count);
     let mut offset = 0usize;
@@ -392,15 +394,28 @@ mod tests {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
         list_in_slot(
-            &mut run, &mut store, source,
+            &mut run,
+            &mut store,
+            source,
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
         );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2, body, done, Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
-        let slot_val = *run.read_slot(output).ok()
+        let slot_val = *run
+            .read_slot(output)
+            .ok()
             .unwrap_or_else(|| panic!("read must succeed"));
         assert!(matches!(slot_val, SlotValue::List(_)));
     }
@@ -429,14 +444,30 @@ mod tests {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
         list_in_slot(
-            &mut run, &mut store, source,
+            &mut run,
+            &mut store,
+            source,
             vec![SlotValue::I64(5), SlotValue::I64(6), SlotValue::I64(7)],
         );
         let start = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2, body, done, Some(collector), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
+            None,
         );
         assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
-        assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(5), SlotValue::I64(6)]);
+        assert_slot_list_items(
+            &run,
+            &store,
+            collector,
+            &[SlotValue::I64(5), SlotValue::I64(6)],
+        );
         let result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
@@ -450,15 +481,23 @@ mod tests {
         let collector = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let next_step = StepIdx::new(3);
-        run.write_slot(collector, SlotValue::I64(99)).ok()
+        run.write_slot(collector, SlotValue::I64(99))
+            .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
         let result = collect_finish(
-            &mut run, &mut states, collector, Some(output), Some(next_step), StepIdx::ZERO,
+            &mut run,
+            &mut states,
+            collector,
+            Some(output),
+            Some(next_step),
+            StepIdx::ZERO,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), next_step);
         assert_eq!(
-            *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")),
+            *run.read_slot(output)
+                .ok()
+                .unwrap_or_else(|| panic!("read must succeed")),
             SlotValue::I64(99)
         );
     }
@@ -469,18 +508,29 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        run.write_slot(source, SlotValue::Bool(true)).ok()
+        run.write_slot(source, SlotValue::Bool(true))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
                 assert_eq!(expected, "list");
                 assert_eq!(found, "boolean");
             }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -490,16 +540,35 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3),
-                 SlotValue::I64(4), SlotValue::I64(5)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![
+                SlotValue::I64(1),
+                SlotValue::I64(2),
+                SlotValue::I64(3),
+                SlotValue::I64(4),
+                SlotValue::I64(5),
+            ],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 3, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            3,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         match result {
             Err(EngineError::CollectItemLimitExceeded) => {}
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -511,12 +580,24 @@ mod tests {
         let source = SlotIdx::new(0);
         list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1)]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), None, None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            None,
+            None,
         );
         match result {
-            Err(EngineError::MissingOutputSlot { step }) => { assert_eq!(step, StepIdx::ZERO); }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -528,14 +609,24 @@ mod tests {
         let source = SlotIdx::new(0);
         list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1)]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 0,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            0,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         match result {
             Err(EngineError::InvalidCompiledWorkflow { reason }) => {
                 assert_eq!(reason, "collect page_size must be nonzero");
             }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -549,8 +640,16 @@ mod tests {
         let done = StepIdx::new(3);
         list_in_slot(&mut run, &mut store, source, vec![]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), done, Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            done,
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
@@ -565,7 +664,12 @@ mod tests {
         let done = StepIdx::new(3);
         list_in_slot(&mut run, &mut store, collector, vec![]);
         let result = collect_next(
-            &mut run, &mut store, &mut states, collector, StepIdx::new(1), done,
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            done,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
@@ -576,14 +680,24 @@ mod tests {
         let mut run = fresh_frame();
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
-        run.write_slot(collector, SlotValue::I64(1)).ok()
+        run.write_slot(collector, SlotValue::I64(1))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let result = collect_finish(
-            &mut run, &mut states, collector, None, Some(StepIdx::new(1)), StepIdx::ZERO,
+            &mut run,
+            &mut states,
+            collector,
+            None,
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
         );
         match result {
-            Err(EngineError::MissingOutputSlot { step }) => { assert_eq!(step, StepIdx::ZERO); }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            Err(EngineError::MissingOutputSlot { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -593,14 +707,24 @@ mod tests {
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        run.write_slot(collector, SlotValue::I64(1)).ok()
+        run.write_slot(collector, SlotValue::I64(1))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let result = collect_finish(
-            &mut run, &mut states, collector, Some(output), None, StepIdx::ZERO,
+            &mut run,
+            &mut states,
+            collector,
+            Some(output),
+            None,
+            StepIdx::ZERO,
         );
         match result {
-            Err(EngineError::MissingNextStep { step }) => { assert_eq!(step, StepIdx::ZERO); }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            Err(EngineError::MissingNextStep { step }) => {
+                assert_eq!(step, StepIdx::ZERO);
+            }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -610,18 +734,25 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
-        run.write_slot(collector, SlotValue::I64(42)).ok()
+        run.write_slot(collector, SlotValue::I64(42))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let result = collect_page(
-            &mut run, &mut store, &mut states, collector,
-            StepIdx::new(1), StepIdx::new(2),
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            StepIdx::new(2),
         );
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
                 assert_eq!(expected, "list");
                 assert_eq!(found, "number");
             }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -632,21 +763,42 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("read must succeed")) {
+        match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
             SlotValue::List(id) => {
-                let items = store.list(id).ok().unwrap_or_else(|| panic!("list read must succeed"));
+                let items = store
+                    .list(id)
+                    .ok()
+                    .unwrap_or_else(|| panic!("list read must succeed"));
                 assert_eq!(items.len(), 2);
                 assert_eq!(items.get(0), Some(&SlotValue::I64(1)));
                 assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
             }
-            other => { assert_eq!(other, SlotValue::I64(0)); }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
         }
     }
 
@@ -660,8 +812,16 @@ mod tests {
         list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1)]);
         let before = run.executed();
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -674,17 +834,33 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let collector = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
         let start = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 1,
-            StepIdx::new(1), StepIdx::new(2), Some(collector), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            1,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(collector),
+            None,
         );
         assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
         let before = run.executed();
         let result = collect_next(
-            &mut run, &mut store, &mut states, collector,
-            StepIdx::new(1), StepIdx::new(2),
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            StepIdx::new(2),
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -699,8 +875,12 @@ mod tests {
         list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(1)]);
         let before = run.executed();
         let result = collect_page(
-            &mut run, &mut store, &mut states, collector,
-            StepIdx::new(1), StepIdx::new(2),
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            StepIdx::new(2),
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -712,12 +892,17 @@ mod tests {
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        run.write_slot(collector, SlotValue::I64(99)).ok()
+        run.write_slot(collector, SlotValue::I64(99))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let before = run.executed();
         let result = collect_finish(
-            &mut run, &mut states, collector, Some(output),
-            Some(StepIdx::new(1)), StepIdx::ZERO,
+            &mut run,
+            &mut states,
+            collector,
+            Some(output),
+            Some(StepIdx::new(1)),
+            StepIdx::ZERO,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.executed(), before + 1);
@@ -729,15 +914,26 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, collector,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
-        let result = collect_next(
-            &mut run, &mut store, &mut states, collector,
-            StepIdx::new(1), StepIdx::new(2),
+        list_in_slot(
+            &mut run,
+            &mut store,
+            collector,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
         );
-        assert_eq!(result, Err(EngineError::InvalidCompiledWorkflow {
-            reason: "collect pagination state missing",
-        }));
+        let result = collect_next(
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            StepIdx::new(2),
+        );
+        assert_eq!(
+            result,
+            Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect pagination state missing",
+            })
+        );
         assert_eq!(run.pc(), StepIdx::ZERO);
     }
 
@@ -747,18 +943,25 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let collector = SlotIdx::new(0);
-        run.write_slot(collector, SlotValue::Bool(true)).ok()
+        run.write_slot(collector, SlotValue::Bool(true))
+            .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         let result = collect_next(
-            &mut run, &mut store, &mut states, collector,
-            StepIdx::new(1), StepIdx::new(2),
+            &mut run,
+            &mut store,
+            &mut states,
+            collector,
+            StepIdx::new(1),
+            StepIdx::new(2),
         );
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
                 assert_eq!(expected, "list");
                 assert_eq!(found, "boolean");
             }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -772,8 +975,16 @@ mod tests {
         let done = StepIdx::new(3);
         list_in_slot(&mut run, &mut store, source, vec![]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), done, Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            done,
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), done);
@@ -788,12 +999,23 @@ mod tests {
         let output = SlotIdx::new(1);
         list_in_slot(&mut run, &mut store, source, vec![]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 0,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            0,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
-        assert_eq!(result, Err(EngineError::InvalidCompiledWorkflow {
-            reason: "collect page_size must be nonzero",
-        }));
+        assert_eq!(
+            result,
+            Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect page_size must be nonzero",
+            })
+        );
     }
 
     #[test]
@@ -804,11 +1026,23 @@ mod tests {
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let body = StepIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 3, 2,
-            body, StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            3,
+            2,
+            body,
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
@@ -820,15 +1054,34 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3), SlotValue::I64(4)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![
+                SlotValue::I64(1),
+                SlotValue::I64(2),
+                SlotValue::I64(3),
+                SlotValue::I64(4),
+            ],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 3, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            3,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         match result {
             Err(EngineError::CollectItemLimitExceeded) => {}
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -839,22 +1092,45 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3),
-                 SlotValue::I64(4), SlotValue::I64(5)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![
+                SlotValue::I64(1),
+                SlotValue::I64(2),
+                SlotValue::I64(3),
+                SlotValue::I64(4),
+                SlotValue::I64(5),
+            ],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("must read")) {
+        match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
             SlotValue::List(id) => {
                 let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
                 assert_eq!(items.len(), 2);
                 assert_eq!(items.get(0), Some(&SlotValue::I64(1)));
                 assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
             }
-            other => { assert_eq!(other, SlotValue::I64(0)); }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
         }
     }
 
@@ -865,19 +1141,37 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(42), SlotValue::I64(99)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(42), SlotValue::I64(99)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 10,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            10,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("must read")) {
+        match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
             SlotValue::List(id) => {
                 let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
                 assert_eq!(items.len(), 2);
             }
-            other => { assert_eq!(other, SlotValue::I64(0)); }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
         }
     }
 
@@ -890,14 +1184,31 @@ mod tests {
         let collector = SlotIdx::new(1);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        );
         let start = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            body, done, Some(collector), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
+            None,
         );
         assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
-        assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(1), SlotValue::I64(2)]);
+        assert_slot_list_items(
+            &run,
+            &store,
+            collector,
+            &[SlotValue::I64(1), SlotValue::I64(2)],
+        );
         let next = collect_next(&mut run, &mut store, &mut states, collector, body, done);
         assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
@@ -914,18 +1225,29 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        run.write_slot(source, SlotValue::Null).ok()
+        run.write_slot(source, SlotValue::Null)
+            .ok()
             .unwrap_or_else(|| panic!("write"));
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
                 assert_eq!(expected, "list");
                 assert_eq!(found, "null");
             }
-            other => { assert_eq!(other, Ok(vb_core::EngineSignal::Continue)); }
+            other => {
+                assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            }
         }
     }
 
@@ -936,20 +1258,38 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 1,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            1,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-        match *run.read_slot(output).ok().unwrap_or_else(|| panic!("must read")) {
+        match *run
+            .read_slot(output)
+            .ok()
+            .unwrap_or_else(|| panic!("must read"))
+        {
             SlotValue::List(id) => {
                 let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
                 assert_eq!(items.len(), 1);
                 assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
             }
-            other => { assert_eq!(other, SlotValue::I64(0)); }
+            other => {
+                assert_eq!(other, SlotValue::I64(0));
+            }
         }
     }
 
@@ -959,11 +1299,23 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(10), SlotValue::I64(20)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(10), SlotValue::I64(20)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 1, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            1,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
         assert_eq!(run.pc(), StepIdx::ZERO);
@@ -977,8 +1329,16 @@ mod tests {
         let source = SlotIdx::new(0);
         list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1)]);
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, u32::MAX,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            u32::MAX,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
     }
@@ -990,11 +1350,23 @@ mod tests {
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
         let output = SlotIdx::new(1);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 2, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(output), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            2,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(output),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), StepIdx::new(1));
@@ -1006,11 +1378,23 @@ mod tests {
         let mut store = ValueStore::new();
         let mut states = fresh_states();
         let source = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 1, 2,
-            StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(1)), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            1,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(SlotIdx::new(1)),
+            None,
         );
         assert_eq!(result, Err(EngineError::CollectPageLimitExceeded));
     }
@@ -1024,11 +1408,23 @@ mod tests {
         let collector = SlotIdx::new(1);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            body, done, Some(collector), Some(60000),
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
+            Some(60000),
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         let state = states.entries.values().next();
@@ -1045,11 +1441,23 @@ mod tests {
         let collector = SlotIdx::new(1);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        list_in_slot(&mut run, &mut store, source,
-            vec![SlotValue::I64(1), SlotValue::I64(2)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(1), SlotValue::I64(2)],
+        );
         let result = collect_start(
-            &mut run, &mut store, &mut states, source, 100, 2,
-            body, done, Some(collector), None,
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            100,
+            2,
+            body,
+            done,
+            Some(collector),
+            None,
         );
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         let state = states.entries.values().next();
@@ -1071,7 +1479,10 @@ mod tests {
             time_limit_ms: Some(1),
             start_millis: 0,
         };
-        assert_eq!(check_time_limit(&state), Err(EngineError::CollectTimeLimitExceeded));
+        assert_eq!(
+            check_time_limit(&state),
+            Err(EngineError::CollectTimeLimitExceeded)
+        );
     }
 
     #[test]

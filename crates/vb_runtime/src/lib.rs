@@ -146,6 +146,10 @@ pub enum RuntimeError {
         /// Capabilities that were granted at admission time.
         granted: vb_core::capability::CapabilitySet,
     },
+
+    /// Failed to encode a slot value for journal persistence.
+    #[error("slot value encoding failed")]
+    EncodeFailed,
 }
 
 /// Result alias for runtime operations.
@@ -196,6 +200,8 @@ impl RuntimeError {
     pub const ADMISSION_ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2011);
     /// Diagnostic code for admission capability denied.
     pub const ADMISSION_CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x2012);
+    /// Diagnostic code for encoding failure.
+    pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -221,6 +227,7 @@ impl RuntimeError {
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
             Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+            Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
         }
     }
 

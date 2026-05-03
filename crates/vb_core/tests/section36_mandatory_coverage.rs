@@ -209,7 +209,10 @@ fn const_value_null_maps_to_slot_value_null() {
 
 #[test]
 fn const_value_bool_true_maps_to_slot_value_bool_true() {
-    assert_eq!(ConstValue::Bool(true).to_slot_value(), Ok(SlotValue::Bool(true)));
+    assert_eq!(
+        ConstValue::Bool(true).to_slot_value(),
+        Ok(SlotValue::Bool(true))
+    );
 }
 
 #[test]
@@ -236,7 +239,10 @@ fn const_value_i64_maps_to_slot_value_i64() {
 #[test]
 fn const_value_f64_maps_to_slot_value_f64() -> CoreResult<()> {
     let finite = FiniteF64::new(2.5)?;
-    assert_eq!(ConstValue::F64(finite).to_slot_value(), Ok(SlotValue::F64(finite)));
+    assert_eq!(
+        ConstValue::F64(finite).to_slot_value(),
+        Ok(SlotValue::F64(finite))
+    );
     Ok(())
 }
 
@@ -254,9 +260,15 @@ fn const_value_to_slot_value_no_silent_null_fallback() {
     // handled, the compiler would issue a non-exhaustive match error.
     // This test documents the exhaustive mapping by exercising all variants.
     let mappings: Vec<SlotValue> = vec![
-        ConstValue::Null.to_slot_value().unwrap_or(SlotValue::Bool(false)),
-        ConstValue::Bool(true).to_slot_value().unwrap_or(SlotValue::Bool(false)),
-        ConstValue::I64(0).to_slot_value().unwrap_or(SlotValue::Bool(false)),
+        ConstValue::Null
+            .to_slot_value()
+            .unwrap_or(SlotValue::Bool(false)),
+        ConstValue::Bool(true)
+            .to_slot_value()
+            .unwrap_or(SlotValue::Bool(false)),
+        ConstValue::I64(0)
+            .to_slot_value()
+            .unwrap_or(SlotValue::Bool(false)),
         FiniteF64::new(0.0)
             .map(|f| ConstValue::F64(f).to_slot_value())
             .unwrap_or(Ok(SlotValue::Bool(false)))
@@ -830,14 +842,27 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
         step_names: Box::new([]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
-    let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
-    frame.write_slot(SlotIdx::new(0), SlotValue::I64(1)).map_err(|e| e.to_string())?;
+    let mut frame = RunFrame::new(
+        RunId::new(1),
+        workflow.entry(),
+        workflow.node_count(),
+        workflow.slot_count(),
+    )
+    .map_err(|e| e.to_string())?;
+    frame
+        .write_slot(SlotIdx::new(0), SlotValue::I64(1))
+        .map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
 
     // step_once will fail because output slot is None on the Copy node
     let result = step_once(&workflow, &mut frame, &mut store);
     assert!(result.is_err());
-    assert_eq!(frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?, StepState::Failed);
+    assert_eq!(
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?,
+        StepState::Failed
+    );
 
     // After failure, cannot transition to Succeeded
     let transition_result = frame.mark_succeeded(StepIdx::new(0));
@@ -853,15 +878,27 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
 #[test]
 fn budget_exhaustion_does_not_advance_pc() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(valid_parts()).map_err(|e| e.to_string())?;
-    let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
+    let mut frame = RunFrame::new(
+        RunId::new(1),
+        workflow.entry(),
+        workflow.node_count(),
+        workflow.slot_count(),
+    )
+    .map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
     let initial_pc = frame.pc();
 
-    let result = run_until_blocked(&workflow, &mut frame, StepBudget::new(0), &mut store).map_err(|e| e.to_string())?;
+    let result = run_until_blocked(&workflow, &mut frame, StepBudget::new(0), &mut store)
+        .map_err(|e| e.to_string())?;
     assert_eq!(result, EngineSignal::StepBudgetExhausted);
     assert_eq!(frame.pc(), initial_pc);
     assert_eq!(frame.executed(), 0);
-    assert_eq!(frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?, StepState::Pending);
+    assert_eq!(
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?,
+        StepState::Pending
+    );
     Ok(())
 }
 
@@ -903,7 +940,13 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
         step_names: Box::new([]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
-    let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
+    let mut frame = RunFrame::new(
+        RunId::new(1),
+        workflow.entry(),
+        workflow.node_count(),
+        workflow.slot_count(),
+    )
+    .map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
 
     let result = step_once(&workflow, &mut frame, &mut store);
@@ -934,18 +977,29 @@ fn skipped_step_is_terminal_and_rejects_running() -> CoreResult<()> {
 #[test]
 fn budget_exhaustion_then_resume_advances_correctly() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(valid_parts()).map_err(|e| e.to_string())?;
-    let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
+    let mut frame = RunFrame::new(
+        RunId::new(1),
+        workflow.entry(),
+        workflow.node_count(),
+        workflow.slot_count(),
+    )
+    .map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
 
     // Exhaust with budget=1 -- completes first step only
-    let result1 = run_until_blocked(&workflow, &mut frame, StepBudget::new(1), &mut store).map_err(|e| e.to_string())?;
+    let result1 = run_until_blocked(&workflow, &mut frame, StepBudget::new(1), &mut store)
+        .map_err(|e| e.to_string())?;
     assert_eq!(result1, EngineSignal::StepBudgetExhausted);
     assert_eq!(frame.executed(), 1);
     assert_eq!(frame.pc(), StepIdx::new(1));
 
     // Resume with sufficient budget -- completes second step
-    let result2 = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store).map_err(|e| e.to_string())?;
-    assert_eq!(result2, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
+    let result2 = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
+        .map_err(|e| e.to_string())?;
+    assert_eq!(
+        result2,
+        EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+    );
     assert_eq!(frame.executed(), 2);
     Ok(())
 }
@@ -955,13 +1009,28 @@ fn taint_propagation_join_returns_most_restrictive() {
     // All 9 input combinations for join_taint, verified against the lattice:
     //   Clean(0) < DerivedFromSecret(1) < Secret(2)
     assert_eq!(join_taint(Taint::Clean, Taint::Clean), Taint::Clean);
-    assert_eq!(join_taint(Taint::Clean, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
+    assert_eq!(
+        join_taint(Taint::Clean, Taint::DerivedFromSecret),
+        Taint::DerivedFromSecret
+    );
     assert_eq!(join_taint(Taint::Clean, Taint::Secret), Taint::Secret);
-    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Clean), Taint::DerivedFromSecret);
-    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
-    assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Secret), Taint::Secret);
+    assert_eq!(
+        join_taint(Taint::DerivedFromSecret, Taint::Clean),
+        Taint::DerivedFromSecret
+    );
+    assert_eq!(
+        join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret),
+        Taint::DerivedFromSecret
+    );
+    assert_eq!(
+        join_taint(Taint::DerivedFromSecret, Taint::Secret),
+        Taint::Secret
+    );
     assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
-    assert_eq!(join_taint(Taint::Secret, Taint::DerivedFromSecret), Taint::Secret);
+    assert_eq!(
+        join_taint(Taint::Secret, Taint::DerivedFromSecret),
+        Taint::Secret
+    );
     assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
     assert_eq!(
         join_taint(Taint::DerivedFromSecret, Taint::Clean),
@@ -1059,7 +1128,7 @@ fn eval_expr_value(
         Err(_) => {
             return Err(CoreError::InvalidCompiledWorkflow {
                 reason: "workflow validation failed",
-            })
+            });
         }
     };
     let frame = RunFrame::new(
@@ -1069,8 +1138,7 @@ fn eval_expr_value(
         workflow.slot_count(),
     )?;
     let _store = ValueStore::new();
-    vb_core::eval_expr(&workflow, &frame, ExprIdx::new(0))
-        .map(|(value, _taint)| value)
+    vb_core::eval_expr(&workflow, &frame, ExprIdx::new(0)).map(|(value, _taint)| value)
 }
 
 // =========================================================================
@@ -1132,7 +1200,10 @@ fn validate_resource_contract_rejects_oversized_max_slots() {
     let parts = parts_with_contract(contract);
     // max_slots == u16::MAX == MAX_SLOTS_PER_WORKFLOW (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(result.is_ok(), "max_slots at the hard limit should be accepted");
+    assert!(
+        result.is_ok(),
+        "max_slots at the hard limit should be accepted"
+    );
 }
 
 #[test]
@@ -1176,7 +1247,10 @@ fn validate_resource_contract_rejects_oversized_max_expressions() {
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     if usize::from(oversized) > MAX_EXPRESSIONS {
-        assert!(result.is_err(), "max_expressions over limit must be rejected");
+        assert!(
+            result.is_err(),
+            "max_expressions over limit must be rejected"
+        );
     }
 }
 
@@ -1204,14 +1278,17 @@ fn validate_resource_contract_accepts_at_limit_max_expr_stack() {
     };
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(result.is_ok(), "max_expr_stack at the hard limit should be accepted");
+    assert!(
+        result.is_ok(),
+        "max_expr_stack at the hard limit should be accepted"
+    );
 }
 
 #[test]
 fn validate_resource_contract_rejects_each_resource_individually() {
     // Test that each resource check fires independently by constructing
     // a contract that exceeds just one resource at a time.
-    use vb_core::limits::{MAX_ACCESSORS, MAX_EXPRESSIONS, MAX_EXPRESSION_STACK};
+    use vb_core::limits::{MAX_ACCESSORS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS};
 
     // max_accessors check
     if MAX_ACCESSORS < usize::from(u16::MAX) {
@@ -1250,24 +1327,25 @@ fn validate_resource_contract_rejects_each_resource_individually() {
 fn validate_node_bounds_accepts_valid_parts() {
     let parts = parts_with_contract(ResourceContract::DEFAULT);
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(result.is_ok(), "valid single-node workflow should pass node bounds check");
+    assert!(
+        result.is_ok(),
+        "valid single-node workflow should pass node bounds check"
+    );
 }
 
 #[test]
 fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(5), // id 5 but only 1 node (index 0)
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(5), // id 5 but only 1 node (index 0)
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
     assert!(result.is_err(), "node id >= node count must be rejected");
@@ -1276,18 +1354,16 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
 #[test]
 fn validate_node_bounds_rejects_next_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(99)), // next points to nonexistent node
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: Some(StepIdx::new(99)), // next points to nonexistent node
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
     assert!(result.is_err(), "next step >= node count must be rejected");
@@ -1320,7 +1396,10 @@ fn validate_node_bounds_accepts_next_at_last_index() {
     ]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(result.is_ok(), "next pointing to last valid node index should pass");
+    assert!(
+        result.is_ok(),
+        "next pointing to last valid node index should pass"
+    );
 }
 
 // =========================================================================
@@ -1331,302 +1410,318 @@ fn validate_node_bounds_accepts_next_at_last_index() {
 fn validate_transition_target_accepts_valid_finish() {
     let parts = parts_with_contract(ResourceContract::DEFAULT);
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_ok(), "Finish node with no transitions should pass");
+    assert!(
+        result.is_ok(),
+        "Finish node with no transitions should pass"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_jump_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Jump {
-                target: StepIdx::new(50),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Jump {
+            target: StepIdx::new(50),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "jump target >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "jump target >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Choose {
-                branches: vec![ExprBranch {
-                    condition: ExprIdx::new(0),
-                    target: StepIdx::new(99),
-                }]
-                .into_boxed_slice(),
-                otherwise: None,
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Choose {
+            branches: vec![ExprBranch {
+                condition: ExprIdx::new(0),
+                target: StepIdx::new(99),
+            }]
+            .into_boxed_slice(),
+            otherwise: None,
         },
-    ]
+    }]
     .into_boxed_slice();
-    parts.expressions = vec![ExprProgram::try_from_ops(
-        vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())
-    .unwrap()]
+    parts.expressions = vec![
+        ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
+            .map_err(|e| e.to_string())
+            .unwrap(),
+    ]
     .into_boxed_slice();
     parts.constants = vec![ConstValue::Bool(true)].into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "choose branch target >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "choose branch target >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Choose {
-                branches: Box::new([]),
-                otherwise: Some(StepIdx::new(99)),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Choose {
+            branches: Box::new([]),
+            otherwise: Some(StepIdx::new(99)),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "choose otherwise target >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "choose otherwise target >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ChooseSlot {
-                branches: vec![SlotBranch {
-                    condition: SlotIdx::new(0),
-                    target: StepIdx::new(99),
-                }]
-                .into_boxed_slice(),
-                otherwise: None,
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ChooseSlot {
+            branches: vec![SlotBranch {
+                condition: SlotIdx::new(0),
+                target: StepIdx::new(99),
+            }]
+            .into_boxed_slice(),
+            otherwise: None,
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "choose_slot branch target >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "choose_slot branch target >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachStart {
-                input: SlotIdx::new(0),
-                item_slot: SlotIdx::new(1),
-                limit: 0,
-                body: StepIdx::new(99),
-                done: StepIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ForEachStart {
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 0,
+            body: StepIdx::new(99),
+            done: StepIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "for_each body >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "for_each body >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
-                branches: vec![StepIdx::new(99)].into_boxed_slice(),
-                join: StepIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::TogetherStart {
+            branches: vec![StepIdx::new(99)].into_boxed_slice(),
+            join: StepIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "together branch >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "together branch >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
-                branches: vec![StepIdx::new(0)].into_boxed_slice(),
-                join: StepIdx::new(99),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::TogetherStart {
+            branches: vec![StepIdx::new(0)].into_boxed_slice(),
+            join: StepIdx::new(99),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "together join >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "together join >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_together_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherBranch {
-                branch: 0,
-                entry: StepIdx::new(99),
-                join: StepIdx::new(0),
-                accumulator: SlotIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::TogetherBranch {
+            branch: 0,
+            entry: StepIdx::new(99),
+            join: StepIdx::new(0),
+            accumulator: SlotIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "together branch entry >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "together branch entry >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherBranch {
-                branch: 0,
-                entry: StepIdx::new(0),
-                join: StepIdx::new(99),
-                accumulator: SlotIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::TogetherBranch {
+            branch: 0,
+            entry: StepIdx::new(0),
+            join: StepIdx::new(99),
+            accumulator: SlotIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "together branch join >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "together branch join >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatCheck {
-                attempt_slot: SlotIdx::new(0),
-                done: StepIdx::new(99),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RepeatCheck {
+            attempt_slot: SlotIdx::new(0),
+            done: StepIdx::new(99),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "repeat check done >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "repeat check done >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RetryCheck {
-                policy_slot: SlotIdx::new(0),
-                body: StepIdx::new(99),
-                exhausted: StepIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(99),
+            exhausted: StepIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "retry check body >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "retry check body >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ErrorHandler {
-                body: StepIdx::new(99),
-                handler: StepIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(99),
+            handler: StepIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "error handler body >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "error handler body >= node count must be rejected"
+    );
 }
 
 #[test]
 fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ErrorHandler {
-                body: StepIdx::new(0),
-                handler: StepIdx::new(99),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(0),
+            handler: StepIdx::new(99),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_err(), "error handler handler >= node count must be rejected");
+    assert!(
+        result.is_err(),
+        "error handler handler >= node count must be rejected"
+    );
 }
 
 #[test]
@@ -1657,7 +1752,10 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
     .into_boxed_slice();
     parts.constants = vec![ConstValue::I64(42)].into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(result.is_ok(), "valid two-node chain should pass transition target check");
+    assert!(
+        result.is_ok(),
+        "valid two-node chain should pass transition target check"
+    );
 }
 
 // =========================================================================
@@ -1668,7 +1766,10 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
 fn validate_compiled_workflow_accepts_valid_parts() {
     let parts = valid_parts();
     let result = vb_core::validate_compiled_workflow(&parts);
-    assert!(result.is_ok(), "valid workflow parts should pass full validation");
+    assert!(
+        result.is_ok(),
+        "valid workflow parts should pass full validation"
+    );
 }
 
 #[test]
@@ -1676,7 +1777,10 @@ fn validate_compiled_workflow_rejects_invalid_parts() {
     let mut parts = valid_parts();
     parts.slot_count = 0; // SetConst outputs to SlotIdx(0) but slot_count is 0
     let result = vb_core::validate_compiled_workflow(&parts);
-    assert!(result.is_err(), "workflow with slot out of bounds should be rejected");
+    assert!(
+        result.is_err(),
+        "workflow with slot out of bounds should be rejected"
+    );
 }
 
 // =========================================================================
@@ -1765,7 +1869,10 @@ fn budget_accepts_workflow_at_exact_limits() {
         value: ConstIdx::new(0),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_ok(), "workflow at exact resource limits should be accepted");
+    assert!(
+        result.is_ok(),
+        "workflow at exact resource limits should be accepted"
+    );
 }
 
 // =========================================================================
@@ -1966,7 +2073,10 @@ fn entry_validation_accepts_zero_entry_for_single_node() {
     let mut parts = valid_parts();
     parts.entry = StepIdx::new(0);
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_ok(), "entry 0 for single-node workflow should be accepted");
+    assert!(
+        result.is_ok(),
+        "entry 0 for single-node workflow should be accepted"
+    );
 }
 
 // =========================================================================
@@ -2201,7 +2311,10 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
         ..ResourceContract::DEFAULT
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_ok(), "empty branches with otherwise should be accepted");
+    assert!(
+        result.is_ok(),
+        "empty branches with otherwise should be accepted"
+    );
 }
 
 // =========================================================================
@@ -2216,7 +2329,10 @@ fn expression_rejects_program_exceeding_op_limit() {
         .map(|i| ExprOp::LoadConst(ConstIdx::new(u16::try_from(i).unwrap_or(0))))
         .collect();
     let result = ExprProgram::try_from_ops(ops.into_boxed_slice());
-    assert!(result.is_err(), "expression exceeding max ops must be rejected");
+    assert!(
+        result.is_err(),
+        "expression exceeding max ops must be rejected"
+    );
 }
 
 // =========================================================================
@@ -2250,7 +2366,10 @@ fn slot_value_display_with_store_outputs_reasonable_string() {
     let val = SlotValue::Bool(true);
     let store = ValueStore::new();
     let displayed = val.display_with_store(&store);
-    assert!(!displayed.is_empty(), "display_with_store must not return empty string");
+    assert!(
+        !displayed.is_empty(),
+        "display_with_store must not return empty string"
+    );
 }
 
 #[test]
@@ -2305,21 +2424,22 @@ fn accessor_validation_accepts_valid_accessor_reference() {
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
     // Change node to EvalExpr
-    parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
+    parts.nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
         },
-    ]
+    }]
     .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_ok(), "valid accessor reference should be accepted");
+    assert!(
+        result.is_ok(),
+        "valid accessor reference should be accepted"
+    );
 }
 
 // =========================================================================
@@ -2352,7 +2472,10 @@ fn accessor_root_slot_must_be_in_bounds() {
     }]
     .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_err(), "accessor with out-of-bounds root slot must be rejected");
+    assert!(
+        result.is_err(),
+        "accessor with out-of-bounds root slot must be rejected"
+    );
 }
 
 // =========================================================================
@@ -2437,25 +2560,27 @@ fn expression_with_only_push_at_depth_zero_is_rejected() {
 fn expression_with_no_ops_is_rejected() {
     let result = ExprProgram::try_from_ops(Box::new([]));
     // Empty program should be rejected (no result to leave on stack)
-    assert!(result.is_err() || {
-        // If it succeeds, the expression would leave 0 items on the finish check
-        if let Ok(prog) = result {
-            let mut parts = valid_parts();
-            parts.expressions = vec![prog].into_boxed_slice();
-            parts.nodes = vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-            }]
-            .into_boxed_slice();
-            CompiledWorkflow::try_from_parts(parts).is_err()
-        } else {
-            true
+    assert!(
+        result.is_err() || {
+            // If it succeeds, the expression would leave 0 items on the finish check
+            if let Ok(prog) = result {
+                let mut parts = valid_parts();
+                parts.expressions = vec![prog].into_boxed_slice();
+                parts.nodes = vec![CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                }]
+                .into_boxed_slice();
+                CompiledWorkflow::try_from_parts(parts).is_err()
+            } else {
+                true
+            }
         }
-    });
+    );
 }

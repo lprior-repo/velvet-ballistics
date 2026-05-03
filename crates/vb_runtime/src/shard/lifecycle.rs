@@ -6,6 +6,7 @@ use vb_core::frame::StepState;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use postcard;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -82,9 +83,15 @@ impl Shard {
             Err(AdmissionError::ArtifactNotFound { digest }) => {
                 Err(RuntimeError::AdmissionArtifactNotFound { digest })
             }
-            Err(AdmissionError::CapabilityDenied { action, required, granted }) => {
-                Err(RuntimeError::AdmissionCapabilityDenied { action, required, granted })
-            }
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            }) => Err(RuntimeError::AdmissionCapabilityDenied {
+                action,
+                required,
+                granted,
+            }),
         }
     }
 
@@ -118,9 +125,11 @@ impl Shard {
             run,
             step: ticket.step,
         });
+        let encoded_value = postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.journal.append(RuntimeJournalEvent::SlotWritten {
             run,
             slot: output.output_slot,
+            value: encoded_value,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {
             run,
@@ -261,9 +270,11 @@ impl Shard {
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         })?;
+        let encoded_answer_value = postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.journal.append(RuntimeJournalEvent::SlotWritten {
             run,
             slot: answer.answer_slot,
+            value: encoded_answer_value,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {
             run,

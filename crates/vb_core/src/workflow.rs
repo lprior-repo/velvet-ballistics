@@ -5,9 +5,9 @@ use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK,
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH,
-    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
+    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS,
+    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH, MAX_SLOTS_PER_WORKFLOW,
+    MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
 use serde::{Deserialize, Serialize};
@@ -675,11 +675,7 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
 
-    let budget = WholeWorkflowBudget::compute(
-        &parts.nodes,
-        parts.entry,
-        &parts.resource_contract,
-    )?;
+    let budget = WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)?;
 
     match BoundednessPolicy::DEFAULT.validate(&budget) {
         Ok(()) => Ok(()),
@@ -698,18 +694,22 @@ fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         Err(BudgetError::ParallelExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
             detail: "max_parallel_in_flight",
         }),
-        Err(BudgetError::ActionTicketsExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_action_tickets",
-        }),
+        Err(BudgetError::ActionTicketsExceeded { .. }) => {
+            Err(WorkflowError::BudgetPolicyExceeded {
+                detail: "max_action_tickets",
+            })
+        }
         Err(BudgetError::RunTimeExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
             detail: "max_run_time_seconds",
         }),
         Err(BudgetError::ResultBytesExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
             detail: "max_result_bytes",
         }),
-        Err(BudgetError::StepsExecutableExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_steps_executable",
-        }),
+        Err(BudgetError::StepsExecutableExceeded { .. }) => {
+            Err(WorkflowError::BudgetPolicyExceeded {
+                detail: "max_steps_executable",
+            })
+        }
     }
 }
 
@@ -1671,9 +1671,9 @@ const fn effect(pop: u8, push: u8) -> StackEffect {
 #[cfg(test)]
 mod tests {
     use super::{
-        check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-        ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
-        WorkflowParts,
+        AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
+        ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+        check_expr_stack_bound,
     };
     use crate::errors::CoreError;
     use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
@@ -2086,7 +2086,8 @@ mod tests {
         let fields =
             vec![(crate::ids::SymbolId::new(0), SlotIdx::new(0)); MAX_OBJECT_FIELDS_PER_VALUE]
                 .into_boxed_slice();
-        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
+        let parts =
+            construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
         CompiledWorkflow::try_from_parts(parts)
             .map(|_| ())
@@ -2100,7 +2101,8 @@ mod tests {
             MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)
         ]
         .into_boxed_slice();
-        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
+        let parts =
+            construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
         match CompiledWorkflow::try_from_parts(parts) {
             Err(WorkflowError::ResourceContractExceeded {
@@ -2135,7 +2137,8 @@ mod tests {
     fn workflow_parts_preserve_build_object_duplicate_field_order() -> Result<(), String> {
         let key = crate::ids::SymbolId::new(5);
         let fields = vec![(key, SlotIdx::new(0)), (key, SlotIdx::new(1))].into_boxed_slice();
-        let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 2, 2, 6);
+        let parts =
+            construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 2, 2, 6);
 
         let workflow =
             CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
@@ -2770,8 +2773,8 @@ mod tests {
     // --- Resource contract max_steps set to 0 with 1 node ---
 
     #[test]
-    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded(
-    ) -> Result<(), String> {
+    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded()
+    -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("zero_max_steps"),
             digest: WorkflowDigest::from_bytes([2; 32]),
@@ -2829,8 +2832,8 @@ mod tests {
     // --- TogetherStart with out-of-bounds branch target ---
 
     #[test]
-    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
-    ) -> Result<(), String> {
+    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
+    -> Result<(), String> {
         let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
         parts.nodes = vec![
             CompiledNode {
@@ -3883,7 +3886,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -3959,7 +3964,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -4119,7 +4126,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -4182,7 +4191,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -4205,7 +4216,9 @@ mod tests {
         );
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(10) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(10) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -4358,7 +4371,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -4441,7 +4456,7 @@ mod tests {
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![
-                ConstValue::Symbol(SymbolId::new(0)), // valid
+                ConstValue::Symbol(SymbolId::new(0)),  // valid
                 ConstValue::Symbol(SymbolId::new(50)), // out of bounds
             ]
             .into_boxed_slice(),
@@ -4453,7 +4468,9 @@ mod tests {
         };
 
         match CompiledWorkflow::try_from_parts(parts) {
-            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => Ok(()),
+            Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }

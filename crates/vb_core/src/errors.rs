@@ -378,9 +378,9 @@ impl CoreError {
             Self::UnsupportedPrimitive { .. } => Some(Self::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE),
             Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::RepeatExhausted { .. } => Some(Self::REPEAT_LIMIT_REACHED_RUNTIME_CODE),
-            Self::CollectPageLimitExceeded | Self::CollectItemLimitExceeded | Self::CollectTimeLimitExceeded => {
-                Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE)
-            }
+            Self::CollectPageLimitExceeded
+            | Self::CollectItemLimitExceeded
+            | Self::CollectTimeLimitExceeded => Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE),
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
             _ => None,
         }
@@ -698,7 +698,10 @@ mod tests {
             limit: 1_024,
         };
         assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1406));
-        assert_eq!(error.to_string(), "budget exceeded: max_slots limit was 1024");
+        assert_eq!(
+            error.to_string(),
+            "budget exceeded: max_slots limit was 1024"
+        );
     }
 
     #[test]

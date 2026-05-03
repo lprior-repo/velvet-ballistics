@@ -233,6 +233,7 @@ impl RunFrame {
                                 reason: "taint_slots_diverged",
                             });
                     }
+                    }
                     idx = idx.saturating_add(1);
                 }
                 Ok(Taint::Clean)
@@ -250,6 +251,7 @@ impl RunFrame {
                             .ok_or(CoreError::InternalInvariantViolation {
                                 reason: "taint_slots_diverged",
                             });
+                    }
                     }
                     idx = idx.saturating_add(1);
                 }
@@ -343,13 +345,25 @@ impl RunFrame {
             // Pending -> Running is the initial activation
             (StepState::Pending, StepState::Running) => true,
             // Deterministic engine paths can complete or skip simple nodes without a separate Running mark.
-            (StepState::Pending, StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped) => true,
+            (
+                StepState::Pending,
+                StepState::Succeeded
+                | StepState::Failed
+                | StepState::Cancelled
+                | StepState::Skipped,
+            ) => true,
             // Running can transition to any terminal or suspend state
-            (StepState::Running, StepState::Succeeded | StepState::Failed | StepState::Waiting | StepState::Asking | StepState::Cancelled | StepState::Skipped) => true,
+            (
+                StepState::Running,
+                StepState::Succeeded
+                | StepState::Failed
+                | StepState::Waiting
+                | StepState::Asking
+                | StepState::Cancelled
+                | StepState::Skipped,
+            ) => true,
             // Suspend states can resume back to Running
-            (StepState::Waiting | StepState::Asking, StepState::Running) => {
-                true
-            }
+            (StepState::Waiting | StepState::Asking, StepState::Running) => true,
             // Repeated marking is idempotent across engine bookkeeping boundaries.
             (state, next) if state == next => true,
             // Terminal states (Succeeded, Failed, Cancelled) allow no transitions out.

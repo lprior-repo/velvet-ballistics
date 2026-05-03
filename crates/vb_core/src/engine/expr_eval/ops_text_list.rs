@@ -4,7 +4,9 @@ use crate::errors::EngineError;
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 
-use super::stack::{expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value, ExprStack};
+use super::stack::{
+    ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
+};
 
 // ===== Text operations =====
 
@@ -23,7 +25,10 @@ pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result
     push_value(stack, SlotValue::Bool(haystack_str.contains(needle_str)))
 }
 
-pub(super) fn eval_starts_with(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
+pub(super) fn eval_starts_with(
+    stack: &mut ExprStack,
+    store: &ValueStore,
+) -> Result<(), EngineError> {
     let (text, prefix) = pop_pair(stack)?;
     let text_id = expect_symbol(text)?;
     let prefix_id = expect_symbol(prefix)?;
@@ -157,7 +162,10 @@ pub(super) fn eval_count(stack: &mut ExprStack, store: &ValueStore) -> Result<()
     push_value(stack, SlotValue::I64(count))
 }
 
-pub(super) fn eval_append(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
+pub(super) fn eval_append(
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+) -> Result<(), EngineError> {
     let (list, item) = pop_pair(stack)?;
     let list_id = expect_list(list)?;
     let items = store
@@ -171,7 +179,10 @@ pub(super) fn eval_append(stack: &mut ExprStack, store: &mut ValueStore) -> Resu
     push_value(stack, SlotValue::List(new_list))
 }
 
-pub(super) fn eval_append_if(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
+pub(super) fn eval_append_if(
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+) -> Result<(), EngineError> {
     let (list, item, condition) = pop_triple(stack)?;
     let list_id = expect_list(list)?;
     let cond = super::stack::expect_bool(condition)?;
@@ -188,7 +199,10 @@ pub(super) fn eval_append_if(stack: &mut ExprStack, store: &mut ValueStore) -> R
     push_value(stack, SlotValue::List(new_list))
 }
 
-pub(super) fn eval_unique(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
+pub(super) fn eval_unique(
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
     let list_id = expect_list(value)?;
     let items = store

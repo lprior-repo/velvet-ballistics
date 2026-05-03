@@ -637,10 +637,16 @@ mod tests {
         let variants = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
         for variant in variants {
             let bytes = postcard::to_allocvec(&variant);
-            assert!(bytes.is_ok(), "postcard serialization should succeed for {variant:?}");
+            assert!(
+                bytes.is_ok(),
+                "postcard serialization should succeed for {variant:?}"
+            );
             let Ok(bytes) = bytes else { return };
             let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
-            assert!(recovered.is_ok(), "postcard deserialization should succeed for {variant:?}");
+            assert!(
+                recovered.is_ok(),
+                "postcard deserialization should succeed for {variant:?}"
+            );
             let Ok(recovered) = recovered else { return };
             assert_eq!(variant, recovered, "roundtrip must preserve {variant:?}");
         }

@@ -10,9 +10,9 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::ShardCounters;
-use crate::primitives::collect::CollectStates;
 use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
+use crate::primitives::collect::CollectStates;
 use crate::trace::TraceRing;
 
 type FramePoolKey = (u16, u16);

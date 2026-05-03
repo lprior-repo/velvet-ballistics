@@ -5,13 +5,11 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
 
-use super::stack::{
-    expect_bool, expect_object, pop_i64_pair, pop_pair, push_value, ExprStack,
-};
 use super::ops_text_list::{
-    eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with,
-    eval_has, eval_length, eval_starts_with, eval_sum, eval_unique,
+    eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with, eval_has,
+    eval_length, eval_starts_with, eval_sum, eval_unique,
 };
+use super::stack::{ExprStack, expect_bool, expect_object, pop_i64_pair, pop_pair, push_value};
 
 fn eval_eq(stack: &mut ExprStack, positive: bool) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
@@ -47,9 +45,11 @@ fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
     if right == 0 {
         return Err(EngineError::DivisionByZero);
     }
-    let value = left.checked_div(right).ok_or(EngineError::InvalidCompiledWorkflow {
-        reason: "integer division overflow",
-    })?;
+    let value = left
+        .checked_div(right)
+        .ok_or(EngineError::InvalidCompiledWorkflow {
+            reason: "integer division overflow",
+        })?;
     push_value(stack, SlotValue::I64(value))
 }
 

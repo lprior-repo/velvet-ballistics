@@ -11,7 +11,7 @@ use vb_storage::{
 use crate::{RuntimeError, RuntimeResult};
 
 /// Minimal lifecycle event emitted by the runtime before a durable store is wired.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeJournalEvent {
     /// Run was accepted by the runtime.
     RunSubmitted {
@@ -100,6 +100,8 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Slot written by the event.
         slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded `SlotValue`).
+        value: Vec<u8>,
     },
     /// Deterministic step began execution.
     StepStarted {
@@ -122,7 +124,7 @@ pub enum RuntimeJournalEvent {
 impl RuntimeJournalEvent {
     /// Run identifier carried by this runtime event.
     #[must_use]
-    pub const fn run_id(self) -> RunId {
+    pub fn run_id(&self) -> RunId {
         match self {
             Self::RunSubmitted { run, .. }
             | Self::RunFinished { run, .. }
@@ -137,7 +139,7 @@ impl RuntimeJournalEvent {
             | Self::AskAnswered { run, .. }
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
-            | Self::StepSucceeded { run, .. } => run,
+            | Self::StepSucceeded { run, .. } => *run,
         }
     }
 }
@@ -394,8 +396,8 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
                 Some(JournalEvent::AskAnsweredEvent { run, seq, step })
             }
-            RuntimeJournalEvent::SlotWritten { run, slot } => {
-                Some(JournalEvent::SlotWrittenEvent { run, seq, slot })
+            RuntimeJournalEvent::SlotWritten { run, slot, value } => {
+                Some(JournalEvent::SlotWrittenEvent { run, seq, slot, value: Some(value) })
             }
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunFinished { .. }
@@ -410,13 +412,13 @@ impl StorageRuntimeJournal {
     }
 
     fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> JournalEvent {
-        if let Some(storage_event) = Self::run_storage_event(event, seq) {
+        if let Some(storage_event) = Self::run_storage_event(event.clone(), seq) {
             return storage_event;
         }
-        if let Some(storage_event) = Self::action_storage_event(event, seq) {
+        if let Some(storage_event) = Self::action_storage_event(event.clone(), seq) {
             return storage_event;
         }
-        match Self::boundary_storage_event(event, seq) {
+        match Self::boundary_storage_event(event.clone(), seq) {
             Some(storage_event) => storage_event,
             None => JournalEvent::RunFailedEvent {
                 run: event.run_id(),
@@ -428,15 +430,16 @@ impl StorageRuntimeJournal {
 
 impl RuntimeJournal for StorageRuntimeJournal {
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        let run_id = event.run_id();
         let mut sequences = self
             .next_seq_by_run
             .lock()
             .map_err(|_| RuntimeError::JournalPoisoned)?;
-        let seq = current_seq(&sequences, event.run_id());
+        let seq = current_seq(&sequences, run_id);
         let next = next_seq(seq)?;
         let storage_event = Self::storage_event(event, seq);
         self.append_storage_event(&storage_event)?;
-        sequences.insert(event.run_id(), next);
+        sequences.insert(run_id, next);
         Ok(())
     }
 }
@@ -510,16 +513,17 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         if self.profile == DurabilityProfile::Strict {
             return Err(RuntimeError::UnsupportedAsyncStrictAck);
         }
+        let run_id = event.run_id();
         let mut sequences = self
             .next_seq_by_run
             .lock()
             .map_err(|_| RuntimeError::JournalPoisoned)?;
-        let seq = current_seq(&sequences, event.run_id());
+        let seq = current_seq(&sequences, run_id);
         let next = next_seq(seq)?;
         let storage_event = StorageRuntimeJournal::storage_event(event, seq);
         let result = self.queue.enqueue_journaled(storage_event);
         result.map_err(|_| RuntimeError::StorageJournalAppendFailed)?;
-        sequences.insert(event.run_id(), next);
+        sequences.insert(run_id, next);
         Ok(())
     }
 

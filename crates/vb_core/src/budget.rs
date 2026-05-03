@@ -336,79 +336,83 @@ fn count_total_steps(
     stack.push(entry);
 
     while let Some(current) = stack.pop() {
-        let idx = current.as_usize();
-        if idx >= node_count {
-            return Err(WorkflowError::StepOutOfBounds { step: current });
+        total = visit_node_for_total_steps(
+            nodes,
+            current,
+            node_count,
+            &mut visited,
+            total,
+            &mut stack,
+        )?;
+    }
+    Ok(total)
+}
+
+/// Visits a single node during step counting and updates the total and stack.
+fn visit_node_for_total_steps(
+    nodes: &[crate::workflow::CompiledNode],
+    current: StepIdx,
+    node_count: usize,
+    visited: &mut [bool],
+    mut total: u64,
+    stack: &mut Vec<StepIdx>,
+) -> Result<u64, WorkflowError> {
+    let idx = current.as_usize();
+    if idx >= node_count {
+        return Err(WorkflowError::StepOutOfBounds { step: current });
+    }
+    if visited.get(idx).copied() == Some(true) {
+        return Ok(total);
+    }
+    let Some(flag) = visited.get_mut(idx) else {
+        return Err(WorkflowError::StepOutOfBounds { step: current });
+    };
+    *flag = true;
+
+    let node = match nodes.get(idx) {
+        Some(n) => n,
+        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+    };
+
+    total = match total.checked_add(1) {
+        Some(v) => v,
+        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+    };
+
+    match &node.kind {
+        CompiledNodeKind::ForEachStart { limit, body, done, .. } => {
+            let body_count =
+                count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
+            let iter_count = u64::from(*limit).max(1);
+            total = total.saturating_add(body_count.saturating_mul(iter_count));
+            stack.push(*done);
         }
-        if visited.get(idx).copied() == Some(true) {
-            continue;
+        CompiledNodeKind::CollectStart { limit, body, done, .. } => {
+            let body_count =
+                count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
+            let iter_count = u64::from(*limit).max(1);
+            total = total.saturating_add(body_count.saturating_mul(iter_count));
+            stack.push(*done);
         }
-        let Some(flag) = visited.get_mut(idx) else {
-            return Err(WorkflowError::StepOutOfBounds { step: current });
-        };
-        *flag = true;
-
-        let node = match nodes.get(idx) {
-            Some(n) => n,
-            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-        };
-
-        total = match total.checked_add(1) {
-            Some(v) => v,
-            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-        };
-
-        match &node.kind {
-            CompiledNodeKind::ForEachStart {
-                limit,
-                body,
-                done,
-                ..
-            } => {
-                let body_count =
-                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
-                let iter_count = u64::from(*limit).max(1);
-                total = total.saturating_add(body_count.saturating_mul(iter_count));
-                stack.push(*done);
-            }
-            CompiledNodeKind::CollectStart {
-                limit,
-                body,
-                done,
-                ..
-            } => {
-                let body_count =
-                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
-                let iter_count = u64::from(*limit).max(1);
-                total = total.saturating_add(body_count.saturating_mul(iter_count));
-                stack.push(*done);
-            }
-            CompiledNodeKind::ReduceStart { body, done, .. } => {
-                let body_count =
-                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
-                // ReduceStart has no explicit limit. Use MAX_LIST_ITEMS_PER_VALUE
-                // as a conservative upper bound for the input list size.
-                let iter_count =
-                    u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-                total = total.saturating_add(body_count.saturating_mul(iter_count));
-                stack.push(*done);
-            }
-            CompiledNodeKind::RepeatStart {
-                max_attempts,
-                body,
-                done,
-            } => {
-                let body_count =
-                    count_body_region_nodes(nodes, *body, *done, &mut visited, node_count)?;
-                let iter_count = u64::from(*max_attempts).max(1);
-                total = total.saturating_add(body_count.saturating_mul(iter_count));
-                stack.push(*done);
-            }
-            _ => {
-                push_successor_targets(&node.kind, &mut stack);
-                if let Some(next) = node.next {
-                    stack.push(next);
-                }
+        CompiledNodeKind::ReduceStart { body, done, .. } => {
+            let body_count =
+                count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
+            let iter_count =
+                u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            total = total.saturating_add(body_count.saturating_mul(iter_count));
+            stack.push(*done);
+        }
+        CompiledNodeKind::RepeatStart { max_attempts, body, done } => {
+            let body_count =
+                count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
+            let iter_count = u64::from(*max_attempts).max(1);
+            total = total.saturating_add(body_count.saturating_mul(iter_count));
+            stack.push(*done);
+        }
+        _ => {
+            push_successor_targets(&node.kind, stack);
+            if let Some(next) = node.next {
+                stack.push(next);
             }
         }
     }
@@ -432,107 +436,96 @@ fn count_body_region_nodes(
 
     let mut count: u64 = 0;
     while let Some(current) = stack.pop() {
-        let idx = current.as_usize();
-        if idx >= node_count {
-            return Err(WorkflowError::StepOutOfBounds { step: current });
-        }
-        // Stop at the done exit node -- it's not part of the body
-        if idx == done_idx {
-            continue;
-        }
-        if global_visited.get(idx).copied() == Some(true) {
-            continue;
-        }
-        if region_visited.get(idx).copied() == Some(true) {
-            continue;
-        }
-        let Some(flag) = region_visited.get_mut(idx) else {
-            return Err(WorkflowError::StepOutOfBounds { step: current });
-        };
-        *flag = true;
+        count = visit_body_region_node(
+            nodes,
+            current,
+            done_idx,
+            node_count,
+            global_visited,
+            &mut region_visited,
+            &mut stack,
+            count,
+        )?;
+    }
+    Ok(count)
+}
 
-        count = count.saturating_add(1);
+/// Visits a single node in a body region during step counting.
+fn visit_body_region_node(
+    nodes: &[crate::workflow::CompiledNode],
+    current: StepIdx,
+    done_idx: usize,
+    node_count: usize,
+    global_visited: &mut [bool],
+    region_visited: &mut [bool],
+    stack: &mut Vec<StepIdx>,
+    mut count: u64,
+) -> Result<u64, WorkflowError> {
+    let idx = current.as_usize();
+    if idx >= node_count {
+        return Err(WorkflowError::StepOutOfBounds { step: current });
+    }
+    // Stop at the done exit node -- it's not part of the body
+    if idx == done_idx {
+        return Ok(count);
+    }
+    if global_visited.get(idx).copied() == Some(true) {
+        return Ok(count);
+    }
+    if region_visited.get(idx).copied() == Some(true) {
+        return Ok(count);
+    }
+    let Some(flag) = region_visited.get_mut(idx) else {
+        return Err(WorkflowError::StepOutOfBounds { step: current });
+    };
+    *flag = true;
 
-        let node = match nodes.get(idx) {
-            Some(n) => n,
-            None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-        };
+    count = count.saturating_add(1);
 
-        // Recursively handle nested loop headers within the body region
-        match &node.kind {
-            CompiledNodeKind::ForEachStart {
-                limit,
-                body: inner_body,
-                done: inner_done,
-                ..
-            } => {
-                let inner_body_count = count_body_region_nodes(
-                    nodes,
-                    *inner_body,
-                    *inner_done,
-                    global_visited,
-                    node_count,
-                )?;
-                let iter_count = u64::from(*limit).max(1);
-                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-                // Continue walking from inner_done within the outer body
-                stack.push(*inner_done);
-            }
-            CompiledNodeKind::CollectStart {
-                limit,
-                body: inner_body,
-                done: inner_done,
-                ..
-            } => {
-                let inner_body_count = count_body_region_nodes(
-                    nodes,
-                    *inner_body,
-                    *inner_done,
-                    global_visited,
-                    node_count,
-                )?;
-                let iter_count = u64::from(*limit).max(1);
-                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-                stack.push(*inner_done);
-            }
-            CompiledNodeKind::ReduceStart {
-                body: inner_body,
-                done: inner_done,
-                ..
-            } => {
-                let inner_body_count = count_body_region_nodes(
-                    nodes,
-                    *inner_body,
-                    *inner_done,
-                    global_visited,
-                    node_count,
-                )?;
-                let iter_count =
-                    u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-                stack.push(*inner_done);
-            }
-            CompiledNodeKind::RepeatStart {
-                max_attempts,
-                body: inner_body,
-                done: inner_done,
-            } => {
-                let inner_body_count = count_body_region_nodes(
-                    nodes,
-                    *inner_body,
-                    *inner_done,
-                    global_visited,
-                    node_count,
-                )?;
-                let iter_count = u64::from(*max_attempts).max(1);
-                count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-                stack.push(*inner_done);
-            }
-            _ => {
-                push_successor_targets(&node.kind, &mut stack);
-                if let Some(next) = node.next {
-                    stack.push(next);
-                }
+    let node = match nodes.get(idx) {
+        Some(n) => n,
+        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+    };
+
+    // Recursively handle nested loop headers within the body region
+    match &node.kind {
+        CompiledNodeKind::ForEachStart { limit, body: inner_body, done: inner_done, .. } => {
+            let inner_body_count = count_body_region_nodes(
+                nodes, *inner_body, *inner_done, global_visited, node_count,
+            )?;
+            let iter_count = u64::from(*limit).max(1);
+            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+            stack.push(*inner_done);
+        }
+        CompiledNodeKind::CollectStart { limit, body: inner_body, done: inner_done, .. } => {
+            let inner_body_count = count_body_region_nodes(
+                nodes, *inner_body, *inner_done, global_visited, node_count,
+            )?;
+            let iter_count = u64::from(*limit).max(1);
+            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+            stack.push(*inner_done);
+        }
+        CompiledNodeKind::ReduceStart { body: inner_body, done: inner_done, .. } => {
+            let inner_body_count = count_body_region_nodes(
+                nodes, *inner_body, *inner_done, global_visited, node_count,
+            )?;
+            let iter_count =
+                u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+            stack.push(*inner_done);
+        }
+        CompiledNodeKind::RepeatStart { max_attempts, body: inner_body, done: inner_done } => {
+            let inner_body_count = count_body_region_nodes(
+                nodes, *inner_body, *inner_done, global_visited, node_count,
+            )?;
+            let iter_count = u64::from(*max_attempts).max(1);
+            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
+            stack.push(*inner_done);
+        }
+        _ => {
+            push_successor_targets(&node.kind, stack);
+            if let Some(next) = node.next {
+                stack.push(next);
             }
         }
     }
@@ -840,11 +833,7 @@ mod tests {
         let contract = test_contract(3, 1);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
             .ok()
-            .filter(|b| {
-                b.max_total_steps == 3
-                    && b.max_fanout == 0
-                    && b.max_nesting_depth == 0
-            });
+            .filter(|b| b.max_total_steps == 3 && b.max_fanout == 0 && b.max_nesting_depth == 0);
 
         assert!(budget.is_some(), "linear workflow budget mismatch");
     }
@@ -996,7 +985,10 @@ mod tests {
         let policy = test_policy(2, 10, 64, 8);
 
         match policy.validate(&budget) {
-            Err(BudgetError::TotalStepsExceeded { actual: 3, limit: 2 }) => {}
+            Err(BudgetError::TotalStepsExceeded {
+                actual: 3,
+                limit: 2,
+            }) => {}
             other => panic!("unexpected result: {other:?}"),
         }
     }
@@ -1007,7 +999,10 @@ mod tests {
         let policy = test_policy(1_000_000, 65_535, 2, 8);
 
         match policy.validate(&budget) {
-            Err(BudgetError::FanoutExceeded { actual: 3, limit: 2 }) => {}
+            Err(BudgetError::FanoutExceeded {
+                actual: 3,
+                limit: 2,
+            }) => {}
             other => panic!("unexpected result: {other:?}"),
         }
     }
@@ -1025,7 +1020,10 @@ mod tests {
         let policy = test_policy(1_000_000, 65_535, 64, 4);
 
         match policy.validate(&budget) {
-            Err(BudgetError::NestingDepthExceeded { actual: 10, limit: 4 }) => {}
+            Err(BudgetError::NestingDepthExceeded {
+                actual: 10,
+                limit: 4,
+            }) => {}
             other => panic!("unexpected result: {other:?}"),
         }
     }
@@ -1209,11 +1207,7 @@ mod tests {
         let contract = test_contract(1, 1);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
             .ok()
-            .filter(|b| {
-                b.max_total_steps == 1
-                    && b.max_fanout == 0
-                    && b.max_nesting_depth == 0
-            });
+            .filter(|b| b.max_total_steps == 1 && b.max_fanout == 0 && b.max_nesting_depth == 0);
 
         assert!(budget.is_some(), "single-node workflow budget mismatch");
     }
@@ -1254,28 +1248,19 @@ mod tests {
             actual: 200_000,
             limit: 100_000,
         };
-        assert_eq!(
-            format!("{err}"),
-            "action tickets exceeded: 200000 > 100000"
-        );
+        assert_eq!(format!("{err}"), "action tickets exceeded: 200000 > 100000");
 
         let err = BudgetError::RunTimeExceeded {
             actual: 3_000_000,
             limit: 2_592_000,
         };
-        assert_eq!(
-            format!("{err}"),
-            "run time exceeded: 3000000 > 2592000"
-        );
+        assert_eq!(format!("{err}"), "run time exceeded: 3000000 > 2592000");
 
         let err = BudgetError::ResultBytesExceeded {
             actual: 524_288,
             limit: 262_144,
         };
-        assert_eq!(
-            format!("{err}"),
-            "result bytes exceeded: 524288 > 262144"
-        );
+        assert_eq!(format!("{err}"), "result bytes exceeded: 524288 > 262144");
 
         let err = BudgetError::StepsExecutableExceeded {
             actual: 2_000_000,
@@ -1606,10 +1591,7 @@ mod tests {
             .ok()
             .filter(|b| b.max_total_steps == 1002);
 
-        assert!(
-            budget.is_some(),
-            "large loop should count 1002 steps not 3"
-        );
+        assert!(budget.is_some(), "large loop should count 1002 steps not 3");
 
         // The default policy (1M steps) should accept this
         let budget_val = budget.as_ref().unwrap();

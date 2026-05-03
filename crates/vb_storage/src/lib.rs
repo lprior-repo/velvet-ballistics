@@ -26,7 +26,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use thiserror::Error;
 use vb_core::DiagnosticCode;
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest, WorkflowId};
 
 /// Immutable YAML source records by digest.
 pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
@@ -571,6 +571,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Slot index.
         slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
+        value: Option<Vec<u8>>,
     },
     /// Wait was scheduled.
     WaitScheduledEvent {
@@ -693,6 +695,17 @@ impl JournalEvent {
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
             Self::RunFinished { .. } => RecordKind::RunFinished,
             Self::RunFailedEvent { .. } => RecordKind::RunFailed,
+        }
+    }
+
+    /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.
+    #[must_use]
+    pub fn slot_value(&self) -> Option<SlotValue> {
+        match self {
+            Self::SlotWrittenEvent { value: Some(bytes), .. } => {
+                postcard::from_bytes(bytes).ok()
+            }
+            _ => None,
         }
     }
 }
@@ -2385,7 +2398,7 @@ mod tests {
         run_header_key, run_snapshot_key, verify_digest_match, workflow_source_key, write_snapshot,
     };
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest, WorkflowId};
 
     #[test]
     fn journal_key_is_fixed_width() {
@@ -4745,6 +4758,7 @@ mod tests {
         let run = RunId::new(12);
         let slot = vb_core::SlotIdx::new(9);
         let event = JournalEvent::SlotWrittenEvent {
+            value: None,
             run,
             seq: EventSeq::new(0),
             slot,
@@ -4979,6 +4993,7 @@ mod tests {
             run,
             seq: EventSeq::new(2),
             slot: vb_core::SlotIdx::new(0),
+            value: None,
         };
         let e3 = JournalEvent::StepSucceeded {
             run,
@@ -5286,7 +5301,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq: EventSeq::new(0),
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .run_id(),
             run
@@ -5423,7 +5439,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .seq(),
             seq
@@ -5546,7 +5563,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .record_kind(),
             RecordKind::SlotWritten
@@ -5669,6 +5687,7 @@ mod tests {
             run: RunId::new(4),
             seq: EventSeq::new(3),
             slot: vb_core::SlotIdx::new(7),
+            value: None,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 3, &event, 128)
             .expect("encoding should succeed");
@@ -6149,6 +6168,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(2),
                     slot: vb_core::SlotIdx::new(0),
+                    value: None,
                 },
                 JournalEvent::ActionScheduled {
                     run,
@@ -7649,6 +7669,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             slot: SlotIdx::new(5),
+            value: None,
         };
         let mut batch = journal.batch();
         batch

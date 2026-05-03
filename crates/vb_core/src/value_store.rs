@@ -1421,50 +1421,33 @@ mod tests {
 
         // Verify valid handles work
         assert_eq!(store.symbol(sym).map_err(|e| e.to_string())?, "a");
-        assert_eq!(
-            store.list(list).map_err(|e| e.to_string())?.len(),
-            1
-        );
-        assert_eq!(
-            store.object(obj).map_err(|e| e.to_string())?.len(),
-            0
-        );
-        assert_eq!(
-            store.blob(blob).map_err(|e| e.to_string())?.len(),
-            1
-        );
+        assert_eq!(store.list(list).map_err(|e| e.to_string())?.len(), 1);
+        assert_eq!(store.object(obj).map_err(|e| e.to_string())?.len(), 0);
+        assert_eq!(store.blob(blob).map_err(|e| e.to_string())?.len(), 1);
 
         // Forged one-past handles must fail
         let forged_sym = SymbolId::new(sym.get().saturating_add(1));
         assert_eq!(
             store.symbol(forged_sym),
-            Err(CoreError::SymbolOutOfBounds {
-                symbol: forged_sym,
-            })
+            Err(CoreError::SymbolOutOfBounds { symbol: forged_sym })
         );
 
         let forged_list = ListId::new(list.get().saturating_add(1));
         assert_eq!(
             store.list(forged_list),
-            Err(CoreError::ListOutOfBounds {
-                list: forged_list,
-            })
+            Err(CoreError::ListOutOfBounds { list: forged_list })
         );
 
         let forged_obj = ObjectId::new(obj.get().saturating_add(1));
         assert_eq!(
             store.object(forged_obj),
-            Err(CoreError::ObjectOutOfBounds {
-                object: forged_obj,
-            })
+            Err(CoreError::ObjectOutOfBounds { object: forged_obj })
         );
 
         let forged_blob = BlobId::new(blob.as_u64().saturating_add(1));
         assert_eq!(
             store.blob(forged_blob),
-            Err(CoreError::BlobOutOfBounds {
-                blob: forged_blob,
-            })
+            Err(CoreError::BlobOutOfBounds { blob: forged_blob })
         );
 
         Ok(())
@@ -1492,10 +1475,7 @@ mod tests {
         );
 
         // Existing entries must be untouched
-        assert_eq!(
-            store.symbol(sym).map_err(|e| e.to_string())?,
-            "preserved"
-        );
+        assert_eq!(store.symbol(sym).map_err(|e| e.to_string())?, "preserved");
         assert_eq!(
             store.list_item(list, 0).map_err(|e| e.to_string())?,
             SlotValue::I64(42)
@@ -1591,16 +1571,16 @@ mod tests {
     fn security_write_slot_with_taint_maintains_same_length_arrays() -> Result<(), String> {
         use crate::frame::RunFrame;
 
-        let mut frame = RunFrame::new(
-            crate::ids::RunId::new(1),
-            crate::ids::StepIdx::ZERO,
-            2,
-            4,
-        )
-        .map_err(|e| e.to_string())?;
+        let mut frame = RunFrame::new(crate::ids::RunId::new(1), crate::ids::StepIdx::ZERO, 2, 4)
+            .map_err(|e| e.to_string())?;
 
         // Write all slots with different taint levels
-        let taints = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret, Taint::Clean];
+        let taints = [
+            Taint::Clean,
+            Taint::DerivedFromSecret,
+            Taint::Secret,
+            Taint::Clean,
+        ];
         for (i, taint) in taints.iter().enumerate() {
             let slot = crate::ids::SlotIdx::new(
                 u16::try_from(i).map_err(|_| String::from("index overflow"))?,

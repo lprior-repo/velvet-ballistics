@@ -422,25 +422,37 @@ pub fn validate_action_outcome(
     outcome: &ActionOutcome,
 ) -> Result<(), ActionError> {
     match outcome {
-        ActionOutcome::Ready(output_ready) => {
-            let slot_raw = output_ready.output_slot.get();
-            if u32::from(slot_raw) >= u32::from(contract.output_slot_count)
-                && contract.output_slot_count > 0
-            {
-                return Err(ActionError::OutputSlotOutOfBounds {
-                    slot: slot_raw,
-                    max_slots: contract.output_slot_count,
-                });
-            }
-            Ok(())
-        }
-        ActionOutcome::Suspended(_) => {
-            // Suspension is not a terminal outcome; it is a mid-flight state.
-            // Completing with a suspended outcome is invalid.
-            Err(ActionError::DispatchFailed)
-        }
-        ActionOutcome::Failed(_) => Ok(()),
+        ActionOutcome::Ready(output_ready) => validate_ready_outcome(contract, output_ready),
+        ActionOutcome::Suspended(_) => validate_suspended_outcome(),
+        ActionOutcome::Failed(_) => validate_failed_outcome(),
     }
+}
+
+/// Validates the output slot index for a Ready action outcome.
+fn validate_ready_outcome(
+    contract: &ActionContract,
+    output_ready: &ActionOutputReady,
+) -> Result<(), ActionError> {
+    let slot_raw = output_ready.output_slot.get();
+    if u32::from(slot_raw) >= u32::from(contract.output_slot_count)
+        && contract.output_slot_count > 0
+    {
+        return Err(ActionError::OutputSlotOutOfBounds {
+            slot: slot_raw,
+            max_slots: contract.output_slot_count,
+        });
+    }
+    Ok(())
+}
+
+/// Suspension is not a terminal outcome; completing with a suspended outcome is invalid.
+fn validate_suspended_outcome() -> Result<(), ActionError> {
+    Err(ActionError::DispatchFailed)
+}
+
+/// Failure outcomes are always valid terminal completions.
+fn validate_failed_outcome() -> Result<(), ActionError> {
+    Ok(())
 }
 
 /// Journal events for Do-node action lifecycle.
@@ -960,7 +972,11 @@ mod tests {
 
     #[test]
     fn retry_safety_repr_values_are_distinct() {
-        let safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+        let safeties = [
+            RetrySafety::Safe,
+            RetrySafety::KeyRequired,
+            RetrySafety::Unsafe,
+        ];
         let repr_a = retry_safety_repr(safeties[0]);
         let repr_b = retry_safety_repr(safeties[1]);
         let repr_c = retry_safety_repr(safeties[2]);
@@ -1073,7 +1089,10 @@ mod tests {
         assert!(frame.is_ok());
         let frame = frame.ok().expect("test setup");
         let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
-        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Destroys)));
+        assert_eq!(
+            result,
+            Err(IdempotencyViolation::MissingKey(SideEffect::Destroys))
+        );
     }
 
     #[test]
@@ -1094,7 +1113,10 @@ mod tests {
         assert!(frame.is_ok());
         let frame = frame.ok().expect("test setup");
         let result = verify_idempotency(&action, &[], &frame);
-        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Writes)));
+        assert_eq!(
+            result,
+            Err(IdempotencyViolation::MissingKey(SideEffect::Writes))
+        );
     }
 
     #[test]
@@ -1136,11 +1158,8 @@ mod tests {
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
-        let write_result = frame.write_slot_with_taint(
-            SlotIdx::new(0),
-            SlotValue::I64(42),
-            Taint::Secret,
-        );
+        let write_result =
+            frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
         assert!(write_result.is_ok());
         let key_slots = [SlotIdx::new(0)];
         let result = verify_idempotency(&action, &key_slots, &frame);
@@ -1191,7 +1210,10 @@ mod tests {
         assert!(frame.is_ok());
         let frame = frame.ok().expect("test setup");
         let result = verify_idempotency(&action, &[], &frame);
-        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Sends)));
+        assert_eq!(
+            result,
+            Err(IdempotencyViolation::MissingKey(SideEffect::Sends))
+        );
     }
 
     #[test]
@@ -1212,7 +1234,10 @@ mod tests {
         assert!(frame.is_ok());
         let frame = frame.ok().expect("test setup");
         let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
-        assert_eq!(result, Err(IdempotencyViolation::MissingKey(SideEffect::Creates)));
+        assert_eq!(
+            result,
+            Err(IdempotencyViolation::MissingKey(SideEffect::Creates))
+        );
     }
 
     #[test]
@@ -1347,10 +1372,12 @@ mod tests {
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
         // Slot 0 has a clean value.
-        let write_clean = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
+        let write_clean =
+            frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
         assert!(write_clean.is_ok());
         // Slot 1 has a secret-tainted value.
-        let write_secret = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
+        let write_secret =
+            frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
         assert!(write_secret.is_ok());
         // Slot 2 has a derived-from-secret value.
         let write_derived = frame.write_slot_with_taint(
@@ -1390,9 +1417,11 @@ mod tests {
         let frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
-        let write_clean = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
+        let write_clean =
+            frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
         assert!(write_clean.is_ok());
-        let write_secret = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
+        let write_secret =
+            frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
         assert!(write_secret.is_ok());
         // Key slots: [clean, secret]. Should reject on the second slot.
         let result = verify_idempotency(&action, &[SlotIdx::new(0), SlotIdx::new(1)], &frame);
