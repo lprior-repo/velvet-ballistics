@@ -124,12 +124,12 @@ pub fn eval_expr(
 mod tests {
     use super::*;
     use crate::ids::{
-        AccessorIdx, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+        AccessorIdx, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest,
     };
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-        PathSegment, ResourceContract, WorkflowParts,
+        ResourceContract, WorkflowParts,
     };
     use crate::value_store::ValueStore;
 

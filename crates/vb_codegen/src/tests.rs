@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use super::{
+    use crate::{
         CodegenError, compare_generated_to_ir, compile_check_generated_rust, emit_action_boundary,
         emit_action_match_dispatch, emit_drive_function, emit_finish, emit_ids,
         emit_resource_contract, emit_rust_workflow, emit_step_function, emit_trybuild_fixture,

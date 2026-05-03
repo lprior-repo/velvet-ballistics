@@ -179,15 +179,13 @@ pub(super) fn eval_expr_operator(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+    use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
         ResourceContract, WorkflowParts, check_expr_stack_bound,
     };
     use crate::limits::MAX_EXPRESSION_STACK;
-    use crate::EngineSignal;
-
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
         T: core::fmt::Debug + PartialEq,

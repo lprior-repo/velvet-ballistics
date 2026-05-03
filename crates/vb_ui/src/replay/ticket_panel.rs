@@ -157,10 +157,10 @@ mod tests {
             Taint::Secret,
             true,
         );
-        assert_eq!(ticket.run.as_u64(), 42);
+        assert_eq!(ticket.run.get(), 42);
         assert_eq!(ticket.step.get(), 3);
         assert_eq!(ticket.action.get(), 7);
-        assert_eq!(ticket.seq.as_u64(), 100);
+        assert_eq!(ticket.seq.get(), 100);
         assert_eq!(ticket.attempt, 2);
         assert_eq!(ticket.idempotency_key, 0xDEAD_BEEF);
         assert!(ticket.replay_safe);

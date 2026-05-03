@@ -217,6 +217,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     fn small_contract() -> ResourceContract {
         ResourceContract {
             max_steps: 10,

@@ -1217,7 +1217,7 @@ fn validate_resource_contract_rejects_oversized_max_constants() {
     // max_constants == u16::MAX == MAX_CONSTANTS (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
     assert!(result.is_ok());
-    drop(MAX_CONSTANTS);
+    let _ = MAX_CONSTANTS;
 }
 
 #[test]

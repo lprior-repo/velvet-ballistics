@@ -10,9 +10,9 @@
     clippy::unwrap_used
 )]
 mod tests {
-    use super::{
-        BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES,
-        DiagnosticCode, EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue,
+    use crate::{
+        BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES,
+        EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue,
         KeyspaceProfile, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
         MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
         MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
@@ -20,15 +20,20 @@ mod tests {
         PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT,
         PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECORD_HEADER_BYTES,
         RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageKey, StorageLimits,
-        WorkflowSourceRecord, append_journal_event, blob_key, compiled_ir_key, decode_record,
-        decode_record_header, encode_key, encode_record, encode_record_header, flush_profile,
-        index_action_key, index_status_key, index_workflow_key, init_keyspaces, journal_key,
-        keyspace_options_for, open_store, put_blob, put_compiled_ir, put_run_header,
-        put_workflow_source, read_blob, read_run_events, replay_journal, run_event_key,
-        run_header_key, run_snapshot_key, verify_digest_match, workflow_source_key, write_snapshot,
+        WorkflowSourceRecord, append_journal_event, decode_record,
+        decode_record_header, encode_record, encode_record_header, flush_profile,
+        init_keyspaces, keyspace_options_for, open_store, put_blob, put_compiled_ir, put_run_header,
+        put_workflow_source, read_blob, read_run_events, replay_journal,
+        verify_digest_match, write_snapshot,
     };
+    use crate::keys::{
+        blob_key, compiled_ir_key, encode_key, index_action_key, index_status_key,
+        index_workflow_key, journal_key, run_event_key, run_header_key, run_snapshot_key,
+        workflow_source_key,
+    };
+    use crate::queue::BatchBuilder;
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{ActionId, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
     #[test]
     fn journal_key_is_fixed_width() {
@@ -1499,7 +1504,7 @@ mod tests {
         let key = run_header_key(run);
         let key = key.expect("run_header_key should succeed");
         assert_eq!(key[0], 0x10);
-        assert_eq!(key[1..9], run.as_u64().to_be_bytes());
+        assert_eq!(key[1..9], run.get().to_be_bytes());
     }
 
     #[test]

@@ -211,7 +211,7 @@ mod tests {
                 target: StepIdx::new(7),
             },
         ];
-        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3))).map_err(|e| e.to_string())?;
+        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3))).map_err(|e| e.to_string())?;
 
         ensure_equal(run.pc(), StepIdx::new(3))
     }
@@ -259,7 +259,7 @@ mod tests {
     fn choose_slot_empty_branches_takes_otherwise() -> Result<(), String> {
         let mut run = test_frame(1)?;
         let branches: Vec<SlotBranch> = vec![];
-        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2))).map_err(|e| e.to_string())?;
+        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2))).map_err(|e| e.to_string())?;
 
         ensure_equal(run.pc(), StepIdx::new(2))
     }
@@ -386,7 +386,7 @@ mod tests {
             condition: crate::ids::ExprIdx::new(1),
             target: StepIdx::new(2),
         }];
-        let result = choose_expr_branch(
+        let _result = choose_expr_branch(
             &plan,
             &mut run,
             &mut store,

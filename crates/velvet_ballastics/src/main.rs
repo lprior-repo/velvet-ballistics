@@ -2112,7 +2112,7 @@ mod tests {
     use super::{
         Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
-        build_step_frame, compile_bytes, decode_step_inputs, execute_step_isolated,
+        build_step_frame, decode_step_inputs, execute_step_isolated,
         map_runtime_inputs, node_kind_name, parse_args, run_compiled_workflow, signal_name,
         write_step_inputs,
     };

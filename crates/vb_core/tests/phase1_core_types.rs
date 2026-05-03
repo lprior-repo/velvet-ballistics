@@ -19,7 +19,7 @@ use vb_core::{ExprBranch, ResourceContract, SlotBranch};
 
 #[test]
 fn numeric_ids_construct_access_parse_and_serialize() {
-    assert_eq!(WorkflowId::new(11).as_u32(), 11);
+    assert_eq!(WorkflowId::new(11).get(), 11);
     assert_eq!(StepIdx::new(12).as_usize(), 12);
     assert_eq!(SlotIdx::new(13).as_usize(), 13);
     assert_eq!(ExprIdx::new(14).as_usize(), 14);
@@ -29,9 +29,9 @@ fn numeric_ids_construct_access_parse_and_serialize() {
     assert_eq!(SymbolId::new(20).get(), 20);
     assert_eq!(ListId::new(21).get(), 21);
     assert_eq!(ObjectId::new(22).get(), 22);
-    assert_eq!(BlobId::new(23).as_u64(), 23);
-    assert_eq!(RunId::new(18).as_u64(), 18);
-    assert_eq!(SeqNo::new(19).as_u64(), 19);
+    assert_eq!(BlobId::new(23).get(), 23);
+    assert_eq!(RunId::new(18).get(), 18);
+    assert_eq!(SeqNo::new(19).get(), 19);
 
     assert_eq!(WorkflowId::from_str("11"), Ok(WorkflowId::new(11)));
     assert_eq!(StepIdx::from_str("12"), Ok(StepIdx::new(12)));

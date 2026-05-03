@@ -128,7 +128,7 @@ pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
     Ok(encoded)
 }
 
-fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+pub fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
     sequenced_run_key(PREFIX_RUN_EVENT, run, seq)
 }
 

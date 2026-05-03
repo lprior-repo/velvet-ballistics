@@ -190,10 +190,11 @@ mod tests {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
 
+        let mut budget = StepBudget::MAX;
         let result = drive_deterministic(
             &workflow,
             &mut run,
-            &mut StepBudget::MAX,
+            &mut budget,
             &mut store,
         )
         .map_err(|e| e.to_string())?;

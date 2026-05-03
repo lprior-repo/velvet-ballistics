@@ -83,6 +83,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         run,
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(2),
+        value: None,
     });
     seq = seq.saturating_add(1);
 

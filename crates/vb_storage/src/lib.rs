@@ -103,3 +103,61 @@ pub fn flush_profile(
 ) -> Result<JournalWriterFlushReport, JournalError> {
     queue.flush_batch(journal)
 }
+
+/// Appends one journal event without forcing a durability barrier.
+pub fn append_journal_event(
+    journal: &FjallJournal,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    journal.append_journaled(event)
+}
+
+/// Stores immutable workflow source bytes by digest.
+pub fn put_workflow_source(
+    journal: &FjallJournal,
+    record: &WorkflowSourceRecord,
+) -> Result<(), JournalError> {
+    journal.put_workflow_source(record)
+}
+
+/// Stores compiled IR bytes by digest.
+pub fn put_compiled_ir(
+    journal: &FjallJournal,
+    record: &CompiledIrRecord,
+) -> Result<(), JournalError> {
+    journal.put_compiled_ir(record)
+}
+
+/// Stores run metadata by run id.
+pub fn put_run_header(
+    journal: &FjallJournal,
+    record: &RunHeaderRecord,
+) -> Result<(), JournalError> {
+    journal.put_run_header(record)
+}
+
+/// Writes a compact run snapshot.
+pub fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+    journal.put_snapshot(snapshot)
+}
+
+/// Stores a bounded blob by digest.
+pub fn put_blob(journal: &FjallJournal, record: &BlobRecord) -> Result<(), JournalError> {
+    journal.put_blob(record)
+}
+
+/// Reads a stored blob by digest.
+pub fn read_blob(
+    journal: &FjallJournal,
+    digest: [u8; constants::DIGEST_BYTES],
+) -> Result<Option<BlobRecord>, JournalError> {
+    journal.blob(digest)
+}
+
+/// Replays one run's events in contiguous sequence order.
+pub fn read_run_events(
+    journal: &FjallJournal,
+    run: vb_core::RunId,
+) -> Result<Vec<JournalEvent>, JournalError> {
+    journal.events_for_run(run)
+}

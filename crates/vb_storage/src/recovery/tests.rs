@@ -11,8 +11,8 @@
 )]
 mod tests {
     use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-        RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
+        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError,
+        RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
         check_workflow_source_digest, extract_terminal, is_terminal_event,
         recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,

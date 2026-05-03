@@ -535,7 +535,7 @@ fn storage_encode_decode_roundtrip() {
         value: 42,
         label: "test".into(),
     };
-    const MAGIC: u32 = 0x5642_4C54;
+    const MAGIC: u32 = vb_storage::MAGIC_JOURNAL_EVENT;
     let encoded = match vb_storage::encode_record(
         MAGIC,
         vb_storage::RecordKind::StepStarted,
@@ -569,7 +569,7 @@ fn storage_corrupt_record_fails_decode() {
     }
 
     let payload = TestPayload { value: 42 };
-    const MAGIC: u32 = 0x5642_4C54;
+    const MAGIC: u32 = vb_storage::MAGIC_JOURNAL_EVENT;
     let mut encoded = match vb_storage::encode_record(
         MAGIC,
         vb_storage::RecordKind::StepStarted,
