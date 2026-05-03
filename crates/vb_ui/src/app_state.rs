@@ -227,7 +227,7 @@ impl VerificationData {
         } else {
             let total = self.total_checks;
             let clean = self
-                .pass_count
+                .total_checks
                 .saturating_sub(self.fail_count)
                 .saturating_sub(self.warn_count);
             format!("PASS ({clean}/{total} panels clean)")
