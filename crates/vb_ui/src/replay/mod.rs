@@ -3,6 +3,7 @@
 //! Reconstructs run state from journal events and supports time-travel
 //! debugging by scrubbing to any event boundary.
 
+pub mod controller;
 pub mod engine;
 pub mod state;
 pub mod types;
