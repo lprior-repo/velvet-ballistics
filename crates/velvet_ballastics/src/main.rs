@@ -37,6 +37,7 @@ commands:
   validate   <workflow.yaml>                          Validate a workflow definition
   compile    <workflow.yaml> --emit <ir|rust> --out <file>  Compile a workflow to IR or Rust
   run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]  Execute a workflow
+             [--step <id> --step-input <file>]                                 Run a single step in isolation
   run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]  Execute compiled IR
   ipc-serve  --socket <path> --db <path>               Start IPC server
   inspect    <run_id> --db <path>                       Inspect a run
@@ -67,7 +68,11 @@ fn main() -> ExitCode {
             input_bin,
             durability,
             db,
-        }) => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
+            step,
+        }) => match step {
+            Some(target) => cmd_run_step(&workflow, durability, &target),
+            None => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
+        },
         Ok(Command::RunCompiled {
             workflow,
             input_bin,
@@ -101,6 +106,7 @@ enum Command {
         input_bin: PathBuf,
         durability: DurabilityMode,
         db: Option<PathBuf>,
+        step: Option<StepTarget>,
     },
     RunCompiled {
         workflow: PathBuf,
@@ -143,6 +149,13 @@ enum DurabilityMode {
     Strict,
     Journaled,
     None,
+}
+
+/// Single-step isolation target for `run --step`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct StepTarget {
+    step_id: u16,
+    step_input: PathBuf,
 }
 
 #[derive(Debug)]
@@ -206,12 +219,30 @@ fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
         named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     let db = parse_optional_run_db(args, durability)?;
+    let step = parse_optional_step(args)?;
     Ok(Command::Run {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
         db,
+        step,
     })
+}
+
+fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseError> {
+    let step_raw = match named_flag(args, "--step") {
+        Some(s) => s,
+        None => return Ok(None),
+    };
+    let step_id = step_raw.parse::<u16>().map_err(|_| {
+        ParseError::MissingArgument("--step")
+    })?;
+    let step_input = named_flag(args, "--step-input")
+        .ok_or(ParseError::MissingArgument("--step-input"))?;
+    Ok(Some(StepTarget {
+        step_id,
+        step_input: PathBuf::from(step_input),
+    }))
 }
 
 fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
@@ -481,6 +512,192 @@ fn cmd_run(
     };
 
     run_compiled_workflow(&compiled, inputs, durability, db)
+}
+
+/// Executes a single step in isolation using `step_once`.
+fn cmd_run_step(
+    workflow: &std::path::Path,
+    durability: DurabilityMode,
+    target: &StepTarget,
+) -> ExitCode {
+    if durability != DurabilityMode::None {
+        errln!("step isolation requires --durability none");
+        return SETUP_EXIT_CODE;
+    }
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+    let compiled = match compile_bytes(&bytes) {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+    let step_idx = vb_core::StepIdx::new(target.step_id);
+    let node = match compiled.node(step_idx) {
+        Some(n) => n,
+        None => {
+            errln!("step {} not found in workflow", target.step_id);
+            return SETUP_EXIT_CODE;
+        }
+    };
+    let input_data = match read_file(&target.step_input) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+    let inputs = match decode_step_inputs(&input_data) {
+        Ok(v) => v,
+        Err(code) => return code,
+    };
+    execute_step_isolated(&compiled, step_idx, node, &inputs)
+}
+
+const SETUP_EXIT_CODE: ExitCode = ExitCode::from(2);
+
+fn compile_bytes(bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, ExitCode> {
+    match vb_compile::compile_workflow(bytes) {
+        Ok(c) => Ok(c),
+        Err(errors) => {
+            for err in &errors.0 {
+                errln!("compile error: {err}");
+            }
+            Err(ExitCode::FAILURE)
+        }
+    }
+}
+
+fn decode_step_inputs(data: &[u8]) -> Result<Box<[vb_core::SlotValue]>, ExitCode> {
+    if data.is_empty() {
+        return Ok(Box::from([]));
+    }
+    match postcard::from_bytes::<Box<[vb_core::SlotValue]>>(data) {
+        Ok(values) => Ok(values),
+        Err(e) => {
+            errln!("step-input decode error: {e}");
+            Err(SETUP_EXIT_CODE)
+        }
+    }
+}
+
+fn execute_step_isolated(
+    compiled: &vb_core::CompiledWorkflow,
+    step_idx: vb_core::StepIdx,
+    node: &vb_core::workflow::CompiledNode,
+    inputs: &[vb_core::SlotValue],
+) -> ExitCode {
+    let mut frame = match build_step_frame(compiled, step_idx) {
+        Ok(f) => f,
+        Err(code) => return code,
+    };
+    write_step_inputs(&mut frame, inputs);
+    let mut store = vb_core::ValueStore::new();
+    let signal = match vb_core::step_once(compiled, &mut frame, &mut store) {
+        Ok(s) => s,
+        Err(e) => {
+            errln!("step error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    print_step_result(step_idx, node, &frame, &signal);
+    ExitCode::SUCCESS
+}
+
+fn build_step_frame(
+    compiled: &vb_core::CompiledWorkflow,
+    step_idx: vb_core::StepIdx,
+) -> Result<vb_core::RunFrame, ExitCode> {
+    let step_count = compiled.node_count();
+    let slot_count = compiled.slot_count();
+    let run_id = vb_core::RunId::new(0);
+    match vb_core::RunFrame::new(run_id, step_idx, step_count, slot_count) {
+        Ok(frame) => Ok(frame),
+        Err(e) => {
+            errln!("frame build error: {e}");
+            Err(SETUP_EXIT_CODE)
+        }
+    }
+}
+
+fn write_step_inputs(frame: &mut vb_core::RunFrame, inputs: &[vb_core::SlotValue]) {
+    for (i, value) in inputs.iter().enumerate() {
+        if let Ok(slot) = u16::try_from(i) {
+            let slot_idx = vb_core::SlotIdx::new(slot);
+            let _ = frame.write_slot(slot_idx, *value);
+        }
+    }
+}
+
+fn print_step_result(
+    step: vb_core::StepIdx,
+    node: &vb_core::workflow::CompiledNode,
+    frame: &vb_core::RunFrame,
+    signal: &vb_core::EngineSignal,
+) {
+    outln!("step: {}", step.get());
+    outln!("kind: {}", node_kind_name(&node.kind));
+    print_input_slots(frame);
+    if let Some(output_slot) = node.output {
+        print_output_slot(frame, output_slot);
+    }
+    outln!("signal: {}", signal_name(signal));
+    if let Some(output_slot) = node.output {
+        print_taint(frame, output_slot);
+    }
+}
+
+fn print_input_slots(frame: &vb_core::RunFrame) {
+    let count = frame.slot_count();
+    for i in 0..count {
+        let slot = vb_core::SlotIdx::new(i);
+        if let Ok(value) = frame.read_slot(slot) {
+            outln!("  slot[{i}]: {value:?}");
+        }
+    }
+}
+
+fn print_output_slot(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
+    if let Ok(value) = frame.read_slot(slot) {
+        outln!("output: {value:?}");
+    }
+}
+
+fn print_taint(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
+    if let Ok(taint) = frame.read_taint(slot) {
+        outln!("taint: {taint:?}");
+    }
+}
+
+fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
+    match kind {
+        vb_core::workflow::CompiledNodeKind::Nop => "Nop",
+        vb_core::workflow::CompiledNodeKind::SetConst { .. } => "SetConst",
+        vb_core::workflow::CompiledNodeKind::Copy { .. } => "Copy",
+        vb_core::workflow::CompiledNodeKind::EvalExpr { .. } => "EvalExpr",
+        vb_core::workflow::CompiledNodeKind::BuildObject { .. } => "BuildObject",
+        vb_core::workflow::CompiledNodeKind::BuildList { .. } => "BuildList",
+        vb_core::workflow::CompiledNodeKind::Do { .. } => "Do",
+        vb_core::workflow::CompiledNodeKind::Choose { .. } => "Choose",
+        vb_core::workflow::CompiledNodeKind::ChooseSlot { .. } => "ChooseSlot",
+        vb_core::workflow::CompiledNodeKind::ForEach { .. } => "ForEach",
+        vb_core::workflow::CompiledNodeKind::Together { .. } => "Together",
+        vb_core::workflow::CompiledNodeKind::Collect { .. } => "Collect",
+        vb_core::workflow::CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
+        vb_core::workflow::CompiledNodeKind::WaitEvent { .. } => "WaitEvent",
+        vb_core::workflow::CompiledNodeKind::Ask { .. } => "Ask",
+        vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
+        vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
+        vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
+    }
+}
+
+fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
+    match signal {
+        vb_core::EngineSignal::Continue => "Continue",
+        vb_core::EngineSignal::Finished(_, _) => "Finished",
+        vb_core::EngineSignal::StepBudgetExhausted => "StepBudgetExhausted",
+        vb_core::EngineSignal::AwaitingAction => "AwaitingAction",
+        vb_core::EngineSignal::AwaitingWait => "AwaitingWait",
+        vb_core::EngineSignal::AwaitingAsk => "AwaitingAsk",
+    }
 }
 
 fn cmd_run_compiled(
@@ -1201,10 +1418,11 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, ExplainNode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StorageWorkflowResolver,
-        build_explain_report, classify_node_kind, json_escape, map_runtime_inputs,
-        parse_args, run_compiled_workflow,
+        Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget,
+        StorageWorkflowResolver, build_step_frame, compile_bytes, decode_step_inputs,
+        execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
+        run_compiled_workflow, signal_name, write_step_inputs,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;
@@ -1487,6 +1705,136 @@ mod tests {
                 ),
                 "missing digest should return NotFound"
             );
+        }
+    }
+
+    #[test]
+    fn parse_run_without_step_flags_produces_none_step() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Run { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Run { step, .. }) = parsed {
+            assert!(step.is_none());
+        }
+    }
+
+    #[test]
+    fn parse_run_step_requires_step_input() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--step",
+            "0",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--step-input"))),
+            "unexpected parse result: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn step_target_holds_step_id_and_path() {
+        let target = StepTarget {
+            step_id: 5,
+            step_input: PathBuf::from("data.bin"),
+        };
+        assert_eq!(target.step_id, 5);
+        assert_eq!(target.step_input, PathBuf::from("data.bin"));
+    }
+
+    #[test]
+    fn node_kind_name_returns_correct_labels() {
+        assert_eq!(node_kind_name(&CompiledNodeKind::Nop), "Nop");
+        assert_eq!(
+            node_kind_name(&CompiledNodeKind::SetConst { value: ConstIdx::new(0) }),
+            "SetConst"
+        );
+        assert_eq!(
+            node_kind_name(&CompiledNodeKind::Finish { result: SlotIdx::ZERO }),
+            "Finish"
+        );
+    }
+
+    #[test]
+    fn signal_name_returns_correct_labels() {
+        assert_eq!(signal_name(&vb_core::EngineSignal::Continue), "Continue");
+        assert_eq!(
+            signal_name(&vb_core::EngineSignal::Finished(
+                vb_core::SlotValue::Bool(true),
+                vb_core::Taint::Clean
+            )),
+            "Finished"
+        );
+    }
+
+    #[test]
+    fn decode_step_inputs_empty_data_returns_empty() {
+        let result = decode_step_inputs(b"");
+        assert!(result.is_ok());
+        let values = result.expect("ok");
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn decode_step_inputs_invalid_data_returns_error() {
+        let result = decode_step_inputs(b"garbage");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn write_step_inputs_populates_frame_slots() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        if let Some(compiled) = compiled {
+            let mut frame = build_step_frame(&compiled, StepIdx::ZERO)
+                .expect("frame should build");
+            let inputs: Box<[vb_core::SlotValue]> =
+                Box::from([vb_core::SlotValue::I64(42)]);
+            write_step_inputs(&mut frame, &inputs);
+            assert_eq!(
+                frame.read_slot(SlotIdx::ZERO),
+                Ok(&vb_core::SlotValue::I64(42))
+            );
+        }
+    }
+
+    #[test]
+    fn execute_step_isolated_set_const_step_succeeds() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        if let Some(compiled) = compiled {
+            let node = compiled.node(StepIdx::ZERO)
+                .expect("step 0 must exist");
+            let inputs: Box<[vb_core::SlotValue]> = Box::from([]);
+            let code = execute_step_isolated(
+                &compiled, StepIdx::ZERO, node, &inputs,
+            );
+            assert_eq!(code, std::process::ExitCode::SUCCESS);
+        }
+    }
+
+    #[test]
+    fn build_step_frame_out_of_range_returns_error() {
+        let compiled = finish_workflow();
+        assert!(compiled.is_some(), "test workflow should compile");
+        if let Some(compiled) = compiled {
+            let result = build_step_frame(&compiled, StepIdx::new(99));
+            assert!(result.is_err());
         }
     }
 }

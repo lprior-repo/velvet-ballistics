@@ -63,6 +63,7 @@ impl ActionRegistry {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         });
         *self
             .contracts
@@ -162,6 +163,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         }
     }
 
@@ -279,6 +281,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = test_input(1);
@@ -348,6 +351,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let result = registry.dispatch(&input, &wrong_contract);
         // Then it returns an UnknownAction error
@@ -471,6 +475,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         // When registering and resolving
         let mut registry = ActionRegistry::new();
@@ -583,6 +588,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let result = registry.register(contract);
         // Then it succeeds (65534 < 65535 = MAX_REGISTERED_ACTIONS)
@@ -604,6 +610,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = test_input(1);
@@ -638,6 +645,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         assert_eq!(registry.register(contract), Ok(()));
         let input = ActionInput {

@@ -80,10 +80,8 @@ impl Shard {
             Err(AdmissionError::ArtifactNotFound { digest }) => {
                 Err(RuntimeError::AdmissionArtifactNotFound { digest })
             }
-            Err(AdmissionError::CapabilityDenied { .. }) => {
-                // Capability checks at submit time are handled separately.
-                // With empty capabilities, this should not trigger.
-                Ok(None)
+            Err(AdmissionError::CapabilityDenied { action, required, granted }) => {
+                Err(RuntimeError::AdmissionCapabilityDenied { action, required, granted })
             }
         }
     }

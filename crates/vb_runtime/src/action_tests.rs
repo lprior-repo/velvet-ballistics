@@ -20,6 +20,7 @@ fn test_contract(id: u16) -> ActionContract {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     }
 }
 
@@ -195,6 +196,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     let result = registry.dispatch(&input, &wrong_contract);
     assert_eq!(
@@ -301,6 +303,7 @@ fn action_contract_fields_are_preserved() {
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::Writes,
         retry_safety: RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
     };
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract), Ok(()));
@@ -391,6 +394,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     let result = registry.register(contract);
     assert_eq!(result, Ok(()));
@@ -441,6 +445,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
     let input = ActionInput {

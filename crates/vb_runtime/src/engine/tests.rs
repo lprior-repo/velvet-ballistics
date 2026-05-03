@@ -453,6 +453,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
         vb_core::action::ActionContract {
@@ -465,6 +466,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         },
         contract,
     ];
@@ -509,6 +511,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
         vb_core::action::ActionContract {
@@ -521,6 +524,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         },
         contract,
     ];
@@ -563,6 +567,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     };
     let result = execute_do(
         &run,

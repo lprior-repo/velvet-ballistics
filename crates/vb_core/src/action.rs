@@ -2,6 +2,7 @@
 
 //! Action ABI contract for the do/retry/on_error primitives.
 
+use crate::capability::Capability;
 use crate::frame::RunFrame;
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
@@ -66,7 +67,7 @@ pub enum IdempotencyViolation {
 }
 
 /// Static contract describing an action's resource and correctness bounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ActionContract {
     /// Numeric action identifier used for dispatch.
     pub id: ActionId,
@@ -86,6 +87,8 @@ pub struct ActionContract {
     pub side_effect: SideEffect,
     /// Retry safety classification for the verification gate.
     pub retry_safety: RetrySafety,
+    /// Required capabilities for this action.
+    pub required_capabilities: Box<[Capability]>,
 }
 
 /// Input payload for one action invocation.
@@ -803,6 +806,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         assert_eq!(contract.max_output_bytes, 0);
         assert_eq!(contract.output_slot_count, 0);
@@ -820,6 +824,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         assert_eq!(contract.timeout_ms, 0);
     }
@@ -1020,6 +1025,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1040,6 +1046,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1060,6 +1067,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Destroys,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1080,6 +1088,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1100,6 +1109,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1121,6 +1131,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1174,6 +1185,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Sends,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1194,6 +1206,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Creates,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1214,6 +1227,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let bytes = postcard::to_allocvec(&contract);
         assert!(bytes.is_ok(), "postcard serialization should succeed");
@@ -1256,6 +1270,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(50), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1276,6 +1291,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Destroys,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(51), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1301,6 +1317,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Destroys,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(52), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1324,6 +1341,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Writes,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(53), StepIdx::new(0), 4, 4);
         assert!(frame.is_ok());
@@ -1367,6 +1385,7 @@ mod tests {
             idempotency: Idempotency::IdempotentExternal,
             side_effect: SideEffect::Creates,
             retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1393,6 +1412,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(55), StepIdx::new(0), 1, 1);
         assert!(frame.is_ok());
@@ -1413,6 +1433,7 @@ mod tests {
             idempotency: Idempotency::AtLeastOnceExternal,
             side_effect: SideEffect::Sends,
             retry_safety: RetrySafety::Unsafe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(56), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1442,6 +1463,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1467,6 +1489,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1488,6 +1511,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1508,6 +1532,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
@@ -1584,6 +1609,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(0),
@@ -1608,6 +1634,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(5),
@@ -1638,6 +1665,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
@@ -1663,6 +1691,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let ticket = ActionTicket {
             run: RunId::new(1),

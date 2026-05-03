@@ -182,7 +182,7 @@ pub fn check_capability(
     } else {
         Err(AdmissionError::CapabilityDenied {
             action,
-            required: *required,
+            required: required.clone(),
             granted: granted.clone(),
         })
     }
@@ -201,7 +201,7 @@ mod tests {
     fn admission_new_stores_all_fields() {
         let digest = test_digest();
         let run_id = RunId::new(42);
-        let caps = CapabilitySet::from_grants(Box::new([Capability::AnyWorkflow]));
+        let caps = CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(0))]));
         let admission = RunAdmission::new(digest, run_id, caps.clone(), RuntimePolicy::Strict);
         assert_eq!(admission.artifact_digest(), digest);
         assert_eq!(admission.run_id(), run_id);
@@ -224,11 +224,11 @@ mod tests {
     #[test]
     fn admission_capability_denied_error_fields() {
         let action = ActionId::new(5);
-        let required = Capability::Action(ActionId::new(5));
+        let required = Capability::new("secrets".into(), ActionId::new(5));
         let granted = CapabilitySet::empty();
         let err = AdmissionError::CapabilityDenied {
             action,
-            required,
+            required: required.clone(),
             granted: granted.clone(),
         };
         match err {
@@ -250,15 +250,15 @@ mod tests {
     #[test]
     fn admission_check_capability_granted() {
         let action = ActionId::new(1);
-        let required = Capability::Action(ActionId::new(1));
-        let granted = CapabilitySet::from_grants(Box::new([Capability::Action(ActionId::new(1))]));
+        let required = Capability::new("network".into(), ActionId::new(1));
+        let granted = CapabilitySet::from_grants(Box::new([Capability::new("network".into(), ActionId::new(1))]));
         assert_eq!(check_capability(action, &required, &granted), Ok(()));
     }
 
     #[test]
     fn admission_check_capability_denied() {
         let action = ActionId::new(1);
-        let required = Capability::Action(ActionId::new(1));
+        let required = Capability::new("network".into(), ActionId::new(1));
         let granted = CapabilitySet::empty();
         let result = check_capability(action, &required, &granted);
         assert!(matches!(
@@ -268,10 +268,10 @@ mod tests {
     }
 
     #[test]
-    fn admission_check_capability_any_workflow_grants_action() {
+    fn admission_check_capability_hierarchical_grants_subname() {
         let action = ActionId::new(99);
-        let required = Capability::Action(ActionId::new(99));
-        let granted = CapabilitySet::from_grants(Box::new([Capability::AnyWorkflow]));
+        let required = Capability::new("network.http".into(), action);
+        let granted = CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
         assert_eq!(check_capability(action, &required, &granted), Ok(()));
     }
 
@@ -297,7 +297,7 @@ mod tests {
     fn admission_clone_is_equal() {
         let digest = test_digest();
         let run_id = RunId::new(7);
-        let caps = CapabilitySet::from_grants(Box::new([Capability::AnyWorkflow]));
+        let caps = CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(0))]));
         let original = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict);
         let cloned = original.clone();
         assert_eq!(cloned, original);
@@ -308,7 +308,7 @@ mod tests {
         let store = AlwaysPresentArtifactStore::shared();
         let digest = test_digest();
         let run_id = RunId::new(1);
-        let caps = CapabilitySet::from_grants(Box::new([Capability::AnyWorkflow]));
+        let caps = CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(0))]));
         let result = admit_run(
             store.as_ref(),
             RuntimePolicy::Strict,

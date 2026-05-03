@@ -17,10 +17,34 @@ pub struct WholeWorkflowBudget {
     pub max_fanout: u16,
     /// Maximum loop nesting depth.
     pub max_nesting_depth: u16,
+    /// Maximum executable step count per workflow admission.
+    pub max_steps_executable: u32,
+    /// Maximum action tickets (Do nodes) in the workflow.
+    pub max_action_tickets: u32,
+    /// Maximum parallel in-flight actions.
+    pub max_parallel_in_flight: u16,
+    /// Maximum retries per action.
+    pub max_retries_per_action: u16,
+    /// Maximum gather pages across all CollectStart nodes.
+    pub max_gather_pages: u32,
+    /// Maximum gather items across all CollectStart nodes.
+    pub max_gather_items: u32,
+    /// Maximum for-each loop iterations.
+    pub max_for_each_iterations: u32,
+    /// Maximum together branches in any TogetherStart.
+    pub max_together_branches: u16,
+    /// Maximum repeat attempts in any RepeatStart.
+    pub max_repeat_attempts: u16,
+    /// Maximum run time in seconds.
+    pub max_run_time_seconds: u64,
+    /// Maximum result bytes.
+    pub max_result_bytes: u32,
+    /// Maximum total slots written.
+    pub max_total_slots_written: u32,
 }
 
 impl WholeWorkflowBudget {
-    /// Walks the compiled IR starting from `entry` and computes the four
+    /// Walks the compiled IR starting from `entry` and computes all
     /// budget dimensions.
     pub fn compute(
         nodes: &[crate::workflow::CompiledNode],
@@ -37,6 +61,13 @@ impl WholeWorkflowBudget {
 
         let mut max_fanout: u16 = 0;
         let mut max_nesting_depth: u16 = 0;
+        let mut max_action_tickets: u32 = 0;
+        let mut max_parallel_in_flight: u16 = 0;
+        let mut max_gather_pages: u32 = 0;
+        let mut max_gather_items: u32 = 0;
+        let mut max_for_each_iterations: u32 = 0;
+        let mut max_together_branches: u16 = 0;
+        let mut max_repeat_attempts: u16 = 0;
         compute_fanout_and_depth(
             nodes,
             entry,
@@ -45,6 +76,13 @@ impl WholeWorkflowBudget {
             0,
             &mut max_fanout,
             &mut max_nesting_depth,
+            &mut max_action_tickets,
+            &mut max_parallel_in_flight,
+            &mut max_gather_pages,
+            &mut max_gather_items,
+            &mut max_for_each_iterations,
+            &mut max_together_branches,
+            &mut max_repeat_attempts,
         )?;
 
         let max_total_slots = u64::from(contract.max_slots);
@@ -54,6 +92,18 @@ impl WholeWorkflowBudget {
             max_total_slots,
             max_fanout,
             max_nesting_depth,
+            max_steps_executable: u32::try_from(max_total_steps).unwrap_or(u32::MAX),
+            max_action_tickets,
+            max_parallel_in_flight,
+            max_retries_per_action: contract.max_retry_attempts,
+            max_gather_pages,
+            max_gather_items,
+            max_for_each_iterations,
+            max_together_branches,
+            max_repeat_attempts,
+            max_run_time_seconds: 0,
+            max_result_bytes: contract.max_output_bytes,
+            max_total_slots_written: u32::from(contract.max_slots),
         })
     }
 }
@@ -69,6 +119,16 @@ pub struct BoundednessPolicy {
     pub max_fanout: u16,
     /// Maximum allowed nesting depth.
     pub max_nesting_depth: u16,
+    /// Absolute maximum action tickets.
+    pub absolute_max_action_tickets: u32,
+    /// Absolute maximum parallel in-flight.
+    pub absolute_max_parallel: u16,
+    /// Absolute maximum run time in seconds.
+    pub absolute_max_run_time_seconds: u64,
+    /// Absolute maximum result bytes.
+    pub absolute_max_result_bytes: u32,
+    /// Absolute maximum steps executable.
+    pub absolute_max_steps_executable: u32,
 }
 
 impl BoundednessPolicy {
@@ -78,6 +138,11 @@ impl BoundednessPolicy {
         max_total_slots: 65_535,
         max_fanout: 64,
         max_nesting_depth: 8,
+        absolute_max_action_tickets: 100_000,
+        absolute_max_parallel: 256,
+        absolute_max_run_time_seconds: 2_592_000,
+        absolute_max_result_bytes: 262_144,
+        absolute_max_steps_executable: 1_000_000,
     };
 
     /// Validates the computed budget against this policy. Returns the first
@@ -105,6 +170,36 @@ impl BoundednessPolicy {
             return Err(BudgetError::NestingDepthExceeded {
                 actual: budget.max_nesting_depth,
                 limit: self.max_nesting_depth,
+            });
+        }
+        if budget.max_action_tickets > self.absolute_max_action_tickets {
+            return Err(BudgetError::ActionTicketsExceeded {
+                actual: budget.max_action_tickets,
+                limit: self.absolute_max_action_tickets,
+            });
+        }
+        if budget.max_parallel_in_flight > self.absolute_max_parallel {
+            return Err(BudgetError::ParallelExceeded {
+                actual: budget.max_parallel_in_flight,
+                limit: self.absolute_max_parallel,
+            });
+        }
+        if budget.max_run_time_seconds > self.absolute_max_run_time_seconds {
+            return Err(BudgetError::RunTimeExceeded {
+                actual: budget.max_run_time_seconds,
+                limit: self.absolute_max_run_time_seconds,
+            });
+        }
+        if budget.max_result_bytes > self.absolute_max_result_bytes {
+            return Err(BudgetError::ResultBytesExceeded {
+                actual: budget.max_result_bytes,
+                limit: self.absolute_max_result_bytes,
+            });
+        }
+        if budget.max_steps_executable > self.absolute_max_steps_executable {
+            return Err(BudgetError::StepsExecutableExceeded {
+                actual: budget.max_steps_executable,
+                limit: self.absolute_max_steps_executable,
             });
         }
         Ok(())
@@ -142,6 +237,41 @@ pub enum BudgetError {
         /// Policy limit.
         limit: u16,
     },
+    /// Parallel in-flight exceeded the policy limit.
+    ParallelExceeded {
+        /// Actual parallel in-flight computed.
+        actual: u16,
+        /// Policy limit.
+        limit: u16,
+    },
+    /// Action tickets exceeded the policy limit.
+    ActionTicketsExceeded {
+        /// Actual action tickets computed.
+        actual: u32,
+        /// Policy limit.
+        limit: u32,
+    },
+    /// Run time exceeded the policy limit.
+    RunTimeExceeded {
+        /// Actual run time computed.
+        actual: u64,
+        /// Policy limit.
+        limit: u64,
+    },
+    /// Result bytes exceeded the policy limit.
+    ResultBytesExceeded {
+        /// Actual result bytes computed.
+        actual: u32,
+        /// Policy limit.
+        limit: u32,
+    },
+    /// Steps executable exceeded the policy limit.
+    StepsExecutableExceeded {
+        /// Actual steps executable computed.
+        actual: u32,
+        /// Policy limit.
+        limit: u32,
+    },
 }
 
 impl fmt::Display for BudgetError {
@@ -158,6 +288,21 @@ impl fmt::Display for BudgetError {
             }
             Self::NestingDepthExceeded { actual, limit } => {
                 write!(f, "nesting depth exceeded: {actual} > {limit}")
+            }
+            Self::ParallelExceeded { actual, limit } => {
+                write!(f, "parallel exceeded: {actual} > {limit}")
+            }
+            Self::ActionTicketsExceeded { actual, limit } => {
+                write!(f, "action tickets exceeded: {actual} > {limit}")
+            }
+            Self::RunTimeExceeded { actual, limit } => {
+                write!(f, "run time exceeded: {actual} > {limit}")
+            }
+            Self::ResultBytesExceeded { actual, limit } => {
+                write!(f, "result bytes exceeded: {actual} > {limit}")
+            }
+            Self::StepsExecutableExceeded { actual, limit } => {
+                write!(f, "steps executable exceeded: {actual} > {limit}")
             }
         }
     }
@@ -484,6 +629,7 @@ fn branch_count_to_u16(count: usize) -> u16 {
 }
 
 /// Computes max fanout and max nesting depth via a DFS walk.
+#[allow(clippy::too_many_arguments)]
 fn compute_fanout_and_depth(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
@@ -492,6 +638,13 @@ fn compute_fanout_and_depth(
     current_depth: u16,
     max_fanout: &mut u16,
     max_nesting_depth: &mut u16,
+    max_action_tickets: &mut u32,
+    max_parallel_in_flight: &mut u16,
+    max_gather_pages: &mut u32,
+    max_gather_items: &mut u32,
+    max_for_each_iterations: &mut u32,
+    max_together_branches: &mut u16,
+    max_repeat_attempts: &mut u16,
 ) -> Result<(), WorkflowError> {
     let idx = current.as_usize();
     if idx >= node_count {
@@ -512,6 +665,16 @@ fn compute_fanout_and_depth(
 
     let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth);
     update_fanout(&node.kind, max_fanout);
+    update_workflow_metrics(
+        &node.kind,
+        max_action_tickets,
+        max_parallel_in_flight,
+        max_gather_pages,
+        max_gather_items,
+        max_for_each_iterations,
+        max_together_branches,
+        max_repeat_attempts,
+    );
 
     let mut targets: Vec<StepIdx> = Vec::new();
     push_successor_targets(&node.kind, &mut targets);
@@ -530,6 +693,13 @@ fn compute_fanout_and_depth(
                 child_depth,
                 max_fanout,
                 max_nesting_depth,
+                max_action_tickets,
+                max_parallel_in_flight,
+                max_gather_pages,
+                max_gather_items,
+                max_for_each_iterations,
+                max_together_branches,
+                max_repeat_attempts,
             )?;
         }
     }
@@ -585,6 +755,44 @@ fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) {
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
+        }
+        _ => {}
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn update_workflow_metrics(
+    kind: &CompiledNodeKind,
+    max_action_tickets: &mut u32,
+    max_parallel_in_flight: &mut u16,
+    max_gather_pages: &mut u32,
+    max_gather_items: &mut u32,
+    max_for_each_iterations: &mut u32,
+    max_together_branches: &mut u16,
+    max_repeat_attempts: &mut u16,
+) {
+    match kind {
+        CompiledNodeKind::Do { .. } => {
+            *max_action_tickets = max_action_tickets.saturating_add(1);
+        }
+        CompiledNodeKind::TogetherStart { branches, .. } => {
+            let branch_count = branch_count_to_u16(branches.len());
+            if branch_count > *max_parallel_in_flight {
+                *max_parallel_in_flight = branch_count;
+            }
+            if branch_count > *max_together_branches {
+                *max_together_branches = branch_count;
+            }
+        }
+        CompiledNodeKind::CollectStart { limit, .. } => {
+            *max_gather_pages = max_gather_pages.saturating_add(1);
+            *max_gather_items = max_gather_items.saturating_add(*limit);
+        }
+        CompiledNodeKind::ForEachStart { limit, .. } => {
+            *max_for_each_iterations = max_for_each_iterations.saturating_add(*limit);
+        }
+        CompiledNodeKind::RepeatStart { max_attempts, .. } => {
+            *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
         }
         _ => {}
     }
@@ -784,18 +992,8 @@ mod tests {
 
     #[test]
     fn budget_rejects_excessive_steps() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 3,
-            max_total_slots: 10,
-            max_fanout: 1,
-            max_nesting_depth: 0,
-        };
-        let policy = BoundednessPolicy {
-            max_total_steps: 2,
-            max_total_slots: 10,
-            max_fanout: 64,
-            max_nesting_depth: 8,
-        };
+        let budget = test_budget(3, 10, 1, 0);
+        let policy = test_policy(2, 10, 64, 8);
 
         match policy.validate(&budget) {
             Err(BudgetError::TotalStepsExceeded { actual: 3, limit: 2 }) => {}
@@ -805,18 +1003,8 @@ mod tests {
 
     #[test]
     fn budget_rejects_excessive_fanout() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 1,
-            max_total_slots: 10,
-            max_fanout: 3,
-            max_nesting_depth: 0,
-        };
-        let policy = BoundednessPolicy {
-            max_total_steps: 1_000_000,
-            max_total_slots: 65_535,
-            max_fanout: 2,
-            max_nesting_depth: 8,
-        };
+        let budget = test_budget(1, 10, 3, 0);
+        let policy = test_policy(1_000_000, 65_535, 2, 8);
 
         match policy.validate(&budget) {
             Err(BudgetError::FanoutExceeded { actual: 3, limit: 2 }) => {}
@@ -826,30 +1014,15 @@ mod tests {
 
     #[test]
     fn budget_accepts_within_policy() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 10,
-            max_total_slots: 100,
-            max_fanout: 4,
-            max_nesting_depth: 2,
-        };
+        let budget = test_budget(10, 100, 4, 2);
         let result = BoundednessPolicy::DEFAULT.validate(&budget);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
     fn budget_rejects_excessive_nesting_depth() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 1,
-            max_total_slots: 10,
-            max_fanout: 1,
-            max_nesting_depth: 10,
-        };
-        let policy = BoundednessPolicy {
-            max_total_steps: 1_000_000,
-            max_total_slots: 65_535,
-            max_fanout: 64,
-            max_nesting_depth: 4,
-        };
+        let budget = test_budget(1, 10, 1, 10);
+        let policy = test_policy(1_000_000, 65_535, 64, 4);
 
         match policy.validate(&budget) {
             Err(BudgetError::NestingDepthExceeded { actual: 10, limit: 4 }) => {}
@@ -859,18 +1032,8 @@ mod tests {
 
     #[test]
     fn budget_rejects_excessive_total_slots() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 1,
-            max_total_slots: 200_000,
-            max_fanout: 1,
-            max_nesting_depth: 0,
-        };
-        let policy = BoundednessPolicy {
-            max_total_steps: 1_000_000,
-            max_total_slots: 65_535,
-            max_fanout: 64,
-            max_nesting_depth: 8,
-        };
+        let budget = test_budget(1, 200_000, 1, 0);
+        let policy = test_policy(1_000_000, 65_535, 64, 8);
 
         match policy.validate(&budget) {
             Err(BudgetError::TotalSlotsExceeded {
@@ -883,12 +1046,7 @@ mod tests {
 
     #[test]
     fn budget_default_policy_accepts_reasonable_budget() {
-        let budget = WholeWorkflowBudget {
-            max_total_steps: 500_000,
-            max_total_slots: 10_000,
-            max_fanout: 32,
-            max_nesting_depth: 4,
-        };
+        let budget = test_budget(500_000, 10_000, 32, 4);
         let result = BoundednessPolicy::DEFAULT.validate(&budget);
         assert_eq!(result, Ok(()));
     }
@@ -991,6 +1149,51 @@ mod tests {
         }
     }
 
+    const fn test_budget(
+        max_total_steps: u64,
+        max_total_slots: u64,
+        max_fanout: u16,
+        max_nesting_depth: u16,
+    ) -> WholeWorkflowBudget {
+        WholeWorkflowBudget {
+            max_total_steps,
+            max_total_slots,
+            max_fanout,
+            max_nesting_depth,
+            max_steps_executable: 0,
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_retries_per_action: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_for_each_iterations: 0,
+            max_together_branches: 0,
+            max_repeat_attempts: 0,
+            max_run_time_seconds: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+        }
+    }
+
+    const fn test_policy(
+        max_total_steps: u64,
+        max_total_slots: u64,
+        max_fanout: u16,
+        max_nesting_depth: u16,
+    ) -> BoundednessPolicy {
+        BoundednessPolicy {
+            max_total_steps,
+            max_total_slots,
+            max_fanout,
+            max_nesting_depth,
+            absolute_max_action_tickets: 100_000,
+            absolute_max_parallel: 256,
+            absolute_max_run_time_seconds: 2_592_000,
+            absolute_max_result_bytes: 262_144,
+            absolute_max_steps_executable: 1_000_000,
+        }
+    }
+
     #[test]
     fn budget_single_node_workflow() {
         let nodes = vec![CompiledNode {
@@ -1040,6 +1243,48 @@ mod tests {
             limit: 8,
         };
         assert_eq!(format!("{err}"), "nesting depth exceeded: 16 > 8");
+
+        let err = BudgetError::ParallelExceeded {
+            actual: 128,
+            limit: 64,
+        };
+        assert_eq!(format!("{err}"), "parallel exceeded: 128 > 64");
+
+        let err = BudgetError::ActionTicketsExceeded {
+            actual: 200_000,
+            limit: 100_000,
+        };
+        assert_eq!(
+            format!("{err}"),
+            "action tickets exceeded: 200000 > 100000"
+        );
+
+        let err = BudgetError::RunTimeExceeded {
+            actual: 3_000_000,
+            limit: 2_592_000,
+        };
+        assert_eq!(
+            format!("{err}"),
+            "run time exceeded: 3000000 > 2592000"
+        );
+
+        let err = BudgetError::ResultBytesExceeded {
+            actual: 524_288,
+            limit: 262_144,
+        };
+        assert_eq!(
+            format!("{err}"),
+            "result bytes exceeded: 524288 > 262144"
+        );
+
+        let err = BudgetError::StepsExecutableExceeded {
+            actual: 2_000_000,
+            limit: 1_000_000,
+        };
+        assert_eq!(
+            format!("{err}"),
+            "steps executable exceeded: 2000000 > 1000000"
+        );
     }
 
     #[test]

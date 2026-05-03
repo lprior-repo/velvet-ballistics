@@ -135,6 +135,17 @@ pub enum RuntimeError {
         /// Digest of the artifact that was expected but not found.
         digest: vb_core::ids::WorkflowDigest,
     },
+
+    /// Admission gate rejected the run because the required capability was not granted.
+    #[error("admission rejected: capability denied")]
+    AdmissionCapabilityDenied {
+        /// Action that required the capability.
+        action: vb_core::ids::ActionId,
+        /// Capability that was required but not granted.
+        required: vb_core::capability::Capability,
+        /// Capabilities that were granted at admission time.
+        granted: vb_core::capability::CapabilitySet,
+    },
 }
 
 /// Result alias for runtime operations.
@@ -183,6 +194,8 @@ impl RuntimeError {
     pub const ACTIVE_RUN_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2010);
     /// Diagnostic code for admission artifact not found.
     pub const ADMISSION_ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2011);
+    /// Diagnostic code for admission capability denied.
+    pub const ADMISSION_CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x2012);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -207,6 +220,7 @@ impl RuntimeError {
             Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
             Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
+            Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
         }
     }
 

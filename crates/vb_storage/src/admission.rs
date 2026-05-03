@@ -44,6 +44,8 @@ pub struct AcceptedArtifact {
     pub verification: VerificationProof,
     /// Journal sequence when accepted.
     pub accepted_at_seq: EventSeq,
+    /// Required capabilities for actions in this artifact.
+    pub required_capabilities: Box<[vb_core::capability::Capability]>,
 }
 
 /// Number of verification gates in the admission flow.
@@ -79,6 +81,7 @@ pub fn submit_artifact(
                 ir: record.ir,
                 verification: VerificationProof::new(workflow.digest(), 0, false),
                 accepted_at_seq: EventSeq::new(0),
+                required_capabilities: Box::new([]),
             })
         }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
@@ -122,6 +125,7 @@ pub fn submit_artifact(
                 ir: record.ir,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
+                required_capabilities: Box::new([]),
             };
 
             Ok(artifact)
