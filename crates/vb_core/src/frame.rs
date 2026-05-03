@@ -35,6 +35,8 @@ pub struct RunFrame {
     executed: u64,
     step_count: u16,
     slot_count: u16,
+    max_parallel_in_flight: u16,
+    parallel_in_flight: u16,
     states: Box<[StepState]>,
     slots: Box<[Option<SlotValue>]>,
     taint: Box<[Taint]>,
@@ -64,6 +66,8 @@ impl RunFrame {
             executed: 0,
             step_count,
             slot_count,
+            max_parallel_in_flight: u16::MAX,
+            parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
             slots: vec![None; slots_len].into_boxed_slice(),
             taint: vec![Taint::Clean; slots_len].into_boxed_slice(),
@@ -96,6 +100,8 @@ impl RunFrame {
         self.run_id = run_id;
         self.pc = first_step;
         self.executed = 0;
+        self.max_parallel_in_flight = u16::MAX;
+        self.parallel_in_flight = 0;
         for state in &mut self.states {
             *state = StepState::Pending;
         }
@@ -136,6 +142,45 @@ impl RunFrame {
     #[must_use]
     pub const fn slot_count(&self) -> u16 {
         self.slot_count
+    }
+
+    /// Maximum allowed parallel in-flight branches for this workflow.
+    #[must_use]
+    pub const fn max_parallel_in_flight(&self) -> u16 {
+        self.max_parallel_in_flight
+    }
+
+    /// Sets the maximum allowed parallel in-flight branches.
+    pub fn set_max_parallel_in_flight(&mut self, limit: u16) {
+        self.max_parallel_in_flight = limit;
+    }
+
+    /// Current number of parallel in-flight branch executions.
+    #[must_use]
+    pub const fn parallel_in_flight(&self) -> u16 {
+        self.parallel_in_flight
+    }
+
+    /// Adds to the parallel in-flight counter.
+    pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
+        self.parallel_in_flight = self
+            .parallel_in_flight
+            .checked_add(count)
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "parallel_in_flight overflow",
+            })?;
+        Ok(())
+    }
+
+    /// Subtracts from the parallel in-flight counter.
+    pub fn sub_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
+        self.parallel_in_flight = self
+            .parallel_in_flight
+            .checked_sub(count)
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "parallel_in_flight underflow",
+            })?;
+        Ok(())
     }
 
     /// Moves the program counter after bounds validation.

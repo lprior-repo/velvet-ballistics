@@ -5,8 +5,9 @@
 use vb_core::action::ActionContract;
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
+use vb_core::ids::StepIdx;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::CompiledWorkflow;
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::execute::execute_node_full;
 use crate::engine::helpers::mark_step_after_signal;
@@ -14,6 +15,22 @@ use crate::engine::types::{
     EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
 use crate::primitives::collect::CollectStates;
+
+fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> u16 {
+    let mut max_branches: u16 = 0;
+    for i in 0..u16::from(plan.node_count()) {
+        let step = StepIdx::new(i);
+        if let Some(node) = plan.node(step) {
+            if let CompiledNodeKind::TogetherStart { branches, .. } = &node.kind {
+                let branch_count = u16::try_from(branches.len()).unwrap_or(u16::MAX);
+                if branch_count > max_branches {
+                    max_branches = branch_count;
+                }
+            }
+        }
+    }
+    max_branches
+}
 
 /// Enhanced drive loop that handles all node kinds including
 /// iteration, compound, action, and suspension primitives.
@@ -32,6 +49,9 @@ pub fn drive_deterministic_full(
     evidence: &mut EvidenceCollector,
     collect_states: &mut CollectStates,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let max_parallel = compute_max_parallel_in_flight(plan);
+    run.set_max_parallel_in_flight(max_parallel);
+
     loop {
         if !budget.try_take().map_err(RuntimeEngineError::Core)? {
             return Ok(RuntimeSignal::StepBudgetExhausted);

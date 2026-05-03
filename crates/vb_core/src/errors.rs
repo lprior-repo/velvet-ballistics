@@ -199,6 +199,12 @@ pub enum CoreError {
         /// Maximum branches.
         max: u16,
     },
+    /// Parallel action count exceeded the configured limit.
+    #[error("parallel limit exceeded: {limit}")]
+    ParallelLimitExceeded {
+        /// The configured limit.
+        limit: u16,
+    },
     /// A resource budget was exceeded during execution.
     #[error("budget exceeded: {budget} limit was {limit}")]
     BudgetExceeded {
@@ -284,6 +290,8 @@ impl CoreError {
     pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1406);
     /// Collect time limit exceeded diagnostic code.
     pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1407);
+    /// Parallel limit exceeded diagnostic code.
+    pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -351,6 +359,7 @@ impl CoreError {
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
             Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
+            Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
         }
     }

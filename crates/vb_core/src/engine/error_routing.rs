@@ -85,6 +85,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
         CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
         TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
+        ParallelLimitExceeded { .. } => "PARALLEL_LIMIT_EXCEEDED",
         BudgetExceeded { .. } => "BUDGET_EXCEEDED",
         ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
         &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",

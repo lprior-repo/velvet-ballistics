@@ -28,6 +28,12 @@ pub fn together_start(
             reason: "together_start requires at least one branch",
         });
     }
+    let current = run.parallel_in_flight();
+    let max = run.max_parallel_in_flight();
+    if current.saturating_add(count) > max {
+        return Err(EngineError::ParallelLimitExceeded { limit: max });
+    }
+    run.add_parallel_in_flight(count)?;
     let iter_output = require_output(output, run.pc())?;
     let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
     run.write_slot(iter_output, SlotValue::List(state))?;
@@ -78,12 +84,13 @@ pub fn together_branch(
 pub fn together_join(
     run: &mut RunFrame,
     store: &mut ValueStore,
-    _branch_count: u16,
+    branch_count: u16,
     accumulator: SlotIdx,
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
+    run.sub_parallel_in_flight(branch_count)?;
     let out = require_output(output, step)?;
     // Read the accumulator list built by together_branch invocations.
     let acc_value = *run.read_slot(accumulator)?;
