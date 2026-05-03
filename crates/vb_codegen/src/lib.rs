@@ -214,6 +214,8 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::Append => Some("append"),
         ExprOp::AppendIf => Some("append_if"),
         ExprOp::Merge => Some("merge"),
+        ExprOp::Sum => Some("sum"),
+        ExprOp::Unique => Some("unique"),
         ExprOp::LoadSlot(_)
         | ExprOp::LoadConst(_)
         | ExprOp::LoadAccessor(_)
@@ -237,9 +239,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         | ExprOp::Exists
         | ExprOp::Length
         | ExprOp::Empty
-        | ExprOp::Sum
-        | ExprOp::Count
-        | ExprOp::Unique => None,
+        | ExprOp::Count => None,
     }
 }
 
@@ -851,18 +851,12 @@ pub fn emit_expr_function(
             ExprOp::Append => emit_unsupported_expr(out, "append")?,
             ExprOp::AppendIf => emit_unsupported_expr(out, "append_if")?,
             ExprOp::Merge => emit_unsupported_expr(out, "merge")?,
-            ExprOp::Sum => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
-                    .map_err(fmt_err)?;
-            }
+            ExprOp::Sum => emit_unsupported_expr(out, "sum")?,
             ExprOp::Count => {
                 writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
                     .map_err(fmt_err)?;
             }
-            ExprOp::Unique => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
-                    .map_err(fmt_err)?;
-            }
+            ExprOp::Unique => emit_unsupported_expr(out, "unique")?,
         }
     }
 

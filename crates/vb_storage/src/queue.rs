@@ -150,6 +150,11 @@ impl JournalWriterQueue {
                     Some(_) => {
                         drained = drained.saturating_add(1);
                     }
+                    // LOGIC INVARIANT: `written` counts items we just indexed via
+                    // `get(index)` on the same deque, so `pop_front` cannot return
+                    // None here unless an upstream bug corrupts the counts.  We
+                    // use WriteLockPoisoned only because no dedicated
+                    // queue-drain-inconsistent variant exists.
                     None => return Err(JournalError::WriteLockPoisoned),
                 }
             }
@@ -165,13 +170,19 @@ impl JournalWriterQueue {
             written = written.saturating_add(1);
         }
 
-        journal.persist_strict()?;
+        // Non-strict batch: skip persist_strict so journaled items are
+        // flushed lazily by the storage engine rather than forcing fsync.
         let mut drained = 0usize;
         while drained < written {
             match state.pending.pop_front() {
                 Some(_) => {
                     drained = drained.saturating_add(1);
                 }
+                // LOGIC INVARIANT: `written` counts items we just indexed via
+                // `get(index)` on the same deque, so `pop_front` cannot return
+                // None here unless an upstream bug corrupts the counts.  We
+                // use WriteLockPoisoned only because no dedicated
+                // queue-drain-inconsistent variant exists.
                 None => return Err(JournalError::WriteLockPoisoned),
             }
         }
@@ -595,5 +606,383 @@ mod tests {
 
         let events = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(events.len(), 3);
+    }
+
+    // =========================================================================
+    // Durability tier distinction: strict vs journaled through flush_batch
+    // =========================================================================
+
+    #[test]
+    fn flush_batch_persists_strict_events_to_journal() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(100);
+        queue.enqueue_strict(make_event(run, 0)).expect("enqueue strict 0");
+        queue.enqueue_strict(make_event(run, 1)).expect("enqueue strict 1");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 2, "strict flush should drain 2 events");
+        assert_eq!(report.written, 2, "strict flush should write 2 events");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 2, "journal should contain 2 strict events after flush");
+        assert_eq!(events[0].seq().get(), 0, "first event seq should be 0");
+        assert_eq!(events[1].seq().get(), 1, "second event seq should be 1");
+    }
+
+    #[test]
+    fn flush_batch_persists_journaled_events_to_journal() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(101);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue journaled 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue journaled 1");
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue journaled 2");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 3, "journaled flush should drain 3 events");
+        assert_eq!(report.written, 3, "journaled flush should write 3 events");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 3, "journal should contain 3 journaled events after flush");
+    }
+
+    #[test]
+    fn flush_batch_mixed_strict_and_journaled_writes_all() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(102);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue journaled");
+        queue.enqueue_strict(make_event(run, 1)).expect("enqueue strict");
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue journaled");
+        queue.enqueue_strict(make_event(run, 3)).expect("enqueue strict");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 4, "mixed batch should drain 4 events");
+        assert_eq!(report.written, 4, "mixed batch should write 4 events");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 4, "journal should contain all 4 events");
+        assert_eq!(events[0].seq().get(), 0);
+        assert_eq!(events[1].seq().get(), 1);
+        assert_eq!(events[2].seq().get(), 2);
+        assert_eq!(events[3].seq().get(), 3);
+    }
+
+    #[test]
+    fn flush_batch_strict_only_drains_in_batches() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(103);
+        queue.enqueue_strict(make_event(run, 0)).expect("enqueue strict 0");
+        queue.enqueue_strict(make_event(run, 1)).expect("enqueue strict 1");
+        queue.enqueue_strict(make_event(run, 2)).expect("enqueue strict 2");
+
+        let r1 = queue.flush_batch(&journal).expect("first flush");
+        assert_eq!(r1.drained, 2);
+        assert_eq!(r1.written, 2);
+
+        let r2 = queue.flush_batch(&journal).expect("second flush");
+        assert_eq!(r2.drained, 1);
+        assert_eq!(r2.written, 1);
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 3, "all strict events should be in journal");
+    }
+
+    #[test]
+    fn flush_batch_journaled_only_drains_in_batches() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(104);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue journaled 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue journaled 1");
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue journaled 2");
+
+        let r1 = queue.flush_batch(&journal).expect("first flush");
+        assert_eq!(r1.drained, 2);
+        assert_eq!(r1.written, 2);
+
+        let r2 = queue.flush_batch(&journal).expect("second flush");
+        assert_eq!(r2.drained, 1);
+        assert_eq!(r2.written, 1);
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 3, "all journaled events should be in journal");
+    }
+
+    // =========================================================================
+    // FIFO ordering across durability tiers
+    // =========================================================================
+
+    #[test]
+    fn flush_batch_returns_items_in_fifo_order() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 8, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(110);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue 0");
+        queue.enqueue_strict(make_event(run, 1)).expect("enqueue 1");
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue 2");
+        queue.enqueue_strict(make_event(run, 3)).expect("enqueue 3");
+        queue.enqueue_journaled(make_event(run, 4)).expect("enqueue 4");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 5);
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 5, "all 5 events should be present");
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(
+                ev.seq().get(),
+                i as u64,
+                "event at index {} should have seq {}, got {}",
+                i, i, ev.seq().get()
+            );
+        }
+    }
+
+    #[test]
+    fn multi_flush_maintains_fifo_across_batches() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(111);
+        for i in 0..6u64 {
+            if i % 2 == 0 {
+                queue.enqueue_strict(make_event(run, i))
+                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            } else {
+                queue.enqueue_journaled(make_event(run, i))
+                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            }
+        }
+
+        for _ in 0..3 {
+            let r = queue.flush_batch(&journal).expect("flush should succeed");
+            assert_eq!(r.drained, 2, "each flush should drain batch_size events");
+        }
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 6, "all 6 events should be persisted");
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(
+                ev.seq().get(),
+                i as u64,
+                "event at index {} should have seq {}",
+                i, i
+            );
+        }
+    }
+
+    // =========================================================================
+    // Mixed-tier batch: strict presence triggers strict flush path
+    // =========================================================================
+
+    #[test]
+    fn mixed_batch_with_one_strict_among_journaled_writes_all() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(120);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue journaled");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue journaled");
+        queue.enqueue_strict(make_event(run, 2)).expect("enqueue strict");
+        queue.enqueue_journaled(make_event(run, 3)).expect("enqueue journaled");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 4, "mixed batch should drain all 4");
+        assert_eq!(report.written, 4, "mixed batch should write all 4");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 4);
+    }
+
+    #[test]
+    fn mixed_batch_followed_by_journaled_only_batch() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(121);
+        // Batch 1: strict + journaled (has_strict = true)
+        queue.enqueue_strict(make_event(run, 0)).expect("enqueue strict");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue journaled");
+        // Batch 2: journaled only (has_strict = false)
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue journaled");
+        queue.enqueue_journaled(make_event(run, 3)).expect("enqueue journaled");
+
+        let r1 = queue.flush_batch(&journal).expect("first flush");
+        assert_eq!(r1.drained, 2);
+        assert_eq!(r1.written, 2);
+
+        let r2 = queue.flush_batch(&journal).expect("second flush");
+        assert_eq!(r2.drained, 2);
+        assert_eq!(r2.written, 2);
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 4, "all events from both batches should be persisted");
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(ev.seq().get(), i as u64);
+        }
+    }
+
+    // =========================================================================
+    // Capacity limits across durability tiers
+    // =========================================================================
+
+    #[test]
+    fn capacity_limit_applies_to_strict_events() {
+        let queue = JournalWriterQueue::new(2, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(130);
+        queue.enqueue_strict(make_event(run, 0)).expect("first strict enqueue");
+        queue.enqueue_strict(make_event(run, 1)).expect("second strict enqueue");
+        let result = queue.enqueue_strict(make_event(run, 2));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "strict enqueue beyond capacity must yield QueueFull, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn capacity_limit_shared_across_strict_and_journaled() {
+        let queue = JournalWriterQueue::new(3, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(131);
+        queue.enqueue_strict(make_event(run, 0)).expect("strict 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("journaled 1");
+        queue.enqueue_strict(make_event(run, 2)).expect("strict 2");
+
+        let strict_result = queue.enqueue_strict(make_event(run, 3));
+        assert!(
+            matches!(strict_result, Err(JournalError::QueueFull)),
+            "strict beyond shared capacity must fail, got {:?}",
+            strict_result
+        );
+        let journaled_result = queue.enqueue_journaled(make_event(run, 4));
+        assert!(
+            matches!(journaled_result, Err(JournalError::QueueFull)),
+            "journaled beyond shared capacity must fail, got {:?}",
+            journaled_result
+        );
+    }
+
+    // =========================================================================
+    // Shutdown drains mixed durability tiers
+    // =========================================================================
+
+    #[test]
+    fn shutdown_drains_mixed_strict_and_journaled() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(140);
+        queue.enqueue_strict(make_event(run, 0)).expect("strict 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("journaled 1");
+        queue.enqueue_journaled(make_event(run, 2)).expect("journaled 2");
+        queue.enqueue_strict(make_event(run, 3)).expect("strict 3");
+        queue.enqueue_journaled(make_event(run, 4)).expect("journaled 4");
+
+        let report = queue.shutdown(&journal).expect("shutdown should succeed");
+        assert_eq!(report.drained, 5, "shutdown should drain all 5 mixed events");
+        assert_eq!(report.written, 5, "shutdown should write all 5 mixed events");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 5, "journal should have all 5 events after shutdown");
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(ev.seq().get(), i as u64, "FIFO order must be preserved");
+        }
+    }
+
+    #[test]
+    fn shutdown_rejects_strict_and_journaled_after_drain() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(141);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue before shutdown");
+
+        let _ = queue.shutdown(&journal).expect("shutdown should succeed");
+
+        let strict_result = queue.enqueue_strict(make_event(run, 1));
+        assert!(
+            matches!(strict_result, Err(JournalError::QueueShutdown)),
+            "strict enqueue after shutdown must fail, got {:?}",
+            strict_result
+        );
+        let journaled_result = queue.enqueue_journaled(make_event(run, 2));
+        assert!(
+            matches!(journaled_result, Err(JournalError::QueueShutdown)),
+            "journaled enqueue after shutdown must fail, got {:?}",
+            journaled_result
+        );
+    }
+
+    // =========================================================================
+    // drain_all with mixed tiers across multiple batches
+    // =========================================================================
+
+    #[test]
+    fn drain_all_mixed_tiers_across_multiple_batches() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(16, 3, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(150);
+        for i in 0..7u64 {
+            if i % 2 == 0 {
+                queue.enqueue_strict(make_event(run, i))
+                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            } else {
+                queue.enqueue_journaled(make_event(run, i))
+                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            }
+        }
+
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
+        assert_eq!(report.drained, 7, "drain_all should drain all 7 events");
+        assert_eq!(report.written, 7, "drain_all should write all 7 events");
+
+        let counts = queue.pending_profile_counts().expect("counts should succeed");
+        assert_eq!(counts.strict, 0, "queue should be empty after drain_all");
+        assert_eq!(counts.journaled, 0, "queue should be empty after drain_all");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 7);
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(ev.seq().get(), i as u64);
+        }
+    }
+
+    // =========================================================================
+    // Counts update correctly after partial flush of mixed tiers
+    // =========================================================================
+
+    #[test]
+    fn counts_after_partial_strict_flush() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(160);
+        queue.enqueue_strict(make_event(run, 0)).expect("strict 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("journaled 1");
+        queue.enqueue_strict(make_event(run, 2)).expect("strict 2");
+        queue.enqueue_journaled(make_event(run, 3)).expect("journaled 3");
+
+        let counts_before = queue.pending_profile_counts().expect("counts before flush");
+        assert_eq!(counts_before.strict, 2);
+        assert_eq!(counts_before.journaled, 2);
+
+        // batch_size=2, has_strict=true (strict at index 0), drains first 2 items
+        let _ = queue.flush_batch(&journal).expect("flush should succeed");
+
+        let counts_after = queue.pending_profile_counts().expect("counts after flush");
+        assert_eq!(counts_after.strict, 1, "should have 1 strict remaining");
+        assert_eq!(counts_after.journaled, 1, "should have 1 journaled remaining");
     }
 }

@@ -507,9 +507,10 @@ fn validate_step_taint(
                 let fact = resolve_value(value, facts, slots);
                 write_slot(slots, index, fact);
             }
-            StepKind::Choose { condition } => {
-                let fact = resolve_value(condition, facts, slots);
-                require_boolean(fact.value_type)?;
+            StepKind::Choose { .. } => {
+                // Taint pass only: no taint is produced or leaked by a branch
+                // condition. Type checking of the condition is handled by
+                // validate_step_types.
             }
             StepKind::Finish { result } => {
                 let fact = resolve_value(result, facts, slots);
@@ -1416,6 +1417,547 @@ mod tests {
             "done",
             TypedValue::Literal(ValueType::Number),
         )]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    // ========================================================================
+    // Comprehensive taint propagation tests
+    // ========================================================================
+
+    // ---------------------------------------------------------------------------
+    // 1. Secret-derived taint: a slot that receives output from a step reading
+    //    a secret should be marked tainted.
+    // ---------------------------------------------------------------------------
+
+    /// When a save step reads `$secrets.token`, the resulting slot is tainted
+    /// and cannot be used in a finish without triggering SecretResultLeak.
+    #[test]
+    fn taint_secret_save_marks_slot_tainted() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.token".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("token".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A save step reading a secret input marks the slot tainted.
+    #[test]
+    fn taint_secret_input_save_marks_slot_tainted() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$input.api_key".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "api_key".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A save step reading a clean input does NOT taint the slot.
+    #[test]
+    fn taint_clean_input_save_marks_slot_clean() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$input.username".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "username".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: false,
+        });
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A save step reading a clean var does NOT taint the slot.
+    #[test]
+    fn taint_clean_var_save_marks_slot_clean() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$vars.counter".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.vars.push(("counter".to_owned(), ValueType::Number));
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A save step reading a literal does NOT taint the slot.
+    #[test]
+    fn taint_literal_save_marks_slot_clean() {
+        let wf = make_workflow(vec![
+            save_step("cap", TypedValue::Literal(ValueType::Text)),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    // ---------------------------------------------------------------------------
+    // 2. Cross-slot contamination: if a tainted slot feeds into another
+    //    save/relay step, all downstream output slots should become tainted.
+    // ---------------------------------------------------------------------------
+
+    /// Taint propagates through a chain of slot relays (slot 0 -> slot 1 -> slot 2).
+    #[test]
+    fn taint_propagates_through_three_hop_slot_chain() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.db_password".into())),
+            save_step("relay1", TypedValue::Slot(0)),
+            save_step("relay2", TypedValue::Slot(1)),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("db_password".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Two independent slots: slot 0 is tainted, slot 1 is clean.
+    /// Finishing with the clean slot passes.
+    #[test]
+    fn taint_independent_slots_isolated_clean_finish() {
+        let mut wf = make_workflow(vec![
+            save_step("secret_cap", TypedValue::Reference("$secrets.key".into())),
+            save_step("clean_cap", TypedValue::Literal(ValueType::Number)),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("key".to_owned());
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Finishing with the tainted slot among independent slots fails.
+    #[test]
+    fn taint_independent_slots_tainted_finish_fails() {
+        let mut wf = make_workflow(vec![
+            save_step("secret_cap", TypedValue::Reference("$secrets.key".into())),
+            save_step("clean_cap", TypedValue::Literal(ValueType::Number)),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("key".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A tainted slot mixed with a clean literal in a composite taints the
+    /// composite output.
+    #[test]
+    fn taint_cross_slot_contamination_via_composite() {
+        let mut wf = make_workflow(vec![
+            save_step("secret_cap", TypedValue::Reference("$secrets.token".into())),
+            save_step(
+                "mixed",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Literal(ValueType::Number),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("token".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A tainted slot relayed into a new save, combined with a clean literal
+    /// in a nested composite, still carries taint.
+    #[test]
+    fn taint_nested_slot_relay_with_composite() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.cred".into())),
+            save_step("s1", TypedValue::Slot(0)),
+            save_step(
+                "s2",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(1),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("cred".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    // ---------------------------------------------------------------------------
+    // 3. Finish step with secret leak: writing a tainted slot to the result
+    //    should produce a taint warning.
+    // ---------------------------------------------------------------------------
+
+    /// Direct secret reference in finish result triggers SecretResultLeak.
+    #[test]
+    fn taint_finish_direct_secret_reference_rejected() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$secrets.private_key".into()),
+        )]);
+        wf.secrets.push("private_key".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Secret input reference in finish result triggers SecretResultLeak.
+    #[test]
+    fn taint_finish_secret_input_reference_rejected() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.secret_value".into()),
+        )]);
+        wf.inputs.push(InputDecl {
+            name: "secret_value".to_owned(),
+            schema_type: ValueType::Number,
+            is_secret: true,
+        });
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Tainted slot used in finish result triggers SecretResultLeak.
+    #[test]
+    fn taint_finish_tainted_slot_rejected() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.session_id".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("session_id".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Tainted composite in finish result triggers SecretResultLeak.
+    #[test]
+    fn taint_finish_composite_with_secret_rejected() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Composite(vec![
+                TypedValue::Literal(ValueType::Number),
+                TypedValue::Reference("$secrets.hidden".into()),
+            ]),
+        )]);
+        wf.secrets.push("hidden".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Tainted slot inside a composite in finish result triggers SecretResultLeak.
+    #[test]
+    fn taint_finish_composite_with_tainted_slot_rejected() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.bearer".into())),
+            finish_step(
+                "done",
+                TypedValue::Composite(vec![TypedValue::Slot(0)]),
+            ),
+        ]);
+        wf.secrets.push("bearer".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    // ---------------------------------------------------------------------------
+    // 4. Clean finish: writing only non-tainted slots should not produce any
+    //    taint warnings.
+    // ---------------------------------------------------------------------------
+
+    /// A finish with a literal value passes taint validation.
+    #[test]
+    fn taint_clean_finish_literal() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A finish with a clean input reference passes taint validation.
+    #[test]
+    fn taint_clean_finish_clean_input_reference() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.email".into()),
+        )]);
+        wf.inputs.push(InputDecl {
+            name: "email".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: false,
+        });
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A finish with a clean var reference passes taint validation.
+    #[test]
+    fn taint_clean_finish_clean_var_reference() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$vars.status".into()),
+        )]);
+        wf.vars.push(("status".to_owned(), ValueType::Text));
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A finish with a clean slot (written from a clean input) passes.
+    #[test]
+    fn taint_clean_finish_clean_slot() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$input.user_id".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "user_id".to_owned(),
+            schema_type: ValueType::Number,
+            is_secret: false,
+        });
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A finish with a composite of clean values passes.
+    #[test]
+    fn taint_clean_finish_composite_of_clean() {
+        let wf = make_workflow(vec![
+            save_step("cap", TypedValue::Literal(ValueType::Number)),
+            finish_step(
+                "done",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Multiple saves and a clean finish: secrets exist but are not used in the
+    /// finish result.
+    #[test]
+    fn taint_clean_finish_with_unused_secrets_in_workflow() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.unused".into())),
+            save_step("data", TypedValue::Literal(ValueType::Text)),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("unused".to_owned());
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    // ---------------------------------------------------------------------------
+    // 5. Expression evaluation taint: using a tainted input in an expression
+    //    (composite) should propagate taint to the output.
+    // ---------------------------------------------------------------------------
+
+    /// A composite containing a secret reference is tainted.
+    #[test]
+    fn taint_expression_composite_with_secret_reference() {
+        let mut wf = make_workflow(vec![
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Literal(ValueType::Number),
+                    TypedValue::Reference("$secrets.otp".into()),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("otp".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A composite containing a tainted slot is tainted.
+    #[test]
+    fn taint_expression_composite_with_tainted_slot() {
+        let mut wf = make_workflow(vec![
+            save_step("secret_cap", TypedValue::Reference("$secrets.hash".into())),
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("hash".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A composite of only clean values remains clean.
+    #[test]
+    fn taint_expression_composite_clean_remains_clean() {
+        let wf = make_workflow(vec![
+            save_step("clean_val", TypedValue::Literal(ValueType::Number)),
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A deeply nested composite with a secret at the innermost level is tainted.
+    #[test]
+    fn taint_expression_deeply_nested_composite_with_secret() {
+        let mut wf = make_workflow(vec![
+            save_step(
+                "deep",
+                TypedValue::Composite(vec![
+                    TypedValue::Literal(ValueType::Number),
+                    TypedValue::Composite(vec![
+                        TypedValue::Literal(ValueType::Text),
+                        TypedValue::Composite(vec![
+                            TypedValue::Literal(ValueType::Boolean),
+                            TypedValue::Reference("$secrets.buried".into()),
+                        ]),
+                    ]),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("buried".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A composite that mixes a secret input with a clean literal is tainted.
+    #[test]
+    fn taint_expression_composite_with_secret_input() {
+        let mut wf = make_workflow(vec![
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Literal(ValueType::Number),
+                    TypedValue::Reference("$input.password".into()),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "password".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A composite that uses a relay of a tainted slot is still tainted.
+    #[test]
+    fn taint_expression_composite_with_relayed_taint() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.nonce".into())),
+            save_step("s1", TypedValue::Slot(0)),
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![TypedValue::Slot(1)]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("nonce".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// An inline composite (not via a slot) used directly in finish with a
+    /// secret reference is rejected.
+    #[test]
+    fn taint_expression_inline_composite_in_finish_rejected() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Composite(vec![
+                TypedValue::Literal(ValueType::Number),
+                TypedValue::Reference("$secrets.inline_secret".into()),
+            ]),
+        )]);
+        wf.secrets.push("inline_secret".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Edge cases: multiple secrets, mixed inputs, choose steps
+    // ---------------------------------------------------------------------------
+
+    /// Multiple secrets declared but only one used in the taint path.
+    #[test]
+    fn taint_multiple_secrets_only_one_used() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.alpha".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("alpha".to_owned());
+        wf.secrets.push("beta".to_owned());
+        wf.secrets.push("gamma".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A choose step with a tainted condition does not cause a taint error
+    /// (choose conditions only affect type checking, not taint flow to finish).
+    #[test]
+    fn taint_choose_with_secret_condition_no_finish_leak() {
+        let mut wf = make_workflow(vec![
+            save_step("val", TypedValue::Reference("$secrets.flag".into())),
+            choose_step("route", TypedValue::Slot(0)),
+            finish_step("done", TypedValue::Literal(ValueType::Number)),
+        ]);
+        wf.secrets.push("flag".to_owned());
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A workflow with only clean steps (no secrets declared at all) passes.
+    #[test]
+    fn taint_no_secrets_all_clean() {
+        let wf = make_workflow(vec![
+            save_step("val", TypedValue::Literal(ValueType::Number)),
+            save_step("flag", TypedValue::Literal(ValueType::Boolean)),
+            choose_step("route", TypedValue::Slot(1)),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A reference to an unknown name resolves as clean Any (no taint).
+    #[test]
+    fn taint_unknown_reference_resolves_clean() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.nonexistent".into()),
+        )]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// A composite with multiple tainted inputs from different sources
+    /// (secret + secret input) is tainted.
+    #[test]
+    fn taint_composite_with_multiple_taint_sources() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.s".into())),
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Reference("$input.cred".into()),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("s".to_owned());
+        wf.inputs.push(InputDecl {
+            name: "cred".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A composite with only clean inputs and clean slots passes taint check
+    /// even when secrets are declared in the workflow.
+    #[test]
+    fn taint_composite_clean_with_declared_secrets() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$input.data".into())),
+            save_step(
+                "expr",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "data".to_owned(),
+            schema_type: ValueType::Number,
+            is_secret: false,
+        });
+        wf.secrets.push("unused_secret".to_owned());
         assert_eq!(validate_taint(&wf), Ok(()));
     }
 }

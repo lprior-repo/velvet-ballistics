@@ -5982,24 +5982,18 @@ mod tests {
     }
 
     #[test]
-    fn sum_expression_passes_validation() -> Result<(), String> {
+    fn sum_expression_is_rejected_as_unsupported() -> Result<(), String> {
         let workflow = sum_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    #[test]
-    fn sum_expression_emits_collection_match() -> Result<(), String> {
-        let workflow = sum_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("SlotValue::List(n)") || source.contains("SlotValue::List("),
-            "Sum must match SlotValue::List"
-        );
-        assert!(
-            source.contains("SlotValue::I64"),
-            "Sum must produce SlotValue::I64 result"
-        );
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "sum",
+            "unsupported generated Rust IR feature: sum",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "sum",
+            "unsupported generated Rust IR feature: sum",
+        )?;
         Ok(())
     }
 
@@ -6114,24 +6108,18 @@ mod tests {
     }
 
     #[test]
-    fn unique_expression_passes_validation() -> Result<(), String> {
+    fn unique_expression_is_rejected_as_unsupported() -> Result<(), String> {
         let workflow = unique_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    #[test]
-    fn unique_expression_emits_collection_match() -> Result<(), String> {
-        let workflow = unique_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("SlotValue::List(n)") || source.contains("SlotValue::List("),
-            "Unique must match SlotValue::List"
-        );
-        assert!(
-            source.contains("SlotValue::I64"),
-            "Unique must produce SlotValue::I64 result"
-        );
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "unique",
+            "unsupported generated Rust IR feature: unique",
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "unique",
+            "unsupported generated Rust IR feature: unique",
+        )?;
         Ok(())
     }
 
@@ -6172,17 +6160,9 @@ mod tests {
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Empty,
         ];
-        let ops_sum = vec![
-            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::Sum,
-        ];
         let ops_count = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Count,
-        ];
-        let ops_unique = vec![
-            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::Unique,
         ];
 
         let expr_contains = ExprProgram::try_from_ops(ops_contains.into_boxed_slice()).map_err(|e| e.to_string())?;
@@ -6192,13 +6172,11 @@ mod tests {
         let expr_exists = ExprProgram::try_from_ops(ops_exists.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_length = ExprProgram::try_from_ops(ops_length.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_empty = ExprProgram::try_from_ops(ops_empty.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_sum = ExprProgram::try_from_ops(ops_sum.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_count = ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_unique = ExprProgram::try_from_ops(ops_unique.into_boxed_slice()).map_err(|e| e.to_string())?;
 
-        // 10 EvalExpr nodes + 1 Finish node = 11 nodes
+        // 8 EvalExpr nodes + 1 Finish node = 9 nodes
         let mut nodes = Vec::new();
-        for i in 0..10u16 {
+        for i in 0..8u16 {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
                 output: Some(SlotIdx::new(0)),
@@ -6211,7 +6189,7 @@ mod tests {
             });
         }
         nodes.push(CompiledNode {
-            id: StepIdx::new(10),
+            id: StepIdx::new(8),
             output: None,
             next: None,
             on_error: None,
@@ -6233,9 +6211,7 @@ mod tests {
                 expr_exists,
                 expr_length,
                 expr_empty,
-                expr_sum,
                 expr_count,
-                expr_unique,
             ]
             .into_boxed_slice(),
             accessors: Box::new([]),
@@ -6285,15 +6261,7 @@ mod tests {
         );
         assert!(
             source.contains("fn eval_expr_7"),
-            "must generate eval_expr_7 (Sum)"
-        );
-        assert!(
-            source.contains("fn eval_expr_8"),
-            "must generate eval_expr_8 (Count)"
-        );
-        assert!(
-            source.contains("fn eval_expr_9"),
-            "must generate eval_expr_9 (Unique)"
+            "must generate eval_expr_7 (Count)"
         );
 
         // Verify semantic check passes
