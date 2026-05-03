@@ -20,6 +20,7 @@ use crate::{
     },
     error::JournalError,
     events::JournalEvent,
+    process_lock::ProcessLock,
     keys::{
         compiled_ir_key,
         run_event_key, workflow_source_key,
@@ -57,6 +58,7 @@ pub struct FjallJournal {
     pub(crate) index_action: fjall::Keyspace,
     #[allow(dead_code)]
     write_lock: Mutex<()>,
+    _process_lock: ProcessLock,
 }
 
 impl FjallJournal {
@@ -95,6 +97,7 @@ impl FjallJournal {
         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
             workflow_source,
@@ -107,6 +110,7 @@ impl FjallJournal {
             index_workflow,
             index_action,
             write_lock: Mutex::new(()),
+            _process_lock,
         })
     }
 

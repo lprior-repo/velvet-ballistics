@@ -32,6 +32,7 @@ pub mod journal;
 pub mod keys;
 pub mod queue;
 pub mod records;
+pub mod process_lock;
 pub mod recovery;
 pub mod snapshots;
 pub mod tests;
