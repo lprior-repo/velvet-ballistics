@@ -46,6 +46,10 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
         CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
+        CompiledNodeKind::CollectStart { .. } => emit_collect_start_step_body(out, &node.kind),
+        CompiledNodeKind::CollectPage { .. } => emit_collect_page_step_body(out, &node.kind),
+        CompiledNodeKind::CollectNext { .. } => emit_collect_next_step_body(out, &node.kind),
+        CompiledNodeKind::CollectFinish { .. } => emit_collect_finish_step_body(out, &node.kind),
         unsupported => emit_unsupported_node_step(out, unsupported),
     }
 }
@@ -409,6 +413,61 @@ fn emit_retry_check_step(
         exhausted.get()
     )
     .map_err(fmt_err)
+}
+
+fn emit_collect_start_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    let CompiledNodeKind::CollectStart { source, limit, page_size, body, done } = kind else {
+        return emit_unsupported_step(out, "CollectStart");
+    };
+    emit_collect_start_step(out, *source, *limit, *page_size, *body, *done)
+}
+
+fn emit_collect_start_step(out: &mut String, source: SlotIdx, limit: u32, page_size: u32, body: StepIdx, done: StepIdx) -> CodegenResult<()> {
+    writeln!(out, "    // CollectStart: source={}, limit={}, page_size={}, body={}, done={}", source.get(), limit, page_size, body.get(), done.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _source = read_slot(slots, {})?;", source.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _limit = {limit}u32;").map_err(fmt_err)?;
+    writeln!(out, "    let _page_size = {page_size}u32;").map_err(fmt_err)?;
+    writeln!(out, "    let _collected = 0u32;").map_err(fmt_err)?;
+    writeln!(out, "    Ok(StepOutcome::Continue({}))", body.get()).map_err(fmt_err)
+}
+
+fn emit_collect_page_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    let CompiledNodeKind::CollectPage { collector_slot, body, done } = kind else {
+        return emit_unsupported_step(out, "CollectPage");
+    };
+    emit_collect_page_step(out, *collector_slot, *body, *done)
+}
+
+fn emit_collect_page_step(out: &mut String, collector_slot: SlotIdx, body: StepIdx, done: StepIdx) -> CodegenResult<()> {
+    writeln!(out, "    // CollectPage: collector_slot={}, body={}, done={}", collector_slot.get(), body.get(), done.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _collector = read_slot(slots, {})?;", collector_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    Ok(StepOutcome::Continue({}))", body.get()).map_err(fmt_err)
+}
+
+fn emit_collect_next_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    let CompiledNodeKind::CollectNext { collector_slot, body, done } = kind else {
+        return emit_unsupported_step(out, "CollectNext");
+    };
+    emit_collect_next_step(out, *collector_slot, *body, *done)
+}
+
+fn emit_collect_next_step(out: &mut String, collector_slot: SlotIdx, body: StepIdx, done: StepIdx) -> CodegenResult<()> {
+    writeln!(out, "    // CollectNext: collector_slot={}, body={}, done={}", collector_slot.get(), body.get(), done.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _collector = read_slot(slots, {})?;", collector_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    Ok(StepOutcome::Continue({}))", body.get()).map_err(fmt_err)
+}
+
+fn emit_collect_finish_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
+    let CompiledNodeKind::CollectFinish { collector_slot } = kind else {
+        return emit_unsupported_step(out, "CollectFinish");
+    };
+    emit_collect_finish_step(out, *collector_slot)
+}
+
+fn emit_collect_finish_step(out: &mut String, collector_slot: SlotIdx) -> CodegenResult<()> {
+    writeln!(out, "    // CollectFinish: collector_slot={}", collector_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _collector = read_slot(slots, {})?;", collector_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    Ok(StepOutcome::Continue({}))", collector_slot.get()).map_err(fmt_err)
 }
 
 fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
