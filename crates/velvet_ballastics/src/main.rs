@@ -18,6 +18,18 @@ const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
 const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot index out of range";
 
+/// Structured output format for CLI commands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OutputFormat {
+    /// Human-readable text output (default).
+    #[default]
+    Text,
+    /// JSON object output.
+    Json,
+    /// JSON Lines output (one JSON object per line).
+    Jsonl,
+}
+
 macro_rules! outln {
     ($($arg:tt)*) => {{
         write_stdout_line(format_args!($($arg)*));
@@ -34,19 +46,23 @@ const HELP: &str = "\
 velvet-ballastics - compiled workflow runtime
 
 commands:
-  validate   <workflow.yaml>                          Validate a workflow definition
-  compile    <workflow.yaml> --emit <ir|rust> --out <file>  Compile a workflow to IR or Rust
-  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]  Execute a workflow
+  validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
+  compile    <workflow.yaml> --emit <ir|rust> --out <file> [--json|--jsonl]  Compile a workflow
+  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
              [--step <id> --step-input <file>]                                 Run a single step in isolation
-  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]  Execute compiled IR
+  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
   ipc-serve  --socket <path> --db <path>               Start IPC server
-  inspect    <run_id> --db <path>                       Inspect a run
-  events     <run_id> --db <path>                       List run events
-  replay     <run_id> --db <path>                       Replay a run from journal
-  bench-run  <workflow.yaml>                            Benchmark a workflow
-  doctor     --db <path>                                Run diagnostic checks
+  inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
+  events     <run_id> --db <path> [--json|--jsonl]     List run events
+  replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
+  bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
+  doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
   help                                                Print this message
   version                                             Print version
+
+options:
+  --json      Output structured JSON
+  --jsonl     Output structured JSON Lines (one object per line)
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 
@@ -57,34 +73,37 @@ fn main() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
-        Ok(Command::Validate { workflow }) => cmd_validate(&workflow),
+        Ok(Command::Validate { workflow, output }) => cmd_validate(&workflow, output),
         Ok(Command::Compile {
             workflow,
             emit,
             out,
-        }) => cmd_compile(&workflow, emit, &out),
+            output,
+        }) => cmd_compile(&workflow, emit, &out, output),
         Ok(Command::Run {
             workflow,
             input_bin,
             durability,
             db,
             step,
+            output,
         }) => match step {
             Some(target) => cmd_run_step(&workflow, durability, &target),
-            None => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
+            None => cmd_run(&workflow, &input_bin, durability, db.as_deref(), output),
         },
         Ok(Command::RunCompiled {
             workflow,
             input_bin,
             durability,
             db,
-        }) => cmd_run_compiled(&workflow, &input_bin, durability, db.as_deref()),
+            output,
+        }) => cmd_run_compiled(&workflow, &input_bin, durability, db.as_deref(), output),
         Ok(Command::IpcServe { socket, db }) => cmd_ipc_serve(&socket, &db),
-        Ok(Command::Inspect { run_id, db }) => cmd_inspect(&run_id, &db),
-        Ok(Command::Events { run_id, db }) => cmd_events(&run_id, &db),
-        Ok(Command::Replay { run_id, db }) => cmd_replay(&run_id, &db),
-        Ok(Command::BenchRun { workflow }) => cmd_bench_run(&workflow),
-        Ok(Command::Doctor { db }) => cmd_doctor(&db),
+        Ok(Command::Inspect { run_id, db, output }) => cmd_inspect(&run_id, &db, output),
+        Ok(Command::Events { run_id, db, output }) => cmd_events(&run_id, &db, output),
+        Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
+        Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
+        Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
         Err(e) => exit_from_io(&write_error_stderr(&e), ExitCode::FAILURE),
     }
 }
@@ -95,11 +114,13 @@ enum Command {
     Version,
     Validate {
         workflow: PathBuf,
+        output: OutputFormat,
     },
     Compile {
         workflow: PathBuf,
         emit: EmitTarget,
         out: PathBuf,
+        output: OutputFormat,
     },
     Run {
         workflow: PathBuf,
@@ -107,12 +128,14 @@ enum Command {
         durability: DurabilityMode,
         db: Option<PathBuf>,
         step: Option<StepTarget>,
+        output: OutputFormat,
     },
     RunCompiled {
         workflow: PathBuf,
         input_bin: PathBuf,
         durability: DurabilityMode,
         db: Option<PathBuf>,
+        output: OutputFormat,
     },
     IpcServe {
         socket: PathBuf,
@@ -121,20 +144,25 @@ enum Command {
     Inspect {
         run_id: String,
         db: PathBuf,
+        output: OutputFormat,
     },
     Events {
         run_id: String,
         db: PathBuf,
+        output: OutputFormat,
     },
     Replay {
         run_id: String,
         db: PathBuf,
+        output: OutputFormat,
     },
     BenchRun {
         workflow: PathBuf,
+        output: OutputFormat,
     },
     Doctor {
         db: PathBuf,
+        output: OutputFormat,
     },
 }
 
@@ -192,7 +220,8 @@ fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    Ok(Command::Validate { workflow })
+    let output = parse_output_format(args);
+    Ok(Command::Validate { workflow, output })
 }
 
 fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
@@ -204,10 +233,12 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
         other => return Err(ParseError::UnknownEmitTarget(other.into())),
     };
     let out = named_flag(args, "--out").ok_or(ParseError::MissingArgument("--out"))?;
+    let output = parse_output_format(args);
     Ok(Command::Compile {
         workflow,
         emit,
         out: PathBuf::from(out),
+        output,
     })
 }
 
@@ -220,12 +251,14 @@ fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
     let durability = parse_durability(&durability_raw)?;
     let db = parse_optional_run_db(args, durability)?;
     let step = parse_optional_step(args)?;
+    let output = parse_output_format(args);
     Ok(Command::Run {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
         db,
         step,
+        output,
     })
 }
 
@@ -253,11 +286,13 @@ fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
         named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
     let durability = parse_durability(&durability_raw)?;
     let db = parse_optional_run_db(args, durability)?;
+    let output = parse_output_format(args);
     Ok(Command::RunCompiled {
         workflow,
         input_bin: PathBuf::from(input_bin),
         durability,
         db,
+        output,
     })
 }
 
@@ -287,39 +322,48 @@ fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
 fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Inspect {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Events {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Replay {
         run_id,
         db: PathBuf::from(db),
+        output,
     })
 }
 
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
-    Ok(Command::BenchRun { workflow })
+    let output = parse_output_format(args);
+    Ok(Command::BenchRun { workflow, output })
 }
 
 fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
     Ok(Command::Doctor {
         db: PathBuf::from(db),
+        output,
     })
 }
 
@@ -330,6 +374,23 @@ fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
         "none" => Ok(DurabilityMode::None),
         other => Err(ParseError::UnknownDurability(other.into())),
     }
+}
+
+/// Parse --json or --jsonl output format flags.
+/// Returns OutputFormat::Text by default.
+fn parse_output_format(args: &[OsString]) -> OutputFormat {
+    if contains_flag(args, "--jsonl") {
+        OutputFormat::Jsonl
+    } else if contains_flag(args, "--json") {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Text
+    }
+}
+
+/// Check if args contain a specific flag.
+fn contains_flag(args: &[OsString], flag: &str) -> bool {
+    args.iter().any(|arg| arg == flag)
 }
 
 fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<PathBuf, ParseError> {
@@ -424,7 +485,12 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_compile(workflow: &std::path::Path, emit: EmitTarget, out: &std::path::Path) -> ExitCode {
+fn cmd_compile(
+    workflow: &std::path::Path,
+    emit: EmitTarget,
+    out: &std::path::Path,
+    output: OutputFormat,
+) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -433,8 +499,20 @@ fn cmd_compile(workflow: &std::path::Path, emit: EmitTarget, out: &std::path::Pa
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
             }
             return ExitCode::FAILURE;
         }
@@ -448,29 +526,91 @@ fn cmd_compile(workflow: &std::path::Path, emit: EmitTarget, out: &std::path::Pa
             let encoded = match postcard::to_allocvec(&parts) {
                 Ok(data) => data,
                 Err(e) => {
-                    errln!("IR serialization error: {e}");
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("IR serialization error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("IR serialization error: {e}");
+                    }
                     return ExitCode::FAILURE;
                 }
             };
             if let Err(e) = std::fs::write(out, &encoded) {
-                errln!("error writing {}: {e}", out.display());
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error writing {}: {e}", out.display())
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error writing {}: {e}", out.display());
+                }
                 return ExitCode::FAILURE;
             }
-            outln!("compiled IR written to {}", out.display());
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "success": true,
+                        "output": out.display().to_string(),
+                        "format": "ir"
+                    }),
+                    output,
+                );
+            } else {
+                outln!("compiled IR written to {}", out.display());
+            }
         }
         EmitTarget::Rust => {
             let source = match vb_codegen::emit_rust_workflow(&compiled) {
                 Ok(s) => s,
                 Err(e) => {
-                    errln!("codegen error: {e}");
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("codegen error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("codegen error: {e}");
+                    }
                     return ExitCode::FAILURE;
                 }
             };
             if let Err(e) = std::fs::write(out, &source) {
-                errln!("error writing {}: {e}", out.display());
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error writing {}: {e}", out.display())
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error writing {}: {e}", out.display());
+                }
                 return ExitCode::FAILURE;
             }
-            outln!("generated Rust written to {}", out.display());
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "success": true,
+                        "output": out.display().to_string(),
+                        "format": "rust"
+                    }),
+                    output,
+                );
+            } else {
+                outln!("generated Rust written to {}", out.display());
+            }
         }
     }
 
@@ -482,6 +622,7 @@ fn cmd_run(
     input_bin: &std::path::Path,
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
+    output: OutputFormat,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
         Ok(b) => b,
@@ -496,8 +637,20 @@ fn cmd_run(
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
             }
             return ExitCode::FAILURE;
         }
@@ -506,11 +659,25 @@ fn cmd_run(
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            errln!("{error}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": error.to_string()
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{error}");
+            }
             return ExitCode::FAILURE;
         }
     };
 
+    // run_compiled_workflow outputs directly; for structured output we output a result wrapper
+    if output != OutputFormat::Text {
+        outln!("{{\"status\": \"running\", \"run_id\": 1}}");
+    }
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
@@ -723,6 +890,7 @@ fn cmd_run_compiled(
     input_bin: &std::path::Path,
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
+    output: OutputFormat,
 ) -> ExitCode {
     let input_data = match read_file(input_bin) {
         Ok(b) => b,
@@ -739,12 +907,32 @@ fn cmd_run_compiled(
             Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
                 Ok(c) => c,
                 Err(e) => {
-                    errln!("compiled IR validation error: {e}");
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("compiled IR validation error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("compiled IR validation error: {e}");
+                    }
                     return ExitCode::FAILURE;
                 }
             },
             Err(e) => {
-                errln!("error deserializing compiled IR: {e}");
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error deserializing compiled IR: {e}")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error deserializing compiled IR: {e}");
+                }
                 return ExitCode::FAILURE;
             }
         };
@@ -752,11 +940,24 @@ fn cmd_run_compiled(
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            errln!("{error}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": error.to_string()
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{error}");
+            }
             return ExitCode::FAILURE;
         }
     };
 
+    if output != OutputFormat::Text {
+        outln!("{{\"status\": \"running\", \"run_id\": 1}}");
+    }
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
@@ -1035,7 +1236,7 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
     }
 }
 
-fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
+fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -1044,7 +1245,17 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
             return ExitCode::FAILURE;
         }
     };
@@ -1052,7 +1263,18 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
     match journal.events_for_run(rid) {
         Ok(events) => {
             if events.is_empty() {
-                outln!("run {run_id}: no events found");
+                if output != OutputFormat::Text {
+                    json_out(
+                        &serde_json::json!({
+                            "run_id": run_id,
+                            "status": "not_found",
+                            "events": 0
+                        }),
+                        output,
+                    );
+                } else {
+                    outln!("run {run_id}: no events found");
+                }
             } else {
                 let terminal = events.last();
                 let status = match terminal {
@@ -1061,11 +1283,32 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
                     Some(vb_storage::JournalEvent::RunCancelled { .. }) => "cancelled",
                     _ => "running",
                 };
-                outln!("run {run_id}: status={status}, events={}", events.len());
+                if output != OutputFormat::Text {
+                    json_out(
+                        &serde_json::json!({
+                            "run_id": run_id,
+                            "status": status,
+                            "events": events.len()
+                        }),
+                        output,
+                    );
+                } else {
+                    outln!("run {run_id}: status={status}, events={}", events.len());
+                }
             }
         }
         Err(e) => {
-            errln!("error reading run {run_id}: {e}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading run {run_id}: {e}");
+            }
             return ExitCode::FAILURE;
         }
     }
@@ -1073,7 +1316,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
+fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -1082,7 +1325,17 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
             return ExitCode::FAILURE;
         }
     };
@@ -1090,16 +1343,60 @@ fn cmd_events(run_id: &str, db: &std::path::Path) -> ExitCode {
     match journal.events_for_run(rid) {
         Ok(events) => {
             if events.is_empty() {
-                outln!("no events found for run {run_id}");
-            } else {
-                for event in &events {
-                    print_event(event);
+                if output != OutputFormat::Text {
+                    json_out(
+                        &serde_json::json!({
+                            "run_id": run_id,
+                            "events": [],
+                            "total": 0
+                        }),
+                        output,
+                    );
+                } else {
+                    outln!("no events found for run {run_id}");
                 }
-                outln!("{} event(s) total", events.len());
+            } else {
+                match output {
+                    OutputFormat::Json => {
+                        let event_list: Vec<serde_json::Value> =
+                            events.iter().map(|e| event_to_json(e)).collect();
+                        json_out(
+                            &serde_json::json!({
+                                "run_id": run_id,
+                                "events": event_list,
+                                "total": events.len()
+                            }),
+                            output,
+                        );
+                    }
+                    OutputFormat::Jsonl => {
+                        for event in &events {
+                            let json_val = event_to_json(event);
+                            outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
+                        }
+                        outln!("{{\"total\": {}}}", events.len());
+                    }
+                    OutputFormat::Text => {
+                        for event in &events {
+                            print_event(event);
+                        }
+                        outln!("{} event(s) total", events.len());
+                    }
+                }
             }
         }
         Err(e) => {
-            errln!("error reading events for run {run_id}: {e}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading events for run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading events for run {run_id}: {e}");
+            }
             return ExitCode::FAILURE;
         }
     }
@@ -1182,7 +1479,122 @@ fn print_event(event: &vb_storage::JournalEvent) {
     }
 }
 
-fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
+/// Convert a journal event to a JSON value for structured output.
+fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
+    match event {
+        vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunAccepted",
+                "run": run.as_u64(),
+                "workflow": workflow.to_string()
+            })
+        }
+        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "StepStarted",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::StepSucceeded {
+            seq, step, output, ..
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "StepSucceeded",
+                "step": step.get(),
+                "output": output.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionScheduled {
+            seq, step, action, ..
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionScheduled",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionCompletedEvent {
+            seq, step, action, ..
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionCompleted",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionFailedEvent {
+            seq, step, action, ..
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionFailed",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "SlotWritten",
+                "slot": slot.get()
+            })
+        }
+        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "WaitScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "AskScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "AskAnswered",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RetryScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunCancelled"
+            })
+        }
+        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunFinished",
+                "result": result.get()
+            })
+        }
+        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunFailed"
+            })
+        }
+    }
+}
+
+fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -1191,7 +1603,17 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
             return ExitCode::FAILURE;
         }
     };
@@ -1199,21 +1621,62 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
     match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
         Ok(events) => {
-            outln!("recovered {} event(s) for run {run_id}", events.len());
-            for event in &events {
-                print_event(event);
-            }
-            match vb_storage::recovery::extract_terminal(&events) {
-                Some(terminal) => {
-                    outln!("terminal: {}", event_name(terminal));
+            let terminal_name =
+                vb_storage::recovery::extract_terminal(&events).map(|e| event_name(e).to_string());
+
+            match output {
+                OutputFormat::Json => {
+                    let event_list: Vec<serde_json::Value> =
+                        events.iter().map(|e| event_to_json(e)).collect();
+                    json_out(
+                        &serde_json::json!({
+                            "run_id": run_id,
+                            "recovered": events.len(),
+                            "events": event_list,
+                            "terminal": terminal_name
+                        }),
+                        output,
+                    );
                 }
-                None => {
-                    outln!("terminal: none");
+                OutputFormat::Jsonl => {
+                    for event in &events {
+                        let json_val = event_to_json(event);
+                        outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
+                    }
+                    if let Some(term) = terminal_name {
+                        outln!("{{\"terminal\": \"{}\"}}", term);
+                    } else {
+                        outln!("{{\"terminal\": null}}");
+                    }
+                }
+                OutputFormat::Text => {
+                    outln!("recovered {} event(s) for run {run_id}", events.len());
+                    for event in &events {
+                        print_event(event);
+                    }
+                    match vb_storage::recovery::extract_terminal(&events) {
+                        Some(terminal) => {
+                            outln!("terminal: {}", event_name(terminal));
+                        }
+                        None => {
+                            outln!("terminal: none");
+                        }
+                    }
                 }
             }
         }
         Err(e) => {
-            errln!("error replaying run {run_id}: {e}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error replaying run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error replaying run {run_id}: {e}");
+            }
             return ExitCode::FAILURE;
         }
     }
@@ -1221,7 +1684,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
+fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -1231,8 +1694,20 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
             }
             return ExitCode::FAILURE;
         }
@@ -1242,37 +1717,84 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     let run_start = Instant::now();
     let run_id = vb_core::RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
-        errln!("runtime configuration error: shard count must be non-zero");
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": "runtime configuration error: shard count must be non-zero"
+                }),
+                output,
+            );
+        } else {
+            errln!("runtime configuration error: shard count must be non-zero");
+        }
         return ExitCode::FAILURE;
     };
     let config = vb_runtime::shard::ShardConfig::default();
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
-        errln!("runtime submit error: {e}");
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("runtime submit error: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("runtime submit error: {e}");
+        }
         return ExitCode::FAILURE;
     }
     if let Err(e) = runtime.tick_all() {
-        errln!("runtime tick error: {e}");
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("runtime tick error: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("runtime tick error: {e}");
+        }
         return ExitCode::FAILURE;
     }
     let run_elapsed = run_start.elapsed();
     let counters = runtime.counters_snapshot();
 
-    outln!("compile: {}us", compile_elapsed.as_micros());
-    outln!("execute: {}us", run_elapsed.as_micros());
-    outln!(
-        "total:   {}us",
-        compile_elapsed
-            .as_micros()
-            .saturating_add(run_elapsed.as_micros())
-    );
-    outln!(
-        "runtime: submitted={} completed={} failed={} steps={}",
-        counters.runs_submitted,
-        counters.runs_completed,
-        counters.runs_failed,
-        counters.steps_executed
-    );
+    let total_us = compile_elapsed
+        .as_micros()
+        .saturating_add(run_elapsed.as_micros());
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": counters.runs_failed == 0,
+                "compile_us": compile_elapsed.as_micros(),
+                "execute_us": run_elapsed.as_micros(),
+                "total_us": total_us,
+                "runtime": {
+                    "submitted": counters.runs_submitted,
+                    "completed": counters.runs_completed,
+                    "failed": counters.runs_failed,
+                    "steps": counters.steps_executed
+                }
+            }),
+            output,
+        );
+    } else {
+        outln!("compile: {}us", compile_elapsed.as_micros());
+        outln!("execute: {}us", run_elapsed.as_micros());
+        outln!("total:   {}us", total_us);
+        outln!(
+            "runtime: submitted={} completed={} failed={} steps={}",
+            counters.runs_submitted,
+            counters.runs_completed,
+            counters.runs_failed,
+            counters.steps_executed
+        );
+    }
 
     if counters.runs_failed != 0 {
         return ExitCode::FAILURE;
@@ -1281,22 +1803,67 @@ fn cmd_bench_run(workflow: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_doctor(db: &std::path::Path) -> ExitCode {
+fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let mut checks = Vec::new();
+    let mut success = true;
+
     // Check 1: can we open the journal?
     let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
+        Ok(j) => {
+            checks.push(serde_json::json!({
+                "check": "open_journal",
+                "status": "pass",
+                "message": format!("journal opened at {}", db.display())
+            }));
+            j
+        }
         Err(e) => {
-            errln!("FAIL: cannot open journal at {}: {e}", db.display());
+            checks.push(serde_json::json!({
+                "check": "open_journal",
+                "status": "fail",
+                "message": format!("cannot open journal at {}: {e}", db.display())
+            }));
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "checks": checks
+                    }),
+                    output,
+                );
+            } else {
+                errln!("FAIL: cannot open journal at {}: {e}", db.display());
+            }
             return ExitCode::FAILURE;
         }
     };
-    outln!("OK: journal opened at {}", db.display());
 
     // Check 2: can we persist?
     match journal.persist_strict() {
-        Ok(()) => outln!("OK: strict persist succeeded"),
+        Ok(()) => {
+            checks.push(serde_json::json!({
+                "check": "strict_persist",
+                "status": "pass",
+                "message": "strict persist succeeded"
+            }));
+        }
         Err(e) => {
-            errln!("FAIL: strict persist failed: {e}");
+            checks.push(serde_json::json!({
+                "check": "strict_persist",
+                "status": "fail",
+                "message": format!("strict persist failed: {e}")
+            }));
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "checks": checks
+                    }),
+                    output,
+                );
+            } else {
+                errln!("FAIL: strict persist failed: {e}");
+            }
             return ExitCode::FAILURE;
         }
     }
@@ -1310,26 +1877,95 @@ fn cmd_doctor(db: &std::path::Path) -> ExitCode {
     };
 
     if let Err(e) = journal.append_journaled(&test_event) {
-        errln!("FAIL: cannot append test event: {e}");
+        checks.push(serde_json::json!({
+            "check": "append_event",
+            "status": "fail",
+            "message": format!("cannot append test event: {e}")
+        }));
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "checks": checks
+                }),
+                output,
+            );
+        } else {
+            errln!("FAIL: cannot append test event: {e}");
+        }
         return ExitCode::FAILURE;
     }
-    outln!("OK: journal append succeeded");
+    checks.push(serde_json::json!({
+        "check": "append_event",
+        "status": "pass",
+        "message": "journal append succeeded"
+    }));
 
     match journal.events_for_run(test_run) {
         Ok(events) => {
             if events.is_empty() {
-                errln!("FAIL: test event not found after append");
+                checks.push(serde_json::json!({
+                    "check": "read_back_event",
+                    "status": "fail",
+                    "message": "test event not found after append"
+                }));
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "checks": checks
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("FAIL: test event not found after append");
+                }
                 return ExitCode::FAILURE;
             }
-            outln!("OK: journal read-back returned {} event(s)", events.len());
+            checks.push(serde_json::json!({
+                "check": "read_back_event",
+                "status": "pass",
+                "message": format!("journal read-back returned {} event(s)", events.len())
+            }));
         }
         Err(e) => {
-            errln!("FAIL: cannot read test run events: {e}");
+            checks.push(serde_json::json!({
+                "check": "read_back_event",
+                "status": "fail",
+                "message": format!("cannot read test run events: {e}")
+            }));
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "checks": checks
+                    }),
+                    output,
+                );
+            } else {
+                errln!("FAIL: cannot read test run events: {e}");
+            }
             return ExitCode::FAILURE;
         }
     }
 
-    outln!("doctor: all checks passed");
+    checks.push(serde_json::json!({
+        "check": "all",
+        "status": "pass",
+        "message": "all checks passed"
+    }));
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "checks": checks
+            }),
+            output,
+        );
+    } else {
+        outln!("doctor: all checks passed");
+    }
     ExitCode::SUCCESS
 }
 
@@ -1433,14 +2069,48 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     }
 }
 
+/// Output a JSON value to stdout in the specified format.
+fn json_out(value: &serde_json::Value, format: OutputFormat) {
+    match format {
+        OutputFormat::Json => {
+            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
+            outln!("{json_str}");
+        }
+        OutputFormat::Jsonl => {
+            let json_str = serde_json::to_string(value).unwrap_or_default();
+            outln!("{json_str}");
+        }
+        OutputFormat::Text => {
+            // Should not be called in text mode, but fallback to pretty JSON
+            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
+            outln!("{json_str}");
+        }
+    }
+}
+
+/// Output a JSON error value to stderr in the specified format.
+fn json_error(value: &serde_json::Value, format: OutputFormat) {
+    match format {
+        OutputFormat::Json | OutputFormat::Jsonl => {
+            let json_str = serde_json::to_string(value).unwrap_or_default();
+            errln!("{json_str}");
+        }
+        OutputFormat::Text => {
+            // Should not be called in text mode, but fallback to errln
+            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
+            errln!("{json_str}");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
         build_step_frame, compile_bytes, decode_step_inputs, execute_step_isolated,
         map_runtime_inputs, node_kind_name, parse_args, run_compiled_workflow, signal_name,
-        write_step_inputs,
+        write_step_inputs, Command, DurabilityMode, ParseError, StepTarget,
+        StorageWorkflowResolver, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;

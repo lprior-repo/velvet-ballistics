@@ -2395,6 +2395,7 @@ dependencies = [
  "bytes",
  "postcard",
  "serde",
+ "serde_json",
  "tempfile",
  "vb_codegen",
  "vb_compile",
