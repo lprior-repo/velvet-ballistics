@@ -181,3 +181,301 @@ pub enum RuntimeSignal {
     /// Run is awaiting external input (ask).
     AwaitingAsk,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =====================================================================
+    // EvidenceCollector construction and basic operations
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_new_is_empty() {
+        let collector = EvidenceCollector::new();
+        assert!(collector.is_empty());
+        assert_eq!(collector.len(), 0);
+    }
+
+    #[test]
+    fn evidence_collector_default_is_empty() {
+        let collector = EvidenceCollector::default();
+        assert!(collector.is_empty());
+        assert_eq!(collector.len(), 0);
+    }
+
+    #[test]
+    fn evidence_collector_push_step_started_increments_len() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        assert!(!collector.is_empty());
+        assert_eq!(collector.len(), 1);
+    }
+
+    #[test]
+    fn evidence_collector_push_step_succeeded_increments_len() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
+        assert_eq!(collector.len(), 1);
+    }
+
+    #[test]
+    fn evidence_collector_push_step_succeeded_with_no_output() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_succeeded(StepIdx::new(5), None);
+        assert_eq!(collector.len(), 1);
+    }
+
+    // =====================================================================
+    // EvidenceCollector drain
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_drain_returns_all_events() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
+        collector.push_step_started(StepIdx::new(1));
+        assert_eq!(collector.len(), 3);
+
+        let events = collector.drain();
+        assert_eq!(events.len(), 3);
+        assert!(collector.is_empty());
+    }
+
+    #[test]
+    fn evidence_collector_drain_leaves_empty() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        let _ = collector.drain();
+        assert_eq!(collector.len(), 0);
+        assert!(collector.is_empty());
+    }
+
+    #[test]
+    fn evidence_collector_double_drain_second_returns_nothing() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        let first = collector.drain();
+        assert_eq!(first.len(), 1);
+        let second = collector.drain();
+        assert!(second.is_empty());
+    }
+
+    #[test]
+    fn evidence_collector_drain_empty_returns_nothing() {
+        let mut collector = EvidenceCollector::new();
+        let events = collector.drain();
+        assert!(events.is_empty());
+    }
+
+    // =====================================================================
+    // EvidenceCollector event content
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_events_preserve_step_index() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(42));
+        let events = collector.drain();
+        match events.first() {
+            Some(EvidenceEvent::StepStarted { step }) => assert_eq!(*step, StepIdx::new(42)),
+            other => {
+                let msg = format!("expected StepStarted, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn evidence_collector_step_succeeded_preserves_output_slot() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_succeeded(StepIdx::new(3), Some(SlotIdx::new(7)));
+        let events = collector.drain();
+        match events.first() {
+            Some(EvidenceEvent::StepSucceeded { step, output }) => {
+                assert_eq!(*step, StepIdx::new(3));
+                assert_eq!(*output, Some(SlotIdx::new(7)));
+            }
+            other => {
+                let msg = format!("expected StepSucceeded, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn evidence_collector_step_succeeded_none_output_for_boundary_nodes() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_succeeded(StepIdx::new(1), None);
+        let events = collector.drain();
+        match events.first() {
+            Some(EvidenceEvent::StepSucceeded { step, output }) => {
+                assert_eq!(*step, StepIdx::new(1));
+                assert_eq!(*output, None);
+            }
+            other => {
+                let msg = format!("expected StepSucceeded, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn evidence_collector_events_maintain_insertion_order() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)));
+        collector.push_step_started(StepIdx::new(1));
+        collector.push_step_succeeded(StepIdx::new(1), None);
+
+        let events = collector.drain();
+        assert_eq!(events.len(), 4);
+
+        let step_0_start = &events[0];
+        let step_0_succ = &events[1];
+        let step_1_start = &events[2];
+        let step_1_succ = &events[3];
+
+        assert_eq!(
+            *step_0_start,
+            EvidenceEvent::StepStarted {
+                step: StepIdx::new(0)
+            }
+        );
+        assert_eq!(
+            *step_0_succ,
+            EvidenceEvent::StepSucceeded {
+                step: StepIdx::new(0),
+                output: Some(SlotIdx::new(0))
+            }
+        );
+        assert_eq!(
+            *step_1_start,
+            EvidenceEvent::StepStarted {
+                step: StepIdx::new(1)
+            }
+        );
+        assert_eq!(
+            *step_1_succ,
+            EvidenceEvent::StepSucceeded {
+                step: StepIdx::new(1),
+                output: None
+            }
+        );
+    }
+
+    // =====================================================================
+    // EvidenceCollector reuse after drain
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_accepts_events_after_drain() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        let _ = collector.drain();
+
+        collector.push_step_started(StepIdx::new(1));
+        collector.push_step_succeeded(StepIdx::new(1), Some(SlotIdx::new(2)));
+        assert_eq!(collector.len(), 2);
+    }
+
+    // =====================================================================
+    // EvidenceEvent equality and debug
+    // =====================================================================
+
+    #[test]
+    fn evidence_event_step_started_equality() {
+        let a = EvidenceEvent::StepStarted {
+            step: StepIdx::new(5),
+        };
+        let b = EvidenceEvent::StepStarted {
+            step: StepIdx::new(5),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn evidence_event_step_started_inequality_different_step() {
+        let a = EvidenceEvent::StepStarted {
+            step: StepIdx::new(1),
+        };
+        let b = EvidenceEvent::StepStarted {
+            step: StepIdx::new(2),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn evidence_event_step_succeeded_equality() {
+        let a = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(3),
+            output: Some(SlotIdx::new(1)),
+        };
+        let b = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(3),
+            output: Some(SlotIdx::new(1)),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn evidence_event_step_succeeded_inequality_different_output() {
+        let a = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(3),
+            output: Some(SlotIdx::new(1)),
+        };
+        let b = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(3),
+            output: None,
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn evidence_event_different_variants_are_not_equal() {
+        let started = EvidenceEvent::StepStarted {
+            step: StepIdx::new(0),
+        };
+        let succeeded = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(0),
+            output: None,
+        };
+        assert_ne!(started, succeeded);
+    }
+
+    #[test]
+    fn evidence_event_debug_format_contains_variant_name() {
+        let started = EvidenceEvent::StepStarted {
+            step: StepIdx::new(5),
+        };
+        let debug = format!("{started:?}");
+        assert!(
+            debug.contains("StepStarted"),
+            "expected 'StepStarted' in '{debug}'"
+        );
+
+        let succeeded = EvidenceEvent::StepSucceeded {
+            step: StepIdx::new(5),
+            output: Some(SlotIdx::new(3)),
+        };
+        let debug = format!("{succeeded:?}");
+        assert!(
+            debug.contains("StepSucceeded"),
+            "expected 'StepSucceeded' in '{debug}'"
+        );
+    }
+
+    // =====================================================================
+    // EvidenceEvent copy semantics
+    // =====================================================================
+
+    #[test]
+    fn evidence_event_is_copy() {
+        let event = EvidenceEvent::StepStarted {
+            step: StepIdx::new(10),
+        };
+        let copy = event;
+        assert_eq!(event, copy);
+    }
+}

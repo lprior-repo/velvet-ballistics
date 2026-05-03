@@ -224,12 +224,13 @@ impl VerificationData {
     pub fn status_badge_text(&self) -> String {
         if self.all_clean {
             String::from("PASS (all panels clean)")
+        } else if self.fail_count > 0 {
+            let total = self.total_checks;
+            let clean = total.saturating_sub(self.fail_count).saturating_sub(self.warn_count);
+            format!("FAIL ({clean}/{total} panels clean)")
         } else {
             let total = self.total_checks;
-            let clean = self
-                .total_checks
-                .saturating_sub(self.fail_count)
-                .saturating_sub(self.warn_count);
+            let clean = total.saturating_sub(self.warn_count);
             format!("PASS ({clean}/{total} panels clean)")
         }
     }
