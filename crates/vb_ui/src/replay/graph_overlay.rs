@@ -299,21 +299,20 @@ impl GraphOverlay {
 fn collect_tainted_steps(snapshot: &ReplayState) -> HashSet<StepIdx> {
     let mut tainted = HashSet::new();
 
-    // The taint map is keyed by SlotIdx, but we need to map those back to
-    // steps.  For each step that wrote to a slot, check if that slot has
-    // a non-Clean taint marker.
-    for step in snapshot.step_states.keys() {
-        // Heuristic: check if any taint marker mentions this step.
-        // The snapshot stores taint as `HashMap<SlotIdx, String>` where the
-        // value is a serialization of the taint marker.  We check if any
-        // taint value indicates a secret.
-        for taint_str in snapshot.taint.values() {
-            let is_tainted = taint_str.contains("Secret")
-                || taint_str.contains("DerivedFromSecret")
-                || taint_str.contains("derived");
+    // A step is tainted only if it has a corresponding entry in the taint
+    // map for a slot it could have written.  Since ReplayState does not
+    // track which step wrote which slot, we use a heuristic: a tainted
+    // slot whose index falls within the step range is attributed to that
+    // step.  Only steps present in step_states are considered.
+    for (slot_idx, taint_str) in &snapshot.taint {
+        let is_secret = taint_str.contains("Secret")
+            || taint_str.contains("DerivedFromSecret")
+            || taint_str.contains("derived");
 
-            if is_tainted {
-                tainted.insert(*step);
+        if is_secret && snapshot.slot_values.contains_key(slot_idx) {
+            let step = StepIdx::new(slot_idx.get());
+            if snapshot.step_states.contains_key(&step) {
+                tainted.insert(step);
             }
         }
     }
