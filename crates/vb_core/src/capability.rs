@@ -47,8 +47,14 @@ impl CapabilitySet {
         let mut i = 0;
         while i < self.grants.len() {
             if let Some(grant) = self.grants.get(i) {
-                let name_match = grant.name().is_empty()
-                    || required.name().starts_with(grant.name());
+                if grant.name().is_empty() {
+                    i = match i.checked_add(1) {
+                        Some(next) => next,
+                        None => break,
+                    };
+                    continue;
+                }
+                let name_match = required.name().starts_with(grant.name());
                 if name_match && grant.action == required.action {
                     return true;
                 }

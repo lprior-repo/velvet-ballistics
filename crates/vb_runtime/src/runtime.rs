@@ -534,6 +534,7 @@ mod tests {
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
+                    value: Vec::new(),
                 },
                 RuntimeJournalEvent::StepSucceeded {
                     run,
@@ -773,6 +774,7 @@ mod tests {
             }) && evts.contains(&RuntimeJournalEvent::SlotWritten {
                 run,
                 slot: SlotIdx::new(1),
+                value: Vec::new(),
             }) && evts.contains(&RuntimeJournalEvent::ActionCompleted {
                 run,
                 step: StepIdx::ZERO,

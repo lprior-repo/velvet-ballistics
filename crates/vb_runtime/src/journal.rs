@@ -782,6 +782,7 @@ mod tests {
             adapter.append(RuntimeJournalEvent::SlotWritten {
                 run,
                 slot: SlotIdx::new(5),
+                value: Vec::new(),
             }),
             Ok(())
         );
@@ -833,6 +834,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(6),
                     slot: SlotIdx::new(5),
+                    value: None,
                 },
             ]
         );
