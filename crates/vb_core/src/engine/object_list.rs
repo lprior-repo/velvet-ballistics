@@ -2,7 +2,7 @@
 
 use crate::errors::EngineError;
 use crate::ids::{ListId, ObjectId, SlotIdx, SymbolId};
-use crate::value::{Taint, join_taint};
+use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 
 /// Reads object fields from frame slots into a pre-allocated vector.
@@ -78,7 +78,7 @@ pub(crate) fn build_object_with_taint(
 fn read_list_items(
     run: &crate::RunFrame,
     items: &[SlotIdx],
-) -> Result<Vec<crate::value::Value>, EngineError> {
+) -> Result<Vec<SlotValue>, EngineError> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(items.len())

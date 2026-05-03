@@ -574,7 +574,6 @@ fn visit_body_region_node(
 /// excluding the `next` field which is handled separately.
 fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
     match kind {
-        // ── No successors ────────────────────────────────────────────────────
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }
@@ -592,8 +591,6 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
         | CompiledNodeKind::Finish { .. }
         | CompiledNodeKind::TogetherJoin { .. }
         | CompiledNodeKind::WaitEvent { .. } => {}
-
-        // ── Branch + fallback ───────────────────────────────────────────────
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -602,8 +599,6 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
             branches,
             otherwise,
         } => push_expr_choose_successors(branches, *otherwise, stack),
-
-        // ── Loop body + done ─────────────────────────────────────────────────
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectStart { body, done, .. }
@@ -617,30 +612,18 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
             body,
             exhausted: done,
             ..
-        } => {
-            push_loop_successors(*body, *done, stack);
-        }
-        CompiledNodeKind::RepeatCheck { done, .. } => {
-            push_repeat_check_successors(*done, stack);
-        }
-
-        // ── Together ──────────────────────────────────────────────────────────
+        } => push_loop_successors(*body, *done, stack),
+        CompiledNodeKind::RepeatCheck { done, .. } => push_repeat_check_successors(*done, stack),
         CompiledNodeKind::TogetherStart { branches, join } => {
-            push_together_start_successors(branches, *join, stack);
+            push_together_start_successors(branches, *join, stack)
         }
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            push_together_branch_successors(*entry, *join, stack);
+            push_together_branch_successors(*entry, *join, stack)
         }
-
-        // ── Error handler ─────────────────────────────────────────────────────
         CompiledNodeKind::ErrorHandler { body, handler } => {
-            push_error_handler_successors(*body, *handler, stack);
+            push_error_handler_successors(*body, *handler, stack)
         }
-
-        // ── Jump ─────────────────────────────────────────────────────────────
-        CompiledNodeKind::Jump { target } => {
-            stack.push(*target);
-        }
+        CompiledNodeKind::Jump { target } => stack.push(*target),
     }
 }
 

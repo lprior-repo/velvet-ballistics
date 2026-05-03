@@ -4,7 +4,7 @@
 //! tracking the retry state machine, and enforcement of `ActionFailure.retryable`
 //! to prevent retrying non-retriable failures.
 
-use vb_core::action::{ActionFailure, RetrySafety};
+use vb_core::action::{ActionFailure, RetryPolicy, RetrySafety};
 use vb_core::errors::CoreError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::SlotIdx;
@@ -277,14 +277,16 @@ pub enum RetryDecision {
 
 /// Checks whether a failure is retriable given the action's retry safety.
 ///
-/// - `RetrySafety::Safe`: always retriable if the failure's `retryable` flag is true.
-/// - `RetrySafety::KeyRequired`: retriable if `retryable` is true (key check is done
+/// - `RetrySafety::Safe`: always retriable if the failure's `retry_policy` is `Retryable`.
+/// - `RetrySafety::KeyRequired`: retriable if `retry_policy` is `Retryable` (key check is done
 ///   separately during dispatch via `verify_idempotency`).
-/// - `RetrySafety::Unsafe`: never retriable regardless of the failure's flag.
+/// - `RetrySafety::Unsafe`: never retriable regardless of the failure's policy.
 pub fn is_failure_retriable(failure: &ActionFailure, retry_safety: RetrySafety) -> bool {
     match retry_safety {
         RetrySafety::Unsafe => false,
-        RetrySafety::Safe | RetrySafety::KeyRequired => failure.retryable,
+        RetrySafety::Safe | RetrySafety::KeyRequired => {
+            failure.retry_policy == RetryPolicy::Retryable
+        }
     }
 }
 
@@ -596,7 +598,7 @@ mod tests {
     fn is_failure_retriable_safe_and_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -608,7 +610,7 @@ mod tests {
     fn is_failure_retriable_safe_but_not_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -620,7 +622,7 @@ mod tests {
     fn is_failure_retriable_unsafe_always_false() {
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -632,7 +634,7 @@ mod tests {
     fn is_failure_retriable_key_required_and_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::RateLimited,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -644,7 +646,7 @@ mod tests {
     fn is_failure_retriable_key_required_but_not_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,

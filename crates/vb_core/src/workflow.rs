@@ -1543,7 +1543,7 @@ fn validate_kind_edges(
 
 fn validate_choose_slot_edges(
     branches: &Box<[SlotBranch]>,
-    otherwise: Option<StepIdx>,
+    otherwise: &Option<StepIdx>,
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
@@ -1558,7 +1558,7 @@ fn validate_choose_slot_edges(
 
 fn validate_choose_expr_edges(
     branches: &Box<[ExprBranch]>,
-    otherwise: Option<StepIdx>,
+    otherwise: &Option<StepIdx>,
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {

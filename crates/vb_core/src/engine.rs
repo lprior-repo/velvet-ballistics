@@ -4149,7 +4149,7 @@ mod tests {
 
     #[test]
     fn do_node_resume_failure_marks_step_failed() -> Result<(), String> {
-        use crate::action::{ActionFailureCode, ActionTicket};
+        use crate::action::{ActionFailureCode, ActionTicket, RetryPolicy};
         use crate::ids::SeqNo;
         use crate::resume_action_failure;
 
@@ -4176,17 +4176,17 @@ mod tests {
             &mut run,
             ticket,
             ActionFailureCode::Timeout,
-            true,
+            RetryPolicy::Retryable,
         )
         .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
             crate::action::ActionJournalEvent::Failed {
-                code, retryable, ..
+                code, retry_policy, ..
             } => {
                 ensure_equal(code, ActionFailureCode::Timeout)?;
-                ensure_equal(retryable, true)?;
+                ensure_equal(retry_policy, RetryPolicy::Retryable)?;
             }
             other => return Err(format!("expected Failed journal event, got {other:?}")),
         }
@@ -4195,7 +4195,7 @@ mod tests {
 
     #[test]
     fn do_node_resume_failure_non_retryable() -> Result<(), String> {
-        use crate::action::{ActionFailureCode, ActionTicket};
+        use crate::action::{ActionFailureCode, ActionTicket, RetryPolicy};
         use crate::ids::SeqNo;
         use crate::resume_action_failure;
 
@@ -4222,17 +4222,17 @@ mod tests {
             &mut run,
             ticket,
             ActionFailureCode::Rejected,
-            false,
+            RetryPolicy::NonRetryable,
         )
         .map_err(|e| e.to_string())?;
 
         let (_signal, journal) = result;
         match journal {
             crate::action::ActionJournalEvent::Failed {
-                code, retryable, ..
+                code, retry_policy, ..
             } => {
                 ensure_equal(code, ActionFailureCode::Rejected)?;
-                ensure_equal(retryable, false)?;
+                ensure_equal(retry_policy, RetryPolicy::NonRetryable)?;
             }
             other => return Err(format!("expected Failed journal event, got {other:?}")),
         }

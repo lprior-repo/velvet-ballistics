@@ -108,24 +108,24 @@ fn validate_kind_edges(
 ) -> Result<(), WorkflowError> {
     match kind {
         // Stateless: no outgoing edges
-        CompiledNodeKind::Nop
-        | CompiledNodeKind::SetConst { .. }
-        | CompiledNodeKind::Copy { .. }
-        | CompiledNodeKind::EvalExpr { .. }
-        | CompiledNodeKind::BuildObject { .. }
-        | CompiledNodeKind::BuildList { .. }
-        | CompiledNodeKind::Do { .. }
-        | CompiledNodeKind::ForEachJoin { .. }
-        | CompiledNodeKind::TogetherJoin { .. }
-        | CompiledNodeKind::CollectFinish { .. }
-        | CompiledNodeKind::ReduceFinish { .. }
-        | CompiledNodeKind::RepeatFinish { .. }
-        | CompiledNodeKind::WaitUntil { .. }
-        | CompiledNodeKind::WaitEvent { .. }
-        | CompiledNodeKind::Ask { .. }
-        | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. }
-        | CompiledNodeKind::Jump { .. } => Ok(()),
+        CompiledNodeKind::Nop => Ok(()),
+        CompiledNodeKind::SetConst { .. } => Ok(()),
+        CompiledNodeKind::Copy { .. } => Ok(()),
+        CompiledNodeKind::EvalExpr { .. } => Ok(()),
+        CompiledNodeKind::BuildObject { .. } => Ok(()),
+        CompiledNodeKind::BuildList { .. } => Ok(()),
+        CompiledNodeKind::Do { .. } => Ok(()),
+        CompiledNodeKind::ForEachJoin { .. } => Ok(()),
+        CompiledNodeKind::TogetherJoin { .. } => Ok(()),
+        CompiledNodeKind::CollectFinish { .. } => Ok(()),
+        CompiledNodeKind::ReduceFinish { .. } => Ok(()),
+        CompiledNodeKind::RepeatFinish { .. } => Ok(()),
+        CompiledNodeKind::WaitUntil { .. } => Ok(()),
+        CompiledNodeKind::WaitEvent { .. } => Ok(()),
+        CompiledNodeKind::Ask { .. } => Ok(()),
+        CompiledNodeKind::AskResume { .. } => Ok(()),
+        CompiledNodeKind::Finish { .. } => Ok(()),
+        CompiledNodeKind::Jump { .. } => Ok(()),
 
         // Choice branches
         CompiledNodeKind::ChooseSlot { branches, otherwise } => {
@@ -135,33 +135,33 @@ fn validate_kind_edges(
             validate_choose_edges(branches, *otherwise, ci, cid)
         }
 
-        // Iteration done edges
-        CompiledNodeKind::ForEachStart { done, .. } => validate_done_edge(*done, ci, cid),
-        CompiledNodeKind::ForEachNext { done, .. } => validate_done_edge(*done, ci, cid),
-        CompiledNodeKind::RepeatCheck { done, .. } => validate_done_edge(*done, ci, cid),
-        CompiledNodeKind::CollectStart { done, .. }
-        | CompiledNodeKind::CollectPage { done, .. }
-        | CompiledNodeKind::CollectNext { done, .. }
-        | CompiledNodeKind::ReduceStart { done, .. }
-        | CompiledNodeKind::ReduceNext { done, .. }
-        | CompiledNodeKind::RepeatStart { done, .. }
-        | CompiledNodeKind::RepeatAttempt { done, .. } => validate_done_edge(*done, ci, cid),
+        // ForEach edges
+        CompiledNodeKind::ForEachStart { done, .. } => validate_for_each_start(done, ci, cid),
+        CompiledNodeKind::ForEachNext { done, .. } => validate_for_each_next(done, ci, cid),
 
-        // Concurrency join edges
-        CompiledNodeKind::TogetherStart { join, .. } => validate_join_edge(*join, ci, cid),
-        CompiledNodeKind::TogetherBranch { join, .. } => validate_join_edge(*join, ci, cid),
+        // Together edges
+        CompiledNodeKind::TogetherStart { join, .. } => validate_together_start(join, ci, cid),
+        CompiledNodeKind::TogetherBranch { join, .. } => validate_together_branch(join, ci, cid),
+
+        // Collect/Reduce/Repeat done edges
+        CompiledNodeKind::CollectStart { done, .. } => validate_collect_start(done, ci, cid),
+        CompiledNodeKind::CollectPage { done, .. } => validate_collect_page(done, ci, cid),
+        CompiledNodeKind::CollectNext { done, .. } => validate_collect_next(done, ci, cid),
+        CompiledNodeKind::ReduceStart { done, .. } => validate_reduce_start(done, ci, cid),
+        CompiledNodeKind::ReduceNext { done, .. } => validate_reduce_next(done, ci, cid),
+        CompiledNodeKind::RepeatStart { done, .. } => validate_repeat_start(done, ci, cid),
+        CompiledNodeKind::RepeatAttempt { done, .. } => validate_repeat_attempt(done, ci, cid),
+        CompiledNodeKind::RepeatCheck { done, .. } => validate_repeat_check(done, ci, cid),
 
         // Retry exhausted edge
-        CompiledNodeKind::RetryCheck { exhausted, .. } => {
-            validate_exhausted_edge(*exhausted, ci, cid)
-        }
+        CompiledNodeKind::RetryCheck { exhausted, .. } => validate_retry_check(exhausted, ci, cid),
 
         // Error handler edge
-        CompiledNodeKind::ErrorHandler { handler, .. } => {
-            validate_handler_edge(*handler, ci, cid)
-        }
+        CompiledNodeKind::ErrorHandler { handler, .. } => validate_error_handler(handler, ci, cid),
     }
 }
+
+// Per-kind validation functions
 
 fn validate_choose_slot_edges(
     branches: &[crate::nodes::Branch],
@@ -193,20 +193,60 @@ fn validate_choose_edges(
     Ok(())
 }
 
-fn validate_done_edge(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(done, ci, cid)
+fn validate_for_each_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
 }
 
-fn validate_join_edge(join: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(join, ci, cid)
+fn validate_for_each_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
 }
 
-fn validate_exhausted_edge(exhausted: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(exhausted, ci, cid)
+fn validate_together_start(join: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*join, ci, cid)
 }
 
-fn validate_handler_edge(handler: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(handler, ci, cid)
+fn validate_together_branch(join: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*join, ci, cid)
+}
+
+fn validate_collect_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_collect_page(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_collect_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_reduce_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_reduce_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_repeat_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_repeat_attempt(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_repeat_check(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*done, ci, cid)
+}
+
+fn validate_retry_check(exhausted: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*exhausted, ci, cid)
+}
+
+fn validate_error_handler(handler: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(*handler, ci, cid)
 }
 
 /// Validates a target step is strictly forward from the current node.
