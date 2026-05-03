@@ -6,7 +6,7 @@ use crate::limits::{
     MAX_BLOB_BYTES_PER_VALUE, MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
     MAX_SYMBOL_BYTES_PER_VALUE,
 };
-use crate::value::SlotValue;
+use crate::value::{SlotValue, Taint};
 use bytes::Bytes;
 use indexmap::IndexMap;
 
@@ -17,6 +17,26 @@ pub struct ObjectField {
     pub key: SymbolId,
     /// Handle-only field value.
     pub value: SlotValue,
+    /// Taint level of the field value.
+    pub taint: Taint,
+}
+
+impl ObjectField {
+    /// Creates a clean-tainted object field.
+    #[must_use]
+    pub const fn clean(key: SymbolId, value: SlotValue) -> Self {
+        Self {
+            key,
+            value,
+            taint: Taint::Clean,
+        }
+    }
+
+    /// Creates an object field with explicit taint.
+    #[must_use]
+    pub const fn with_taint(key: SymbolId, value: SlotValue, taint: Taint) -> Self {
+        Self { key, value, taint }
+    }
 }
 
 /// Cold value arenas for strings, lists, objects, and blobs.
@@ -24,9 +44,13 @@ pub struct ObjectField {
 pub struct ValueStore {
     symbols: Vec<Box<str>>,
     lists: Vec<Box<[SlotValue]>>,
+    /// Per-item taint parallel to `lists`, same indexing.
+    list_taints: Vec<Box<[Taint]>>,
     objects: Vec<Box<[ObjectField]>>,
     /// Secondary index for O(1) object field lookup, mirroring `objects`.
     object_field_index: Vec<IndexMap<SymbolId, SlotValue>>,
+    /// Per-field taint parallel to `object_field_index`, keyed the same way.
+    object_taint_index: Vec<IndexMap<SymbolId, Taint>>,
     blobs: Vec<Bytes>,
     /// Hard cap on total arena entries (sum of all arena lengths).
     max_arena_entries: u64,
@@ -39,8 +63,10 @@ impl ValueStore {
         Self {
             symbols: Vec::new(),
             lists: Vec::new(),
+            list_taints: Vec::new(),
             objects: Vec::new(),
             object_field_index: Vec::new(),
+            object_taint_index: Vec::new(),
             blobs: Vec::new(),
             max_arena_entries: 0,
         }
@@ -52,8 +78,10 @@ impl ValueStore {
         Self {
             symbols: Vec::new(),
             lists: Vec::new(),
+            list_taints: Vec::new(),
             objects: Vec::new(),
             object_field_index: Vec::new(),
+            object_taint_index: Vec::new(),
             blobs: Vec::new(),
             max_arena_entries: u64::from(max_slots),
         }
@@ -70,11 +98,33 @@ impl ValueStore {
     }
 
     /// Inserts a list payload and returns its deterministic insertion ID.
+    /// All items are stored with `Taint::Clean`.
     pub fn insert_list(&mut self, values: impl Into<Box<[SlotValue]>>) -> CoreResult<ListId> {
         let values = values.into();
         validate_list_len(values.len())?;
         self.check_arena_cap()?;
         let id = next_list_id(self.lists.len())?;
+        let taints = vec![Taint::Clean; values.len()].into_boxed_slice();
+        self.list_taints.push(taints);
+        self.lists.push(values);
+        Ok(id)
+    }
+
+    /// Inserts a list payload with per-item taint and returns its deterministic insertion ID.
+    pub fn insert_list_with_taint(
+        &mut self,
+        values: Box<[SlotValue]>,
+        taints: Box<[Taint]>,
+    ) -> CoreResult<ListId> {
+        validate_list_len(values.len())?;
+        if taints.len() != values.len() {
+            return Err(CoreError::InternalInvariantViolation {
+                reason: "list values and taints length mismatch",
+            });
+        }
+        self.check_arena_cap()?;
+        let id = next_list_id(self.lists.len())?;
+        self.list_taints.push(taints);
         self.lists.push(values);
         Ok(id)
     }
@@ -86,6 +136,7 @@ impl ValueStore {
         self.check_arena_cap()?;
         let id = next_object_id(self.objects.len())?;
         let mut index = IndexMap::new();
+        let mut taint_index = IndexMap::new();
         let mut field_pos = 0usize;
         while field_pos < fields.len() {
             let field = fields
@@ -94,6 +145,7 @@ impl ValueStore {
                     reason: "object field index checked by loop bound",
                 })?;
             index.entry(field.key).or_insert(field.value);
+            taint_index.entry(field.key).or_insert(field.taint);
             field_pos = field_pos
                 .checked_add(1)
                 .ok_or(CoreError::InternalInvariantViolation {
@@ -101,6 +153,7 @@ impl ValueStore {
                 })?;
         }
         self.object_field_index.push(index);
+        self.object_taint_index.push(taint_index);
         self.objects.push(fields);
         Ok(id)
     }
@@ -157,6 +210,28 @@ impl ValueStore {
             .ok_or(CoreError::ListIndexOutOfBounds { index })
     }
 
+    /// Resolves one list element with its stored taint from a list arena handle.
+    pub fn list_item_with_taint(&self, id: ListId, index: u32) -> CoreResult<(SlotValue, Taint)> {
+        let item_index =
+            usize::try_from(index).map_err(|_| CoreError::ListIndexOutOfBounds { index })?;
+        let list_idx = list_index(id)?;
+        let value = self
+            .lists
+            .get(list_idx)
+            .ok_or(CoreError::ListOutOfBounds { list: id })?
+            .get(item_index)
+            .copied()
+            .ok_or(CoreError::ListIndexOutOfBounds { index })?;
+        let taint = self
+            .list_taints
+            .get(list_idx)
+            .ok_or(CoreError::ListOutOfBounds { list: id })?
+            .get(item_index)
+            .copied()
+            .ok_or(CoreError::ListIndexOutOfBounds { index })?;
+        Ok((value, taint))
+    }
+
     /// Resolves one object field from an object arena handle.
     pub fn object_field(&self, id: ObjectId, key: SymbolId) -> CoreResult<SlotValue> {
         let idx = object_index(id)?;
@@ -168,6 +243,32 @@ impl ValueStore {
             .get(&key)
             .copied()
             .ok_or(CoreError::ObjectFieldNotFound { field: key })
+    }
+
+    /// Resolves one object field with its stored taint from an object arena handle.
+    pub fn object_field_with_taint(
+        &self,
+        id: ObjectId,
+        key: SymbolId,
+    ) -> CoreResult<(SlotValue, Taint)> {
+        let idx = object_index(id)?;
+        let index = self
+            .object_field_index
+            .get(idx)
+            .ok_or(CoreError::ObjectOutOfBounds { object: id })?;
+        let value = index
+            .get(&key)
+            .copied()
+            .ok_or(CoreError::ObjectFieldNotFound { field: key })?;
+        let taint_index = self
+            .object_taint_index
+            .get(idx)
+            .ok_or(CoreError::ObjectOutOfBounds { object: id })?;
+        let taint = taint_index
+            .get(&key)
+            .copied()
+            .ok_or(CoreError::ObjectFieldNotFound { field: key })?;
+        Ok((value, taint))
     }
 
     /// Number of stored symbols.
@@ -348,6 +449,7 @@ mod tests {
         let field = ObjectField {
             key: SymbolId::new(0),
             value: SlotValue::Null,
+            taint: Taint::Clean,
         };
         let fields = vec![field; MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)].into_boxed_slice();
 
@@ -450,6 +552,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(4),
                     value: SlotValue::Bool(true),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -582,6 +685,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(0),
                     value: SlotValue::Null,
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -655,6 +759,7 @@ mod tests {
                 vec![ObjectField {
                     key: key_present,
                     value: SlotValue::Bool(true),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -687,10 +792,12 @@ mod tests {
                     ObjectField {
                         key: dup_key,
                         value: SlotValue::I64(100),
+                        taint: Taint::Clean,
                     },
                     ObjectField {
                         key: dup_key,
                         value: SlotValue::I64(200),
+                        taint: Taint::Clean,
                     },
                 ]
                 .into_boxed_slice(),
@@ -793,6 +900,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(0),
                     value: SlotValue::Null,
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -844,6 +952,7 @@ mod tests {
         let field = ObjectField {
             key: SymbolId::new(0),
             value: SlotValue::Null,
+            taint: Taint::Clean,
         };
         let fields = vec![field; MAX_OBJECT_FIELDS_PER_VALUE];
         let id = store
@@ -982,14 +1091,17 @@ mod tests {
                     ObjectField {
                         key: shared_key,
                         value: SlotValue::I64(1),
+                        taint: Taint::Clean,
                     },
                     ObjectField {
                         key: shared_key,
                         value: SlotValue::I64(2),
+                        taint: Taint::Clean,
                     },
                     ObjectField {
                         key: unique_key,
                         value: SlotValue::I64(3),
+                        taint: Taint::Clean,
                     },
                 ]
                 .into_boxed_slice(),
@@ -1074,6 +1186,7 @@ mod tests {
                 vec![ObjectField {
                     key: key_only_in_first,
                     value: SlotValue::Bool(true),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -1146,6 +1259,7 @@ mod tests {
         let field = ObjectField {
             key,
             value: SlotValue::Bool(true),
+            taint: Taint::Clean,
         };
         let baseline = store
             .insert_object(vec![field].into_boxed_slice())
@@ -1231,6 +1345,7 @@ mod tests {
             ObjectField {
                 key: duplicate_key,
                 value: SlotValue::I64(1),
+                taint: Taint::Clean,
             };
             MAX_OBJECT_FIELDS_PER_VALUE
         ];
@@ -1240,6 +1355,7 @@ mod tests {
         *last = ObjectField {
             key: unique_key,
             value: SlotValue::I64(2),
+            taint: Taint::Clean,
         };
 
         let id = store
@@ -1528,6 +1644,7 @@ mod tests {
                 vec![ObjectField {
                     key,
                     value: SlotValue::I64(100),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -1539,6 +1656,7 @@ mod tests {
                 vec![ObjectField {
                     key,
                     value: SlotValue::I64(200),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )

@@ -496,6 +496,7 @@ fn load_accessor_reads_object_field_through_store() -> Result<(), String> {
             vec![ObjectField {
                 key: SymbolId::new(7),
                 value: SlotValue::I64(123),
+                taint: Taint::Clean,
             }]
             .into_boxed_slice(),
         )
@@ -686,6 +687,7 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
         Some(ObjectField {
             key: duplicate_key,
             value: SlotValue::I64(100),
+            taint: Taint::Clean,
         }),
     )?;
     ensure_equal(
@@ -693,6 +695,7 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
         Some(ObjectField {
             key: duplicate_key,
             value: SlotValue::I64(200),
+            taint: Taint::Clean,
         }),
     )?;
     ensure_equal(
@@ -700,6 +703,7 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
         Some(ObjectField {
             key: tail_key,
             value: SlotValue::Bool(false),
+            taint: Taint::Clean,
         }),
     )?;
     ensure_equal(

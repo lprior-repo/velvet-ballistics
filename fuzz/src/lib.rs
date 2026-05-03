@@ -1071,10 +1071,12 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
             vb_core::value_store::ObjectField {
                 key: vb_core::SymbolId::new(0),
                 value: vb_core::SlotValue::Bool(true),
+                taint: vb_core::value::Taint::Clean,
             },
             vb_core::value_store::ObjectField {
                 key: vb_core::SymbolId::new(1),
                 value: vb_core::SlotValue::I64(42),
+                taint: vb_core::value::Taint::Clean,
             },
         ]
         .into_boxed_slice(),

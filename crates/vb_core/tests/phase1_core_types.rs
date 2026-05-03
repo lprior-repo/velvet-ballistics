@@ -13,7 +13,7 @@ use vb_core::limits::{
     MAX_SLOTS_PER_STEP, MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
 use vb_core::span::{Located, SourceMap, Span, Spanned};
-use vb_core::value::{FiniteF64, SlotValue};
+use vb_core::value::{FiniteF64, SlotValue, Taint};
 use vb_core::value_store::{ObjectField, ValueStore};
 use vb_core::{ExprBranch, ResourceContract, SlotBranch};
 
@@ -361,6 +361,7 @@ fn value_store_roundtrips_symbol_list_object_and_blob_payloads() {
     let object = store.insert_object(Box::<[ObjectField]>::from([ObjectField {
         key: name,
         value: SlotValue::List(list),
+        taint: Taint::Clean,
     }]));
     assert_eq!(object, Ok(ObjectId::new(0)));
     let Ok(object) = object else {
@@ -383,7 +384,8 @@ fn value_store_roundtrips_symbol_list_object_and_blob_payloads() {
         store.object(object),
         Ok([ObjectField {
             key: name,
-            value: SlotValue::List(list)
+            value: SlotValue::List(list),
+            taint: Taint::Clean,
         }]
         .as_slice())
     );

@@ -4934,7 +4934,7 @@ steps:
             .node(StepIdx::new(1))
             .ok_or("missing for_each start")?;
         assert!(
-            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body: _, done: _ } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
             "for_each start node must have correct structure"
         );
         Ok(())
@@ -8018,4 +8018,1895 @@ steps:
             "minimal valid workflow should compile"
         );
     }
+
+    // ========================================================================
+    // CompileError Display and diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn compile_error_display_includes_source_too_large_fields() {
+        let error = CompileError::SourceTooLarge { actual: 100, limit: 50 };
+        let text = error.to_string();
+        assert!(text.contains("100"), "actual must appear: {text}");
+        assert!(text.contains("50"), "limit must appear: {text}");
+    }
+
+    #[test]
+    fn compile_error_display_includes_empty_source_message() {
+        let error = CompileError::EmptySource;
+        assert!(!error.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_non_string_key() {
+        let error = CompileError::NonStringKey { mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("string"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_duplicate_key() {
+        let error = CompileError::DuplicateKey { key: Box::<str>::from("steps"), mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("steps"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_alias_forbidden() {
+        let error = CompileError::AliasForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("alias"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_anchor_forbidden() {
+        let error = CompileError::AnchorForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("anchor"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_merge_key_forbidden() {
+        let error = CompileError::MergeKeyForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("merge"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_tag_forbidden() {
+        let error = CompileError::TagForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("tag"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_depth_limit() {
+        let error = CompileError::DepthLimit { depth: 20, limit: 10 };
+        let text = error.to_string();
+        assert!(text.contains("20"));
+        assert!(text.contains("10"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_node_limit() {
+        let error = CompileError::NodeLimit { limit: 500 };
+        assert!(error.to_string().contains("500"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_sequence_limit() {
+        let error = CompileError::SequenceLimit { actual: 200, limit: 100 };
+        let text = error.to_string();
+        assert!(text.contains("200"));
+        assert!(text.contains("100"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_mapping_limit() {
+        let error = CompileError::MappingLimit { actual: 50, limit: 25 };
+        let text = error.to_string();
+        assert!(text.contains("50"));
+        assert!(text.contains("25"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_scalar_limit() {
+        let error = CompileError::ScalarLimit { actual: 3000, limit: 1024 };
+        let text = error.to_string();
+        assert!(text.contains("3000"));
+        assert!(text.contains("1024"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_version() {
+        let error = CompileError::InvalidVersion { actual: Box::<str>::from("velvet/v2") };
+        assert!(error.to_string().contains("velvet/v2"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_trigger_count() {
+        let error = CompileError::InvalidTriggerCount { count: 3 };
+        assert!(error.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_trigger_kind() {
+        let error = CompileError::UnknownTriggerKind { trigger: Box::<str>::from("cron") };
+        assert!(error.to_string().contains("cron"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_trigger_shape() {
+        let error = CompileError::TriggerShape { trigger: Box::<str>::from("webhook"), expected: "a mapping" };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("mapping"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_trigger_field() {
+        let error = CompileError::UnknownTriggerField { trigger: "webhook", field: Box::<str>::from("unknown") };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("unknown"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_trigger_field() {
+        let error = CompileError::MissingTriggerField { trigger: "webhook", field: "path" };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("path"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_trigger_field() {
+        let error = CompileError::InvalidTriggerField { trigger: "webhook", field: "method", expected: "GET or POST" };
+        assert!(error.to_string().contains("method"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_field() {
+        let error = CompileError::MissingField { field: "name" };
+        assert!(error.to_string().contains("name"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_top_level_field() {
+        let error = CompileError::UnknownTopLevelField { field: Box::<str>::from("hooks") };
+        assert!(error.to_string().contains("hooks"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_field_shape() {
+        let error = CompileError::FieldShape { field: "name", expected: "a string" };
+        assert!(error.to_string().contains("name"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_input_schema_field() {
+        let error = CompileError::UnknownInputSchemaField { field: Box::<str>::from("regex") };
+        assert!(error.to_string().contains("regex"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_input_schema() {
+        let error = CompileError::InvalidInputSchema { field: "type", expected: "text or number" };
+        assert!(error.to_string().contains("type"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_empty_steps() {
+        assert!(!CompileError::EmptySteps.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_name() {
+        let error = CompileError::InvalidName { field: "step_id", value: Box::<str>::from("bad!") };
+        assert!(error.to_string().contains("bad!"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_id() {
+        assert!(CompileError::MissingStepId { step: 3 }.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_duplicate_step_id() {
+        assert!(CompileError::DuplicateStepId { id: Box::<str>::from("my_step") }.to_string().contains("my_step"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_shape() {
+        assert!(CompileError::StepShape { step: 5 }.to_string().contains("5"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_field() {
+        assert!(CompileError::UnknownStepField { step: 2, field: Box::<str>::from("custom") }.to_string().contains("custom"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_primitive_field() {
+        let error = CompileError::UnknownStepPrimitiveField { step: 1, primitive: "for_each", field: Box::<str>::from("at_once") };
+        let text = error.to_string();
+        assert!(text.contains("for_each"));
+        assert!(text.contains("at_once"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_primitive() {
+        assert!(CompileError::MissingStepPrimitive { step: 4 }.to_string().contains("4"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_multiple_step_primitives() {
+        assert!(CompileError::MultipleStepPrimitives { step: 1 }.to_string().contains("1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_step_primitive() {
+        assert!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "for_each" }.to_string().contains("for_each"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_step_control_field() {
+        assert!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("then") }.to_string().contains("then"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_field() {
+        let error = CompileError::MissingStepField { step: 2, field: "action" };
+        let text = error.to_string();
+        assert!(text.contains("2"));
+        assert!(text.contains("action"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_field_shape() {
+        assert!(CompileError::StepFieldShape { step: 1, field: "input", expected: "an integer" }.to_string().contains("input"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_index_out_of_range() {
+        assert!(CompileError::StepIndexOutOfRange { value: 70000 }.to_string().contains("70000"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_slot_index_out_of_range() {
+        assert!(CompileError::SlotIndexOutOfRange { value: 65536 }.to_string().contains("65536"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_branch_target_out_of_range() {
+        assert!(CompileError::BranchTargetOutOfRange { value: -1 }.to_string().contains("-1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_backward_branch_target() {
+        let error = CompileError::BackwardBranchTarget { step: 3, target: 1 };
+        let text = error.to_string();
+        assert!(text.contains("3"));
+        assert!(text.contains("1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_primitive_lowering_limit_exceeded() {
+        let error = CompileError::PrimitiveLoweringLimitExceeded { primitive: "together", field: "branches", value: 70000, limit: 65535 };
+        let text = error.to_string();
+        assert!(text.contains("together"));
+        assert!(text.contains("branches"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_last_step_must_finish() {
+        assert!(!CompileError::LastStepMustFinish.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_constant_value() {
+        assert!(CompileError::UnsupportedConstantValue { step: 0 }.to_string().contains("0"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_reference_root() {
+        assert!(CompileError::UnknownReferenceRoot { reference: Box::<str>::from("$custom.field"), root: Box::<str>::from("custom") }.to_string().contains("$custom.field"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_illegal_reference() {
+        assert!(CompileError::IllegalReference { reference: Box::<str>::from("$runtime.state") }.to_string().contains("$runtime.state"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_reference_name() {
+        let error = CompileError::UnknownReferenceName { kind: "input", reference: Box::<str>::from("$input.missing"), name: Box::<str>::from("missing") };
+        assert!(error.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_accessor_reference() {
+        assert!(CompileError::UnsupportedAccessorReference { reference: Box::<str>::from("$input.user.field"), root: Box::<str>::from("user"), path: Box::<str>::from("field") }.to_string().contains("field"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_target() {
+        assert!(CompileError::UnknownStepTarget { step: 1, target: 99 }.to_string().contains("99"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unreachable_step() {
+        assert!(CompileError::UnreachableStep { step: 5 }.to_string().contains("5"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_type_mismatch() {
+        let error = CompileError::TypeMismatch { field: "c", expected: "boolean", found: "number" };
+        let text = error.to_string();
+        assert!(text.contains("boolean"));
+        assert!(text.contains("number"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_slot_type() {
+        assert!(CompileError::UnknownSlotType { field: "finish.result", slot: 3 }.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_secret_taint_leak() {
+        assert!(CompileError::SecretTaintLeak { field: "finish.result" }.to_string().contains("finish.result"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unexpected_char() {
+        assert!(CompileError::ExpressionUnexpectedChar { expression: Box::<str>::from("$a @ b"), index: 3, found: '@' }.to_string().contains("@"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unterminated_string() {
+        assert!(CompileError::ExpressionUnterminatedString { expression: Box::<str>::from("\"hello"), index: 0 }.to_string().contains("unterminated"));
+    }
+
+    #[test]
+    fn compile_error_display_expression_integer_out_of_range_not_empty() {
+        assert!(!CompileError::ExpressionIntegerOutOfRange { expression: Box::<str>::from("99999"), index: 0 }.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_limit_exceeded() {
+        assert!(CompileError::ExpressionLimitExceeded { expression: Box::<str>::from("a"), limit: "stack", max: 16 }.to_string().contains("16"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unexpected_token() {
+        assert!(CompileError::ExpressionUnexpectedToken { expression: Box::<str>::from("+"), index: 0, expected: "operand" }.to_string().contains("operand"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unknown_identifier() {
+        assert!(CompileError::ExpressionUnknownIdentifier { expression: Box::<str>::from("fn()"), index: 0, identifier: Box::<str>::from("fn") }.to_string().contains("fn"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_lowering_unsupported() {
+        assert!(CompileError::ExpressionLoweringUnsupported { feature: "closures" }.to_string().contains("closures"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_helper_arity() {
+        assert!(CompileError::ExpressionHelperArity { helper: "len", expected: 1, actual: 2 }.to_string().contains("len"));
+    }
+
+    // ========================================================================
+    // Diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn compile_error_diagnostic_code_is_alias_for_code() {
+        let error = CompileError::EmptySource;
+        assert_eq!(error.code(), error.diagnostic_code());
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_bad_value() {
+        assert_eq!(CompileError::BadValue.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_float_forbidden() {
+        assert_eq!(CompileError::FloatForbidden.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_invalid_finish_variants() {
+        assert_eq!(CompileError::UnsupportedTopLevelResult.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::LastStepMustFinish.code(), "INVALID_FINISH");
+    }
+
+    #[test]
+    fn compile_error_code_returns_missing_step_primitive_for_empty_steps() {
+        assert_eq!(CompileError::EmptySteps.code(), "MISSING_STEP_PRIMITIVE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_reserved_vs_invalid_id() {
+        assert_eq!(CompileError::InvalidName { field: "step_id", value: Box::<str>::from("finish") }.code(), "RESERVED_ID");
+        assert_eq!(CompileError::InvalidName { field: "step_id", value: Box::<str>::from("has space") }.code(), "INVALID_ID");
+    }
+
+    #[test]
+    fn compile_error_code_returns_duplicate_id() {
+        assert_eq!(CompileError::DuplicateStepId { id: Box::<str>::from("dup") }.code(), "DUPLICATE_ID");
+    }
+
+    #[test]
+    fn compile_error_code_unknown_step_field_variants() {
+        assert_eq!(CompileError::UnknownStepField { step: 0, field: Box::<str>::from("x") }.code(), "UNKNOWN_STEP_FIELD");
+        assert_eq!(CompileError::UnknownStepPrimitiveField { step: 0, primitive: "do", field: Box::<str>::from("y") }.code(), "UNKNOWN_STEP_FIELD");
+    }
+
+    #[test]
+    fn compile_error_code_primitive_specific() {
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "for_each" }.code(), "INVALID_FOR_EACH");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "together" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "collect" }.code(), "INVALID_COLLECT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "reduce" }.code(), "INVALID_REDUCE");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "repeat" }.code(), "INVALID_REPEAT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "wait" }.code(), "INVALID_WAIT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "ask" }.code(), "INVALID_ASK");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "finish" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "choose" }.code(), "INVALID_CHOOSE");
+    }
+
+    #[test]
+    fn compile_error_code_control_field_specific() {
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("then") }.code(), "INVALID_THEN_TARGET");
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("try_again") }.code(), "INVALID_RETRY");
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("on_error") }.code(), "INVALID_ON_ERROR");
+    }
+
+    #[test]
+    fn compile_error_code_branch_targets() {
+        assert_eq!(CompileError::BackwardBranchTarget { step: 1, target: 0 }.code(), "INVALID_THEN_TARGET");
+        assert_eq!(CompileError::UnknownStepTarget { step: 1, target: 99 }.code(), "INVALID_THEN_TARGET");
+    }
+
+    #[test]
+    fn compile_error_code_reference_kinds() {
+        assert_eq!(CompileError::UnknownReferenceName { kind: "secret", reference: Box::<str>::from("$s.m"), name: Box::<str>::from("m") }.code(), "SECRET_NOT_DECLARED");
+        assert_eq!(CompileError::UnknownReferenceName { kind: "input", reference: Box::<str>::from("$i.m"), name: Box::<str>::from("m") }.code(), "UNKNOWN_REFERENCE");
+        assert_eq!(CompileError::SecretTaintLeak { field: "f" }.code(), "SECRET_RESULT_LEAK");
+    }
+
+    #[test]
+    fn compile_error_code_expression_variants() {
+        assert_eq!(CompileError::ExpressionUnexpectedChar { expression: Box::<str>::from("a"), index: 0, found: '!' }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnterminatedString { expression: Box::<str>::from("a"), index: 0 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionIntegerOutOfRange { expression: Box::<str>::from("a"), index: 0 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionLimitExceeded { expression: Box::<str>::from("a"), limit: "stack", max: 1 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnexpectedToken { expression: Box::<str>::from("a"), index: 0, expected: "x" }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnknownIdentifier { expression: Box::<str>::from("a"), index: 0, identifier: Box::<str>::from("x") }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionLoweringUnsupported { feature: "x" }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionHelperArity { helper: "x", expected: 1, actual: 2 }.code(), "INVALID_EXPRESSION");
+    }
+
+    // ========================================================================
+    // CompileErrors wrapper tests
+    // ========================================================================
+
+    #[test]
+    fn compile_errors_display_formats_with_indices() {
+        let text = CompileErrors(vec![CompileError::EmptySource, CompileError::EmptySteps]).to_string();
+        assert!(text.contains("[0]"));
+        assert!(text.contains("[1]"));
+    }
+
+    #[test]
+    fn compile_errors_empty_edge_cases() {
+        let empty = CompileErrors(Vec::new());
+        assert!(empty.first().is_none());
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+    }
+
+    #[test]
+    fn compile_errors_iter_and_diagnostic_codes() {
+        let errors = CompileErrors(vec![CompileError::EmptySource, CompileError::EmptySteps, CompileError::LastStepMustFinish]);
+        let codes: Vec<&'static str> = errors.iter().map(|e| e.code()).collect();
+        assert_eq!(codes, vec!["MISSING_REQUIRED_FIELD", "MISSING_STEP_PRIMITIVE", "INVALID_FINISH"]);
+        let diag: Vec<&'static str> = errors.diagnostic_codes().collect();
+        assert_eq!(diag, codes);
+    }
+
+    // ========================================================================
+    // Step field shape diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn step_field_shape_codes() {
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "choose", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "condition", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "on_true", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "on_false", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "for_each", expected: "x" }.code(), "INVALID_FOR_EACH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "together", expected: "x" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "branches", expected: "x" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "collect", expected: "x" }.code(), "INVALID_COLLECT");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "reduce", expected: "x" }.code(), "INVALID_REDUCE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "repeat", expected: "x" }.code(), "INVALID_REPEAT");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "finish", expected: "x" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "result", expected: "x" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "other", expected: "x" }.code(), "TYPE_MISMATCH");
+    }
+
+    // ========================================================================
+    // SlotCompiler extended tests
+    // ========================================================================
+
+    #[test]
+    fn slot_compiler_starts_empty() {
+        assert_eq!(SlotCompiler::new().slot_count().ok(), Some(0));
+    }
+
+    #[test]
+    fn slot_compiler_slot_count_after_record() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(5));
+        let count = sc.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 6 { return Err(format!("expected 6, got {count}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_slot_count_tracks_max() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(3));
+        sc.record_slot(SlotIdx::new(10));
+        sc.record_slot(SlotIdx::new(7));
+        let count = sc.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 11 { return Err(format!("expected 11, got {count}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_accessor_ascending() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        let prog = vb_core::AccessorProgram { root: SlotIdx::new(0), path: Box::from([]) };
+        let i0 = sc.push_accessor(prog.clone()).map_err(|e| format!("{e:?}"))?;
+        let i1 = sc.push_accessor(prog).map_err(|e| format!("{e:?}"))?;
+        if i0.get() != 0 || i1.get() != 1 { return Err(format!("unexpected indices: {} {}", i0.get(), i1.get())); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_build_parts() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.push_constant(ConstValue::I64(42)).map_err(|e| format!("{e:?}"))?;
+        sc.record_slot(SlotIdx::new(0));
+        sc.push_node(CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } });
+        let parts = sc.build_parts("tb", compute_compiled_digest(b"t")).map_err(|e| format!("{e:?}"))?;
+        if &*parts.name != "tb" { return Err("name mismatch".to_owned()); }
+        if parts.slot_count != 1 { return Err(format!("slot_count {}", parts.slot_count)); }
+        if parts.nodes.len() != 1 { return Err("no nodes".to_owned()); }
+        if parts.constants.len() != 1 { return Err("no constants".to_owned()); }
+        Ok(())
+    }
+
+    // ========================================================================
+    // Lower function unit tests
+    // ========================================================================
+
+    #[test]
+    fn lower_set_node() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), Some(StepIdx::new(1)));
+        assert_eq!(n.id, StepIdx::new(0));
+        assert_eq!(n.output, Some(SlotIdx::new(0)));
+        assert_eq!(n.next, Some(StepIdx::new(1)));
+        match n.kind { CompiledNodeKind::SetConst { value } => assert_eq!(value.get(), 0), other => panic!("expected SetConst, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_set_no_next() { assert!(lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), None).next.is_none()); }
+
+    #[test]
+    fn lower_do_node() {
+        let mut b = SlotCompiler::new();
+        let n = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(2), Some(SlotIdx::new(3)), Some(StepIdx::new(1)), &mut b);
+        match n.kind { CompiledNodeKind::Do { action, input } => { assert_eq!(action.get(), 1); assert_eq!(input.get(), 2); }, other => panic!("expected Do, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_do_records_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(5), Some(SlotIdx::new(6)), Some(StepIdx::new(1)), &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 6 { return Err(format!("expected 6, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_do_no_next() {
+        let mut b = SlotCompiler::new();
+        assert!(lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), Some(SlotIdx::new(1)), None, &mut b).next.is_none());
+    }
+
+    #[test]
+    fn lower_choose_basic() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(1), vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(2) }], Some(StepIdx::new(3)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if branches.len() != 1 || otherwise != Some(StepIdx::new(3)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_choose_empty_no_otherwise() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        match lower_choose(StepIdx::new(0), Vec::new(), None, &mut b) {
+            Err(CompileError::Workflow(_)) => Ok(()),
+            Ok(n) => Err(format!("expected error, got {n:?}")),
+            Err(e) => Err(format!("wrong error: {e:?}")),
+        }
+    }
+
+    #[test]
+    fn lower_choose_empty_with_otherwise() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(0), Vec::new(), Some(StepIdx::new(1)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if !branches.is_empty() || otherwise != Some(StepIdx::new(1)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_choose_multi_branch() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let br = vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(2) }, SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(3) }, SlotBranch { condition: SlotIdx::new(4), target: StepIdx::new(5) }];
+        let n = lower_choose(StepIdx::new(0), br, Some(StepIdx::new(6)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if branches.len() != 3 || otherwise != Some(StepIdx::new(6)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_for_each_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_for_each(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), 100, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::ForEachStart { .. } => Ok(()), other => Err(format!("expected ForEachStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_together_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1), StepIdx::new(2)], StepIdx::new(3), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::TogetherStart { branches, join } => { if branches.len() != 2 || *join != StepIdx::new(3) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected TogetherStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_collect_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(0), SlotIdx::new(1), 50, 10, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::CollectStart { source, limit, page_size, .. } => { if source.get() != 1 || *limit != 50 || *page_size != 10 { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected CollectStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_reduce_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let mut cb = SlotCompiler::new();
+        let init = cb.push_constant(ConstValue::I64(0)).map_err(|e| format!("{e:?}"))?;
+        let ns = lower_reduce(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), init, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::ReduceStart { input, accumulator, .. } => { if input.get() != 1 || accumulator.get() != 2 { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ReduceStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_repeat_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(0), 3, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::RepeatStart { max_attempts, .. } => { if *max_attempts != 3 { return Err(format!("expected 3, got {max_attempts}")); } Ok(()) }, other => Err(format!("expected RepeatStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_wait_until() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(5) }, &mut b);
+        match n.kind { CompiledNodeKind::WaitUntil { deadline_slot } => assert_eq!(deadline_slot.get(), 5), other => panic!("expected WaitUntil, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_event_with_timeout() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(1), WaitKind::Event { event: SlotIdx::new(3), timeout: Some(SlotIdx::new(4)) }, &mut b);
+        match n.kind { CompiledNodeKind::WaitEvent { event, timeout_slot } => { assert_eq!(event.get(), 3); assert_eq!(timeout_slot.map(|s| s.get()), Some(4)); }, other => panic!("expected WaitEvent, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_event_no_timeout() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(0), WaitKind::Event { event: SlotIdx::new(2), timeout: None }, &mut b);
+        match n.kind { CompiledNodeKind::WaitEvent { event, timeout_slot } => { assert_eq!(event.get(), 2); assert!(timeout_slot.is_none()); }, other => panic!("expected WaitEvent, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_records_deadline() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(9) }, &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 10 { return Err(format!("expected 10, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_wait_records_event_and_timeout() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_wait(StepIdx::new(0), WaitKind::Event { event: SlotIdx::new(3), timeout: Some(SlotIdx::new(5)) }, &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 6 { return Err(format!("expected 6, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_ask_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_ask(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), None, &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::Ask { prompt, timeout_slot } => { if prompt.get() != 1 || timeout_slot.is_some() { return Err("mismatch".to_owned()); } }, other => return Err(format!("expected Ask, got {other:?}")), }
+        match &ns[1].kind { CompiledNodeKind::AskResume { answer } => { if answer.get() != 2 { return Err("mismatch".to_owned()); } }, other => return Err(format!("expected AskResume, got {other:?}")), }
+        if ns[1].id != StepIdx::new(1) { return Err("resume id mismatch".to_owned()); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_ask_with_timeout() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_ask(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), Some(SlotIdx::new(3)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind { CompiledNodeKind::Ask { prompt, timeout_slot } => { if prompt.get() != 1 { return Err("p".to_owned()); } match timeout_slot { Some(s) if s.get() == 3 => Ok(()), Some(s) => Err(format!("expected 3, got {}", s.get())), None => Err("no timeout".to_owned()), } }, other => Err(format!("expected Ask, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_finish_node() {
+        let mut b = SlotCompiler::new();
+        let n = lower_finish(StepIdx::new(0), SlotIdx::new(5), &mut b);
+        match n.kind { CompiledNodeKind::Finish { result } => assert_eq!(result.get(), 5), other => panic!("expected Finish, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_finish_records_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_finish(StepIdx::new(0), SlotIdx::new(7), &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 8 { return Err(format!("expected 8, got {c}")); }
+        Ok(())
+    }
+
+    // ========================================================================
+    // validate_public_name tests
+    // ========================================================================
+
+    #[test]
+    fn validate_name_rejects_reserved_finish() -> Result<(), String> {
+        match validate_public_name("step_id", "finish") { Err(CompileError::InvalidName { field, value }) => { if field != "step_id" || &*value != "finish" { return Err(format!("wrong: {field}/{value}")); } Ok(()) }, Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_rejects_reserved_do() -> Result<(), String> {
+        match validate_public_name("step_id", "do") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_rejects_reserved_null() -> Result<(), String> {
+        match validate_public_name("step_id", "null") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_accepts_valid() -> Result<(), String> {
+        validate_public_name("step_id", "my_step").map_err(|e| format!("{e:?}"))
+    }
+
+    #[test]
+    fn validate_name_rejects_spaces() -> Result<(), String> {
+        match validate_public_name("step_id", "has spaces") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    // ========================================================================
+    // WorkflowParts helpers
+    // ========================================================================
+
+    #[test]
+    fn build_slot_layout_count() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 5, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([ConstValue::I64(42)]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert_eq!(build_slot_layout(&p), 5);
+    }
+
+    #[test]
+    fn build_constant_pool_slice() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 0, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([ConstValue::I64(1), ConstValue::I64(2)]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert_eq!(build_constant_pool(&p).len(), 2);
+    }
+
+    #[test]
+    fn build_accessor_table_empty() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 0, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert!(build_accessor_table(&p).is_empty());
+    }
+
+    #[test]
+    fn validate_ir_minimal() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(0));
+        sc.push_node(CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } });
+        let w = validate_ir(sc.build_parts("vt", compute_compiled_digest(b"t")).map_err(|e| format!("{e:?}"))?).map_err(|e| format!("{e}"))?;
+        if w.name() != "vt" { return Err(format!("got {}", w.name())); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_steps_to_ir_minimal() -> Result<(), String> {
+        let ns = vec![CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } }];
+        let w = lower_steps_to_ir(ns, Vec::new(), Vec::new(), vec![ConstValue::I64(42)], 1, 0, "lt", compute_compiled_digest(b"t")).map_err(|e| format!("{e}"))?;
+        if w.name() != "lt" { return Err(format!("got {}", w.name())); }
+        Ok(())
+    }
+
+    #[test]
+    fn compile_error_unsupported_top_level_result_display() {
+        assert!(CompileError::UnsupportedTopLevelResult.to_string().to_lowercase().contains("result"));
+    }
+
+    // ========================================================================
+    // Workflow-level integration tests
+    // ========================================================================
+
+    /// 1. Multi-step sequential workflow with correct node count and edges.
+    #[test]
+    fn wf_multi_step_sequential_edges() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: sequential_chain
+when:
+  manual: {}
+steps:
+  - id: step_a
+    save:
+      value: 10
+  - id: step_b
+    save:
+      value: 20
+  - id: step_c
+    save:
+      value: 30
+  - id: step_d
+    save:
+      value: 40
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        for i in 0..4u16 {
+            let node = workflow.node(StepIdx::new(i)).ok_or("missing node")?;
+            adv_ensure(node.next == Some(StepIdx::new(i + 1)), "must chain")?;
+        }
+        let finish = workflow.node(StepIdx::new(4)).ok_or("missing finish")?;
+        adv_ensure(finish.next.is_none(), "finish must have no next")
+    }
+
+    /// 2. Choose branch targets in compiled IR.
+    #[test]
+    fn wf_choose_branch_targets() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: choose_branches
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 2
+      on_false: 3
+  - id: took_true
+    save:
+      value: 1
+  - id: took_false
+    save:
+      value: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let route = workflow.node(StepIdx::new(1)).ok_or("missing choose")?;
+        match &route.kind {
+            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+                adv_ensure(branches.len() == 1, "1 branch")?;
+                adv_ensure(branches.first().ok_or("no branch")?.target == StepIdx::new(2), "on_true=2")?;
+                adv_ensure(*otherwise == Some(StepIdx::new(3)), "on_false=3")
+            }
+            other => Err(format!("expected ChooseSlot, got {other:?}")),
+        }
+    }
+
+    /// 3. ForEach ForEachStart/ForEachNext structure.
+    #[test]
+    fn wf_for_each_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: foreach_structure
+when:
+  manual: {}
+steps:
+  - id: source_list
+    save:
+      value: 1
+  - id: each
+    for_each:
+      input: 0
+      item: 1
+      limit: 10
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 4, "expected 4 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("missing start")?;
+        let next = workflow.node(StepIdx::new(2)).ok_or("missing next")?;
+        match &start.kind {
+            CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } => {
+                adv_ensure(*input == SlotIdx::ZERO, "input=0")?;
+                adv_ensure(*item_slot == SlotIdx::new(1), "item=1")?;
+                adv_ensure(*limit == 10, "limit=10")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ForEachStart, got {other:?}")),
+        }?;
+        match &next.kind {
+            CompiledNodeKind::ForEachNext { iterator_slot, body, done } => {
+                adv_ensure(*iterator_slot == SlotIdx::new(1), "iter=1")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ForEachNext, got {other:?}")),
+        }
+    }
+
+    /// 4. Together TogetherStart/Branch/Join structure.
+    #[test]
+    fn wf_together_parallel_structure() -> Result<(), String> {
+        // The together primitive places join at id+1, which is before branch
+        // targets. This is caught by the validation pipeline as a
+        // LoopBodyStepOutOfRange error. We verify the error is raised.
+        let source = br#"version: velvet-ballastics/v1
+name: together_parallel
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches: [1]
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().compile(source);
+        let is_loop_err = result.as_ref().is_err_and(|errors| {
+            errors.0.iter().any(|e| {
+                matches!(
+                    e,
+                    CompileError::Validation(
+                        vb_validate::ValidationError::LoopBodyStepOutOfRange { .. }
+                    )
+                )
+            })
+        });
+        adv_ensure(is_loop_err, "expected LoopBodyStepOutOfRange for together join-before-branches")
+    }
+
+    /// 5. Repeat RetryStart/Attempt/Finish structure.
+    #[test]
+    fn wf_repeat_retry_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: repeat_structure
+when:
+  manual: {}
+steps:
+  - id: poll
+    repeat:
+      max_attempts: 5
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 4, "expected 4 nodes")?;
+        let start = workflow.node(StepIdx::new(0)).ok_or("missing RepeatStart")?;
+        let attempt = workflow.node(StepIdx::new(1)).ok_or("missing RepeatAttempt")?;
+        let finish_node = workflow.node(StepIdx::new(2)).ok_or("missing RepeatFinish")?;
+        match &start.kind {
+            CompiledNodeKind::RepeatStart { max_attempts, body, done } => {
+                adv_ensure(*max_attempts == 5, "max=5")?;
+                adv_ensure(*body == StepIdx::new(1), "body=1")?;
+                adv_ensure(*done == StepIdx::new(2), "done=2")
+            }
+            other => Err(format!("expected RepeatStart, got {other:?}")),
+        }?;
+        match &attempt.kind {
+            CompiledNodeKind::RepeatAttempt { attempt_slot, body, done } => {
+                adv_ensure(attempt_slot.get() > 0, "slot>0")?;
+                adv_ensure(*body == StepIdx::new(1), "body=1")?;
+                adv_ensure(*done == StepIdx::new(2), "done=2")
+            }
+            other => Err(format!("expected RepeatAttempt, got {other:?}")),
+        }?;
+        match &finish_node.kind {
+            CompiledNodeKind::RepeatFinish { .. } => Ok(()),
+            other => Err(format!("expected RepeatFinish, got {other:?}")),
+        }
+    }
+
+    /// 6. Wait/Ask suspend node kinds.
+    #[test]
+    fn wf_wait_ask_suspend_kinds() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: suspend_nodes
+when:
+  manual: {}
+steps:
+  - id: deadline
+    save:
+      value: 1
+  - id: wait_step
+    wait:
+      until: 0
+  - id: prompt
+    save:
+      value: 2
+  - id: ask_step
+    ask:
+      prompt: 1
+      answer: 2
+  - id: done
+    finish:
+      result: 2
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 6, "expected 6 nodes")?;
+        let wait = workflow.node(StepIdx::new(1)).ok_or("missing wait")?;
+        adv_ensure(
+            matches!(&wait.kind, CompiledNodeKind::WaitUntil { deadline_slot } if *deadline_slot == SlotIdx::ZERO),
+            "must be WaitUntil(slot 0)",
+        )?;
+        let ask = workflow.node(StepIdx::new(3)).ok_or("missing ask")?;
+        adv_ensure(matches!(&ask.kind, CompiledNodeKind::Ask { .. }), "must be Ask")?;
+        let resume = workflow.node(StepIdx::new(4)).ok_or("missing resume")?;
+        adv_ensure(
+            matches!(&resume.kind, CompiledNodeKind::AskResume { answer } if *answer == SlotIdx::new(2)),
+            "must be AskResume(slot 2)",
+        )
+    }
+
+    /// 7. Error handler edges absent in Phase 0.
+    #[test]
+    fn wf_error_handler_edges_absent() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: no_error_handlers
+when:
+  manual: {}
+steps:
+  - id: step_a
+    save:
+      value: 1
+  - id: step_b
+    do:
+      action: 5
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        for i in 0..usize::from(workflow.node_count()) {
+            let node = workflow.node(StepIdx::new(i as u16)).ok_or("missing node")?;
+            adv_ensure(node.on_error.is_none(), "no on_error in Phase 0")?;
+        }
+        Ok(())
+    }
+
+    /// 8. ForEach loop followed by deterministic steps.
+    #[test]
+    fn wf_for_each_followed_by_save() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: loop_then_save
+when:
+  manual: {}
+steps:
+  - id: source_list
+    save:
+      value: 1
+  - id: loop_step
+    for_each:
+      input: 0
+      item: 1
+      limit: 7
+  - id: after_loop
+    save:
+      value: 42
+  - id: done
+    finish:
+      result: 2
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // save(1) + for_each(2) + save(1) + finish(1) = 5 nodes
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        let fe_start = workflow.node(StepIdx::new(1)).ok_or("missing ForEachStart")?;
+        adv_ensure(
+            matches!(&fe_start.kind, CompiledNodeKind::ForEachStart { limit, done, .. } if *limit == 7 && *done == StepIdx::new(3)),
+            "for_each limit=7 done=3",
+        )?;
+        let after = workflow.node(StepIdx::new(3)).ok_or("missing after_loop")?;
+        adv_ensure(
+            matches!(&after.kind, CompiledNodeKind::SetConst { .. }),
+            "after_loop should be SetConst",
+        )
+    }
+
+    /// 9. Multiple Do nodes with unique action IDs.
+    #[test]
+    fn wf_do_separated_by_saves() -> Result<(), String> {
+        // Do nodes must be separated by deterministic steps (the determinism
+        // gate rejects consecutive non-deterministic nodes). We interleave
+        // save steps between do calls.
+        let source = br#"version: velvet-ballastics/v1
+name: do_separated
+when:
+  manual: {}
+steps:
+  - id: input_slot
+    save:
+      value: 1
+  - id: call_alpha
+    do:
+      action: 10
+      input: 0
+  - id: mid_save
+    save:
+      value: 2
+  - id: call_beta
+    do:
+      action: 20
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // save(1) + do(1) + save(1) + do(1) + finish(1) = 5 nodes
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        let do_a = workflow.node(StepIdx::new(1)).ok_or("missing do_a")?;
+        adv_ensure(
+            matches!(&do_a.kind, CompiledNodeKind::Do { action, .. } if action.get() == 10),
+            "do_a action=10",
+        )?;
+        let do_b = workflow.node(StepIdx::new(3)).ok_or("missing do_b")?;
+        adv_ensure(
+            matches!(&do_b.kind, CompiledNodeKind::Do { action, .. } if action.get() == 20),
+            "do_b action=20",
+        )
+    }
+
+    /// 10. Save step slot allocation.
+    #[test]
+    fn wf_save_slot_allocation() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: slot_alloc
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 100
+  - id: val_b
+    save:
+      value: 200
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.slot_count() >= 2, "at least 2 slots")?;
+        let a = workflow.node(StepIdx::new(0)).ok_or("missing a")?;
+        let b = workflow.node(StepIdx::new(1)).ok_or("missing b")?;
+        adv_ensure(a.output.is_some(), "a has output")?;
+        adv_ensure(b.output.is_some(), "b has output")
+    }
+
+    /// 11. Constant pool for multiple saves.
+    #[test]
+    fn wf_constant_pool_multiple_saves() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: const_pool
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 10
+  - id: val_b
+    save:
+      value: 20
+  - id: val_c
+    save:
+      value: 30
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let count = workflow.to_parts().constants.len();
+        adv_ensure(count >= 3, "at least 3 constants")
+    }
+
+    /// 12. Complex workflow with mixed primitive types.
+    #[test]
+    fn wf_complex_mixed_primitives() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: complex_mix
+when:
+  manual: {}
+steps:
+  - id: init_val
+    save:
+      value: 1
+  - id: transform
+    do:
+      action: 3
+      input: 0
+  - id: loop_data
+    for_each:
+      input: 1
+      item: 2
+      limit: 5
+  - id: wait_step
+    wait:
+      until: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 6, "expected 6 nodes")?;
+        let kinds: Vec<&str> = (0..usize::from(workflow.node_count()))
+            .filter_map(|i| {
+                workflow.node(StepIdx::new(i as u16)).map(|n| match &n.kind {
+                    CompiledNodeKind::SetConst { .. } => "SetConst",
+                    CompiledNodeKind::Do { .. } => "Do",
+                    CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
+                    CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
+                    CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
+                    CompiledNodeKind::Finish { .. } => "Finish",
+                    _ => "Other",
+                })
+            })
+            .collect();
+        adv_ensure(kinds.first().copied() == Some("SetConst"), "0=SetConst")?;
+        adv_ensure(kinds.get(1).copied() == Some("Do"), "1=Do")?;
+        adv_ensure(kinds.get(2).copied() == Some("ForEachStart"), "2=ForEachStart")?;
+        adv_ensure(kinds.get(3).copied() == Some("ForEachNext"), "3=ForEachNext")?;
+        adv_ensure(kinds.get(4).copied() == Some("WaitUntil"), "4=WaitUntil")?;
+        adv_ensure(kinds.get(5).copied() == Some("Finish"), "5=Finish")
+    }
+
+    /// 13. Compile-error: duplicate step IDs.
+    #[test]
+    fn wf_error_duplicate_step_ids() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: dup_ids
+when:
+  manual: {}
+steps:
+  - id: same_name
+    save:
+      value: 1
+  - id: same_name
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::DuplicateStepId { id } if id.as_ref() == "same_name"),
+            "must be DuplicateStepId",
+        )
+    }
+
+    /// 14. Compile-error: backward branch target.
+    #[test]
+    fn wf_error_backward_branch() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: backward_branch
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 0
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::BackwardBranchTarget { step: 1, target: 0 }),
+            "must be BackwardBranchTarget(1,0)",
+        )
+    }
+
+    /// 15. Compile-error: branch target out of range.
+    #[test]
+    fn wf_error_branch_target_out_of_range() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: out_of_range
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 5
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::UnknownStepTarget { step: 1, target: 5 }),
+            "must be UnknownStepTarget(1,5)",
+        )
+    }
+
+    /// 16. Compile-error: missing required step ID.
+    #[test]
+    fn wf_error_missing_step_id() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: missing_id
+when:
+  manual: {}
+steps:
+  - save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::MissingStepId { step: 0 }),
+            "must be MissingStepId(0)",
+        )
+    }
+
+    /// 17. Compile-error: step ID is a reserved word.
+    #[test]
+    fn wf_error_reserved_step_id() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: reserved_id
+when:
+  manual: {}
+steps:
+  - id: finish
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::InvalidName { field: "step id", value } if value.as_ref() == "finish"),
+            "must be InvalidName(step id, finish)",
+        )
+    }
+
+    /// 18. Compile-error: expression source overflow.
+    #[test]
+    fn wf_error_expression_overflow() -> Result<(), String> {
+        let expr = "1".repeat(4097);
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: expr_overflow\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition: \"{}\"\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n",
+            expr
+        );
+        let error = adv_compile_error(source.as_bytes())?;
+        adv_ensure(
+            matches!(error, CompileError::ExpressionLimitExceeded { limit: "source length", .. }),
+            "must be ExpressionLimitExceeded(source length)",
+        )
+    }
+
+    /// 19. Resource contract: fits within default budget.
+    #[test]
+    fn wf_resource_contract_fits_budget() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: fits_budget
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let contract = workflow.resource_contract();
+        adv_ensure(usize::from(workflow.node_count()) <= usize::from(contract.max_steps), "fits max_steps")?;
+        adv_ensure(usize::from(workflow.slot_count()) <= usize::from(contract.max_slots), "fits max_slots")
+    }
+
+    /// 20. Resource contract: exceeds budget rejected.
+    #[test]
+    fn wf_resource_contract_exceeds_budget() -> Result<(), String> {
+        let mut parts = WorkflowParts {
+            name: Box::<str>::from("exceeds_budget"),
+            digest: WorkflowDigest::from_bytes([0x44; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    error_slot: None,
+                    on_error: None,
+                    kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    error_slot: None,
+                    on_error: None,
+                    kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract { max_steps: 0, ..ResourceContract::DEFAULT },
+            step_names: Box::new([]),
+        };
+        adv_ensure(CompiledWorkflow::try_from_parts(parts.clone()).is_err(), "must reject max_steps=0")?;
+        parts.resource_contract = ResourceContract::DEFAULT;
+        let wf = CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e:?}"))?;
+        adv_ensure(wf.node_count() == 2, "fixed has 2 nodes")
+    }
+
+    /// 21. step_names() returns YAML step IDs.
+    #[test]
+    fn wf_step_names_returns_yaml_ids() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: step_names_test
+when:
+  manual: {}
+steps:
+  - id: first_step
+    save:
+      value: 1
+  - id: second_step
+    save:
+      value: 2
+  - id: third_step
+    save:
+      value: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("first_step"), "0=first_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("second_step"), "1=second_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("third_step"), "2=third_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")?;
+        adv_ensure(workflow.step_name(StepIdx::new(99)).is_none(), "99=None")
+    }
+
+    /// 22. digest() is deterministic.
+    #[test]
+    fn wf_digest_deterministic() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: deterministic
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 42
+  - id: transform
+    do:
+      action: 7
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let first = adv_compile_ok(source)?;
+        let second = adv_compile_ok(source)?;
+        adv_ensure(first.digest() == second.digest(), "same digest")?;
+        let other = adv_compile_ok(br#"version: velvet-ballastics/v1
+name: different
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 99
+  - id: done
+    finish:
+      result: 0
+"#)?;
+        adv_ensure(first.digest() != other.digest(), "different digest")
+    }
+
+    /// Additional: collect loop structure.
+    #[test]
+    fn wf_collect_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: collect_structure
+when:
+  manual: {}
+steps:
+  - id: source
+    save:
+      value: 1
+  - id: gather
+    collect:
+      source: 0
+      limit: 10
+      page_size: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "5 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("CollectStart")?;
+        let page = workflow.node(StepIdx::new(2)).ok_or("CollectPage")?;
+        let fin = workflow.node(StepIdx::new(3)).ok_or("CollectFinish")?;
+        match &start.kind {
+            CompiledNodeKind::CollectStart { source: src, limit, page_size, body, done } => {
+                adv_ensure(*src == SlotIdx::ZERO, "src=0")?;
+                adv_ensure(*limit == 10, "limit=10")?;
+                adv_ensure(*page_size == 3, "page_size=3")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected CollectStart, got {other:?}")),
+        }?;
+        match &page.kind {
+            CompiledNodeKind::CollectPage { collector_slot, body, done } => {
+                adv_ensure(*collector_slot == SlotIdx::ZERO, "collector=0")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected CollectPage, got {other:?}")),
+        }?;
+        match &fin.kind {
+            CompiledNodeKind::CollectFinish { collector_slot } => {
+                adv_ensure(*collector_slot == SlotIdx::ZERO, "collector=0")
+            }
+            other => Err(format!("expected CollectFinish, got {other:?}")),
+        }
+    }
+
+    /// Additional: reduce loop structure.
+    #[test]
+    fn wf_reduce_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: reduce_structure
+when:
+  manual: {}
+steps:
+  - id: source
+    save:
+      value: 1
+  - id: sum_values
+    reduce:
+      input: 0
+      accumulator: 1
+      initial: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "5 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("ReduceStart")?;
+        match &start.kind {
+            CompiledNodeKind::ReduceStart { input, accumulator, initial, body, done } => {
+                adv_ensure(*input == SlotIdx::ZERO, "input=0")?;
+                adv_ensure(*accumulator == SlotIdx::new(1), "acc=1")?;
+                adv_ensure(*initial == ConstIdx::new(1), "init=1")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ReduceStart, got {other:?}")),
+        }
+    }
+
+    /// Additional: wait event without timeout.
+    #[test]
+    fn wf_wait_event_no_timeout() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: wait_event
+when:
+  manual: {}
+steps:
+  - id: event_slot
+    save:
+      value: 1
+  - id: wait_for_event
+    wait:
+      event: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let wait = workflow.node(StepIdx::new(1)).ok_or("missing wait")?;
+        match &wait.kind {
+            CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+                adv_ensure(*event == SlotIdx::ZERO, "event=0")?;
+                adv_ensure(timeout_slot.is_none(), "no timeout")
+            }
+            other => Err(format!("expected WaitEvent, got {other:?}")),
+        }
+    }
+
+    /// Additional: wait event with timeout.
+    #[test]
+    fn wf_wait_event_with_timeout() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: wait_event_timeout
+when:
+  manual: {}
+steps:
+  - id: event_slot
+    save:
+      value: 1
+  - id: timeout_val
+    save:
+      value: 2
+  - id: wait_for_event
+    wait:
+      event: 0
+      timeout: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let wait = workflow.node(StepIdx::new(2)).ok_or("missing wait")?;
+        match &wait.kind {
+            CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+                adv_ensure(*event == SlotIdx::ZERO, "event=0")?;
+                adv_ensure(*timeout_slot == Some(SlotIdx::new(1)), "timeout=1")
+            }
+            other => Err(format!("expected WaitEvent, got {other:?}")),
+        }
+    }
+
+    /// Additional: entry step always zero.
+    #[test]
+    fn wf_entry_step_zero() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: entry_check
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 1
+  - id: second
+    do:
+      action: 3
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.entry() == StepIdx::ZERO, "entry=0")
+    }
+
+    /// Additional: workflow name preserved.
+    #[test]
+    fn wf_name_preserved() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: my_special_workflow
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: true
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.name() == "my_special_workflow", "name matches")
+    }
+
+    /// Additional: constant pool values match save steps.
+    #[test]
+    fn wf_constant_values_match() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: const_check
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 42
+  - id: val_b
+    save:
+      value: 99
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let node_a = workflow.node(StepIdx::new(0)).ok_or("node 0")?;
+        match &node_a.kind {
+            CompiledNodeKind::SetConst { value } => {
+                let cv = workflow.constant(*value).ok_or("const")?;
+                adv_ensure(*cv == ConstValue::I64(42), "const=42")
+            }
+            other => Err(format!("expected SetConst, got {other:?}")),
+        }?;
+        let node_b = workflow.node(StepIdx::new(1)).ok_or("node 1")?;
+        match &node_b.kind {
+            CompiledNodeKind::SetConst { value } => {
+                let cv = workflow.constant(*value).ok_or("const")?;
+                adv_ensure(*cv == ConstValue::I64(99), "const=99")
+            }
+            other => Err(format!("expected SetConst, got {other:?}")),
+        }
+    }
+
+    /// Additional: choose both branches same target.
+    #[test]
+    fn wf_choose_same_target() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: same_target
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 2
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let route = workflow.node(StepIdx::new(1)).ok_or("route")?;
+        match &route.kind {
+            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+                adv_ensure(branches.first().ok_or("branch")?.target == StepIdx::new(2), "true=2")?;
+                adv_ensure(*otherwise == Some(StepIdx::new(2)), "false=2")
+            }
+            other => Err(format!("expected ChooseSlot, got {other:?}")),
+        }
+    }
+
+    /// Additional: do output chains to finish.
+    #[test]
+    fn wf_do_output_chains_finish() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: do_chain
+when:
+  manual: {}
+steps:
+  - id: input_data
+    save:
+      value: 1
+  - id: action_call
+    do:
+      action: 7
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let do_node = workflow.node(StepIdx::new(1)).ok_or("do")?;
+        let finish = workflow.node(StepIdx::new(2)).ok_or("finish")?;
+        let do_out = do_node.output.ok_or("no output")?;
+        match &finish.kind {
+            CompiledNodeKind::Finish { result } => adv_ensure(*result == do_out, "result=do_out"),
+            other => Err(format!("expected Finish, got {other:?}")),
+        }
+    }
+
+    /// Additional: slot count reflects max slot.
+    #[test]
+    fn wf_slot_count_max() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: slot_max
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 1
+  - id: second
+    save:
+      value: 2
+  - id: third
+    save:
+      value: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.slot_count() >= 3, "at least 3 slots")
+    }
+
+    /// Additional: step_names for for_each expanded nodes.
+    #[test]
+    fn wf_step_names_for_each_expanded() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: foreach_names
+when:
+  manual: {}
+steps:
+  - id: data
+    save:
+      value: 1
+  - id: loop_step
+    for_each:
+      input: 0
+      item: 1
+      limit: 5
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("data"), "0=data")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("loop_step"), "1=loop_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("loop_step"), "2=loop_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")
+    }
+
+    /// Additional: step_names for repeat expanded nodes.
+    #[test]
+    fn wf_step_names_repeat_expanded() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: repeat_names
+when:
+  manual: {}
+steps:
+  - id: retry_op
+    repeat:
+      max_attempts: 3
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("retry_op"), "0=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("retry_op"), "1=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("retry_op"), "2=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")
+    }
+
 }

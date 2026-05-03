@@ -226,7 +226,7 @@ mod tests {
     use crate::errors::EngineError;
     use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::limits::MAX_EXPRESSION_STACK;
-    use crate::value::{ConstValue, SlotValue};
+    use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
         ResourceContract, WorkflowParts, check_expr_stack_bound,
@@ -482,10 +482,12 @@ mod tests {
                     crate::value_store::ObjectField {
                         key: SymbolId::new(0),
                         value: SlotValue::I64(1),
+                        taint: Taint::Clean,
                     },
                     crate::value_store::ObjectField {
                         key: SymbolId::new(1),
                         value: SlotValue::I64(2),
+                        taint: Taint::Clean,
                     },
                 ]
                 .into_boxed_slice(),
