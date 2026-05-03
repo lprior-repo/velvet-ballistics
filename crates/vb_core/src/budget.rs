@@ -611,6 +611,7 @@ fn count_nested_for_region(
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, WorkflowError> {
     let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
+    stack.push(done);
     Ok(count.saturating_add(body_count.saturating_mul(iter_count)))
 }
 
