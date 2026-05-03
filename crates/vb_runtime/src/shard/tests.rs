@@ -55,6 +55,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
         kind: CompiledNodeKind::ErrorHandler {
             body: vb_core::ids::StepIdx::new(1),
             handler: vb_core::ids::StepIdx::new(2),
+            error_slot: None,
         },
     };
     let action = CompiledNode {

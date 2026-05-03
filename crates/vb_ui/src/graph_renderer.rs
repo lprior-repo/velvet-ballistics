@@ -505,6 +505,7 @@ mod tests {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
+                error_slot: None,
             },
             CompiledNodeKind::Jump {
                 target: StepIdx::new(1),
@@ -712,6 +713,7 @@ mod tests {
         let kind = CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
+            error_slot: None,
         };
         assert_eq!(classify_node(&kind), NodeCategory::Error);
     }

@@ -209,19 +209,19 @@ pub fn record_retry_attempt(
     Ok(true)
 }
 
-/// Finds the error handler step for a failed step.
+/// Finds the error handler step and error slot for a failed step.
 pub fn find_error_handler_for_failure(
     workflow: &CompiledWorkflow,
     failed: StepIdx,
-) -> Option<StepIdx> {
-    if let Some(handler) = error_handler_on_node(workflow, failed, failed) {
-        return Some(handler);
+) -> Option<(StepIdx, Option<SlotIdx>)> {
+    if let Some(result) = error_handler_on_node(workflow, failed, failed) {
+        return Some(result);
     }
 
     if failed.get() > 0 {
         let previous = StepIdx::new(failed.get().saturating_sub(1));
-        if let Some(handler) = error_handler_on_node(workflow, previous, failed) {
-            return Some(handler);
+        if let Some(result) = error_handler_on_node(workflow, previous, failed) {
+            return Some(result);
         }
     }
 
@@ -231,8 +231,8 @@ pub fn find_error_handler_for_failure(
         let Ok(raw) = u16::try_from(index) else {
             return None;
         };
-        if let Some(handler) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
-            return Some(handler);
+        if let Some(result) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
+            return Some(result);
         }
         index = index.checked_add(1)?;
     }
@@ -244,14 +244,14 @@ fn error_handler_on_node(
     workflow: &CompiledWorkflow,
     candidate: StepIdx,
     failed: StepIdx,
-) -> Option<StepIdx> {
+) -> Option<(StepIdx, Option<SlotIdx>)> {
     let node = workflow.node(candidate)?;
     match node.kind {
-        CompiledNodeKind::ErrorHandler { body, handler }
-            if candidate == failed || body == failed =>
-        {
-            Some(handler)
-        }
+        CompiledNodeKind::ErrorHandler {
+            body,
+            handler,
+            error_slot,
+        } if candidate == failed || body == failed => Some((handler, error_slot)),
         _ => None,
     }
 }

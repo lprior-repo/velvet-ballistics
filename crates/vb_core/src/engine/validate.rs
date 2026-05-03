@@ -115,7 +115,7 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
             } => {
                 validate_two_step_targets(*body, *exhausted, node_count)?;
             }
-            CompiledNodeKind::ErrorHandler { body, handler } => {
+            CompiledNodeKind::ErrorHandler { body, handler, .. } => {
                 validate_two_step_targets(*body, *handler, node_count)?;
             }
             _ => {}
@@ -929,6 +929,7 @@ mod tests {
                 kind: CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(11),
                     handler: StepIdx::new(0),
+                    error_slot: None,
                 },
             }]
             .into_boxed_slice(),
@@ -955,6 +956,7 @@ mod tests {
                 kind: CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(0),
                     handler: StepIdx::new(11),
+                    error_slot: None,
                 },
             }]
             .into_boxed_slice(),

@@ -782,7 +782,9 @@ pub fn build_ports(
             });
         }
 
-        CompiledNodeKind::ErrorHandler { body: _, handler } => {
+        CompiledNodeKind::ErrorHandler {
+            body: _, handler, ..
+        } => {
             outputs.push(FlowPortRecord {
                 id: SmolStr::new_static("handler"),
                 label: SmolStr::new_static("handler"),
@@ -1121,7 +1123,9 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::ErrorHandler { body: _, handler } => {
+        CompiledNodeKind::ErrorHandler {
+            body: _, handler, ..
+        } => {
             let handler_target = SmolStr::from(format!("step-{}", handler.as_usize()));
             add_edge(
                 edges,
@@ -1524,6 +1528,7 @@ mod tests {
             kind: CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
+                error_slot: None,
             },
         };
         let n1 = make_nop_node(1, None);

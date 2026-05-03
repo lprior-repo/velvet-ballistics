@@ -699,7 +699,7 @@ fn collect_successors(
             succs.push(*exhausted);
         }
 
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             succs.push(*body);
             succs.push(*handler);
         }

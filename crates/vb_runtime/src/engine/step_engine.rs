@@ -131,6 +131,7 @@ pub fn execute_node_full(
         CompiledNodeKind::ErrorHandler {
             body: handler_body,
             handler: _,
+            ..
         } => {
             run.set_pc(*handler_body)
                 .map_err(RuntimeEngineError::Core)?;

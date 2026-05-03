@@ -123,7 +123,7 @@ pub(crate) fn validate_node(node: &super::super::node::CompiledNode, parts: &Wor
             body,
             exhausted,
         } => validate_slot_and_steps(*policy_slot, *body, *exhausted, parts),
-        super::super::node::CompiledNodeKind::ErrorHandler { body, handler } => validate_two_steps(*body, *handler, parts),
+        super::super::node::CompiledNodeKind::ErrorHandler { body, handler, .. } => validate_two_steps(*body, *handler, parts),
         super::super::node::CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),
         super::super::node::CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),
     }

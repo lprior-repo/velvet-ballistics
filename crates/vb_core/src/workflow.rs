@@ -642,7 +642,14 @@ pub enum CompiledNodeKind {
         exhausted: StepIdx,
     },
     /// Run error handler.
-    ErrorHandler { body: StepIdx, handler: StepIdx },
+    ErrorHandler {
+        /// Body step to execute.
+        body: StepIdx,
+        /// Handler step to route to on body failure.
+        handler: StepIdx,
+        /// Optional slot to write failed step index for handler consumption.
+        error_slot: Option<SlotIdx>,
+    },
     /// Jump to a numeric target.
     Jump { target: StepIdx },
     /// Finish the run with the selected result slot.
@@ -960,7 +967,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             body,
             exhausted,
         } => validate_slot_and_steps(*policy_slot, *body, *exhausted, parts),
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             validate_two_steps(*body, *handler, parts)
         }
         CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),
@@ -1410,7 +1417,7 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
             targets.push(*entry);
             targets.push(*join);
         }
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             targets.push(*body);
             targets.push(*handler);
         }
@@ -1542,7 +1549,7 @@ fn validate_kind_edges(
         CompiledNodeKind::RetryCheck {
             body, exhausted, ..
         } => validate_loop_done_only(*body, *exhausted, ci, cid),
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             validate_loop_done_only(*body, *handler, ci, cid)
         }
     }

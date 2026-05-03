@@ -135,7 +135,7 @@ pub(crate) fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Resul
             body,
             exhausted,
         } => validate_slot_and_steps(*policy_slot, *body, *exhausted, parts),
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             validate_two_steps(*body, *handler, parts)
         }
         CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),

@@ -198,11 +198,19 @@ impl Shard {
                     &state.workflow,
                     ticket.step,
                 ) {
-                    Some(handler) => {
+                    Some((handler, error_slot)) => {
                         state
                             .frame
                             .mark_failed(ticket.step)
                             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                        // Write failed step index to error slot if configured.
+                        if let Some(slot) = error_slot {
+                            let failed_step_i64 = i64::from(ticket.step.get());
+                            let slot_value = vb_core::value::SlotValue::I64(failed_step_i64);
+                            if state.frame.write_slot(slot, slot_value).is_err() {
+                                // Slot write failure - continue without error slot
+                            }
+                        }
                         state
                             .frame
                             .set_pc(handler)

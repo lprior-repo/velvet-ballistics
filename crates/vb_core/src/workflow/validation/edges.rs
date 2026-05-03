@@ -106,7 +106,7 @@ fn validate_kind_edges(
             let _ = body;
             validate_forward_target(*exhausted, ci, cid)
         }
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             let _ = body;
             validate_forward_target(*handler, ci, cid)
         }

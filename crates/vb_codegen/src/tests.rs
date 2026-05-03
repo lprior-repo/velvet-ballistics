@@ -2686,6 +2686,7 @@ mod tests {
                     kind: CompiledNodeKind::ErrorHandler {
                         body: StepIdx::new(1),
                         handler: StepIdx::new(2),
+                        error_slot: None,
                     },
                 },
                 CompiledNode {

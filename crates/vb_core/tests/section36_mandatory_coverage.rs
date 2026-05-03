@@ -1692,6 +1692,7 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(0),
+            error_slot: None,
         },
     }]
     .into_boxed_slice();
@@ -1714,6 +1715,7 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(0),
             handler: StepIdx::new(99),
+            error_slot: None,
         },
     }]
     .into_boxed_slice();

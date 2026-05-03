@@ -650,7 +650,7 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {
             push_together_branch_successors(*entry, *join, stack)
         }
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             push_error_handler_successors(*body, *handler, stack)
         }
         CompiledNodeKind::Jump { target } => stack.push(*target),

@@ -162,7 +162,14 @@ pub enum CompiledNodeKind {
         exhausted: StepIdx,
     },
     /// Run error handler.
-    ErrorHandler { body: StepIdx, handler: StepIdx },
+    ErrorHandler {
+        /// Body step to execute.
+        body: StepIdx,
+        /// Handler step to route to on body failure.
+        handler: StepIdx,
+        /// Optional slot to write failed step index for handler consumption.
+        error_slot: Option<SlotIdx>,
+    },
     /// Jump to a numeric target.
     Jump { target: StepIdx },
     /// Finish the run with the selected result slot.
