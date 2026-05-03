@@ -573,10 +573,18 @@ fn visit_body_region_node(
 /// Pushes all successor StepIdx targets from a node kind onto the stack,
 /// excluding the `next` field which is handled separately.
 fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
-    if node_kind_has_no_successors(kind) { return; }
+    if node_kind_has_no_successors(kind) {
+        return;
+    }
     match kind {
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => push_slot_choose_successors(branches, *otherwise, stack),
-        CompiledNodeKind::Choose { branches, otherwise } => push_expr_choose_successors(branches, *otherwise, stack),
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => push_slot_choose_successors(branches, *otherwise, stack),
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => push_expr_choose_successors(branches, *otherwise, stack),
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectStart { body, done, .. }
@@ -586,11 +594,21 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
         | CompiledNodeKind::ReduceNext { body, done, .. }
         | CompiledNodeKind::RepeatStart { body, done, .. }
         | CompiledNodeKind::RepeatAttempt { body, done, .. }
-        | CompiledNodeKind::RetryCheck { body, exhausted: done, .. } => push_loop_successors(*body, *done, stack),
+        | CompiledNodeKind::RetryCheck {
+            body,
+            exhausted: done,
+            ..
+        } => push_loop_successors(*body, *done, stack),
         CompiledNodeKind::RepeatCheck { done, .. } => push_repeat_check_successors(*done, stack),
-        CompiledNodeKind::TogetherStart { branches, join } => push_together_start_successors(branches, *join, stack),
-        CompiledNodeKind::TogetherBranch { entry, join, .. } => push_together_branch_successors(*entry, *join, stack),
-        CompiledNodeKind::ErrorHandler { body, handler } => push_error_handler_successors(*body, *handler, stack),
+        CompiledNodeKind::TogetherStart { branches, join } => {
+            push_together_start_successors(branches, *join, stack)
+        }
+        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
+            push_together_branch_successors(*entry, *join, stack)
+        }
+        CompiledNodeKind::ErrorHandler { body, handler } => {
+            push_error_handler_successors(*body, *handler, stack)
+        }
         CompiledNodeKind::Jump { target } => stack.push(*target),
         _ => unreachable!("no-successor variants handled by early return"),
     }

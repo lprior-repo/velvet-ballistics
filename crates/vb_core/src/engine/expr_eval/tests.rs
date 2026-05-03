@@ -1,15 +1,13 @@
 //! Tests for expression evaluation.
 
 use crate::errors::EngineError;
-use crate::ids::{
-    ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest,
-};
+use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_EXPRESSION_STACK;
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-    ResourceContract, WorkflowParts, check_expr_stack_bound,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+    WorkflowParts, check_expr_stack_bound,
 };
 
 use super::eval_expr_with_store;

@@ -187,8 +187,8 @@ mod tests {
     use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::ConstValue;
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch,
-        WorkflowError, WorkflowParts,
+        CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
+        WorkflowParts,
     };
 
     fn valid_parts() -> WorkflowParts {

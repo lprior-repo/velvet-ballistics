@@ -33,11 +33,9 @@ pub use bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
 pub use commands::IpcCommand;
 pub use constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 pub use error::IpcError;
-pub use frame_types::{decode_frame, IpcFrame, IpcFrameHeader};
+pub use frame_types::{IpcFrame, IpcFrameHeader, decode_frame};
 pub use ingress::{IngressFrame, MemoryIngress};
-pub use metrics::{
-    AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
-};
+pub use metrics::{AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics};
 pub use payloads::{IpcPayload, RunListState, RunSummary, SubmitRunPayload};
 pub use trace::{IpcTraceEvent, IpcTraceEventKind};
 

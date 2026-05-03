@@ -1,7 +1,7 @@
 //! Bounded payload types.
 
-use std::num::NonZeroUsize;
 use bytes::Bytes;
+use std::num::NonZeroUsize;
 
 use crate::error::IpcError;
 

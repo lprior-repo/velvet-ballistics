@@ -67,12 +67,10 @@ impl MemoryIngress {
 
     /// Attempts to submit a frame without blocking.
     pub fn try_submit(&self, frame: IngressFrame) -> Result<(), IpcError> {
-        self.sender
-            .try_send(frame)
-            .map_err(|e| match e {
-                TrySendError::Full(_) => IpcError::Full,
-                TrySendError::Disconnected(_) => IpcError::Disconnected,
-            })
+        self.sender.try_send(frame).map_err(|e| match e {
+            TrySendError::Full(_) => IpcError::Full,
+            TrySendError::Disconnected(_) => IpcError::Disconnected,
+        })
     }
 
     /// Attempts to receive one frame without blocking.

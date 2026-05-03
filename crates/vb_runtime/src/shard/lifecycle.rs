@@ -1,6 +1,8 @@
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 
-use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy};
+use vb_core::action::{
+    ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy,
+};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;

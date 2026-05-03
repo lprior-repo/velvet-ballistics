@@ -5,8 +5,8 @@ use std::path::Path;
 
 use crate::frame::{read_frame_header_bounded, read_frame_payload_bounded, write_frame};
 use crate::server::IpcResponse;
-use vb_core::WorkflowDigest;
 use crate::{IpcCommand, IpcError, IpcPayload, MaxPayloadBytes};
+use vb_core::WorkflowDigest;
 
 /// IPC client connected to a Unix domain socket.
 pub struct IpcClient {
