@@ -1,6 +1,29 @@
-use vb_core::ids::StepIdx;
+//! Render instruction production for the workflow graph.
+//!
+//! This module produces data-structure render instructions (`NodeCard`, `EdgeLine`)
+//! that a Makepad Splash UI can consume. It is NOT a widget -- it has no side effects
+//! and performs no drawing. Given a `CompiledNodeKind` and optional runtime state, it
+//! produces colour, badge, label, and dimension data for each graph node and edge.
+
+use crate::theme::colors;
 use vb_core::workflow::CompiledNodeKind;
 
+// ---------------------------------------------------------------------------
+// Node card dimensions
+// ---------------------------------------------------------------------------
+
+/// Fixed node card width in pixels.
+pub const NODE_WIDTH: f64 = 160.0;
+/// Fixed node card height in pixels.
+pub const NODE_HEIGHT: f64 = 48.0;
+/// Header strip height in pixels.
+pub const HEADER_HEIGHT: f64 = 24.0;
+
+// ---------------------------------------------------------------------------
+// Data types
+// ---------------------------------------------------------------------------
+
+/// Render instruction for a single graph node card.
 #[derive(Debug, Clone)]
 pub struct NodeCard {
     pub step_idx: u16,
@@ -19,12 +42,14 @@ pub struct NodeCard {
     pub state_overlay: Option<StateOverlay>,
 }
 
+/// A small annotation badge on a node card (e.g. "A0", "R3", "S").
 #[derive(Debug, Clone)]
 pub struct NodeBadge {
     pub label: String,
     pub color: [f32; 4],
 }
 
+/// Semantic category of a node -- determines colour palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeCategory {
     Data,
@@ -38,6 +63,7 @@ pub enum NodeCategory {
     Control,
 }
 
+/// Glow overlay for a node reflecting runtime step state.
 #[derive(Debug, Clone)]
 pub struct StateOverlay {
     pub state: OverlayState,
@@ -45,6 +71,7 @@ pub struct StateOverlay {
     pub glow_radius: f32,
 }
 
+/// Runtime step state used for the glow overlay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverlayState {
     Pending,
@@ -57,6 +84,7 @@ pub enum OverlayState {
     Cancelled,
 }
 
+/// Render instruction for a directed edge between two nodes.
 #[derive(Debug, Clone)]
 pub struct EdgeLine {
     pub source_step: u16,
@@ -69,6 +97,7 @@ pub struct EdgeLine {
     pub dashed: bool,
 }
 
+/// Visual classification of an edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EdgeType {
     Normal,
@@ -79,21 +108,31 @@ pub enum EdgeType {
     LoopBack,
 }
 
+// ---------------------------------------------------------------------------
+// classify_node
+// ---------------------------------------------------------------------------
+
+/// Classify a compiled node kind into a visual category.
+///
+/// Maps all 34 `CompiledNodeKind` variants to one of 9 `NodeCategory` values.
+#[must_use]
 pub fn classify_node(kind: &CompiledNodeKind) -> NodeCategory {
     match kind {
-        CompiledNodeKind::Nop
-        | CompiledNodeKind::SetConst { .. }
+        // Data manipulation and construction
+        CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }
         | CompiledNodeKind::EvalExpr { .. }
         | CompiledNodeKind::BuildObject { .. }
         | CompiledNodeKind::BuildList { .. } => NodeCategory::Data,
 
+        // External action
         CompiledNodeKind::Do { .. } => NodeCategory::External,
 
+        // Branching
         CompiledNodeKind::Choose { .. }
-        | CompiledNodeKind::ChooseSlot { .. }
-        | CompiledNodeKind::RetryCheck { .. } => NodeCategory::Branch,
+        | CompiledNodeKind::ChooseSlot { .. } => NodeCategory::Branch,
 
+        // Loop constructs (for-each, collect, reduce, repeat)
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::ForEachJoin { .. }
@@ -109,112 +148,670 @@ pub fn classify_node(kind: &CompiledNodeKind) -> NodeCategory {
         | CompiledNodeKind::RepeatCheck { .. }
         | CompiledNodeKind::RepeatFinish { .. } => NodeCategory::Loop,
 
+        // Parallel (together)
         CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. }
         | CompiledNodeKind::TogetherJoin { .. } => NodeCategory::Parallel,
 
+        // Suspend / wait / ask
         CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. } => NodeCategory::Suspend,
 
+        // Error handling and retry
+        CompiledNodeKind::ErrorHandler { .. }
+        | CompiledNodeKind::RetryCheck { .. } => NodeCategory::Error,
+
+        // Terminal
         CompiledNodeKind::Finish { .. } => NodeCategory::Terminal,
 
-        CompiledNodeKind::ErrorHandler { .. } => NodeCategory::Error,
-
-        CompiledNodeKind::Jump { .. } => NodeCategory::Control,
+        // Control flow (nop, jump)
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::Jump { .. } => NodeCategory::Control,
     }
 }
 
+// ---------------------------------------------------------------------------
+// node_header_color
+// ---------------------------------------------------------------------------
+
+/// Header strip colour for a given node category, sourced from the theme palette.
+#[must_use]
 pub fn node_header_color(category: NodeCategory) -> [f32; 4] {
     match category {
-        NodeCategory::Data => [0.15, 0.15, 0.25, 1.0],
-        NodeCategory::External => [0.6, 0.27, 0.0, 1.0],
-        NodeCategory::Branch => [0.45, 0.18, 0.7, 1.0],
-        NodeCategory::Loop => [0.1, 0.2, 0.5, 1.0],
-        NodeCategory::Parallel => [0.1, 0.25, 0.55, 1.0],
-        NodeCategory::Suspend => [0.12, 0.3, 0.15, 1.0],
-        NodeCategory::Terminal => [0.0, 0.55, 0.45, 1.0],
-        NodeCategory::Error => [0.5, 0.05, 0.12, 1.0],
-        NodeCategory::Control => [0.2, 0.2, 0.2, 1.0],
+        NodeCategory::Data => colors::node_header::DATA,
+        NodeCategory::External => colors::node_header::EXTERNAL,
+        NodeCategory::Branch => colors::node_header::BRANCH,
+        NodeCategory::Loop => colors::node_header::LOOP,
+        NodeCategory::Parallel => colors::node_header::PARALLEL,
+        NodeCategory::Suspend => colors::node_header::SUSPEND,
+        NodeCategory::Terminal => colors::node_header::TERMINAL,
+        NodeCategory::Error => colors::node_header::ERROR,
+        NodeCategory::Control => colors::node_header::CONTROL,
     }
 }
 
+// ---------------------------------------------------------------------------
+// node_body_color
+// ---------------------------------------------------------------------------
+
+/// Body fill colour for a given node category, sourced from the theme palette.
+#[must_use]
 pub fn node_body_color(category: NodeCategory) -> [f32; 4] {
-    let [r, g, b, a] = node_header_color(category);
-    [r * 0.6, g * 0.6, b * 0.6, a]
+    match category {
+        NodeCategory::Data => colors::node_category::DATA,
+        NodeCategory::External => colors::node_category::EXTERNAL,
+        NodeCategory::Branch => colors::node_category::BRANCH,
+        NodeCategory::Loop => colors::node_category::LOOP,
+        NodeCategory::Parallel => colors::node_category::PARALLEL,
+        NodeCategory::Suspend => colors::node_category::SUSPEND,
+        NodeCategory::Terminal => colors::node_category::TERMINAL,
+        NodeCategory::Error => colors::node_category::ERROR,
+        NodeCategory::Control => colors::node_category::CONTROL,
+    }
 }
 
+// ---------------------------------------------------------------------------
+// kind_label
+// ---------------------------------------------------------------------------
+
+/// Human-readable label for a compiled node kind.
+#[must_use]
 pub fn kind_label(kind: &CompiledNodeKind) -> String {
     match kind {
-        CompiledNodeKind::Nop => "Nop".into(),
-        CompiledNodeKind::SetConst { .. } => "SetConst".into(),
-        CompiledNodeKind::Copy { .. } => "Copy".into(),
-        CompiledNodeKind::EvalExpr { .. } => "EvalExpr".into(),
-        CompiledNodeKind::BuildObject { .. } => "BuildObject".into(),
-        CompiledNodeKind::BuildList { .. } => "BuildList".into(),
-        CompiledNodeKind::Do { action, .. } => format!("Do (action {})", action.get()),
-        CompiledNodeKind::Choose { .. } => "Choose".into(),
-        CompiledNodeKind::ChooseSlot { .. } => "ChooseSlot".into(),
-        CompiledNodeKind::ForEachStart { .. } => "ForEach".into(),
-        CompiledNodeKind::ForEachNext { .. } => "ForEachNext".into(),
-        CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin".into(),
-        CompiledNodeKind::CollectStart { .. } => "Collect".into(),
-        CompiledNodeKind::CollectPage { .. } => "CollectPage".into(),
-        CompiledNodeKind::CollectNext { .. } => "CollectNext".into(),
-        CompiledNodeKind::CollectFinish { .. } => "CollectFinish".into(),
-        CompiledNodeKind::ReduceStart { .. } => "Reduce".into(),
-        CompiledNodeKind::ReduceNext { .. } => "ReduceNext".into(),
-        CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish".into(),
-        CompiledNodeKind::RepeatStart { .. } => "Repeat".into(),
-        CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt".into(),
-        CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck".into(),
-        CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish".into(),
-        CompiledNodeKind::TogetherStart { .. } => "Together".into(),
-        CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch".into(),
-        CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin".into(),
-        CompiledNodeKind::WaitUntil { .. } => "WaitUntil".into(),
-        CompiledNodeKind::WaitEvent { .. } => "WaitEvent".into(),
-        CompiledNodeKind::Ask { .. } => "Ask".into(),
-        CompiledNodeKind::AskResume { .. } => "AskResume".into(),
-        CompiledNodeKind::RetryCheck { .. } => "RetryCheck".into(),
-        CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler".into(),
-        CompiledNodeKind::Jump { .. } => "Jump".into(),
-        CompiledNodeKind::Finish { .. } => "Finish".into(),
+        CompiledNodeKind::Nop => String::from("Nop"),
+        CompiledNodeKind::SetConst { .. } => String::from("SetConst"),
+        CompiledNodeKind::Copy { .. } => String::from("Copy"),
+        CompiledNodeKind::EvalExpr { .. } => String::from("EvalExpr"),
+        CompiledNodeKind::BuildObject { .. } => String::from("BuildObject"),
+        CompiledNodeKind::BuildList { .. } => String::from("BuildList"),
+        CompiledNodeKind::Do { action, .. } => format!("Do#{}", action.get()),
+        CompiledNodeKind::Choose { .. } => String::from("Choose"),
+        CompiledNodeKind::ChooseSlot { .. } => String::from("ChooseSlot"),
+        CompiledNodeKind::ForEachStart { .. } => String::from("ForEach"),
+        CompiledNodeKind::ForEachNext { .. } => String::from("ForEach*"),
+        CompiledNodeKind::ForEachJoin { .. } => String::from("ForEachJoin"),
+        CompiledNodeKind::TogetherStart { .. } => String::from("Together"),
+        CompiledNodeKind::TogetherBranch { branch, .. } => format!("Branch#{}", branch),
+        CompiledNodeKind::TogetherJoin { .. } => String::from("TogetherJoin"),
+        CompiledNodeKind::CollectStart { .. } => String::from("Collect"),
+        CompiledNodeKind::CollectPage { .. } => String::from("CollectPage"),
+        CompiledNodeKind::CollectNext { .. } => String::from("Collect*"),
+        CompiledNodeKind::CollectFinish { .. } => String::from("CollectDone"),
+        CompiledNodeKind::ReduceStart { .. } => String::from("Reduce"),
+        CompiledNodeKind::ReduceNext { .. } => String::from("Reduce*"),
+        CompiledNodeKind::ReduceFinish { .. } => String::from("ReduceDone"),
+        CompiledNodeKind::RepeatStart { max_attempts, .. } => {
+            format!("Repeat(<= {})", max_attempts)
+        }
+        CompiledNodeKind::RepeatAttempt { .. } => String::from("Attempt"),
+        CompiledNodeKind::RepeatCheck { .. } => String::from("RepeatCheck"),
+        CompiledNodeKind::RepeatFinish { .. } => String::from("RepeatDone"),
+        CompiledNodeKind::WaitUntil { .. } => String::from("WaitUntil"),
+        CompiledNodeKind::WaitEvent { .. } => String::from("WaitEvent"),
+        CompiledNodeKind::Ask { .. } => String::from("Ask"),
+        CompiledNodeKind::AskResume { .. } => String::from("AskResume"),
+        CompiledNodeKind::RetryCheck { .. } => String::from("RetryCheck"),
+        CompiledNodeKind::ErrorHandler { .. } => String::from("ErrorHandler"),
+        CompiledNodeKind::Jump { .. } => String::from("Jump"),
+        CompiledNodeKind::Finish { .. } => String::from("Finish"),
     }
 }
 
+// ---------------------------------------------------------------------------
+// state_glow
+// ---------------------------------------------------------------------------
+
+/// Glow colour and radius for a runtime overlay state.
+///
+/// Returns `(glow_color, glow_radius)` sourced from the theme palette.
+#[must_use]
 pub fn state_glow(state: OverlayState) -> ([f32; 4], f32) {
     match state {
-        OverlayState::Running => ([0.0, 0.96, 1.0, 1.0], 4.0),
-        OverlayState::Succeeded => ([0.22, 1.0, 0.08, 1.0], 3.0),
-        OverlayState::Failed => ([1.0, 0.03, 0.23, 1.0], 6.0),
-        OverlayState::Waiting => ([0.18, 0.42, 1.0, 1.0], 2.0),
-        OverlayState::Asking => ([1.0, 0.9, 0.0, 1.0], 3.0),
-        OverlayState::Skipped => ([0.33, 0.33, 0.47, 1.0], 0.0),
-        OverlayState::Cancelled => ([0.33, 0.33, 0.47, 1.0], 0.0),
-        OverlayState::Pending => ([0.16, 0.16, 0.29, 1.0], 0.0),
+        OverlayState::Pending => (colors::state::PENDING, 2.0),
+        OverlayState::Running => (colors::state::RUNNING, 4.0),
+        OverlayState::Succeeded => (colors::state::SUCCEEDED, 3.0),
+        OverlayState::Failed => (colors::state::FAILED, 6.0),
+        OverlayState::Skipped => (colors::state::SKIPPED, 2.0),
+        OverlayState::Waiting => (colors::state::WAITING, 3.0),
+        OverlayState::Asking => (colors::state::ASKING, 3.0),
+        OverlayState::Cancelled => (colors::state::CANCELLED, 2.0),
     }
 }
 
+// ---------------------------------------------------------------------------
+// extract_badges
+// ---------------------------------------------------------------------------
+
+/// Extract annotation badges from a compiled node kind.
+///
+/// Badge types:
+/// - `"A{id}"` -- action ID badge for `Do` nodes.
+/// - `"S"` -- secret-sensitive badge for `Do` nodes.
+/// - `"R{max}"` -- retry badge for `RepeatStart` nodes (max attempts).
+/// - `"T"` -- timeout badge for `WaitEvent` and `Ask` nodes with a timeout slot.
+/// - `"D"` -- strict-durable badge for `Finish` nodes.
+#[must_use]
 pub fn extract_badges(kind: &CompiledNodeKind) -> Vec<NodeBadge> {
     let mut badges = Vec::new();
-    if let CompiledNodeKind::Do { action, .. } = kind {
-        badges.push(NodeBadge {
-            label: format!("A{}", action.get()),
-            color: [1.0, 0.42, 0.0, 1.0],
-        });
+
+    match kind {
+        CompiledNodeKind::Do { action, .. } => {
+            badges.push(NodeBadge {
+                label: format!("A{}", action.get()),
+                color: colors::neon::ORANGE,
+            });
+            badges.push(NodeBadge {
+                label: String::from("S"),
+                color: colors::neon::MAGENTA,
+            });
+        }
+
+        CompiledNodeKind::RepeatStart { max_attempts, .. } => {
+            badges.push(NodeBadge {
+                label: format!("R{}", max_attempts),
+                color: colors::neon::YELLOW,
+            });
+        }
+
+        CompiledNodeKind::WaitEvent { timeout_slot: Some(_), .. }
+        | CompiledNodeKind::Ask { timeout_slot: Some(_), .. } => {
+            badges.push(NodeBadge {
+                label: String::from("T"),
+                color: colors::neon::RED,
+            });
+        }
+
+        CompiledNodeKind::Finish { .. } => {
+            badges.push(NodeBadge {
+                label: String::from("D"),
+                color: colors::neon::TEAL,
+            });
+        }
+
+        // All other variants produce no badges.
+        _ => {}
     }
+
     badges
 }
 
+// ---------------------------------------------------------------------------
+// edge_color
+// ---------------------------------------------------------------------------
+
+/// Colour for a given edge type, sourced from the theme palette.
+#[must_use]
 pub fn edge_color(edge_type: EdgeType) -> [f32; 4] {
     match edge_type {
-        EdgeType::Normal => [0.42, 0.42, 0.58, 1.0],
-        EdgeType::Branch => [0.69, 0.3, 1.0, 1.0],
-        EdgeType::ErrorRoute => [1.0, 0.03, 0.23, 1.0],
-        EdgeType::RetryRoute => [1.0, 0.42, 0.0, 1.0],
-        EdgeType::Join => [0.18, 0.42, 1.0, 1.0],
-        EdgeType::LoopBack => [0.0, 0.96, 1.0, 1.0],
+        EdgeType::Normal => colors::neon::CYAN_DIM,
+        EdgeType::Branch => colors::neon::PURPLE,
+        EdgeType::ErrorRoute => colors::neon::RED_DIM,
+        EdgeType::RetryRoute => colors::neon::YELLOW,
+        EdgeType::Join => colors::neon::BLUE_DIM,
+        EdgeType::LoopBack => colors::neon::TEAL,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+
+    /// Build a Vec of all 34 CompiledNodeKind variants for exhaustive testing.
+    fn all_kinds() -> Vec<CompiledNodeKind> {
+        vec![
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::SetConst {
+                value: vb_core::ids::ConstIdx::new(0),
+            },
+            CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+            CompiledNodeKind::EvalExpr {
+                expr: vb_core::ids::ExprIdx::new(0),
+            },
+            CompiledNodeKind::BuildObject {
+                fields: Box::new([]),
+            },
+            CompiledNodeKind::BuildList {
+                items: Box::new([]),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Choose {
+                branches: Box::new([]),
+                otherwise: None,
+            },
+            CompiledNodeKind::ChooseSlot {
+                branches: Box::new([]),
+                otherwise: None,
+            },
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(0),
+            },
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([]),
+                join: StepIdx::new(0),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(1),
+                join: StepIdx::new(2),
+                accumulator: SlotIdx::new(0),
+            },
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(0),
+            },
+            CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(0),
+                limit: 10,
+                page_size: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::CollectPage {
+                collector_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::CollectNext {
+                collector_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(0),
+            },
+            CompiledNodeKind::ReduceStart {
+                input: SlotIdx::new(0),
+                accumulator: SlotIdx::new(1),
+                initial: vb_core::ids::ConstIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ReduceNext {
+                iterator_slot: SlotIdx::new(0),
+                accumulator: SlotIdx::new(1),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ReduceFinish {
+                accumulator: SlotIdx::new(0),
+            },
+            CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::RepeatAttempt {
+                attempt_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::RepeatCheck {
+                attempt_slot: SlotIdx::new(0),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::RepeatFinish {
+                result: SlotIdx::new(0),
+            },
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
+            CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+            CompiledNodeKind::Ask {
+                prompt: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+            CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(0),
+            },
+            CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                exhausted: StepIdx::new(2),
+            },
+            CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+            },
+            CompiledNodeKind::Jump {
+                target: StepIdx::new(1),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]
+    }
+
+    #[test]
+    fn classify_all_34_variants() {
+        let kinds = all_kinds();
+        assert_eq!(kinds.len(), 34, "must exercise all 34 CompiledNodeKind variants");
+
+        for kind in &kinds {
+            let cat = classify_node(kind);
+            // Verify header/body colour lookup does not panic.
+            let _hdr = node_header_color(cat);
+            let _body = node_body_color(cat);
+            // Verify label production.
+            let label = kind_label(kind);
+            assert!(!label.is_empty(), "label must not be empty for {kind:?}");
+            // Verify badge extraction does not panic.
+            let _badges = extract_badges(kind);
+        }
+    }
+
+    #[test]
+    fn do_node_has_action_and_secret_badges() {
+        let kind = CompiledNodeKind::Do {
+            action: ActionId::new(42),
+            input: SlotIdx::new(0),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 2);
+        assert_eq!(badges[0].label, "A42");
+        assert_eq!(badges[1].label, "S");
+    }
+
+    #[test]
+    fn repeat_start_has_retry_badge() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "R5");
+    }
+
+    #[test]
+    fn wait_event_with_timeout_has_timeout_badge() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: Some(SlotIdx::new(1)),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "T");
+    }
+
+    #[test]
+    fn wait_event_without_timeout_has_no_badges() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: None,
+        };
+        let badges = extract_badges(&kind);
+        assert!(badges.is_empty());
+    }
+
+    #[test]
+    fn ask_with_timeout_has_timeout_badge() {
+        let kind = CompiledNodeKind::Ask {
+            prompt: SlotIdx::new(0),
+            timeout_slot: Some(SlotIdx::new(1)),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "T");
+    }
+
+    #[test]
+    fn finish_has_durable_badge() {
+        let kind = CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "D");
+    }
+
+    #[test]
+    fn nop_has_no_badges() {
+        let badges = extract_badges(&CompiledNodeKind::Nop);
+        assert!(badges.is_empty());
+    }
+
+    #[test]
+    fn state_glow_running_is_cyan() {
+        let (color, radius) = state_glow(OverlayState::Running);
+        assert_eq!(color, colors::state::RUNNING);
+        assert!(radius > 0.0);
+    }
+
+    #[test]
+    fn state_glow_failed_is_red() {
+        let (color, radius) = state_glow(OverlayState::Failed);
+        assert_eq!(color, colors::state::FAILED);
+        assert!(radius > 0.0);
+    }
+
+    #[test]
+    fn all_overlay_states_have_glow() {
+        let states = [
+            OverlayState::Pending,
+            OverlayState::Running,
+            OverlayState::Succeeded,
+            OverlayState::Failed,
+            OverlayState::Skipped,
+            OverlayState::Waiting,
+            OverlayState::Asking,
+            OverlayState::Cancelled,
+        ];
+        for s in &states {
+            let (_, r) = state_glow(*s);
+            assert!(r > 0.0, "glow radius must be positive for {s:?}");
+        }
+    }
+
+    #[test]
+    fn all_edge_types_have_color_with_positive_alpha() {
+        let types = [
+            EdgeType::Normal,
+            EdgeType::Branch,
+            EdgeType::ErrorRoute,
+            EdgeType::RetryRoute,
+            EdgeType::Join,
+            EdgeType::LoopBack,
+        ];
+        for t in &types {
+            let c = edge_color(*t);
+            assert!(c[3] > 0.0, "alpha must be positive for {t:?}");
+        }
+    }
+
+    #[test]
+    fn node_dimensions_are_fixed() {
+        assert_eq!(NODE_WIDTH, 160.0);
+        assert_eq!(NODE_HEIGHT, 48.0);
+        assert_eq!(HEADER_HEIGHT, 24.0);
+    }
+
+    #[test]
+    fn classify_do_as_external() {
+        let kind = CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::External);
+    }
+
+    #[test]
+    fn classify_choose_as_branch() {
+        let kind = CompiledNodeKind::Choose {
+            branches: Box::new([]),
+            otherwise: None,
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Branch);
+    }
+
+    #[test]
+    fn classify_together_start_as_parallel() {
+        let kind = CompiledNodeKind::TogetherStart {
+            branches: Box::new([]),
+            join: StepIdx::new(0),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Parallel);
+    }
+
+    #[test]
+    fn classify_wait_until_as_suspend() {
+        let kind = CompiledNodeKind::WaitUntil {
+            deadline_slot: SlotIdx::new(0),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Suspend);
+    }
+
+    #[test]
+    fn classify_finish_as_terminal() {
+        let kind = CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Terminal);
+    }
+
+    #[test]
+    fn classify_error_handler_as_error() {
+        let kind = CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(1),
+            handler: StepIdx::new(2),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Error);
+    }
+
+    #[test]
+    fn classify_retry_check_as_error() {
+        let kind = CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(1),
+            exhausted: StepIdx::new(2),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Error);
+    }
+
+    #[test]
+    fn classify_jump_as_control() {
+        let kind = CompiledNodeKind::Jump {
+            target: StepIdx::new(1),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Control);
+    }
+
+    #[test]
+    fn classify_foreach_start_as_loop() {
+        let kind = CompiledNodeKind::ForEachStart {
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Loop);
+    }
+
+    #[test]
+    fn header_and_body_colors_differ_for_each_category() {
+        for cat in [
+            NodeCategory::Data,
+            NodeCategory::External,
+            NodeCategory::Branch,
+            NodeCategory::Loop,
+            NodeCategory::Parallel,
+            NodeCategory::Suspend,
+            NodeCategory::Terminal,
+            NodeCategory::Error,
+            NodeCategory::Control,
+        ] {
+            let hdr = node_header_color(cat);
+            let body = node_body_color(cat);
+            // Header should be darker (lower RGB values) than body.
+            assert!(
+                hdr[0] <= body[0] || hdr[1] <= body[1] || hdr[2] <= body[2],
+                "header should be darker than body for {cat:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn kind_label_do_includes_action_id() {
+        let kind = CompiledNodeKind::Do {
+            action: ActionId::new(7),
+            input: SlotIdx::new(0),
+        };
+        let label = kind_label(&kind);
+        assert_eq!(label, "Do#7");
+    }
+
+    #[test]
+    fn kind_label_together_branch_includes_index() {
+        let kind = CompiledNodeKind::TogetherBranch {
+            branch: 3,
+            entry: StepIdx::new(1),
+            join: StepIdx::new(2),
+            accumulator: SlotIdx::new(0),
+        };
+        let label = kind_label(&kind);
+        assert_eq!(label, "Branch#3");
+    }
+
+    #[test]
+    fn kind_label_repeat_start_includes_max() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let label = kind_label(&kind);
+        assert_eq!(label, "Repeat(<= 10)");
+    }
+
+    #[test]
+    fn node_header_color_uses_theme_palette() {
+        assert_eq!(node_header_color(NodeCategory::Data), colors::node_header::DATA);
+        assert_eq!(node_header_color(NodeCategory::External), colors::node_header::EXTERNAL);
+        assert_eq!(node_header_color(NodeCategory::Error), colors::node_header::ERROR);
+    }
+
+    #[test]
+    fn node_body_color_uses_theme_palette() {
+        assert_eq!(node_body_color(NodeCategory::Data), colors::node_category::DATA);
+        assert_eq!(node_body_color(NodeCategory::External), colors::node_category::EXTERNAL);
+        assert_eq!(node_body_color(NodeCategory::Error), colors::node_category::ERROR);
+    }
+
+    #[test]
+    fn edge_color_uses_theme_palette() {
+        assert_eq!(edge_color(EdgeType::Normal), colors::neon::CYAN_DIM);
+        assert_eq!(edge_color(EdgeType::Branch), colors::neon::PURPLE);
+        assert_eq!(edge_color(EdgeType::ErrorRoute), colors::neon::RED_DIM);
+        assert_eq!(edge_color(EdgeType::RetryRoute), colors::neon::YELLOW);
+        assert_eq!(edge_color(EdgeType::Join), colors::neon::BLUE_DIM);
+        assert_eq!(edge_color(EdgeType::LoopBack), colors::neon::TEAL);
     }
 }
