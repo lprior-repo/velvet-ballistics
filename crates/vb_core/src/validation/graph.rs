@@ -106,64 +106,55 @@ fn validate_kind_edges(
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
+    if is_stateless(kind) {
+        return Ok(());
+    }
     match kind {
-        // Stateless: no outgoing edges
-        CompiledNodeKind::Nop => Ok(()),
-        CompiledNodeKind::SetConst { .. } => Ok(()),
-        CompiledNodeKind::Copy { .. } => Ok(()),
-        CompiledNodeKind::EvalExpr { .. } => Ok(()),
-        CompiledNodeKind::BuildObject { .. } => Ok(()),
-        CompiledNodeKind::BuildList { .. } => Ok(()),
-        CompiledNodeKind::Do { .. } => Ok(()),
-        CompiledNodeKind::ForEachJoin { .. } => Ok(()),
-        CompiledNodeKind::TogetherJoin { .. } => Ok(()),
-        CompiledNodeKind::CollectFinish { .. } => Ok(()),
-        CompiledNodeKind::ReduceFinish { .. } => Ok(()),
-        CompiledNodeKind::RepeatFinish { .. } => Ok(()),
-        CompiledNodeKind::WaitUntil { .. } => Ok(()),
-        CompiledNodeKind::WaitEvent { .. } => Ok(()),
-        CompiledNodeKind::Ask { .. } => Ok(()),
-        CompiledNodeKind::AskResume { .. } => Ok(()),
-        CompiledNodeKind::Finish { .. } => Ok(()),
-        CompiledNodeKind::Jump { .. } => Ok(()),
-
-        // Choice branches
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
-            validate_choose_slot_edges(branches, *otherwise, ci, cid)
+        CompiledNodeKind::ChooseSlot { branches, otherwise } => validate_choice(branches, *otherwise, ci, cid),
+        CompiledNodeKind::Choose { branches, otherwise } => validate_choice(branches, *otherwise, ci, cid),
+        CompiledNodeKind::ForEachStart { done, .. } | CompiledNodeKind::ForEachNext { done, .. }
+        | CompiledNodeKind::RepeatCheck { done, .. } | CompiledNodeKind::CollectStart { done, .. }
+        | CompiledNodeKind::CollectPage { done, .. } | CompiledNodeKind::CollectNext { done, .. }
+        | CompiledNodeKind::ReduceStart { done, .. } | CompiledNodeKind::ReduceNext { done, .. }
+        | CompiledNodeKind::RepeatStart { done, .. } | CompiledNodeKind::RepeatAttempt { done, .. } => {
+            validate_done(*done, ci, cid)
         }
-        CompiledNodeKind::Choose { branches, otherwise } => {
-            validate_choose_edges(branches, *otherwise, ci, cid)
+        CompiledNodeKind::TogetherStart { join, .. } | CompiledNodeKind::TogetherBranch { join, .. } => {
+            validate_join(*join, ci, cid)
         }
-
-        // ForEach edges
-        CompiledNodeKind::ForEachStart { done, .. } => validate_for_each_start(done, ci, cid),
-        CompiledNodeKind::ForEachNext { done, .. } => validate_for_each_next(done, ci, cid),
-
-        // Together edges
-        CompiledNodeKind::TogetherStart { join, .. } => validate_together_start(join, ci, cid),
-        CompiledNodeKind::TogetherBranch { join, .. } => validate_together_branch(join, ci, cid),
-
-        // Collect/Reduce/Repeat done edges
-        CompiledNodeKind::CollectStart { done, .. } => validate_collect_start(done, ci, cid),
-        CompiledNodeKind::CollectPage { done, .. } => validate_collect_page(done, ci, cid),
-        CompiledNodeKind::CollectNext { done, .. } => validate_collect_next(done, ci, cid),
-        CompiledNodeKind::ReduceStart { done, .. } => validate_reduce_start(done, ci, cid),
-        CompiledNodeKind::ReduceNext { done, .. } => validate_reduce_next(done, ci, cid),
-        CompiledNodeKind::RepeatStart { done, .. } => validate_repeat_start(done, ci, cid),
-        CompiledNodeKind::RepeatAttempt { done, .. } => validate_repeat_attempt(done, ci, cid),
-        CompiledNodeKind::RepeatCheck { done, .. } => validate_repeat_check(done, ci, cid),
-
-        // Retry exhausted edge
-        CompiledNodeKind::RetryCheck { exhausted, .. } => validate_retry_check(exhausted, ci, cid),
-
-        // Error handler edge
-        CompiledNodeKind::ErrorHandler { handler, .. } => validate_error_handler(handler, ci, cid),
+        CompiledNodeKind::RetryCheck { exhausted, .. } => validate_exhausted(*exhausted, ci, cid),
+        CompiledNodeKind::ErrorHandler { handler, .. } => validate_handler(*handler, ci, cid),
     }
 }
 
-// Per-kind validation functions
+/// Returns true for node kinds with no outgoing edges to validate.
+#[inline]
+fn is_stateless(kind: &CompiledNodeKind) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::CollectFinish { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::Finish { .. }
+        | CompiledNodeKind::Jump { .. }
+    )
+}
 
-fn validate_choose_slot_edges(
+/// Validates choice branches + optional fallback edge.
+fn validate_choice(
     branches: &[crate::nodes::Branch],
     otherwise: Option<StepIdx>,
     ci: usize,
@@ -178,75 +169,28 @@ fn validate_choose_slot_edges(
     Ok(())
 }
 
-fn validate_choose_edges(
-    branches: &[crate::nodes::Branch],
-    otherwise: Option<StepIdx>,
-    ci: usize,
-    cid: StepIdx,
-) -> Result<(), WorkflowError> {
-    for branch in branches {
-        validate_forward_target(branch.target, ci, cid)?;
-    }
-    if let Some(fallback) = otherwise {
-        validate_forward_target(fallback, ci, cid)?;
-    }
-    Ok(())
+/// Validates done edge points forward.
+#[inline]
+fn validate_done(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(done, ci, cid)
 }
 
-fn validate_for_each_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
+/// Validates join edge points forward.
+#[inline]
+fn validate_join(join: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(join, ci, cid)
 }
 
-fn validate_for_each_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
+/// Validates exhausted edge points forward.
+#[inline]
+fn validate_exhausted(exhausted: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(exhausted, ci, cid)
 }
 
-fn validate_together_start(join: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*join, ci, cid)
-}
-
-fn validate_together_branch(join: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*join, ci, cid)
-}
-
-fn validate_collect_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_collect_page(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_collect_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_reduce_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_reduce_next(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_repeat_start(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_repeat_attempt(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_repeat_check(done: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*done, ci, cid)
-}
-
-fn validate_retry_check(exhausted: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*exhausted, ci, cid)
-}
-
-fn validate_error_handler(handler: &StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
-    validate_forward_target(*handler, ci, cid)
+/// Validates handler edge points forward.
+#[inline]
+fn validate_handler(handler: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(handler, ci, cid)
 }
 
 /// Validates a target step is strictly forward from the current node.
