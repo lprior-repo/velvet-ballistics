@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 //! Engine tests moved from engine.rs for line count compliance.
+#![allow(unused_imports)]
 
 use vb_core::action::Idempotency;
 use vb_core::action::RetrySafety;

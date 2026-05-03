@@ -42,6 +42,12 @@ impl TraceRing {
         self.history.len()
     }
 
+    /// Returns true if the ring contains no events.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.history.is_empty()
+    }
+
     /// Attempts to push a trace event. Returns false if the ring is full (drops oldest policy
     /// is not used here; the caller may choose to count the drop).
     pub fn push(&mut self, event: TraceEvent) -> bool {

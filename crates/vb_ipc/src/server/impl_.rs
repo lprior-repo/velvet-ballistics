@@ -1,5 +1,7 @@
 //! IpcServer implementation.
 
+#![allow(unused_imports)]
+
 use arrayvec::ArrayVec;
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};

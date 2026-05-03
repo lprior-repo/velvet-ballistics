@@ -199,37 +199,21 @@ impl Runtime {
 
         for (index, shard) in self.shards.iter().enumerate() {
             let counters = shard.counters().snapshot();
-            let active_runs = match u32::try_from(shard.active_run_count()) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
-            let queue_depth = match u32::try_from(shard.command_queue_len()) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
-            let queue_remaining = match u32::try_from(shard.remaining_capacity()) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
-            let pending_timers = match u32::try_from(shard.pending_timer_count()) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
+            let active_runs = u32::try_from(shard.active_run_count()).unwrap_or(u32::MAX);
+            let queue_depth = u32::try_from(shard.command_queue_len()).unwrap_or(u32::MAX);
+            let queue_remaining = u32::try_from(shard.remaining_capacity()).unwrap_or(u32::MAX);
+            let pending_timers = u32::try_from(shard.pending_timer_count()).unwrap_or(u32::MAX);
             let (fp_free, fp_total) = shard.frame_pool_metrics();
-            let frame_pool_free = match u32::try_from(fp_free) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
-            let frame_pool_total = match u32::try_from(fp_total) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
+            let frame_pool_free = u32::try_from(fp_free).unwrap_or(u32::MAX);
+            let frame_pool_total = u32::try_from(fp_total).unwrap_or(u32::MAX);
             let trace_capacity = shard.trace_ring().capacity();
             let trace_len = shard.trace_ring().len();
             let trace_ring_fill_pct = if trace_capacity > 0 {
-                (f32::from_bits(
-                    (trace_len as f32 / trace_capacity as f32 * 100.0).to_bits(),
-                ))
+                // SAFETY: trace_len and trace_capacity are bounded by configuration
+                // (typically 4096). Safe lossless narrowing to u32 for metric calculation.
+                #[allow(clippy::as_conversions)]
+                let ratio = (trace_len as f32) / (trace_capacity as f32);
+                ratio * 100.0
             } else {
                 0.0
             };
@@ -240,10 +224,7 @@ impl Runtime {
             runs_finished_total = runs_finished_total.saturating_add(counters.runs_completed);
             steps_total = steps_total.saturating_add(counters.steps_executed);
 
-            let shard_id = match u32::try_from(index) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
+            let shard_id = u32::try_from(index).unwrap_or(u32::MAX);
             shards.push(ShardMetricsSnapshot {
                 shard_id,
                 active_runs,
@@ -306,11 +287,11 @@ impl Runtime {
                     break;
                 };
                 let digest = state.workflow.digest();
-                if let Some(filter) = workflow_filter {
-                    if digest != filter {
+                if let Some(filter) = workflow_filter
+                    && digest != filter
+                {
                         index = index.saturating_add(1);
                         continue;
-                    }
                 }
                 let step_count = state.workflow.node_count();
                 let mut steps_completed: u16 = 0;

@@ -1,5 +1,7 @@
 //! IPC command handlers dispatched by the server.
 
+#![allow(unused_imports)]
+
 use vb_core::action::{ActionFailure, ActionFailureCode};
 use vb_core::ids::SlotIdx;
 use vb_core::value::{SlotValue, Taint};

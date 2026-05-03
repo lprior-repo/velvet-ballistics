@@ -206,7 +206,7 @@ fn check_time_limit(state: &CollectPaginationState) -> Result<(), EngineError> {
 fn millis_since_epoch() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
+        .map(|d| u64::try_from(d.as_millis()).unwrap_or(0))
         .unwrap_or(0)
 }
 

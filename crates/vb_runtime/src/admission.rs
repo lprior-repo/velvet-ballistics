@@ -137,10 +137,7 @@ impl StorageArtifactStore {
 
 impl ArtifactStore for StorageArtifactStore {
     fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
-        match self.journal.compiled_ir(digest) {
-            Ok(Some(_)) => true,
-            _ => false,
-        }
+        matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
     }
 }
 

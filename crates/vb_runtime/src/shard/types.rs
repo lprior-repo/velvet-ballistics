@@ -18,13 +18,13 @@ use crate::trace::TraceRing;
 type FramePoolKey = (u16, u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PendingTimerKind {
+pub enum PendingTimerKind {
     Wait,
     Ask,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct PendingTimer {
+pub struct PendingTimer {
     pub step: StepIdx,
     pub kind: PendingTimerKind,
 }
