@@ -50,6 +50,8 @@ pub fn write_header(out: &mut String) -> CodegenResult<()> {
         "    ActionSuspend {{ action_id: u16, input_slot: u16 }},"
     )
     .map_err(fmt_err)?;
+    writeln!(out, "    WaitSuspend {{ deadline_slot: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    AskSuspend {{ prompt_slot: u16 }},").map_err(fmt_err)?;
     writeln!(out, "    UnknownAction,").map_err(fmt_err)?;
     writeln!(
         out,

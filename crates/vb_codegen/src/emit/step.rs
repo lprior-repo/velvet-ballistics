@@ -228,7 +228,15 @@ fn emit_wait_until_step(
         deadline_slot.get()
     )
     .map_err(fmt_err)?;
-    write_next_or_error(out, next)
+    match next {
+        Some(target) => emit_continue_step(out, target),
+        None => writeln!(
+            out,
+            "    Err(DriveError::WaitSuspend {{ deadline_slot: {} }})",
+            deadline_slot.get()
+        )
+        .map_err(fmt_err),
+    }
 }
 
 fn emit_wait_event_step(
@@ -239,7 +247,15 @@ fn emit_wait_event_step(
 ) -> CodegenResult<()> {
     writeln!(out, "    let _event = read_slot(slots, {})?;", event.get()).map_err(fmt_err)?;
     emit_optional_timeout_read(out, timeout_slot)?;
-    write_next_or_error(out, next)
+    match next {
+        Some(target) => emit_continue_step(out, target),
+        None => writeln!(
+            out,
+            "    Err(DriveError::WaitSuspend {{ deadline_slot: {} }})",
+            event.get()
+        )
+        .map_err(fmt_err),
+    }
 }
 
 fn emit_ask_step(
@@ -255,7 +271,15 @@ fn emit_ask_step(
     )
     .map_err(fmt_err)?;
     emit_optional_timeout_read(out, timeout_slot)?;
-    write_next_or_error(out, next)
+    match next {
+        Some(target) => emit_continue_step(out, target),
+        None => writeln!(
+            out,
+            "    Err(DriveError::AskSuspend {{ prompt_slot: {} }})",
+            prompt.get()
+        )
+        .map_err(fmt_err),
+    }
 }
 
 fn emit_optional_timeout_read(
