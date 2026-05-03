@@ -618,14 +618,14 @@ pub fn lower_wait(
                 deadline_slot: deadline,
             }
         }
-        WaitKind::Event { event, timeout_slot } => {
+        WaitKind::Event { event, timeout } => {
             builder.record_slot(event);
-            if let Some(slot) = timeout_slot {
+            if let Some(slot) = timeout {
                 builder.record_slot(slot);
             }
             CompiledNodeKind::WaitEvent {
                 event,
-                timeout_slot,
+                timeout_slot: timeout,
             }
         }
     };
@@ -3259,14 +3259,14 @@ fn compile_wait(
     let mut node = match (until, event, timeout) {
         (Some(deadline), None, None) => {
             builder.record_slot(deadline);
-            lower_wait(id, deadline, None, false, &mut SlotCompiler::new())
+            lower_wait(id, WaitKind::Until { deadline }, &mut SlotCompiler::new())
         }
         (None, Some(event_slot), timeout_slot) => {
             builder.record_slot(event_slot);
             if let Some(slot) = timeout_slot {
                 builder.record_slot(slot);
             }
-            lower_wait(id, event_slot, timeout_slot, true, &mut SlotCompiler::new())
+            lower_wait(id, WaitKind::Event { event: event_slot, timeout: timeout_slot }, &mut SlotCompiler::new())
         }
         _ => {
             return Err(CompileError::StepFieldShape {
