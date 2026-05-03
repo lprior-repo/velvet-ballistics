@@ -2,17 +2,17 @@
 
 use crate::errors::EngineError;
 use crate::ids::{
-    AccessorIdx, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest,
+    ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest,
 };
 use crate::limits::MAX_EXPRESSION_STACK;
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
     ResourceContract, WorkflowParts, check_expr_stack_bound,
 };
 
-use super::{eval_accessor, eval_accessor_with_store, eval_expr, eval_expr_with_store};
+use super::eval_expr_with_store;
 
 fn empty_plan_with_expr(
     ops: Box<[ExprOp]>,

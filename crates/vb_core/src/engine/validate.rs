@@ -184,10 +184,10 @@ mod tests {
         validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
         validate_transition_target,
     };
-    use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+    use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::ConstValue;
     use crate::workflow::{
-        AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch,
+        CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch,
         WorkflowError, WorkflowParts,
     };
 
