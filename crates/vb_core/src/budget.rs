@@ -310,6 +310,15 @@ impl fmt::Display for BudgetError {
 
 impl std::error::Error for BudgetError {}
 
+impl From<WorkflowError> for BudgetError {
+    fn from(_err: WorkflowError) -> Self {
+        BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        }
+    }
+}
+
 /// Counts the worst-case total number of runtime steps by performing a DFS walk
 /// from the entry node. Unlike a naive unique-node count, this function accounts
 /// for loop iteration limits: when a loop header (ForEachStart, CollectStart,
@@ -392,7 +401,14 @@ fn visit_node_for_total_steps(
                 node_count,
                 total,
                 stack,
-            )?;
+            )
+            .map_err(|e| {
+                let actual = match e {
+                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                    _ => u64::MAX,
+                };
+                WorkflowError::StepCountOverflow { actual }
+            })?;
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
@@ -406,14 +422,28 @@ fn visit_node_for_total_steps(
                 node_count,
                 total,
                 stack,
-            )?;
+            )
+            .map_err(|e| {
+                let actual = match e {
+                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                    _ => u64::MAX,
+                };
+                WorkflowError::StepCountOverflow { actual }
+            })?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
             let iter_count =
                 u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
             total = count_and_push_loop_body(
                 nodes, *body, *done, iter_count, visited, node_count, total, stack,
-            )?;
+            )
+            .map_err(|e| {
+                let actual = match e {
+                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                    _ => u64::MAX,
+                };
+                WorkflowError::StepCountOverflow { actual }
+            })?;
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
@@ -429,7 +459,14 @@ fn visit_node_for_total_steps(
                 node_count,
                 total,
                 stack,
-            )?;
+            )
+            .map_err(|e| {
+                let actual = match e {
+                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                    _ => u64::MAX,
+                };
+                WorkflowError::StepCountOverflow { actual }
+            })?;
         }
         _ => {
             push_successor_targets(&node.kind, stack);
@@ -452,10 +489,21 @@ fn count_and_push_loop_body(
     node_count: usize,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetError> {
     let body_count = count_body_region_nodes(nodes, body, done, visited, node_count)?;
     let iter_count = iter_count.max(1);
-    total = total.saturating_add(body_count.saturating_mul(iter_count));
+    let product = body_count
+        .checked_mul(iter_count)
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })?;
+    total = total
+        .checked_add(product)
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })?;
     stack.push(done);
     Ok(total)
 }
@@ -469,7 +517,7 @@ fn count_body_region_nodes(
     done: StepIdx,
     global_visited: &mut [bool],
     node_count: usize,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetError> {
     let done_idx = done.as_usize();
     let mut region_visited: Vec<bool> = vec![false; node_count];
     let mut stack: Vec<StepIdx> = Vec::new();
@@ -501,12 +549,11 @@ fn visit_body_region_node(
     region_visited: &mut [bool],
     stack: &mut Vec<StepIdx>,
     mut count: u64,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetError> {
     let idx = current.as_usize();
     if idx >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
+        return Err(WorkflowError::StepOutOfBounds { step: current }.into());
     }
-    // Stop at the done exit node -- it's not part of the body
     if idx == done_idx {
         return Ok(count);
     }
@@ -517,18 +564,22 @@ fn visit_body_region_node(
         return Ok(count);
     }
     let Some(flag) = region_visited.get_mut(idx) else {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
+        return Err(WorkflowError::StepOutOfBounds { step: current }.into());
     };
     *flag = true;
 
-    count = count.saturating_add(1);
+    count = count
+        .checked_add(1)
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })?;
 
     let node = match nodes.get(idx) {
         Some(n) => n,
-        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+        None => return Err(WorkflowError::StepOutOfBounds { step: current }.into()),
     };
 
-    // Recursively handle nested loop headers within the body region
     match &node.kind {
         CompiledNodeKind::ForEachStart {
             limit, body, done, ..
@@ -609,10 +660,21 @@ fn count_nested_for_region(
     node_count: usize,
     mut count: u64,
     stack: &mut Vec<StepIdx>,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetError> {
     let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
     stack.push(done);
-    Ok(count.saturating_add(body_count.saturating_mul(iter_count)))
+    let product = body_count
+        .checked_mul(iter_count)
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })?;
+    count
+        .checked_add(product)
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })
 }
 
 /// Pushes all successor StepIdx targets from a node kind onto the stack,

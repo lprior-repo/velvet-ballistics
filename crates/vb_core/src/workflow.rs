@@ -346,6 +346,12 @@ pub enum WorkflowError {
         /// Human-readable detail describing which dimension failed.
         detail: &'static str,
     },
+    /// Budget step count overflowed during computation.
+    #[error("budget step count overflow: {actual} cannot be represented")]
+    StepCountOverflow {
+        /// The overflowing value.
+        actual: u64,
+    },
     /// A symbol identifier exceeded the declared symbols table bound.
     #[error("symbol {symbol:?} exceeds symbols_count")]
     SymbolOutOfBounds {
@@ -1428,7 +1434,7 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
 }
 
 fn collect_choose_slot_targets(
-    branches: &Box<[SlotBranch]>,
+    branches: &[SlotBranch],
     otherwise: Option<StepIdx>,
     targets: &mut Vec<StepIdx>,
 ) {
@@ -1441,7 +1447,7 @@ fn collect_choose_slot_targets(
 }
 
 fn collect_choose_expr_targets(
-    branches: &Box<[ExprBranch]>,
+    branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
     targets: &mut Vec<StepIdx>,
 ) {
@@ -1454,7 +1460,7 @@ fn collect_choose_expr_targets(
 }
 
 fn collect_together_start_targets(
-    branches: &Box<[StepIdx]>,
+    branches: &[StepIdx],
     join: StepIdx,
     targets: &mut Vec<StepIdx>,
 ) {
@@ -1556,7 +1562,7 @@ fn validate_kind_edges(
 }
 
 fn validate_choose_slot_edges(
-    branches: &Box<[SlotBranch]>,
+    branches: &[SlotBranch],
     otherwise: &Option<StepIdx>,
     ci: usize,
     cid: StepIdx,
@@ -1571,7 +1577,7 @@ fn validate_choose_slot_edges(
 }
 
 fn validate_choose_expr_edges(
-    branches: &Box<[ExprBranch]>,
+    branches: &[ExprBranch],
     otherwise: &Option<StepIdx>,
     ci: usize,
     cid: StepIdx,
@@ -1595,7 +1601,7 @@ fn validate_loop_done_only(
 }
 
 fn validate_together_start_edges(
-    branches: &Box<[StepIdx]>,
+    branches: &[StepIdx],
     join: StepIdx,
     ci: usize,
     cid: StepIdx,
