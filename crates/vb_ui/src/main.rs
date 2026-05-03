@@ -1,8 +1,10 @@
+pub mod app_state;
 pub mod ipc_bridge;
 
 pub use makepad_widgets;
 
 use makepad_widgets::*;
+use vb_ui::app_state::AppState;
 
 app_main!(VbApp);
 
@@ -123,6 +125,40 @@ script_mod! {
                                 }
                             }
                             Filler{}
+
+                            // ── Screen navigation tabs ──────────────
+                            nav_tabs := View{
+                                width: Fit height: Fit
+                                flow: Right spacing: 2
+                                align: Align{y: 0.5}
+
+                                nav_replay := ButtonFlat{
+                                    text: "Replay"
+                                    draw_bg +: {color: #1a2a2a border_radius: 3.0}
+                                    draw_text +: {color: #00f5ff text_style +: {font_size: 11}}
+                                }
+                                nav_verify := ButtonFlat{
+                                    text: "Verify"
+                                    draw_bg +: {color: #1a1a2e border_radius: 3.0}
+                                    draw_text +: {color: #39ff14 text_style +: {font_size: 11}}
+                                }
+                                nav_system := ButtonFlat{
+                                    text: "System"
+                                    draw_bg +: {color: #1a1a2e border_radius: 3.0}
+                                    draw_text +: {color: #2d6bff text_style +: {font_size: 11}}
+                                }
+                                nav_workflow := ButtonFlat{
+                                    text: "Workflow"
+                                    draw_bg +: {color: #1a1a2e border_radius: 3.0}
+                                    draw_text +: {color: #b14dff text_style +: {font_size: 11}}
+                                }
+                                nav_incident := ButtonFlat{
+                                    text: "Incidents"
+                                    draw_bg +: {color: #1a1a2e border_radius: 3.0}
+                                    draw_text +: {color: #ff073a text_style +: {font_size: 11}}
+                                }
+                            }
+
                             run_badge := View{
                                 width: Fit height: Fit
                                 flow: Right spacing: 6
@@ -863,10 +899,44 @@ script_mod! {
 pub struct VbApp {
     #[live]
     ui: WidgetRef,
+    #[rust]
+    app_state: AppState,
 }
 
 impl MatchEvent for VbApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        // Screen navigation tabs
+        if self.ui.button(cx, ids!(nav_replay)).clicked(actions) {
+            self.app_state.switch_screen(vb_ui::app_state::Screen::RunReplay);
+            script_eval!(cx, {
+                std.println("nav: switched to Replay Theater")
+            });
+        }
+        if self.ui.button(cx, ids!(nav_verify)).clicked(actions) {
+            self.app_state.switch_screen(vb_ui::app_state::Screen::Verification);
+            script_eval!(cx, {
+                std.println("nav: switched to Verification")
+            });
+        }
+        if self.ui.button(cx, ids!(nav_system)).clicked(actions) {
+            self.app_state.switch_screen(vb_ui::app_state::Screen::SystemOverview);
+            script_eval!(cx, {
+                std.println("nav: switched to System Overview")
+            });
+        }
+        if self.ui.button(cx, ids!(nav_workflow)).clicked(actions) {
+            self.app_state.switch_screen(vb_ui::app_state::Screen::WorkflowGraph);
+            script_eval!(cx, {
+                std.println("nav: switched to Workflow Graph")
+            });
+        }
+        if self.ui.button(cx, ids!(nav_incident)).clicked(actions) {
+            self.app_state.switch_screen(vb_ui::app_state::Screen::IncidentConsole);
+            script_eval!(cx, {
+                std.println("nav: switched to Incident Console")
+            });
+        }
+
         // Transport button handling
         if self.ui.button(cx, ids!(btn_start)).clicked(actions) {
             script_eval!(cx, {
