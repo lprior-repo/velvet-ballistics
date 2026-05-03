@@ -382,7 +382,7 @@ pub fn validate_action_dispatch(
     }
 
     // Verify output slot is writable (within frame bounds).
-    if usize::from(output_slot.as_usize()) >= usize::from(frame.slot_count()) {
+    if output_slot.as_usize() >= usize::from(frame.slot_count()) {
         return Err(ActionError::DispatchFailed);
     }
 
