@@ -167,6 +167,7 @@ mod tests {
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         }
     }
 
