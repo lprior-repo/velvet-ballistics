@@ -1,10 +1,12 @@
 //! BDD typecheck tests.
 
+#[allow(unused_imports)]
 use crate::ExprError;
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
 use crate::typecheck::{ExprType, TypeContext, typecheck_expr};
 
+#[allow(dead_code)]
 fn check(source: &str) -> crate::ExprResult<ExprType> {
     let tokens = lex_expr(source)?;
     let ast = parse_expr(&tokens)?;

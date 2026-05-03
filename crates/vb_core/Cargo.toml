@@ -14,5 +14,9 @@ thiserror.workspace = true
 postcard.workspace = true
 proptest = { workspace = true }
 
+[features]
+default = []
+unimplemented_idempotency_checks = []
+
 [lints]
 workspace = true

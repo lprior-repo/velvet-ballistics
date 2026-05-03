@@ -45,6 +45,12 @@ pub struct NodeKindRegistry {
     kinds: Vec<NodeKindDescriptor>,
 }
 
+impl Default for NodeKindRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodeKindRegistry {
     pub fn new() -> Self {
         Self { kinds: Vec::new() }

@@ -1,6 +1,8 @@
 //! Lexer tests.
 
+#[allow(unused_imports)]
 use crate::ExprError;
+#[allow(unused_imports)]
 use crate::lexer::{
     BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp, lex_expr, lex_expr_spanned,
 };

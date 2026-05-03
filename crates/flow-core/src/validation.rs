@@ -52,16 +52,16 @@ fn diag(
 }
 
 fn check_entry_node_exists(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    if let Some(ref entry_id) = graph.entry_node {
-        if !graph.nodes.contains_key(entry_id) {
-            diagnostics.push(diag(
-                DiagnosticSeverity::Error,
-                "entry-node-missing",
-                format!("entry_node '{entry_id}' does not reference a valid node"),
-                Some(entry_id.clone()),
-                None,
-            ));
-        }
+    if let Some(ref entry_id) = graph.entry_node
+        && !graph.nodes.contains_key(entry_id)
+    {
+        diagnostics.push(diag(
+            DiagnosticSeverity::Error,
+            "entry-node-missing",
+            format!("entry_node '{entry_id}' does not reference a valid node"),
+            Some(entry_id.clone()),
+            None,
+        ));
     }
 }
 
@@ -155,19 +155,19 @@ fn check_self_loops(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
 
 fn check_group_members(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
     for (node_id, node) in &graph.nodes {
-        if let Some(ref group_id) = node.parent {
-            if !graph.groups.contains_key(group_id) {
-                diagnostics.push(diag(
-                    DiagnosticSeverity::Error,
-                    "node-parent-group-missing",
-                    format!(
-                        "node '{}' references non-existent parent group '{}'",
-                        node_id, group_id
-                    ),
-                    Some(node_id.clone()),
-                    None,
-                ));
-            }
+        if let Some(ref group_id) = node.parent
+            && !graph.groups.contains_key(group_id)
+        {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "node-parent-group-missing",
+                format!(
+                    "node '{}' references non-existent parent group '{}'",
+                    node_id, group_id
+                ),
+                Some(node_id.clone()),
+                None,
+            ));
         }
     }
 }

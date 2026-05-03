@@ -596,7 +596,7 @@ pub fn lower_repeat(
 /// Replaces the previous `is_event: bool` parameter, which allowed invalid
 /// combinations such as passing `is_event = false` with a `timeout_slot`,
 /// which would be silently discarded.
-enum WaitKind {
+pub enum WaitKind {
     /// `wait.until` — waits until a deadline slot is reached; no timeout.
     Until { deadline: SlotIdx },
     /// `wait.event` — waits for an event slot, with an optional timeout.

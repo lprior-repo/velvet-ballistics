@@ -1,9 +1,12 @@
 //! BDD parser tests.
 
+#[allow(unused_imports)]
 use crate::ExprError;
 use crate::lexer::{BinaryOp, UnaryOp, lex_expr};
+#[allow(unused_imports)]
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral, parse_expr};
 
+#[allow(dead_code)]
 fn parse(source: &str) -> crate::ExprResult<ExprAst> {
     let tokens = lex_expr(source)?;
     parse_expr(&tokens)
@@ -244,6 +247,7 @@ fn parse_expr_returns_error_for_missing_right_paren() -> crate::ExprResult<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn as_binary(expr: &ExprAst) -> crate::ExprResult<(BinaryOp, &ExprAst, &ExprAst)> {
     match expr {
         ExprAst::Binary { op, left, right } => Ok((*op, left, right)),
@@ -253,6 +257,7 @@ fn as_binary(expr: &ExprAst) -> crate::ExprResult<(BinaryOp, &ExprAst, &ExprAst)
     }
 }
 
+#[allow(dead_code)]
 fn as_unary(expr: &ExprAst) -> crate::ExprResult<(UnaryOp, &ExprAst)> {
     match expr {
         ExprAst::Unary { op, expr } => Ok((*op, expr)),
@@ -262,6 +267,7 @@ fn as_unary(expr: &ExprAst) -> crate::ExprResult<(UnaryOp, &ExprAst)> {
     }
 }
 
+#[allow(dead_code)]
 fn as_helper(expr: &ExprAst) -> crate::ExprResult<(ExprHelper, &[ExprAst])> {
     match expr {
         ExprAst::Helper { name, args } => Ok((*name, args)),

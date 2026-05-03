@@ -222,16 +222,16 @@ impl RunFrame {
             SlotValue::Object(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx) {
-                        if *vid == *id {
-                            return self
-                                .taint
-                                .get(idx)
-                                .copied()
-                                .ok_or(CoreError::InternalInvariantViolation {
-                                    reason: "taint_slots_diverged",
-                                });
-                        }
+                    if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx)
+                        && *vid == *id
+                    {
+                        return self
+                            .taint
+                            .get(idx)
+                            .copied()
+                            .ok_or(CoreError::InternalInvariantViolation {
+                                reason: "taint_slots_diverged",
+                            });
                     }
                     idx = idx.saturating_add(1);
                 }
@@ -240,16 +240,16 @@ impl RunFrame {
             SlotValue::List(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx) {
-                        if *vid == *id {
-                            return self
-                                .taint
-                                .get(idx)
-                                .copied()
-                                .ok_or(CoreError::InternalInvariantViolation {
-                                    reason: "taint_slots_diverged",
-                                });
-                        }
+                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx)
+                        && *vid == *id
+                    {
+                        return self
+                            .taint
+                            .get(idx)
+                            .copied()
+                            .ok_or(CoreError::InternalInvariantViolation {
+                                reason: "taint_slots_diverged",
+                            });
                     }
                     idx = idx.saturating_add(1);
                 }
