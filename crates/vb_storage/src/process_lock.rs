@@ -52,8 +52,8 @@ impl ProcessLock {
                 // can report who holds the lock.
                 let pid = std::process::id();
                 // Best-effort — ignore write errors for the PID recording.
-                let _ = file.set_len(0);
-                let _ = write!(file, "{pid}");
+                drop(file.set_len(0));
+                drop(write!(file, "{pid}"));
 
                 Ok(Self {
                     _file: file,
@@ -92,7 +92,7 @@ impl ProcessLock {
 fn read_holder_pid(file: &File) -> Option<u32> {
     let mut buf = String::new();
     let mut file = file;
-    let _ = file.rewind();
-    let _ = file.read_to_string(&mut buf);
+    drop(file.rewind());
+    drop(file.read_to_string(&mut buf));
     buf.trim().parse::<u32>().ok()
 }

@@ -220,10 +220,9 @@ impl Shard {
                 EvidenceEvent::StepSucceeded { step, output } => {
                     if let Some(slot) = output {
                         self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
-                        // Get the frame to read the slot value
                         if let Some(state) = self.runs.get(&run) {
                             if let Ok(value) = state.frame.read_slot(slot) {
-                                let encoded = postcard::to_allocvec(value)
+                                let encoded = postcard::to_allocvec(&value)
                                     .map_err(|_| RuntimeError::EncodeFailed)?;
                                 self.journal.append(RuntimeJournalEvent::SlotWritten {
                                     run,
@@ -249,6 +248,16 @@ impl Shard {
                         run,
                         step,
                         output: output.unwrap_or(SlotIdx::ZERO),
+                    })?;
+                }
+                EvidenceEvent::SlotWritten { slot, value } => {
+                    self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
+                    let encoded = postcard::to_allocvec(&value)
+                        .map_err(|_| RuntimeError::EncodeFailed)?;
+                    self.journal.append(RuntimeJournalEvent::SlotWritten {
+                        run,
+                        slot,
+                        value: encoded,
                     })?;
                 }
             }

@@ -355,11 +355,12 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = vb_core::engine::StepBudget::new(step_budget_per_tick);
+        let empty_caps = CapabilitySet::empty();
         let granted = state
             .admission
             .as_ref()
-            .and_then(|a| Some(a.granted_capabilities()))
-            .unwrap_or(&CapabilitySet::empty());
+            .map(|a| a.granted_capabilities())
+            .unwrap_or(&empty_caps);
         drive_deterministic_full(
             &state.workflow,
             &mut state.frame,

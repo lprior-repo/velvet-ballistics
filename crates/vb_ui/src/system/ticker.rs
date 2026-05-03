@@ -1,47 +1,122 @@
-use std::time::Instant;
-
-pub struct EventTicker {
-    events: Vec<TickerEvent>,
-    max_events: usize,
-}
+use std::collections::{HashSet, VecDeque};
 
 #[derive(Debug, Clone)]
 pub struct TickerEvent {
-    pub event_kind: String,
+    pub seq: u64,
+    pub shard: u32,
     pub run_id: Option<u64>,
-    pub shard_id: Option<u32>,
-    pub step_id: Option<u16>,
-    pub timestamp: Instant,
-    pub color: [f32; 4],
+    pub kind: TickerEventKind,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TickerEventKind {
+    RunAccepted,
+    StepStarted,
+    StepSucceeded,
+    ActionScheduled,
+    ActionCompleted,
+    ActionFailed,
+    RunFinished,
+    RunFailed,
+    Other,
+}
+
+pub struct EventTicker {
+    events: VecDeque<TickerEvent>,
+    capacity: usize,
+    filters: TickerFilters,
+}
+
+pub struct TickerFilters {
+    pub shard: Option<u32>,
+    pub run_id: Option<u64>,
+    pub kinds: HashSet<TickerEventKind>,
 }
 
 impl EventTicker {
     #[must_use]
-    pub fn new(max_events: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         Self {
-            events: Vec::new(),
-            max_events,
+            events: VecDeque::new(),
+            capacity,
+            filters: TickerFilters {
+                shard: None,
+                run_id: None,
+                kinds: HashSet::new(),
+            },
         }
     }
 
     pub fn push(&mut self, event: TickerEvent) {
-        if self.max_events == 0 {
+        if self.capacity == 0 {
             return;
         }
-        if self.events.len() >= self.max_events {
-            self.events.remove(0);
+        if self.events.len() >= self.capacity {
+            self.events.pop_front();
         }
-        self.events.push(event);
+        self.events.push_back(event);
     }
 
     #[must_use]
-    pub fn recent(&self, count: usize) -> &[TickerEvent] {
-        let start = self.events.len().saturating_sub(count);
-        self.events.get(start..).unwrap_or(&[])
+    pub fn events(&self) -> &VecDeque<TickerEvent> {
+        &self.events
     }
 
-    pub fn clear(&mut self) {
-        self.events.clear();
+    #[must_use]
+    pub fn filtered_events(&self) -> Vec<&TickerEvent> {
+        self.events
+            .iter()
+            .filter(|event| {
+                if let Some(shard) = self.filters.shard
+                    && event.shard != shard
+                {
+                    return false;
+                }
+                if let Some(run_id) = self.filters.run_id
+                    && event.run_id != Some(run_id)
+                {
+                    return false;
+                }
+                if !self.filters.kinds.is_empty() && !self.filters.kinds.contains(&event.kind) {
+                    return false;
+                }
+                true
+            })
+            .collect()
+    }
+
+    pub fn set_shard_filter(&mut self, shard: Option<u32>) {
+        self.filters.shard = shard;
+    }
+
+    pub fn set_run_filter(&mut self, run_id: Option<u64>) {
+        self.filters.run_id = run_id;
+    }
+
+    pub fn set_kind_filter(&mut self, kinds: HashSet<TickerEventKind>) {
+        self.filters.kinds = kinds;
+    }
+
+    pub fn clear_filters(&mut self) {
+        self.filters.shard = None;
+        self.filters.run_id = None;
+        self.filters.kinds.clear();
+    }
+
+    #[must_use]
+    pub fn event_color(kind: TickerEventKind) -> [f32; 4] {
+        match kind {
+            TickerEventKind::RunAccepted => [0.0, 0.961, 1.0, 1.0],
+            TickerEventKind::StepStarted => [0.565, 0.910, 0.071, 1.0],
+            TickerEventKind::StepSucceeded => [0.0, 1.0, 0.533, 1.0],
+            TickerEventKind::ActionScheduled => [0.475, 0.510, 1.0, 1.0],
+            TickerEventKind::ActionCompleted => [0.275, 0.941, 0.941, 1.0],
+            TickerEventKind::ActionFailed => [1.0, 0.275, 0.0, 1.0],
+            TickerEventKind::RunFinished => [0.565, 1.0, 0.565, 1.0],
+            TickerEventKind::RunFailed => [1.0, 0.027, 0.227, 1.0],
+            TickerEventKind::Other => [0.6, 0.6, 0.6, 1.0],
+        }
     }
 }
 
@@ -49,87 +124,250 @@ impl EventTicker {
 mod tests {
     use super::*;
 
-    fn event(kind: &str) -> TickerEvent {
+    fn make_event(seq: u64, shard: u32, kind: TickerEventKind) -> TickerEvent {
         TickerEvent {
-            event_kind: kind.to_string(),
-            run_id: None,
-            shard_id: None,
-            step_id: None,
-            timestamp: Instant::now(),
-            color: [1.0, 1.0, 1.0, 1.0],
+            seq,
+            shard,
+            run_id: if seq % 2 == 0 { Some(seq * 10) } else { None },
+            kind,
+            summary: format!("event-{seq}"),
+        }
+    }
+
+    fn make_event_with_run(
+        seq: u64,
+        shard: u32,
+        run_id: Option<u64>,
+        kind: TickerEventKind,
+    ) -> TickerEvent {
+        TickerEvent {
+            seq,
+            shard,
+            run_id,
+            kind,
+            summary: format!("event-{seq}"),
         }
     }
 
     #[test]
-    fn ticker_new_is_empty() {
+    fn new_ticker_is_empty() {
         let ticker = EventTicker::new(10);
-        assert!(ticker.recent(10).is_empty());
+        assert!(ticker.events().is_empty());
+        assert_eq!(ticker.events().len(), 0);
     }
 
     #[test]
-    fn ticker_push_and_recent() {
+    fn push_adds_event_to_buffer() {
         let mut ticker = EventTicker::new(10);
-        ticker.push(event("A"));
-        ticker.push(event("B"));
-        ticker.push(event("C"));
-        let recent = ticker.recent(2);
-        assert_eq!(recent.len(), 2);
-        assert_eq!(recent[0].event_kind, "B");
-        assert_eq!(recent[1].event_kind, "C");
-    }
-
-    #[test]
-    fn ticker_recent_returns_all_when_count_exceeds_len() {
-        let mut ticker = EventTicker::new(10);
-        ticker.push(event("A"));
-        let recent = ticker.recent(100);
-        assert_eq!(recent.len(), 1);
-    }
-
-    #[test]
-    fn ticker_evicts_oldest_when_full() {
-        let mut ticker = EventTicker::new(2);
-        ticker.push(event("first"));
-        ticker.push(event("second"));
-        ticker.push(event("third"));
-        assert_eq!(ticker.recent(10).len(), 2);
-        assert_eq!(ticker.recent(10)[0].event_kind, "second");
-        assert_eq!(ticker.recent(10)[1].event_kind, "third");
-    }
-
-    #[test]
-    fn ticker_clear_empties_all() {
-        let mut ticker = EventTicker::new(10);
-        ticker.push(event("A"));
-        ticker.push(event("B"));
-        ticker.clear();
-        assert!(ticker.recent(10).is_empty());
-    }
-
-    #[test]
-    fn ticker_zero_capacity_evicts_immediately() {
-        let mut ticker = EventTicker::new(0);
-        ticker.push(event("gone"));
-        assert!(ticker.recent(10).is_empty());
-    }
-
-    #[test]
-    fn ticker_event_fields_preserved() {
-        let evt = TickerEvent {
-            event_kind: "StepCompleted".to_string(),
-            run_id: Some(99),
-            shard_id: Some(3),
-            step_id: Some(7),
-            timestamp: Instant::now(),
-            color: [0.0, 0.961, 1.0, 1.0],
-        };
-        let mut ticker = EventTicker::new(10);
+        let evt = make_event(1, 0, TickerEventKind::RunAccepted);
         ticker.push(evt);
-        let recent = ticker.recent(1);
-        assert_eq!(recent[0].event_kind, "StepCompleted");
-        assert_eq!(recent[0].run_id, Some(99));
-        assert_eq!(recent[0].shard_id, Some(3));
-        assert_eq!(recent[0].step_id, Some(7));
-        assert_eq!(recent[0].color, [0.0, 0.961, 1.0, 1.0]);
+        assert_eq!(ticker.events().len(), 1);
+        assert_eq!(ticker.events()[0].seq, 1);
+        assert_eq!(ticker.events()[0].shard, 0);
+        assert_eq!(ticker.events()[0].kind, TickerEventKind::RunAccepted);
+    }
+
+    #[test]
+    fn push_drops_oldest_at_capacity() {
+        let mut ticker = EventTicker::new(3);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::StepStarted));
+        ticker.push(make_event(3, 0, TickerEventKind::StepSucceeded));
+        ticker.push(make_event(4, 0, TickerEventKind::ActionScheduled));
+
+        assert_eq!(ticker.events().len(), 3);
+        assert_eq!(ticker.events()[0].seq, 2);
+        assert_eq!(ticker.events()[1].seq, 3);
+        assert_eq!(ticker.events()[2].seq, 4);
+    }
+
+    #[test]
+    fn zero_capacity_rejects_all_events() {
+        let mut ticker = EventTicker::new(0);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::RunFailed));
+        assert!(ticker.events().is_empty());
+    }
+
+    #[test]
+    fn filtered_events_returns_all_when_no_filters() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 1, TickerEventKind::StepStarted));
+        ticker.push(make_event(3, 2, TickerEventKind::RunFinished));
+
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 3);
+    }
+
+    #[test]
+    fn filtered_events_by_shard() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 1, TickerEventKind::StepStarted));
+        ticker.push(make_event(3, 0, TickerEventKind::StepSucceeded));
+        ticker.push(make_event(4, 2, TickerEventKind::RunFinished));
+
+        ticker.set_shard_filter(Some(0));
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(|e| e.shard == 0));
+    }
+
+    #[test]
+    fn filtered_events_by_run_id() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event_with_run(
+            1,
+            0,
+            Some(100),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            2,
+            0,
+            Some(200),
+            TickerEventKind::StepStarted,
+        ));
+        ticker.push(make_event_with_run(
+            3,
+            0,
+            Some(100),
+            TickerEventKind::StepSucceeded,
+        ));
+        ticker.push(make_event_with_run(4, 0, None, TickerEventKind::Other));
+
+        ticker.set_run_filter(Some(100));
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(|e| e.run_id == Some(100)));
+    }
+
+    #[test]
+    fn filtered_events_by_kind() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::RunFailed));
+        ticker.push(make_event(3, 0, TickerEventKind::ActionFailed));
+        ticker.push(make_event(4, 0, TickerEventKind::StepSucceeded));
+
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunFailed);
+        kinds.insert(TickerEventKind::ActionFailed);
+        ticker.set_kind_filter(kinds);
+
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(
+            |e| e.kind == TickerEventKind::RunFailed || e.kind == TickerEventKind::ActionFailed
+        ));
+    }
+
+    #[test]
+    fn filtered_events_with_combined_shard_and_kind() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 1, TickerEventKind::RunFailed));
+        ticker.push(make_event(3, 0, TickerEventKind::RunFailed));
+        ticker.push(make_event(4, 0, TickerEventKind::StepStarted));
+
+        ticker.set_shard_filter(Some(0));
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunFailed);
+        ticker.set_kind_filter(kinds);
+
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].seq, 3);
+        assert_eq!(filtered[0].shard, 0);
+        assert_eq!(filtered[0].kind, TickerEventKind::RunFailed);
+    }
+
+    #[test]
+    fn clear_filters_resets_all() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event_with_run(1, 0, Some(999), TickerEventKind::RunAccepted));
+        ticker.push(make_event_with_run(2, 1, Some(100), TickerEventKind::RunFailed));
+
+        ticker.set_shard_filter(Some(0));
+        ticker.set_run_filter(Some(999));
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunAccepted);
+        ticker.set_kind_filter(kinds);
+
+        assert_eq!(ticker.filtered_events().len(), 1);
+
+        ticker.clear_filters();
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn filtered_events_returns_empty_when_no_match() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::StepStarted));
+
+        ticker.set_shard_filter(Some(99));
+        assert!(ticker.filtered_events().is_empty());
+    }
+
+    #[test]
+    fn event_color_returns_neon_colors_per_kind() {
+        let cyan = EventTicker::event_color(TickerEventKind::RunAccepted);
+        assert_eq!(cyan[3], 1.0);
+        assert!(cyan[1] > 0.9);
+
+        let red = EventTicker::event_color(TickerEventKind::RunFailed);
+        assert_eq!(red[0], 1.0);
+        assert!(red[1] < 0.1);
+
+        let green = EventTicker::event_color(TickerEventKind::StepSucceeded);
+        assert!(green[1] > 0.9);
+        assert!(green[2] > 0.4);
+
+        let other = EventTicker::event_color(TickerEventKind::Other);
+        assert!(other[0] > 0.0 && other[0] < 1.0);
+        assert!(other[1] > 0.0 && other[1] < 1.0);
+        assert!(other[2] > 0.0 && other[2] < 1.0);
+    }
+
+    #[test]
+    fn ring_buffer_maintains_fifo_order() {
+        let mut ticker = EventTicker::new(5);
+        for i in 1..=8u64 {
+            ticker.push(make_event(i, 0, TickerEventKind::StepStarted));
+        }
+        let events = ticker.events();
+        assert_eq!(events.len(), 5);
+        assert_eq!(events[0].seq, 4);
+        assert_eq!(events[4].seq, 8);
+    }
+
+    #[test]
+    fn run_id_none_events_excluded_by_run_filter() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event_with_run(1, 0, None, TickerEventKind::Other));
+        ticker.push(make_event_with_run(
+            2,
+            0,
+            Some(42),
+            TickerEventKind::RunAccepted,
+        ));
+
+        ticker.set_run_filter(Some(42));
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].seq, 2);
+    }
+
+    #[test]
+    fn capacity_one_keeps_single_latest_event() {
+        let mut ticker = EventTicker::new(1);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::RunFailed));
+        assert_eq!(ticker.events().len(), 1);
+        assert_eq!(ticker.events()[0].seq, 2);
+        assert_eq!(ticker.events()[0].kind, TickerEventKind::RunFailed);
     }
 }

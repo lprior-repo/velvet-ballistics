@@ -5,8 +5,7 @@
 use vb_core::action::ActionContract;
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
+use vb_core::ids::StepIdx;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
@@ -49,6 +48,7 @@ pub fn drive_deterministic_full(
     retry_policy: RetryPolicy,
     evidence: &mut EvidenceCollector,
     collect_states: &mut CollectStates,
+    _granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let max_parallel = compute_max_parallel_in_flight(plan);
     run.set_max_parallel_in_flight(max_parallel);
@@ -81,6 +81,15 @@ pub fn drive_deterministic_full(
         match mark_step_after_signal(run, pc, &signal) {
             Ok(()) => {}
             Err(e) => return Err(RuntimeEngineError::Core(e)),
+        }
+
+        // Evidence chain: emit SlotWritten with actual value for all slot writes,
+        // including internal expression evaluations (SetConst, Copy, EvalExpr,
+        // BuildObject, BuildList). This satisfies Phase 40/44 requirement.
+        if let Some(slot) = node.output
+            && let Ok(value) = run.read_slot(slot)
+        {
+            evidence.push_slot_written(slot, *value);
         }
 
         // Evidence chain: emit StepSucceeded only when the step actually succeeded.
@@ -124,5 +133,6 @@ pub fn drive_with_actions(
         retry_policy,
         &mut evidence,
         &mut collect_states,
+        &vb_core::capability::CapabilitySet::empty(),
     )
 }

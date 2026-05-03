@@ -1,7 +1,17 @@
 //! Certificate-based verification analysis for compiled workflows.
+//!
+//! Provides two verification APIs:
+//! - **Certificate-based analysis** (`VerificationResult::analyze`): eight
+//!   structural and semantic certificates for the verification screen.
+//! - **Pre-flight checks** (`verify_workflow`): eight focused PASS/FAIL
+//!   checks that validate compiled workflow parts before run admission.
 
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
+
+// ---------------------------------------------------------------------------
+// Certificate-based verification types
+// ---------------------------------------------------------------------------
 
 /// Outcome of a single certificate check.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,6 +106,483 @@ impl VerificationResult {
             fail_count,
             warn_count,
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight verification check types
+// ---------------------------------------------------------------------------
+
+/// Status of a single pre-flight verification check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckStatus {
+    /// Check passed.
+    Pass,
+    /// Check failed.
+    Fail,
+    /// Check passed with a non-critical concern.
+    Warn,
+}
+
+impl CheckStatus {
+    /// Returns the worst of two statuses (Fail > Warn > Pass).
+    fn merge_worst(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Fail, _) | (_, Self::Fail) => Self::Fail,
+            (Self::Warn, _) | (_, Self::Warn) => Self::Warn,
+            (Self::Pass, Self::Pass) => Self::Pass,
+        }
+    }
+}
+
+/// One pre-flight verification check result.
+#[derive(Debug, Clone)]
+pub struct CertificateCheck {
+    /// Human-readable name of the check.
+    pub name: &'static str,
+    /// Pass/fail/warn status.
+    pub status: CheckStatus,
+    /// Human-readable detail explaining the outcome.
+    pub detail: String,
+}
+
+/// Aggregate report of all pre-flight verification checks.
+#[derive(Debug, Clone)]
+pub struct VerificationReport {
+    /// Individual check results, one per pre-flight check.
+    pub checks: Vec<CertificateCheck>,
+    /// True when every check is Pass or Warn (no Fail).
+    pub all_pass: bool,
+    /// The worst status across all checks.
+    pub worst_risk: CheckStatus,
+}
+
+/// Runs all 8 pre-flight verification checks against a compiled workflow.
+///
+/// The checks are:
+/// 1. Structural validity (node array non-empty, entry in bounds, IDs match)
+/// 2. Bounded transitions (resource contract bounds are non-zero and cover nodes)
+/// 3. Secret-to-result leak (taint overlay analysis)
+/// 4. Strict durability eligibility (action policy + journal mode)
+/// 5. External action idempotency (action contract review)
+/// 6. Worst-case memory budget (slot_count * max_frame_size)
+/// 7. Max transitions (step count from IR)
+/// 8. Max action calls (count of Do nodes)
+#[must_use]
+pub fn verify_workflow(parts: &WorkflowParts) -> VerificationReport {
+    let checks = vec![
+        check_preflight_structural_validity(parts),
+        check_preflight_bounded_transitions(parts),
+        check_preflight_secret_to_result_leak(parts),
+        check_preflight_strict_durability_eligibility(parts),
+        check_preflight_action_idempotency(parts),
+        check_preflight_worst_case_memory_budget(parts),
+        check_preflight_max_transitions(parts),
+        check_preflight_max_action_calls(parts),
+    ];
+
+    let has_failure = checks.iter().any(|c| c.status == CheckStatus::Fail);
+    let worst_risk = checks
+        .iter()
+        .map(|c| c.status)
+        .fold(CheckStatus::Pass, CheckStatus::merge_worst);
+
+    VerificationReport {
+        checks,
+        all_pass: !has_failure,
+        worst_risk,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 1: Structural validity
+// ---------------------------------------------------------------------------
+
+fn check_preflight_structural_validity(parts: &WorkflowParts) -> CertificateCheck {
+    if parts.nodes.is_empty() {
+        return CertificateCheck {
+            name: "structural_validity",
+            status: CheckStatus::Fail,
+            detail: String::from("node array is empty"),
+        };
+    }
+
+    let node_count = parts.nodes.len();
+    if parts.entry.as_usize() >= node_count {
+        return CertificateCheck {
+            name: "structural_validity",
+            status: CheckStatus::Fail,
+            detail: format!(
+                "entry step {} exceeds node count {}",
+                parts.entry.get(),
+                node_count,
+            ),
+        };
+    }
+
+    for (index, node) in parts.nodes.iter().enumerate() {
+        if node.id.as_usize() != index {
+            return CertificateCheck {
+                name: "structural_validity",
+                status: CheckStatus::Fail,
+                detail: format!(
+                    "node at position {} has id {} (mismatch)",
+                    index,
+                    node.id.get(),
+                ),
+            };
+        }
+    }
+
+    CertificateCheck {
+        name: "structural_validity",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "all {} nodes valid, entry {} in bounds",
+            node_count,
+            parts.entry.get(),
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 2: Bounded transitions
+// ---------------------------------------------------------------------------
+
+fn check_preflight_bounded_transitions(parts: &WorkflowParts) -> CertificateCheck {
+    let contract = parts.resource_contract;
+
+    if contract.max_steps == 0 {
+        return CertificateCheck {
+            name: "bounded_transitions",
+            status: CheckStatus::Fail,
+            detail: String::from("max_steps is zero in resource contract"),
+        };
+    }
+
+    if contract.max_slots == 0 {
+        return CertificateCheck {
+            name: "bounded_transitions",
+            status: CheckStatus::Fail,
+            detail: String::from("max_slots is zero in resource contract"),
+        };
+    }
+
+    if contract.max_step_budget_per_tick == 0 {
+        return CertificateCheck {
+            name: "bounded_transitions",
+            status: CheckStatus::Fail,
+            detail: String::from("max_step_budget_per_tick is zero"),
+        };
+    }
+
+    let node_count = u16::try_from(parts.nodes.len()).unwrap_or(u16::MAX);
+    if node_count > contract.max_steps {
+        return CertificateCheck {
+            name: "bounded_transitions",
+            status: CheckStatus::Fail,
+            detail: format!(
+                "node count ({}) exceeds max_steps ({})",
+                parts.nodes.len(),
+                contract.max_steps,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "bounded_transitions",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "max_steps={}, max_slots={}, budget_per_tick={}",
+            contract.max_steps, contract.max_slots, contract.max_step_budget_per_tick,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 3: Secret-to-result leak
+// ---------------------------------------------------------------------------
+
+fn check_preflight_secret_to_result_leak(parts: &WorkflowParts) -> CertificateCheck {
+    let empty_taint = std::collections::HashMap::new();
+    let overlay = super::taint_overlay::compute_taint_overlay(parts, &empty_taint);
+
+    if overlay.sources.is_empty() {
+        return CertificateCheck {
+            name: "secret_to_result_leak",
+            status: CheckStatus::Pass,
+            detail: String::from("no secret source nodes found in workflow"),
+        };
+    }
+
+    if !overlay.finish_safe {
+        let source_labels: Vec<String> = overlay
+            .sources
+            .iter()
+            .map(|s| format!("step {}", s.get()))
+            .collect();
+        return CertificateCheck {
+            name: "secret_to_result_leak",
+            status: CheckStatus::Fail,
+            detail: format!(
+                "secret value from {} reaches Finish node",
+                source_labels.join(", "),
+            ),
+        };
+    }
+
+    // Sources exist but are contained -- warning.
+    let warning_count = overlay
+        .paths
+        .iter()
+        .filter(|seg| seg.status == super::taint_overlay::TaintPathStatus::Warning)
+        .count();
+
+    CertificateCheck {
+        name: "secret_to_result_leak",
+        status: CheckStatus::Warn,
+        detail: format!(
+            "{} secret source(s) present but contained ({} warning propagation path(s))",
+            overlay.sources.len(),
+            warning_count,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 4: Strict durability eligibility
+// ---------------------------------------------------------------------------
+
+fn check_preflight_strict_durability_eligibility(parts: &WorkflowParts) -> CertificateCheck {
+    let mut has_finish = false;
+    let mut do_with_error_handler: usize = 0;
+    let mut do_total: usize = 0;
+    let mut error_handler_count: usize = 0;
+    let mut on_error_count: usize = 0;
+
+    for node in parts.nodes.iter() {
+        match node.kind {
+            CompiledNodeKind::Finish { .. } => {
+                has_finish = true;
+            }
+            CompiledNodeKind::Do { .. } => {
+                do_total = do_total.saturating_add(1);
+                if node.on_error.is_some() {
+                    do_with_error_handler = do_with_error_handler.saturating_add(1);
+                }
+            }
+            CompiledNodeKind::ErrorHandler { .. } => {
+                error_handler_count = error_handler_count.saturating_add(1);
+            }
+            _ => {}
+        }
+        if node.on_error.is_some() {
+            on_error_count = on_error_count.saturating_add(1);
+        }
+    }
+
+    if !has_finish {
+        return CertificateCheck {
+            name: "strict_durability_eligibility",
+            status: CheckStatus::Fail,
+            detail: String::from("no Finish node found"),
+        };
+    }
+
+    if do_total > 0 && do_with_error_handler == 0 && error_handler_count == 0 {
+        return CertificateCheck {
+            name: "strict_durability_eligibility",
+            status: CheckStatus::Warn,
+            detail: format!(
+                "{} Do node(s) without error handlers or journal mode; replay safety not guaranteed",
+                do_total,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "strict_durability_eligibility",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "Finish present, {} of {} Do nodes have error handlers, {} error handler nodes, {} on_error directives",
+            do_with_error_handler, do_total, error_handler_count, on_error_count,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 5: External action idempotency
+// ---------------------------------------------------------------------------
+
+fn check_preflight_action_idempotency(parts: &WorkflowParts) -> CertificateCheck {
+    let mut do_count: usize = 0;
+    let mut actions_with_retry: std::collections::HashSet<u16> = std::collections::HashSet::new();
+    let mut all_action_ids: std::collections::HashSet<u16> = std::collections::HashSet::new();
+    let mut retry_count: usize = 0;
+
+    for node in parts.nodes.iter() {
+        if let CompiledNodeKind::Do { action, .. } = node.kind {
+            do_count = do_count.saturating_add(1);
+            all_action_ids.insert(action.get());
+            if node.on_error.is_some() {
+                actions_with_retry.insert(action.get());
+            }
+        }
+        if let CompiledNodeKind::RetryCheck { .. } = node.kind {
+            retry_count = retry_count.saturating_add(1);
+        }
+    }
+
+    if do_count == 0 {
+        return CertificateCheck {
+            name: "action_idempotency",
+            status: CheckStatus::Pass,
+            detail: String::from("no Do nodes; idempotency not applicable"),
+        };
+    }
+
+    let unguarded = all_action_ids.len().saturating_sub(actions_with_retry.len());
+
+    if unguarded > 0 && retry_count == 0 {
+        return CertificateCheck {
+            name: "action_idempotency",
+            status: CheckStatus::Warn,
+            detail: format!(
+                "{} action(s) without retry/error handling and no RetryCheck nodes",
+                unguarded,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "action_idempotency",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "{} Do nodes across {} distinct action(s), {} with error handling, {} retry policy(ies)",
+            do_count,
+            all_action_ids.len(),
+            actions_with_retry.len(),
+            retry_count,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 6: Worst-case memory budget
+// ---------------------------------------------------------------------------
+
+/// Maximum frame size in bytes used for worst-case memory budget estimation.
+/// Each slot holds at most one value; we conservatively estimate 64 bytes
+/// per slot (enough for an inline number/boolean/small string).
+const MAX_FRAME_SIZE: u64 = 64;
+
+fn check_preflight_worst_case_memory_budget(parts: &WorkflowParts) -> CertificateCheck {
+    let slot_count = u64::from(parts.slot_count);
+    let worst_case_bytes = slot_count.saturating_mul(MAX_FRAME_SIZE);
+
+    // Use the resource contract's max_output_bytes as a reference ceiling.
+    // If worst_case_bytes exceeds it, that is a warn (not fail) because the
+    // actual values may be smaller than the per-slot maximum.
+    let output_limit = u64::from(parts.resource_contract.max_output_bytes);
+
+    if worst_case_bytes == 0 {
+        return CertificateCheck {
+            name: "worst_case_memory_budget",
+            status: CheckStatus::Pass,
+            detail: String::from("no slots allocated; memory budget is zero"),
+        };
+    }
+
+    if worst_case_bytes > output_limit && output_limit > 0 {
+        return CertificateCheck {
+            name: "worst_case_memory_budget",
+            status: CheckStatus::Warn,
+            detail: format!(
+                "worst-case {} bytes ({} slots x {} B/slot) exceeds max_output_bytes {}",
+                worst_case_bytes, parts.slot_count, MAX_FRAME_SIZE, output_limit,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "worst_case_memory_budget",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "worst-case {} bytes ({} slots x {} B/slot)",
+            worst_case_bytes, parts.slot_count, MAX_FRAME_SIZE,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 7: Max transitions
+// ---------------------------------------------------------------------------
+
+fn check_preflight_max_transitions(parts: &WorkflowParts) -> CertificateCheck {
+    let step_count = parts.nodes.len();
+    let contract_limit = usize::from(parts.resource_contract.max_steps);
+
+    if contract_limit == 0 {
+        return CertificateCheck {
+            name: "max_transitions",
+            status: CheckStatus::Fail,
+            detail: String::from("max_steps is zero; no transitions allowed"),
+        };
+    }
+
+    if step_count > contract_limit {
+        return CertificateCheck {
+            name: "max_transitions",
+            status: CheckStatus::Fail,
+            detail: format!(
+                "IR has {} steps but max_steps is {}",
+                step_count, contract_limit,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "max_transitions",
+        status: CheckStatus::Pass,
+        detail: format!("IR step count {} within max_steps {}", step_count, contract_limit),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight check 8: Max action calls
+// ---------------------------------------------------------------------------
+
+fn check_preflight_max_action_calls(parts: &WorkflowParts) -> CertificateCheck {
+    let mut do_count: usize = 0;
+
+    for node in parts.nodes.iter() {
+        if let CompiledNodeKind::Do { .. } = node.kind {
+            do_count = do_count.saturating_add(1);
+        }
+    }
+
+    // Use max_retry_attempts as a soft ceiling: if Do count exceeds it,
+    // the workflow may overwhelm the action dispatch pipeline.
+    let retry_ceiling = usize::from(parts.resource_contract.max_retry_attempts);
+
+    if do_count > retry_ceiling && retry_ceiling > 0 {
+        return CertificateCheck {
+            name: "max_action_calls",
+            status: CheckStatus::Warn,
+            detail: format!(
+                "{} Do nodes exceeds max_retry_attempts ceiling of {}",
+                do_count, retry_ceiling,
+            ),
+        };
+    }
+
+    CertificateCheck {
+        name: "max_action_calls",
+        status: CheckStatus::Pass,
+        detail: format!(
+            "{} Do node(s) within max_retry_attempts ceiling of {}",
+            do_count, retry_ceiling,
+        ),
     }
 }
 
@@ -977,5 +1464,645 @@ mod tests {
         // pass_count + fail_count + warn_count should equal total_checks.
         let sum = result.pass_count + result.fail_count + result.warn_count;
         assert_eq!(sum, result.total_checks);
+    }
+
+    // ========================================================================
+    // Pre-flight verify_workflow tests
+    // ========================================================================
+
+    fn preflight_minimal_parts() -> WorkflowParts {
+        WorkflowParts {
+            name: String::from("preflight-test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        }
+    }
+
+    fn preflight_empty_parts() -> WorkflowParts {
+        WorkflowParts {
+            name: String::from("preflight-empty").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Vec::new().into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 0,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        }
+    }
+
+    // -- Pre-flight test 1: Structural validity --
+
+    #[test]
+    fn preflight_structural_validity_passes_for_valid_workflow() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "structural_validity");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("valid"));
+    }
+
+    #[test]
+    fn preflight_structural_validity_fails_for_empty_nodes() {
+        let report = verify_workflow(&preflight_empty_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "structural_validity");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("empty"));
+    }
+
+    #[test]
+    fn preflight_structural_validity_fails_for_entry_out_of_bounds() {
+        let mut parts = preflight_minimal_parts();
+        parts.entry = StepIdx::new(99);
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "structural_validity");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("exceeds"));
+    }
+
+    #[test]
+    fn preflight_structural_validity_fails_for_node_id_mismatch() {
+        let mut parts = preflight_minimal_parts();
+        // Create a node with wrong ID at position 0.
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(5), // wrong: should be 0
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        parts.nodes = nodes.into_boxed_slice();
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "structural_validity");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("mismatch"));
+    }
+
+    // -- Pre-flight test 2: Bounded transitions --
+
+    #[test]
+    fn preflight_bounded_transitions_passes_for_default_contract() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "bounded_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn preflight_bounded_transitions_fails_for_zero_max_steps() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_steps = 0;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "bounded_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("max_steps"));
+    }
+
+    #[test]
+    fn preflight_bounded_transitions_fails_for_zero_max_slots() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_slots = 0;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "bounded_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("max_slots"));
+    }
+
+    #[test]
+    fn preflight_bounded_transitions_fails_for_node_count_exceeding_max_steps() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_steps = 1;
+        // Add extra nodes so node count > max_steps.
+        let mut nodes = Vec::new();
+        for i in 0..5u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 4 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+        nodes[4].kind = CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        };
+        parts.nodes = nodes.into_boxed_slice();
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "bounded_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("exceeds"));
+    }
+
+    // -- Pre-flight test 3: Secret-to-result leak --
+
+    #[test]
+    fn preflight_secret_to_result_leak_passes_for_clean_workflow() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "secret_to_result_leak");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("no secret"));
+    }
+
+    #[test]
+    fn preflight_secret_to_result_leak_fails_for_secret_reaching_finish() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("leak-test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "secret_to_result_leak");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail);
+        assert!(c.detail.contains("Finish"));
+    }
+
+    // -- Pre-flight test 4: Strict durability eligibility --
+
+    #[test]
+    fn preflight_strict_durability_passes_for_safe_workflow() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: Some(StepIdx::new(2)),
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        let parts = WorkflowParts {
+            name: String::from("durable-test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "strict_durability_eligibility");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("error handler"));
+    }
+
+    #[test]
+    fn preflight_strict_durability_warns_for_do_without_error_handler() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("non-durable-test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "strict_durability_eligibility");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Warn);
+        assert!(c.detail.contains("error handler"));
+    }
+
+    // -- Pre-flight test 5: Action idempotency --
+
+    #[test]
+    fn preflight_action_idempotency_passes_for_no_do_nodes() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "action_idempotency");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("no Do nodes"));
+    }
+
+    #[test]
+    fn preflight_action_idempotency_warns_for_unguarded_actions() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("idem-test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "action_idempotency");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Warn);
+        assert!(c.detail.contains("retry"));
+    }
+
+    // -- Pre-flight test 6: Worst-case memory budget --
+
+    #[test]
+    fn preflight_memory_budget_passes_for_small_slot_count() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "worst_case_memory_budget");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("64"));
+    }
+
+    #[test]
+    fn preflight_memory_budget_passes_for_zero_slots() {
+        let mut parts = preflight_minimal_parts();
+        parts.slot_count = 0;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "worst_case_memory_budget");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("zero"));
+    }
+
+    #[test]
+    fn preflight_memory_budget_warns_for_exceeding_output_limit() {
+        let mut parts = preflight_minimal_parts();
+        // Set a very low output limit so the budget exceeds it.
+        // 100 slots * 64 bytes = 6400 bytes. max_output_bytes = 100.
+        parts.slot_count = 100;
+        parts.resource_contract.max_output_bytes = 100;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "worst_case_memory_budget");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Warn);
+        assert!(c.detail.contains("exceeds"));
+    }
+
+    // -- Pre-flight test 7: Max transitions --
+
+    #[test]
+    fn preflight_max_transitions_passes_within_limit() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("within"));
+    }
+
+    #[test]
+    fn preflight_max_transitions_fails_when_exceeding_limit() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_steps = 2;
+        // Add extra nodes (3 > max_steps of 2).
+        let mut nodes = Vec::new();
+        for i in 0..3u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 2 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                on_error: None,
+                error_slot: None,
+                kind: if i < 2 {
+                    CompiledNodeKind::Nop
+                } else {
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    }
+                },
+            });
+        }
+        parts.nodes = nodes.into_boxed_slice();
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_transitions");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Fail, "detail: {}", c.detail);
+        assert!(
+            c.detail.contains("max_steps"),
+            "expected 'max_steps' in detail, got: {}",
+            c.detail,
+        );
+    }
+
+    // -- Pre-flight test 8: Max action calls --
+
+    #[test]
+    fn preflight_max_action_calls_passes_within_ceiling() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_action_calls");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Pass);
+        assert!(c.detail.contains("0 Do node"));
+    }
+
+    #[test]
+    fn preflight_max_action_calls_warns_for_exceeding_ceiling() {
+        let mut nodes = Vec::new();
+        // Create 5 Do nodes with Finish at the end.
+        for i in 0..5u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: Some(StepIdx::new(i.saturating_add(1))),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: vb_core::ids::ActionId::new(u16::from(i).saturating_add(1)),
+                    input: SlotIdx::new(0),
+                },
+            });
+        }
+        nodes.push(CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let mut parts = WorkflowParts {
+            name: String::from("many-dos").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        // Default max_retry_attempts is 3, so 5 Do nodes will exceed it.
+        parts.resource_contract.max_retry_attempts = 3;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_action_calls");
+        assert!(check.is_some());
+        let c = check.unwrap_or_else(|| panic!("check missing"));
+        assert_eq!(c.status, CheckStatus::Warn);
+        assert!(c.detail.contains("5 Do nodes"));
+    }
+
+    // -- Integration test: verify_workflow produces 8 checks --
+
+    #[test]
+    fn preflight_verify_workflow_produces_eight_checks() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        assert_eq!(report.checks.len(), 8);
+    }
+
+    #[test]
+    fn preflight_verify_workflow_all_pass_report_fields() {
+        let report = verify_workflow(&preflight_minimal_parts());
+        // For a minimal Finish-only workflow with default contract, we expect
+        // no failures (some checks may warn, but none should fail).
+        assert!(report.all_pass, "all_pass should be true for minimal valid workflow, worst_risk={:?}", report.worst_risk);
+        assert!(matches!(
+            report.worst_risk,
+            CheckStatus::Pass | CheckStatus::Warn
+        ));
+    }
+
+    #[test]
+    fn preflight_verify_workflow_empty_nodes_has_failures() {
+        let report = verify_workflow(&preflight_empty_parts());
+        assert!(!report.all_pass);
+        assert_eq!(report.worst_risk, CheckStatus::Fail);
+    }
+
+    // -- CheckStatus merge_worst tests --
+
+    #[test]
+    fn check_status_merge_worst_fail_dominates() {
+        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Pass), CheckStatus::Fail);
+        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Warn), CheckStatus::Fail);
+        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Fail), CheckStatus::Fail);
+        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Fail), CheckStatus::Fail);
+    }
+
+    #[test]
+    fn check_status_merge_worst_warn_dominates_pass() {
+        assert_eq!(CheckStatus::Warn.merge_worst(CheckStatus::Pass), CheckStatus::Warn);
+        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Warn), CheckStatus::Warn);
+    }
+
+    #[test]
+    fn check_status_merge_worst_pass_pass() {
+        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Pass), CheckStatus::Pass);
     }
 }

@@ -1,7 +1,9 @@
 pub mod alerts;
 pub mod lanes;
+pub mod latency;
 pub mod metrics;
 pub mod queue_monitor;
+pub mod queues;
 pub mod screen;
 pub mod ticker;
 pub mod topology;

@@ -818,6 +818,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
+    &vb_core::capability::CapabilitySet::empty(),
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 }
@@ -1003,6 +1004,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
+    &vb_core::capability::CapabilitySet::empty(),
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 
@@ -1071,6 +1073,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
+    &vb_core::capability::CapabilitySet::empty(),
     );
     // The drive loop should have progressed (either Continue after Nop, or Finished after Finish).
     assert!(result.is_ok(), "drive should succeed, got {result:?}");
@@ -1145,6 +1148,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
+    &vb_core::capability::CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(_)) => {}

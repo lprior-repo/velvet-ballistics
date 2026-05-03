@@ -540,6 +540,12 @@ mod tests {
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
+                    value: postcard::to_allocvec(&SlotValue::Bool(true))
+                        .expect("encode"),
+                },
+                RuntimeJournalEvent::SlotWritten {
+                    run,
+                    slot: SlotIdx::new(0),
                     value: Vec::new(),
                 },
                 RuntimeJournalEvent::StepSucceeded {

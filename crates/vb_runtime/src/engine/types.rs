@@ -29,6 +29,13 @@ pub enum EvidenceEvent {
         /// Output slot written, if any (Nop/Jump have no output).
         output: Option<SlotIdx>,
     },
+    /// A slot was written during step execution.
+    SlotWritten {
+        /// Slot index.
+        slot: SlotIdx,
+        /// Value written to the slot.
+        value: SlotValue,
+    },
 }
 
 /// Bounded collector for evidence events produced during a drive loop.
@@ -56,6 +63,11 @@ impl EvidenceCollector {
     pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>) {
         self.events
             .push(EvidenceEvent::StepSucceeded { step, output });
+    }
+
+    /// Records a SlotWritten event.
+    pub fn push_slot_written(&mut self, slot: SlotIdx, value: SlotValue) {
+        self.events.push(EvidenceEvent::SlotWritten { slot, value });
     }
 
     /// Drains all collected events, returning them for processing.

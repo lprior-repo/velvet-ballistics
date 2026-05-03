@@ -266,7 +266,7 @@ impl Default for SystemScreen {
 mod tests {
     use super::*;
     use crate::system::alerts::{Alert, AlertKind, AlertSeverity};
-    use crate::system::ticker::TickerEvent;
+    use crate::system::ticker::{TickerEvent, TickerEventKind};
     use std::time::Instant;
 
     fn stub_shard_metrics(
@@ -315,12 +315,21 @@ mod tests {
 
     fn ticker_event(kind: &str) -> TickerEvent {
         TickerEvent {
-            event_kind: kind.to_string(),
+            seq: 0,
+            shard: 0,
             run_id: None,
-            shard_id: None,
-            step_id: None,
-            timestamp: Instant::now(),
-            color: [1.0, 1.0, 1.0, 1.0],
+            kind: match kind {
+                "RunAccepted" => TickerEventKind::RunAccepted,
+                "StepStarted" => TickerEventKind::StepStarted,
+                "StepSucceeded" => TickerEventKind::StepSucceeded,
+                "ActionScheduled" => TickerEventKind::ActionScheduled,
+                "ActionCompleted" => TickerEventKind::ActionCompleted,
+                "ActionFailed" => TickerEventKind::ActionFailed,
+                "RunFinished" => TickerEventKind::RunFinished,
+                "RunFailed" => TickerEventKind::RunFailed,
+                _ => TickerEventKind::Other,
+            },
+            summary: kind.to_string(),
         }
     }
 
@@ -441,12 +450,12 @@ mod tests {
     #[test]
     fn ticker_push_and_recent() {
         let mut screen = SystemScreen::new();
-        screen.ticker_mut().push(ticker_event("StepDone"));
-        screen.ticker_mut().push(ticker_event("ActionComplete"));
-        let recent = screen.ticker().recent(10);
-        assert_eq!(recent.len(), 2);
-        assert_eq!(recent[0].event_kind, "StepDone");
-        assert_eq!(recent[1].event_kind, "ActionComplete");
+        screen.ticker_mut().push(ticker_event("StepSucceeded"));
+        screen.ticker_mut().push(ticker_event("ActionCompleted"));
+        let events = screen.ticker().events();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].kind, TickerEventKind::StepSucceeded);
+        assert_eq!(events[1].kind, TickerEventKind::ActionCompleted);
     }
 
     // -- shard_summary tests --
