@@ -7,6 +7,7 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
+use vb_core::ValueStore;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -57,7 +58,7 @@ impl Shard {
         let state = RunState {
             frame,
             workflow,
-            store: Default::default(),
+            store: ValueStore::with_max_slots(workflow.resource_contract().max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             collect_states: CollectStates::new(),
@@ -353,6 +354,11 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = vb_core::engine::StepBudget::new(step_budget_per_tick);
+        let granted = state
+            .admission
+            .as_ref()
+            .map(|a| a.granted_capabilities())
+            .unwrap_or_else(CapabilitySet::empty);
         drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
@@ -362,6 +368,7 @@ impl Shard {
             RetryPolicy::NEVER,
             evidence,
             &mut state.collect_states,
+            granted,
         )
     }
 

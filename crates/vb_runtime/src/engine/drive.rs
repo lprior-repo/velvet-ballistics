@@ -5,7 +5,8 @@
 use vb_core::action::ActionContract;
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
-use vb_core::ids::StepIdx;
+use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
@@ -82,9 +83,16 @@ pub fn drive_deterministic_full(
             Err(e) => return Err(RuntimeEngineError::Core(e)),
         }
 
+        // Evidence chain: emit SlotWritten with actual value for all slot writes,
+        // including internal expression evaluations (SetConst, Copy, EvalExpr,
+        // BuildObject, BuildList). This satisfies Phase 40/44 requirement.
+        if let Some(slot) = node.output {
+            if let Ok(value) = run.read_slot(slot) {
+                evidence.push_slot_written(slot, value);
+            }
+        }
+
         // Evidence chain: emit StepSucceeded after execution with output slot.
-        // Only nodes with an explicit output slot produce SlotWritten events.
-        // Boundary nodes (Finish, Jump, Nop) have no output slot.
         evidence.push_step_succeeded(pc, node.output);
 
         match signal {
