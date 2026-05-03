@@ -1,3 +1,4 @@
+pub mod app_state;
 pub mod graph_builder;
 pub mod incident;
 pub mod ipc_bridge;
