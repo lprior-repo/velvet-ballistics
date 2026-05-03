@@ -32,15 +32,6 @@ use handlers::{
     handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
 };
 
-#[allow(dead_code)]
-const SERVER_TOKEN: mio::Token = mio::Token(0);
-#[allow(dead_code)]
-const FIRST_CLIENT_TOKEN: usize = 1;
-#[allow(dead_code)]
-const MAX_CLIENTS: usize = 256;
-#[allow(dead_code)]
-const READ_CHUNK_BYTES: usize = 4096;
-
 /// IPC server serving commands over a Unix domain socket.
 pub struct IpcServer {
     poll: mio::Poll,
