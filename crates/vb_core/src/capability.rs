@@ -70,10 +70,10 @@ impl CapabilitySet {
                     }
                 }
                 Capability::Action(granted_id) => {
-                    if let Capability::Action(required_id) = cap {
-                        if granted_id == required_id {
-                            return true;
-                        }
+                    if let Capability::Action(required_id) = cap
+                        && granted_id == required_id
+                    {
+                        return true;
                     }
                 }
             }

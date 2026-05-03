@@ -245,26 +245,6 @@ impl RunFrame {
             _ => Taint::Clean,
         }
     }
-                    }
-                    idx = idx.saturating_add(1);
-                }
-                Taint::Clean
-            }
-            SlotValue::List(id) => {
-                let mut idx = 0usize;
-                while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx) {
-                        if *vid == *id {
-                            return self.taint.get(idx).copied().unwrap_or(Taint::Clean);
-                        }
-                    }
-                    idx = idx.saturating_add(1);
-                }
-                Taint::Clean
-            }
-            _ => Taint::Clean,
-        }
-    }
 
     /// Writes a slot taint marker.
     ///
