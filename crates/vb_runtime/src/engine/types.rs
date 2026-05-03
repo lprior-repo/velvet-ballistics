@@ -4,13 +4,10 @@
 //!
 //! Exports evidence collection, error types, retry policy, and signals.
 
-use vb_core::action::{
-    ActionContract, ActionError, ActionFailureCode, ActionOutcome, ActionTicket, Idempotency,
-    propagate_action_taint,
-};
+use vb_core::action::{ActionError, ActionTicket};
 use vb_core::errors::EngineError;
-use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint};
+use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+use vb_core::value::SlotValue;
 
 /// Evidence event emitted by the deterministic drive loop for each step.
 ///

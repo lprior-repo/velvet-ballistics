@@ -2,11 +2,9 @@
 
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
-use vb_core::frame::StepState;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
-use postcard;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -17,8 +15,7 @@ use crate::{RuntimeError, RuntimeResult};
 
 use crate::primitives::collect::CollectStates;
 use crate::shard::types::{
-    AskAnswer, InspectResponse, InspectSnapshot, PendingTimer, PendingTimerKind, RunState, Shard,
-    ShardCommand, ShardConfig,
+    AskAnswer, PendingTimerKind, RunState, Shard,
 };
 
 impl Shard {

@@ -1,4 +1,5 @@
 //! Tests for the shard module.
+#![allow(dead_code, unused_imports)]
 
 use vb_core::ActionFailureCode;
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};

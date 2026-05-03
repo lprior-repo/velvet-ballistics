@@ -5,7 +5,6 @@
 use vb_core::action::ActionTicket;
 use vb_core::engine::EngineSignal;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
-use vb_core::value::SlotValue;
 
 use crate::engine::types::RuntimeSignal;
 

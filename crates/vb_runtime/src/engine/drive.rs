@@ -5,13 +5,11 @@
 use vb_core::action::ActionContract;
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
-use vb_core::ids::StepIdx;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::engine::execute::execute_node_full;
 use crate::engine::helpers::mark_step_after_signal;
-use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{
     EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
@@ -23,6 +21,7 @@ use crate::primitives::collect::CollectStates;
 /// Collects evidence events (StepStarted/StepSucceeded) for every step
 /// executed during the drive loop. The caller drains these events to emit
 /// them to the journal and trace ring.
+#[allow(clippy::too_many_arguments)]
 pub fn drive_deterministic_full(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,

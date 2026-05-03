@@ -975,7 +975,10 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
     let mut offset = 2usize;
     for _ in 0..accessor_count {
         let root_byte = data.get(offset).copied().unwrap_or(0);
-        let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(slot_count));
+        let safe_slot_count = if slot_count == 0 { 1u16 } else { slot_count };
+        let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(
+            safe_slot_count,
+        ));
         offset = offset.saturating_add(1);
 
         let path_len_byte = data.get(offset).copied().unwrap_or(0);
@@ -1090,39 +1093,39 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
 
     // Write various slot values for accessor roots to traverse.
     if max_slot > 0 {
-        let _ = run_with_data.write_slot_with_taint(
+        run_with_data.write_slot_with_taint(
             vb_core::SlotIdx::new(0),
             vb_core::SlotValue::Null,
             vb_core::Taint::Clean,
-        );
+        ).ok();
     }
     if slot_count > 1 {
-        let _ = run_with_data.write_slot_with_taint(
+        run_with_data.write_slot_with_taint(
             vb_core::SlotIdx::new(1),
             vb_core::SlotValue::Bool(true),
             vb_core::Taint::Clean,
-        );
+        ).ok();
     }
     if slot_count > 2 {
-        let _ = run_with_data.write_slot_with_taint(
+        run_with_data.write_slot_with_taint(
             vb_core::SlotIdx::new(2),
             vb_core::SlotValue::I64(7),
             vb_core::Taint::Clean,
-        );
+        ).ok();
     }
     if slot_count > 3 {
-        let _ = run_with_data.write_slot_with_taint(
+        run_with_data.write_slot_with_taint(
             vb_core::SlotIdx::new(3),
             vb_core::SlotValue::List(list_id),
             vb_core::Taint::Clean,
-        );
+        ).ok();
     }
     if slot_count > 4 {
-        let _ = run_with_data.write_slot_with_taint(
+        run_with_data.write_slot_with_taint(
             vb_core::SlotIdx::new(4),
             vb_core::SlotValue::Object(obj_id),
             vb_core::Taint::Clean,
-        );
+        ).ok();
     }
 
     // Evaluate each accessor -- must never panic.

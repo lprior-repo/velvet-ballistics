@@ -607,7 +607,7 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
     // Check each pair of loop spans for improper nesting
     for i in 0..loop_spans.len() {
         for j in (i + 1)..loop_spans.len() {
-            let (start_a, body_a, done_a) = loop_spans[i];
+            let (start_a, _body_a, done_a) = loop_spans[i];
             let (start_b, body_b, done_b) = loop_spans[j];
 
             let a_start = start_a.as_usize();

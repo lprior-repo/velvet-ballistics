@@ -27,7 +27,7 @@ pub use bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver,
 };
-pub use eval::{eval_binary_op, eval_expr_program, eval_helper, eval_unary_op};
+pub use eval::{eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op};
 
 use thiserror::Error;
 
