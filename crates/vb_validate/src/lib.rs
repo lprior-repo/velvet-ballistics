@@ -59,6 +59,26 @@ mod type_check;
 #[cfg(test)]
 mod type_sigs;
 
+// Split-out diagnostic modules (test-only until migration completes).
+#[cfg(test)]
+mod diag_codes;
+#[cfg(test)]
+mod diag_convert;
+#[cfg(test)]
+mod diag_render;
+#[cfg(test)]
+mod diag_tests;
+
+// Split-out schema modules (test-only until migration completes).
+#[cfg(test)]
+mod schema_doc;
+#[cfg(test)]
+mod schema_fields;
+#[cfg(test)]
+mod schema_id;
+#[cfg(test)]
+mod schema_tests;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {

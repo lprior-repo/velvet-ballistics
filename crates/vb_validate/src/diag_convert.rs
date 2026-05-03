@@ -2,6 +2,7 @@
 //!
 //! Contains the `all_variants` helper used by multiple test modules.
 
+#![allow(unreachable_pub)]
 use crate::ValidationError;
 
 /// Returns an owned vec of every ValidationError variant with representative field values.
@@ -61,7 +62,7 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::diag_render::{diagnostic_from_error, error_code};
+    use crate::diag_render::{diagnostic_from_error, error_code};
     use vb_core::diagnostic::Severity;
 
     #[test]

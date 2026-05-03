@@ -26,8 +26,9 @@ pub fn serve_ipc_with_resolver(
 
 use super::handlers::{
     handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
-    handle_get_metrics, handle_health, handle_inspect_run, handle_list_events, handle_list_runs,
-    handle_shutdown, handle_submit_run, handle_submit_run_inline,
+    handle_get_metrics, handle_get_taint_report, handle_get_workflow_graph, handle_health,
+    handle_inspect_run, handle_list_events, handle_list_runs, handle_shutdown, handle_submit_run,
+    handle_submit_run_inline, handle_verify_workflow,
 };
 use super::trace::handle_drain_trace;
 use crate::IpcCommand;
@@ -62,5 +63,8 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
         IpcCommand::ListRuns => handle_list_runs(payload, runtime),
         IpcCommand::GetMetrics => handle_get_metrics(runtime),
+        IpcCommand::VerifyWorkflow => handle_verify_workflow(payload, resolver),
+        IpcCommand::GetWorkflowGraph => handle_get_workflow_graph(payload, resolver),
+        IpcCommand::GetTaintReport => handle_get_taint_report(payload, resolver),
     }
 }

@@ -3721,15 +3721,17 @@ fn object_slot_value(
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
+    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits, validate_public_name};
     use super::{
         compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
-        lower_set,
+        lower_set, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce,
+        lower_repeat, lower_wait, lower_steps_to_ir, WaitKind, build_slot_layout,
+        build_accessor_table, build_constant_pool, validate_ir,
     };
     use vb_core::ConstValue;
     use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, WorkflowParts};
-    use vb_core::{CompiledWorkflow, ResourceContract};
+    use vb_core::{CompiledWorkflow, ResourceContract, SlotBranch};
 
     macro_rules! compile_test_fail {
         ($($arg:tt)*) => {{
@@ -7298,5 +7300,720 @@ steps:
                 "SECURITY: compile_workflow_with_contracts accepted orphan contract (gate 12 not run)",
             )),
         }
+    }
+
+    // ========================================================================
+    // Workflow validator tests (workflow_validators.rs rules)
+    // ========================================================================
+
+    /// Helper to compile a minimal valid workflow with a custom `when` block.
+    fn compile_with_trigger(when_body: &str) -> Result<CompiledWorkflow, CompileErrors> {
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: trigger_case\nwhen:\n{when_body}steps:\n  - id: build\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        YamlCompiler::default().compile(source.as_bytes())
+    }
+
+    #[test]
+    fn trigger_validator_accepts_manual_with_empty_mapping() {
+        let result = compile_with_trigger("  manual: {}\n");
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+            "manual trigger with empty mapping should compile"
+        );
+    }
+
+    #[test]
+    fn trigger_validator_rejects_two_triggers_with_exact_count() {
+        let result = compile_with_trigger("  manual: {}\n  webhook:\n    path: /hook\n    method: POST\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerCount { count: 2 }))
+        ));
+    }
+
+    #[test]
+    fn trigger_validator_rejects_empty_when_mapping() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: trigger_case\nwhen: {}\nsteps:\n  - id: build\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerCount { count: 0 }))
+        ));
+    }
+
+    #[test]
+    fn trigger_validator_rejects_unknown_trigger_kind_with_name() {
+        let result = compile_with_trigger("  timer: {}\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerKind { trigger }) if &**trigger == "timer")
+        ));
+    }
+
+    // ========================================================================
+    // Manual trigger validator tests (workflow_trigger_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn manual_trigger_rejects_extra_fields() {
+        let result = compile_with_trigger("  manual:\n    extra: true\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { trigger: "manual", .. }))
+        ));
+    }
+
+    // ========================================================================
+    // Webhook trigger validator tests (workflow_trigger_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn webhook_trigger_accepts_all_valid_methods() {
+        for method in ["GET", "POST", "PUT", "PATCH", "DELETE"] {
+            let result = compile_with_trigger(&format!(
+                "  webhook:\n    path: /hook\n    method: {method}\n"
+            ));
+            assert!(
+                matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+                "webhook with method {method} should compile"
+            );
+        }
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_path_without_leading_slash() {
+        let result = compile_with_trigger("  webhook:\n    path: no_slash\n    method: POST\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "webhook",
+                    field: "path",
+                    expected: "a string starting with /",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_invalid_method() {
+        let result = compile_with_trigger("  webhook:\n    path: /hook\n    method: TRACE\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "webhook",
+                    field: "method",
+                    expected: "one of GET, POST, PUT, PATCH, DELETE",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_non_string_path() {
+        let result = compile_with_trigger("  webhook:\n    path: 42\n    method: POST\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "webhook",
+                    field: "path",
+                    expected: "a string",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_non_string_unique_field() {
+        let result = compile_with_trigger("  webhook:\n    path: /hook\n    method: POST\n    unique: 42\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "webhook",
+                    field: "unique",
+                    expected: "a string",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn webhook_trigger_accepts_optional_unique_field() {
+        let result = compile_with_trigger(
+            "  webhook:\n    path: /hook\n    method: POST\n    unique: request.id\n",
+        );
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+            "webhook with unique field should compile"
+        );
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_missing_path() {
+        let result = compile_with_trigger("  webhook:\n    method: POST\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { trigger: "webhook", field: "path" }))
+        ));
+    }
+
+    #[test]
+    fn webhook_trigger_rejects_missing_method() {
+        let result = compile_with_trigger("  webhook:\n    path: /hook\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { trigger: "webhook", field: "method" }))
+        ));
+    }
+
+    // ========================================================================
+    // Schedule trigger validator tests (workflow_trigger_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn schedule_trigger_accepts_five_field_cron() {
+        let result = compile_with_trigger("  schedule:\n    cron: \"*/5 * * * *\"\n");
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+            "schedule with five-field cron should compile"
+        );
+    }
+
+    #[test]
+    fn schedule_trigger_accepts_optional_timezone() {
+        let result = compile_with_trigger("  schedule:\n    cron: \"0 0 * * *\"\n    timezone: UTC\n");
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+            "schedule with timezone should compile"
+        );
+    }
+
+    #[test]
+    fn schedule_trigger_rejects_six_field_cron() {
+        let result = compile_with_trigger("  schedule:\n    cron: \"0 0 0 0 0 0\"\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "schedule",
+                    field: "cron",
+                    expected: "a five-field cron expression",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn schedule_trigger_rejects_non_string_cron() {
+        let result = compile_with_trigger("  schedule:\n    cron: 42\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "schedule",
+                    field: "cron",
+                    expected: "a string",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn schedule_trigger_rejects_non_string_timezone() {
+        let result = compile_with_trigger("  schedule:\n    cron: \"0 0 * * *\"\n    timezone: 42\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "schedule",
+                    field: "timezone",
+                    expected: "a string",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn schedule_trigger_rejects_missing_cron() {
+        let result = compile_with_trigger("  schedule:\n    timezone: UTC\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { trigger: "schedule", field: "cron" }))
+        ));
+    }
+
+    // ========================================================================
+    // Event trigger validator tests (workflow_trigger_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn event_trigger_accepts_valid_name() {
+        let result = compile_with_trigger("  event:\n    name: customer.created\n");
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "trigger_case"),
+            "event trigger with valid name should compile"
+        );
+    }
+
+    #[test]
+    fn event_trigger_rejects_non_string_name() {
+        let result = compile_with_trigger("  event:\n    name: 42\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(
+                errors.first(),
+                Some(CompileError::InvalidTriggerField {
+                    trigger: "event",
+                    field: "name",
+                    expected: "a string",
+                })
+            )
+        ));
+    }
+
+    #[test]
+    fn event_trigger_rejects_missing_name() {
+        let result = compile_with_trigger("  event: {}\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { trigger: "event", field: "name" }))
+        ));
+    }
+
+    // ========================================================================
+    // Trigger shape validator tests (workflow_trigger_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn trigger_validator_rejects_non_mapping_trigger_value() {
+        for trigger in ["manual", "webhook", "schedule", "event"] {
+            let result = compile_with_trigger(&format!("  {trigger}: true\n"));
+            assert!(
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
+                "trigger {trigger} with non-mapping value should be rejected"
+            );
+        }
+    }
+
+    // ========================================================================
+    // Public name validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn public_name_accepts_valid_lowercase_names() {
+        for name in ["fast_path", "build_result", "a", "x1", "snake_case_42"] {
+            let result = validate_public_name("test", name);
+            assert!(result.is_ok(), "name {name:?} should be accepted");
+        }
+    }
+
+    #[test]
+    fn public_name_rejects_empty_string() {
+        let result = validate_public_name("test", "");
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    #[test]
+    fn public_name_rejects_uppercase_start() {
+        let result = validate_public_name("test", "BuildResult");
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    #[test]
+    fn public_name_rejects_hyphens() {
+        let result = validate_public_name("test", "fast-path");
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    #[test]
+    fn public_name_rejects_digit_start() {
+        let result = validate_public_name("test", "1build");
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    #[test]
+    fn public_name_rejects_over_64_chars() {
+        let long_name = "a".repeat(65);
+        let result = validate_public_name("test", &long_name);
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    #[test]
+    fn public_name_accepts_exactly_64_chars() {
+        let name_64 = "a".repeat(64);
+        let result = validate_public_name("test", &name_64);
+        assert!(result.is_ok(), "64-char name should be accepted");
+    }
+
+    #[test]
+    fn public_name_rejects_all_reserved_names() {
+        let reserved = [
+            "input", "inputs", "vars", "secrets", "steps", "result", "when", "item",
+            "error", "summary", "cursor", "page", "event", "attempt", "attempts",
+            "true", "false", "null", "run", "do", "set", "save", "choose",
+            "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+            "try_again", "on_error", "then", "finish",
+        ];
+        for name in reserved {
+            let result = validate_public_name("test", name);
+            assert!(
+                matches!(result, Err(CompileError::InvalidName { .. })),
+                "reserved name {name:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn public_name_accepts_names_with_trailing_digits() {
+        let result = validate_public_name("test", "step1");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn public_name_rejects_spaces() {
+        let result = validate_public_name("test", "fast path");
+        assert!(matches!(result, Err(CompileError::InvalidName { .. })));
+    }
+
+    // ========================================================================
+    // Top-level key validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn top_level_keys_accept_all_known_fields() {
+        // Empty result mapping is OK.
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: empty_result\nwhen:\n  manual: {}\nresult: {}\nsteps:\n  - id: build\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "empty_result"),
+            "workflow with all known top-level fields should compile"
+        );
+    }
+
+    #[test]
+    fn top_level_keys_rejects_unknown_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_field\nwhen:\n  manual: {}\nunknown_field: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTopLevelField { field }) if &**field == "unknown_field")
+        ));
+    }
+
+    // ========================================================================
+    // Version validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn version_validator_accepts_exact_version_string() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: version_case
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().compile(source);
+        match result {
+            Ok(w) => Ok(ensure_equal(w.name(), "version_case")?),
+            Err(errors) => Err(format!("expected version to be accepted: {errors}")),
+        }
+    }
+
+    #[test]
+    fn version_validator_rejects_wrong_version_with_actual_value() {
+        for version in ["velvet/v1", "velvet-ballastics/v2"] {
+            let source = format!(
+                "version: {version}\nname: v_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: build\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+            );
+            let result = YamlCompiler::default().compile(source.as_bytes());
+            assert!(
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidVersion { .. }))),
+                "version {version:?} should be rejected"
+            );
+        }
+    }
+
+    // ========================================================================
+    // Empty steps validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn empty_steps_rejected() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::EmptySteps))
+        ));
+    }
+
+    // ========================================================================
+    // Step ID validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn step_id_rejects_non_string_id() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: step_case\nwhen:\n  manual: {}\nsteps:\n  - id: 42\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "id", .. }))
+        ));
+    }
+
+    #[test]
+    fn step_id_rejects_non_mapping_step() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: step_case\nwhen:\n  manual: {}\nsteps:\n  - bad_step\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepShape { .. }))
+        ));
+    }
+
+    // ========================================================================
+    // Last-step-must-be-finish validator tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn last_step_must_be_finish_rejects_run_at_end() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {}\nsteps:\n  - id: late\n    do:\n      action: 0\n      input: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::LastStepMustFinish))
+        ));
+    }
+
+    #[test]
+    fn finish_not_last_step_rejected() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {}\nsteps:\n  - id: early\n    finish:\n      result: 0\n  - id: late\n    save:\n      value: 1\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "finish", expected: "the last step", .. }))
+        ));
+    }
+
+    // ========================================================================
+    // Step shape validator edge cases (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn save_accepts_mapping_body() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: save_case\nwhen:\n  manual: {}\nsteps:\n  - id: data\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "save_case"),
+            "save with mapping body should compile"
+        );
+    }
+
+    #[test]
+    fn choose_rejects_missing_condition() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: choose_case\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingStepField { field: "condition", .. }))
+        ));
+    }
+
+    #[test]
+    fn for_each_rejects_unknown_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: foreach_case\nwhen:\n  manual: {}\nsteps:\n  - id: source\n    save:\n      value: 1\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      unknown: 5\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepPrimitiveField { primitive: "for_each", .. }))
+        ));
+    }
+
+    #[test]
+    fn wait_accepts_until_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      until: 0\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(result, Ok(_)), "wait with until should compile");
+    }
+
+    #[test]
+    fn wait_accepts_event_with_optional_timeout() {
+        let with_timeout = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      event: 0\n      timeout: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        let without_timeout = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      event: 0\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(with_timeout, Ok(_)), "wait with event + timeout should compile");
+        assert!(matches!(without_timeout, Ok(_)), "wait with event alone should compile");
+    }
+
+    #[test]
+    fn wait_rejects_both_until_and_event() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      until: 0\n      event: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "wait", .. }))
+        ));
+    }
+
+    #[test]
+    fn wait_rejects_until_with_timeout() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: wait_case\nwhen:\n  manual: {}\nsteps:\n  - id: pause\n    wait:\n      until: 0\n      timeout: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { field: "wait", .. }))
+        ));
+    }
+
+    #[test]
+    fn ask_rejects_missing_answer_field() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: ask_case\nwhen:\n  manual: {}\nsteps:\n  - id: query\n    ask:\n      prompt: 0\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingStepField { field: "answer", .. }))
+        ));
+    }
+
+    #[test]
+    fn repeat_accepts_max_attempts() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: repeat_case\nwhen:\n  manual: {}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: 3\n  - id: done\n    finish:\n      result: 1\n",
+        );
+        assert!(matches!(result, Ok(_)), "repeat with max_attempts should compile");
+    }
+
+    #[test]
+    fn together_rejects_empty_branches() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: together_case\nwhen:\n  manual: {}\nsteps:\n  - id: fanout\n    together:\n      branches: []\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::StepFieldShape { .. }))
+        ));
+    }
+
+    #[test]
+    fn finish_rejects_unknown_fields() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n      extra: true\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepPrimitiveField { primitive: "finish", .. }))
+        ));
+    }
+
+    // ========================================================================
+    // Workflow document shape orchestration tests (workflow_validators.rs)
+    // ========================================================================
+
+    #[test]
+    fn workflow_document_rejects_list_root() {
+        let result = YamlCompiler::default().compile(b"- item\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::TopLevelNotMapping))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_rejects_scalar_root() {
+        let result = YamlCompiler::default().compile(b"just a string\n");
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::TopLevelNotMapping))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_rejects_missing_name() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingField { field: "name" }))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_rejects_missing_steps() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: no_steps\nwhen:\n  manual: {}\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingField { field: "steps" }))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_rejects_non_sequence_steps() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: bad_steps\nwhen:\n  manual: {}\nsteps: true\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { field: "steps", .. }))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_rejects_non_string_name() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: 42\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { field: "name", .. }))
+        ));
+    }
+
+    #[test]
+    fn workflow_document_accepts_minimal_valid_workflow() {
+        let result = YamlCompiler::default().compile(
+            b"version: velvet-ballastics/v1\nname: minimal\nwhen:\n  manual: {}\nsteps:\n  - id: build\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        );
+        assert!(
+            matches!(result, Ok(ref w) if w.name() == "minimal"),
+            "minimal valid workflow should compile"
+        );
     }
 }

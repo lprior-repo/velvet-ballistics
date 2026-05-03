@@ -96,6 +96,7 @@ mod tests {
                 action_attempts: 0,
                 last_action_idempotency_key: None,
             },
+            timeline: Vec::new(),
         }
     }
 

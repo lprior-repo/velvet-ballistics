@@ -2,13 +2,14 @@
 //!
 //! Verifies exact error code and message mapping fidelity.
 
+#![allow(unreachable_pub)]
 #[cfg(test)]
 mod tests {
     use crate::ValidationError;
     use vb_core::diagnostic::Severity;
     use vb_core::span::Span;
-    use super::diag_render::{diagnostic_from_error, error_code};
-    use super::diag_convert::all_variants;
+    use crate::diag_render::{diagnostic_from_error, error_code};
+    use crate::diag_convert::all_variants;
 
     #[test]
     fn diagnostic_from_error_includes_error_code() {

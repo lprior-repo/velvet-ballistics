@@ -342,6 +342,498 @@ pub fn handle_get_metrics(runtime: &Runtime) -> IpcResponse {
     })
 }
 
+/// Handles verify-workflow by resolving the compiled artifact and running gate checks.
+pub fn handle_verify_workflow(
+    payload: &[u8],
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
+    let Ok(IpcPayload::VerifyWorkflow { digest }) = decode_payload::<IpcPayload>(payload) else {
+        return IpcResponse::BadRequest;
+    };
+    let Some(resolver) = resolver else {
+        return IpcResponse::WorkflowResolutionRequired;
+    };
+    let workflow = match resolver.resolve_workflow(digest) {
+        Ok(w) => w,
+        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
+        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
+            return IpcResponse::WorkflowResolutionUnsupported;
+        }
+    };
+    if workflow.digest() != digest {
+        return IpcResponse::WorkflowDigestMismatch;
+    }
+    let parts = workflow.to_parts();
+    let gate_results: Vec<(&str, Result<(), vb_validate::ValidationError>)> = vec![
+        ("gate_07_expression_stack_depth", vb_validate::gates::validate_gate_07_expression_stack_depth(&parts)),
+        ("gate_08_accessor_path_segments", vb_validate::gates::validate_gate_08_accessor_path_segments(&parts)),
+        ("gate_09_slot_references", vb_validate::gates::validate_gate_09_slot_references(&parts)),
+        ("gate_10_node_kind_specific", vb_validate::gates::validate_gate_10_node_kind_specific(&parts)),
+        ("gate_11_loop_body_graph", vb_validate::gates::validate_gate_11_loop_body_graph(&parts)),
+        ("gate_13_no_slot_cycles", vb_validate::gates::validate_gate_13_no_slot_cycles(&parts)),
+        ("gate_14_slot_type_consistency", vb_validate::gates::validate_gate_14_slot_type_consistency(&parts)),
+        ("gate_15_determinism_proof", vb_validate::gates::validate_gate_15_determinism_proof(&parts)),
+    ];
+    let total_checks = u32::try_from(gate_results.len()).unwrap_or(u32::MAX);
+    let mut pass_count: u32 = 0;
+    let mut fail_count: u32 = 0;
+    let mut certificates: Vec<crate::CertificateWire> = Vec::new();
+    for (kind, result) in gate_results {
+        match result {
+            Ok(()) => {
+                pass_count = pass_count.saturating_add(1);
+                certificates.push(crate::CertificateWire {
+                    kind: kind.to_owned(),
+                    status: String::from("Pass"),
+                    details: String::new(),
+                });
+            }
+            Err(err) => {
+                fail_count = fail_count.saturating_add(1);
+                certificates.push(crate::CertificateWire {
+                    kind: kind.to_owned(),
+                    status: String::from("Fail"),
+                    details: err.to_string(),
+                });
+            }
+        }
+    }
+    IpcResponse::VerifyWorkflow {
+        result: crate::VerificationResult {
+            certificates,
+            total_checks,
+            pass_count,
+            fail_count,
+        },
+    }
+}
+
+/// Returns a human-readable kind string for a compiled node kind.
+fn node_kind_label(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
+    match kind {
+        vb_core::workflow::CompiledNodeKind::Nop => "Nop",
+        vb_core::workflow::CompiledNodeKind::SetConst { .. } => "SetConst",
+        vb_core::workflow::CompiledNodeKind::Copy { .. } => "Copy",
+        vb_core::workflow::CompiledNodeKind::EvalExpr { .. } => "EvalExpr",
+        vb_core::workflow::CompiledNodeKind::BuildObject { .. } => "BuildObject",
+        vb_core::workflow::CompiledNodeKind::BuildList { .. } => "BuildList",
+        vb_core::workflow::CompiledNodeKind::Do { .. } => "Do",
+        vb_core::workflow::CompiledNodeKind::Choose { .. } => "Choose",
+        vb_core::workflow::CompiledNodeKind::ChooseSlot { .. } => "ChooseSlot",
+        vb_core::workflow::CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
+        vb_core::workflow::CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
+        vb_core::workflow::CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
+        vb_core::workflow::CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
+        vb_core::workflow::CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
+        vb_core::workflow::CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
+        vb_core::workflow::CompiledNodeKind::CollectStart { .. } => "CollectStart",
+        vb_core::workflow::CompiledNodeKind::CollectPage { .. } => "CollectPage",
+        vb_core::workflow::CompiledNodeKind::CollectNext { .. } => "CollectNext",
+        vb_core::workflow::CompiledNodeKind::CollectFinish { .. } => "CollectFinish",
+        vb_core::workflow::CompiledNodeKind::ReduceStart { .. } => "ReduceStart",
+        vb_core::workflow::CompiledNodeKind::ReduceNext { .. } => "ReduceNext",
+        vb_core::workflow::CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish",
+        vb_core::workflow::CompiledNodeKind::RepeatStart { .. } => "RepeatStart",
+        vb_core::workflow::CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
+        vb_core::workflow::CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
+        vb_core::workflow::CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
+        vb_core::workflow::CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
+        vb_core::workflow::CompiledNodeKind::WaitEvent { .. } => "WaitEvent",
+        vb_core::workflow::CompiledNodeKind::Ask { .. } => "Ask",
+        vb_core::workflow::CompiledNodeKind::AskResume { .. } => "AskResume",
+        vb_core::workflow::CompiledNodeKind::RetryCheck { .. } => "RetryCheck",
+        vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
+        vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
+        vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
+    }
+}
+
+/// Extracts explicit control-flow edges from a single compiled node.
+fn collect_edges_from_node(
+    step: u16,
+    kind: &vb_core::workflow::CompiledNodeKind,
+    edges: &mut Vec<crate::EdgeDescriptor>,
+) {
+    match kind {
+        vb_core::workflow::CompiledNodeKind::Choose { branches, otherwise } => {
+            for (i, branch) in branches.iter().enumerate() {
+                edges.push(crate::EdgeDescriptor {
+                    from: step,
+                    to: branch.target.get(),
+                    label: Some(format!("branch_{i}")),
+                    edge_type: String::from("branch"),
+                });
+            }
+            if let Some(fallback) = otherwise {
+                edges.push(crate::EdgeDescriptor {
+                    from: step,
+                    to: fallback.get(),
+                    label: Some(String::from("otherwise")),
+                    edge_type: String::from("branch"),
+                });
+            }
+        }
+        vb_core::workflow::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for (i, branch) in branches.iter().enumerate() {
+                edges.push(crate::EdgeDescriptor {
+                    from: step,
+                    to: branch.target.get(),
+                    label: Some(format!("branch_{i}")),
+                    edge_type: String::from("branch"),
+                });
+            }
+            if let Some(fallback) = otherwise {
+                edges.push(crate::EdgeDescriptor {
+                    from: step,
+                    to: fallback.get(),
+                    label: Some(String::from("otherwise")),
+                    edge_type: String::from("branch"),
+                });
+            }
+        }
+        vb_core::workflow::CompiledNodeKind::ForEachStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::ForEachNext { body, done, .. } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: body.get(),
+                label: Some(String::from("body")),
+                edge_type: String::from("loop_body"),
+            });
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: done.get(),
+                label: Some(String::from("done")),
+                edge_type: String::from("loop_exit"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::TogetherStart { branches, join, .. } => {
+            for (i, branch_step) in branches.iter().enumerate() {
+                edges.push(crate::EdgeDescriptor {
+                    from: step,
+                    to: branch_step.get(),
+                    label: Some(format!("branch_{i}")),
+                    edge_type: String::from("parallel_branch"),
+                });
+            }
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: join.get(),
+                label: Some(String::from("join")),
+                edge_type: String::from("parallel_join"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::CollectStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::CollectPage { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::CollectNext { body, done, .. } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: body.get(),
+                label: Some(String::from("body")),
+                edge_type: String::from("loop_body"),
+            });
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: done.get(),
+                label: Some(String::from("done")),
+                edge_type: String::from("loop_exit"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::ReduceStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::ReduceNext { body, done, .. } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: body.get(),
+                label: Some(String::from("body")),
+                edge_type: String::from("loop_body"),
+            });
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: done.get(),
+                label: Some(String::from("done")),
+                edge_type: String::from("loop_exit"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::RepeatStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::RepeatAttempt { body, done, .. } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: body.get(),
+                label: Some(String::from("body")),
+                edge_type: String::from("loop_body"),
+            });
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: done.get(),
+                label: Some(String::from("done")),
+                edge_type: String::from("loop_exit"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::RepeatCheck { done, .. } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: done.get(),
+                label: Some(String::from("done")),
+                edge_type: String::from("loop_exit"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::ErrorHandler { body, handler } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: body.get(),
+                label: Some(String::from("body")),
+                edge_type: String::from("fallthrough"),
+            });
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: handler.get(),
+                label: Some(String::from("handler")),
+                edge_type: String::from("error_handler"),
+            });
+        }
+        vb_core::workflow::CompiledNodeKind::Jump { target } => {
+            edges.push(crate::EdgeDescriptor {
+                from: step,
+                to: target.get(),
+                label: None,
+                edge_type: String::from("jump"),
+            });
+        }
+        // Nodes without explicit multi-target edges; the `next` fallthrough
+        // is handled separately when building nodes.
+        vb_core::workflow::CompiledNodeKind::Nop
+        | vb_core::workflow::CompiledNodeKind::SetConst { .. }
+        | vb_core::workflow::CompiledNodeKind::Copy { .. }
+        | vb_core::workflow::CompiledNodeKind::EvalExpr { .. }
+        | vb_core::workflow::CompiledNodeKind::BuildObject { .. }
+        | vb_core::workflow::CompiledNodeKind::BuildList { .. }
+        | vb_core::workflow::CompiledNodeKind::Do { .. }
+        | vb_core::workflow::CompiledNodeKind::ForEachJoin { .. }
+        | vb_core::workflow::CompiledNodeKind::TogetherBranch { .. }
+        | vb_core::workflow::CompiledNodeKind::TogetherJoin { .. }
+        | vb_core::workflow::CompiledNodeKind::CollectFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::ReduceFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::RepeatFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::WaitUntil { .. }
+        | vb_core::workflow::CompiledNodeKind::WaitEvent { .. }
+        | vb_core::workflow::CompiledNodeKind::Ask { .. }
+        | vb_core::workflow::CompiledNodeKind::AskResume { .. }
+        | vb_core::workflow::CompiledNodeKind::RetryCheck { .. }
+        | vb_core::workflow::CompiledNodeKind::Finish { .. } => {}
+    }
+}
+
+/// Handles get-workflow-graph: resolves a workflow by digest and returns its
+/// node/edge structure as lightweight descriptors for UI rendering.
+pub fn handle_get_workflow_graph(
+    payload: &[u8],
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
+    let Ok(IpcPayload::GetWorkflowGraph { digest }) = decode_payload::<IpcPayload>(payload) else {
+        return IpcResponse::BadRequest;
+    };
+
+    let Some(resolver) = resolver else {
+        return IpcResponse::WorkflowResolutionRequired;
+    };
+
+    let workflow = match resolver.resolve_workflow(digest) {
+        Ok(w) => w,
+        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
+        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
+            return IpcResponse::WorkflowResolutionUnsupported;
+        }
+    };
+
+    let node_count = workflow.node_count();
+    let mut nodes = Vec::new();
+    let mut edges = Vec::new();
+
+    let mut idx: u16 = 0;
+    while idx < node_count {
+        let step = vb_core::ids::StepIdx::new(idx);
+        let Some(compiled_node) = workflow.node(step) else {
+            break;
+        };
+
+        let title = workflow
+            .step_name(step)
+            .map(String::from)
+            .or_else(|| compiled_node.output.map(|s| format!("slot_{}", s.get())))
+            .unwrap_or_else(|| {
+                let kind_str = node_kind_label(&compiled_node.kind);
+                format!("{kind_str}_{idx}")
+            });
+
+        let next = compiled_node.next.map(|n| n.get());
+
+        // Add a fallthrough edge if next is set.
+        if let Some(target) = next {
+            edges.push(crate::EdgeDescriptor {
+                from: idx,
+                to: target,
+                label: None,
+                edge_type: String::from("fallthrough"),
+            });
+        }
+
+        // Add structural edges from the node kind.
+        collect_edges_from_node(idx, &compiled_node.kind, &mut edges);
+
+        nodes.push(crate::NodeDescriptor {
+            step_idx: idx,
+            kind: String::from(node_kind_label(&compiled_node.kind)),
+            next,
+            title,
+        });
+
+        idx = idx.saturating_add(1);
+    }
+
+    IpcResponse::WorkflowGraph { nodes, edges }
+}
+
+/// Handles get-taint-report: resolves a compiled workflow by digest and
+/// computes the secret-to-sink taint overlay using a forward BFS walk.
+///
+/// Secret sources are WaitEvent and Ask nodes. Sinks are Finish nodes.
+/// Each source's reachable set is computed by following \`next\` edges.
+/// If a source reaches any Finish node, its paths are marked Dangerous;
+/// otherwise they are marked Warning.
+pub fn handle_get_taint_report(
+    payload: &[u8],
+    resolver: Option<&mut dyn WorkflowResolver>,
+) -> IpcResponse {
+    let Ok(IpcPayload::GetTaintReport { digest }) = decode_payload::<IpcPayload>(payload) else {
+        return IpcResponse::BadRequest;
+    };
+
+    let Some(resolver) = resolver else {
+        return IpcResponse::WorkflowResolutionRequired;
+    };
+
+    let workflow = match resolver.resolve_workflow(digest) {
+        Ok(w) => w,
+        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
+        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
+            return IpcResponse::WorkflowResolutionUnsupported;
+        }
+    };
+
+    if workflow.digest() != digest {
+        return IpcResponse::WorkflowDigestMismatch;
+    }
+
+    let parts = workflow.to_parts();
+
+    // Collect secret sources (WaitEvent, Ask).
+    let sources: Vec<u16> = parts
+        .nodes
+        .iter()
+        .filter(|node| {
+            matches!(
+                node.kind,
+                vb_core::workflow::CompiledNodeKind::WaitEvent { .. }
+                    | vb_core::workflow::CompiledNodeKind::Ask { .. }
+            )
+        })
+        .map(|node| node.id.get())
+        .collect();
+
+    // Collect sinks (Finish).
+    let sinks: Vec<u16> = parts
+        .nodes
+        .iter()
+        .filter(|node| {
+            matches!(
+                node.kind,
+                vb_core::workflow::CompiledNodeKind::Finish { .. }
+            )
+        })
+        .map(|node| node.id.get())
+        .collect();
+
+    let sink_set: std::collections::HashSet<u16> = sinks.iter().copied().collect();
+    let node_count = parts.nodes.len();
+    let mut paths: Vec<crate::TaintPathWire> = Vec::new();
+    let mut any_source_reaches_sink = false;
+
+    for source_idx in &sources {
+        let reachable = bfs_forward(&parts, *source_idx, node_count);
+        let reaches_sink = reachable.iter().any(|step| sink_set.contains(step));
+
+        if reaches_sink {
+            any_source_reaches_sink = true;
+        }
+
+        let status_str = if reaches_sink {
+            String::from("dangerous")
+        } else {
+            String::from("warning")
+        };
+
+        for step in &reachable {
+            paths.push(crate::TaintPathWire {
+                from: *source_idx,
+                to: *step,
+                status: status_str.clone(),
+            });
+        }
+    }
+
+    IpcResponse::TaintReport {
+        sources,
+        sinks,
+        finish_safe: !any_source_reaches_sink,
+        paths,
+    }
+}
+
+/// BFS forward from \`start\` following \`next\` edges only.
+/// Returns all reachable step indices (as u16) excluding \`start\` itself.
+fn bfs_forward(
+    parts: &vb_core::workflow::WorkflowParts,
+    start: u16,
+    node_count: usize,
+) -> Vec<u16> {
+    let start_step = vb_core::ids::StepIdx::new(start);
+    let mut visited = std::collections::HashSet::new();
+    visited.insert(start);
+    let mut result = Vec::new();
+    let mut queue = std::collections::VecDeque::new();
+
+    // Seed with the successors of start.
+    if let Some(node) = parts.nodes.get(start_step.as_usize()) {
+        enqueue_successors(node, node_count, &mut visited, &mut queue);
+    }
+
+    while let Some(current) = queue.pop_front() {
+        result.push(current);
+
+        let current_step = vb_core::ids::StepIdx::new(current);
+        if let Some(node) = parts.nodes.get(current_step.as_usize()) {
+            enqueue_successors(node, node_count, &mut visited, &mut queue);
+        }
+    }
+
+    result
+}
+
+/// Enqueue the linear successor of a node for BFS traversal.
+fn enqueue_successors(
+    node: &vb_core::workflow::CompiledNode,
+    node_count: usize,
+    visited: &mut std::collections::HashSet<u16>,
+    queue: &mut std::collections::VecDeque<u16>,
+) {
+    if let Some(next) = node.next {
+        let next_u16 = next.get();
+        let next_usize = next.as_usize();
+        if next_usize < node_count && visited.insert(next_u16) {
+            queue.push_back(next_u16);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

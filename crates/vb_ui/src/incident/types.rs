@@ -14,6 +14,7 @@ pub struct Incident {
     pub side_effect_certainty: SideEffectCertainty,
     pub timestamp: Instant,
     pub context: IncidentContext,
+    pub timeline: Vec<TimelineEntry>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,4 +49,35 @@ pub struct IncidentContext {
     pub taint_changes: Vec<(u16, String)>,
     pub action_attempts: u32,
     pub last_action_idempotency_key: Option<String>,
+}
+
+/// Structured failure detail returned when querying an incident by ID.
+#[derive(Debug, Clone)]
+pub struct FailureDetail {
+    pub error_code: FailureCode,
+    pub step_name: Option<String>,
+    pub error_context: IncidentContext,
+    pub replay_safe: bool,
+    pub side_effect_certainty: SideEffectCertainty,
+    pub timeline_events: Vec<TimelineEntry>,
+}
+
+/// A single chronological event in the incident timeline.
+#[derive(Debug, Clone)]
+pub struct TimelineEntry {
+    pub seq_no: u32,
+    pub event_kind: TimelineEventKind,
+    pub timestamp: Instant,
+    pub description: String,
+}
+
+/// Classification of a timeline event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimelineEventKind {
+    FailureObserved,
+    RetryAttempted,
+    SideEffectDetected,
+    ReplayDivergence,
+    RepairApplied,
+    IncidentDismissed,
 }

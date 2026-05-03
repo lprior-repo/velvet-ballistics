@@ -66,6 +66,12 @@ pub enum IpcCommand {
     ListRuns = 12,
     /// Query runtime metrics (queue depths, shard load, throughput).
     GetMetrics = 13,
+    /// Retrieve the graph structure of a compiled workflow.
+    GetWorkflowGraph = 14,
+    /// Get taint report for a compiled workflow (secret-to-sink paths).
+    GetTaintReport = 15,
+    /// Verify a compiled workflow and return validation certificates.
+    VerifyWorkflow = 16,
 }
 
 impl IpcCommand {
@@ -85,6 +91,9 @@ impl IpcCommand {
             11 => Ok(Self::Shutdown),
             12 => Ok(Self::ListRuns),
             13 => Ok(Self::GetMetrics),
+            14 => Ok(Self::GetWorkflowGraph),
+            15 => Ok(Self::GetTaintReport),
+            16 => Ok(Self::VerifyWorkflow),
             other => Err(IpcError::UnknownCommand(other)),
         }
     }
@@ -106,6 +115,9 @@ impl IpcCommand {
             Self::Shutdown => 11,
             Self::ListRuns => 12,
             Self::GetMetrics => 13,
+            Self::GetWorkflowGraph => 14,
+            Self::GetTaintReport => 15,
+            Self::VerifyWorkflow => 16,
         }
     }
 }
@@ -357,6 +369,21 @@ pub enum IpcPayload {
     Shutdown,
     /// Query runtime metrics.
     GetMetrics,
+    /// Get taint report for a compiled workflow.
+    GetTaintReport {
+        /// Compiled workflow digest to analyze.
+        digest: WorkflowDigest,
+    },
+    /// Retrieve the graph structure of a compiled workflow.
+    GetWorkflowGraph {
+        /// Compiled workflow digest to look up.
+        digest: WorkflowDigest,
+    },
+    /// Verify a compiled workflow and return validation certificates.
+    VerifyWorkflow {
+        /// Compiled workflow digest to verify.
+        digest: WorkflowDigest,
+    },
 }
 
 /// Run state reported in list-run responses.
@@ -460,6 +487,67 @@ pub struct AggregateMetrics {
     pub runs_failed_total: u64,
     /// Total runs finished since startup.
     pub runs_finished_total: u64,
+}
+
+/// Verification outcome for a compiled workflow.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VerificationResult {
+    /// Per-gate certificate details.
+    pub certificates: Vec<CertificateWire>,
+    /// Total number of gate checks performed.
+    pub total_checks: u32,
+    /// Number of gate checks that passed.
+    pub pass_count: u32,
+    /// Number of gate checks that failed.
+    pub fail_count: u32,
+}
+
+/// One gate-check certificate in a verification result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CertificateWire {
+    /// Gate identifier (e.g. `"gate_07_expression_stack_depth"`).
+    pub kind: String,
+    /// `"Pass"` or `"Fail"`.
+    pub status: String,
+    /// Human-readable details (empty on pass).
+    pub details: String,
+}
+
+/// One edge in a taint propagation path, serialized for IPC transport.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TaintPathWire {
+    /// Source step index.
+    pub from: u16,
+    /// Destination step index.
+    pub to: u16,
+    /// Whether this edge is dangerous (reaches Finish) or just a warning.
+    pub status: String,
+}
+
+/// Lightweight descriptor for a single workflow node returned by GetWorkflowGraph.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeDescriptor {
+    /// Step index of this node.
+    pub step_idx: u16,
+    /// Kind of this node (e.g. "Nop", "Do", "Choose", "Finish").
+    pub kind: String,
+    /// Fallthrough target step index, if any.
+    pub next: Option<u16>,
+    /// Human-readable step name.
+    pub title: String,
+}
+
+/// Lightweight descriptor for a workflow edge returned by GetWorkflowGraph.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EdgeDescriptor {
+    /// Source step index.
+    pub from: u16,
+    /// Target step index.
+    pub to: u16,
+    /// Optional label for this edge (e.g. branch condition, "otherwise").
+    pub label: Option<String>,
+    /// Edge type (e.g. "fallthrough", "branch", "loop_body", "error_handler").
+    pub edge_type: String,
 }
 
 /// Typed IPC action output payload carried by `CompleteAction`.
@@ -972,7 +1060,10 @@ mod tests {
         assert_eq!(IpcCommand::from_u16(11), Ok(IpcCommand::Shutdown));
         assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
         assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::GetMetrics));
-        assert_eq!(IpcCommand::from_u16(14), Err(IpcError::UnknownCommand(14)));
+        assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::GetWorkflowGraph));
+        assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::GetTaintReport));
+        assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::VerifyWorkflow));
+        assert_eq!(IpcCommand::from_u16(17), Err(IpcError::UnknownCommand(17)));
     }
 
     #[test]
@@ -1850,6 +1941,9 @@ mod tests {
         assert_eq!(IpcCommand::Shutdown.as_u16(), 11);
         assert_eq!(IpcCommand::ListRuns.as_u16(), 12);
         assert_eq!(IpcCommand::GetMetrics.as_u16(), 13);
+        assert_eq!(IpcCommand::GetWorkflowGraph.as_u16(), 14);
+        assert_eq!(IpcCommand::GetTaintReport.as_u16(), 15);
+        assert_eq!(IpcCommand::VerifyWorkflow.as_u16(), 16);
     }
 
     #[test]
@@ -2910,6 +3004,9 @@ fn frame_validation_roundtrip_all_commands_preserve_command_identity() {
         IpcCommand::Shutdown,
         IpcCommand::ListRuns,
         IpcCommand::GetMetrics,
+        IpcCommand::GetWorkflowGraph,
+        IpcCommand::GetTaintReport,
+        IpcCommand::VerifyWorkflow,
     ];
 
     for command in commands {
@@ -2994,7 +3091,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=13u16) {
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=16u16) {
             let parsed = IpcCommand::from_u16(cmd);
             prop_assert_ok!(parsed);
             let Ok(command) = parsed else { return Ok(()) };
@@ -3023,7 +3120,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=13u16) {
+        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=16u16) {
             // Given: any valid command id
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(())
@@ -3066,7 +3163,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=13u16, payload_len in 0u32..=1024u32) {
+        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=16u16, payload_len in 0u32..=1024u32) {
             // Given: any valid command and payload length up to 1 KiB
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(())
