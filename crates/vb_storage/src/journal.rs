@@ -12,12 +12,11 @@ use crate::{
     batch::JournalWriteBatch,
     codec::{decode_record, encode_record},
     constants::{
-        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
+        KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_WORKFLOW_SOURCE, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
-        MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
-        MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+        KEYSPACE_BLOB, KEYSPACE_WORKFLOW_SOURCE, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
+        MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
@@ -25,25 +24,39 @@ use crate::{
         blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
         run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
     },
-    records::{BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord},
-    recovery::RunSnapshot,
+    records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
     types::{EventSeq, FjallConfig, KeyspaceProfile},
 };
 
 use crate::keys::run_prefix_key;
+use fjall::Readable;
+
+/// Verifies that content bytes hash to the expected digest.
+/// Used at admission time to prevent digest forgery.
+pub(crate) fn verify_content_digest(
+    content: &[u8],
+    expected: &[u8],
+) -> Result<(), JournalError> {
+    let computed = blake3::hash(content);
+    if computed.as_bytes() == expected {
+        Ok(())
+    } else {
+        Err(JournalError::PayloadDigestMismatch)
+    }
+}
 
 /// Fjall-backed append journal.
 pub struct FjallJournal {
-    database: fjall::Database,
-    workflow_source: fjall::Keyspace,
-    compiled_ir: fjall::Keyspace,
-    run_header: fjall::Keyspace,
-    events: fjall::Keyspace,
-    run_snapshot: fjall::Keyspace,
-    blob: fjall::Keyspace,
-    index_status: fjall::Keyspace,
-    index_workflow: fjall::Keyspace,
-    index_action: fjall::Keyspace,
+    pub(crate) database: fjall::Database,
+    pub(crate) workflow_source: fjall::Keyspace,
+    pub(crate) compiled_ir: fjall::Keyspace,
+    pub(crate) run_header: fjall::Keyspace,
+    pub(crate) events: fjall::Keyspace,
+    pub(crate) run_snapshot: fjall::Keyspace,
+    pub(crate) blob: fjall::Keyspace,
+    pub(crate) index_status: fjall::Keyspace,
+    pub(crate) index_workflow: fjall::Keyspace,
+    pub(crate) index_action: fjall::Keyspace,
     #[allow(dead_code)]
     write_lock: Mutex<()>,
 }
@@ -117,10 +130,13 @@ impl FjallJournal {
     }
 
     /// Stores immutable workflow source bytes by digest.
+    ///
+    /// The source bytes are verified against the claimed digest before storage.
     pub fn put_workflow_source(
         &self,
         record: &WorkflowSourceRecord,
     ) -> Result<(), JournalError> {
+        verify_content_digest(&record.source, &record.digest.as_bytes())?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -220,7 +236,7 @@ impl FjallJournal {
         Ok(())
     }
 
-    fn append_queued_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+    pub(crate) fn append_queued_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
         match self.append_unpersisted(event) {
             Ok(()) => Ok(()),
             Err(JournalError::DuplicateEvent { run, seq }) => {
@@ -271,7 +287,7 @@ impl FjallJournal {
     }
 
     #[allow(clippy::unused_self)]
-    fn decode_optional<T: DeserializeOwned>(
+    pub(crate) fn decode_optional<T: DeserializeOwned>(
         &self,
         keyspace: &fjall::Keyspace,
         key: &[u8],

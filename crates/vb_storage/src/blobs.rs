@@ -14,7 +14,10 @@ use crate::journal::FjallJournal;
 
 impl FjallJournal {
     /// Stores a bounded blob by digest.
+    ///
+    /// The blob bytes are verified against the claimed digest before storage.
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
+        crate::journal::verify_content_digest(&record.bytes, &record.digest)?;
         let key = blob_key(record.digest)?;
         let value =
             encode_record(MAGIC_BLOB, crate::records::RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;

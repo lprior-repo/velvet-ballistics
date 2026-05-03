@@ -3,9 +3,7 @@
 //! Provides artifact submission and admission flows with policy-controlled durability.
 
 use crate::{
-    codec::encode_record,
     error::JournalError,
-    events::JournalEvent,
     records::CompiledIrRecord,
     types::EventSeq,
 };
@@ -52,13 +50,22 @@ pub struct AcceptedArtifact {
 const ADMISSION_GATE_COUNT: u8 = 2;
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
+///
+/// This is the full admission flow. It performs:
+/// 1. Structure validation: re-parse the workflow from serialized parts.
+/// 2. Checksum validation: serialized bytes must hash to the claimed digest.
+/// 3. Persistence: store the artifact in the `compiled_ir` keyspace.
+/// 4. Durability: under `Strict` policy, calls SyncAll before returning.
+///
+/// Returns the `AcceptedArtifact` on success.
 pub fn submit_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
-) -> Result<vb_core::WorkflowDigest, JournalError> {
+) -> Result<AcceptedArtifact, JournalError> {
     match policy {
         vb_core::RuntimePolicy::Relaxed => {
+            // No verification required, just persist.
             let parts = workflow.to_parts();
             let bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
@@ -67,14 +74,23 @@ pub fn submit_artifact(
                 ir: bytes,
             };
             journal.put_compiled_ir(&record)?;
-            Ok(workflow.digest())
+            Ok(AcceptedArtifact {
+                digest: workflow.digest(),
+                ir: record.ir,
+                verification: VerificationProof::new(workflow.digest(), 0, false),
+                accepted_at_seq: EventSeq::new(0),
+            })
         }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             let parts = workflow.to_parts();
 
+            // Gate 1: Structure validation — must reconstruct successfully.
             vb_core::CompiledWorkflow::try_from_parts(parts.clone())
                 .map_err(|_| JournalError::ArtifactMalformed)?;
 
+            // Gate 2: Checksum validation — hash the content fields (digest zeroed)
+            // and compare to the claimed digest. This avoids the circular dependency
+            // where the digest field is part of its own hash input.
             let mut parts_for_hash = parts.clone();
             parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
             let hash_bytes =
@@ -84,9 +100,11 @@ pub fn submit_artifact(
                 return Err(JournalError::ArtifactChecksumMismatch);
             }
 
+            // Full serialization for storage (includes correct digest).
             let bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
 
+            // Persist accepted artifact.
             let record = CompiledIrRecord {
                 digest: workflow.digest(),
                 ir: bytes,
@@ -98,30 +116,40 @@ pub fn submit_artifact(
                 journal.persist_strict()?;
             }
 
-            let _proof =
-                VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
-            let _artifact = AcceptedArtifact {
+            let proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+            let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 ir: record.ir,
-                verification: _proof,
+                verification: proof,
                 accepted_at_seq: EventSeq::new(0),
             };
 
-            Ok(workflow.digest())
+            Ok(artifact)
         }
     }
 }
 
 /// Validates and persists a compiled workflow artifact.
+///
+/// Structure validation ensures the workflow can be reconstructed from its parts.
+/// Checksum validation recomputes the BLAKE3 digest from the serialized parts
+/// and compares it to the digest claimed by the workflow.
+///
+/// On success, the artifact is stored in the `compiled_ir` keyspace and its
+/// digest is returned. On failure, the storage is left unchanged.
 pub fn admit_compiled_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
 ) -> Result<vb_core::WorkflowDigest, JournalError> {
     let parts = workflow.to_parts();
 
+    // Structure validation: must reconstruct successfully.
     vb_core::CompiledWorkflow::try_from_parts(parts.clone())
         .map_err(|_| JournalError::ArtifactMalformed)?;
 
+    // Checksum validation: hash content fields (digest zeroed) and compare
+    // to the claimed digest to avoid the circular dependency where the digest
+    // field is part of its own hash input.
     let mut parts_for_hash = parts.clone();
     parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
     let hash_bytes =
@@ -131,9 +159,8 @@ pub fn admit_compiled_artifact(
         return Err(JournalError::ArtifactChecksumMismatch);
     }
 
-    let bytes =
-        postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-
+    // Persist accepted artifact with full serialization (includes digest).
+    let bytes = postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
     let record = CompiledIrRecord {
         digest: workflow.digest(),
         ir: bytes,
