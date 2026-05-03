@@ -3555,3 +3555,121 @@ The following phases extend Section 35 for operator-facing features:
 | 58 | Codegen expansion | `BuildObject`, `BuildList`, helper expression ops (`Contains`, `Length`, `Empty`, `Sum`, `Count`, `Unique`), `RetryCheck`. IR/generated equivalence tests per newly supported primitive. |
 | 59 | Behavioral property tests | 11 required properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, taint safety, IR/generated parity. |
 | 60 | `vb` binary alias | Cargo.toml `[[bin]]` entry for `vb` pointing to same `main.rs`. Both `velvet-ballastics` and `vb` produce identical behavior. |
+
+---
+
+## 50. Competitive Performance Targets
+
+The following targets are derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). As a single-server engine with no replication overhead, `velvet-ballastics` must meet or exceed these on equivalent hardware.
+
+### Step-Level Latency Targets
+
+| Metric | Restate (replicated) | Velvet Ballastics (single-server) | Notes |
+|--------|---------------------|-----------------------------------|-------|
+| Single step p50 (no replication) | 3ms | <= 1ms | No network roundtrip for quorum |
+| Single step p50 (journaled) | 10ms | <= 5ms | Fjall group commit vs quorum replication |
+| Single step p50 (strict) | N/A (same as journaled) | <= 10ms | fsync on every step; Restate has no equivalent |
+| Full workflow p50 (9 steps, low load) | 31ms | <= 15ms | Compiled IR, no SDK roundtrip |
+| Full workflow p50 (9 steps, high load) | 116ms | <= 60ms | Single-server removes coordination overhead |
+| Full workflow p99 (9 steps, high load) | 163ms | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
+
+### Throughput Targets
+
+| Metric | Restate | Velvet Ballastics | Notes |
+|--------|---------|-------------------|-------|
+| Actions (steps) per second | 94,286 | >= 100,000 | Generated Rust mode must hit this |
+| Full workflows per second (9 steps) | 8,571 | >= 10,000 | Single-server removes replication overhead |
+| Concurrent active runs | 1,200 (test clients) | >= 4,096 | Frame pool capacity |
+
+### Why These Targets Are Achievable
+
+Restate pays for every step:
+1. Network roundtrip for quorum replication (fastest path is one RTT to 2 of 3 nodes)
+2. Epoch checking and leader validation on every event
+3. SDK roundtrip: server pushes to service process, service responds over network
+4. Tokio async overhead (scheduler, waker, polling)
+5. RocksDB async flush competing with event processing
+
+`velvet-ballastics` eliminates all five:
+1. No replication — local Fjall write
+2. No leader — single shard owns the run
+3. No SDK — action dispatch is a function call within the same process
+4. No async — synchronous deterministic loop
+5. No competing flush — Fjall writes happen through bounded writer queue, not in the hot path
+
+The generated Rust mode adds another advantage: no IR dispatch table lookup. Steps compile to direct `match` arms on constant step indices. This should bring single-step latency under 100 microseconds for pure computation steps (no I/O).
+
+### Measurement Contract
+
+Every performance claim must include:
+- `criterion` or `iai-callgrind` output with p50/p95/p99
+- Hardware: CPU model, cores, RAM, disk type (NVMe vs SSD)
+- Build profile: debug, release, maxperf, PGO
+- Execution mode: IR interpreter vs generated Rust
+- Durability profile: volatile, journaled, strict
+- Number of concurrent runs
+- Benchmark fixture digest (reproducible)
+
+---
+
+## 51. Execution Attempt Tracking
+
+When a run fails and is retried, the engine must reject stale events from previous execution attempts. This prevents split-brain between overlapping retries.
+
+### Contract
+
+1. Every run attempt gets a monotonically increasing `attempt: u16` counter.
+2. `ActionTicket` carries the `attempt` number.
+3. On retry, the attempt counter increments. Any `ActionCompleted`/`ActionFailed` event carrying a stale attempt number is rejected with `StaleAttempt { expected, found }`.
+4. Journal events are tagged with the attempt number.
+5. Recovery replays events for the latest attempt only. Events from earlier attempts are ignored.
+6. The attempt counter is journaled as part of `RunAccepted` and persists across crashes.
+
+This mirrors Restate's invocation execution attempt tracking, adapted for single-server synchronous execution.
+
+---
+
+## 52. Journal Trimming
+
+The journal cannot grow indefinitely. After a snapshot is taken, journal events older than the snapshot are eligible for trimming.
+
+### Trimming Contract
+
+1. A snapshot captures the full run state at `SeqNo` N.
+2. Once a snapshot at N is confirmed durable (fsynced), all journal events with `SeqNo <= N` for that run are eligible for deletion.
+3. Trimming must not delete events for runs that have no snapshot.
+4. Terminal runs (finished/failed/cancelled) are eligible for trimming after their final snapshot, subject to a retention policy (default: keep last N terminal runs per workflow).
+5. The `doctor` command must report journal size and suggest trimming if the journal exceeds a configured threshold.
+
+This prevents unbounded disk growth in long-running production deployments.
+
+---
+
+## 53. Converged Binary Design
+
+`velvet-ballastics` ships as a single binary that operates in different modes depending on the command invoked. This mirrors Restate's converged single-binary design, adapted for single-server operation.
+
+### Modes
+
+| Command | Binary Role | Components Active |
+|---------|-------------|-------------------|
+| `run` | Executor | Compiler + Engine + Storage |
+| `run-compiled` | Executor | Engine + Storage |
+| `validate` | Validator | YAML Parser + Validator |
+| `compile` | Compiler | YAML Parser + Validator + Compiler + Codegen |
+| `explain` | Analyzer | YAML Parser + Validator + Compiler |
+| `diff` | Analyzer | Compiler + Digest comparison |
+| `inspect` | Observer | Storage reader |
+| `events` | Observer | Storage reader |
+| `trace` | Observer | Storage reader |
+| `replay` | Observer | Storage reader + Recovery |
+| `ipc-serve` | Server | Engine + Storage + IPC server loop |
+| `cancel`/`resume`/`retry`/`answer` | Controller | Storage reader + Engine + Storage writer |
+| `bench-run` | Benchmarker | Compiler + Engine + Timer |
+| `doctor` | Diagnostics | Storage reader + Health checks |
+
+No mode starts components it doesn't need. The `validate` command never opens Fjall. The `inspect` command never compiles YAML. The `ipc-serve` command is the only mode that runs the full stack persistently.
+
+### Future Extension
+
+If `velvet-ballastics` ever supports distributed operation (v2+), the binary gains additional roles (log-server, controller, ingress) but the converged model persists: a single binary, configured by role, no separate services to deploy.
