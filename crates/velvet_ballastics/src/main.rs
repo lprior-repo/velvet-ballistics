@@ -201,6 +201,7 @@ struct StepTarget {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum ParseError {
     MissingArgument(&'static str),
     UnknownEmitTarget(String),
@@ -1843,7 +1844,7 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Unknown Trigger Kind");
             outln!("  Trigger kind '{trigger}' is not recognized.");
         }
-        CompileError::TriggerShape { trigger, expected } => {
+        CompileError::TriggerShape { trigger, expected: _ } => {
             outln!("Invalid Trigger Shape");
             outln!("  Trigger '{trigger}' has the wrong structure.");
         }
@@ -1855,11 +1856,11 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Missing Trigger Field");
             outln!("  Trigger '{trigger}' is missing required field '{field}'.");
         }
-        CompileError::InvalidTriggerField { trigger, field, expected } => {
+        CompileError::InvalidTriggerField { trigger, field, expected: _ } => {
             outln!("Invalid Trigger Field");
             outln!("  Trigger '{trigger}' field '{field}' is invalid.");
         }
-        CompileError::FieldShape { field, expected } => {
+        CompileError::FieldShape { field, expected: _ } => {
             outln!("Invalid Field Shape");
             outln!("  Field '{field}' has the wrong structure.");
         }
@@ -1867,7 +1868,7 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Unknown Input Schema Field");
             outln!("  '{field}' is not a recognized input schema field.");
         }
-        CompileError::InvalidInputSchema { field, expected } => {
+        CompileError::InvalidInputSchema { field, expected: _ } => {
             outln!("Invalid Input Schema");
             outln!("  Input schema field '{field}' is invalid.");
         }
@@ -1923,7 +1924,7 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Missing Step Field");
             outln!("  Step {step} is missing required field '{field}'.");
         }
-        CompileError::StepFieldShape { step, field, expected } => {
+        CompileError::StepFieldShape { step, field, expected: _ } => {
             outln!("Invalid Step Field Shape");
             outln!("  Step {step} field '{field}' has wrong structure.");
         }
