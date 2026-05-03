@@ -160,7 +160,7 @@ const fn is_supported_code(code: u16) -> bool {
             | 0x1401..=0x1407
             | 0x2001..=0x200F
             | 0x3001..=0x300E
-            | 0x4001..=0x4015
+            | 0x4001..=0x401B
     )
 }
 

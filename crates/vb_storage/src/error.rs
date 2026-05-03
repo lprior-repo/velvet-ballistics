@@ -1,5 +1,7 @@
 //! Storage error types with diagnostic codes.
 
+use std::path::Path;
+
 use crate::types::EventSeq;
 use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
@@ -126,6 +128,24 @@ pub enum JournalError {
         /// Digest of the missing artifact.
         digest: WorkflowDigest,
     },
+    /// Another process holds the exclusive storage lock.
+    #[error("process lock held by another process (pid: {holder_pid:?}) at {path}")]
+    ProcessLockHeld {
+        /// Lock file path.
+        path: Box<Path>,
+        /// Underlying flock error.
+        source: rustix::io::Errno,
+        /// PID of the holding process, if discoverable.
+        holder_pid: Option<u32>,
+    },
+    /// I/O error while creating or opening the process lock file.
+    #[error("process lock I/O error at {path}: {source}")]
+    ProcessLockIo {
+        /// Lock file path.
+        path: Box<Path>,
+        /// Underlying I/O error.
+        source: std::io::Error,
+    },
 }
 
 impl JournalError {
@@ -179,6 +199,10 @@ impl JournalError {
     pub const ARTIFACT_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4018);
     /// Diagnostic code for artifact not found.
     pub const ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x4019);
+    /// Diagnostic code for process lock held by another process.
+    pub const PROCESS_LOCK_HELD_CODE: DiagnosticCode = DiagnosticCode::new(0x401A);
+    /// Diagnostic code for process lock I/O error.
+    pub const PROCESS_LOCK_IO_CODE: DiagnosticCode = DiagnosticCode::new(0x401B);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -209,6 +233,8 @@ impl JournalError {
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
             Self::ArtifactNotFound { .. } => Self::ARTIFACT_NOT_FOUND_CODE,
+            Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
+            Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
         }
     }
 }

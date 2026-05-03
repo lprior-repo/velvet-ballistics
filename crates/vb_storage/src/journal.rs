@@ -24,6 +24,7 @@ use crate::{
         compiled_ir_key,
         run_event_key, workflow_source_key,
     },
+
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
     types::{EventSeq, FjallConfig, KeyspaceProfile},
 };
@@ -62,9 +63,11 @@ impl FjallJournal {
     /// Opens or creates the journal at `path`.
     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
         let config = config.unwrap_or_default();
-        let database = fjall::Database::builder(path)
+        let path_ref = path.as_ref();
+        let database = fjall::Database::builder(path_ref)
             .cache_size(config.cache_size_bytes)
             .open()?;
+
         let workflow_source = database.keyspace(KEYSPACE_WORKFLOW_SOURCE, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
         })?;

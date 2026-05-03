@@ -2314,6 +2314,7 @@ dependencies = [
  "fjall",
  "postcard",
  "proptest",
+ "rustix",
  "serde",
  "tempfile",
  "thiserror",
