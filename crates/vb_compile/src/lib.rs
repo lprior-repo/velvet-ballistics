@@ -590,23 +590,43 @@ pub fn lower_repeat(
     ])
 }
 
+/// Type-safe discriminator for the two legal `wait` shapes.
+///
+/// Replaces the previous `is_event: bool` parameter, which allowed invalid
+/// combinations such as passing `is_event = false` with a `timeout_slot`,
+/// which would be silently discarded.
+enum WaitKind {
+    /// `wait.until` — waits until a deadline slot is reached; no timeout.
+    Until { deadline: SlotIdx },
+    /// `wait.event` — waits for an event slot, with an optional timeout.
+    Event {
+        event: SlotIdx,
+        timeout: Option<SlotIdx>,
+    },
+}
+
 /// Lowers a `wait` primitive into `WaitUntil` or `WaitEvent` IR nodes.
 pub fn lower_wait(
     id: StepIdx,
-    deadline_or_event: SlotIdx,
-    timeout_slot: Option<SlotIdx>,
-    is_event: bool,
+    kind: WaitKind,
     builder: &mut SlotCompiler,
 ) -> CompiledNode {
-    builder.record_slot(deadline_or_event);
-    let kind = if is_event {
-        CompiledNodeKind::WaitEvent {
-            event: deadline_or_event,
-            timeout_slot,
+    let compiled_kind = match kind {
+        WaitKind::Until { deadline } => {
+            builder.record_slot(deadline);
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: deadline,
+            }
         }
-    } else {
-        CompiledNodeKind::WaitUntil {
-            deadline_slot: deadline_or_event,
+        WaitKind::Event { event, timeout_slot } => {
+            builder.record_slot(event);
+            if let Some(slot) = timeout_slot {
+                builder.record_slot(slot);
+            }
+            CompiledNodeKind::WaitEvent {
+                event,
+                timeout_slot,
+            }
         }
     };
     CompiledNode {
@@ -615,7 +635,7 @@ pub fn lower_wait(
         next: None,
         error_slot: None,
         on_error: None,
-        kind,
+        kind: compiled_kind,
     }
 }
 
