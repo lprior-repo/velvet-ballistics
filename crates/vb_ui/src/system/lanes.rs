@@ -74,19 +74,25 @@ impl ActivityLanes {
     /// Sum of active runs across all shards.
     #[must_use]
     pub fn total_active_runs(&self) -> u32 {
-        self.lanes.iter().map(|l| l.active_runs).sum()
+        self.lanes
+            .iter()
+            .fold(0u32, |acc, l| acc.saturating_add(l.active_runs))
     }
 
     /// Sum of ready queue depths across all shards.
     #[must_use]
     pub fn total_ready_queue(&self) -> u32 {
-        self.lanes.iter().map(|l| l.ready_queue_depth).sum()
+        self.lanes
+            .iter()
+            .fold(0u32, |acc, l| acc.saturating_add(l.ready_queue_depth))
     }
 
     /// Sum of action queue depths across all shards.
     #[must_use]
     pub fn total_action_queue(&self) -> u32 {
-        self.lanes.iter().map(|l| l.action_queue_depth).sum()
+        self.lanes
+            .iter()
+            .fold(0u32, |acc, l| acc.saturating_add(l.action_queue_depth))
     }
 
     /// Index of the shard with the highest combined queue depth

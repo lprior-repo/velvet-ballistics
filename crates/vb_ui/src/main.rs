@@ -4,7 +4,7 @@ pub mod ipc_bridge;
 pub use makepad_widgets;
 
 use makepad_widgets::*;
-use vb_ui::app_state::AppState;
+use vb_ui::app_state::{AppState, ReplayData, Screen};
 
 app_main!(VbApp);
 
@@ -1477,76 +1477,74 @@ impl MatchEvent for VbApp {
         // Screen navigation — switches PageFlip active_page
         if self.ui.button(cx, ids!(nav_replay)).clicked(actions) {
             self.app_state
-                .switch_screen(vb_ui::app_state::Screen::RunReplay);
-            script_apply_eval!(cx, self.ui, {
-                screens.active_page: replay_page
-                page_title.text: "Replay Theater"
-                page_title.draw_text.color: #00f5ff
-            });
+                .switch_screen(Screen::RunReplay);
+            self.sync_nav(cx, String::from("Replay Theater"), String::from("#00f5ff"));
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(nav_verify)).clicked(actions) {
             self.app_state
-                .switch_screen(vb_ui::app_state::Screen::Verification);
-            script_apply_eval!(cx, self.ui, {
-                screens.active_page: verify_page
-                page_title.text: "Verification"
-                page_title.draw_text.color: #39ff14
-            });
+                .switch_screen(Screen::Verification);
+            self.sync_nav(cx, String::from("Verification"), String::from("#39ff14"));
+            self.sync_verify_state(cx);
         }
         if self.ui.button(cx, ids!(nav_system)).clicked(actions) {
             self.app_state
-                .switch_screen(vb_ui::app_state::Screen::SystemOverview);
-            script_apply_eval!(cx, self.ui, {
-                screens.active_page: system_page
-                page_title.text: "System Overview"
-                page_title.draw_text.color: #2d6bff
-            });
+                .switch_screen(Screen::SystemOverview);
+            self.sync_nav(cx, String::from("System Overview"), String::from("#2d6bff"));
+            self.sync_system_state(cx);
         }
         if self.ui.button(cx, ids!(nav_workflow)).clicked(actions) {
             self.app_state
-                .switch_screen(vb_ui::app_state::Screen::WorkflowGraph);
-            script_apply_eval!(cx, self.ui, {
-                screens.active_page: workflow_page
-                page_title.text: "Workflow Graph"
-                page_title.draw_text.color: #b14dff
-            });
+                .switch_screen(Screen::WorkflowGraph);
+            self.sync_nav(cx, String::from("Workflow Graph"), String::from("#b14dff"));
+            self.sync_workflow_state(cx);
         }
         if self.ui.button(cx, ids!(nav_incident)).clicked(actions) {
             self.app_state
-                .switch_screen(vb_ui::app_state::Screen::IncidentConsole);
-            script_apply_eval!(cx, self.ui, {
-                screens.active_page: incident_page
-                page_title.text: "Incident Console"
-                page_title.draw_text.color: #ff073a
-            });
+                .switch_screen(Screen::IncidentConsole);
+            self.sync_nav(cx, String::from("Incident Console"), String::from("#ff073a"));
+            self.sync_incident_state(cx);
         }
 
         // Transport controls (Replay Theater)
         if self.ui.button(cx, ids!(btn_start)).clicked(actions) {
-            script_eval!(cx, { std.println("transport: jump to start") });
+            self.app_state.replay.playback_position = 0;
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(btn_prev)).clicked(actions) {
-            script_eval!(cx, { std.println("transport: step backward") });
+            self.app_state.replay.playback_position =
+                self.app_state.replay.playback_position.saturating_sub(1);
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(btn_play)).clicked(actions) {
-            script_eval!(cx, { std.println("transport: play/pause toggle") });
+            self.app_state.replay.is_playing = !self.app_state.replay.is_playing;
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(btn_next)).clicked(actions) {
-            script_eval!(cx, { std.println("transport: step forward") });
+            self.app_state.replay.playback_position =
+                self.app_state.replay.playback_position.saturating_add(1);
+            if self.app_state.replay.playback_position > self.app_state.replay.total_events {
+                self.app_state.replay.playback_position = self.app_state.replay.total_events;
+            }
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(btn_end)).clicked(actions) {
-            script_eval!(cx, { std.println("transport: jump to end") });
+            self.app_state.replay.playback_position = self.app_state.replay.total_events;
+            self.sync_replay_state(cx);
         }
 
         // Jump chips
         if self.ui.button(cx, ids!(jump_failure)).clicked(actions) {
-            script_eval!(cx, { std.println("jump: seeking to first failure event") });
+            // TODO: seek to first failure event when timeline data is wired
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(jump_action)).clicked(actions) {
-            script_eval!(cx, { std.println("jump: seeking to next action boundary") });
+            // TODO: seek to next action boundary when timeline data is wired
+            self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(jump_done)).clicked(actions) {
-            script_eval!(cx, { std.println("jump: seeking to run completion") });
+            self.app_state.replay.playback_position = self.app_state.replay.total_events;
+            self.sync_replay_state(cx);
         }
 
         // Verify screen actions
@@ -1559,8 +1557,169 @@ impl MatchEvent for VbApp {
 
         // Incident actions
         if self.ui.button(cx, ids!(inc_dismiss)).clicked(actions) {
-            script_eval!(cx, { std.println("incident: dismissing selected incident") });
+            // TODO: dismiss selected incident and refresh list
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic state binding methods
+// ---------------------------------------------------------------------------
+
+impl VbApp {
+    /// Synchronizes navigation chrome (page flip, title, top-bar badges).
+    fn sync_nav(&mut self, cx: &mut Cx, title: String, _title_color: String) {
+        let run_id_text = ReplayData::run_id_text(self.app_state.selected_run_id);
+        let wf_name = self
+            .app_state
+            .selected_workflow_name
+            .clone()
+            .unwrap_or_else(|| String::from("issue-triage"));
+
+        match self.app_state.current_screen() {
+            Screen::RunReplay => {
+                script_apply_eval!(cx, self.ui, {
+                    screens.active_page: replay_page
+                    page_title.text: #(title)
+                    page_title.draw_text.color: #00f5ff
+                    run_id.text: #(run_id_text)
+                    wf_name.text: #(wf_name)
+                });
+            }
+            Screen::Verification => {
+                script_apply_eval!(cx, self.ui, {
+                    screens.active_page: verify_page
+                    page_title.text: #(title)
+                    page_title.draw_text.color: #39ff14
+                    run_id.text: #(run_id_text)
+                    wf_name.text: #(wf_name)
+                });
+            }
+            Screen::SystemOverview => {
+                script_apply_eval!(cx, self.ui, {
+                    screens.active_page: system_page
+                    page_title.text: #(title)
+                    page_title.draw_text.color: #2d6bff
+                    run_id.text: #(run_id_text)
+                    wf_name.text: #(wf_name)
+                });
+            }
+            Screen::WorkflowGraph => {
+                script_apply_eval!(cx, self.ui, {
+                    screens.active_page: workflow_page
+                    page_title.text: #(title)
+                    page_title.draw_text.color: #b14dff
+                    run_id.text: #(run_id_text)
+                    wf_name.text: #(wf_name)
+                });
+            }
+            Screen::IncidentConsole => {
+                script_apply_eval!(cx, self.ui, {
+                    screens.active_page: incident_page
+                    page_title.text: #(title)
+                    page_title.draw_text.color: #ff073a
+                    run_id.text: #(run_id_text)
+                    wf_name.text: #(wf_name)
+                });
+            }
+        }
+    }
+
+    /// Synchronizes Replay Theater state to UI labels.
+    fn sync_replay_state(&mut self, cx: &mut Cx) {
+        let event_count = self.app_state.replay.event_count_text();
+        let speed_text = self.app_state.replay.speed_text();
+
+        script_apply_eval!(cx, self.ui, {
+            event_count.text: #(event_count)
+            speed_label.text: #(speed_text)
+        });
+
+        // Update play button label based on is_playing state
+        let play_label = if self.app_state.replay.is_playing {
+            "||"
+        } else {
+            ">"
+        };
+        script_apply_eval!(cx, self.ui, {
+            btn_play.text: #(play_label)
+        });
+    }
+
+    /// Synchronizes Verification screen state to UI labels.
+    fn sync_verify_state(&mut self, cx: &mut Cx) {
+        let status_text = self.app_state.verification.status_badge_text();
+        let total_str = self.app_state.verification.total_checks.to_string();
+        let pass_str = self.app_state.verification.pass_count.to_string();
+        let warn_str = self.app_state.verification.warn_count.to_string();
+        let fail_str = self.app_state.verification.fail_count.to_string();
+        let risk_str = self.app_state.verification.worst_risk_text();
+
+        script_apply_eval!(cx, self.ui, {
+            verify_status.text: #(status_text)
+            su1v.text: #(total_str)
+            su2v.text: #(pass_str)
+            su3v.text: #(warn_str)
+            su4v.text: #(fail_str)
+            su5v.text: #(risk_str)
+        });
+
+        // Color the risk label based on severity
+        if self.app_state.verification.fail_count > 0 {
+            script_apply_eval!(cx, self.ui, {
+                su5v.draw_text.color: #ff073a
+            });
+        } else if self.app_state.verification.warn_count > 0 {
+            script_apply_eval!(cx, self.ui, {
+                su5v.draw_text.color: #ffe600
+            });
+        } else {
+            script_apply_eval!(cx, self.ui, {
+                su5v.draw_text.color: #39ff14
+            });
+        }
+    }
+
+    /// Synchronizes System Overview screen state to UI labels.
+    fn sync_system_state(&mut self, cx: &mut Cx) {
+        let lanes_hint = self.app_state.system.lanes_hint_text();
+
+        script_apply_eval!(cx, self.ui, {
+            lanes_hint.text: #(lanes_hint)
+        });
+    }
+
+    /// Synchronizes Workflow Graph screen state to UI labels.
+    fn sync_workflow_state(&mut self, cx: &mut Cx) {
+        let name = self.app_state.workflow.display_name();
+        let hint = self.app_state.workflow.node_hint();
+
+        script_apply_eval!(cx, self.ui, {
+            graph_hint.text: #(hint)
+        });
+
+        // Update workflow title with name
+        let wf_title = format!("WORKFLOW: {name}");
+        script_apply_eval!(cx, self.ui, {
+            wf_title.text: #(wf_title)
+        });
+    }
+
+    /// Synchronizes Incident Console screen state to UI labels.
+    fn sync_incident_state(&mut self, cx: &mut Cx) {
+        let active_str = self.app_state.incident.active_incidents.to_string();
+        let critical_str = self.app_state.incident.critical_count.to_string();
+        let warning_str = self.app_state.incident.warning_count.to_string();
+
+        let active_text = format!("{active_str} active");
+        let critical_text = format!("{critical_str} critical");
+        let warning_text = format!("{warning_str} warnings");
+
+        script_apply_eval!(cx, self.ui, {
+            inc_sum1.text: #(active_text)
+            inc_sum2.text: #(critical_text)
+            inc_sum3.text: #(warning_text)
+        });
     }
 }
 
