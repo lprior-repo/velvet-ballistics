@@ -1891,7 +1891,7 @@ mod tests {
         let event = ActionJournalEvent::Failed {
             ticket,
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
         };
         let bytes = postcard::to_allocvec(&event);
         assert!(bytes.is_ok());

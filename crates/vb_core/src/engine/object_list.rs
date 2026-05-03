@@ -5,12 +5,11 @@ use crate::ids::{ListId, ObjectId, SlotIdx, SymbolId};
 use crate::value::{Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 
-/// Constructs an object handle from field pairs read from frame slots.
-pub fn build_object(
-    store: &mut ValueStore,
+/// Reads object fields from frame slots into a pre-allocated vector.
+fn read_object_fields(
     run: &crate::RunFrame,
     fields: &[(SymbolId, SlotIdx)],
-) -> Result<ObjectId, EngineError> {
+) -> Result<Vec<ObjectField>, EngineError> {
     let mut entries = Vec::new();
     entries
         .try_reserve_exact(fields.len())
@@ -30,6 +29,16 @@ pub fn build_object(
                 reason: "build_object field index overflow",
             })?;
     }
+    Ok(entries)
+}
+
+/// Constructs an object handle from field pairs read from frame slots.
+pub fn build_object(
+    store: &mut ValueStore,
+    run: &crate::RunFrame,
+    fields: &[(SymbolId, SlotIdx)],
+) -> Result<ObjectId, EngineError> {
+    let entries = read_object_fields(run, fields)?;
     store.insert_object(entries.into_boxed_slice())
 }
 
