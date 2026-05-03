@@ -1,5 +1,6 @@
 pub mod app_state;
 pub mod graph_builder;
+pub mod graph_renderer;
 pub mod incident;
 pub mod ipc_bridge;
 pub mod layout;
