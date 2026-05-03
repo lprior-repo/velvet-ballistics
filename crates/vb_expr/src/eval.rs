@@ -2,6 +2,7 @@
 
 use arrayvec::ArrayVec;
 use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
+use vb_core::value_store::ValueStore;
 use vb_core::{ConstValue, ExprOp, ExprProgram, SlotValue};
 
 use crate::lexer::{BinaryOp, UnaryOp};
@@ -26,6 +27,31 @@ pub fn eval_expr_program(
             .get(index)
             .ok_or(ExprError::UnexpectedEof)?;
         eval_expr_op(op, &mut stack, slots, constants)?;
+        index = next_index(index)?;
+    }
+    finish_stack(&mut stack)
+}
+
+/// Evaluates a compiled expression program with access to a `ValueStore`.
+///
+/// This variant resolves opaque handles (`List`, `Object`, `Symbol`) through
+/// the provided store, enabling `Empty`, `Unique`, `Length`, and other helpers
+/// to operate on collection and text values.
+pub fn eval_expr_program_with_store(
+    program: &ExprProgram,
+    slots: &[Option<SlotValue>],
+    constants: &[ConstValue],
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let mut stack: ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE> = ArrayVec::new();
+    let mut index = 0usize;
+    while index < program.ops.len() {
+        let op = *program
+            .ops
+            .as_ref()
+            .get(index)
+            .ok_or(ExprError::UnexpectedEof)?;
+        eval_expr_op_with_store(op, &mut stack, slots, constants, store)?;
         index = next_index(index)?;
     }
     finish_stack(&mut stack)
@@ -72,6 +98,33 @@ fn eval_expr_op(
         ExprOp::Lt => eval_binary_stack(stack, BinaryOp::Lt),
         ExprOp::Lte => eval_binary_stack(stack, BinaryOp::Lte),
         _ => eval_helper_op(op, stack),
+    }
+}
+
+fn eval_expr_op_with_store(
+    op: ExprOp,
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    slots: &[Option<SlotValue>],
+    constants: &[ConstValue],
+    store: &mut ValueStore,
+) -> ExprResult<()> {
+    match op {
+        ExprOp::LoadSlot(idx) => eval_load_slot(stack, slots, idx),
+        ExprOp::LoadConst(idx) => eval_load_const(stack, constants, idx),
+        ExprOp::Eq => eval_eq(stack, true),
+        ExprOp::NotEq => eval_eq(stack, false),
+        ExprOp::And => eval_binary_stack(stack, BinaryOp::And),
+        ExprOp::Or => eval_binary_stack(stack, BinaryOp::Or),
+        ExprOp::Not => eval_unary_stack(stack, UnaryOp::Not),
+        ExprOp::Add => eval_binary_stack(stack, BinaryOp::Add),
+        ExprOp::Sub => eval_binary_stack(stack, BinaryOp::Sub),
+        ExprOp::Mul => eval_binary_stack(stack, BinaryOp::Mul),
+        ExprOp::Div => eval_binary_stack(stack, BinaryOp::Div),
+        ExprOp::Gt => eval_binary_stack(stack, BinaryOp::Gt),
+        ExprOp::Gte => eval_binary_stack(stack, BinaryOp::Gte),
+        ExprOp::Lt => eval_binary_stack(stack, BinaryOp::Lt),
+        ExprOp::Lte => eval_binary_stack(stack, BinaryOp::Lte),
+        _ => eval_helper_op_with_store(op, stack, store),
     }
 }
 
@@ -209,6 +262,150 @@ fn eval_helper_op(
         _ => Err(ExprError::UnknownOperator {
             op: format!("{op:?}"),
         }),
+    }
+}
+
+fn eval_helper_op_with_store(
+    op: ExprOp,
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    store: &mut ValueStore,
+) -> ExprResult<()> {
+    match op {
+        ExprOp::Exists => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_exists_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Length => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_length_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Empty => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_empty_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Count => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_count_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Unique => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_unique_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Contains => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_contains_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::StartsWith => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_starts_with_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::EndsWith => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_ends_with_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Has => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_has_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Append => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_append_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::AppendIf => {
+            let (third, second, first) = pop_triple(stack)?;
+            let result =
+                eval_helper_append_if_with_store(&first, &second, &third, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Merge => {
+            let (right, left) = pop_pair(stack)?;
+            let result = eval_helper_merge_with_store(&left, &right, store)?;
+            push_value(stack, result)
+        }
+        ExprOp::Sum => {
+            let value = pop_value(stack)?;
+            let result = eval_helper_sum_with_store(&value, store)?;
+            push_value(stack, result)
+        }
+        _ => Err(ExprError::UnknownOperator {
+            op: format!("{op:?}"),
+        }),
+    }
+}
+
+/// Evaluates helper functions with full `ValueStore` access.
+///
+/// Unlike [`eval_helper`], this variant can resolve opaque handles (`List`,
+/// `Object`, `Symbol`) through the store, enabling complete evaluation of
+/// helpers like `Empty`, `Unique`, `Length`, `Contains`, etc.
+pub fn eval_helper_with_store(
+    helper: ExprHelper,
+    args: &[SlotValue],
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    match helper {
+        ExprHelper::Exists => {
+            let value = one_arg(args, helper)?;
+            eval_helper_exists_with_store(value, store)
+        }
+        ExprHelper::Length => {
+            let value = one_arg(args, helper)?;
+            eval_helper_length_with_store(value, store)
+        }
+        ExprHelper::Empty => {
+            let value = one_arg(args, helper)?;
+            eval_helper_empty_with_store(value, store)
+        }
+        ExprHelper::Count => {
+            let value = one_arg(args, helper)?;
+            eval_helper_count_with_store(value, store)
+        }
+        ExprHelper::Unique => {
+            let value = one_arg(args, helper)?;
+            eval_helper_unique_with_store(value, store)
+        }
+        ExprHelper::Contains => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_contains_with_store(left, right, store)
+        }
+        ExprHelper::StartsWith => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_starts_with_with_store(left, right, store)
+        }
+        ExprHelper::EndsWith => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_ends_with_with_store(left, right, store)
+        }
+        ExprHelper::Has => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_has_with_store(left, right, store)
+        }
+        ExprHelper::Append => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_append_with_store(left, right, store)
+        }
+        ExprHelper::AppendIf => {
+            let (first, second, third) = three_args(args, helper)?;
+            eval_helper_append_if_with_store(first, second, third, store)
+        }
+        ExprHelper::Merge => {
+            let (left, right) = two_args(args, helper)?;
+            eval_helper_merge_with_store(left, right, store)
+        }
+        ExprHelper::Sum => {
+            let value = one_arg(args, helper)?;
+            eval_helper_sum_with_store(value, store)
+        }
     }
 }
 
@@ -423,6 +620,272 @@ fn eval_helper_sum(args: &[SlotValue]) -> ExprResult<SlotValue> {
     })
 }
 
+// ===== Store-aware helper implementations =====
+
+fn eval_helper_exists_with_store(
+    value: &SlotValue,
+    _store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    Ok(SlotValue::Bool(!matches!(value, SlotValue::Null)))
+}
+
+fn eval_helper_length_with_store(
+    value: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let len = match *value {
+        SlotValue::Symbol(id) => {
+            let s = store.symbol(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("symbol:{id:?}"),
+            })?;
+            s.len()
+        }
+        SlotValue::List(id) => {
+            let items = store.list(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("list:{id:?}"),
+            })?;
+            items.len()
+        }
+        SlotValue::Object(id) => {
+            let fields = store.object(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("object:{id:?}"),
+            })?;
+            fields.len()
+        }
+        ref other => {
+            return Err(ExprError::TypeMismatch {
+                expected: "text, list, or object".into(),
+                found: other.type_name().into(),
+            });
+        }
+    };
+    let len_i64 = i64::try_from(len).map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::I64(len_i64))
+}
+
+fn eval_helper_empty_with_store(
+    value: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let is_empty = match *value {
+        SlotValue::Null => true,
+        SlotValue::Symbol(id) => {
+            let s = store.symbol(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("symbol:{id:?}"),
+            })?;
+            s.is_empty()
+        }
+        SlotValue::List(id) => {
+            let items = store.list(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("list:{id:?}"),
+            })?;
+            items.is_empty()
+        }
+        SlotValue::Object(id) => {
+            let fields = store.object(id).map_err(|_| ExprError::InvalidReference {
+                reference: format!("object:{id:?}"),
+            })?;
+            fields.is_empty()
+        }
+        ref other => {
+            return Err(ExprError::TypeMismatch {
+                expected: "text, list, object, or null".into(),
+                found: other.type_name().into(),
+            });
+        }
+    };
+    Ok(SlotValue::Bool(is_empty))
+}
+
+fn eval_helper_count_with_store(
+    value: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let list_id = expect_list(*value)?;
+    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("list:{list_id:?}"),
+    })?;
+    let count = i64::try_from(items.len()).map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::I64(count))
+}
+
+fn eval_helper_unique_with_store(
+    value: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let list_id = expect_list(*value)?;
+    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("list:{list_id:?}"),
+    })?;
+    let mut seen: Vec<SlotValue> = Vec::new();
+    for &item in items {
+        if !seen.contains(&item) {
+            seen.push(item);
+        }
+    }
+    let new_list = store
+        .insert_list(seen.into_boxed_slice())
+        .map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::List(new_list))
+}
+
+fn eval_helper_contains_with_store(
+    haystack: &SlotValue,
+    needle: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let haystack_id = expect_symbol(*haystack)?;
+    let needle_id = expect_symbol(*needle)?;
+    let haystack_str = store
+        .symbol(haystack_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{haystack_id:?}"),
+        })?;
+    let needle_str = store
+        .symbol(needle_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{needle_id:?}"),
+        })?;
+    Ok(SlotValue::Bool(haystack_str.contains(needle_str)))
+}
+
+fn eval_helper_starts_with_with_store(
+    text: &SlotValue,
+    prefix: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let text_id = expect_symbol(*text)?;
+    let prefix_id = expect_symbol(*prefix)?;
+    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("symbol:{text_id:?}"),
+    })?;
+    let prefix_str = store
+        .symbol(prefix_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{prefix_id:?}"),
+        })?;
+    Ok(SlotValue::Bool(text_str.starts_with(prefix_str)))
+}
+
+fn eval_helper_ends_with_with_store(
+    text: &SlotValue,
+    suffix: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let text_id = expect_symbol(*text)?;
+    let suffix_id = expect_symbol(*suffix)?;
+    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("symbol:{text_id:?}"),
+    })?;
+    let suffix_str = store
+        .symbol(suffix_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{suffix_id:?}"),
+        })?;
+    Ok(SlotValue::Bool(text_str.ends_with(suffix_str)))
+}
+
+fn eval_helper_has_with_store(
+    obj: &SlotValue,
+    key: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let obj_id = expect_object(*obj)?;
+    let key_id = expect_symbol(*key)?;
+    let fields = store.object(obj_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("object:{obj_id:?}"),
+    })?;
+    let found = fields.iter().any(|f| f.key == key_id);
+    Ok(SlotValue::Bool(found))
+}
+
+fn eval_helper_append_with_store(
+    list: &SlotValue,
+    item: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let list_id = expect_list(*list)?;
+    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("list:{list_id:?}"),
+    })?;
+    let mut new_items: Vec<SlotValue> = items.to_vec();
+    new_items.push(*item);
+    let new_list = store
+        .insert_list(new_items.into_boxed_slice())
+        .map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::List(new_list))
+}
+
+fn eval_helper_append_if_with_store(
+    list: &SlotValue,
+    item: &SlotValue,
+    condition: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let list_id = expect_list(*list)?;
+    let cond = expect_bool(*condition)?;
+    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("list:{list_id:?}"),
+    })?;
+    let mut new_items: Vec<SlotValue> = items.to_vec();
+    if cond {
+        new_items.push(*item);
+    }
+    let new_list = store
+        .insert_list(new_items.into_boxed_slice())
+        .map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::List(new_list))
+}
+
+fn eval_helper_merge_with_store(
+    left: &SlotValue,
+    right: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let left_id = expect_object(*left)?;
+    let right_id = expect_object(*right)?;
+    let left_fields = store
+        .object(left_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("object:{left_id:?}"),
+        })?;
+    let right_fields = store
+        .object(right_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("object:{right_id:?}"),
+        })?;
+    let mut merged: Vec<vb_core::value_store::ObjectField> = left_fields.to_vec();
+    for &field in right_fields {
+        if let Some(pos) = merged.iter().position(|f| f.key == field.key) {
+            if let Some(entry) = merged.get_mut(pos) {
+                *entry = field;
+            }
+        } else {
+            merged.push(field);
+        }
+    }
+    let new_object = store
+        .insert_object(merged.into_boxed_slice())
+        .map_err(|_| ExprError::IntegerOverflow)?;
+    Ok(SlotValue::Object(new_object))
+}
+
+fn eval_helper_sum_with_store(
+    value: &SlotValue,
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
+    let list_id = expect_list(*value)?;
+    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
+        reference: format!("list:{list_id:?}"),
+    })?;
+    let mut sum: i64 = 0;
+    for &item in items {
+        let n = expect_i64(item)?;
+        sum = sum.checked_add(n).ok_or(ExprError::IntegerOverflow)?;
+    }
+    Ok(SlotValue::I64(sum))
+}
+
 fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     value: SlotValue,
@@ -507,6 +970,7 @@ fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
     use super::*;
+    use vb_core::value_store::ValueStore;
     use vb_core::{ConstIdx, ExprOp, SlotIdx};
 
     fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
@@ -1411,6 +1875,557 @@ mod tests {
                 token: "expected IntegerOverflow for i64::MIN / -1 end-to-end".into(),
             });
         };
+        Ok(())
+    }
+
+    // ===== Store-aware helper tests =====
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_true_for_null() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::Null];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_true_for_empty_list() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_false_for_nonempty_list() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_true_for_empty_symbol() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let sym = store
+            .insert_symbol(Box::<str>::from(""))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(sym)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_false_for_nonempty_symbol() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let sym = store
+            .insert_symbol(Box::<str>::from("hello"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(sym)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_true_for_empty_object() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let obj = store
+            .insert_object(vec![].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Object(obj)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_empty_returns_type_mismatch_for_i64() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::I64(42)];
+        let result = eval_helper_with_store(ExprHelper::Empty, &args, &mut store);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for empty(42) with store".into(),
+            });
+        };
+        assert_eq!(expected, "text, list, object, or null");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_unique_deduplicates_list() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(1)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Unique, &args, &mut store)?;
+        let SlotValue::List(unique_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from unique".into(),
+            });
+        };
+        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0], SlotValue::I64(1));
+        assert_eq!(items[1], SlotValue::I64(2));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_unique_preserves_order() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![
+                    SlotValue::I64(3),
+                    SlotValue::I64(1),
+                    SlotValue::I64(3),
+                    SlotValue::I64(2),
+                    SlotValue::I64(1),
+                ]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Unique, &args, &mut store)?;
+        let SlotValue::List(unique_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from unique".into(),
+            });
+        };
+        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0], SlotValue::I64(3));
+        assert_eq!(items[1], SlotValue::I64(1));
+        assert_eq!(items[2], SlotValue::I64(2));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_unique_returns_empty_list_for_empty_input() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Unique, &args, &mut store)?;
+        let SlotValue::List(unique_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from unique".into(),
+            });
+        };
+        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert!(items.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_unique_rejects_non_list() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::I64(42)];
+        let result = eval_helper_with_store(ExprHelper::Unique, &args, &mut store);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for unique(42) with store".into(),
+            });
+        };
+        assert_eq!(expected, "list");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_length_returns_list_length() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Length, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(3));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_length_returns_symbol_length() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let sym = store
+            .insert_symbol(Box::<str>::from("hello"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(sym)];
+        let result = eval_helper_with_store(ExprHelper::Length, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(5));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_length_returns_object_field_count() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+        let mut store = ValueStore::new();
+        let obj = store
+            .insert_object(
+                vec![
+                    ObjectField {
+                        key: vb_core::ids::SymbolId::new(0),
+                        value: SlotValue::I64(1),
+                    },
+                    ObjectField {
+                        key: vb_core::ids::SymbolId::new(1),
+                        value: SlotValue::I64(2),
+                    },
+                ]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Object(obj)];
+        let result = eval_helper_with_store(ExprHelper::Length, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(2));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_sum_sums_list_elements() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Sum, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(60));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_sum_returns_integer_overflow_on_overflow() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(i64::MAX), SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Sum, &args, &mut store);
+        let Err(ExprError::IntegerOverflow) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected IntegerOverflow for sum overflow".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_count_returns_list_length() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list)];
+        let result = eval_helper_with_store(ExprHelper::Count, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(2));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_contains_checks_substring() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let haystack = store
+            .insert_symbol(Box::<str>::from("hello world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let needle = store
+            .insert_symbol(Box::<str>::from("world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(haystack), SlotValue::Symbol(needle)];
+        let result = eval_helper_with_store(ExprHelper::Contains, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_contains_returns_false_for_absent() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let haystack = store
+            .insert_symbol(Box::<str>::from("hello world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let needle = store
+            .insert_symbol(Box::<str>::from("xyz"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(haystack), SlotValue::Symbol(needle)];
+        let result = eval_helper_with_store(ExprHelper::Contains, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_starts_with_checks_prefix() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let text = store
+            .insert_symbol(Box::<str>::from("hello world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let prefix = store
+            .insert_symbol(Box::<str>::from("hello"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(text), SlotValue::Symbol(prefix)];
+        let result = eval_helper_with_store(ExprHelper::StartsWith, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_ends_with_checks_suffix() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let text = store
+            .insert_symbol(Box::<str>::from("hello world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let suffix = store
+            .insert_symbol(Box::<str>::from("world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Symbol(text), SlotValue::Symbol(suffix)];
+        let result = eval_helper_with_store(ExprHelper::EndsWith, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_has_checks_object_key() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+        let mut store = ValueStore::new();
+        let key = vb_core::ids::SymbolId::new(42);
+        let obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key,
+                    value: SlotValue::I64(100),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Object(obj), SlotValue::Symbol(key)];
+        let result = eval_helper_with_store(ExprHelper::Has, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_has_returns_false_for_missing_key() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+        let mut store = ValueStore::new();
+        let key_present = vb_core::ids::SymbolId::new(1);
+        let key_absent = vb_core::ids::SymbolId::new(99);
+        let obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_present,
+                    value: SlotValue::I64(1),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Object(obj), SlotValue::Symbol(key_absent)];
+        let result = eval_helper_with_store(ExprHelper::Has, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_append_adds_item_to_list() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list), SlotValue::I64(2)];
+        let result = eval_helper_with_store(ExprHelper::Append, &args, &mut store)?;
+        let SlotValue::List(new_list_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from append".into(),
+            });
+        };
+        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0], SlotValue::I64(1));
+        assert_eq!(items[1], SlotValue::I64(2));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_append_if_adds_when_true() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list), SlotValue::I64(2), SlotValue::Bool(true)];
+        let result = eval_helper_with_store(ExprHelper::AppendIf, &args, &mut store)?;
+        let SlotValue::List(new_list_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from append_if".into(),
+            });
+        };
+        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_append_if_skips_when_false() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::List(list), SlotValue::I64(2), SlotValue::Bool(false)];
+        let result = eval_helper_with_store(ExprHelper::AppendIf, &args, &mut store)?;
+        let SlotValue::List(new_list_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from append_if".into(),
+            });
+        };
+        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_merge_combines_objects() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+        let mut store = ValueStore::new();
+        let key_a = vb_core::ids::SymbolId::new(1);
+        let key_b = vb_core::ids::SymbolId::new(2);
+        let left = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_a,
+                    value: SlotValue::I64(10),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let right = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_b,
+                    value: SlotValue::I64(20),
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let args = [SlotValue::Object(left), SlotValue::Object(right)];
+        let result = eval_helper_with_store(ExprHelper::Merge, &args, &mut store)?;
+        let SlotValue::Object(merged_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected Object from merge".into(),
+            });
+        };
+        let fields = store.object(merged_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(fields.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_store_empty_list_returns_true() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Empty].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let slots = vec![Some(SlotValue::List(list))];
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_store_unique_deduplicates() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let slots = vec![Some(SlotValue::List(list))];
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
+        let SlotValue::List(unique_id) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected List from unique".into(),
+            });
+        };
+        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        assert_eq!(items.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_store_length_returns_correct_count() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let slots = vec![Some(SlotValue::List(list))];
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
+        assert_eq!(result, SlotValue::I64(3));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_store_sum_computes_total() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+            )
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = ExprProgram {
+            ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum].into_boxed_slice(),
+            max_stack: 1,
+        };
+        let slots = vec![Some(SlotValue::List(list))];
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
+        assert_eq!(result, SlotValue::I64(60));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_exists_returns_false_for_null() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::Null];
+        let result = eval_helper_with_store(ExprHelper::Exists, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_exists_returns_true_for_non_null() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::I64(1)];
+        let result = eval_helper_with_store(ExprHelper::Exists, &args, &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
 }
