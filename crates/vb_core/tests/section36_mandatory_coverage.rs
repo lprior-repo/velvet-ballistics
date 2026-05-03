@@ -436,7 +436,7 @@ fn run_frame_uninitialized_slot_read_returns_typed_error() {
     let result = frame.read_slot(SlotIdx::new(0));
     assert_eq!(
         result,
-        Err(CoreError::SlotOutOfBounds {
+        Err(CoreError::SlotUninitialized {
             slot: SlotIdx::new(0)
         })
     );

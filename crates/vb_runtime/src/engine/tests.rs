@@ -434,10 +434,15 @@ fn step_budget_remaining_decreases_after_each_step() {
 
 #[test]
 fn execute_do_returns_awaiting_action_for_known_action() {
-    let run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
+    // Initialize input slot before dispatch.
+    let write_result = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(42));
+    if write_result.is_err() {
+        return;
+    }
     let contract = vb_core::action::ActionContract {
         id: ActionId::new(1),
         input_slot_count: 1,

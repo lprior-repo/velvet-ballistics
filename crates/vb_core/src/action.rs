@@ -382,8 +382,7 @@ pub fn validate_action_dispatch(
     }
 
     // Verify output slot is writable (within frame bounds).
-    // We check by reading taint; an uninitialized slot still has a taint entry.
-    if frame.read_taint(output_slot).is_err() {
+    if usize::from(output_slot.as_usize()) >= usize::from(frame.slot_count()) {
         return Err(ActionError::DispatchFailed);
     }
 
@@ -1434,7 +1433,7 @@ mod tests {
     // --- validate_action_dispatch ---
 
     #[test]
-    fn validate_action_dispatch_succeeds_with_populated_input_slot() {
+    fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
         let contract = ActionContract {
             id: ActionId::new(1),
             input_slot_count: 1,
@@ -1449,8 +1448,11 @@ mod tests {
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         assert!(frame.is_ok());
         let mut frame = frame.ok().expect("test setup");
-        let write_result = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
-        assert!(write_result.is_ok());
+        // Populate both input and output slots before dispatch.
+        let write_input = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        assert!(write_input.is_ok());
+        let write_output = frame.write_slot(SlotIdx::new(1), SlotValue::I64(0)); // Output must be initialized too.
+        assert!(write_output.is_ok());
         let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(1));
         assert_eq!(result, Ok(()));
     }
