@@ -522,7 +522,7 @@ fn cmd_run_step(
 ) -> ExitCode {
     if durability != DurabilityMode::None {
         errln!("step isolation requires --durability none");
-        return SETUP_EXIT_CODE;
+        return setup_exit_code();
     }
     let bytes = match read_file(workflow) {
         Ok(b) => b,
@@ -537,7 +537,7 @@ fn cmd_run_step(
         Some(n) => n,
         None => {
             errln!("step {} not found in workflow", target.step_id);
-            return SETUP_EXIT_CODE;
+            return setup_exit_code();
         }
     };
     let input_data = match read_file(&target.step_input) {
@@ -551,7 +551,9 @@ fn cmd_run_step(
     execute_step_isolated(&compiled, step_idx, node, &inputs)
 }
 
-const SETUP_EXIT_CODE: ExitCode = ExitCode::from(2);
+fn setup_exit_code() -> ExitCode {
+    ExitCode::from(2)
+}
 
 fn compile_bytes(bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, ExitCode> {
     match vb_compile::compile_workflow(bytes) {
@@ -573,7 +575,7 @@ fn decode_step_inputs(data: &[u8]) -> Result<Box<[vb_core::SlotValue]>, ExitCode
         Ok(values) => Ok(values),
         Err(e) => {
             errln!("step-input decode error: {e}");
-            Err(SETUP_EXIT_CODE)
+            Err(setup_exit_code())
         }
     }
 }
@@ -612,7 +614,7 @@ fn build_step_frame(
         Ok(frame) => Ok(frame),
         Err(e) => {
             errln!("frame build error: {e}");
-            Err(SETUP_EXIT_CODE)
+            Err(setup_exit_code())
         }
     }
 }
@@ -677,12 +679,28 @@ fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
         vb_core::workflow::CompiledNodeKind::Do { .. } => "Do",
         vb_core::workflow::CompiledNodeKind::Choose { .. } => "Choose",
         vb_core::workflow::CompiledNodeKind::ChooseSlot { .. } => "ChooseSlot",
-        vb_core::workflow::CompiledNodeKind::ForEach { .. } => "ForEach",
-        vb_core::workflow::CompiledNodeKind::Together { .. } => "Together",
-        vb_core::workflow::CompiledNodeKind::Collect { .. } => "Collect",
+        vb_core::workflow::CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
+        vb_core::workflow::CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
+        vb_core::workflow::CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
+        vb_core::workflow::CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
+        vb_core::workflow::CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
+        vb_core::workflow::CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
+        vb_core::workflow::CompiledNodeKind::CollectStart { .. } => "CollectStart",
+        vb_core::workflow::CompiledNodeKind::CollectPage { .. } => "CollectPage",
+        vb_core::workflow::CompiledNodeKind::CollectNext { .. } => "CollectNext",
+        vb_core::workflow::CompiledNodeKind::CollectFinish { .. } => "CollectFinish",
+        vb_core::workflow::CompiledNodeKind::ReduceStart { .. } => "ReduceStart",
+        vb_core::workflow::CompiledNodeKind::ReduceNext { .. } => "ReduceNext",
+        vb_core::workflow::CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish",
+        vb_core::workflow::CompiledNodeKind::RepeatStart { .. } => "RepeatStart",
+        vb_core::workflow::CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
+        vb_core::workflow::CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
+        vb_core::workflow::CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
         vb_core::workflow::CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
         vb_core::workflow::CompiledNodeKind::WaitEvent { .. } => "WaitEvent",
         vb_core::workflow::CompiledNodeKind::Ask { .. } => "Ask",
+        vb_core::workflow::CompiledNodeKind::AskResume { .. } => "AskResume",
+        vb_core::workflow::CompiledNodeKind::RetryCheck { .. } => "RetryCheck",
         vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
         vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
         vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
@@ -1497,6 +1515,7 @@ mod tests {
             input_bin,
             durability,
             db,
+            ..
         }) = parsed
         {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
