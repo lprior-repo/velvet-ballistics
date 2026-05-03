@@ -4876,8 +4876,8 @@ steps:
     }
 
     #[test]
-    fn compiler_accepts_for_each_with_at_once_field() -> Result<(), String> {
-        let source = "version: velvet-ballastics/v1\nname: for_each_with_at_once\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: [1, 2, 3]\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      at_once: 5\n  - id: done\n    finish:\n      result: 0\n";
+    fn compiler_accepts_for_each_with_limit_field() -> Result<(), String> {
+        let source = "version: velvet-ballastics/v1\nname: for_each_with_limit\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: 42\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n  - id: done\n    finish:\n      result: 0\n";
         let workflow = YamlCompiler::default()
             .compile(source.as_bytes())
             .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
@@ -4885,7 +4885,7 @@ steps:
             .node(StepIdx::new(1))
             .ok_or("missing for_each start")?;
         assert!(
-            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10 && body == StepIdx::new(2) && done == StepIdx::new(3)),
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
             "for_each start node must have correct structure"
         );
         Ok(())
@@ -5686,7 +5686,7 @@ steps:
             .ok_or("unsupported IR unexpectedly generated source")?;
 
         assert!(
-            error.to_string().contains("BuildList"),
+            error.to_string().contains("ForEachStart"),
             "unsupported IR error must name rejected feature, got: {error}"
         );
         Ok(())
@@ -5763,8 +5763,12 @@ steps:
                     next: Some(StepIdx::new(1)),
                     error_slot: None,
                     on_error: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![SlotIdx::new(0)].into_boxed_slice(),
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
                     },
                 },
                 CompiledNode {

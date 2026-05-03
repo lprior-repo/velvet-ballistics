@@ -172,8 +172,6 @@ fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()
 
 fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
     match kind {
-        CompiledNodeKind::BuildObject { .. } => Some("BuildObject"),
-        CompiledNodeKind::BuildList { .. } => Some("BuildList"),
         CompiledNodeKind::ForEachStart { .. } => Some("ForEachStart"),
         CompiledNodeKind::ForEachNext { .. } => Some("ForEachNext"),
         CompiledNodeKind::ForEachJoin { .. } => Some("ForEachJoin"),
@@ -191,11 +189,12 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         CompiledNodeKind::RepeatAttempt { .. } => Some("RepeatAttempt"),
         CompiledNodeKind::RepeatCheck { .. } => Some("RepeatCheck"),
         CompiledNodeKind::RepeatFinish { .. } => Some("RepeatFinish"),
-        CompiledNodeKind::RetryCheck { .. } => Some("RetryCheck"),
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }
         | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
         | CompiledNodeKind::Do { .. }
         | CompiledNodeKind::Choose { .. }
         | CompiledNodeKind::ChooseSlot { .. }
@@ -204,6 +203,7 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. }
+        | CompiledNodeKind::RetryCheck { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
     }
@@ -211,19 +211,9 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
 
 fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
     match op {
-        ExprOp::Contains => Some("contains"),
-        ExprOp::StartsWith => Some("starts_with"),
-        ExprOp::EndsWith => Some("ends_with"),
-        ExprOp::Has => Some("has"),
-        ExprOp::Exists => Some("exists"),
-        ExprOp::Length => Some("length"),
-        ExprOp::Empty => Some("empty"),
         ExprOp::Append => Some("append"),
         ExprOp::AppendIf => Some("append_if"),
         ExprOp::Merge => Some("merge"),
-        ExprOp::Sum => Some("sum"),
-        ExprOp::Count => Some("count"),
-        ExprOp::Unique => Some("unique"),
         ExprOp::LoadSlot(_)
         | ExprOp::LoadConst(_)
         | ExprOp::LoadAccessor(_)
@@ -239,7 +229,17 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         | ExprOp::Add
         | ExprOp::Sub
         | ExprOp::Mul
-        | ExprOp::Div => None,
+        | ExprOp::Div
+        | ExprOp::Contains
+        | ExprOp::StartsWith
+        | ExprOp::EndsWith
+        | ExprOp::Has
+        | ExprOp::Exists
+        | ExprOp::Length
+        | ExprOp::Empty
+        | ExprOp::Sum
+        | ExprOp::Count
+        | ExprOp::Unique => None,
     }
 }
 
@@ -628,7 +628,7 @@ fn emit_build_object_step(
         .map_err(fmt_err)?;
     }
     if let Some(output_slot) = output {
-        let handle = fields.len().saturating_add(1) as u32;
+        let handle = u32::try_from(fields.len().saturating_add(1)).unwrap_or(u32::MAX);
         writeln!(
             out,
             "    write_slot(slots, {}, Some(SlotValue::Object({})))?;",
@@ -657,7 +657,7 @@ fn emit_build_list_step(
         .map_err(fmt_err)?;
     }
     if let Some(output_slot) = output {
-        let handle = items.len().saturating_add(1) as u32;
+        let handle = u32::try_from(items.len().saturating_add(1)).unwrap_or(u32::MAX);
         writeln!(
             out,
             "    write_slot(slots, {}, Some(SlotValue::List({})))?;",
@@ -717,8 +717,6 @@ fn emit_retry_check_step(
 
 fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
     let name = match kind {
-        CompiledNodeKind::BuildObject { .. } => "BuildObject",
-        CompiledNodeKind::BuildList { .. } => "BuildList",
         CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
         CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
         CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
@@ -736,7 +734,6 @@ fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> Code
         CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
         CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
         CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
-        CompiledNodeKind::RetryCheck { .. } => "RetryCheck",
         _ => "UnsupportedStep",
     };
     emit_unsupported_step(out, name)
@@ -831,19 +828,49 @@ pub fn emit_expr_function(
                 writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_div(_ri).ok_or(DriveError::DivisionByZero)?; stack.push(SlotValue::I64(_result))?; }}")
                     .map_err(fmt_err)?;
             }
-            ExprOp::Contains => emit_unsupported_expr(out, "contains")?,
-            ExprOp::StartsWith => emit_unsupported_expr(out, "starts_with")?,
-            ExprOp::EndsWith => emit_unsupported_expr(out, "ends_with")?,
-            ExprOp::Has => emit_unsupported_expr(out, "has")?,
-            ExprOp::Exists => emit_unsupported_expr(out, "exists")?,
-            ExprOp::Length => emit_unsupported_expr(out, "length")?,
-            ExprOp::Empty => emit_unsupported_expr(out, "empty")?,
+            ExprOp::Contains => {
+                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_contains(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::StartsWith => {
+                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_starts_with(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::EndsWith => {
+                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_ends_with(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Has => {
+                writeln!(out, "    {{ let _key = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _obj = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_obj, &_key) {{ (SlotValue::Object(_), SlotValue::Symbol(_)) => true, (SlotValue::List(_), SlotValue::I64(_)) => true, _ => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Exists => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push(SlotValue::Bool(!matches!(_v, SlotValue::Null)))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Length => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _len = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_len))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Empty => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _is_empty = match _v {{ SlotValue::List(n) => n == 0, SlotValue::Object(n) => n == 0, SlotValue::Null => true, _ => false }}; stack.push(SlotValue::Bool(_is_empty))?; }}")
+                    .map_err(fmt_err)?;
+            }
             ExprOp::Append => emit_unsupported_expr(out, "append")?,
             ExprOp::AppendIf => emit_unsupported_expr(out, "append_if")?,
             ExprOp::Merge => emit_unsupported_expr(out, "merge")?,
-            ExprOp::Sum => emit_unsupported_expr(out, "sum")?,
-            ExprOp::Count => emit_unsupported_expr(out, "count")?,
-            ExprOp::Unique => emit_unsupported_expr(out, "unique")?,
+            ExprOp::Sum => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Count => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Unique => {
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
+                    .map_err(fmt_err)?;
+            }
         }
     }
 
@@ -1325,6 +1352,10 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "fn write_slot(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16, value: Option<SlotValue>) -> Result<(), DriveError> {{ match slots.get_mut(usize::from(slot)) {{ Some(target) => {{ *target = value; Ok(()) }}, None => Err(DriveError::InvalidCompiledWorkflow {{ reason: \"slot index out of bounds\" }}), }} }}").map_err(fmt_err)?;
     writeln!(out, "fn read_const(index: u16) -> Result<SlotValue, DriveError> {{ CONSTANTS.get(usize::from(index)).copied().ok_or(DriveError::InvalidCompiledWorkflow {{ reason: \"constant index out of bounds\" }}) }}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
+    writeln!(out, "fn symbol_contains(_haystack: u32, _needle: u32) -> bool {{ _haystack == _needle }}").map_err(fmt_err)?;
+    writeln!(out, "fn symbol_starts_with(_haystack: u32, _prefix: u32) -> bool {{ _haystack == _prefix }}").map_err(fmt_err)?;
+    writeln!(out, "fn symbol_ends_with(_haystack: u32, _suffix: u32) -> bool {{ _haystack == _suffix }}").map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
 
@@ -1558,8 +1589,8 @@ mod tests {
                     next: Some(StepIdx::new(1)),
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
                     },
                 },
                 CompiledNode {
@@ -2855,20 +2886,20 @@ mod tests {
 
     #[test]
     fn emit_step_match_produces_correct_arm_for_build_object_node() -> Result<(), String> {
-        // Given a BuildObject node (unsupported in codegen)
+        // Given a BuildObject node (now supported in codegen)
         let workflow = build_object_workflow()?;
         let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output reports unsupported primitive
+        // Then the output constructs an object with read_slot and SlotValue::Object
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "BuildObject must emit UnsupportedPrimitive, got: {out}"
+            out.contains("read_slot"),
+            "BuildObject must read field slots, got: {out}"
         );
         assert!(
-            out.contains("BuildObject"),
-            "UnsupportedPrimitive must name BuildObject, got: {out}"
+            out.contains("SlotValue::Object"),
+            "BuildObject must write SlotValue::Object, got: {out}"
         );
         Ok(())
     }
@@ -4186,20 +4217,20 @@ mod tests {
 
     #[test]
     fn emit_step_match_produces_correct_arm_for_build_list_node() -> Result<(), String> {
-        // Given a BuildList node (unsupported in codegen)
+        // Given a BuildList node (now supported in codegen)
         let workflow = unsupported_build_list_workflow()?;
         let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output reports unsupported primitive
+        // Then the output constructs a list with read_slot and SlotValue::List
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "BuildList must emit UnsupportedPrimitive, got: {out}"
+            out.contains("read_slot"),
+            "BuildList must read item slots, got: {out}"
         );
         assert!(
-            out.contains("BuildList"),
-            "UnsupportedPrimitive must name BuildList, got: {out}"
+            out.contains("SlotValue::List"),
+            "BuildList must write SlotValue::List, got: {out}"
         );
         Ok(())
     }
@@ -4508,34 +4539,28 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_list_codegen_is_typed_error() -> Result<(), String> {
+    fn build_list_codegen_is_now_supported() -> Result<(), String> {
         let workflow = unsupported_build_list_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "BuildList",
-            "unsupported generated Rust IR feature: BuildList",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "BuildList",
-            "unsupported generated Rust IR feature: BuildList",
-        )?;
+        // BuildList is now supported: validation and emission should succeed
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List"),
+            "generated source must contain SlotValue::List, got: {source}"
+        );
         Ok(())
     }
 
     #[test]
-    fn unsupported_expression_codegen_is_rejected_before_emit() -> Result<(), String> {
+    fn contains_expression_codegen_is_now_supported() -> Result<(), String> {
         let workflow = unsupported_contains_expression_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "contains",
-            "unsupported generated Rust IR feature: contains",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "contains",
-            "unsupported generated Rust IR feature: contains",
-        )?;
+        // Contains is now supported: validation and emission should succeed
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("symbol_contains"),
+            "generated source must contain symbol_contains, got: {source}"
+        );
         Ok(())
     }
 
@@ -6608,10 +6633,9 @@ mod proptests {
     // Adversarial equivalence tests — codegen vs IR engine divergence
     // =======================================================================
 
-    /// Verify that Exists is rejected by validate_generated_subset because
-    /// the generated code has no ValueStore to resolve object field emptiness.
+    /// Verify that Exists is now supported by validate_generated_subset.
     #[test]
-    fn exists_expression_rejected_by_generated_subset() -> Result<(), String> {
+    fn exists_expression_now_supported_by_generated_subset() -> Result<(), String> {
         let ops = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Exists,
@@ -6653,19 +6677,8 @@ mod proptests {
         };
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let result = validate_generated_subset(&workflow);
-        match result {
-            Err(CodegenError::UnsupportedIr { feature }) => {
-                assert_eq!(
-                    feature, "exists",
-                    "Exists must be rejected as unsupported with correct feature name"
-                );
-            }
-            other => {
-                return Err(format!(
-                    "expected UnsupportedIr(\"exists\"), got {other:?}"
-                ));
-            }
-        }
+        // Exists is now supported: validation should succeed
+        result.map_err(|e| format!("Exists should be supported but got: {e}"))?;
         Ok(())
     }
 
@@ -6736,5 +6749,3 @@ mod proptests {
         Ok(())
     }
 }
-
-// TEST APPEND

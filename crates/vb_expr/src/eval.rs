@@ -1262,10 +1262,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_helper_contains_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Contains is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Contains
-        // Then: the result is Err(UnknownOperator) via the helper dispatch
+    fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1277,23 +1274,20 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
             return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Contains".into(),
+                token: "expected TypeMismatch for Contains with I64 args".into(),
             });
         };
         assert!(
-            op.contains("Contains"),
-            "op should mention Contains, got: {op}"
+            expected.contains("list"),
+            "expected should mention list, got: {expected}"
         );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_append_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Append is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Append
-        // Then: the result is Err(UnknownOperator)
+    fn eval_helper_append_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1305,20 +1299,20 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
             return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Append".into(),
+                token: "expected TypeMismatch for Append with I64 args".into(),
             });
         };
-        assert!(op.contains("Append"), "op should mention Append, got: {op}");
+        assert!(
+            expected.contains("list"),
+            "expected should mention list, got: {expected}"
+        );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_merge_returns_unknown_operator() -> ExprResult<()> {
-        // Given: Merge is a multi-arg helper not handled in eval_helper_op
-        // When: eval_expr_op encounters ExprOp::Merge
-        // Then: the result is Err(UnknownOperator)
+    fn eval_helper_merge_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1330,12 +1324,15 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::UnknownOperator { op }) = result else {
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
             return Err(ExprError::UnexpectedToken {
-                token: "expected UnknownOperator for Merge".into(),
+                token: "expected TypeMismatch for Merge with I64 args".into(),
             });
         };
-        assert!(op.contains("Merge"), "op should mention Merge, got: {op}");
+        assert!(
+            expected.contains("object"),
+            "expected should mention object, got: {expected}"
+        );
         Ok(())
     }
 
