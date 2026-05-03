@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use args::{Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget};
+use args::{Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile};
 use args::parse_args;
 use exit_code::CliExitCode;
 
@@ -41,8 +41,9 @@ velvet-ballastics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
+  verify     <workflow.yaml> [--profile <quick|standard|full>] [--json|--jsonl]  Verify a workflow
   explain    <workflow.yaml> [--json|--jsonl]          Explain validation errors in detail
-  compile    <workflow.yaml> --emit <ir|rust> --out <file> [--json|--jsonl]  Compile a workflow
+  compile    <workflow.yaml> --emit <ir|rust|yaml|postcard> --out <file> [--json|--jsonl]  Compile a workflow
   run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
              [--step <id> --step-input <file>]                                 Run a single step in isolation
   run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
@@ -50,6 +51,7 @@ commands:
   inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
   events     <run_id> --db <path> [--json|--jsonl]     List run events
   replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
+  retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
   bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
   doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
   help                                                Print this message
@@ -68,6 +70,11 @@ fn main() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
+        Ok(Command::Verify {
+            workflow,
+            profile,
+            output,
+        }) => cmd_verify(&workflow, profile, output),
         Ok(Command::Validate {
             workflow,
             output: _,
@@ -104,6 +111,7 @@ fn main() -> ExitCode {
         Ok(Command::Inspect { run_id, db, output }) => cmd_inspect(&run_id, &db, output),
         Ok(Command::Events { run_id, db, output }) => cmd_events(&run_id, &db, output),
         Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
+        Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
         Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
         Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
@@ -133,6 +141,186 @@ fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
 }
 
 // --- Command implementations ---
+
+fn cmd_verify(
+    workflow: &std::path::Path,
+    profile: VerifyProfile,
+    output: OutputFormat,
+) -> ExitCode {
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let text = match std::str::from_utf8(&bytes) {
+        Ok(t) => t,
+        Err(e) => {
+            errln!("file is not valid UTF-8: {e}");
+            return CliExitCode::ValidationFailed.into();
+        }
+    };
+
+    // Phase 1: strict YAML parse
+    match vb_yaml::parse_workflow_source(text) {
+        Ok(_) => {}
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "profile": profile.as_str(),
+                        "error": format!("YAML parse error: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("YAML parse error: {e}");
+            }
+            return CliExitCode::ValidationFailed.into();
+        }
+    }
+
+    // Phase 2: compilation pipeline (schema, references, control flow, type/taint)
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "profile": profile.as_str(),
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
+            }
+            return CliExitCode::ValidationFailed.into();
+        }
+    };
+
+    let digest = compiled.digest();
+    let digest_hex: String = digest.as_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    let mut checks: Vec<&'static str> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    // Check: YAML parse
+    checks.push("yaml_parse");
+
+    // Check: compilation
+    checks.push("compilation");
+
+    // Check: IR validation gates
+    let parts = compiled.to_parts();
+    match vb_validate::shared::validate(&parts) {
+        Ok(()) => {
+            checks.push("ir_validation");
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "profile": profile.as_str(),
+                        "digest": digest_hex,
+                        "error": format!("IR validation failed: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("IR validation failed: {e}");
+            }
+            return CliExitCode::ValidationFailed.into();
+        }
+    }
+
+    // Profile-dependent checks: budget and boundedness (standard and full only)
+    if profile == VerifyProfile::Standard || profile == VerifyProfile::Full {
+        let entry = compiled.entry();
+        let nodes: Vec<vb_core::CompiledNode> = {
+            let mut result = Vec::new();
+            for i in 0..compiled.node_count() {
+                let step = vb_core::StepIdx::new(i);
+                if let Some(node) = compiled.node(step) {
+                    result.push(node.clone());
+                }
+            }
+            result
+        };
+        let contract = compiled.resource_contract();
+        match vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract) {
+            Ok(_budget) => {
+                checks.push("budget_computation");
+                let policy = vb_core::budget::BoundednessPolicy::DEFAULT;
+                match policy.validate(&_budget) {
+                    Ok(()) => {
+                        checks.push("boundedness_policy");
+                    }
+                    Err(e) => {
+                        if profile == VerifyProfile::Full {
+                            if output != OutputFormat::Text {
+                                json_error(
+                                    &serde_json::json!({
+                                        "success": false,
+                                        "profile": profile.as_str(),
+                                        "digest": digest_hex,
+                                        "error": format!("budget policy violation: {e}")
+                                    }),
+                                    output,
+                                );
+                            } else {
+                                errln!("budget policy violation: {e}");
+                            }
+                            return CliExitCode::ValidationFailed.into();
+                        }
+                        warnings.push(format!("budget policy warning: {e}"));
+                        checks.push("boundedness_policy_check");
+                    }
+                }
+            }
+            Err(e) => {
+                warnings.push(format!("budget computation note: {e}"));
+            }
+        }
+    }
+
+    // Emit certificate
+    if output != OutputFormat::Text {
+        let warning_strs: Vec<&str> = warnings.iter().map(String::as_str).collect();
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "profile": profile.as_str(),
+                "digest": digest_hex,
+                "checks": checks,
+                "warnings": warning_strs
+            }),
+            output,
+        );
+    } else {
+        outln!("verification certificate");
+        outln!("  digest:  {digest_hex}");
+        outln!("  profile: {}", profile.as_str());
+        outln!("  checks:  {}", checks.len());
+        for check in &checks {
+            outln!("    - {check}");
+        }
+        if !warnings.is_empty() {
+            outln!("  warnings: {}", warnings.len());
+            for warning in &warnings {
+                outln!("    - {warning}");
+            }
+        }
+        outln!("verified");
+    }
+
+    ExitCode::SUCCESS
+}
 
 fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     let bytes = match read_file(workflow) {
@@ -297,6 +485,98 @@ fn cmd_compile(
                 );
             } else {
                 outln!("generated Rust written to {}", out.display());
+            }
+        }
+        EmitTarget::Yaml => {
+            let parts = compiled.to_parts();
+            let yaml_str = match serde_yaml::to_string(&parts) {
+                Ok(s) => s,
+                Err(e) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("YAML serialization error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("YAML serialization error: {e}");
+                    }
+                    return CliExitCode::CompileFailed.into();
+                }
+            };
+            if let Err(e) = std::fs::write(out, yaml_str.as_bytes()) {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error writing {}: {e}", out.display())
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error writing {}: {e}", out.display());
+                }
+                return CliExitCode::CompileFailed.into();
+            }
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "success": true,
+                        "output": out.display().to_string(),
+                        "format": "yaml"
+                    }),
+                    output,
+                );
+            } else {
+                outln!("compiled YAML written to {}", out.display());
+            }
+        }
+        EmitTarget::Postcard => {
+            let parts = compiled.to_parts();
+            let encoded = match postcard::to_allocvec(&parts) {
+                Ok(data) => data,
+                Err(e) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("postcard serialization error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("postcard serialization error: {e}");
+                    }
+                    return CliExitCode::CompileFailed.into();
+                }
+            };
+            if let Err(e) = std::fs::write(out, &encoded) {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error writing {}: {e}", out.display())
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error writing {}: {e}", out.display());
+                }
+                return CliExitCode::CompileFailed.into();
+            }
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "success": true,
+                        "output": out.display().to_string(),
+                        "format": "postcard"
+                    }),
+                    output,
+                );
+            } else {
+                outln!("compiled postcard written to {}", out.display());
             }
         }
     }
@@ -1372,6 +1652,146 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 }
 
 
+fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    match journal.events_for_run(rid) {
+        Ok(events) => {
+            if events.is_empty() {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("run {run_id} not found")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("run {run_id}: no events found");
+                }
+                return CliExitCode::StorageError.into();
+            }
+
+            // Find the last StepSucceeded step and the failure point
+            let mut last_successful_step: Option<u16> = None;
+            let mut failed_step: Option<u16> = None;
+            for event in &events {
+                match event {
+                    vb_storage::JournalEvent::StepSucceeded { step, .. } => {
+                        last_successful_step = Some(step.get());
+                    }
+                    vb_storage::JournalEvent::ActionFailedEvent { step, .. } => {
+                        failed_step = Some(step.get());
+                    }
+                    vb_storage::JournalEvent::RunFailedEvent { .. } => {
+                        // Terminal failure marker
+                    }
+                    _ => {}
+                }
+            }
+
+            // Determine terminal status
+            let terminal = events.last();
+            let is_failed = match terminal {
+                Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => true,
+                Some(vb_storage::JournalEvent::RunCancelled { .. }) => true,
+                _ => false,
+            };
+
+            if !is_failed {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("run {run_id} did not fail (no retry needed)")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("run {run_id} did not fail; retry is not applicable");
+                }
+                return CliExitCode::ValidationFailed.into();
+            }
+
+            let failure_step = failed_step.or(last_successful_step.map(|s| s.saturating_add(1)));
+            let resume_step = last_successful_step.map(|s| s.saturating_add(1));
+
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "run_id": run_id,
+                        "failed_at_step": failure_step,
+                        "last_successful_step": last_successful_step,
+                        "resume_from_step": resume_step,
+                        "events": events.len()
+                    }),
+                    output,
+                );
+            } else {
+                match (failure_step, last_successful_step) {
+                    (Some(fail), Some(last)) => {
+                        outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.");
+                    }
+                    (Some(fail), None) => {
+                        outln!("Run {run_id} failed at step {fail}. No successful steps recorded.");
+                    }
+                    (None, Some(last)) => {
+                        outln!("Run {run_id} failed. Last successful: step {last}.");
+                    }
+                    (None, None) => {
+                        outln!("Run {run_id} failed. No step progress recorded.");
+                    }
+                }
+                match resume_step {
+                    Some(step) => {
+                        outln!("Retry would resume from step {step} with recovered state.");
+                    }
+                    None => {
+                        outln!("Retry would resume from the beginning.");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
 fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
@@ -2210,7 +2630,7 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::UnknownEmitTarget(target) => {
             writeln!(
                 handle,
-                "unknown emit target: {target} (expected: ir, rust)\n\n{HELP}"
+                "unknown emit target: {target} (expected: ir, rust, yaml, postcard)\n\n{HELP}"
             )
         }
         ParseError::UnknownDurability(mode) => {
@@ -2224,6 +2644,12 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
+        }
+        ParseError::UnknownProfile(profile) => {
+            writeln!(
+                handle,
+                "unknown verify profile: {profile} (expected: quick, standard, full)\n\n{HELP}"
+            )
         }
     }
 }

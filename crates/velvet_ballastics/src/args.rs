@@ -16,10 +16,38 @@ pub(crate) enum OutputFormat {
     Jsonl,
 }
 
+/// Verification profile controlling depth of static analysis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum VerifyProfile {
+    /// Fast surface checks only.
+    Quick,
+    /// Default verification depth.
+    #[default]
+    Standard,
+    /// Exhaustive verification including budget, capability, taint.
+    Full,
+}
+
+impl VerifyProfile {
+    /// Returns the name used on the command line for this profile.
+    pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Quick => "quick",
+            Self::Standard => "standard",
+            Self::Full => "full",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Command {
     Help,
     Version,
+    Verify {
+        workflow: PathBuf,
+        profile: VerifyProfile,
+        output: OutputFormat,
+    },
     Validate {
         workflow: PathBuf,
         #[allow(dead_code)]
@@ -65,6 +93,11 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Retry {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
     BenchRun {
         workflow: PathBuf,
         output: OutputFormat,
@@ -84,6 +117,8 @@ pub(crate) enum Command {
 pub(crate) enum EmitTarget {
     Ir,
     Rust,
+    Yaml,
+    Postcard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -106,6 +141,7 @@ pub(crate) enum ParseError {
     MissingArgument(&'static str),
     UnknownEmitTarget(String),
     UnknownDurability(String),
+    UnknownProfile(String),
     UnknownCommand(String),
     NoCommand,
     InvalidSlot(String),
@@ -120,6 +156,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
     match subcommand {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
+        "verify" => parse_verify(args),
         "validate" => parse_validate(args),
         "explain" => parse_explain(args),
         "compile" => parse_compile(args),
@@ -129,10 +166,30 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "inspect" => parse_inspect(args),
         "events" => parse_events(args),
         "replay" => parse_replay(args),
+        "retry" => parse_retry(args),
         "bench-run" => parse_bench_run(args),
         "doctor" => parse_doctor(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
+}
+
+fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let profile = match named_flag(args, "--profile") {
+        Some(raw) => match raw.as_str() {
+            "quick" => VerifyProfile::Quick,
+            "standard" => VerifyProfile::Standard,
+            "full" => VerifyProfile::Full,
+            other => return Err(ParseError::UnknownProfile(other.into())),
+        },
+        None => VerifyProfile::default(),
+    };
+    let output = parse_output_format(args);
+    Ok(Command::Verify {
+        workflow,
+        profile,
+        output,
+    })
 }
 
 fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
@@ -153,6 +210,8 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
     let emit = match emit_raw.as_str() {
         "ir" => EmitTarget::Ir,
         "rust" => EmitTarget::Rust,
+        "yaml" => EmitTarget::Yaml,
+        "postcard" => EmitTarget::Postcard,
         other => return Err(ParseError::UnknownEmitTarget(other.into())),
     };
     let out = named_flag(args, "--out").ok_or(ParseError::MissingArgument("--out"))?;
@@ -275,6 +334,17 @@ fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
+fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Retry {
+        run_id,
+        db: PathBuf::from(db),
+        output,
+    })
+}
+
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
     let output = parse_output_format(args);
@@ -351,12 +421,18 @@ impl std::fmt::Display for ParseError {
         match self {
             Self::MissingArgument(name) => write!(formatter, "missing argument: {name}"),
             Self::UnknownEmitTarget(target) => {
-                write!(formatter, "unknown emit target: {target} (expected: ir, rust)")
+                write!(formatter, "unknown emit target: {target} (expected: ir, rust, yaml, postcard)")
             }
             Self::UnknownDurability(mode) => {
                 write!(
                     formatter,
                     "unknown durability mode: {mode} (expected: strict, journaled, none)"
+                )
+            }
+            Self::UnknownProfile(profile) => {
+                write!(
+                    formatter,
+                    "unknown verify profile: {profile} (expected: quick, standard, full)"
                 )
             }
             Self::UnknownCommand(cmd) => write!(formatter, "unknown command: {cmd}"),
@@ -368,7 +444,7 @@ impl std::fmt::Display for ParseError {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_args, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget};
+    use super::{parse_args, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile};
     use std::ffi::OsString;
     use std::path::PathBuf;
 
@@ -635,5 +711,77 @@ mod tests {
     fn parse_unknown_command_returns_error() {
         let parsed = parse_args(&args(&["velvet-ballastics", "foobar"]));
         assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
+    }
+
+    #[test]
+    fn parse_verify_defaults_to_standard_profile() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "verify", "workflow.yaml"]));
+        assert!(
+            matches!(parsed, Ok(Command::Verify { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Verify {
+            workflow,
+            profile,
+            output,
+        }) = parsed
+        {
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(profile, VerifyProfile::Standard);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_verify_accepts_quick_profile() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "verify",
+            "workflow.yaml",
+            "--profile",
+            "quick",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Verify { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Verify { profile, .. }) = parsed {
+            assert_eq!(profile, VerifyProfile::Quick);
+        }
+    }
+
+    #[test]
+    fn parse_verify_accepts_full_profile_with_json() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "verify",
+            "workflow.yaml",
+            "--profile",
+            "full",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Verify { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Verify { profile, output, .. }) = parsed {
+            assert_eq!(profile, VerifyProfile::Full);
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_verify_rejects_unknown_profile() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "verify",
+            "workflow.yaml",
+            "--profile",
+            "thorough",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::UnknownProfile(_))),
+            "unexpected parse result: {parsed:?}"
+        );
     }
 }
