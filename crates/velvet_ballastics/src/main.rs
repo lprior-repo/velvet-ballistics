@@ -4,6 +4,7 @@
 #![allow(clippy::too_many_lines)]
 
 mod args;
+mod exit_code;
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -14,6 +15,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use args::{Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget};
 use args::parse_args;
+use exit_code::CliExitCode;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
@@ -104,7 +106,7 @@ fn main() -> ExitCode {
         Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
         Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
-        Err(e) => exit_from_io(&write_error_stderr(&e), ExitCode::FAILURE),
+        Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
     }
 }
 
@@ -115,7 +117,7 @@ fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
             errln!("error reading {}: {e}", path.display());
-            Err(ExitCode::FAILURE)
+            Err(CliExitCode::ValidationFailed.into())
         }
     }
 }
@@ -125,7 +127,7 @@ fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
         Ok(id) => Ok(vb_core::RunId::new(id)),
         Err(e) => {
             errln!("invalid run_id '{raw}': {e}");
-            Err(ExitCode::FAILURE)
+            Err(CliExitCode::ValidationFailed.into())
         }
     }
 }
@@ -142,7 +144,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
         Ok(t) => t,
         Err(e) => {
             errln!("file is not valid UTF-8: {e}");
-            return ExitCode::FAILURE;
+            return CliExitCode::ValidationFailed.into();
         }
     };
 
@@ -151,7 +153,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
         Ok(_ast) => {}
         Err(e) => {
             errln!("YAML parse error: {e}");
-            return ExitCode::FAILURE;
+            return CliExitCode::ValidationFailed.into();
         }
     }
 
@@ -162,7 +164,7 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
             for err in &errors.0 {
                 errln!("compile error: {err}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::ValidationFailed.into();
         }
     }
 
@@ -199,7 +201,7 @@ fn cmd_compile(
                     errln!("compile error: {err}");
                 }
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
 
@@ -222,7 +224,7 @@ fn cmd_compile(
                     } else {
                         errln!("IR serialization error: {e}");
                     }
-                    return ExitCode::FAILURE;
+                    return CliExitCode::CompileFailed.into();
                 }
             };
             if let Err(e) = std::fs::write(out, &encoded) {
@@ -237,7 +239,7 @@ fn cmd_compile(
                 } else {
                     errln!("error writing {}: {e}", out.display());
                 }
-                return ExitCode::FAILURE;
+                return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
                 json_out(
@@ -267,7 +269,7 @@ fn cmd_compile(
                     } else {
                         errln!("codegen error: {e}");
                     }
-                    return ExitCode::FAILURE;
+                    return CliExitCode::CompileFailed.into();
                 }
             };
             if let Err(e) = std::fs::write(out, &source) {
@@ -282,7 +284,7 @@ fn cmd_compile(
                 } else {
                     errln!("error writing {}: {e}", out.display());
                 }
-                return ExitCode::FAILURE;
+                return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
                 json_out(
@@ -337,7 +339,7 @@ fn cmd_run(
                     errln!("compile error: {err}");
                 }
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
 
@@ -355,7 +357,7 @@ fn cmd_run(
             } else {
                 errln!("{error}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::RuntimeFailed.into();
         }
     };
 
@@ -404,7 +406,7 @@ fn cmd_run_step(
 }
 
 fn setup_exit_code() -> ExitCode {
-    ExitCode::from(2)
+    CliExitCode::VerificationFailed.into()
 }
 
 fn compile_bytes(bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, ExitCode> {
@@ -414,7 +416,7 @@ fn compile_bytes(bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, ExitCode> {
             for err in &errors.0 {
                 errln!("compile error: {err}");
             }
-            Err(ExitCode::FAILURE)
+            Err(CliExitCode::CompileFailed.into())
         }
     }
 }
@@ -448,7 +450,7 @@ fn execute_step_isolated(
         Ok(s) => s,
         Err(e) => {
             errln!("step error: {e}");
-            return ExitCode::FAILURE;
+            return CliExitCode::RuntimeFailed.into();
         }
     };
     print_step_result(step_idx, node, &frame, &signal);
@@ -603,7 +605,7 @@ fn cmd_run_compiled(
                     } else {
                         errln!("compiled IR validation error: {e}");
                     }
-                    return ExitCode::FAILURE;
+                    return CliExitCode::CompileFailed.into();
                 }
             },
             Err(e) => {
@@ -618,7 +620,7 @@ fn cmd_run_compiled(
                 } else {
                     errln!("error deserializing compiled IR: {e}");
                 }
-                return ExitCode::FAILURE;
+                return CliExitCode::CompileFailed.into();
             }
         };
 
@@ -636,7 +638,7 @@ fn cmd_run_compiled(
             } else {
                 errln!("{error}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
 
@@ -704,13 +706,13 @@ fn open_storage_runtime_journal(
 ) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
     let Some(path) = db else {
         errln!("--db is required when --durability is strict or journaled");
-        return Err(ExitCode::FAILURE);
+        return Err(CliExitCode::StorageError.into());
     };
     let journal = match vb_storage::FjallJournal::open(path, None) {
         Ok(journal) => Arc::new(journal),
         Err(e) => {
             errln!("error opening journal at {}: {e}", path.display());
-            return Err(ExitCode::FAILURE);
+            return Err(CliExitCode::StorageError.into());
         }
     };
     if strict {
@@ -730,7 +732,7 @@ fn run_compiled_workflow(
     let run_id = vb_core::RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         errln!("runtime configuration error: shard count must be non-zero");
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     };
     let config = vb_runtime::shard::ShardConfig::default();
     let journal = match runtime_journal_for_mode(durability, db) {
@@ -741,11 +743,11 @@ fn run_compiled_workflow(
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
         errln!("runtime submit error: {e}");
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
     if let Err(e) = runtime.tick_all() {
         errln!("runtime tick error: {e}");
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
 
     let counters = runtime.counters_snapshot();
@@ -764,7 +766,7 @@ fn run_compiled_workflow(
 
     if counters.runs_failed != 0 {
         errln!("run failed");
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
     if counters.runs_completed != 0 {
         outln!("run completed");
@@ -823,7 +825,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
         Ok(j) => j,
         Err(e) => {
             errln!("error opening journal at {}: {e}", db.display());
-            return ExitCode::FAILURE;
+            return CliExitCode::IpcError.into();
         }
     };
     let journal = Arc::new(journal);
@@ -835,7 +837,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
             Ok(q) => Arc::new(q),
             Err(e) => {
                 errln!("error creating journal queue: {e}");
-                return ExitCode::FAILURE;
+                return CliExitCode::IpcError.into();
             }
         };
     let runtime_journal =
@@ -856,7 +858,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
         Ok(s) => s,
         Err(e) => {
             errln!("error binding IPC socket at {}: {e}", socket.display());
-            return ExitCode::FAILURE;
+            return CliExitCode::IpcError.into();
         }
     };
 
@@ -876,7 +878,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
             }
             Err(e) => {
                 errln!("ipc server error: {e}");
-                return ExitCode::FAILURE;
+                return CliExitCode::IpcError.into();
             }
         }
 
@@ -889,7 +891,7 @@ fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
             }
             Err(e) => {
                 errln!("runtime tick error: {e}");
-                return ExitCode::FAILURE;
+                return CliExitCode::IpcError.into();
             }
         }
     }
@@ -941,7 +943,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
             } else {
                 errln!("error opening journal at {}: {e}", db.display());
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -994,7 +996,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
             } else {
                 errln!("error reading run {run_id}: {e}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     }
 
@@ -1021,7 +1023,7 @@ fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
             } else {
                 errln!("error opening journal at {}: {e}", db.display());
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -1082,7 +1084,7 @@ fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
             } else {
                 errln!("error reading events for run {run_id}: {e}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     }
 
@@ -1299,7 +1301,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
             } else {
                 errln!("error opening journal at {}: {e}", db.display());
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -1362,7 +1364,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
             } else {
                 errln!("error replaying run {run_id}: {e}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     }
 
@@ -1380,7 +1382,7 @@ fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
         Ok(t) => t,
         Err(e) => {
             errln!("error: file is not valid UTF-8: {e}");
-            return ExitCode::FAILURE;
+            return CliExitCode::ValidationFailed.into();
         }
     };
 
@@ -1389,7 +1391,7 @@ fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
         outln!("  {e}");
         outln!("");
         outln!("The workflow file contains invalid YAML syntax.");
-        return ExitCode::FAILURE;
+        return CliExitCode::ValidationFailed.into();
     }
 
     match vb_compile::compile_workflow(&bytes) {
@@ -1406,7 +1408,7 @@ fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
                 }
                 explain_error(err);
             }
-            ExitCode::FAILURE
+            CliExitCode::ValidationFailed.into()
         }
     }
 }
@@ -1885,7 +1887,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
                     errln!("compile error: {err}");
                 }
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
     let compile_elapsed = compile_start.elapsed();
@@ -1904,7 +1906,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         } else {
             errln!("runtime configuration error: shard count must be non-zero");
         }
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     };
     let config = vb_runtime::shard::ShardConfig::default();
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
@@ -1920,7 +1922,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         } else {
             errln!("runtime submit error: {e}");
         }
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
     if let Err(e) = runtime.tick_all() {
         if output != OutputFormat::Text {
@@ -1934,7 +1936,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         } else {
             errln!("runtime tick error: {e}");
         }
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
     let run_elapsed = run_start.elapsed();
     let counters = runtime.counters_snapshot();
@@ -1973,7 +1975,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     }
 
     if counters.runs_failed != 0 {
-        return ExitCode::FAILURE;
+        return CliExitCode::RuntimeFailed.into();
     }
 
     ExitCode::SUCCESS
@@ -2010,7 +2012,7 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
             } else {
                 errln!("FAIL: cannot open journal at {}: {e}", db.display());
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -2040,7 +2042,7 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
             } else {
                 errln!("FAIL: strict persist failed: {e}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     }
 
@@ -2069,7 +2071,7 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
         } else {
             errln!("FAIL: cannot append test event: {e}");
         }
-        return ExitCode::FAILURE;
+        return CliExitCode::StorageError.into();
     }
     checks.push(serde_json::json!({
         "check": "append_event",
@@ -2096,7 +2098,7 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
                 } else {
                     errln!("FAIL: test event not found after append");
                 }
-                return ExitCode::FAILURE;
+                return CliExitCode::StorageError.into();
             }
             checks.push(serde_json::json!({
                 "check": "read_back_event",
@@ -2121,7 +2123,7 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
             } else {
                 errln!("FAIL: cannot read test run events: {e}");
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::StorageError.into();
         }
     }
 
@@ -2179,7 +2181,7 @@ fn unique_doctor_run_id() -> u64 {
 fn exit_from_io(result: &io::Result<()>, success_code: ExitCode) -> ExitCode {
     match result {
         Ok(()) => success_code,
-        Err(_) => ExitCode::FAILURE,
+        Err(_) => CliExitCode::ValidationFailed.into(),
     }
 }
 
