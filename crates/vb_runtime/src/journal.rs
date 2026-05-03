@@ -581,6 +581,7 @@ mod tests {
             slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())

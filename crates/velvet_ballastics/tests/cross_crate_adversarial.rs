@@ -26,6 +26,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     }
 }
 
@@ -314,6 +315,7 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,
@@ -434,6 +436,7 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,
@@ -1424,6 +1427,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,

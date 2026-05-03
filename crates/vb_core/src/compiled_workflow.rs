@@ -18,6 +18,7 @@ pub struct CompiledWorkflow {
     slot_count: u16,
     entry: StepIdx,
     resource_contract: ResourceContract,
+    step_names: Box<[Box<str>]>,
 }
 
 impl CompiledWorkflow {
@@ -35,6 +36,7 @@ impl CompiledWorkflow {
             slot_count: parts.slot_count,
             entry: parts.entry,
             resource_contract: parts.resource_contract,
+            step_names: parts.step_names,
         })
     }
 
@@ -92,6 +94,12 @@ impl CompiledWorkflow {
         self.constants.get(constant.as_usize())
     }
 
+    /// Returns the human-readable step name for a given step index.
+    #[must_use]
+    pub fn step_name(&self, step: StepIdx) -> Option<&str> {
+        self.step_names.get(step.as_usize()).map(|s| s.as_ref())
+    }
+
     /// Explicit compiled resource bounds for admission and allocation.
     #[must_use]
     pub const fn resource_contract(&self) -> ResourceContract {
@@ -111,6 +119,7 @@ impl CompiledWorkflow {
             slot_count: self.slot_count,
             entry: self.entry,
             resource_contract: self.resource_contract,
+            step_names: self.step_names.clone(),
         }
     }
 }
@@ -213,4 +222,6 @@ pub struct WorkflowParts {
     pub entry: StepIdx,
     /// Explicit resource bounds carried with the compiled artifact.
     pub resource_contract: ResourceContract,
+    /// Human-readable step names indexed by StepIdx.
+    pub step_names: Box<[Box<str>]>,
 }

@@ -496,3 +496,43 @@ impl ShardCounters {
         }
     }
 }
+
+/// Per-shard metrics snapshot for observability.
+#[derive(Debug, Clone)]
+pub struct ShardMetricsSnapshot {
+    /// Shard index in the runtime's shard vector.
+    pub shard_id: u32,
+    /// Number of active runs on this shard.
+    pub active_runs: u32,
+    /// Commands waiting in the ready queue.
+    pub command_queue_depth: u32,
+    /// Remaining free slots in the command queue.
+    pub command_queue_remaining: u32,
+    /// Number of pending timers.
+    pub pending_timers: u32,
+    /// Free frames in the frame pool.
+    pub frame_pool_free: u32,
+    /// Total capacity of the frame pool.
+    pub frame_pool_total: u32,
+    /// Trace ring fill percentage (0.0 - 100.0).
+    pub trace_ring_fill_pct: f32,
+    /// Counter snapshot.
+    pub counters: CounterSnapshot,
+}
+
+/// Aggregate runtime metrics snapshot.
+#[derive(Debug, Clone)]
+pub struct RuntimeMetricsSnapshot {
+    /// Per-shard metrics.
+    pub shards: Vec<ShardMetricsSnapshot>,
+    /// Total active runs across all shards.
+    pub runs_active: u32,
+    /// Total pending timers across all shards.
+    pub runs_waiting: u32,
+    /// Total runs failed across all shards.
+    pub runs_failed_total: u64,
+    /// Total runs finished across all shards.
+    pub runs_finished_total: u64,
+    /// Total steps executed across all shards.
+    pub steps_total: u64,
+}

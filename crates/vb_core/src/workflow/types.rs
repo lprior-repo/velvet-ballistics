@@ -105,6 +105,8 @@ pub struct WorkflowParts {
     pub entry: StepIdx,
     /// Explicit resource bounds carried with the compiled artifact.
     pub resource_contract: ResourceContract,
+    /// Human-readable step names indexed by StepIdx.
+    pub step_names: Box<[Box<str>]>,
 }
 
 /// Bounded accessor program for slot-rooted path traversal.

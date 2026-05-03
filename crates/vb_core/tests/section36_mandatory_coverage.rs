@@ -506,6 +506,7 @@ fn valid_parts() -> WorkflowParts {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     }
 }
 
@@ -611,6 +612,7 @@ fn try_from_parts_rejects_unreachable_node() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
     match result {
@@ -722,6 +724,7 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
     assert_eq!(result, Err(WorkflowError::EmptyBranchTable));
@@ -824,6 +827,7 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
     let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
@@ -896,6 +900,7 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
     let mut frame = RunFrame::new(RunId::new(1), workflow.entry(), workflow.node_count(), workflow.slot_count()).map_err(|e| e.to_string())?;
@@ -1046,6 +1051,7 @@ fn eval_expr_value(
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: default_contract(),
+        step_names: Box::new([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,
@@ -1093,6 +1099,7 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: contract,
+        step_names: Box::new([]),
     }
 }
 
@@ -1709,6 +1716,7 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: contract,
+        step_names: Box::new([]),
     }
 }
 
@@ -2146,6 +2154,7 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
             max_slots: 1,
             ..ResourceContract::DEFAULT
         },
+        step_names: Box::default(),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
     match result {

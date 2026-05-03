@@ -179,6 +179,7 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     }) else {
         return;
     };
@@ -258,6 +259,7 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     }) else {
         return;
     };
@@ -389,6 +391,7 @@ pub fn fuzz_resource_budget(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     }) else {
         return;
     };
@@ -511,6 +514,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     // Gate 7: Expression stack depth bounded.
@@ -850,6 +854,7 @@ pub fn fuzz_admission_flow(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     let Ok(hash_bytes) = postcard::to_allocvec(&parts_zeroed) else {
@@ -1032,6 +1037,7 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
         symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {

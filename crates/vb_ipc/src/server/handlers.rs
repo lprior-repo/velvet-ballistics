@@ -11,7 +11,7 @@ use vb_runtime::trace::TraceEvent;
 use super::trace::typed_events_response;
 use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
 use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
-use crate::{IpcActionOutputPayload, IpcCommand, IpcPayload, SubmitRunPayload};
+use crate::{IpcActionOutputPayload, IpcCommand, IpcPayload, RunListState, RunSummary, RuntimeMetrics, SubmitRunPayload};
 
 /// Decodes a postcard-encoded payload and preserves the typed IPC decode error.
 pub fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
@@ -273,4 +273,69 @@ pub fn submit_resolved_workflow(
             message: e.to_string(),
         },
     }
+}
+
+/// Handles list-runs.
+pub fn handle_list_runs(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    let Ok(IpcPayload::ListRuns { limit, workflow }) = decode_payload::<IpcPayload>(payload) else {
+        return IpcResponse::BadRequest;
+    };
+
+    let active_summaries = runtime.list_active_runs(limit, workflow);
+    let runs: Vec<RunSummary> = active_summaries
+        .into_iter()
+        .map(|summary| RunSummary {
+            run_id: summary.run_id,
+            workflow: summary.workflow,
+            state: RunListState::Active,
+            submitted_seq: 0,
+            finished_seq: None,
+            step_count: summary.step_count,
+            steps_completed: summary.steps_completed,
+        })
+        .collect();
+
+    IpcResponse::RunList { runs }
+}
+
+/// Handles get-metrics.
+pub fn handle_get_metrics(runtime: &Runtime) -> IpcResponse {
+    let snapshot = runtime.collect_metrics();
+    let shards: Vec<crate::ShardMetrics> = snapshot
+        .shards
+        .into_iter()
+        .map(|s| crate::ShardMetrics {
+            shard_id: s.shard_id,
+            active_runs: s.active_runs,
+            ready_queue_depth: s.command_queue_depth,
+            action_queue_depth: s.command_queue_remaining,
+            timer_count: s.pending_timers,
+            frame_pool_free: s.frame_pool_free,
+            frame_pool_total: s.frame_pool_total,
+            trace_ring_fill_pct: s.trace_ring_fill_pct,
+            steps_total: s.counters.steps_executed,
+            actions_total: s.counters.runs_completed.saturating_add(s.counters.runs_failed),
+        })
+        .collect();
+
+    let totals = crate::AggregateMetrics {
+        runs_active: snapshot.runs_active,
+        runs_waiting: snapshot.runs_waiting,
+        runs_failed_total: snapshot.runs_failed_total,
+        runs_finished_total: snapshot.runs_finished_total,
+    };
+
+    IpcResponse::Metrics(RuntimeMetrics {
+        journal: crate::JournalMetrics {
+            writer_queue_depth: 0,
+            total_events: 0,
+            total_runs: snapshot.runs_finished_total.saturating_add(snapshot.runs_failed_total),
+        },
+        ipc: crate::IpcMetrics {
+            connected_clients: 0,
+            commands_processed: 0,
+        },
+        shards,
+        totals,
+    })
 }

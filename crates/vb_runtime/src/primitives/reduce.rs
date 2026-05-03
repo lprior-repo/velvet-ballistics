@@ -129,6 +129,7 @@ mod tests {
             slot_count: 8,
             symbols_count: 0,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts)

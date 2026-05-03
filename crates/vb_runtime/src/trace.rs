@@ -36,6 +36,12 @@ impl TraceRing {
         self.capacity
     }
 
+    /// Returns the number of events currently in the ring.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.history.len()
+    }
+
     /// Attempts to push a trace event. Returns false if the ring is full (drops oldest policy
     /// is not used here; the caller may choose to count the drop).
     pub fn push(&mut self, event: TraceEvent) -> bool {

@@ -37,6 +37,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         slot_count: 1,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
@@ -95,6 +96,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
         slot_count: 1,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
@@ -421,6 +423,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         slot_count: 1,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
@@ -467,6 +470,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
         slot_count: 1,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
@@ -537,6 +541,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         slot_count: 3,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()

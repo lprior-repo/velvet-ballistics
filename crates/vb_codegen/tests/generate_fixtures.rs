@@ -51,6 +51,7 @@ fn generate_minimal_workflow_fixture() {
         symbols_count: 0,
         entry: vb_core::StepIdx::new(0),
         resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     let workflow = vb_core::CompiledWorkflow::try_from_parts(parts).expect("workflow must compile");

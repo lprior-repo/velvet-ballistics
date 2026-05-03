@@ -7,11 +7,24 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
 
-use crate::counters::CounterSnapshot;
+use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
 use crate::journal::SharedRuntimeJournal;
 use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
+
+/// Summary of an active run on a shard.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveRunSummary {
+    /// Run identifier.
+    pub run_id: RunId,
+    /// Compiled workflow digest.
+    pub workflow: vb_core::WorkflowDigest,
+    /// Number of steps in the workflow.
+    pub step_count: u16,
+    /// Steps that reached a terminal state (Succeeded, Failed, Skipped, or Cancelled).
+    pub steps_completed: u16,
+}
 
 /// Multi-shard runtime.
 pub struct Runtime {
@@ -175,6 +188,85 @@ impl Runtime {
         events
     }
 
+    /// Collects runtime metrics from all shards.
+    pub fn collect_metrics(&self) -> RuntimeMetricsSnapshot {
+        let mut shards = Vec::with_capacity(self.shard_count);
+        let mut runs_active = 0u32;
+        let mut runs_waiting = 0u32;
+        let mut runs_failed_total = 0u64;
+        let mut runs_finished_total = 0u64;
+        let mut steps_total = 0u64;
+
+        for (index, shard) in self.shards.iter().enumerate() {
+            let counters = shard.counters().snapshot();
+            let active_runs = match u32::try_from(shard.active_run_count()) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let queue_depth = match u32::try_from(shard.command_queue_len()) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let queue_remaining = match u32::try_from(shard.remaining_capacity()) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let pending_timers = match u32::try_from(shard.pending_timer_count()) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let (fp_free, fp_total) = shard.frame_pool_metrics();
+            let frame_pool_free = match u32::try_from(fp_free) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let frame_pool_total = match u32::try_from(fp_total) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            let trace_capacity = shard.trace_ring().capacity();
+            let trace_len = shard.trace_ring().len();
+            let trace_ring_fill_pct = if trace_capacity > 0 {
+                (f32::from_bits(
+                    (trace_len as f32 / trace_capacity as f32 * 100.0).to_bits(),
+                ))
+            } else {
+                0.0
+            };
+
+            runs_active = runs_active.saturating_add(active_runs);
+            runs_waiting = runs_waiting.saturating_add(pending_timers);
+            runs_failed_total = runs_failed_total.saturating_add(counters.runs_failed);
+            runs_finished_total = runs_finished_total.saturating_add(counters.runs_completed);
+            steps_total = steps_total.saturating_add(counters.steps_executed);
+
+            let shard_id = match u32::try_from(index) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
+            shards.push(ShardMetricsSnapshot {
+                shard_id,
+                active_runs,
+                command_queue_depth: queue_depth,
+                command_queue_remaining: queue_remaining,
+                pending_timers,
+                frame_pool_free,
+                frame_pool_total,
+                trace_ring_fill_pct,
+                counters,
+            });
+        }
+
+        RuntimeMetricsSnapshot {
+            shards,
+            runs_active,
+            runs_waiting,
+            runs_failed_total,
+            runs_finished_total,
+            steps_total,
+        }
+    }
+
     /// Returns aggregated counter snapshots from all shards.
     pub fn counters_snapshot(&self) -> CounterSnapshot {
         let mut total = CounterSnapshot {
@@ -191,6 +283,69 @@ impl Runtime {
             total.steps_executed = total.steps_executed.saturating_add(snap.steps_executed);
         }
         total
+    }
+
+    /// Lists active run summaries across all shards, up to `limit` entries.
+    ///
+    /// If `workflow_filter` is provided, only runs matching that digest are included.
+    /// Returns summaries sorted by run id ascending.
+    pub fn list_active_runs(
+        &self,
+        limit: u32,
+        workflow_filter: Option<vb_core::WorkflowDigest>,
+    ) -> Vec<ActiveRunSummary> {
+        let max = match usize::try_from(limit) {
+            Ok(value) => value,
+            Err(_) => usize::MAX,
+        };
+        let mut summaries = Vec::new();
+        for shard in &self.shards {
+            let mut index = 0usize;
+            while index < shard.runs.len() && summaries.len() < max {
+                let Some((run_id, state)) = shard.runs.get_index(index) else {
+                    break;
+                };
+                let digest = state.workflow.digest();
+                if let Some(filter) = workflow_filter {
+                    if digest != filter {
+                        index = index.saturating_add(1);
+                        continue;
+                    }
+                }
+                let step_count = state.workflow.node_count();
+                let mut steps_completed: u16 = 0;
+                let mut step_index = 0u16;
+                while step_index < step_count {
+                    let step = vb_core::ids::StepIdx::new(step_index);
+                    match state.frame.step_state(step) {
+                        Ok(
+                            vb_core::frame::StepState::Succeeded
+                            | vb_core::frame::StepState::Failed
+                            | vb_core::frame::StepState::Skipped
+                            | vb_core::frame::StepState::Cancelled,
+                        ) => {
+                            steps_completed = steps_completed.saturating_add(1);
+                        }
+                        Ok(_) => {}
+                        Err(_) => {}
+                    }
+                    step_index = step_index.saturating_add(1);
+                }
+                summaries.push(ActiveRunSummary {
+                    run_id: *run_id,
+                    workflow: digest,
+                    step_count,
+                    steps_completed,
+                });
+                index = index.saturating_add(1);
+            }
+            if summaries.len() >= max {
+                break;
+            }
+        }
+        summaries.sort_by_key(|s| s.run_id);
+        summaries.truncate(max);
+        summaries
     }
 
     /// Shuts down all shards gracefully.
@@ -259,6 +414,7 @@ mod tests {
             slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).ok()
@@ -296,6 +452,7 @@ mod tests {
             slot_count: 2,
             symbols_count: 0,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).ok()
@@ -491,6 +648,7 @@ mod tests {
             slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         CompiledWorkflow::try_from_parts(parts).ok()
@@ -2020,6 +2178,7 @@ mod tests {
             constants: Box::from([vb_core::value::ConstValue::I64(10)]),
             slot_count: 1,
             entry: StepIdx::ZERO,
+            step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
             symbols_count: 0,
         };

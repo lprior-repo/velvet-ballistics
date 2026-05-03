@@ -809,6 +809,7 @@ fn compiled_from_nodes(
         slot_count: 2,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
         symbols_count: 0,
     })
     .ok()
@@ -1290,6 +1291,7 @@ fn taint_expr_workflow(
         slot_count,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
         symbols_count: 0,
     })
     .ok()
@@ -1509,6 +1511,7 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         slot_count: field_count.saturating_add(1),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
         symbols_count: 0,
     })
     .ok()
@@ -1617,6 +1620,7 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         slot_count: item_count.saturating_add(1),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
         symbols_count: 0,
     })
     .ok()
@@ -1759,6 +1763,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
         slot_count: 5,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
         symbols_count: 0,
     })
     .ok()

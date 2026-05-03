@@ -62,6 +62,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -100,6 +101,7 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -147,6 +149,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -634,6 +637,7 @@ fn budget_validation_rejects_oversized_workflow() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: tight_contract,
+        step_names: Box::default(),
     };
 
     // Then: construction should fail because 2 nodes > max_steps(1)
@@ -667,6 +671,7 @@ fn budget_validation_rejects_oversized_workflow() {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: slot_contract,
+        step_names: Box::default(),
     };
     let slot_result = CompiledWorkflow::try_from_parts(slot_parts);
     assert!(

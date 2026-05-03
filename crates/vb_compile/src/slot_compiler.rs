@@ -117,6 +117,7 @@ impl SlotCompiler {
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
         })
     }
 }

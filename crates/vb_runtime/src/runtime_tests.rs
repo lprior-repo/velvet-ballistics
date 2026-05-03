@@ -36,6 +36,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     CompiledWorkflow::try_from_parts(parts).ok()
@@ -73,6 +74,7 @@ fn action_then_finish_workflow() -> Option<CompiledWorkflow> {
         slot_count: 2,
         symbols_count: 0,
         entry: StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     CompiledWorkflow::try_from_parts(parts).ok()
@@ -265,6 +267,7 @@ fn finished_workflow() -> Option<CompiledWorkflow> {
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     CompiledWorkflow::try_from_parts(parts).ok()
@@ -1572,6 +1575,7 @@ fn wait_then_finish_workflow() -> Option<CompiledWorkflow> {
         constants: Box::from([vb_core::value::ConstValue::I64(10)]),
         slot_count: 1,
         entry: StepIdx::ZERO,
+        step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
     CompiledWorkflow::try_from_parts(parts).ok()

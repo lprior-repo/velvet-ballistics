@@ -42,6 +42,7 @@ fn input_slot_parts() -> WorkflowParts {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     }
 }
 
@@ -61,6 +62,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
     }
 }
 
@@ -86,7 +88,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet_ballastics"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_vb"));
     command.args(args);
 
     match command.output() {

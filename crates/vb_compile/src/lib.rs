@@ -275,6 +275,7 @@ pub fn lower_steps_to_ir(
         symbols_count,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
@@ -618,14 +619,14 @@ pub fn lower_wait(
                 deadline_slot: deadline,
             }
         }
-        WaitKind::Event { event, timeout_slot } => {
+        WaitKind::Event { event, timeout } => {
             builder.record_slot(event);
-            if let Some(slot) = timeout_slot {
+            if let Some(slot) = timeout {
                 builder.record_slot(slot);
             }
             CompiledNodeKind::WaitEvent {
                 event,
-                timeout_slot,
+                timeout_slot: timeout,
             }
         }
     };
@@ -905,6 +906,7 @@ impl SlotCompiler {
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
         })
     }
 }
@@ -1966,9 +1968,32 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
     let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
     let source_ir_starts = build_source_ir_starts(steps)?;
 
+    let total_nodes = source_ir_starts
+        .last()
+        .map(|s| s.as_usize())
+        .unwrap_or(0)
+        .checked_add(
+            compiled_step_width(
+                steps.last().ok_or(CompileError::EmptySteps)?,
+                last_step,
+            )?,
+        )
+        .unwrap_or(0);
+    let mut step_names: Vec<Box<str>> = Vec::new();
+    step_names.resize_with(total_nodes, || Box::from(""));
+
     for (index, step) in steps.iter().enumerate() {
         let id = source_ir_start(&source_ir_starts, index)?;
         let next = optional_source_ir_start(&source_ir_starts, index)?;
+        let step_id_str = required_step_id(step, index)?;
+        let width = compiled_step_width(step, index)?;
+        let start = id.as_usize();
+        let end = start.checked_add(width).unwrap_or(start);
+        for pos in start..end {
+            if let Some(slot) = step_names.get_mut(pos) {
+                *slot = Box::from(step_id_str);
+            }
+        }
         let nodes = compile_step(
             step,
             index,
@@ -1991,6 +2016,7 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: step_names.into_boxed_slice(),
     })
 }
 
@@ -3259,14 +3285,14 @@ fn compile_wait(
     let mut node = match (until, event, timeout) {
         (Some(deadline), None, None) => {
             builder.record_slot(deadline);
-            lower_wait(id, deadline, None, false, &mut SlotCompiler::new())
+            lower_wait(id, WaitKind::Until { deadline }, &mut SlotCompiler::new())
         }
         (None, Some(event_slot), timeout_slot) => {
             builder.record_slot(event_slot);
             if let Some(slot) = timeout_slot {
                 builder.record_slot(slot);
             }
-            lower_wait(id, event_slot, timeout_slot, true, &mut SlotCompiler::new())
+            lower_wait(id, WaitKind::Event { event: event_slot, timeout: timeout_slot }, &mut SlotCompiler::new())
         }
         _ => {
             return Err(CompileError::StepFieldShape {
@@ -5768,6 +5794,7 @@ steps:
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
@@ -5810,6 +5837,7 @@ steps:
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }

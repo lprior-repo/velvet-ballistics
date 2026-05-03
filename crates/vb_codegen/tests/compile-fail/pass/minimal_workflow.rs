@@ -47,6 +47,10 @@ fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u1
 fn write_slot(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16, value: Option<SlotValue>) -> Result<(), DriveError> { match slots.get_mut(usize::from(slot)) { Some(target) => { *target = value; Ok(()) }, None => Err(DriveError::InvalidCompiledWorkflow { reason: "slot index out of bounds" }), } }
 fn read_const(index: u16) -> Result<SlotValue, DriveError> { CONSTANTS.get(usize::from(index)).copied().ok_or(DriveError::InvalidCompiledWorkflow { reason: "constant index out of bounds" }) }
 
+fn symbol_contains(_haystack: u32, _needle: u32) -> bool { _haystack == _needle }
+fn symbol_starts_with(_haystack: u32, _prefix: u32) -> bool { _haystack == _prefix }
+fn symbol_ends_with(_haystack: u32, _suffix: u32) -> bool { _haystack == _suffix }
+
 // --- Typed ID constants ---
 const WORKFLOW_SLOT_COUNT: usize = 1;
 const WORKFLOW_NODE_COUNT: u16 = 2;
