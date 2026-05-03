@@ -57,6 +57,7 @@ impl WholeWorkflowBudget {
         }
 
         let mut visited: Vec<bool> = vec![false; node_count];
+        let mut in_path: std::collections::HashSet<u16> = std::collections::HashSet::new();
         let max_total_steps = count_total_steps(nodes, entry, node_count)?;
 
         let mut max_fanout: u16 = 0;
@@ -72,6 +73,7 @@ impl WholeWorkflowBudget {
             nodes,
             entry,
             &mut visited,
+            &mut in_path,
             node_count,
             0,
             &mut max_fanout,
@@ -878,6 +880,20 @@ fn compute_fanout_and_depth(
         None => return Err(WorkflowError::StepOutOfBounds { step: current }),
     };
 
+    let current_u16 = current.get();
+    in_path.insert(current_u16);
+
+    if let CompiledNodeKind::Jump { target } = &node.kind {
+        let target_u16 = target.get();
+        if in_path.contains(&target_u16) {
+            in_path.remove(&current_u16);
+            return Err(WorkflowError::JumpCycle {
+                step: current,
+                target: *target,
+            });
+        }
+    }
+
     let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth);
     update_fanout(&node.kind, max_fanout);
     update_workflow_metrics(
@@ -904,6 +920,7 @@ fn compute_fanout_and_depth(
                 nodes,
                 target,
                 visited,
+                in_path,
                 node_count,
                 child_depth,
                 max_fanout,
