@@ -225,9 +225,12 @@ impl VerificationData {
         if self.all_clean {
             String::from("PASS (all panels clean)")
         } else {
-            let clean = self.pass_count;
             let total = self.total_checks;
-            format!("PASS ({}/{total} panels clean)", clean.saturating_sub(self.fail_count))
+            let clean = self
+                .pass_count
+                .saturating_sub(self.fail_count)
+                .saturating_sub(self.warn_count);
+            format!("PASS ({clean}/{total} panels clean)")
         }
     }
 
