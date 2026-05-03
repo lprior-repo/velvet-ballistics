@@ -98,7 +98,7 @@ pub enum GroupKind {
 }
 
 /// Node flags controlling editor behavior.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct NodeFlags {
     /// Node position is locked.
     pub locked: bool,
@@ -108,17 +108,6 @@ pub struct NodeFlags {
     pub terminal: bool,
     /// Entry node of the workflow.
     pub entry: bool,
-}
-
-impl Default for NodeFlags {
-    fn default() -> Self {
-        Self {
-            locked: false,
-            hidden: false,
-            terminal: false,
-            entry: false,
-        }
-    }
 }
 
 /// Default editor metadata placeholder.
@@ -828,6 +817,7 @@ pub fn build_ports(
 // ---------------------------------------------------------------------------
 
 /// Create a `FlowEdgeRecord` and insert it into the edge map.
+#[allow(clippy::too_many_arguments)]
 fn add_edge(
     edges: &mut IndexMap<SmolStr, FlowEdgeRecord>,
     counter: &mut u32,
@@ -1301,7 +1291,8 @@ fn collect_span(start: usize, end: usize, total: usize) -> Vec<SmolStr> {
     }
     // end >= start is guaranteed here, and end < total, so end - start cannot
     // underflow and will not overflow usize.
-    let count = (end - start).saturating_add(1);
+    let span = end.saturating_sub(start);
+    let count = span.saturating_add(1);
     let mut children = Vec::with_capacity(count);
     let mut idx = start;
     while idx <= end {
@@ -1325,10 +1316,7 @@ fn collect_span(start: usize, end: usize, total: usize) -> Vec<SmolStr> {
 /// override them.
 #[must_use]
 pub fn compute_node_size(ports: &[FlowPortRecord]) -> [f64; 2] {
-    let port_count: u32 = match u32::try_from(ports.len()) {
-        Ok(v) => v,
-        Err(_) => u32::MAX,
-    };
+    let port_count: u32 = u32::try_from(ports.len()).unwrap_or(u32::MAX);
     // Width: 160 base + 20 per port, capped at 320.
     let width = f64::from(
         port_count

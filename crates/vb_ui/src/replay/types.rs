@@ -38,11 +38,12 @@ pub struct ReplayDiff {
 }
 
 /// Playback speed for the replay.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlaybackSpeed {
     /// 0.5x -- 2 seconds between events.
     Half,
     /// 1x -- 1 second between events.
+    #[default]
     Normal,
     /// 2x -- 500ms between events.
     Double,
@@ -63,11 +64,5 @@ impl PlaybackSpeed {
             Self::Quad => 250,
             Self::Octuple => 125,
         }
-    }
-}
-
-impl Default for PlaybackSpeed {
-    fn default() -> Self {
-        Self::Normal
     }
 }

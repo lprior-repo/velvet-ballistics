@@ -6,6 +6,12 @@ pub struct IncidentConsole {
     selected: Option<usize>,
 }
 
+impl Default for IncidentConsole {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IncidentConsole {
     pub fn new() -> Self {
         Self {
@@ -26,10 +32,8 @@ impl IncidentConsole {
                 self.selected = None;
             }
             self.incidents.remove(index);
-            if let Some(sel) = self.selected {
-                if sel >= self.incidents.len() {
-                    self.selected = None;
-                }
+            if let Some(sel) = self.selected && sel >= self.incidents.len() {
+                self.selected = None;
             }
         }
     }

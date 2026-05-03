@@ -37,7 +37,7 @@ impl EventTicker {
     #[must_use]
     pub fn recent(&self, count: usize) -> &[TickerEvent] {
         let start = self.events.len().saturating_sub(count);
-        &self.events[start..]
+        self.events.get(start..).unwrap_or(&[])
     }
 
     pub fn clear(&mut self) {

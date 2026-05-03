@@ -114,13 +114,8 @@ pub struct IpcBridge {
     _handle: Option<JoinHandle<()>>,
 }
 
-impl IpcBridge {
-    /// Creates a new bridge with a background IPC thread.
-    ///
-    /// If the thread cannot be spawned (resource exhaustion), the handle is
-    /// `None` and subsequent `send` calls will return errors once the channel
-    /// is disconnected.
-    pub fn new() -> Self {
+impl Default for IpcBridge {
+    fn default() -> Self {
         let (req_tx, req_rx) = mpsc::channel::<IpcRequest>();
         let (rep_tx, rep_rx) = mpsc::channel::<IpcReply>();
 
@@ -137,6 +132,17 @@ impl IpcBridge {
             connected: false,
             _handle: handle,
         }
+    }
+}
+
+impl IpcBridge {
+    /// Creates a new bridge with a background IPC thread.
+    ///
+    /// If the thread cannot be spawned (resource exhaustion), the handle is
+    /// `None` and subsequent `send` calls will return errors once the channel
+    /// is disconnected.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Sends a request to the background thread (non-blocking).
@@ -197,17 +203,17 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 match IpcClient::connect(&socket_path) {
                     Ok(c) => {
                         client = Some(c);
-                        let _ = tx.send(IpcReply::Connected);
+                        tx.send(IpcReply::Connected).ok();
                     }
                     Err(e) => {
-                        let _ = tx.send(IpcReply::ConnectionFailed(format!("{e}")));
+                        tx.send(IpcReply::ConnectionFailed(format!("{e}"))).ok();
                     }
                 }
             }
 
             IpcRequest::Disconnect => {
                 client = None;
-                let _ = tx.send(IpcReply::Disconnected);
+                tx.send(IpcReply::Disconnected).ok();
             }
 
             IpcRequest::Health => {
@@ -216,18 +222,18 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     match c.health(corr) {
                         Ok(()) => match c.recv_response(DEFAULT_MAX_PAYLOAD) {
                             Ok((_header, response)) => {
-                                let _ = tx.send(reply_from_response(response));
+                                tx.send(reply_from_response(response)).ok();
                             }
                             Err(e) => {
-                                let _ = tx.send(IpcReply::Error(format!("{e}")));
+                                tx.send(IpcReply::Error(format!("{e}"))).ok();
                             }
                         },
                         Err(e) => {
-                            let _ = tx.send(IpcReply::Error(format!("{e}")));
+                            tx.send(IpcReply::Error(format!("{e}"))).ok();
                         }
                     }
                 } else {
-                    let _ = tx.send(IpcReply::Error("Not connected".into()));
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
                 }
             }
 
@@ -237,14 +243,14 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::InspectRun { run_id };
                     match send_and_recv(c, IpcCommand::InspectRun, corr, &payload) {
                         Ok(response) => {
-                            let _ = tx.send(IpcReply::Inspected(response));
+                            tx.send(IpcReply::Inspected(response)).ok();
                         }
                         Err(e) => {
-                            let _ = tx.send(IpcReply::Error(e));
+                            tx.send(IpcReply::Error(e)).ok();
                         }
                     }
                 } else {
-                    let _ = tx.send(IpcReply::Error("Not connected".into()));
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
                 }
             }
 
@@ -254,17 +260,17 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::CancelRun { run_id };
                     match send_and_recv(c, IpcCommand::CancelRun, corr, &payload) {
                         Ok(response) => {
-                            let _ = tx.send(IpcReply::RunCancelled(run_id));
+                            tx.send(IpcReply::RunCancelled(run_id)).ok();
                             // Silently consume response; cancellation is
                             // fire-and-forget from the UI perspective.
                             let _ = response;
                         }
                         Err(e) => {
-                            let _ = tx.send(IpcReply::Error(e));
+                            tx.send(IpcReply::Error(e)).ok();
                         }
                     }
                 } else {
-                    let _ = tx.send(IpcReply::Error("Not connected".into()));
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
                 }
             }
 
@@ -274,35 +280,35 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::ListEvents { run_id, from_sequence };
                     match send_and_recv(c, IpcCommand::ListEvents, corr, &payload) {
                         Ok(response) => {
-                            let _ = tx.send(IpcReply::Events(response));
+                            tx.send(IpcReply::Events(response)).ok();
                         }
                         Err(e) => {
-                            let _ = tx.send(IpcReply::Error(e));
+                            tx.send(IpcReply::Error(e)).ok();
                         }
                     }
                 } else {
-                    let _ = tx.send(IpcReply::Error("Not connected".into()));
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
                 }
             }
 
             // ── Stubs: not yet wired ──────────────────────────────────────
 
             IpcRequest::SubmitRun { .. } => {
-                let _ = tx.send(IpcReply::NotImplemented(
+                tx.send(IpcReply::NotImplemented(
                     "SubmitRun not yet implemented".into(),
-                ));
+                )).ok();
             }
 
             IpcRequest::AnswerAsk { .. } => {
-                let _ = tx.send(IpcReply::NotImplemented(
+                tx.send(IpcReply::NotImplemented(
                     "AnswerAsk not yet implemented".into(),
-                ));
+                )).ok();
             }
 
             IpcRequest::DrainTrace { .. } => {
-                let _ = tx.send(IpcReply::NotImplemented(
+                tx.send(IpcReply::NotImplemented(
                     "DrainTrace not yet implemented".into(),
-                ));
+                )).ok();
             }
 
             IpcRequest::Shutdown => {
@@ -312,15 +318,15 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                         Ok(()) => {
                             // Best-effort read of the shutdown ack.
                             let response = c.recv_response(DEFAULT_MAX_PAYLOAD).ok();
-                            let _ = tx.send(IpcReply::ShuttingDown);
+                            tx.send(IpcReply::ShuttingDown).ok();
                             let _ = response;
                         }
                         Err(e) => {
-                            let _ = tx.send(IpcReply::Error(format!("{e}")));
+                            tx.send(IpcReply::Error(format!("{e}"))).ok();
                         }
                     }
                 } else {
-                    let _ = tx.send(IpcReply::Error("Not connected".into()));
+                    tx.send(IpcReply::Error("Not connected".into())).ok();
                 }
             }
         }

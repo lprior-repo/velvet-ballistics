@@ -144,10 +144,13 @@ pub fn compute_layout(
     }
 
     while let Some(node_id) = queue.pop_front() {
-        let current_depth = depth[node_id];
+        let current_depth = match depth.get(node_id) {
+            Some(&d) => d,
+            None => continue,
+        };
         if let Some(succs) = successors.get(node_id) {
             for &succ in succs {
-                let candidate = current_depth + 1;
+                let candidate = current_depth.saturating_add(1);
                 let existing = depth.get(succ).copied().unwrap_or(0);
                 if candidate > existing {
                     depth.insert(succ, candidate);
@@ -166,12 +169,14 @@ pub fn compute_layout(
     // Step 3: Group nodes by column
     // -----------------------------------------------------------------------
     let max_depth = depth.values().copied().max().unwrap_or(0);
-    let num_columns = max_depth + 1;
+    let num_columns = max_depth.saturating_add(1);
 
     let mut columns: Vec<Vec<&str>> = vec![Vec::new(); num_columns];
     for node in nodes {
-        let col = depth[&node.id.as_str()];
-        columns[col].push(node.id.as_str());
+        let col = depth.get(&node.id.as_str()).copied().unwrap_or(0);
+        if let Some(column) = columns.get_mut(col) {
+            column.push(node.id.as_str());
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -184,7 +189,9 @@ pub fn compute_layout(
         // Forward pass (left to right): sort each column by barycenter of
         // predecessors' row positions.
         for col_idx in 1..num_columns {
-            sort_column_by_barycenter(&mut columns[col_idx], &row_of, &predecessors);
+            if let Some(column) = columns.get_mut(col_idx) {
+                sort_column_by_barycenter(column, &row_of, &predecessors);
+            }
         }
 
         // Rebuild row index after forward pass.
@@ -193,7 +200,9 @@ pub fn compute_layout(
         // Backward pass (right to left): sort each column by barycenter of
         // successors' row positions.
         for col_idx in (0..num_columns.saturating_sub(1)).rev() {
-            sort_column_by_barycenter(&mut columns[col_idx], &row_of, &successors);
+            if let Some(column) = columns.get_mut(col_idx) {
+                sort_column_by_barycenter(column, &row_of, &successors);
+            }
         }
     }
 
@@ -203,10 +212,10 @@ pub fn compute_layout(
     let mut positions: HashMap<String, [f64; 2]> = HashMap::new();
 
     for (col_idx, col_nodes) in columns.iter().enumerate() {
-        let x = MARGIN_LEFT + col_idx as f64 * COLUMN_SPACING;
+        let x = MARGIN_LEFT + f64::from(u32::try_from(col_idx).unwrap_or(0)) * COLUMN_SPACING;
 
         for (row_idx, &node_id) in col_nodes.iter().enumerate() {
-            let y = MARGIN_TOP + row_idx as f64 * ROW_SPACING;
+            let y = MARGIN_TOP + f64::from(u32::try_from(row_idx).unwrap_or(0)) * ROW_SPACING;
             positions.insert(node_id.to_string(), [x, y]);
         }
     }
@@ -268,7 +277,7 @@ fn sort_column_by_barycenter<'a>(
             } else {
                 // No neighbors: use original index as pseudo-barycenter so
                 // these nodes stay roughly in place relative to each other.
-                original_idx as f64
+                f64::from(u32::try_from(original_idx).unwrap_or(0))
             };
             (sort_key, original_idx, node_id)
         })
@@ -301,15 +310,15 @@ fn compute_barycenter<'a>(
     let mut count: usize = 0;
     for &nbr in nbrs {
         if let Some(&row) = row_of.get(nbr) {
-            sum += row as f64;
-            count += 1;
+            sum += f64::from(u32::try_from(row).unwrap_or(0));
+            count = count.saturating_add(1);
         }
     }
 
     if count == 0 {
         None
     } else {
-        Some(sum / count as f64)
+        Some(sum / f64::from(u32::try_from(count).unwrap_or(1)))
     }
 }
 
@@ -318,9 +327,15 @@ fn dedup_preserve_order(list: &mut Vec<&str>) {
     let mut seen = HashSet::new();
     let mut write: usize = 0;
     for read in 0..list.len() {
-        if seen.insert(list[read]) {
-            list[write] = list[read];
-            write += 1;
+        let read_val = match list.get(read) {
+            Some(&v) => v,
+            None => continue,
+        };
+        if seen.insert(read_val) {
+            if let Some(slot) = list.get_mut(write) {
+                *slot = read_val;
+            }
+            write = write.saturating_add(1);
         }
     }
     list.truncate(write);
