@@ -349,3 +349,283 @@ pub fn handle_get_metrics(runtime: &Runtime) -> IpcResponse {
         totals,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── decode_payload tests ──
+
+    #[test]
+    fn decode_payload_succeeds_for_valid_postcard_bytes() {
+        let payload = crate::IpcPayload::Health;
+        let encoded = postcard::to_allocvec(&payload);
+        assert!(encoded.is_ok(), "postcard encoding should succeed");
+        let Ok(encoded) = encoded else { return };
+
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        match result {
+            Ok(decoded) => assert_eq!(decoded, crate::IpcPayload::Health),
+            Err(_) => {
+                assert!(false, "decode_payload should succeed for valid Health payload");
+            }
+        }
+    }
+
+    #[test]
+    fn decode_payload_returns_error_for_garbage_bytes() {
+        let garbage: &[u8] = &[0xFF, 0xFE, 0xFD, 0xFC];
+        let result = decode_payload::<crate::IpcPayload>(garbage);
+        match result {
+            Err(IpcResponse::PayloadError { diagnostic, message }) => {
+                assert!(!message.is_empty(), "error message should not be empty");
+                assert_eq!(diagnostic, 0x300D);
+            }
+            other => {
+                assert!(false, "expected PayloadError for garbage, got {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn decode_payload_returns_error_for_empty_bytes() {
+        let result = decode_payload::<crate::IpcPayload>(&[]);
+        match result {
+            Err(IpcResponse::PayloadError { .. }) => {}
+            other => {
+                assert!(false, "expected PayloadError for empty bytes, got {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_cancel_run() {
+        let payload = crate::IpcPayload::CancelRun {
+            run_id: vb_core::RunId::new(42),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode CancelRun");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_drain_trace() {
+        let payload = crate::IpcPayload::DrainTrace {
+            run_id: vb_core::RunId::new(7),
+            max_records: 500,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode DrainTrace");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_shutdown() {
+        let payload = crate::IpcPayload::Shutdown;
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode Shutdown");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_list_events() {
+        let payload = crate::IpcPayload::ListEvents {
+            run_id: vb_core::RunId::new(33),
+            from_sequence: 100,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode ListEvents");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_inspect_run() {
+        let payload = crate::IpcPayload::InspectRun {
+            run_id: vb_core::RunId::new(55),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode InspectRun");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_answer_ask() {
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(3),
+            ticket: 42,
+            answer: Vec::from(&b"yes"[..]),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode AnswerAsk");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_complete_action() {
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: vb_core::RunId::new(10),
+            ticket: 7,
+            output: Vec::from(&b"result"[..]),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode CompleteAction");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_fail_action() {
+        let payload = crate::IpcPayload::FailAction {
+            run_id: vb_core::RunId::new(11),
+            ticket: 3,
+            error: Vec::from(&b"failure"[..]),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode FailAction");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_get_metrics() {
+        let payload = crate::IpcPayload::GetMetrics;
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode GetMetrics");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_list_runs() {
+        let payload = crate::IpcPayload::ListRuns {
+            limit: 50,
+            workflow: None,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode ListRuns");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn decode_payload_roundtrips_submit_run() {
+        let payload = crate::IpcPayload::SubmitRun(SubmitRunPayload {
+            run_id: vb_core::RunId::new(99),
+            workflow: vb_core::WorkflowDigest::from_bytes([0xAA; 32]),
+            input: Vec::from(&b"input"[..]),
+        });
+        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode SubmitRun");
+            return;
+        };
+        assert_eq!(decoded, payload);
+    }
+
+    // ── handle_ping / handle_health tests ──
+
+    #[test]
+    fn handle_ping_returns_healthy() {
+        assert_eq!(handle_ping(), IpcResponse::Healthy);
+    }
+
+    #[test]
+    fn handle_health_returns_healthy() {
+        assert_eq!(handle_health(), IpcResponse::Healthy);
+    }
+
+    // ── ipc_error_response tests ──
+
+    #[test]
+    fn ipc_error_response_maps_full_to_payload_error() {
+        let response = ipc_error_response(crate::IpcError::Full);
+        match response {
+            IpcResponse::PayloadError { diagnostic, message } => {
+                assert_eq!(diagnostic, 0x3001);
+                assert!(message.contains("full"), "expected 'full' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ipc_error_response_maps_decode_failed_to_payload_error() {
+        let response = ipc_error_response(crate::IpcError::PayloadDecodeFailed);
+        match response {
+            IpcResponse::PayloadError { diagnostic, message } => {
+                assert_eq!(diagnostic, 0x300D);
+                assert!(message.contains("decode"), "expected 'decode' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ipc_error_response_maps_invalid_magic_to_payload_error() {
+        let response = ipc_error_response(crate::IpcError::InvalidMagic { actual: 0xBAD });
+        match response {
+            IpcResponse::PayloadError { diagnostic, message } => {
+                assert_eq!(diagnostic, 0x3004);
+                assert!(message.contains("magic"), "expected 'magic' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ipc_error_response_maps_unknown_command_to_payload_error() {
+        let response = ipc_error_response(crate::IpcError::UnknownCommand(200));
+        match response {
+            IpcResponse::PayloadError { diagnostic, message } => {
+                assert_eq!(diagnostic, 0x3006);
+                assert!(message.contains("200"), "expected '200' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
+    }
+}

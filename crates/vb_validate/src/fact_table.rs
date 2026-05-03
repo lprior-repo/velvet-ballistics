@@ -1,4 +1,6 @@
 //! Fact table for type/taint validation.
+
+#![allow(unreachable_pub)]
 //!
 //! Builds and resolves facts for inputs, vars, and secrets.
 
@@ -6,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::ValidationResult;
 
-use super::type_sigs::{
+use crate::type_sigs::{
     InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes,
 };
 
