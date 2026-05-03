@@ -135,7 +135,7 @@ impl fmt::Display for SlotValue {
             Self::Symbol(id) => write!(f, "symbol:{}", id.get()),
             Self::List(id) => write!(f, "list:{}", id.get()),
             Self::Object(id) => write!(f, "object:{}", id.get()),
-            Self::Blob(id) => write!(f, "blob:{}", id.as_u64()),
+            Self::Blob(id) => write!(f, "blob:{}", id.get()),
         }
     }
 }
@@ -875,7 +875,7 @@ impl fmt::Display for SlotValueDisplay<'_> {
             },
             SlotValue::Blob(id) => match self.1.blob(*id) {
                 Ok(bytes) => write!(f, "blob:<{} bytes>", bytes.len()),
-                Err(_) => write!(f, "blob:{}", id.as_u64()),
+                Err(_) => write!(f, "blob:{}", id.get()),
             },
         }
     }

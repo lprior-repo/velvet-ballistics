@@ -312,7 +312,7 @@ fn object_index(id: ObjectId) -> CoreResult<usize> {
 }
 
 fn blob_index(id: BlobId) -> CoreResult<usize> {
-    usize::try_from(id.as_u64()).map_err(|_| CoreError::BlobOutOfBounds { blob: id })
+    usize::try_from(id.get()).map_err(|_| CoreError::BlobOutOfBounds { blob: id })
 }
 
 #[cfg(test)]
@@ -900,7 +900,7 @@ mod tests {
         let b1 = store
             .insert_blob(Bytes::from_static(b"z"))
             .map_err(|e| e.to_string())?;
-        if b0.as_u64() != 0 || b1.as_u64() != 1 {
+        if b0.get() != 0 || b1.get() != 1 {
             return Err(String::from("blob ids must be 0, 1"));
         }
         Ok(())
@@ -1444,7 +1444,7 @@ mod tests {
             Err(CoreError::ObjectOutOfBounds { object: forged_obj })
         );
 
-        let forged_blob = BlobId::new(blob.as_u64().saturating_add(1));
+        let forged_blob = BlobId::new(blob.get().saturating_add(1));
         assert_eq!(
             store.blob(forged_blob),
             Err(CoreError::BlobOutOfBounds { blob: forged_blob })

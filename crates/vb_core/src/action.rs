@@ -443,13 +443,17 @@ fn validate_ready_outcome(
     contract: &ActionContract,
     output_ready: &ActionOutputReady,
 ) -> Result<(), ActionError> {
-    let slot_raw = output_ready.output_slot.get();
-    if u32::from(slot_raw) >= u32::from(contract.output_slot_count)
-        && contract.output_slot_count > 0
-    {
+    check_output_slot_in_bounds(output_ready.output_slot, contract.output_slot_count)?;
+    Ok(())
+}
+
+/// Checks that the output slot index is within the contract's declared bounds.
+fn check_output_slot_in_bounds(slot: SlotIdx, max_slots: u16) -> Result<(), ActionError> {
+    let slot_raw = slot.get();
+    if u32::from(slot_raw) >= u32::from(max_slots) && max_slots > 0 {
         return Err(ActionError::OutputSlotOutOfBounds {
             slot: slot_raw,
-            max_slots: contract.output_slot_count,
+            max_slots,
         });
     }
     Ok(())
