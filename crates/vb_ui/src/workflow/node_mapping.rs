@@ -659,8 +659,8 @@ mod tests {
         let kinds = all_kinds();
         assert_eq!(
             kinds.len(),
-            34,
-            "must exercise all 34 CompiledNodeKind variants"
+            36,
+            "must exercise all 34 CompiledNodeKind variants (WaitEvent and Ask tested with/without timeout)"
         );
 
         for kind in &kinds {

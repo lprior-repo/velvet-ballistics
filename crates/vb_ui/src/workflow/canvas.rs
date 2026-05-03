@@ -5,9 +5,10 @@
 //! visible node rectangles, center the viewport on a specific node, and build
 //! edge paths between connected nodes.
 
+#[cfg(test)]
 use std::collections::HashMap;
 
-use crate::graph_builder::{FlowDocument, FlowEdgeRecord, FlowNodeRecord};
+use crate::graph_builder::FlowDocument;
 use crate::layout::{self, LayoutEdge, LayoutNode, LayoutResult};
 
 // ---------------------------------------------------------------------------
@@ -47,10 +48,10 @@ impl ViewportRect {
     /// Two rectangles intersect when they overlap on both axes.
     #[must_use]
     pub fn intersects(&self, other_x: f64, other_y: f64, other_w: f64, other_h: f64) -> bool {
-        let self_right = self.x.saturating_add(self.width);
-        let self_bottom = self.y.saturating_add(self.height);
-        let other_right = other_x.saturating_add(other_w);
-        let other_bottom = other_y.saturating_add(other_h);
+        let self_right = self.x + self.width;
+        let self_bottom = self.y + self.height;
+        let other_right = other_x + other_w;
+        let other_bottom = other_y + other_h;
 
         // No overlap if one is completely to the left/right/above/below the other.
         let no_overlap = self_right <= other_x
@@ -279,11 +280,11 @@ impl WorkflowCanvas {
             };
 
             let start = [
-                src_pos[0].saturating_add(src_size[0] / 2.0),
+                src_pos[0] + src_size[0] / 2.0,
                 src_pos[1],
             ];
             let end = [
-                tgt_pos[0].saturating_sub(tgt_size[0] / 2.0),
+                tgt_pos[0] - tgt_size[0] / 2.0,
                 tgt_pos[1],
             ];
 
@@ -291,8 +292,8 @@ impl WorkflowCanvas {
             let dx = (end[0] - start[0]).abs();
             let cp_offset = BEZIER_OFFSET.min(dx / 2.0).max(BEZIER_OFFSET / 2.0);
 
-            let cp1 = [start[0].saturating_add(cp_offset), start[1]];
-            let cp2 = [end[0].saturating_sub(cp_offset), end[1]];
+            let cp1 = [start[0] + cp_offset, start[1]];
+            let cp2 = [end[0] - cp_offset, end[1]];
 
             paths.push(EdgePath {
                 source_step: src_step,
@@ -365,8 +366,9 @@ impl WorkflowCanvas {
         layout_edges
     }
 
-    /// Build a position lookup map from the layout result.
-    fn position_map(&self) -> HashMap<usize, [f64; 2]> {
+    // Expose for testing: get the position map.
+    #[cfg(test)]
+    pub fn test_positions(&self) -> HashMap<usize, [f64; 2]> {
         let mut map = HashMap::new();
         for (idx, node_id) in self.node_ids.iter().enumerate() {
             if let Some(&pos) = self.layout.positions.get(node_id.as_str()) {
@@ -374,12 +376,6 @@ impl WorkflowCanvas {
             }
         }
         map
-    }
-
-    // Expose for testing: get the position map.
-    #[cfg(test)]
-    pub fn test_positions(&self) -> HashMap<usize, [f64; 2]> {
-        self.position_map()
     }
 }
 
@@ -390,18 +386,18 @@ impl WorkflowCanvas {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph_builder::{EdgeStyle, FlowEdgeRecord, FlowGraph, FlowNodeRecord, NodeFlags, NodeUiState, build_document};
-    use indexmap::IndexMap;
-    use smol_str::SmolStr;
-    use vb_core::ids::{SlotIdx, StepIdx};
+
+    use crate::graph_builder::build_document;
+    use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
-    use vb_core::ids::WorkflowDigest;
 
     fn make_nop_node(id: u16, next: Option<u16>) -> CompiledNode {
         CompiledNode {
             id: StepIdx::new(id),
             output: None,
             next: next.map(StepIdx::new),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }
     }
@@ -411,6 +407,8 @@ mod tests {
             id: StepIdx::new(id),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(result_slot),
             },
@@ -430,6 +428,7 @@ mod tests {
             accessors: Vec::new().into_boxed_slice(),
             constants: Vec::new().into_boxed_slice(),
             slot_count: 4,
+            symbols_count: 0,
             entry: StepIdx::new(entry),
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
             step_names: step_names.into_boxed_slice(),

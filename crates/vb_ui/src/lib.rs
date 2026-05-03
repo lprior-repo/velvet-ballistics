@@ -8,3 +8,4 @@ pub mod replay;
 pub mod system;
 pub mod theme;
 pub mod verify;
+pub mod workflow;
