@@ -93,6 +93,7 @@ fn error_code_string(error: &EngineError) -> Box<str> {
             EngineError::RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
             EngineError::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
             EngineError::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
+            EngineError::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
             EngineError::TogetherBranchLimitExceeded { .. } => {
                 "TOGETHER_BRANCH_LIMIT_EXCEEDED"
             }

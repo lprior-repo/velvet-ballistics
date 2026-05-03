@@ -190,6 +190,9 @@ pub enum CoreError {
     /// A collection item limit was exceeded.
     #[error("collect item limit exceeded")]
     CollectItemLimitExceeded,
+    /// A collection time limit was exceeded.
+    #[error("collect time limit exceeded")]
+    CollectTimeLimitExceeded,
     /// Together branch count exceeded the bound.
     #[error("together branch limit exceeded: {max}")]
     TogetherBranchLimitExceeded {
@@ -279,6 +282,8 @@ impl CoreError {
     pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1405);
     /// Budget exceeded diagnostic code.
     pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1406);
+    /// Collect time limit exceeded diagnostic code.
+    pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1407);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -344,6 +349,7 @@ impl CoreError {
             Self::RepeatExhausted { .. } => Self::REPEAT_EXHAUSTED_CODE,
             Self::CollectPageLimitExceeded => Self::COLLECT_PAGE_LIMIT_CODE,
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
+            Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
         }
@@ -372,7 +378,7 @@ impl CoreError {
             Self::UnsupportedPrimitive { .. } => Some(Self::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE),
             Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::RepeatExhausted { .. } => Some(Self::REPEAT_LIMIT_REACHED_RUNTIME_CODE),
-            Self::CollectPageLimitExceeded | Self::CollectItemLimitExceeded => {
+            Self::CollectPageLimitExceeded | Self::CollectItemLimitExceeded | Self::CollectTimeLimitExceeded => {
                 Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE)
             }
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
@@ -672,6 +678,13 @@ mod tests {
     }
 
     #[test]
+    fn core_error_diagnostic_code_collect_time_limit_exceeded() {
+        let error = CoreError::CollectTimeLimitExceeded;
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1407));
+        assert_eq!(error.to_string(), "collect time limit exceeded");
+    }
+
+    #[test]
     fn core_error_diagnostic_code_together_branch_limit_exceeded() {
         let error = CoreError::TogetherBranchLimitExceeded { max: 32 };
         assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1405));
@@ -757,6 +770,10 @@ mod tests {
         );
         assert_eq!(
             CoreError::CollectItemLimitExceeded.runtime_code(),
+            Some("COLLECT_LIMIT_REACHED")
+        );
+        assert_eq!(
+            CoreError::CollectTimeLimitExceeded.runtime_code(),
             Some("COLLECT_LIMIT_REACHED")
         );
         assert_eq!(
