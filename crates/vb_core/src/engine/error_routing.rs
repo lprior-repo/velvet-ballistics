@@ -63,50 +63,54 @@ impl ErrorSlotData {
     }
 }
 
+/// Returns the static string code for engine errors that don't have a runtime code.
+fn engine_error_static_code(error: &EngineError) -> &'static str {
+    match error {
+        EngineError::InvalidProgramCounter { .. } => "INVALID_PROGRAM_COUNTER",
+        EngineError::MissingNextStep { .. } => "MISSING_NEXT_STEP",
+        EngineError::SlotOutOfBounds { .. } => "SLOT_OUT_OF_BOUNDS",
+        EngineError::ExprOutOfBounds { .. } => "EXPR_OUT_OF_BOUNDS",
+        EngineError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
+        EngineError::MissingOutputSlot { .. } => "MISSING_OUTPUT_SLOT",
+        EngineError::StepStateOutOfBounds { .. } => "STEP_STATE_OUT_OF_BOUNDS",
+        EngineError::TypeMismatch { .. } => "TYPE_MISMATCH",
+        EngineError::NonBoolCondition { .. } => "NON_BOOL_CONDITION",
+        EngineError::DivisionByZero => "DIVISION_BY_ZERO",
+        EngineError::NonFiniteNumber => "NON_FINITE_NUMBER",
+        EngineError::StepBudgetExhausted => "STEP_BUDGET_EXHAUSTED",
+        EngineError::StepCounterOverflow => "STEP_COUNTER_OVERFLOW",
+        EngineError::QueueFull => "QUEUE_FULL",
+        EngineError::ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
+        EngineError::AllocationFailed => "ALLOCATION_FAILED",
+        EngineError::ExpressionStackOverflow { .. } => "EXPRESSION_STACK_OVERFLOW",
+        EngineError::ExpressionStackUnderflow => "EXPRESSION_STACK_UNDERFLOW",
+        EngineError::InvalidCompiledWorkflow { .. } => "INVALID_COMPILED_WORKFLOW",
+        EngineError::UnsupportedPrimitive { .. } => "UNSUPPORTED_PRIMITIVE",
+        EngineError::UnsupportedAccessorTraversal { .. } => "UNSUPPORTED_ACCESSOR_TRAVERSAL",
+        EngineError::ObjectFieldNotFound { .. } => "OBJECT_FIELD_NOT_FOUND",
+        EngineError::ListIndexOutOfBounds { .. } => "LIST_INDEX_OUT_OF_BOUNDS",
+        EngineError::InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
+        EngineError::SymbolOutOfBounds { .. } => "SYMBOL_OUT_OF_BOUNDS",
+        EngineError::ListOutOfBounds { .. } => "LIST_OUT_OF_BOUNDS",
+        EngineError::ObjectOutOfBounds { .. } => "OBJECT_OUT_OF_BOUNDS",
+        EngineError::BlobOutOfBounds { .. } => "BLOB_OUT_OF_BOUNDS",
+        EngineError::IterationLimitExceeded { .. } => "ITERATION_LIMIT_EXCEEDED",
+        EngineError::RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
+        EngineError::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
+        EngineError::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
+        EngineError::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
+        EngineError::TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
+        EngineError::BudgetExceeded { .. } => "BUDGET_EXCEEDED",
+        &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
+    }
+}
+
 /// Converts an `EngineError` into a stable string code for diagnostic use.
 fn error_code_string(error: &EngineError) -> Box<str> {
-    match error.runtime_code() {
-        Some(code) => code.into(),
-        None => match error {
-            EngineError::InvalidProgramCounter { .. } => "INVALID_PROGRAM_COUNTER",
-            EngineError::MissingNextStep { .. } => "MISSING_NEXT_STEP",
-            EngineError::SlotOutOfBounds { .. } => "SLOT_OUT_OF_BOUNDS",
-            EngineError::ExprOutOfBounds { .. } => "EXPR_OUT_OF_BOUNDS",
-            EngineError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
-            EngineError::MissingOutputSlot { .. } => "MISSING_OUTPUT_SLOT",
-            EngineError::StepStateOutOfBounds { .. } => "STEP_STATE_OUT_OF_BOUNDS",
-            EngineError::TypeMismatch { .. } => "TYPE_MISMATCH",
-            EngineError::NonBoolCondition { .. } => "NON_BOOL_CONDITION",
-            EngineError::DivisionByZero => "DIVISION_BY_ZERO",
-            EngineError::NonFiniteNumber => "NON_FINITE_NUMBER",
-            EngineError::StepBudgetExhausted => "STEP_BUDGET_EXHAUSTED",
-            EngineError::StepCounterOverflow => "STEP_COUNTER_OVERFLOW",
-            EngineError::QueueFull => "QUEUE_FULL",
-            EngineError::ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
-            EngineError::AllocationFailed => "ALLOCATION_FAILED",
-            EngineError::ExpressionStackOverflow { .. } => "EXPRESSION_STACK_OVERFLOW",
-            EngineError::ExpressionStackUnderflow => "EXPRESSION_STACK_UNDERFLOW",
-            EngineError::InvalidCompiledWorkflow { .. } => "INVALID_COMPILED_WORKFLOW",
-            EngineError::UnsupportedPrimitive { .. } => "UNSUPPORTED_PRIMITIVE",
-            EngineError::UnsupportedAccessorTraversal { .. } => "UNSUPPORTED_ACCESSOR_TRAVERSAL",
-            EngineError::ObjectFieldNotFound { .. } => "OBJECT_FIELD_NOT_FOUND",
-            EngineError::ListIndexOutOfBounds { .. } => "LIST_INDEX_OUT_OF_BOUNDS",
-            EngineError::InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
-            EngineError::SymbolOutOfBounds { .. } => "SYMBOL_OUT_OF_BOUNDS",
-            EngineError::ListOutOfBounds { .. } => "LIST_OUT_OF_BOUNDS",
-            EngineError::ObjectOutOfBounds { .. } => "OBJECT_OUT_OF_BOUNDS",
-            EngineError::BlobOutOfBounds { .. } => "BLOB_OUT_OF_BOUNDS",
-            EngineError::IterationLimitExceeded { .. } => "ITERATION_LIMIT_EXCEEDED",
-            EngineError::RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
-            EngineError::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
-            EngineError::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
-            EngineError::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
-            EngineError::TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
-            EngineError::BudgetExceeded { .. } => "BUDGET_EXCEEDED",
-            &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
-        }
-        .into(),
-    }
+    error
+        .runtime_code()
+        .map(|code| code.into())
+        .unwrap_or_else(|| engine_error_static_code(error).into())
 }
 
 /// Attempts to route a failed step to its error handler.

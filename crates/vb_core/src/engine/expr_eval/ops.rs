@@ -77,8 +77,17 @@ fn eval_exists(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineEr
     }
 }
 
-fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
-    let (left, right) = pop_pair(stack)?;
+fn eval_merge_get_fields(
+    store: &ValueStore,
+    left: SlotValue,
+    right: SlotValue,
+) -> Result<
+    (
+        &[crate::value_store::ObjectField],
+        &[crate::value_store::ObjectField],
+    ),
+    EngineError,
+> {
     let left_id = expect_object(left)?;
     let right_id = expect_object(right)?;
     let left_fields = store
@@ -87,7 +96,14 @@ fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engin
     let right_fields = store
         .object(right_id)
         .map_err(|_| EngineError::ObjectOutOfBounds { object: right_id })?;
-    let mut merged: Vec<crate::value_store::ObjectField> = left_fields.to_vec();
+    Ok((left_fields, right_fields))
+}
+
+fn eval_merge_combine_fields(
+    left_fields: &[crate::value_store::ObjectField],
+    right_fields: &[crate::value_store::ObjectField],
+) -> Vec<crate::value_store::ObjectField> {
+    let mut merged: Vec<_> = left_fields.to_vec();
     for &field in right_fields {
         if let Some(pos) = merged.iter().position(|&f| f.key == field.key) {
             if let Some(entry) = merged.get_mut(pos) {
@@ -97,10 +113,25 @@ fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), Engin
             merged.push(field);
         }
     }
+    merged
+}
+
+fn eval_merge_insert_and_push(
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+    merged: Vec<crate::value_store::ObjectField>,
+) -> Result<(), EngineError> {
     let new_object = store
         .insert_object(merged.into_boxed_slice())
         .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::Object(new_object))
+}
+
+fn eval_merge(stack: &mut ExprStack, store: &mut ValueStore) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    let (left_fields, right_fields) = eval_merge_get_fields(store, left, right)?;
+    let merged = eval_merge_combine_fields(left_fields, right_fields);
+    eval_merge_insert_and_push(stack, store, merged)
 }
 
 // ===== Main operator dispatcher =====

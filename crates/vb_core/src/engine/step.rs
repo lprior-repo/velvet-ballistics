@@ -6,7 +6,7 @@ use super::expr_eval;
 use super::node_helpers;
 use super::object_list;
 use crate::EngineSignal;
-use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket};
+use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPolicy};
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::ActionId;
@@ -183,7 +183,7 @@ pub fn resume_action_failure(
     run: &mut RunFrame,
     ticket: ActionTicket,
     failure_code: ActionFailureCode,
-    retryable: bool,
+    retry_policy: RetryPolicy,
 ) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
     let step = ticket.step;
 
@@ -193,7 +193,7 @@ pub fn resume_action_failure(
     let journal = ActionJournalEvent::Failed {
         ticket,
         code: failure_code,
-        retryable,
+        retry_policy,
     };
 
     // Attempt to route to the error handler if configured.

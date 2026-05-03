@@ -1345,7 +1345,6 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 
 /// Collects all StepIdx targets referenced by a node kind (branch targets,
 /// loop body/done, jump target, etc.) but NOT the `next` field.
-#[allow(clippy::match_same_arms)] // Arms grouped by semantic category for readability
 fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
     match kind {
         CompiledNodeKind::Nop
@@ -1362,28 +1361,20 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
         | CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. } => {}
+        | CompiledNodeKind::Finish { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::WaitEvent { .. } => {}
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         } => {
-            for branch in branches.as_ref() {
-                targets.push(branch.target);
-            }
-            if let Some(fallback) = *otherwise {
-                targets.push(fallback);
-            }
+            collect_choose_slot_targets(branches, *otherwise, targets);
         }
         CompiledNodeKind::Choose {
             branches,
             otherwise,
         } => {
-            for branch in branches.as_ref() {
-                targets.push(branch.target);
-            }
-            if let Some(fallback) = *otherwise {
-                targets.push(fallback);
-            }
+            collect_choose_expr_targets(branches, *otherwise, targets);
         }
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
@@ -1406,17 +1397,12 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
             targets.push(*done);
         }
         CompiledNodeKind::TogetherStart { branches, join } => {
-            for branch in branches.as_ref() {
-                targets.push(*branch);
-            }
-            targets.push(*join);
+            collect_together_start_targets(branches, *join, targets);
         }
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {
             targets.push(*entry);
             targets.push(*join);
         }
-        CompiledNodeKind::TogetherJoin { .. } => {}
-        CompiledNodeKind::WaitEvent { .. } => {}
         CompiledNodeKind::ErrorHandler { body, handler } => {
             targets.push(*body);
             targets.push(*handler);
@@ -1425,6 +1411,43 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
             targets.push(*target);
         }
     }
+}
+
+fn collect_choose_slot_targets(
+    branches: &Box<[SlotBranch]>,
+    otherwise: Option<StepIdx>,
+    targets: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        targets.push(branch.target);
+    }
+    if let Some(fallback) = otherwise {
+        targets.push(fallback);
+    }
+}
+
+fn collect_choose_expr_targets(
+    branches: &Box<[ExprBranch]>,
+    otherwise: Option<StepIdx>,
+    targets: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        targets.push(branch.target);
+    }
+    if let Some(fallback) = otherwise {
+        targets.push(fallback);
+    }
+}
+
+fn collect_together_start_targets(
+    branches: &Box<[StepIdx]>,
+    join: StepIdx,
+    targets: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        targets.push(*branch);
+    }
+    targets.push(join);
 }
 
 /// Check B: all edges must point forward except recognized loop back-edges.
@@ -1455,7 +1478,6 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 }
 
 /// Validates that kind-specific edges respect the forward-only rule.
-#[allow(clippy::match_same_arms)] // Arms grouped by semantic category for readability
 fn validate_kind_edges(
     kind: &CompiledNodeKind,
     ci: usize,
@@ -1478,46 +1500,27 @@ fn validate_kind_edges(
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. } => Ok(()),
+        | CompiledNodeKind::Finish { .. }
+        | CompiledNodeKind::Jump { .. } => Ok(()),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
-        } => {
-            for branch in branches.as_ref() {
-                validate_forward_target(branch.target, ci, cid)?;
-            }
-            if let Some(fallback) = *otherwise {
-                validate_forward_target(fallback, ci, cid)?;
-            }
-            Ok(())
-        }
+        } => validate_choose_slot_edges(branches, otherwise, ci, cid),
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => {
-            for branch in branches.as_ref() {
-                validate_forward_target(branch.target, ci, cid)?;
-            }
-            if let Some(fallback) = *otherwise {
-                validate_forward_target(fallback, ci, cid)?;
-            }
-            Ok(())
-        }
+        } => validate_choose_expr_edges(branches, otherwise, ci, cid),
         CompiledNodeKind::ForEachStart { body, done, .. } => {
-            let _ = body;
-            validate_forward_target(*done, ci, cid)
+            validate_loop_done_only(*body, *done, ci, cid)
         }
         CompiledNodeKind::ForEachNext { body, done, .. } => {
-            let _ = body;
-            validate_forward_target(*done, ci, cid)
+            validate_loop_done_only(*body, *done, ci, cid)
         }
         CompiledNodeKind::TogetherStart { branches, join } => {
-            let _ = branches;
-            validate_forward_target(*join, ci, cid)
+            validate_together_start_edges(branches, *join, ci, cid)
         }
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            let _ = entry;
-            validate_forward_target(*join, ci, cid)
+            validate_together_branch_edges(*entry, *join, ci, cid)
         }
         CompiledNodeKind::CollectStart { body, done, .. }
         | CompiledNodeKind::CollectPage { body, done, .. }
@@ -1526,22 +1529,75 @@ fn validate_kind_edges(
         | CompiledNodeKind::ReduceNext { body, done, .. }
         | CompiledNodeKind::RepeatStart { body, done, .. }
         | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
-            let _ = body;
-            validate_forward_target(*done, ci, cid)
+            validate_loop_done_only(*body, *done, ci, cid)
         }
         CompiledNodeKind::RepeatCheck { done, .. } => validate_forward_target(*done, ci, cid),
         CompiledNodeKind::RetryCheck {
             body, exhausted, ..
-        } => {
-            let _ = body;
-            validate_forward_target(*exhausted, ci, cid)
-        }
+        } => validate_loop_done_only(*body, *exhausted, ci, cid),
         CompiledNodeKind::ErrorHandler { body, handler } => {
-            let _ = body;
-            validate_forward_target(*handler, ci, cid)
+            validate_loop_done_only(*body, *handler, ci, cid)
         }
-        CompiledNodeKind::Jump { .. } => Ok(()),
     }
+}
+
+fn validate_choose_slot_edges(
+    branches: &Box<[SlotBranch]>,
+    otherwise: Option<StepIdx>,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    for branch in branches.as_ref() {
+        validate_forward_target(branch.target, ci, cid)?;
+    }
+    if let Some(fallback) = *otherwise {
+        validate_forward_target(fallback, ci, cid)?;
+    }
+    Ok(())
+}
+
+fn validate_choose_expr_edges(
+    branches: &Box<[ExprBranch]>,
+    otherwise: Option<StepIdx>,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    for branch in branches.as_ref() {
+        validate_forward_target(branch.target, ci, cid)?;
+    }
+    if let Some(fallback) = *otherwise {
+        validate_forward_target(fallback, ci, cid)?;
+    }
+    Ok(())
+}
+
+fn validate_loop_done_only(
+    _body: StepIdx,
+    done: StepIdx,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    validate_forward_target(done, ci, cid)
+}
+
+fn validate_together_start_edges(
+    branches: &Box<[StepIdx]>,
+    join: StepIdx,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    let _ = branches;
+    validate_forward_target(join, ci, cid)
+}
+
+fn validate_together_branch_edges(
+    entry: StepIdx,
+    join: StepIdx,
+    ci: usize,
+    cid: StepIdx,
+) -> Result<(), WorkflowError> {
+    let _ = entry;
+    validate_forward_target(join, ci, cid)
 }
 
 /// Validates a target step is strictly forward from the current node.

@@ -74,12 +74,11 @@ pub(crate) fn build_object_with_taint(
     Ok((handle, accumulated_taint))
 }
 
-/// Constructs a list handle from slot values read from the frame.
-pub fn build_list(
-    store: &mut ValueStore,
+/// Reads list items from frame slots into a pre-allocated vector.
+fn read_list_items(
     run: &crate::RunFrame,
     items: &[SlotIdx],
-) -> Result<ListId, EngineError> {
+) -> Result<Vec<crate::value::Value>, EngineError> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(items.len())
@@ -98,6 +97,16 @@ pub fn build_list(
                 reason: "build_list item index overflow",
             })?;
     }
+    Ok(values)
+}
+
+/// Constructs a list handle from slot values read from the frame.
+pub fn build_list(
+    store: &mut ValueStore,
+    run: &crate::RunFrame,
+    items: &[SlotIdx],
+) -> Result<ListId, EngineError> {
+    let values = read_list_items(run, items)?;
     store.insert_list(values.into_boxed_slice())
 }
 

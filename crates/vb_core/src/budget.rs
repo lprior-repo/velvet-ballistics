@@ -572,9 +572,9 @@ fn visit_body_region_node(
 
 /// Pushes all successor StepIdx targets from a node kind onto the stack,
 /// excluding the `next` field which is handled separately.
-#[allow(clippy::match_same_arms)]
 fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
     match kind {
+        // ── No successors ────────────────────────────────────────────────────
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }
@@ -589,29 +589,21 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
         | CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. } => {}
+        | CompiledNodeKind::Finish { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::WaitEvent { .. } => {}
+
+        // ── Branch + fallback ───────────────────────────────────────────────
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
-        } => {
-            for branch in branches.as_ref() {
-                stack.push(branch.target);
-            }
-            if let Some(fallback) = *otherwise {
-                stack.push(fallback);
-            }
-        }
+        } => push_slot_choose_successors(branches, *otherwise, stack),
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => {
-            for branch in branches.as_ref() {
-                stack.push(branch.target);
-            }
-            if let Some(fallback) = *otherwise {
-                stack.push(fallback);
-            }
-        }
+        } => push_expr_choose_successors(branches, *otherwise, stack),
+
+        // ── Loop body + done ─────────────────────────────────────────────────
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectStart { body, done, .. }
@@ -626,32 +618,93 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
             exhausted: done,
             ..
         } => {
-            stack.push(*body);
-            stack.push(*done);
+            push_loop_successors(*body, *done, stack);
         }
         CompiledNodeKind::RepeatCheck { done, .. } => {
-            stack.push(*done);
+            push_repeat_check_successors(*done, stack);
         }
+
+        // ── Together ──────────────────────────────────────────────────────────
         CompiledNodeKind::TogetherStart { branches, join } => {
-            for branch in branches.as_ref() {
-                stack.push(*branch);
-            }
-            stack.push(*join);
+            push_together_start_successors(branches, *join, stack);
         }
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            stack.push(*entry);
-            stack.push(*join);
+            push_together_branch_successors(*entry, *join, stack);
         }
-        CompiledNodeKind::TogetherJoin { .. } => {}
-        CompiledNodeKind::WaitEvent { .. } => {}
+
+        // ── Error handler ─────────────────────────────────────────────────────
         CompiledNodeKind::ErrorHandler { body, handler } => {
-            stack.push(*body);
-            stack.push(*handler);
+            push_error_handler_successors(*body, *handler, stack);
         }
+
+        // ── Jump ─────────────────────────────────────────────────────────────
         CompiledNodeKind::Jump { target } => {
             stack.push(*target);
         }
     }
+}
+
+/// Push Choose successors: all branch targets + optional fallback.
+fn push_expr_choose_successors(
+    branches: &Box<[crate::workflow::ExprBranch]>,
+    otherwise: Option<StepIdx>,
+    stack: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        stack.push(branch.target);
+    }
+    if let Some(fallback) = otherwise {
+        stack.push(fallback);
+    }
+}
+
+/// Push ChooseSlot successors: all slot branch targets + optional fallback.
+fn push_slot_choose_successors(
+    branches: &Box<[crate::workflow::SlotBranch]>,
+    otherwise: Option<StepIdx>,
+    stack: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        stack.push(branch.target);
+    }
+    if let Some(fallback) = otherwise {
+        stack.push(fallback);
+    }
+}
+
+/// Push loop successors: body + done targets.
+fn push_loop_successors(body: StepIdx, done: StepIdx, stack: &mut Vec<StepIdx>) {
+    stack.push(body);
+    stack.push(done);
+}
+
+/// Push RepeatCheck successor: done target only.
+fn push_repeat_check_successors(done: StepIdx, stack: &mut Vec<StepIdx>) {
+    stack.push(done);
+}
+
+/// Push TogetherStart successors: all branch targets + join.
+fn push_together_start_successors(
+    branches: &Box<[StepIdx]>,
+    join: StepIdx,
+    stack: &mut Vec<StepIdx>,
+) {
+    for branch in branches.as_ref() {
+        stack.push(*branch);
+    }
+    stack.push(join);
+}
+
+/// Push TogetherBranch successors: entry + join.
+fn push_together_branch_successors(entry: StepIdx, join: StepIdx, stack: &mut Vec<StepIdx>) {
+    stack.push(entry);
+    stack.push(join);
+}
+
+/// Push ErrorHandler successors: body + handler.
+fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Vec<StepIdx>) {
+    stack.push(body);
+    stack.push(handler);
 }
 
 /// Converts a usize branch count to u16, saturating at u16::MAX on overflow.
