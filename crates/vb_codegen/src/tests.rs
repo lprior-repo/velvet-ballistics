@@ -5075,4 +5075,1233 @@ mod tests {
         );
         Ok(())
     }
+
+    // ====================================================================
+    // Round 7 expanded codegen tests: BuildObject, BuildList, RetryCheck,
+    // and helper expression ops (Contains, StartsWith, EndsWith, Has,
+    // Exists, Length, Empty, Sum, Count, Unique).
+    // ====================================================================
+
+    // --- BuildObject comprehensive tests ---
+
+    fn build_object_multi_field_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_build_object_multi"),
+            digest: WorkflowDigest::from_bytes([0xD0; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(3)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![
+                            (vb_core::SymbolId::new(0), SlotIdx::new(0)),
+                            (vb_core::SymbolId::new(1), SlotIdx::new(1)),
+                            (vb_core::SymbolId::new(2), SlotIdx::new(2)),
+                        ]
+                        .into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(3),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 4,
+            symbols_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn build_object_multi_field_emits_all_field_reads() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("read_slot(slots, 0)"),
+            "BuildObject must read field slot 0, got: {out}"
+        );
+        assert!(
+            out.contains("read_slot(slots, 1)"),
+            "BuildObject must read field slot 1, got: {out}"
+        );
+        assert!(
+            out.contains("read_slot(slots, 2)"),
+            "BuildObject must read field slot 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_multi_field_emits_symbol_bindings() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("_sym_0"),
+            "BuildObject must reference symbol 0, got: {out}"
+        );
+        assert!(
+            out.contains("_sym_1"),
+            "BuildObject must reference symbol 1, got: {out}"
+        );
+        assert!(
+            out.contains("_sym_2"),
+            "BuildObject must reference symbol 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_multi_field_writes_object_to_output() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("write_slot(slots, 3, Some(SlotValue::Object"),
+            "generated source must write SlotValue::Object to output slot 3"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_multi_field_passes_semantic_check() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_ok(),
+            "BuildObject multi-field workflow must pass semantic check"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_zero_fields_emits_object_zero() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_build_object_zero"),
+            digest: WorkflowDigest::from_bytes([0xD1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::Object"),
+            "BuildObject with zero fields must emit SlotValue::Object"
+        );
+        Ok(())
+    }
+
+    // --- BuildList comprehensive tests ---
+
+    fn build_list_multi_item_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_build_list_multi"),
+            digest: WorkflowDigest::from_bytes([0xD2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(3)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0), SlotIdx::new(1), SlotIdx::new(2)]
+                            .into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(3),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn build_list_multi_item_emits_all_slot_reads() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("let _item0 = read_slot(slots, 0)"),
+            "BuildList must read item slot 0, got: {out}"
+        );
+        assert!(
+            out.contains("let _item1 = read_slot(slots, 1)"),
+            "BuildList must read item slot 1, got: {out}"
+        );
+        assert!(
+            out.contains("let _item2 = read_slot(slots, 2)"),
+            "BuildList must read item slot 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_multi_item_writes_list_to_output() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("write_slot(slots, 3, Some(SlotValue::List"),
+            "generated source must write SlotValue::List to output slot 3"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_multi_item_passes_semantic_check() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_ok(),
+            "BuildList multi-item workflow must pass semantic check"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_zero_items_emits_list_zero() -> Result<(), String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_build_list_zero"),
+            digest: WorkflowDigest::from_bytes([0xD3; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List"),
+            "BuildList with zero items must emit SlotValue::List"
+        );
+        assert!(
+            source.contains("BuildList: 0 item(s)"),
+            "BuildList comment must indicate 0 items"
+        );
+        Ok(())
+    }
+
+    // --- RetryCheck comprehensive tests ---
+
+    fn retry_check_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_retry_check"),
+            digest: WorkflowDigest::from_bytes([0xD4; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck {
+                        policy_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        exhausted: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn retry_check_passes_validation() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn retry_check_emits_policy_read() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("read_slot(slots, 0)"),
+            "RetryCheck must read policy slot, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retry_check_emits_branching_logic() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("StepOutcome::Continue(1)"),
+            "RetryCheck body branch must target step 1, got: {out}"
+        );
+        assert!(
+            out.contains("StepOutcome::Continue(2)"),
+            "RetryCheck exhausted branch must target step 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retry_check_emits_retry_count_extraction() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("_retry_count"),
+            "RetryCheck must extract retry count, got: {out}"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
+            "RetryCheck must reference CONTRACT_MAX_RETRY_ATTEMPTS, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retry_check_emits_type_mismatch_guard() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        let mut out = String::new();
+        emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("SlotValue::I64"),
+            "RetryCheck must match on SlotValue::I64 for policy, got: {out}"
+        );
+        assert!(
+            out.contains("TypeMismatch"),
+            "RetryCheck must emit type mismatch error guard, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retry_check_full_workflow_passes_semantic_check() -> Result<(), String> {
+        let workflow = retry_check_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_ok(),
+            "RetryCheck workflow must pass semantic check"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression ops: StartsWith, EndsWith ---
+
+    fn starts_with_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::StartsWith,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_starts_with"),
+            digest: WorkflowDigest::from_bytes([0xE0; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Symbol(vb_core::SymbolId::new(1)),
+                ConstValue::Symbol(vb_core::SymbolId::new(2)),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn starts_with_expression_passes_validation() -> Result<(), String> {
+        let workflow = starts_with_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn starts_with_expression_emits_symbol_starts_with() -> Result<(), String> {
+        let workflow = starts_with_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("symbol_starts_with"),
+            "StartsWith must emit symbol_starts_with call, got source snippet: {}",
+            &source.chars().take(500).collect::<String>()
+        );
+        Ok(())
+    }
+
+    fn ends_with_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::EndsWith,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_ends_with"),
+            digest: WorkflowDigest::from_bytes([0xE1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::Symbol(vb_core::SymbolId::new(1)),
+                ConstValue::Symbol(vb_core::SymbolId::new(2)),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 3,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn ends_with_expression_passes_validation() -> Result<(), String> {
+        let workflow = ends_with_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn ends_with_expression_emits_symbol_ends_with() -> Result<(), String> {
+        let workflow = ends_with_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("symbol_ends_with"),
+            "EndsWith must emit symbol_ends_with call"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression op: Has ---
+
+    fn has_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Has,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_has"),
+            digest: WorkflowDigest::from_bytes([0xE2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(0), ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn has_expression_passes_validation() -> Result<(), String> {
+        let workflow = has_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn has_expression_emits_object_and_list_match() -> Result<(), String> {
+        let workflow = has_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::Object"),
+            "Has must match SlotValue::Object"
+        );
+        assert!(
+            source.contains("SlotValue::List"),
+            "Has must match SlotValue::List"
+        );
+        assert!(
+            source.contains("SlotValue::Bool"),
+            "Has must produce SlotValue::Bool result"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression op: Exists ---
+
+    fn exists_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Exists,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_exists"),
+            digest: WorkflowDigest::from_bytes([0xE3; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Null].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn exists_expression_passes_validation() -> Result<(), String> {
+        let workflow = exists_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn exists_expression_emits_null_check() -> Result<(), String> {
+        let workflow = exists_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::Null"),
+            "Exists must check for SlotValue::Null"
+        );
+        assert!(
+            source.contains("matches!"),
+            "Exists must use matches! macro for null check"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression op: Length ---
+
+    fn length_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Length,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_length"),
+            digest: WorkflowDigest::from_bytes([0xE4; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(5)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn length_expression_passes_validation() -> Result<(), String> {
+        let workflow = length_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn length_expression_emits_list_and_object_match() -> Result<(), String> {
+        let workflow = length_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List(n)"),
+            "Length must match SlotValue::List with count"
+        );
+        assert!(
+            source.contains("SlotValue::Object(n)"),
+            "Length must match SlotValue::Object with count"
+        );
+        assert!(
+            source.contains("SlotValue::I64"),
+            "Length must produce SlotValue::I64 result"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression op: Empty ---
+
+    fn empty_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Empty,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_empty"),
+            digest: WorkflowDigest::from_bytes([0xE5; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn empty_expression_passes_validation() -> Result<(), String> {
+        let workflow = empty_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn empty_expression_emits_zero_check() -> Result<(), String> {
+        let workflow = empty_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List(n)"),
+            "Empty must match SlotValue::List"
+        );
+        assert!(
+            source.contains("n == 0"),
+            "Empty must check count == 0"
+        );
+        assert!(
+            source.contains("SlotValue::Null => true"),
+            "Empty must treat Null as empty"
+        );
+        Ok(())
+    }
+
+    // --- Helper expression ops: Sum, Count, Unique ---
+
+    fn sum_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Sum,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_sum"),
+            digest: WorkflowDigest::from_bytes([0xE6; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(3)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn sum_expression_passes_validation() -> Result<(), String> {
+        let workflow = sum_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn sum_expression_emits_collection_match() -> Result<(), String> {
+        let workflow = sum_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List(n)") || source.contains("SlotValue::List("),
+            "Sum must match SlotValue::List"
+        );
+        assert!(
+            source.contains("SlotValue::I64"),
+            "Sum must produce SlotValue::I64 result"
+        );
+        Ok(())
+    }
+
+    fn count_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Count,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_count"),
+            digest: WorkflowDigest::from_bytes([0xE7; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn count_expression_passes_validation() -> Result<(), String> {
+        let workflow = count_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn count_expression_emits_collection_match() -> Result<(), String> {
+        let workflow = count_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List(n)") || source.contains("SlotValue::List("),
+            "Count must match SlotValue::List"
+        );
+        assert!(
+            source.contains("SlotValue::I64"),
+            "Count must produce SlotValue::I64 result"
+        );
+        Ok(())
+    }
+
+    fn unique_expression_workflow() -> Result<CompiledWorkflow, String> {
+        let ops = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Unique,
+        ];
+        let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_unique"),
+            digest: WorkflowDigest::from_bytes([0xE8; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(2)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn unique_expression_passes_validation() -> Result<(), String> {
+        let workflow = unique_expression_workflow()?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn unique_expression_emits_collection_match() -> Result<(), String> {
+        let workflow = unique_expression_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("SlotValue::List(n)") || source.contains("SlotValue::List("),
+            "Unique must match SlotValue::List"
+        );
+        assert!(
+            source.contains("SlotValue::I64"),
+            "Unique must produce SlotValue::I64 result"
+        );
+        Ok(())
+    }
+
+    // --- Cross-cutting: all helper ops in one workflow pass validation and emit ---
+
+    #[test]
+    fn all_helper_ops_together_pass_validation() -> Result<(), String> {
+        // Build a single workflow with multiple expressions, one for each helper op
+        let ops_contains = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Contains,
+        ];
+        let ops_starts = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::StartsWith,
+        ];
+        let ops_ends = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::EndsWith,
+        ];
+        let ops_has = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+            vb_core::ExprOp::Has,
+        ];
+        let ops_exists = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Exists,
+        ];
+        let ops_length = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Length,
+        ];
+        let ops_empty = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Empty,
+        ];
+        let ops_sum = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Sum,
+        ];
+        let ops_count = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Count,
+        ];
+        let ops_unique = vec![
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Unique,
+        ];
+
+        let expr_contains = ExprProgram::try_from_ops(ops_contains.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_starts = ExprProgram::try_from_ops(ops_starts.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_ends = ExprProgram::try_from_ops(ops_ends.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_has = ExprProgram::try_from_ops(ops_has.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_exists = ExprProgram::try_from_ops(ops_exists.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_length = ExprProgram::try_from_ops(ops_length.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_empty = ExprProgram::try_from_ops(ops_empty.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_sum = ExprProgram::try_from_ops(ops_sum.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_count = ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_unique = ExprProgram::try_from_ops(ops_unique.into_boxed_slice()).map_err(|e| e.to_string())?;
+
+        // 10 EvalExpr nodes + 1 Finish node = 11 nodes
+        let mut nodes = Vec::new();
+        for i in 0..10u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(i.saturating_add(1))),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(i),
+                },
+            });
+        }
+        nodes.push(CompiledNode {
+            id: StepIdx::new(10),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_all_helpers"),
+            digest: WorkflowDigest::from_bytes([0xF0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: vec![
+                expr_contains,
+                expr_starts,
+                expr_ends,
+                expr_has,
+                expr_exists,
+                expr_length,
+                expr_empty,
+                expr_sum,
+                expr_count,
+                expr_unique,
+            ]
+            .into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::I64(0),
+                ConstValue::I64(1),
+            ]
+            .into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Verify each expression function was generated
+        assert!(
+            source.contains("fn eval_expr_0"),
+            "must generate eval_expr_0 (Contains)"
+        );
+        assert!(
+            source.contains("fn eval_expr_1"),
+            "must generate eval_expr_1 (StartsWith)"
+        );
+        assert!(
+            source.contains("fn eval_expr_2"),
+            "must generate eval_expr_2 (EndsWith)"
+        );
+        assert!(
+            source.contains("fn eval_expr_3"),
+            "must generate eval_expr_3 (Has)"
+        );
+        assert!(
+            source.contains("fn eval_expr_4"),
+            "must generate eval_expr_4 (Exists)"
+        );
+        assert!(
+            source.contains("fn eval_expr_5"),
+            "must generate eval_expr_5 (Length)"
+        );
+        assert!(
+            source.contains("fn eval_expr_6"),
+            "must generate eval_expr_6 (Empty)"
+        );
+        assert!(
+            source.contains("fn eval_expr_7"),
+            "must generate eval_expr_7 (Sum)"
+        );
+        assert!(
+            source.contains("fn eval_expr_8"),
+            "must generate eval_expr_8 (Count)"
+        );
+        assert!(
+            source.contains("fn eval_expr_9"),
+            "must generate eval_expr_9 (Unique)"
+        );
+
+        // Verify semantic check passes
+        let result = compare_generated_to_ir(&source, &workflow);
+        assert!(
+            result.is_ok(),
+            "all-helper-ops workflow must pass semantic check"
+        );
+        Ok(())
+    }
 }
