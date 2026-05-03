@@ -55,10 +55,11 @@ impl Shard {
         })?;
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
+        let max_slots = workflow.resource_contract().max_slots;
         let state = RunState {
             frame,
             workflow,
-            store: ValueStore::with_max_slots(workflow.resource_contract().max_slots),
+            store: ValueStore::with_max_slots(max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             collect_states: CollectStates::new(),
