@@ -4933,7 +4933,7 @@ steps:
             .node(StepIdx::new(1))
             .ok_or("missing for_each start")?;
         assert!(
-            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body: _, done: _ } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
             "for_each start node must have correct structure"
         );
         Ok(())
@@ -8015,5 +8015,831 @@ steps:
             matches!(result, Ok(ref w) if w.name() == "minimal"),
             "minimal valid workflow should compile"
         );
+    }
+
+    // ========================================================================
+    // CompileError Display and diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn compile_error_display_includes_source_too_large_fields() {
+        let error = CompileError::SourceTooLarge { actual: 100, limit: 50 };
+        let text = error.to_string();
+        assert!(text.contains("100"), "actual must appear: {text}");
+        assert!(text.contains("50"), "limit must appear: {text}");
+    }
+
+    #[test]
+    fn compile_error_display_includes_empty_source_message() {
+        let error = CompileError::EmptySource;
+        assert!(!error.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_non_string_key() {
+        let error = CompileError::NonStringKey { mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("string"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_duplicate_key() {
+        let error = CompileError::DuplicateKey { key: Box::<str>::from("steps"), mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("steps"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_alias_forbidden() {
+        let error = CompileError::AliasForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("alias"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_anchor_forbidden() {
+        let error = CompileError::AnchorForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("anchor"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_merge_key_forbidden() {
+        let error = CompileError::MergeKeyForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().contains("merge"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_tag_forbidden() {
+        let error = CompileError::TagForbidden { mark: SourceMark::unavailable() };
+        assert!(error.to_string().to_lowercase().contains("tag"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_depth_limit() {
+        let error = CompileError::DepthLimit { depth: 20, limit: 10 };
+        let text = error.to_string();
+        assert!(text.contains("20"));
+        assert!(text.contains("10"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_node_limit() {
+        let error = CompileError::NodeLimit { limit: 500 };
+        assert!(error.to_string().contains("500"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_sequence_limit() {
+        let error = CompileError::SequenceLimit { actual: 200, limit: 100 };
+        let text = error.to_string();
+        assert!(text.contains("200"));
+        assert!(text.contains("100"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_mapping_limit() {
+        let error = CompileError::MappingLimit { actual: 50, limit: 25 };
+        let text = error.to_string();
+        assert!(text.contains("50"));
+        assert!(text.contains("25"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_scalar_limit() {
+        let error = CompileError::ScalarLimit { actual: 3000, limit: 1024 };
+        let text = error.to_string();
+        assert!(text.contains("3000"));
+        assert!(text.contains("1024"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_version() {
+        let error = CompileError::InvalidVersion { actual: Box::<str>::from("velvet/v2") };
+        assert!(error.to_string().contains("velvet/v2"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_trigger_count() {
+        let error = CompileError::InvalidTriggerCount { count: 3 };
+        assert!(error.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_trigger_kind() {
+        let error = CompileError::UnknownTriggerKind { trigger: Box::<str>::from("cron") };
+        assert!(error.to_string().contains("cron"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_trigger_shape() {
+        let error = CompileError::TriggerShape { trigger: Box::<str>::from("webhook"), expected: "a mapping" };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("mapping"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_trigger_field() {
+        let error = CompileError::UnknownTriggerField { trigger: "webhook", field: Box::<str>::from("unknown") };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("unknown"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_trigger_field() {
+        let error = CompileError::MissingTriggerField { trigger: "webhook", field: "path" };
+        let text = error.to_string();
+        assert!(text.contains("webhook"));
+        assert!(text.contains("path"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_trigger_field() {
+        let error = CompileError::InvalidTriggerField { trigger: "webhook", field: "method", expected: "GET or POST" };
+        assert!(error.to_string().contains("method"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_field() {
+        let error = CompileError::MissingField { field: "name" };
+        assert!(error.to_string().contains("name"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_top_level_field() {
+        let error = CompileError::UnknownTopLevelField { field: Box::<str>::from("hooks") };
+        assert!(error.to_string().contains("hooks"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_field_shape() {
+        let error = CompileError::FieldShape { field: "name", expected: "a string" };
+        assert!(error.to_string().contains("name"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_input_schema_field() {
+        let error = CompileError::UnknownInputSchemaField { field: Box::<str>::from("regex") };
+        assert!(error.to_string().contains("regex"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_input_schema() {
+        let error = CompileError::InvalidInputSchema { field: "type", expected: "text or number" };
+        assert!(error.to_string().contains("type"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_empty_steps() {
+        assert!(!CompileError::EmptySteps.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_invalid_name() {
+        let error = CompileError::InvalidName { field: "step_id", value: Box::<str>::from("bad!") };
+        assert!(error.to_string().contains("bad!"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_id() {
+        assert!(CompileError::MissingStepId { step: 3 }.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_duplicate_step_id() {
+        assert!(CompileError::DuplicateStepId { id: Box::<str>::from("my_step") }.to_string().contains("my_step"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_shape() {
+        assert!(CompileError::StepShape { step: 5 }.to_string().contains("5"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_field() {
+        assert!(CompileError::UnknownStepField { step: 2, field: Box::<str>::from("custom") }.to_string().contains("custom"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_primitive_field() {
+        let error = CompileError::UnknownStepPrimitiveField { step: 1, primitive: "for_each", field: Box::<str>::from("at_once") };
+        let text = error.to_string();
+        assert!(text.contains("for_each"));
+        assert!(text.contains("at_once"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_primitive() {
+        assert!(CompileError::MissingStepPrimitive { step: 4 }.to_string().contains("4"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_multiple_step_primitives() {
+        assert!(CompileError::MultipleStepPrimitives { step: 1 }.to_string().contains("1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_step_primitive() {
+        assert!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "for_each" }.to_string().contains("for_each"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_step_control_field() {
+        assert!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("then") }.to_string().contains("then"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_missing_step_field() {
+        let error = CompileError::MissingStepField { step: 2, field: "action" };
+        let text = error.to_string();
+        assert!(text.contains("2"));
+        assert!(text.contains("action"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_field_shape() {
+        assert!(CompileError::StepFieldShape { step: 1, field: "input", expected: "an integer" }.to_string().contains("input"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_step_index_out_of_range() {
+        assert!(CompileError::StepIndexOutOfRange { value: 70000 }.to_string().contains("70000"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_slot_index_out_of_range() {
+        assert!(CompileError::SlotIndexOutOfRange { value: 65536 }.to_string().contains("65536"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_branch_target_out_of_range() {
+        assert!(CompileError::BranchTargetOutOfRange { value: -1 }.to_string().contains("-1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_backward_branch_target() {
+        let error = CompileError::BackwardBranchTarget { step: 3, target: 1 };
+        let text = error.to_string();
+        assert!(text.contains("3"));
+        assert!(text.contains("1"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_primitive_lowering_limit_exceeded() {
+        let error = CompileError::PrimitiveLoweringLimitExceeded { primitive: "together", field: "branches", value: 70000, limit: 65535 };
+        let text = error.to_string();
+        assert!(text.contains("together"));
+        assert!(text.contains("branches"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_last_step_must_finish() {
+        assert!(!CompileError::LastStepMustFinish.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_constant_value() {
+        assert!(CompileError::UnsupportedConstantValue { step: 0 }.to_string().contains("0"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_reference_root() {
+        assert!(CompileError::UnknownReferenceRoot { reference: Box::<str>::from("$custom.field"), root: Box::<str>::from("custom") }.to_string().contains("$custom.field"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_illegal_reference() {
+        assert!(CompileError::IllegalReference { reference: Box::<str>::from("$runtime.state") }.to_string().contains("$runtime.state"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_reference_name() {
+        let error = CompileError::UnknownReferenceName { kind: "input", reference: Box::<str>::from("$input.missing"), name: Box::<str>::from("missing") };
+        assert!(error.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unsupported_accessor_reference() {
+        assert!(CompileError::UnsupportedAccessorReference { reference: Box::<str>::from("$input.user.field"), root: Box::<str>::from("user"), path: Box::<str>::from("field") }.to_string().contains("field"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_step_target() {
+        assert!(CompileError::UnknownStepTarget { step: 1, target: 99 }.to_string().contains("99"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unreachable_step() {
+        assert!(CompileError::UnreachableStep { step: 5 }.to_string().contains("5"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_type_mismatch() {
+        let error = CompileError::TypeMismatch { field: "c", expected: "boolean", found: "number" };
+        let text = error.to_string();
+        assert!(text.contains("boolean"));
+        assert!(text.contains("number"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_unknown_slot_type() {
+        assert!(CompileError::UnknownSlotType { field: "finish.result", slot: 3 }.to_string().contains("3"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_secret_taint_leak() {
+        assert!(CompileError::SecretTaintLeak { field: "finish.result" }.to_string().contains("finish.result"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unexpected_char() {
+        assert!(CompileError::ExpressionUnexpectedChar { expression: Box::<str>::from("$a @ b"), index: 3, found: '@' }.to_string().contains("@"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unterminated_string() {
+        assert!(CompileError::ExpressionUnterminatedString { expression: Box::<str>::from("\"hello"), index: 0 }.to_string().contains("unterminated"));
+    }
+
+    #[test]
+    fn compile_error_display_expression_integer_out_of_range_not_empty() {
+        assert!(!CompileError::ExpressionIntegerOutOfRange { expression: Box::<str>::from("99999"), index: 0 }.to_string().is_empty());
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_limit_exceeded() {
+        assert!(CompileError::ExpressionLimitExceeded { expression: Box::<str>::from("a"), limit: "stack", max: 16 }.to_string().contains("16"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unexpected_token() {
+        assert!(CompileError::ExpressionUnexpectedToken { expression: Box::<str>::from("+"), index: 0, expected: "operand" }.to_string().contains("operand"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_unknown_identifier() {
+        assert!(CompileError::ExpressionUnknownIdentifier { expression: Box::<str>::from("fn()"), index: 0, identifier: Box::<str>::from("fn") }.to_string().contains("fn"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_lowering_unsupported() {
+        assert!(CompileError::ExpressionLoweringUnsupported { feature: "closures" }.to_string().contains("closures"));
+    }
+
+    #[test]
+    fn compile_error_display_includes_expression_helper_arity() {
+        assert!(CompileError::ExpressionHelperArity { helper: "len", expected: 1, actual: 2 }.to_string().contains("len"));
+    }
+
+    // ========================================================================
+    // Diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn compile_error_diagnostic_code_is_alias_for_code() {
+        let error = CompileError::EmptySource;
+        assert_eq!(error.code(), error.diagnostic_code());
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_bad_value() {
+        assert_eq!(CompileError::BadValue.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_forbidden_yaml_for_float_forbidden() {
+        assert_eq!(CompileError::FloatForbidden.code(), "FORBIDDEN_YAML_FEATURE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_invalid_finish_variants() {
+        assert_eq!(CompileError::UnsupportedTopLevelResult.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::LastStepMustFinish.code(), "INVALID_FINISH");
+    }
+
+    #[test]
+    fn compile_error_code_returns_missing_step_primitive_for_empty_steps() {
+        assert_eq!(CompileError::EmptySteps.code(), "MISSING_STEP_PRIMITIVE");
+    }
+
+    #[test]
+    fn compile_error_code_returns_reserved_vs_invalid_id() {
+        assert_eq!(CompileError::InvalidName { field: "step_id", value: Box::<str>::from("finish") }.code(), "RESERVED_ID");
+        assert_eq!(CompileError::InvalidName { field: "step_id", value: Box::<str>::from("has space") }.code(), "INVALID_ID");
+    }
+
+    #[test]
+    fn compile_error_code_returns_duplicate_id() {
+        assert_eq!(CompileError::DuplicateStepId { id: Box::<str>::from("dup") }.code(), "DUPLICATE_ID");
+    }
+
+    #[test]
+    fn compile_error_code_unknown_step_field_variants() {
+        assert_eq!(CompileError::UnknownStepField { step: 0, field: Box::<str>::from("x") }.code(), "UNKNOWN_STEP_FIELD");
+        assert_eq!(CompileError::UnknownStepPrimitiveField { step: 0, primitive: "do", field: Box::<str>::from("y") }.code(), "UNKNOWN_STEP_FIELD");
+    }
+
+    #[test]
+    fn compile_error_code_primitive_specific() {
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "for_each" }.code(), "INVALID_FOR_EACH");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "together" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "collect" }.code(), "INVALID_COLLECT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "reduce" }.code(), "INVALID_REDUCE");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "repeat" }.code(), "INVALID_REPEAT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "wait" }.code(), "INVALID_WAIT");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "ask" }.code(), "INVALID_ASK");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "finish" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "choose" }.code(), "INVALID_CHOOSE");
+    }
+
+    #[test]
+    fn compile_error_code_control_field_specific() {
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("then") }.code(), "INVALID_THEN_TARGET");
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("try_again") }.code(), "INVALID_RETRY");
+        assert_eq!(CompileError::UnsupportedStepControlField { step: 0, field: Box::<str>::from("on_error") }.code(), "INVALID_ON_ERROR");
+    }
+
+    #[test]
+    fn compile_error_code_branch_targets() {
+        assert_eq!(CompileError::BackwardBranchTarget { step: 1, target: 0 }.code(), "INVALID_THEN_TARGET");
+        assert_eq!(CompileError::UnknownStepTarget { step: 1, target: 99 }.code(), "INVALID_THEN_TARGET");
+    }
+
+    #[test]
+    fn compile_error_code_reference_kinds() {
+        assert_eq!(CompileError::UnknownReferenceName { kind: "secret", reference: Box::<str>::from("$s.m"), name: Box::<str>::from("m") }.code(), "SECRET_NOT_DECLARED");
+        assert_eq!(CompileError::UnknownReferenceName { kind: "input", reference: Box::<str>::from("$i.m"), name: Box::<str>::from("m") }.code(), "UNKNOWN_REFERENCE");
+        assert_eq!(CompileError::SecretTaintLeak { field: "f" }.code(), "SECRET_RESULT_LEAK");
+    }
+
+    #[test]
+    fn compile_error_code_expression_variants() {
+        assert_eq!(CompileError::ExpressionUnexpectedChar { expression: Box::<str>::from("a"), index: 0, found: '!' }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnterminatedString { expression: Box::<str>::from("a"), index: 0 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionIntegerOutOfRange { expression: Box::<str>::from("a"), index: 0 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionLimitExceeded { expression: Box::<str>::from("a"), limit: "stack", max: 1 }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnexpectedToken { expression: Box::<str>::from("a"), index: 0, expected: "x" }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionUnknownIdentifier { expression: Box::<str>::from("a"), index: 0, identifier: Box::<str>::from("x") }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionLoweringUnsupported { feature: "x" }.code(), "INVALID_EXPRESSION");
+        assert_eq!(CompileError::ExpressionHelperArity { helper: "x", expected: 1, actual: 2 }.code(), "INVALID_EXPRESSION");
+    }
+
+    // ========================================================================
+    // CompileErrors wrapper tests
+    // ========================================================================
+
+    #[test]
+    fn compile_errors_display_formats_with_indices() {
+        let text = CompileErrors(vec![CompileError::EmptySource, CompileError::EmptySteps]).to_string();
+        assert!(text.contains("[0]"));
+        assert!(text.contains("[1]"));
+    }
+
+    #[test]
+    fn compile_errors_empty_edge_cases() {
+        let empty = CompileErrors(Vec::new());
+        assert!(empty.first().is_none());
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+    }
+
+    #[test]
+    fn compile_errors_iter_and_diagnostic_codes() {
+        let errors = CompileErrors(vec![CompileError::EmptySource, CompileError::EmptySteps, CompileError::LastStepMustFinish]);
+        let codes: Vec<&'static str> = errors.iter().map(|e| e.code()).collect();
+        assert_eq!(codes, vec!["MISSING_REQUIRED_FIELD", "MISSING_STEP_PRIMITIVE", "INVALID_FINISH"]);
+        let diag: Vec<&'static str> = errors.diagnostic_codes().collect();
+        assert_eq!(diag, codes);
+    }
+
+    // ========================================================================
+    // Step field shape diagnostic code coverage
+    // ========================================================================
+
+    #[test]
+    fn step_field_shape_codes() {
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "choose", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "condition", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "on_true", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "on_false", expected: "x" }.code(), "INVALID_CHOOSE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "for_each", expected: "x" }.code(), "INVALID_FOR_EACH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "together", expected: "x" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "branches", expected: "x" }.code(), "INVALID_TOGETHER");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "collect", expected: "x" }.code(), "INVALID_COLLECT");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "reduce", expected: "x" }.code(), "INVALID_REDUCE");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "repeat", expected: "x" }.code(), "INVALID_REPEAT");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "finish", expected: "x" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "result", expected: "x" }.code(), "INVALID_FINISH");
+        assert_eq!(CompileError::StepFieldShape { step: 0, field: "other", expected: "x" }.code(), "TYPE_MISMATCH");
+    }
+
+    // ========================================================================
+    // SlotCompiler extended tests
+    // ========================================================================
+
+    #[test]
+    fn slot_compiler_starts_empty() {
+        assert_eq!(SlotCompiler::new().slot_count().ok(), Some(0));
+    }
+
+    #[test]
+    fn slot_compiler_slot_count_after_record() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(5));
+        let count = sc.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 6 { return Err(format!("expected 6, got {count}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_slot_count_tracks_max() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(3));
+        sc.record_slot(SlotIdx::new(10));
+        sc.record_slot(SlotIdx::new(7));
+        let count = sc.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 11 { return Err(format!("expected 11, got {count}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_accessor_ascending() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        let prog = vb_core::AccessorProgram { root: SlotIdx::new(0), path: Box::from([]) };
+        let i0 = sc.push_accessor(prog.clone()).map_err(|e| format!("{e:?}"))?;
+        let i1 = sc.push_accessor(prog).map_err(|e| format!("{e:?}"))?;
+        if i0.get() != 0 || i1.get() != 1 { return Err(format!("unexpected indices: {} {}", i0.get(), i1.get())); }
+        Ok(())
+    }
+
+    #[test]
+    fn slot_compiler_build_parts() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.push_constant(ConstValue::I64(42)).map_err(|e| format!("{e:?}"))?;
+        sc.record_slot(SlotIdx::new(0));
+        sc.push_node(CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } });
+        let parts = sc.build_parts("tb", compute_compiled_digest(b"t")).map_err(|e| format!("{e:?}"))?;
+        if &*parts.name != "tb" { return Err("name mismatch".to_owned()); }
+        if parts.slot_count != 1 { return Err(format!("slot_count {}", parts.slot_count)); }
+        if parts.nodes.len() != 1 { return Err("no nodes".to_owned()); }
+        if parts.constants.len() != 1 { return Err("no constants".to_owned()); }
+        Ok(())
+    }
+
+    // ========================================================================
+    // Lower function unit tests
+    // ========================================================================
+
+    #[test]
+    fn lower_set_node() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), Some(StepIdx::new(1)));
+        assert_eq!(n.id, StepIdx::new(0));
+        assert_eq!(n.output, Some(SlotIdx::new(0)));
+        assert_eq!(n.next, Some(StepIdx::new(1)));
+        match n.kind { CompiledNodeKind::SetConst { value } => assert_eq!(value.get(), 0), other => panic!("expected SetConst, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_set_no_next() { assert!(lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), None).next.is_none()); }
+
+    #[test]
+    fn lower_do_node() {
+        let mut b = SlotCompiler::new();
+        let n = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(2), Some(SlotIdx::new(3)), Some(StepIdx::new(1)), &mut b);
+        match n.kind { CompiledNodeKind::Do { action, input } => { assert_eq!(action.get(), 1); assert_eq!(input.get(), 2); }, other => panic!("expected Do, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_do_records_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(5), Some(SlotIdx::new(6)), Some(StepIdx::new(1)), &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 6 { return Err(format!("expected 6, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_do_no_next() {
+        let mut b = SlotCompiler::new();
+        assert!(lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), Some(SlotIdx::new(1)), None, &mut b).next.is_none());
+    }
+
+    #[test]
+    fn lower_choose_basic() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(1), vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(2) }], Some(StepIdx::new(3)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if branches.len() != 1 || otherwise != Some(StepIdx::new(3)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_choose_empty_no_otherwise() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        match lower_choose(StepIdx::new(0), Vec::new(), None, &mut b) {
+            Err(CompileError::Workflow(_)) => Ok(()),
+            Ok(n) => Err(format!("expected error, got {n:?}")),
+            Err(e) => Err(format!("wrong error: {e:?}")),
+        }
+    }
+
+    #[test]
+    fn lower_choose_empty_with_otherwise() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(0), Vec::new(), Some(StepIdx::new(1)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if !branches.is_empty() || otherwise != Some(StepIdx::new(1)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_choose_multi_branch() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let br = vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(2) }, SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(3) }, SlotBranch { condition: SlotIdx::new(4), target: StepIdx::new(5) }];
+        let n = lower_choose(StepIdx::new(0), br, Some(StepIdx::new(6)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match n.kind { CompiledNodeKind::ChooseSlot { branches, otherwise } => { if branches.len() != 3 || otherwise != Some(StepIdx::new(6)) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ChooseSlot, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_for_each_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_for_each(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), 100, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::ForEachStart { .. } => Ok(()), other => Err(format!("expected ForEachStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_together_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1), StepIdx::new(2)], StepIdx::new(3), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::TogetherStart { branches, join } => { if branches.len() != 2 || *join != StepIdx::new(3) { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected TogetherStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_collect_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(0), SlotIdx::new(1), 50, 10, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::CollectStart { source, limit, page_size, .. } => { if source.get() != 1 || *limit != 50 || *page_size != 10 { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected CollectStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_reduce_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let mut cb = SlotCompiler::new();
+        let init = cb.push_constant(ConstValue::I64(0)).map_err(|e| format!("{e:?}"))?;
+        let ns = lower_reduce(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), init, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::ReduceStart { input, accumulator, .. } => { if input.get() != 1 || accumulator.get() != 2 { return Err("mismatch".to_owned()); } Ok(()) }, other => Err(format!("expected ReduceStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_repeat_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(0), 3, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 3 { return Err(format!("expected 3, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::RepeatStart { max_attempts, .. } => { if *max_attempts != 3 { return Err(format!("expected 3, got {max_attempts}")); } Ok(()) }, other => Err(format!("expected RepeatStart, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_wait_until() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(5) }, &mut b);
+        match n.kind { CompiledNodeKind::WaitUntil { deadline_slot } => assert_eq!(deadline_slot.get(), 5), other => panic!("expected WaitUntil, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_event_with_timeout() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(1), WaitKind::Event { event: SlotIdx::new(3), timeout: Some(SlotIdx::new(4)) }, &mut b);
+        match n.kind { CompiledNodeKind::WaitEvent { event, timeout_slot } => { assert_eq!(event.get(), 3); assert_eq!(timeout_slot.map(|s| s.get()), Some(4)); }, other => panic!("expected WaitEvent, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_event_no_timeout() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(0), WaitKind::Event { event: SlotIdx::new(2), timeout: None }, &mut b);
+        match n.kind { CompiledNodeKind::WaitEvent { event, timeout_slot } => { assert_eq!(event.get(), 2); assert!(timeout_slot.is_none()); }, other => panic!("expected WaitEvent, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_wait_records_deadline() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(9) }, &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 10 { return Err(format!("expected 10, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_wait_records_event_and_timeout() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_wait(StepIdx::new(0), WaitKind::Event { event: SlotIdx::new(3), timeout: Some(SlotIdx::new(5)) }, &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 6 { return Err(format!("expected 6, got {c}")); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_ask_nodes() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_ask(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), None, &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns.len() != 2 { return Err(format!("expected 2, got {}", ns.len())); }
+        match &ns[0].kind { CompiledNodeKind::Ask { prompt, timeout_slot } => { if prompt.get() != 1 || timeout_slot.is_some() { return Err("mismatch".to_owned()); } }, other => return Err(format!("expected Ask, got {other:?}")), }
+        match &ns[1].kind { CompiledNodeKind::AskResume { answer } => { if answer.get() != 2 { return Err("mismatch".to_owned()); } }, other => return Err(format!("expected AskResume, got {other:?}")), }
+        if ns[1].id != StepIdx::new(1) { return Err("resume id mismatch".to_owned()); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_ask_with_timeout() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_ask(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), Some(SlotIdx::new(3)), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind { CompiledNodeKind::Ask { prompt, timeout_slot } => { if prompt.get() != 1 { return Err("p".to_owned()); } match timeout_slot { Some(s) if s.get() == 3 => Ok(()), Some(s) => Err(format!("expected 3, got {}", s.get())), None => Err("no timeout".to_owned()), } }, other => Err(format!("expected Ask, got {other:?}")), }
+    }
+
+    #[test]
+    fn lower_finish_node() {
+        let mut b = SlotCompiler::new();
+        let n = lower_finish(StepIdx::new(0), SlotIdx::new(5), &mut b);
+        match n.kind { CompiledNodeKind::Finish { result } => assert_eq!(result.get(), 5), other => panic!("expected Finish, got {other:?}"), }
+    }
+
+    #[test]
+    fn lower_finish_records_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_finish(StepIdx::new(0), SlotIdx::new(7), &mut b);
+        let c = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if c != 8 { return Err(format!("expected 8, got {c}")); }
+        Ok(())
+    }
+
+    // ========================================================================
+    // validate_public_name tests
+    // ========================================================================
+
+    #[test]
+    fn validate_name_rejects_reserved_finish() -> Result<(), String> {
+        match validate_public_name("step_id", "finish") { Err(CompileError::InvalidName { field, value }) => { if field != "step_id" || &*value != "finish" { return Err(format!("wrong: {field}/{value}")); } Ok(()) }, Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_rejects_reserved_do() -> Result<(), String> {
+        match validate_public_name("step_id", "do") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_rejects_reserved_null() -> Result<(), String> {
+        match validate_public_name("step_id", "null") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    #[test]
+    fn validate_name_accepts_valid() -> Result<(), String> {
+        validate_public_name("step_id", "my_step").map_err(|e| format!("{e:?}"))
+    }
+
+    #[test]
+    fn validate_name_rejects_spaces() -> Result<(), String> {
+        match validate_public_name("step_id", "has spaces") { Err(CompileError::InvalidName { .. }) => Ok(()), Ok(()) => Err("should reject".to_owned()), Err(e) => Err(format!("{e:?}")), }
+    }
+
+    // ========================================================================
+    // WorkflowParts helpers
+    // ========================================================================
+
+    #[test]
+    fn build_slot_layout_count() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 5, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([ConstValue::I64(42)]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert_eq!(build_slot_layout(&p), 5);
+    }
+
+    #[test]
+    fn build_constant_pool_slice() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 0, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([ConstValue::I64(1), ConstValue::I64(2)]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert_eq!(build_constant_pool(&p).len(), 2);
+    }
+
+    #[test]
+    fn build_accessor_table_empty() {
+        let p = WorkflowParts { name: Box::from("t"), digest: compute_compiled_digest(b"t"), slot_count: 0, symbols_count: 0, nodes: Box::from([]), expressions: Box::from([]), accessors: Box::from([]), constants: Box::from([]), entry: StepIdx::new(0), resource_contract: ResourceContract::DEFAULT, step_names: Box::new([]) };
+        assert!(build_accessor_table(&p).is_empty());
+    }
+
+    #[test]
+    fn validate_ir_minimal() -> Result<(), String> {
+        let mut sc = SlotCompiler::new();
+        sc.record_slot(SlotIdx::new(0));
+        sc.push_node(CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } });
+        let w = validate_ir(sc.build_parts("vt", compute_compiled_digest(b"t")).map_err(|e| format!("{e:?}"))?).map_err(|e| format!("{e}"))?;
+        if w.name() != "vt" { return Err(format!("got {}", w.name())); }
+        Ok(())
+    }
+
+    #[test]
+    fn lower_steps_to_ir_minimal() -> Result<(), String> {
+        let ns = vec![CompiledNode { id: StepIdx::new(0), output: None, next: None, error_slot: None, on_error: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } }];
+        let w = lower_steps_to_ir(ns, Vec::new(), Vec::new(), vec![ConstValue::I64(42)], 1, 0, "lt", compute_compiled_digest(b"t")).map_err(|e| format!("{e}"))?;
+        if w.name() != "lt" { return Err(format!("got {}", w.name())); }
+        Ok(())
+    }
+
+    #[test]
+    fn compile_error_unsupported_top_level_result_display() {
+        assert!(CompileError::UnsupportedTopLevelResult.to_string().to_lowercase().contains("result"));
     }
 }
