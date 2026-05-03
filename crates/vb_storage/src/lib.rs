@@ -306,28 +306,6 @@ impl JournalWriterQueue {
             });
         }
 
-        if has_strict {
-            let mut written = 0usize;
-            while written < batch_len {
-                let Some(item) = state.pending.get(written) else {
-                    break;
-                };
-                journal.append_queued_unpersisted(&item.event)?;
-                written = written.saturating_add(1);
-            }
-            journal.persist_strict()?;
-            let mut drained = 0usize;
-            while drained < written {
-                match state.pending.pop_front() {
-                    Some(_) => {
-                        drained = drained.saturating_add(1);
-                    }
-                    None => return Err(JournalError::WriteLockPoisoned),
-                }
-            }
-            return Ok(JournalWriterFlushReport { drained, written });
-        }
-
         let mut written = 0usize;
         while written < batch_len {
             let Some(item) = state.pending.get(written) else {
@@ -337,7 +315,10 @@ impl JournalWriterQueue {
             written = written.saturating_add(1);
         }
 
-        journal.persist_strict()?;
+        if has_strict {
+            journal.persist_strict()?;
+        }
+
         let mut drained = 0usize;
         while drained < written {
             match state.pending.pop_front() {
