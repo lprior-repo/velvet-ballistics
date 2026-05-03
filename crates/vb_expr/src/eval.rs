@@ -323,8 +323,7 @@ fn eval_helper_op_with_store(
         }
         ExprOp::AppendIf => {
             let (third, second, first) = pop_triple(stack)?;
-            let result =
-                eval_helper_append_if_with_store(&first, &second, &third, store)?;
+            let result = eval_helper_append_if_with_store(&first, &second, &third, store)?;
             push_value(stack, result)
         }
         ExprOp::Merge => {
@@ -702,9 +701,11 @@ fn eval_helper_count_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let count = i64::try_from(items.len()).map_err(|_| ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(count))
 }
@@ -714,9 +715,11 @@ fn eval_helper_unique_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut seen: Vec<SlotValue> = Vec::new();
     for &item in items {
         if !seen.contains(&item) {
@@ -756,9 +759,11 @@ fn eval_helper_starts_with_with_store(
 ) -> ExprResult<SlotValue> {
     let text_id = expect_symbol(*text)?;
     let prefix_id = expect_symbol(*prefix)?;
-    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("symbol:{text_id:?}"),
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{text_id:?}"),
+        })?;
     let prefix_str = store
         .symbol(prefix_id)
         .map_err(|_| ExprError::InvalidReference {
@@ -774,9 +779,11 @@ fn eval_helper_ends_with_with_store(
 ) -> ExprResult<SlotValue> {
     let text_id = expect_symbol(*text)?;
     let suffix_id = expect_symbol(*suffix)?;
-    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("symbol:{text_id:?}"),
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{text_id:?}"),
+        })?;
     let suffix_str = store
         .symbol(suffix_id)
         .map_err(|_| ExprError::InvalidReference {
@@ -792,9 +799,11 @@ fn eval_helper_has_with_store(
 ) -> ExprResult<SlotValue> {
     let obj_id = expect_object(*obj)?;
     let key_id = expect_symbol(*key)?;
-    let fields = store.object(obj_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("object:{obj_id:?}"),
-    })?;
+    let fields = store
+        .object(obj_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("object:{obj_id:?}"),
+        })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))
 }
@@ -805,9 +814,11 @@ fn eval_helper_append_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*list)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     new_items.push(*item);
     let new_list = store
@@ -824,9 +835,11 @@ fn eval_helper_append_if_with_store(
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*list)?;
     let cond = expect_bool(*condition)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     if cond {
         new_items.push(*item);
@@ -870,14 +883,13 @@ fn eval_helper_merge_with_store(
     Ok(SlotValue::Object(new_object))
 }
 
-fn eval_helper_sum_with_store(
-    value: &SlotValue,
-    store: &mut ValueStore,
-) -> ExprResult<SlotValue> {
+fn eval_helper_sum_with_store(value: &SlotValue, store: &mut ValueStore) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut sum: i64 = 0;
     for &item in items {
         let n = expect_i64(item)?;
@@ -1979,7 +1991,9 @@ mod tests {
                 token: "expected List from unique".into(),
             });
         };
-        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(unique_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
         assert_eq!(items[0], SlotValue::I64(1));
         assert_eq!(items[1], SlotValue::I64(2));
@@ -2008,7 +2022,9 @@ mod tests {
                 token: "expected List from unique".into(),
             });
         };
-        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(unique_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 3);
         assert_eq!(items[0], SlotValue::I64(3));
         assert_eq!(items[1], SlotValue::I64(1));
@@ -2029,7 +2045,9 @@ mod tests {
                 token: "expected List from unique".into(),
             });
         };
-        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(unique_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert!(items.is_empty());
         Ok(())
     }
@@ -2256,7 +2274,9 @@ mod tests {
                 token: "expected List from append".into(),
             });
         };
-        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(new_list_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
         assert_eq!(items[0], SlotValue::I64(1));
         assert_eq!(items[1], SlotValue::I64(2));
@@ -2269,14 +2289,20 @@ mod tests {
         let list = store
             .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
             .map_err(|_| ExprError::UnexpectedEof)?;
-        let args = [SlotValue::List(list), SlotValue::I64(2), SlotValue::Bool(true)];
+        let args = [
+            SlotValue::List(list),
+            SlotValue::I64(2),
+            SlotValue::Bool(true),
+        ];
         let result = eval_helper_with_store(ExprHelper::AppendIf, &args, &mut store)?;
         let SlotValue::List(new_list_id) = result else {
             return Err(ExprError::UnexpectedToken {
                 token: "expected List from append_if".into(),
             });
         };
-        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(new_list_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
         Ok(())
     }
@@ -2287,14 +2313,20 @@ mod tests {
         let list = store
             .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
             .map_err(|_| ExprError::UnexpectedEof)?;
-        let args = [SlotValue::List(list), SlotValue::I64(2), SlotValue::Bool(false)];
+        let args = [
+            SlotValue::List(list),
+            SlotValue::I64(2),
+            SlotValue::Bool(false),
+        ];
         let result = eval_helper_with_store(ExprHelper::AppendIf, &args, &mut store)?;
         let SlotValue::List(new_list_id) = result else {
             return Err(ExprError::UnexpectedToken {
                 token: "expected List from append_if".into(),
             });
         };
-        let items = store.list(new_list_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(new_list_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 1);
         Ok(())
     }
@@ -2330,7 +2362,9 @@ mod tests {
                 token: "expected Object from merge".into(),
             });
         };
-        let fields = store.object(merged_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let fields = store
+            .object(merged_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(fields.len(), 2);
         Ok(())
     }
@@ -2370,7 +2404,9 @@ mod tests {
                 token: "expected List from unique".into(),
             });
         };
-        let items = store.list(unique_id).map_err(|_| ExprError::UnexpectedEof)?;
+        let items = store
+            .list(unique_id)
+            .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
         Ok(())
     }

@@ -159,10 +159,7 @@ impl Timeline {
     }
 
     /// Returns an iterator over events related to a specific step.
-    pub fn step_events(
-        &self,
-        step: StepIdx,
-    ) -> impl Iterator<Item = (usize, &TimelineEvent)> {
+    pub fn step_events(&self, step: StepIdx) -> impl Iterator<Item = (usize, &TimelineEvent)> {
         self.events
             .iter()
             .enumerate()
@@ -195,8 +192,7 @@ impl Timeline {
                 e.step == Some(step)
                     && matches!(
                         e.kind,
-                        TimelineEventKind::ActionScheduled
-                            | TimelineEventKind::ActionCompleted
+                        TimelineEventKind::ActionScheduled | TimelineEventKind::ActionCompleted
                     )
             })
             .map(|(i, _)| i)
@@ -334,9 +330,7 @@ mod tests {
 
     #[test]
     fn event_at_returns_event() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-        ]);
+        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
         let ev = tl.event_at(0);
         assert!(ev.is_some());
         assert_eq!(ev.map(|e| e.seq), Some(SeqNo::new(1)));
@@ -365,9 +359,7 @@ mod tests {
 
     #[test]
     fn events_by_kind_no_match_returns_empty() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-        ]);
+        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
         let failed: Vec<_> = tl.events_by_kind(TimelineEventKind::RunFailed).collect();
         assert!(failed.is_empty());
     }
@@ -392,9 +384,7 @@ mod tests {
 
     #[test]
     fn step_events_no_match_returns_empty() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-        ]);
+        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
         let s: Vec<_> = tl.step_events(StepIdx::new(99)).collect();
         assert!(s.is_empty());
     }
@@ -475,44 +465,89 @@ mod tests {
 
     #[test]
     fn kind_color_running_states_are_cyan() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::RunAccepted), "neon_cyan");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::StepStarted), "neon_cyan");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::RetryScheduled), "neon_cyan");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::RunAccepted),
+            "neon_cyan"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::StepStarted),
+            "neon_cyan"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::RetryScheduled),
+            "neon_cyan"
+        );
     }
 
     #[test]
     fn kind_color_success_states_are_green() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::StepSucceeded), "neon_green");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::ActionCompleted), "neon_green");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::RunFinished), "neon_green");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::StepSucceeded),
+            "neon_green"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::ActionCompleted),
+            "neon_green"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::RunFinished),
+            "neon_green"
+        );
     }
 
     #[test]
     fn kind_color_failure_states_are_red() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::StepFailed), "neon_red");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::ActionFailed), "neon_red");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::RunFailed), "neon_red");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::StepFailed),
+            "neon_red"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::ActionFailed),
+            "neon_red"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::RunFailed),
+            "neon_red"
+        );
     }
 
     #[test]
     fn kind_color_wait_is_blue() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::WaitScheduled), "neon_blue");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::WaitScheduled),
+            "neon_blue"
+        );
     }
 
     #[test]
     fn kind_color_ask_states_are_yellow() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::AskScheduled), "neon_yellow");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::AskAnswered), "neon_yellow");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::AskScheduled),
+            "neon_yellow"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::AskAnswered),
+            "neon_yellow"
+        );
     }
 
     #[test]
     fn kind_color_action_states_are_orange() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::ActionScheduled), "neon_orange");
-        assert_eq!(Timeline::kind_color(TimelineEventKind::SlotWritten), "neon_orange");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::ActionScheduled),
+            "neon_orange"
+        );
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::SlotWritten),
+            "neon_orange"
+        );
     }
 
     #[test]
     fn kind_color_cancelled_is_purple() {
-        assert_eq!(Timeline::kind_color(TimelineEventKind::RunCancelled), "neon_purple");
+        assert_eq!(
+            Timeline::kind_color(TimelineEventKind::RunCancelled),
+            "neon_purple"
+        );
     }
 }

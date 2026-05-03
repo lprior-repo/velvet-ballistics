@@ -96,8 +96,10 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::types::{
+        FailureCode, Incident, IncidentContext, IncidentSeverity, SideEffectCertainty,
+    };
     use super::*;
-    use super::super::types::{FailureCode, Incident, IncidentContext, IncidentSeverity, SideEffectCertainty};
     use std::time::Instant;
 
     fn make_incident(code: FailureCode, certainty: SideEffectCertainty) -> Incident {
@@ -126,22 +128,41 @@ mod tests {
     fn test_action_timeout_suggests_increase_timeout() {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::IncreaseTimeout)
+        );
     }
 
     #[test]
     fn test_taint_leak_suggests_fix_secret_leak() {
         let incident = make_incident(FailureCode::TaintLeak, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::FixSecretLeak)
+        );
     }
 
     #[test]
     fn test_unknown_certainty_adds_pin_idempotency() {
-        let incident = make_incident(FailureCode::Unknown("x".into()), SideEffectCertainty::Unknown);
+        let incident = make_incident(
+            FailureCode::Unknown("x".into()),
+            SideEffectCertainty::Unknown,
+        );
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency)
+        );
         // The Unknown failure code itself should also add ManualIntervention.
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::ManualIntervention)
+        );
     }
 }

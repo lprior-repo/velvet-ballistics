@@ -1,4 +1,4 @@
-//! IPC client for connecting to a velvet-ballistics runtime.
+//! IPC client for connecting to a velvet_ballastics runtime.
 
 use std::io::Write;
 use std::path::Path;

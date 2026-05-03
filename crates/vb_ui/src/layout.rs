@@ -79,11 +79,7 @@ pub struct LayoutResult {
 /// - Self-loops are silently skipped.
 /// - Duplicate edges are deduplicated.
 /// - Nodes referenced only in edges (not in `nodes`) are ignored.
-pub fn compute_layout(
-    nodes: &[LayoutNode],
-    edges: &[LayoutEdge],
-    entry_id: &str,
-) -> LayoutResult {
+pub fn compute_layout(nodes: &[LayoutNode], edges: &[LayoutEdge], entry_id: &str) -> LayoutResult {
     // Fast path: empty graph.
     if nodes.is_empty() {
         return LayoutResult {
@@ -590,13 +586,7 @@ mod tests {
     #[test]
     fn wide_graph_has_multiple_rows() {
         // a -> b1, a -> b2, a -> b3, a -> b4
-        let nodes = vec![
-            node("a"),
-            node("b1"),
-            node("b2"),
-            node("b3"),
-            node("b4"),
-        ];
+        let nodes = vec![node("a"), node("b1"), node("b2"), node("b3"), node("b4")];
         let edges = vec![
             edge("a", "b1"),
             edge("a", "b2"),

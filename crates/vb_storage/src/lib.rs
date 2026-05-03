@@ -702,9 +702,9 @@ impl JournalEvent {
     #[must_use]
     pub fn slot_value(&self) -> Option<SlotValue> {
         match self {
-            Self::SlotWrittenEvent { value: Some(bytes), .. } => {
-                postcard::from_bytes(bytes).ok()
-            }
+            Self::SlotWrittenEvent {
+                value: Some(bytes), ..
+            } => postcard::from_bytes(bytes).ok(),
             _ => None,
         }
     }

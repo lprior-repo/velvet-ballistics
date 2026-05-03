@@ -192,9 +192,7 @@ fn check_boundedness(parts: &WorkflowParts) -> Certificate {
             status: CertificateStatus::Pass,
             details: format!(
                 "max_steps={}, max_slots={}, budget_per_tick={}",
-                contract.max_steps,
-                contract.max_slots,
-                contract.max_step_budget_per_tick,
+                contract.max_steps, contract.max_slots, contract.max_step_budget_per_tick,
             ),
         }
     } else {
@@ -310,13 +308,13 @@ fn check_taint_flow(parts: &WorkflowParts) -> Certificate {
 
         // For direct vs indirect: check if any path goes through intermediate
         // nodes before reaching a sink.
-        let sink_set: std::collections::HashSet<StepIdx> =
-            overlay.sinks.iter().copied().collect();
+        let sink_set: std::collections::HashSet<StepIdx> = overlay.sinks.iter().copied().collect();
         let has_indirect = dangerous_paths.iter().any(|seg| {
             // This segment reaches a sink but there are other segments from the
             // same source to non-sink nodes -- meaning it goes through
             // intermediaries.
-            !sink_set.contains(&seg.to) && seg.status == super::taint_overlay::TaintPathStatus::Dangerous
+            !sink_set.contains(&seg.to)
+                && seg.status == super::taint_overlay::TaintPathStatus::Dangerous
         });
 
         if has_indirect {
@@ -549,7 +547,7 @@ fn check_reachability(parts: &WorkflowParts) -> Certificate {
     if parts.entry.as_usize() < node_count
         && let Some(slot) = visited.get_mut(parts.entry.as_usize())
     {
-            *slot = true;
+        *slot = true;
     }
 
     while let Some(idx) = queue.pop() {
@@ -641,7 +639,10 @@ fn collect_successors(
             succs.push(*target);
         }
 
-        CompiledNodeKind::Choose { branches, otherwise } => {
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
             for branch in branches.iter() {
                 succs.push(branch.target);
             }
@@ -650,7 +651,10 @@ fn collect_successors(
             }
         }
 
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
             for branch in branches.iter() {
                 succs.push(branch.target);
             }
@@ -759,9 +763,7 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
             }
 
             // Check for partial overlap: B starts inside A but ends outside A
-            if b_start > a_start && b_start < a_done
-                && b_done > a_done
-            {
+            if b_start > a_start && b_start < a_done && b_done > a_done {
                 issues.push(format!(
                     "loop at step {} spans to {} but inner loop at step {} extends to {}",
                     a_start, a_done, b_start, b_done,
@@ -769,9 +771,7 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
             }
 
             // Check the reverse: A starts inside B but ends outside B
-            if a_start > b_start && a_start < b_done
-                && a_done > b_done
-            {
+            if a_start > b_start && a_start < b_done && a_done > b_done {
                 issues.push(format!(
                     "loop at step {} spans to {} but inner loop at step {} extends to {}",
                     b_start, b_done, a_start, a_done,
@@ -808,9 +808,9 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::WorkflowDigest;
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
-    use vb_core::ids::WorkflowDigest;
 
     fn minimal_parts() -> WorkflowParts {
         WorkflowParts {
@@ -879,12 +879,10 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::StructuralValidity);
         assert!(structural.is_some());
-        assert!(
-            matches!(
-                structural.unwrap_or_else(|| panic!("cert missing")).status,
-                CertificateStatus::Pass
-            )
-        );
+        assert!(matches!(
+            structural.unwrap_or_else(|| panic!("cert missing")).status,
+            CertificateStatus::Pass
+        ));
 
         // Strict durability should warn (Finish node present but no error handlers).
         let durability = result
@@ -895,7 +893,10 @@ mod tests {
         let dur_status = &durability.unwrap_or_else(|| panic!("cert missing")).status;
         // A single Finish node with no error handlers/on_error produces Warn.
         assert!(
-            matches!(dur_status, CertificateStatus::Pass | CertificateStatus::Warn(_)),
+            matches!(
+                dur_status,
+                CertificateStatus::Pass | CertificateStatus::Warn(_)
+            ),
             "expected Pass or Warn for strict durability, got {:?}",
             dur_status
         );
@@ -906,12 +907,12 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::Reachability);
         assert!(reachability.is_some());
-        assert!(
-            matches!(
-                reachability.unwrap_or_else(|| panic!("cert missing")).status,
-                CertificateStatus::Pass
-            )
-        );
+        assert!(matches!(
+            reachability
+                .unwrap_or_else(|| panic!("cert missing"))
+                .status,
+            CertificateStatus::Pass
+        ));
     }
 
     #[test]
@@ -957,12 +958,12 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::Reachability);
         assert!(reachability.is_some());
-        assert!(
-            matches!(
-                reachability.unwrap_or_else(|| panic!("cert missing")).status,
-                CertificateStatus::Fail(_)
-            )
-        );
+        assert!(matches!(
+            reachability
+                .unwrap_or_else(|| panic!("cert missing"))
+                .status,
+            CertificateStatus::Fail(_)
+        ));
     }
 
     #[test]

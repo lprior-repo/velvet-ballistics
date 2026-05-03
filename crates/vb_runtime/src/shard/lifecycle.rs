@@ -14,9 +14,7 @@ use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::primitives::collect::CollectStates;
-use crate::shard::types::{
-    AskAnswer, PendingTimerKind, RunState, Shard,
-};
+use crate::shard::types::{AskAnswer, PendingTimerKind, RunState, Shard};
 
 impl Shard {
     pub(crate) fn handle_submit(
@@ -122,7 +120,8 @@ impl Shard {
             run,
             step: ticket.step,
         });
-        let encoded_value = postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_value =
+            postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.journal.append(RuntimeJournalEvent::SlotWritten {
             run,
             slot: output.output_slot,
@@ -267,7 +266,8 @@ impl Shard {
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         })?;
-        let encoded_answer_value = postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_answer_value =
+            postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.journal.append(RuntimeJournalEvent::SlotWritten {
             run,
             slot: answer.answer_slot,

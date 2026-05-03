@@ -216,7 +216,11 @@ mod tests {
         let panel = ResourceBoundsPanel::from_contract(&contract, 10, 5, 2);
         let worst = panel.worst_case_metrics();
         assert!(!worst.is_empty());
-        assert!(worst.iter().all(|m| m.status != ResourceStatus::WithinBounds));
+        assert!(
+            worst
+                .iter()
+                .all(|m| m.status != ResourceStatus::WithinBounds)
+        );
     }
 
     #[test]
@@ -230,8 +234,7 @@ mod tests {
     fn test_default_contract_large_limits() {
         // Default contract has max_steps = 10_000, max_slots = 1_024,
         // max_retry_attempts = 3, max_fanout = 64.
-        let panel =
-            ResourceBoundsPanel::from_contract(&ResourceContract::DEFAULT, 50, 100, 2);
+        let panel = ResourceBoundsPanel::from_contract(&ResourceContract::DEFAULT, 50, 100, 2);
         assert!(panel.all_within_bounds());
     }
 

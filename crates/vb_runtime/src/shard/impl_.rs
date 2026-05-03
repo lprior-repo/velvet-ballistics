@@ -15,8 +15,7 @@ use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::shard::types::{
-    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand,
-    ShardConfig,
+    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig,
 };
 
 impl Shard {
@@ -227,15 +226,24 @@ impl Shard {
                             if let Ok(value) = state.frame.read_slot(slot) {
                                 let encoded = postcard::to_allocvec(value)
                                     .map_err(|_| RuntimeError::EncodeFailed)?;
-                                self.journal
-                                    .append(RuntimeJournalEvent::SlotWritten { run, slot, value: encoded })?;
+                                self.journal.append(RuntimeJournalEvent::SlotWritten {
+                                    run,
+                                    slot,
+                                    value: encoded,
+                                })?;
                             } else {
-                                self.journal
-                                    .append(RuntimeJournalEvent::SlotWritten { run, slot, value: vec![] })?;
+                                self.journal.append(RuntimeJournalEvent::SlotWritten {
+                                    run,
+                                    slot,
+                                    value: vec![],
+                                })?;
                             }
                         } else {
-                            self.journal
-                                .append(RuntimeJournalEvent::SlotWritten { run, slot, value: vec![] })?;
+                            self.journal.append(RuntimeJournalEvent::SlotWritten {
+                                run,
+                                slot,
+                                value: vec![],
+                            })?;
                         }
                     }
                     self.journal.append(RuntimeJournalEvent::StepSucceeded {

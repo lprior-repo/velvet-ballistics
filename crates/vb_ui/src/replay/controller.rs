@@ -6,16 +6,16 @@
 
 use std::time::Instant;
 
-use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_core::WorkflowDigest;
+use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_ipc::server::IpcResponse;
 use vb_ipc::{IpcTraceEvent, IpcTraceEventKind};
 use vb_storage::{EventSeq, JournalEvent};
 
-use crate::ipc_bridge::{IpcBridge, IpcReply, IpcRequest};
 use super::engine::ReplayEngine;
 use super::state::ReplayState;
 use super::types::{PlaybackSpeed, ReplayDiff};
+use crate::ipc_bridge::{IpcBridge, IpcReply, IpcRequest};
 
 // ---------------------------------------------------------------------------
 // Playback state machine
@@ -209,9 +209,7 @@ impl ReplayController {
         // (position N = state after applying event N-1).
         let target = u32::try_from(idx.saturating_add(1)).unwrap_or(self.current_position);
         self.current_position = target;
-        self.state = PlaybackState::Paused {
-            position: target,
-        };
+        self.state = PlaybackState::Paused { position: target };
     }
 
     /// Seeks to a specific event position.
@@ -225,9 +223,7 @@ impl ReplayController {
         self.pause();
         let clamped = pos.min(self.total_events);
         self.current_position = clamped;
-        self.state = PlaybackState::Paused {
-            position: clamped,
-        };
+        self.state = PlaybackState::Paused { position: clamped };
     }
 
     /// Changes playback speed while playing.
@@ -302,30 +298,28 @@ impl ReplayController {
         if let PlaybackState::Playing { speed } = self.state
             && self.engine.is_some()
         {
-                let delay_ms = speed.event_delay_ms();
-                let elapsed = self
-                    .last_tick
-                    .map_or(u64::MAX, |t| {
-                        u64::try_from(t.elapsed().as_millis()).unwrap_or(u64::MAX)
-                    });
+            let delay_ms = speed.event_delay_ms();
+            let elapsed = self.last_tick.map_or(u64::MAX, |t| {
+                u64::try_from(t.elapsed().as_millis()).unwrap_or(u64::MAX)
+            });
 
-                if elapsed >= delay_ms {
-                    if self.current_position < self.total_events {
-                        self.current_position = self.current_position.saturating_add(1);
-                        events.push(ControllerEvent::PositionChanged {
-                            position: self.current_position,
-                        });
-                    }
-                    if self.current_position >= self.total_events {
-                        self.state = PlaybackState::Paused {
-                            position: self.current_position,
-                        };
-                        self.last_tick = None;
-                        events.push(ControllerEvent::PlaybackFinished);
-                    } else {
-                        self.last_tick = Some(Instant::now());
-                    }
+            if elapsed >= delay_ms {
+                if self.current_position < self.total_events {
+                    self.current_position = self.current_position.saturating_add(1);
+                    events.push(ControllerEvent::PositionChanged {
+                        position: self.current_position,
+                    });
                 }
+                if self.current_position >= self.total_events {
+                    self.state = PlaybackState::Paused {
+                        position: self.current_position,
+                    };
+                    self.last_tick = None;
+                    events.push(ControllerEvent::PlaybackFinished);
+                } else {
+                    self.last_tick = Some(Instant::now());
+                }
+            }
         }
 
         events
@@ -350,10 +344,12 @@ impl ReplayController {
                 if self.load_phase == LoadPhase::WaitingInspect {
                     self.load_phase = LoadPhase::WaitingEvents;
                     if let Some(run_id) = self.active_run {
-                        self.bridge.send(IpcRequest::ListEvents {
-                            run_id,
-                            from_sequence: 0,
-                        }).ok();
+                        self.bridge
+                            .send(IpcRequest::ListEvents {
+                                run_id,
+                                from_sequence: 0,
+                            })
+                            .ok();
                     }
                 }
             }
@@ -382,11 +378,7 @@ impl ReplayController {
     }
 
     /// Processes an `IpcResponse::Events` and finalizes loading.
-    fn handle_events_response(
-        &mut self,
-        response: IpcResponse,
-        events: &mut Vec<ControllerEvent>,
-    ) {
+    fn handle_events_response(&mut self, response: IpcResponse, events: &mut Vec<ControllerEvent>) {
         let trace_events = match response {
             IpcResponse::Events { events: evts } => evts,
             other => {
@@ -472,11 +464,9 @@ fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             seq,
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         }),
-        IpcTraceEventKind::StepStarted { run, step } => Some(JournalEvent::StepStarted {
-            run,
-            seq,
-            step,
-        }),
+        IpcTraceEventKind::StepStarted { run, step } => {
+            Some(JournalEvent::StepStarted { run, seq, step })
+        }
         IpcTraceEventKind::StepEnded { run, step } => Some(JournalEvent::StepSucceeded {
             run,
             seq,
@@ -732,45 +722,30 @@ mod tests {
     fn trace_run_finished_converts() {
         let trace = IpcTraceEvent {
             sequence: 9,
-            kind: IpcTraceEventKind::RunFinished {
-                run: RunId::new(1),
-            },
+            kind: IpcTraceEventKind::RunFinished { run: RunId::new(1) },
         };
         let journal = trace_to_journal(trace);
-        assert!(matches!(
-            journal,
-            Some(JournalEvent::RunFinished { .. })
-        ));
+        assert!(matches!(journal, Some(JournalEvent::RunFinished { .. })));
     }
 
     #[test]
     fn trace_run_failed_converts() {
         let trace = IpcTraceEvent {
             sequence: 10,
-            kind: IpcTraceEventKind::RunFailed {
-                run: RunId::new(1),
-            },
+            kind: IpcTraceEventKind::RunFailed { run: RunId::new(1) },
         };
         let journal = trace_to_journal(trace);
-        assert!(matches!(
-            journal,
-            Some(JournalEvent::RunFailedEvent { .. })
-        ));
+        assert!(matches!(journal, Some(JournalEvent::RunFailedEvent { .. })));
     }
 
     #[test]
     fn trace_run_cancelled_converts() {
         let trace = IpcTraceEvent {
             sequence: 11,
-            kind: IpcTraceEventKind::RunCancelled {
-                run: RunId::new(1),
-            },
+            kind: IpcTraceEventKind::RunCancelled { run: RunId::new(1) },
         };
         let journal = trace_to_journal(trace);
-        assert!(matches!(
-            journal,
-            Some(JournalEvent::RunCancelled { .. })
-        ));
+        assert!(matches!(journal, Some(JournalEvent::RunCancelled { .. })));
     }
 
     // -- Controller with an engine injected directly -------------------------
@@ -970,7 +945,12 @@ mod tests {
 
         let diff = ctrl.current_diff();
         assert!(diff.is_some());
-        assert!(!diff.as_ref().map(|d| d.step_changes.is_empty()).unwrap_or(true));
+        assert!(
+            !diff
+                .as_ref()
+                .map(|d| d.step_changes.is_empty())
+                .unwrap_or(true)
+        );
     }
 
     #[test]
@@ -981,7 +961,11 @@ mod tests {
 
         let diff = ctrl.current_diff();
         assert!(diff.is_some());
-        assert!(diff.as_ref().map(|d| d.step_changes.is_empty()).unwrap_or(false));
+        assert!(
+            diff.as_ref()
+                .map(|d| d.step_changes.is_empty())
+                .unwrap_or(false)
+        );
     }
 
     #[test]
@@ -992,7 +976,9 @@ mod tests {
         ctrl.play();
         assert!(matches!(
             ctrl.playback_state(),
-            PlaybackState::Playing { speed: PlaybackSpeed::Normal }
+            PlaybackState::Playing {
+                speed: PlaybackSpeed::Normal
+            }
         ));
     }
 
@@ -1006,7 +992,9 @@ mod tests {
         ctrl.play();
         assert!(matches!(
             ctrl.playback_state(),
-            PlaybackState::Playing { speed: PlaybackSpeed::Normal }
+            PlaybackState::Playing {
+                speed: PlaybackSpeed::Normal
+            }
         ));
         assert_eq!(ctrl.current_position(), 1);
     }

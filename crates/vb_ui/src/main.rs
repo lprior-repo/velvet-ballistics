@@ -907,78 +907,57 @@ impl MatchEvent for VbApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         // Screen navigation tabs
         if self.ui.button(cx, ids!(nav_replay)).clicked(actions) {
-            self.app_state.switch_screen(vb_ui::app_state::Screen::RunReplay);
-            script_eval!(cx, {
-                std.println("nav: switched to Replay Theater")
-            });
+            self.app_state
+                .switch_screen(vb_ui::app_state::Screen::RunReplay);
+            script_eval!(cx, { std.println("nav: switched to Replay Theater") });
         }
         if self.ui.button(cx, ids!(nav_verify)).clicked(actions) {
-            self.app_state.switch_screen(vb_ui::app_state::Screen::Verification);
-            script_eval!(cx, {
-                std.println("nav: switched to Verification")
-            });
+            self.app_state
+                .switch_screen(vb_ui::app_state::Screen::Verification);
+            script_eval!(cx, { std.println("nav: switched to Verification") });
         }
         if self.ui.button(cx, ids!(nav_system)).clicked(actions) {
-            self.app_state.switch_screen(vb_ui::app_state::Screen::SystemOverview);
-            script_eval!(cx, {
-                std.println("nav: switched to System Overview")
-            });
+            self.app_state
+                .switch_screen(vb_ui::app_state::Screen::SystemOverview);
+            script_eval!(cx, { std.println("nav: switched to System Overview") });
         }
         if self.ui.button(cx, ids!(nav_workflow)).clicked(actions) {
-            self.app_state.switch_screen(vb_ui::app_state::Screen::WorkflowGraph);
-            script_eval!(cx, {
-                std.println("nav: switched to Workflow Graph")
-            });
+            self.app_state
+                .switch_screen(vb_ui::app_state::Screen::WorkflowGraph);
+            script_eval!(cx, { std.println("nav: switched to Workflow Graph") });
         }
         if self.ui.button(cx, ids!(nav_incident)).clicked(actions) {
-            self.app_state.switch_screen(vb_ui::app_state::Screen::IncidentConsole);
-            script_eval!(cx, {
-                std.println("nav: switched to Incident Console")
-            });
+            self.app_state
+                .switch_screen(vb_ui::app_state::Screen::IncidentConsole);
+            script_eval!(cx, { std.println("nav: switched to Incident Console") });
         }
 
         // Transport button handling
         if self.ui.button(cx, ids!(btn_start)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("transport: jump to start")
-            });
+            script_eval!(cx, { std.println("transport: jump to start") });
         }
         if self.ui.button(cx, ids!(btn_prev)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("transport: step backward")
-            });
+            script_eval!(cx, { std.println("transport: step backward") });
         }
         if self.ui.button(cx, ids!(btn_play)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("transport: play/pause toggle")
-            });
+            script_eval!(cx, { std.println("transport: play/pause toggle") });
         }
         if self.ui.button(cx, ids!(btn_next)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("transport: step forward")
-            });
+            script_eval!(cx, { std.println("transport: step forward") });
         }
         if self.ui.button(cx, ids!(btn_end)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("transport: jump to end")
-            });
+            script_eval!(cx, { std.println("transport: jump to end") });
         }
 
         // Jump chip handling
         if self.ui.button(cx, ids!(jump_failure)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("jump: seeking to first failure event")
-            });
+            script_eval!(cx, { std.println("jump: seeking to first failure event") });
         }
         if self.ui.button(cx, ids!(jump_action)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("jump: seeking to next action boundary")
-            });
+            script_eval!(cx, { std.println("jump: seeking to next action boundary") });
         }
         if self.ui.button(cx, ids!(jump_done)).clicked(actions) {
-            script_eval!(cx, {
-                std.println("jump: seeking to run completion")
-            });
+            script_eval!(cx, { std.println("jump: seeking to run completion") });
         }
     }
 }

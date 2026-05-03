@@ -290,8 +290,8 @@ impl Runtime {
                 if let Some(filter) = workflow_filter
                     && digest != filter
                 {
-                        index = index.saturating_add(1);
-                        continue;
+                    index = index.saturating_add(1);
+                    continue;
                 }
                 let step_count = state.workflow.node_count();
                 let mut steps_completed: u16 = 0;

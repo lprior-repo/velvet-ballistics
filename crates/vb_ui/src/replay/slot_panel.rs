@@ -158,7 +158,12 @@ impl SlotDiffPanel {
             TaintChange::Unchanged => String::from("(no change)"),
         };
 
-        format!("slot[{}]: value={} taint={}", diff.slot.get(), value_str, taint_str)
+        format!(
+            "slot[{}]: value={} taint={}",
+            diff.slot.get(),
+            value_str,
+            taint_str
+        )
     }
 }
 

@@ -1,4 +1,4 @@
-use super::repair::{suggest_repairs, RepairSuggestion};
+use super::repair::{RepairSuggestion, suggest_repairs};
 use super::types::Incident;
 
 pub struct IncidentConsole {
@@ -32,7 +32,9 @@ impl IncidentConsole {
                 self.selected = None;
             }
             self.incidents.remove(index);
-            if let Some(sel) = self.selected && sel >= self.incidents.len() {
+            if let Some(sel) = self.selected
+                && sel >= self.incidents.len()
+            {
                 self.selected = None;
             }
         }
@@ -70,11 +72,11 @@ impl IncidentConsole {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::repair::RepairAction;
     use super::super::types::{
         FailureCode, IncidentContext, IncidentSeverity, SideEffectCertainty,
     };
+    use super::*;
     use std::time::Instant;
 
     fn make_incident(id: u64, severity: IncidentSeverity, code: FailureCode) -> Incident {
@@ -125,8 +127,16 @@ mod tests {
     #[test]
     fn test_console_dismiss_updates_selection() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
 
         // Select the second incident, then dismiss it.
         console.select(1);
@@ -134,17 +144,31 @@ mod tests {
 
         console.dismiss(1);
         assert_eq!(console.active_count(), 1);
-        assert!(console.selected().is_none(), "selection should be cleared after dismissing the selected incident");
+        assert!(
+            console.selected().is_none(),
+            "selection should be cleared after dismissing the selected incident"
+        );
     }
 
     #[test]
     fn test_console_suggestions_for_selected() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Major, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Major,
+            FailureCode::ActionTimeout,
+        ));
 
         console.select(0);
         let suggestions = console.selected_suggestions();
-        assert!(!suggestions.is_empty(), "ActionTimeout should produce repair suggestions");
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
+        assert!(
+            !suggestions.is_empty(),
+            "ActionTimeout should produce repair suggestions"
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::IncreaseTimeout)
+        );
     }
 }

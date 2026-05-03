@@ -397,7 +397,12 @@ impl StorageRuntimeJournal {
                 Some(JournalEvent::AskAnsweredEvent { run, seq, step })
             }
             RuntimeJournalEvent::SlotWritten { run, slot, value } => {
-                Some(JournalEvent::SlotWrittenEvent { run, seq, slot, value: Some(value) })
+                Some(JournalEvent::SlotWrittenEvent {
+                    run,
+                    seq,
+                    slot,
+                    value: Some(value),
+                })
             }
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunFinished { .. }

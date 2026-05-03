@@ -164,9 +164,7 @@ mod tests {
     use vb_core::ids::{SlotIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, ResourceContract};
 
-    fn make_parts_with_next(
-        kinds: Vec<(CompiledNodeKind, Option<StepIdx>)>,
-    ) -> WorkflowParts {
+    fn make_parts_with_next(kinds: Vec<(CompiledNodeKind, Option<StepIdx>)>) -> WorkflowParts {
         let nodes: Vec<CompiledNode> = kinds
             .into_iter()
             .enumerate()
@@ -231,10 +229,12 @@ mod tests {
         assert!(result.finish_safe);
         // Should have Warning segments (source reaches Nop but not Finish)
         assert!(!result.paths.is_empty());
-        assert!(result
-            .paths
-            .iter()
-            .all(|s| s.status == TaintPathStatus::Warning));
+        assert!(
+            result
+                .paths
+                .iter()
+                .all(|s| s.status == TaintPathStatus::Warning)
+        );
     }
 
     #[test]
@@ -259,10 +259,12 @@ mod tests {
         assert_eq!(result.sources.len(), 1);
         assert_eq!(result.sinks.len(), 1);
         assert!(!result.finish_safe);
-        assert!(result
-            .paths
-            .iter()
-            .all(|s| s.status == TaintPathStatus::Dangerous));
+        assert!(
+            result
+                .paths
+                .iter()
+                .all(|s| s.status == TaintPathStatus::Dangerous)
+        );
     }
 
     #[test]

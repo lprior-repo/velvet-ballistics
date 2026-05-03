@@ -148,7 +148,7 @@ impl ReplayEngine {
                     step_changes: Vec::new(),
                     slot_changes: Vec::new(),
                     taint_changes: Vec::new(),
-                }
+                };
             }
         };
         let to_state = match self.states.get(to) {
@@ -158,7 +158,7 @@ impl ReplayEngine {
                     step_changes: Vec::new(),
                     slot_changes: Vec::new(),
                     taint_changes: Vec::new(),
-                }
+                };
             }
         };
 
@@ -175,10 +175,7 @@ impl ReplayEngine {
 }
 
 /// Collect step-state transitions between two snapshots.
-fn diff_step_states(
-    from: &ReplayState,
-    to: &ReplayState,
-) -> Vec<(StepIdx, StepState, StepState)> {
+fn diff_step_states(from: &ReplayState, to: &ReplayState) -> Vec<(StepIdx, StepState, StepState)> {
     let mut changes = Vec::new();
 
     // Collect all step indices from both states.
@@ -194,8 +191,16 @@ fn diff_step_states(
     all_steps.dedup();
 
     for step in all_steps {
-        let old = from.step_states.get(&step).copied().unwrap_or(StepState::Pending);
-        let new = to.step_states.get(&step).copied().unwrap_or(StepState::Pending);
+        let old = from
+            .step_states
+            .get(&step)
+            .copied()
+            .unwrap_or(StepState::Pending);
+        let new = to
+            .step_states
+            .get(&step)
+            .copied()
+            .unwrap_or(StepState::Pending);
         if old != new {
             changes.push((step, old, new));
         }
@@ -237,27 +242,14 @@ fn diff_slot_values(from: &ReplayState, to: &ReplayState) -> Vec<SlotDiff> {
 fn diff_taint(from: &ReplayState, to: &ReplayState) -> Vec<TaintDiff> {
     let mut changes = Vec::new();
 
-    let mut all_slots: Vec<SlotIdx> = from
-        .taint
-        .keys()
-        .chain(to.taint.keys())
-        .copied()
-        .collect();
+    let mut all_slots: Vec<SlotIdx> = from.taint.keys().chain(to.taint.keys()).copied().collect();
 
     all_slots.sort_by_key(|s| s.get());
     all_slots.dedup();
 
     for slot in all_slots {
-        let old = from
-            .taint
-            .get(&slot)
-            .map(String::as_str)
-            .unwrap_or("Clean");
-        let new = to
-            .taint
-            .get(&slot)
-            .map(String::as_str)
-            .unwrap_or("Clean");
+        let old = from.taint.get(&slot).map(String::as_str).unwrap_or("Clean");
+        let new = to.taint.get(&slot).map(String::as_str).unwrap_or("Clean");
         if old != new {
             changes.push(TaintDiff {
                 slot,
@@ -272,8 +264,8 @@ fn diff_taint(from: &ReplayState, to: &ReplayState) -> Vec<TaintDiff> {
 
 #[cfg(test)]
 mod tests {
-    use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
     use vb_core::ids::WorkflowDigest;
+    use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
     use vb_storage::EventSeq;
 
     use super::*;
@@ -294,12 +286,7 @@ mod tests {
         }
     }
 
-    fn make_step_succeeded(
-        run: RunId,
-        seq: u64,
-        step: StepIdx,
-        output: SlotIdx,
-    ) -> JournalEvent {
+    fn make_step_succeeded(run: RunId, seq: u64, step: StepIdx, output: SlotIdx) -> JournalEvent {
         JournalEvent::StepSucceeded {
             run,
             seq: EventSeq::new(seq),
@@ -336,12 +323,7 @@ mod tests {
         }
     }
 
-    fn make_action_failed(
-        run: RunId,
-        seq: u64,
-        step: StepIdx,
-        action: ActionId,
-    ) -> JournalEvent {
+    fn make_action_failed(run: RunId, seq: u64, step: StepIdx, action: ActionId) -> JournalEvent {
         JournalEvent::ActionFailedEvent {
             run,
             seq: EventSeq::new(seq),
@@ -451,10 +433,7 @@ mod tests {
     fn step_started_marks_running() {
         let run = RunId::new(1);
         let step = StepIdx::new(0);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_step_started(run, 2, step),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_step_started(run, 2, step)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
@@ -545,15 +524,17 @@ mod tests {
     fn slot_written_records_slot() {
         let run = RunId::new(1);
         let slot = SlotIdx::new(3);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_slot_written(run, 2, slot),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_slot_written(run, 2, slot)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
         assert!(state.is_some());
-        assert!(state.as_ref().and_then(|s| s.slot_values.get(&slot)).is_some());
+        assert!(
+            state
+                .as_ref()
+                .and_then(|s| s.slot_values.get(&slot))
+                .is_some()
+        );
     }
 
     // -- WaitScheduled / AskScheduled / AskAnswered --
@@ -562,15 +543,14 @@ mod tests {
     fn wait_scheduled_marks_waiting() {
         let run = RunId::new(1);
         let step = StepIdx::new(2);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_wait_scheduled(run, 2, step),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_wait_scheduled(run, 2, step)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
         assert_eq!(
-            state.as_ref().and_then(|s| s.step_states.get(&step).copied()),
+            state
+                .as_ref()
+                .and_then(|s| s.step_states.get(&step).copied()),
             Some(StepState::Waiting)
         );
     }
@@ -579,15 +559,14 @@ mod tests {
     fn ask_scheduled_marks_asking() {
         let run = RunId::new(1);
         let step = StepIdx::new(1);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_ask_scheduled(run, 2, step),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_ask_scheduled(run, 2, step)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
         assert_eq!(
-            state.as_ref().and_then(|s| s.step_states.get(&step).copied()),
+            state
+                .as_ref()
+                .and_then(|s| s.step_states.get(&step).copied()),
             Some(StepState::Asking)
         );
     }
@@ -605,7 +584,9 @@ mod tests {
 
         let state = engine.state_at(3);
         assert_eq!(
-            state.as_ref().and_then(|s| s.step_states.get(&step).copied()),
+            state
+                .as_ref()
+                .and_then(|s| s.step_states.get(&step).copied()),
             Some(StepState::Running)
         );
     }
@@ -632,10 +613,7 @@ mod tests {
     #[test]
     fn run_failed_marks_terminal_failed() {
         let run = RunId::new(1);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_run_failed(run, 2),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_run_failed(run, 2)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
@@ -650,10 +628,7 @@ mod tests {
     #[test]
     fn run_cancelled_marks_terminal_cancelled() {
         let run = RunId::new(1);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_run_cancelled(run, 2),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_run_cancelled(run, 2)];
         let engine = ReplayEngine::from_events(events);
 
         let state = engine.state_at(2);
@@ -681,10 +656,7 @@ mod tests {
     #[test]
     fn find_failure_returns_run_failed_when_no_action_failed() {
         let run = RunId::new(1);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_run_failed(run, 2),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_run_failed(run, 2)];
         let engine = ReplayEngine::from_events(events);
         assert_eq!(engine.find_failure(), Some(1));
     }
@@ -777,10 +749,7 @@ mod tests {
     fn diff_detects_slot_change() {
         let run = RunId::new(1);
         let slot = SlotIdx::new(7);
-        let events = vec![
-            make_run_accepted(run, 1),
-            make_slot_written(run, 2, slot),
-        ];
+        let events = vec![make_run_accepted(run, 1), make_slot_written(run, 2, slot)];
         let engine = ReplayEngine::from_events(events);
 
         let d = engine.diff(0, 2);

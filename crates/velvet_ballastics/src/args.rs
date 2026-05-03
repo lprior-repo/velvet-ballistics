@@ -1,4 +1,4 @@
-//! Argument parsing for velvet-ballistics.
+//! Argument parsing for velvet_ballastics.
 #![forbid(unsafe_code)]
 
 use std::ffi::OsString;

@@ -10,8 +10,8 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use vb_core::ids::RunId;
 use vb_core::WorkflowDigest;
+use vb_core::ids::RunId;
 use vb_ipc::client::IpcClient;
 use vb_ipc::server::IpcResponse;
 use vb_ipc::{IpcCommand, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
@@ -160,7 +160,10 @@ impl IpcBridge {
         while let Ok(reply) = self.rx.try_recv() {
             if matches!(reply, IpcReply::Connected) {
                 self.connected = true;
-            } else if matches!(reply, IpcReply::Disconnected | IpcReply::ConnectionFailed(_)) {
+            } else if matches!(
+                reply,
+                IpcReply::Disconnected | IpcReply::ConnectionFailed(_)
+            ) {
                 self.connected = false;
             }
             replies.push(reply);
@@ -199,17 +202,15 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
         };
 
         match request {
-            IpcRequest::Connect { socket_path } => {
-                match IpcClient::connect(&socket_path) {
-                    Ok(c) => {
-                        client = Some(c);
-                        tx.send(IpcReply::Connected).ok();
-                    }
-                    Err(e) => {
-                        tx.send(IpcReply::ConnectionFailed(format!("{e}"))).ok();
-                    }
+            IpcRequest::Connect { socket_path } => match IpcClient::connect(&socket_path) {
+                Ok(c) => {
+                    client = Some(c);
+                    tx.send(IpcReply::Connected).ok();
                 }
-            }
+                Err(e) => {
+                    tx.send(IpcReply::ConnectionFailed(format!("{e}"))).ok();
+                }
+            },
 
             IpcRequest::Disconnect => {
                 client = None;
@@ -274,10 +275,16 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 }
             }
 
-            IpcRequest::ListEvents { run_id, from_sequence } => {
+            IpcRequest::ListEvents {
+                run_id,
+                from_sequence,
+            } => {
                 if let Some(ref mut c) = client {
                     let corr = next_correlation(&mut correlation);
-                    let payload = IpcPayload::ListEvents { run_id, from_sequence };
+                    let payload = IpcPayload::ListEvents {
+                        run_id,
+                        from_sequence,
+                    };
                     match send_and_recv(c, IpcCommand::ListEvents, corr, &payload) {
                         Ok(response) => {
                             tx.send(IpcReply::Events(response)).ok();
@@ -291,7 +298,11 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 }
             }
 
-            IpcRequest::SubmitRun { run_id, workflow, input } => {
+            IpcRequest::SubmitRun {
+                run_id,
+                workflow,
+                input,
+            } => {
                 if let Some(ref mut c) = client {
                     let corr = next_correlation(&mut correlation);
                     let payload = IpcPayload::SubmitRun(SubmitRunPayload {
@@ -312,7 +323,11 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 }
             }
 
-            IpcRequest::AnswerAsk { run_id, ticket, answer } => {
+            IpcRequest::AnswerAsk {
+                run_id,
+                ticket,
+                answer,
+            } => {
                 if let Some(ref mut c) = client {
                     let corr = next_correlation(&mut correlation);
                     let payload = IpcPayload::AnswerAsk {
@@ -333,7 +348,10 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                 }
             }
 
-            IpcRequest::DrainTrace { run_id, max_records } => {
+            IpcRequest::DrainTrace {
+                run_id,
+                max_records,
+            } => {
                 if let Some(ref mut c) = client {
                     let corr = next_correlation(&mut correlation);
                     let payload = IpcPayload::DrainTrace {
@@ -422,13 +440,9 @@ fn reply_from_submit(response: IpcResponse, run_id: RunId) -> IpcReply {
         IpcResponse::WorkflowResolutionUnsupported => {
             IpcReply::Error("Workflow resolution unsupported".into())
         }
-        IpcResponse::WorkflowDigestMismatch => {
-            IpcReply::Error("Workflow digest mismatch".into())
-        }
+        IpcResponse::WorkflowDigestMismatch => IpcReply::Error("Workflow digest mismatch".into()),
         IpcResponse::PayloadError { message, .. } => IpcReply::Error(message),
-        IpcResponse::CommandPayloadMismatch => {
-            IpcReply::Error("Command/payload mismatch".into())
-        }
+        IpcResponse::CommandPayloadMismatch => IpcReply::Error("Command/payload mismatch".into()),
         other => IpcReply::Error(format!("Unexpected submit response: {other:?}")),
     }
 }
@@ -470,9 +484,7 @@ mod tests {
     fn bridge_connect_to_nonexistent_socket_fails() {
         let mut bridge = IpcBridge::new();
         let path = PathBuf::from("/tmp/vb_ipc_bridge_test_nonexistent_7f3a.socket");
-        bridge
-            .send(IpcRequest::Connect { socket_path: path })
-            .ok();
+        bridge.send(IpcRequest::Connect { socket_path: path }).ok();
 
         // Give the background thread time to process.
         let mut replies = Vec::new();

@@ -67,7 +67,8 @@ pub fn queue_pressure_color(depth: u32, max: u32) -> [f32; 4] {
 impl From<&ShardMetrics> for ShardDisplay {
     fn from(m: &ShardMetrics) -> Self {
         let pool_used_ratio = if m.frame_pool_total > 0 {
-            f64::from(m.frame_pool_total.saturating_sub(m.frame_pool_free)) / f64::from(m.frame_pool_total)
+            f64::from(m.frame_pool_total.saturating_sub(m.frame_pool_free))
+                / f64::from(m.frame_pool_total)
         } else {
             0.0
         };
@@ -114,8 +115,14 @@ impl SystemMetrics {
         self.total_ready_queue_depth = self.shards.iter().map(|s| s.ready_queue_depth).sum();
         self.total_action_queue_depth = self.shards.iter().map(|s| s.action_queue_depth).sum();
 
-        let any_critical = self.shards.iter().any(|s| s.health == HealthStatus::Critical);
-        let any_degraded = self.shards.iter().any(|s| s.health == HealthStatus::Degraded);
+        let any_critical = self
+            .shards
+            .iter()
+            .any(|s| s.health == HealthStatus::Critical);
+        let any_degraded = self
+            .shards
+            .iter()
+            .any(|s| s.health == HealthStatus::Degraded);
 
         self.overall_health = if any_critical {
             HealthStatus::Critical
@@ -183,8 +190,14 @@ mod tests {
     #[test]
     fn queue_pressure_color_delegates_to_queue_health() {
         assert_eq!(queue_pressure_color(10, 100), HealthStatus::Healthy.color());
-        assert_eq!(queue_pressure_color(60, 100), HealthStatus::Degraded.color());
-        assert_eq!(queue_pressure_color(90, 100), HealthStatus::Critical.color());
+        assert_eq!(
+            queue_pressure_color(60, 100),
+            HealthStatus::Degraded.color()
+        );
+        assert_eq!(
+            queue_pressure_color(90, 100),
+            HealthStatus::Critical.color()
+        );
     }
 
     #[test]

@@ -13,7 +13,10 @@ use vb_runtime::trace::TraceEvent;
 use super::trace::typed_events_response;
 use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
 use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
-use crate::{IpcActionOutputPayload, IpcCommand, IpcPayload, RunListState, RunSummary, RuntimeMetrics, SubmitRunPayload};
+use crate::{
+    IpcActionOutputPayload, IpcCommand, IpcPayload, RunListState, RunSummary, RuntimeMetrics,
+    SubmitRunPayload,
+};
 
 /// Decodes a postcard-encoded payload and preserves the typed IPC decode error.
 pub fn decode_payload<T: serde::de::DeserializeOwned>(payload: &[u8]) -> Result<T, IpcResponse> {
@@ -316,7 +319,10 @@ pub fn handle_get_metrics(runtime: &Runtime) -> IpcResponse {
             frame_pool_total: s.frame_pool_total,
             trace_ring_fill_pct: s.trace_ring_fill_pct,
             steps_total: s.counters.steps_executed,
-            actions_total: s.counters.runs_completed.saturating_add(s.counters.runs_failed),
+            actions_total: s
+                .counters
+                .runs_completed
+                .saturating_add(s.counters.runs_failed),
         })
         .collect();
 
@@ -331,7 +337,9 @@ pub fn handle_get_metrics(runtime: &Runtime) -> IpcResponse {
         journal: crate::JournalMetrics {
             writer_queue_depth: 0,
             total_events: 0,
-            total_runs: snapshot.runs_finished_total.saturating_add(snapshot.runs_failed_total),
+            total_runs: snapshot
+                .runs_finished_total
+                .saturating_add(snapshot.runs_failed_total),
         },
         ipc: crate::IpcMetrics {
             connected_clients: 0,

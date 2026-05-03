@@ -111,7 +111,10 @@ impl ActionTicketDisplay {
             format!("Seq: {}", self.seq.as_u64()),
             format!("Attempt: {}", self.attempt),
             format!("Idempotency key: {:032x}", self.idempotency_key),
-            format!("Replay safe: {}", if self.replay_safe { "YES" } else { "NO" }),
+            format!(
+                "Replay safe: {}",
+                if self.replay_safe { "YES" } else { "NO" }
+            ),
             format!("Side effects: {side_effect_str}"),
             format!("Taint: {:?}", self.taint),
             format!("Duplicate completion: {duplicate_str}"),
@@ -334,7 +337,11 @@ mod tests {
             true,
         );
         let lines = ticket.detail_lines();
-        assert!(lines.iter().any(|l| l.contains("Duplicate completion: YES")));
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.contains("Duplicate completion: YES"))
+        );
     }
 
     #[test]

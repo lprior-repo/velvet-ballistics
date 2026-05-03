@@ -28,11 +28,9 @@ pub fn find_secret_sources(parts: &WorkflowParts) -> Vec<StepIdx> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::ids::WorkflowDigest;
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-    };
+    use vb_core::ids::{SlotIdx, StepIdx};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
     fn make_parts(kinds: Vec<CompiledNodeKind>) -> WorkflowParts {
         let nodes: Vec<CompiledNode> = kinds
@@ -59,7 +57,10 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
-            step_names: (0..count).map(|_| Box::<str>::from("")).collect::<Vec<_>>().into_boxed_slice(),
+            step_names: (0..count)
+                .map(|_| Box::<str>::from(""))
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
         }
     }
 

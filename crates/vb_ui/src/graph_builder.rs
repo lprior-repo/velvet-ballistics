@@ -299,10 +299,7 @@ pub fn build_document(parts: &WorkflowParts) -> FlowDocument {
             nodes,
             edges,
             groups,
-            entry_node: Some(SmolStr::from(format!(
-                "step-{}",
-                parts.entry.as_usize()
-            ))),
+            entry_node: Some(SmolStr::from(format!("step-{}", parts.entry.as_usize()))),
         },
         editor: EditorMetadata,
         plugin_state: IndexMap::new(),
@@ -418,10 +415,7 @@ pub fn build_ports(
             }
         }
 
-        CompiledNodeKind::Do {
-            action: _,
-            input,
-        } => {
+        CompiledNodeKind::Do { action: _, input } => {
             inputs.push(slot_input_port("input", input.get()));
         }
 
@@ -509,7 +503,9 @@ pub fn build_ports(
             });
         }
 
-        CompiledNodeKind::ForEachJoin { output: join_output } => {
+        CompiledNodeKind::ForEachJoin {
+            output: join_output,
+        } => {
             inputs.push(slot_input_port("output", join_output.get()));
         }
 
@@ -853,70 +849,72 @@ fn add_kind_edges(
     kind: &CompiledNodeKind,
 ) {
     match kind {
-        CompiledNodeKind::Choose { branches, otherwise } => {
-            for (i, branch) in branches.iter().enumerate() {
-                let target = SmolStr::from(format!("step-{}", branch.target.as_usize()));
-                add_edge(
-                    edges,
-                    counter,
-                    source_id,
-                    &format!("branch-{i}"),
-                    &target,
-                    "in",
-                    EdgeStyle::default_solid(),
-                    Some(&format!("branch-{i}")),
-                );
-            }
-            if let Some(other) = otherwise {
-                let target = SmolStr::from(format!("step-{}", other.as_usize()));
-                add_edge(
-                    edges,
-                    counter,
-                    source_id,
-                    "otherwise",
-                    &target,
-                    "in",
-                    EdgeStyle::dashed(),
-                    Some("otherwise"),
-                );
-            }
-        }
-
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
-            for (i, branch) in branches.iter().enumerate() {
-                let target = SmolStr::from(format!("step-{}", branch.target.as_usize()));
-                add_edge(
-                    edges,
-                    counter,
-                    source_id,
-                    &format!("branch-{i}"),
-                    &target,
-                    "in",
-                    EdgeStyle::default_solid(),
-                    Some(&format!("branch-{i}")),
-                );
-            }
-            if let Some(other) = otherwise {
-                let target = SmolStr::from(format!("step-{}", other.as_usize()));
-                add_edge(
-                    edges,
-                    counter,
-                    source_id,
-                    "otherwise",
-                    &target,
-                    "in",
-                    EdgeStyle::dashed(),
-                    Some("otherwise"),
-                );
-            }
-        }
-
-        CompiledNodeKind::ForEachStart {
-            body, done, ..
-        }
-        | CompiledNodeKind::ForEachNext {
-            body, done, ..
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
         } => {
+            for (i, branch) in branches.iter().enumerate() {
+                let target = SmolStr::from(format!("step-{}", branch.target.as_usize()));
+                add_edge(
+                    edges,
+                    counter,
+                    source_id,
+                    &format!("branch-{i}"),
+                    &target,
+                    "in",
+                    EdgeStyle::default_solid(),
+                    Some(&format!("branch-{i}")),
+                );
+            }
+            if let Some(other) = otherwise {
+                let target = SmolStr::from(format!("step-{}", other.as_usize()));
+                add_edge(
+                    edges,
+                    counter,
+                    source_id,
+                    "otherwise",
+                    &target,
+                    "in",
+                    EdgeStyle::dashed(),
+                    Some("otherwise"),
+                );
+            }
+        }
+
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            for (i, branch) in branches.iter().enumerate() {
+                let target = SmolStr::from(format!("step-{}", branch.target.as_usize()));
+                add_edge(
+                    edges,
+                    counter,
+                    source_id,
+                    &format!("branch-{i}"),
+                    &target,
+                    "in",
+                    EdgeStyle::default_solid(),
+                    Some(&format!("branch-{i}")),
+                );
+            }
+            if let Some(other) = otherwise {
+                let target = SmolStr::from(format!("step-{}", other.as_usize()));
+                add_edge(
+                    edges,
+                    counter,
+                    source_id,
+                    "otherwise",
+                    &target,
+                    "in",
+                    EdgeStyle::dashed(),
+                    Some("otherwise"),
+                );
+            }
+        }
+
+        CompiledNodeKind::ForEachStart { body, done, .. }
+        | CompiledNodeKind::ForEachNext { body, done, .. } => {
             let body_target = SmolStr::from(format!("step-{}", body.as_usize()));
             add_edge(
                 edges,
@@ -968,9 +966,7 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::TogetherBranch {
-            entry, join, ..
-        } => {
+        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
             let entry_target = SmolStr::from(format!("step-{}", entry.as_usize()));
             add_edge(
                 edges,
@@ -995,15 +991,9 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::CollectStart {
-            body, done, ..
-        }
-        | CompiledNodeKind::CollectPage {
-            body, done, ..
-        }
-        | CompiledNodeKind::CollectNext {
-            body, done, ..
-        } => {
+        CompiledNodeKind::CollectStart { body, done, .. }
+        | CompiledNodeKind::CollectPage { body, done, .. }
+        | CompiledNodeKind::CollectNext { body, done, .. } => {
             let body_target = SmolStr::from(format!("step-{}", body.as_usize()));
             add_edge(
                 edges,
@@ -1028,12 +1018,8 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::ReduceStart {
-            body, done, ..
-        }
-        | CompiledNodeKind::ReduceNext {
-            body, done, ..
-        } => {
+        CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. } => {
             let body_target = SmolStr::from(format!("step-{}", body.as_usize()));
             add_edge(
                 edges,
@@ -1058,12 +1044,8 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::RepeatStart {
-            body, done, ..
-        }
-        | CompiledNodeKind::RepeatAttempt {
-            body, done, ..
-        } => {
+        CompiledNodeKind::RepeatStart { body, done, .. }
+        | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
             let body_target = SmolStr::from(format!("step-{}", body.as_usize()));
             add_edge(
                 edges,
@@ -1139,10 +1121,7 @@ fn add_kind_edges(
             );
         }
 
-        CompiledNodeKind::ErrorHandler {
-            body: _,
-            handler,
-        } => {
+        CompiledNodeKind::ErrorHandler { body: _, handler } => {
             let handler_target = SmolStr::from(format!("step-{}", handler.as_usize()));
             add_edge(
                 edges,
@@ -1200,10 +1179,7 @@ fn add_kind_edges(
 /// Scans the node array for loop start/join pairs and creates groups spanning
 /// the enclosed nodes. The group kind is `BranchContainer` for loops with
 /// bodies and `Swimlane` for parallel constructs.
-fn build_loop_groups(
-    nodes: &[CompiledNode],
-    groups: &mut IndexMap<SmolStr, FlowGroupRecord>,
-) {
+fn build_loop_groups(nodes: &[CompiledNode], groups: &mut IndexMap<SmolStr, FlowGroupRecord>) {
     for (i, node) in nodes.iter().enumerate() {
         match &node.kind {
             CompiledNodeKind::ForEachStart { done, .. } => {
@@ -1318,18 +1294,9 @@ fn collect_span(start: usize, end: usize, total: usize) -> Vec<SmolStr> {
 pub fn compute_node_size(ports: &[FlowPortRecord]) -> [f64; 2] {
     let port_count: u32 = u32::try_from(ports.len()).unwrap_or(u32::MAX);
     // Width: 160 base + 20 per port, capped at 320.
-    let width = f64::from(
-        port_count
-            .saturating_mul(20)
-            .saturating_add(160)
-            .min(320),
-    );
+    let width = f64::from(port_count.saturating_mul(20).saturating_add(160).min(320));
     // Height: 60 base + 20 per port.
-    let height = f64::from(
-        port_count
-            .saturating_mul(20)
-            .saturating_add(60),
-    );
+    let height = f64::from(port_count.saturating_mul(20).saturating_add(60));
     [width, height]
 }
 

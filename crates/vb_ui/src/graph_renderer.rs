@@ -129,8 +129,9 @@ pub fn classify_node(kind: &CompiledNodeKind) -> NodeCategory {
         CompiledNodeKind::Do { .. } => NodeCategory::External,
 
         // Branching
-        CompiledNodeKind::Choose { .. }
-        | CompiledNodeKind::ChooseSlot { .. } => NodeCategory::Branch,
+        CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {
+            NodeCategory::Branch
+        }
 
         // Loop constructs (for-each, collect, reduce, repeat)
         CompiledNodeKind::ForEachStart { .. }
@@ -160,15 +161,15 @@ pub fn classify_node(kind: &CompiledNodeKind) -> NodeCategory {
         | CompiledNodeKind::AskResume { .. } => NodeCategory::Suspend,
 
         // Error handling and retry
-        CompiledNodeKind::ErrorHandler { .. }
-        | CompiledNodeKind::RetryCheck { .. } => NodeCategory::Error,
+        CompiledNodeKind::ErrorHandler { .. } | CompiledNodeKind::RetryCheck { .. } => {
+            NodeCategory::Error
+        }
 
         // Terminal
         CompiledNodeKind::Finish { .. } => NodeCategory::Terminal,
 
         // Control flow (nop, jump)
-        CompiledNodeKind::Nop
-        | CompiledNodeKind::Jump { .. } => NodeCategory::Control,
+        CompiledNodeKind::Nop | CompiledNodeKind::Jump { .. } => NodeCategory::Control,
     }
 }
 
@@ -315,8 +316,14 @@ pub fn extract_badges(kind: &CompiledNodeKind) -> Vec<NodeBadge> {
             });
         }
 
-        CompiledNodeKind::WaitEvent { timeout_slot: Some(_), .. }
-        | CompiledNodeKind::Ask { timeout_slot: Some(_), .. } => {
+        CompiledNodeKind::WaitEvent {
+            timeout_slot: Some(_),
+            ..
+        }
+        | CompiledNodeKind::Ask {
+            timeout_slot: Some(_),
+            ..
+        } => {
             badges.push(NodeBadge {
                 label: String::from("T"),
                 color: colors::neon::RED,
@@ -511,7 +518,11 @@ mod tests {
     #[test]
     fn classify_all_34_variants() {
         let kinds = all_kinds();
-        assert_eq!(kinds.len(), 34, "must exercise all 34 CompiledNodeKind variants");
+        assert_eq!(
+            kinds.len(),
+            34,
+            "must exercise all 34 CompiledNodeKind variants"
+        );
 
         for kind in &kinds {
             let cat = classify_node(kind);
@@ -793,16 +804,34 @@ mod tests {
 
     #[test]
     fn node_header_color_uses_theme_palette() {
-        assert_eq!(node_header_color(NodeCategory::Data), colors::node_header::DATA);
-        assert_eq!(node_header_color(NodeCategory::External), colors::node_header::EXTERNAL);
-        assert_eq!(node_header_color(NodeCategory::Error), colors::node_header::ERROR);
+        assert_eq!(
+            node_header_color(NodeCategory::Data),
+            colors::node_header::DATA
+        );
+        assert_eq!(
+            node_header_color(NodeCategory::External),
+            colors::node_header::EXTERNAL
+        );
+        assert_eq!(
+            node_header_color(NodeCategory::Error),
+            colors::node_header::ERROR
+        );
     }
 
     #[test]
     fn node_body_color_uses_theme_palette() {
-        assert_eq!(node_body_color(NodeCategory::Data), colors::node_category::DATA);
-        assert_eq!(node_body_color(NodeCategory::External), colors::node_category::EXTERNAL);
-        assert_eq!(node_body_color(NodeCategory::Error), colors::node_category::ERROR);
+        assert_eq!(
+            node_body_color(NodeCategory::Data),
+            colors::node_category::DATA
+        );
+        assert_eq!(
+            node_body_color(NodeCategory::External),
+            colors::node_category::EXTERNAL
+        );
+        assert_eq!(
+            node_body_color(NodeCategory::Error),
+            colors::node_category::ERROR
+        );
     }
 
     #[test]
