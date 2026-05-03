@@ -14,6 +14,7 @@ use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+use crate::primitives::collect::CollectStates;
 use crate::shard::types::{
     AskAnswer, InspectResponse, InspectSnapshot, PendingTimer, PendingTimerKind, RunState, Shard,
     ShardCommand, ShardConfig,
@@ -61,6 +62,7 @@ impl Shard {
             store: Default::default(),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
+            collect_states: CollectStates::new(),
         };
         self.runs.insert(run, state);
         self.drive_run(run)?;
@@ -342,6 +344,7 @@ impl Shard {
             &[],
             RetryPolicy::NEVER,
             evidence,
+            &mut state.collect_states,
         )
     }
 

@@ -141,6 +141,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(1),
         admission: None,
+        collect_states: crate::primitives::collect::CollectStates::new(),
     };
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9),
@@ -1729,6 +1730,7 @@ fn run_state_equality() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(4),
         admission: None,
+        collect_states: crate::primitives::collect::CollectStates::new(),
     };
     let frame2 = match vb_core::frame::RunFrame::new(
         super::RunId::new(1),
@@ -1745,6 +1747,7 @@ fn run_state_equality() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(4),
         admission: None,
+        collect_states: crate::primitives::collect::CollectStates::new(),
     };
     assert_eq!(state, state2);
 }
