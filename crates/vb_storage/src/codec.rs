@@ -285,7 +285,6 @@ mod tests {
     use crate::{
         BlobRecord, CompiledIrRecord, JournalEvent, RecordKind, WorkflowSourceRecord,
         constants::*,
-        events::JournalEvent as _,
         types::EventSeq,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
