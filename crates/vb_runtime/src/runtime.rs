@@ -368,7 +368,7 @@ mod tests {
     use crate::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
     use crate::trace::TraceEvent;
     use std::sync::Arc;
-    use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket};
+    use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy};
     use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
@@ -971,7 +971,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1325,7 +1325,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1553,7 +1553,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: RetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,

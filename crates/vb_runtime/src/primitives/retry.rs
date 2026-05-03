@@ -1,10 +1,10 @@
 //! Retry/try_again policy primitives for bounded retries with delay and exhaustion.
 //!
 //! Provides `RetryPolicy` for configuring retry behavior, `RetryState` for
-//! tracking the retry state machine, and enforcement of `ActionFailure.retryable`
+//! tracking the retry state machine, and enforcement of `ActionFailure.retry_policy`
 //! to prevent retrying non-retriable failures.
 
-use vb_core::action::{ActionFailure, RetryPolicy, RetrySafety};
+use vb_core::action::{ActionFailure, RetrySafety};
 use vb_core::errors::CoreError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::SlotIdx;
@@ -285,7 +285,7 @@ pub fn is_failure_retriable(failure: &ActionFailure, retry_safety: RetrySafety) 
     match retry_safety {
         RetrySafety::Unsafe => false,
         RetrySafety::Safe | RetrySafety::KeyRequired => {
-            failure.retry_policy == RetryPolicy::Retryable
+            failure.retry_policy == vb_core::action::RetryPolicy::Retryable
         }
     }
 }
@@ -293,7 +293,7 @@ pub fn is_failure_retriable(failure: &ActionFailure, retry_safety: RetrySafety) 
 /// Evaluates a retry decision given the current state, policy, and failure.
 ///
 /// This is the core retry state machine transition:
-/// 1. Check if the failure is retriable (combines `ActionFailure.retryable` and
+/// 1. Check if the failure is retriable (combines `ActionFailure.retry_policy` and
 ///    `RetrySafety`). Non-retriable failures produce `RetryDecision::NotRetriable`.
 /// 2. If retriable and attempts remain, decrement remaining and compute delay.
 /// 3. If retriable but no attempts remain, produce `RetryDecision::Exhausted`.
@@ -405,7 +405,7 @@ pub fn retry_on_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::action::ActionFailureCode;
+    use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
     use vb_core::value::Taint;
 
     fn fresh_frame() -> RunFrame {
@@ -598,7 +598,7 @@ mod tests {
     fn is_failure_retriable_safe_and_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retry_policy: RetryPolicy::Retryable,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -610,7 +610,7 @@ mod tests {
     fn is_failure_retriable_safe_but_not_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retry_policy: RetryPolicy::NonRetryable,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -622,7 +622,7 @@ mod tests {
     fn is_failure_retriable_unsafe_always_false() {
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retry_policy: RetryPolicy::Retryable,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -634,7 +634,7 @@ mod tests {
     fn is_failure_retriable_key_required_and_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::RateLimited,
-            retry_policy: RetryPolicy::Retryable,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -646,7 +646,7 @@ mod tests {
     fn is_failure_retriable_key_required_but_not_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
-            retry_policy: RetryPolicy::NonRetryable,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -726,7 +726,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -766,7 +766,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -787,7 +787,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -808,7 +808,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
-            retryable: false,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -824,7 +824,7 @@ mod tests {
             .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -931,7 +931,7 @@ mod tests {
             .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::ExternalUnavailable,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -994,7 +994,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1015,7 +1015,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1064,7 +1064,7 @@ mod tests {
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1116,7 +1116,7 @@ mod tests {
         // First failure with max_attempts=1: remaining goes from 1 to 0.
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1164,7 +1164,7 @@ mod tests {
 
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
-            retryable: false,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1193,7 +1193,7 @@ mod tests {
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1243,7 +1243,7 @@ mod tests {
         for code in codes {
             let failure = ActionFailure {
                 code,
-                retryable: true,
+                retry_policy: VbRetryPolicy::Retryable,
                 taint: Taint::Clean,
                 detail: None,
                 encoded_len: 0,
@@ -1266,7 +1266,7 @@ mod tests {
         for code in codes {
             let failure = ActionFailure {
                 code,
-                retryable: false,
+                retry_policy: VbRetryPolicy::NonRetryable,
                 taint: Taint::Clean,
                 detail: None,
                 encoded_len: 0,
@@ -1282,10 +1282,10 @@ mod tests {
 
     #[test]
     fn retry_safety_unsafe_overrides_retryable_flag() {
-        // Given a failure with retryable=true but RetrySafety::Unsafe
+        // Given a failure with retry_policy=Retryable but RetrySafety::Unsafe
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1299,7 +1299,7 @@ mod tests {
     fn retry_safety_safe_respects_retryable_flag_false() {
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
-            retryable: false,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1319,7 +1319,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::PermissionDenied,
-            retryable: false,
+            retry_policy: VbRetryPolicy::NonRetryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1330,7 +1330,7 @@ mod tests {
         // (We verify by re-evaluating with a retriable failure)
         let retryable_failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1372,7 +1372,7 @@ mod tests {
             .expect("must succeed");
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1462,7 +1462,7 @@ mod tests {
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1540,7 +1540,7 @@ mod tests {
 
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: VbRetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,

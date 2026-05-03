@@ -2,7 +2,7 @@
 
 #![allow(unused_imports)]
 
-use vb_core::action::{ActionFailure, ActionFailureCode};
+use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy};
 use vb_core::ids::SlotIdx;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::CompiledWorkflow;
@@ -230,7 +230,7 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
-        retryable: false,
+        retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: payload_len(error.len()),

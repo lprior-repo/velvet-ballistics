@@ -2,6 +2,7 @@
 #![allow(dead_code, unused_imports)]
 
 use vb_core::ActionFailureCode;
+use vb_core::action::RetryPolicy as VbRetryPolicy;
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
@@ -117,7 +118,7 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
 fn timeout_failure() -> vb_core::action::ActionFailure {
     vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -1817,7 +1818,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
     };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -2651,7 +2652,7 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Unknown,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: vb_core::value::Taint::Clean,
         detail: None,
         encoded_len: 0,

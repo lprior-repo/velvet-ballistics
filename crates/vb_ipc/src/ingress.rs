@@ -1,87 +1,26 @@
-//! Bounded memory ingress types.
+//! IPC ingress types.
 
-use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
-use std::num::NonZeroUsize;
-
-use crate::error::{map_try_send, IpcError};
-use crate::ipc_types::IngressFrame;
 use bytes::Bytes;
+use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError};
 
-/// Queue capacity for memory ingress.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct QueueCapacity(NonZeroUsize);
+use vb_core::{RunId, WorkflowDigest};
 
-impl QueueCapacity {
-    /// Creates a non-zero queue capacity.
-    pub const fn new(value: NonZeroUsize) -> Self {
-        Self(value)
-    }
-
-    pub(crate) fn get(self) -> usize {
-        self.0.get()
-    }
-}
-
-/// Maximum accepted payload bytes for an ingress frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct MaxPayloadBytes(NonZeroUsize);
-
-impl MaxPayloadBytes {
-    /// Default single-frame payload bound: 1 MiB.
-    pub const DEFAULT: Self = Self(match NonZeroUsize::new(1_048_576) {
-        Some(value) => value,
-        None => NonZeroUsize::MIN,
-    });
-
-    /// Creates a non-zero payload limit.
-    pub const fn new(value: NonZeroUsize) -> Self {
-        Self(value)
-    }
-
-    pub(crate) fn get(self) -> usize {
-        self.0.get()
-    }
-}
-
-/// Payload accepted after a caller-visible size check.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedPayload(Bytes);
-
-impl BoundedPayload {
-    /// Creates a checked bounded payload.
-    pub fn new(payload: Bytes, max: MaxPayloadBytes) -> Result<Self, IpcError> {
-        if payload.len() > max.get() {
-            Err(IpcError::PayloadTooLarge {
-                actual: payload.len(),
-                limit: max.get(),
-            })
-        } else {
-            Ok(Self(payload))
-        }
-    }
-
-    /// Returns shared payload bytes.
-    #[must_use]
-    pub const fn bytes(&self) -> &Bytes {
-        &self.0
-    }
-}
+use crate::bounded::{BoundedPayload, MaxPayloadBytes};
+use crate::error::IpcError;
 
 /// Binary frame submitted by an in-process or IPC producer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngressFrame {
-    run_id: vb_core::RunId,
-    workflow: vb_core::WorkflowDigest,
+    run_id: RunId,
+    workflow: WorkflowDigest,
     payload: BoundedPayload,
 }
 
 impl IngressFrame {
     /// Creates a frame after applying the payload size contract.
     pub fn new(
-        run_id: vb_core::RunId,
-        workflow: vb_core::WorkflowDigest,
+        run_id: RunId,
+        workflow: WorkflowDigest,
         payload: Bytes,
         max_payload: MaxPayloadBytes,
     ) -> Result<Self, IpcError> {
@@ -94,13 +33,13 @@ impl IngressFrame {
 
     /// Run identifier selected by the caller or allocator.
     #[must_use]
-    pub const fn run_id(&self) -> vb_core::RunId {
+    pub const fn run_id(&self) -> RunId {
         self.run_id
     }
 
     /// Compiled workflow digest this frame targets.
     #[must_use]
-    pub const fn workflow(&self) -> vb_core::WorkflowDigest {
+    pub const fn workflow(&self) -> WorkflowDigest {
         self.workflow
     }
 
@@ -121,14 +60,19 @@ pub struct MemoryIngress {
 impl MemoryIngress {
     /// Creates a bounded memory ingress queue.
     #[must_use]
-    pub fn bounded(capacity: QueueCapacity) -> Self {
-        let (sender, receiver) = bounded(capacity.get());
+    pub fn bounded(capacity: crate::bounded::QueueCapacity) -> Self {
+        let (sender, receiver) = crossbeam_channel::bounded(capacity.get());
         Self { sender, receiver }
     }
 
     /// Attempts to submit a frame without blocking.
     pub fn try_submit(&self, frame: IngressFrame) -> Result<(), IpcError> {
-        self.sender.try_send(frame).map_err(map_try_send)
+        self.sender
+            .try_send(frame)
+            .map_err(|e| match e {
+                TrySendError::Full(_) => IpcError::Full,
+                TrySendError::Disconnected(_) => IpcError::Disconnected,
+            })
     }
 
     /// Attempts to receive one frame without blocking.

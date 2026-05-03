@@ -1,10 +1,7 @@
 //! IPC error types.
 
-use crossbeam_channel::TrySendError;
 use thiserror::Error;
 use vb_core::DiagnosticCode;
-
-use crate::ipc_types::IngressFrame;
 
 /// IPC/memory ingress failures.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -154,17 +151,10 @@ impl IpcError {
     }
 }
 
-/// Converts a u32 payload length to usize, returning an error if out of range.
+/// Converts a u32 payload length to usize, returning an error if it doesn't fit.
 pub(crate) fn u32_to_usize(value: u32) -> Result<usize, IpcError> {
     match usize::try_from(value) {
         Ok(converted) => Ok(converted),
         Err(_) => Err(IpcError::PayloadLengthOutOfRange { actual: value }),
-    }
-}
-
-pub(crate) fn map_try_send(error: TrySendError<IngressFrame>) -> IpcError {
-    match error {
-        TrySendError::Full(_) => IpcError::Full,
-        TrySendError::Disconnected(_) => IpcError::Disconnected,
     }
 }

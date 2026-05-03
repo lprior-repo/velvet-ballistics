@@ -87,7 +87,9 @@ pub fn execute_retry_check(
 
 /// Backward-compatible execute_error_handler.
 pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: StepIdx) -> StepIdx {
-    if failure.retryable || failure.code != ActionFailureCode::Unknown {
+    if failure.retry_policy == vb_core::action::RetryPolicy::Retryable
+        || failure.code != ActionFailureCode::Unknown
+    {
         handler
     } else {
         body
@@ -108,7 +110,7 @@ pub fn resume_action_outcome(
         ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(*ticket)),
         ActionOutcome::Failed(failure) => {
             let step = run.pc();
-            if failure.retryable {
+            if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: run.run_id(),
                     step,

@@ -2,7 +2,7 @@
 
 //! State transition helpers and retry/error handling logic.
 
-use vb_core::action::{ActionContract, ActionError, ActionFailure, ActionFailureCode};
+use vb_core::action::{ActionContract, ActionError, ActionFailure, ActionFailureCode, RetryPolicy};
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
@@ -25,7 +25,7 @@ pub fn execute_retry_check(
 
 /// Backward-compatible execute_error_handler.
 pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: StepIdx) -> StepIdx {
-    if failure.retryable || failure.code != ActionFailureCode::Unknown {
+    if failure.retry_policy == RetryPolicy::Retryable || failure.code != ActionFailureCode::Unknown {
         handler
     } else {
         body

@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 
 use std::num::NonZeroUsize;
-use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket};
+use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
@@ -571,7 +571,7 @@ fn runtime_fail_action_routes_to_run_shard() {
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
-        retryable: false,
+        retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -870,7 +870,7 @@ fn runtime_fail_action_for_never_submitted_run_returns_ok_enqueue() {
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
-        retryable: false,
+        retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -1063,7 +1063,7 @@ fn runtime_fail_action_for_active_suspended_run_increments_failed() {
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
-        retryable: false,
+        retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,

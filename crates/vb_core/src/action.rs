@@ -49,6 +49,16 @@ pub enum RetrySafety {
     Unsafe = 2,
 }
 
+/// Policy for whether an action failure can be retried.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum RetryPolicy {
+    /// Failure can be retried.
+    Retryable = 0,
+    /// Failure cannot be retried.
+    NonRetryable = 1,
+}
+
 /// Verification error when an action's idempotency contract is violated.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum IdempotencyViolation {
@@ -154,7 +164,7 @@ pub struct ActionFailure {
     /// Machine-readable failure code.
     pub code: ActionFailureCode,
     /// Whether this failure can be retried.
-    pub retryable: bool,
+    pub retry_policy: RetryPolicy,
     /// Taint of the input that caused the failure.
     pub taint: Taint,
     /// Optional detail blob for diagnostics.
@@ -490,7 +500,7 @@ pub enum ActionJournalEvent {
         /// Failure code for diagnostics.
         code: ActionFailureCode,
         /// Whether the failure is retryable.
-        retryable: bool,
+        retry_policy: RetryPolicy,
     },
 }
 
@@ -853,15 +863,15 @@ mod tests {
     }
 
     #[test]
-    fn action_failure_with_retryable_true_is_retryable() {
+    fn action_failure_with_retryable_policy_is_retryable() {
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
         };
-        assert!(failure.retryable);
+        assert_eq!(failure.retry_policy, RetryPolicy::Retryable);
     }
 
     #[test]
@@ -1698,7 +1708,7 @@ mod tests {
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
             taint: Taint::Clean,
             detail: None,
             encoded_len: 0,
@@ -1814,17 +1824,17 @@ mod tests {
         let event = ActionJournalEvent::Failed {
             ticket,
             code: ActionFailureCode::Timeout,
-            retryable: true,
+            retry_policy: RetryPolicy::Retryable,
         };
         match event {
             ActionJournalEvent::Failed {
                 ticket: t,
                 code,
-                retryable,
+                retry_policy,
             } => {
                 assert_eq!(t.run, RunId::new(12));
                 assert_eq!(code, ActionFailureCode::Timeout);
-                assert!(retryable);
+                assert_eq!(retry_policy, RetryPolicy::Retryable);
             }
             other => panic!("expected Failed, got {other:?}"),
         }

@@ -87,7 +87,7 @@ pub fn resume_action_outcome(
         }
         vb_core::action::ActionOutcome::Failed(failure) => {
             let step = run.pc();
-            if failure.retryable {
+            if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: run.run_id(),
                     step,

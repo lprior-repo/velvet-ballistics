@@ -20,6 +20,7 @@ use vb_core::action::ActionFailure;
 use vb_core::action::ActionFailureCode;
 use vb_core::action::ActionOutcome;
 use vb_core::action::ActionTicket;
+use vb_core::action::RetryPolicy as VbRetryPolicy;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::Taint;
@@ -132,7 +133,7 @@ fn retry_check_returns_done_when_attempts_equal_max() {
 fn error_handler_routes_to_handler_on_retryable_failure() {
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: true,
+        retry_policy: VbRetryPolicy::Retryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -145,7 +146,7 @@ fn error_handler_routes_to_handler_on_retryable_failure() {
 fn error_handler_routes_to_body_on_non_retryable_unknown() {
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -158,7 +159,7 @@ fn error_handler_routes_to_body_on_non_retryable_unknown() {
 fn error_handler_routes_to_body_when_failure_is_unknown_and_non_retryable() {
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -171,7 +172,7 @@ fn error_handler_routes_to_body_when_failure_is_unknown_and_non_retryable() {
 fn error_handler_routes_to_handler_on_unknown_retryable() {
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
-        retryable: true,
+        retry_policy: VbRetryPolicy::Retryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -184,7 +185,7 @@ fn error_handler_routes_to_handler_on_unknown_retryable() {
 fn error_handler_routes_to_handler_on_non_unknown_non_retryable() {
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,
@@ -645,7 +646,7 @@ fn resume_action_outcome_failed_non_retryable_returns_error() {
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Unknown,
-        retryable: false,
+        retry_policy: VbRetryPolicy::NonRetryable,
         taint: Taint::Clean,
         detail: None,
         encoded_len: 0,

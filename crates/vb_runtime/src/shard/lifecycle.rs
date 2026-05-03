@@ -1,10 +1,10 @@
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 
-use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
+use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::value::SlotValue;
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -174,7 +174,8 @@ impl Shard {
         {
             let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
             crate::shard::helpers::validate_action_completion(state, ticket)?;
-            if failure.retryable && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+            if failure.retry_policy == VbCoreRetryPolicy::Retryable
+                && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
             {
                 let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
                 self.trace_ring.push(TraceEvent::ActionFailed {
