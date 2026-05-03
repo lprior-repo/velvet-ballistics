@@ -149,7 +149,7 @@ pub(super) fn eval_expr_operator(
 mod tests {
     use super::*;
     use crate::ids::{ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-    use crate::value::{ConstValue, SlotValue};
+    use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
         ResourceContract, WorkflowParts, check_expr_stack_bound,
@@ -539,6 +539,7 @@ mod tests {
             vec![crate::value_store::ObjectField {
                 key: SymbolId::new(0),
                 value: SlotValue::I64(1),
+                taint: Taint::Clean,
             }]
             .into_boxed_slice(),
         )
@@ -578,6 +579,7 @@ mod tests {
                 vec![crate::value_store::ObjectField {
                     key: sym_a,
                     value: SlotValue::I64(1),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -587,6 +589,7 @@ mod tests {
                 vec![crate::value_store::ObjectField {
                     key: sym_a,
                     value: SlotValue::I64(99),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )

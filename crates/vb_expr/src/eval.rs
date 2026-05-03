@@ -972,6 +972,7 @@ mod tests {
     use super::*;
     use vb_core::value_store::ValueStore;
     use vb_core::{ConstIdx, ExprOp, SlotIdx};
+    use vb_core::value::Taint;
 
     fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
         ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::StackOverflow {
@@ -2085,10 +2086,12 @@ mod tests {
                     ObjectField {
                         key: vb_core::ids::SymbolId::new(0),
                         value: SlotValue::I64(1),
+                        taint: Taint::Clean,
                     },
                     ObjectField {
                         key: vb_core::ids::SymbolId::new(1),
                         value: SlotValue::I64(2),
+                        taint: Taint::Clean,
                     },
                 ]
                 .into_boxed_slice(),
@@ -2212,6 +2215,7 @@ mod tests {
                 vec![ObjectField {
                     key,
                     value: SlotValue::I64(100),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -2233,6 +2237,7 @@ mod tests {
                 vec![ObjectField {
                     key: key_present,
                     value: SlotValue::I64(1),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -2310,6 +2315,7 @@ mod tests {
                 vec![ObjectField {
                     key: key_a,
                     value: SlotValue::I64(10),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -2319,6 +2325,7 @@ mod tests {
                 vec![ObjectField {
                     key: key_b,
                     value: SlotValue::I64(20),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )

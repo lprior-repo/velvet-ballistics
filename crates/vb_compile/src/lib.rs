@@ -8842,4 +8842,1069 @@ steps:
     fn compile_error_unsupported_top_level_result_display() {
         assert!(CompileError::UnsupportedTopLevelResult.to_string().to_lowercase().contains("result"));
     }
+
+    // ========================================================================
+    // Workflow-level integration tests
+    // ========================================================================
+
+    /// 1. Multi-step sequential workflow with correct node count and edges.
+    #[test]
+    fn wf_multi_step_sequential_edges() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: sequential_chain
+when:
+  manual: {}
+steps:
+  - id: step_a
+    save:
+      value: 10
+  - id: step_b
+    save:
+      value: 20
+  - id: step_c
+    save:
+      value: 30
+  - id: step_d
+    save:
+      value: 40
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        for i in 0..4u16 {
+            let node = workflow.node(StepIdx::new(i)).ok_or("missing node")?;
+            adv_ensure(node.next == Some(StepIdx::new(i + 1)), "must chain")?;
+        }
+        let finish = workflow.node(StepIdx::new(4)).ok_or("missing finish")?;
+        adv_ensure(finish.next.is_none(), "finish must have no next")
+    }
+
+    /// 2. Choose branch targets in compiled IR.
+    #[test]
+    fn wf_choose_branch_targets() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: choose_branches
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 2
+      on_false: 3
+  - id: took_true
+    save:
+      value: 1
+  - id: took_false
+    save:
+      value: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let route = workflow.node(StepIdx::new(1)).ok_or("missing choose")?;
+        match &route.kind {
+            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+                adv_ensure(branches.len() == 1, "1 branch")?;
+                adv_ensure(branches.first().ok_or("no branch")?.target == StepIdx::new(2), "on_true=2")?;
+                adv_ensure(*otherwise == Some(StepIdx::new(3)), "on_false=3")
+            }
+            other => Err(format!("expected ChooseSlot, got {other:?}")),
+        }
+    }
+
+    /// 3. ForEach ForEachStart/ForEachNext structure.
+    #[test]
+    fn wf_for_each_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: foreach_structure
+when:
+  manual: {}
+steps:
+  - id: source_list
+    save:
+      value: 1
+  - id: each
+    for_each:
+      input: 0
+      item: 1
+      limit: 10
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 4, "expected 4 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("missing start")?;
+        let next = workflow.node(StepIdx::new(2)).ok_or("missing next")?;
+        match &start.kind {
+            CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } => {
+                adv_ensure(*input == SlotIdx::ZERO, "input=0")?;
+                adv_ensure(*item_slot == SlotIdx::new(1), "item=1")?;
+                adv_ensure(*limit == 10, "limit=10")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ForEachStart, got {other:?}")),
+        }?;
+        match &next.kind {
+            CompiledNodeKind::ForEachNext { iterator_slot, body, done } => {
+                adv_ensure(*iterator_slot == SlotIdx::new(1), "iter=1")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ForEachNext, got {other:?}")),
+        }
+    }
+
+    /// 4. Together TogetherStart/Branch/Join structure.
+    #[test]
+    fn wf_together_parallel_structure() -> Result<(), String> {
+        // The together primitive places join at id+1, which is before branch
+        // targets. This is caught by the validation pipeline as a
+        // LoopBodyStepOutOfRange error. We verify the error is raised.
+        let source = br#"version: velvet-ballastics/v1
+name: together_parallel
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches: [1]
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().compile(source);
+        let is_loop_err = result.as_ref().is_err_and(|errors| {
+            errors.0.iter().any(|e| {
+                matches!(
+                    e,
+                    CompileError::Validation(
+                        vb_validate::ValidationError::LoopBodyStepOutOfRange { .. }
+                    )
+                )
+            })
+        });
+        adv_ensure(is_loop_err, "expected LoopBodyStepOutOfRange for together join-before-branches")
+    }
+
+    /// 5. Repeat RetryStart/Attempt/Finish structure.
+    #[test]
+    fn wf_repeat_retry_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: repeat_structure
+when:
+  manual: {}
+steps:
+  - id: poll
+    repeat:
+      max_attempts: 5
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 4, "expected 4 nodes")?;
+        let start = workflow.node(StepIdx::new(0)).ok_or("missing RepeatStart")?;
+        let attempt = workflow.node(StepIdx::new(1)).ok_or("missing RepeatAttempt")?;
+        let finish_node = workflow.node(StepIdx::new(2)).ok_or("missing RepeatFinish")?;
+        match &start.kind {
+            CompiledNodeKind::RepeatStart { max_attempts, body, done } => {
+                adv_ensure(*max_attempts == 5, "max=5")?;
+                adv_ensure(*body == StepIdx::new(1), "body=1")?;
+                adv_ensure(*done == StepIdx::new(2), "done=2")
+            }
+            other => Err(format!("expected RepeatStart, got {other:?}")),
+        }?;
+        match &attempt.kind {
+            CompiledNodeKind::RepeatAttempt { attempt_slot, body, done } => {
+                adv_ensure(attempt_slot.get() > 0, "slot>0")?;
+                adv_ensure(*body == StepIdx::new(1), "body=1")?;
+                adv_ensure(*done == StepIdx::new(2), "done=2")
+            }
+            other => Err(format!("expected RepeatAttempt, got {other:?}")),
+        }?;
+        match &finish_node.kind {
+            CompiledNodeKind::RepeatFinish { .. } => Ok(()),
+            other => Err(format!("expected RepeatFinish, got {other:?}")),
+        }
+    }
+
+    /// 6. Wait/Ask suspend node kinds.
+    #[test]
+    fn wf_wait_ask_suspend_kinds() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: suspend_nodes
+when:
+  manual: {}
+steps:
+  - id: deadline
+    save:
+      value: 1
+  - id: wait_step
+    wait:
+      until: 0
+  - id: prompt
+    save:
+      value: 2
+  - id: ask_step
+    ask:
+      prompt: 1
+      answer: 2
+  - id: done
+    finish:
+      result: 2
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 6, "expected 6 nodes")?;
+        let wait = workflow.node(StepIdx::new(1)).ok_or("missing wait")?;
+        adv_ensure(
+            matches!(&wait.kind, CompiledNodeKind::WaitUntil { deadline_slot } if *deadline_slot == SlotIdx::ZERO),
+            "must be WaitUntil(slot 0)",
+        )?;
+        let ask = workflow.node(StepIdx::new(3)).ok_or("missing ask")?;
+        adv_ensure(matches!(&ask.kind, CompiledNodeKind::Ask { .. }), "must be Ask")?;
+        let resume = workflow.node(StepIdx::new(4)).ok_or("missing resume")?;
+        adv_ensure(
+            matches!(&resume.kind, CompiledNodeKind::AskResume { answer } if *answer == SlotIdx::new(2)),
+            "must be AskResume(slot 2)",
+        )
+    }
+
+    /// 7. Error handler edges absent in Phase 0.
+    #[test]
+    fn wf_error_handler_edges_absent() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: no_error_handlers
+when:
+  manual: {}
+steps:
+  - id: step_a
+    save:
+      value: 1
+  - id: step_b
+    do:
+      action: 5
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        for i in 0..usize::from(workflow.node_count()) {
+            let node = workflow.node(StepIdx::new(i as u16)).ok_or("missing node")?;
+            adv_ensure(node.on_error.is_none(), "no on_error in Phase 0")?;
+        }
+        Ok(())
+    }
+
+    /// 8. ForEach loop followed by deterministic steps.
+    #[test]
+    fn wf_for_each_followed_by_save() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: loop_then_save
+when:
+  manual: {}
+steps:
+  - id: source_list
+    save:
+      value: 1
+  - id: loop_step
+    for_each:
+      input: 0
+      item: 1
+      limit: 7
+  - id: after_loop
+    save:
+      value: 42
+  - id: done
+    finish:
+      result: 2
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // save(1) + for_each(2) + save(1) + finish(1) = 5 nodes
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        let fe_start = workflow.node(StepIdx::new(1)).ok_or("missing ForEachStart")?;
+        adv_ensure(
+            matches!(&fe_start.kind, CompiledNodeKind::ForEachStart { limit, done, .. } if *limit == 7 && *done == StepIdx::new(3)),
+            "for_each limit=7 done=3",
+        )?;
+        let after = workflow.node(StepIdx::new(3)).ok_or("missing after_loop")?;
+        adv_ensure(
+            matches!(&after.kind, CompiledNodeKind::SetConst { .. }),
+            "after_loop should be SetConst",
+        )
+    }
+
+    /// 9. Multiple Do nodes with unique action IDs.
+    #[test]
+    fn wf_do_separated_by_saves() -> Result<(), String> {
+        // Do nodes must be separated by deterministic steps (the determinism
+        // gate rejects consecutive non-deterministic nodes). We interleave
+        // save steps between do calls.
+        let source = br#"version: velvet-ballastics/v1
+name: do_separated
+when:
+  manual: {}
+steps:
+  - id: input_slot
+    save:
+      value: 1
+  - id: call_alpha
+    do:
+      action: 10
+      input: 0
+  - id: mid_save
+    save:
+      value: 2
+  - id: call_beta
+    do:
+      action: 20
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        // save(1) + do(1) + save(1) + do(1) + finish(1) = 5 nodes
+        adv_ensure(workflow.node_count() == 5, "expected 5 nodes")?;
+        let do_a = workflow.node(StepIdx::new(1)).ok_or("missing do_a")?;
+        adv_ensure(
+            matches!(&do_a.kind, CompiledNodeKind::Do { action, .. } if action.get() == 10),
+            "do_a action=10",
+        )?;
+        let do_b = workflow.node(StepIdx::new(3)).ok_or("missing do_b")?;
+        adv_ensure(
+            matches!(&do_b.kind, CompiledNodeKind::Do { action, .. } if action.get() == 20),
+            "do_b action=20",
+        )
+    }
+
+    /// 10. Save step slot allocation.
+    #[test]
+    fn wf_save_slot_allocation() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: slot_alloc
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 100
+  - id: val_b
+    save:
+      value: 200
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.slot_count() >= 2, "at least 2 slots")?;
+        let a = workflow.node(StepIdx::new(0)).ok_or("missing a")?;
+        let b = workflow.node(StepIdx::new(1)).ok_or("missing b")?;
+        adv_ensure(a.output.is_some(), "a has output")?;
+        adv_ensure(b.output.is_some(), "b has output")
+    }
+
+    /// 11. Constant pool for multiple saves.
+    #[test]
+    fn wf_constant_pool_multiple_saves() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: const_pool
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 10
+  - id: val_b
+    save:
+      value: 20
+  - id: val_c
+    save:
+      value: 30
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let count = workflow.to_parts().constants.len();
+        adv_ensure(count >= 3, "at least 3 constants")
+    }
+
+    /// 12. Complex workflow with mixed primitive types.
+    #[test]
+    fn wf_complex_mixed_primitives() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: complex_mix
+when:
+  manual: {}
+steps:
+  - id: init_val
+    save:
+      value: 1
+  - id: transform
+    do:
+      action: 3
+      input: 0
+  - id: loop_data
+    for_each:
+      input: 1
+      item: 2
+      limit: 5
+  - id: wait_step
+    wait:
+      until: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 6, "expected 6 nodes")?;
+        let kinds: Vec<&str> = (0..usize::from(workflow.node_count()))
+            .filter_map(|i| {
+                workflow.node(StepIdx::new(i as u16)).map(|n| match &n.kind {
+                    CompiledNodeKind::SetConst { .. } => "SetConst",
+                    CompiledNodeKind::Do { .. } => "Do",
+                    CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
+                    CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
+                    CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
+                    CompiledNodeKind::Finish { .. } => "Finish",
+                    _ => "Other",
+                })
+            })
+            .collect();
+        adv_ensure(kinds.first().copied() == Some("SetConst"), "0=SetConst")?;
+        adv_ensure(kinds.get(1).copied() == Some("Do"), "1=Do")?;
+        adv_ensure(kinds.get(2).copied() == Some("ForEachStart"), "2=ForEachStart")?;
+        adv_ensure(kinds.get(3).copied() == Some("ForEachNext"), "3=ForEachNext")?;
+        adv_ensure(kinds.get(4).copied() == Some("WaitUntil"), "4=WaitUntil")?;
+        adv_ensure(kinds.get(5).copied() == Some("Finish"), "5=Finish")
+    }
+
+    /// 13. Compile-error: duplicate step IDs.
+    #[test]
+    fn wf_error_duplicate_step_ids() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: dup_ids
+when:
+  manual: {}
+steps:
+  - id: same_name
+    save:
+      value: 1
+  - id: same_name
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::DuplicateStepId { id } if id.as_ref() == "same_name"),
+            "must be DuplicateStepId",
+        )
+    }
+
+    /// 14. Compile-error: backward branch target.
+    #[test]
+    fn wf_error_backward_branch() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: backward_branch
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 0
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::BackwardBranchTarget { step: 1, target: 0 }),
+            "must be BackwardBranchTarget(1,0)",
+        )
+    }
+
+    /// 15. Compile-error: branch target out of range.
+    #[test]
+    fn wf_error_branch_target_out_of_range() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: out_of_range
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 5
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::UnknownStepTarget { step: 1, target: 5 }),
+            "must be UnknownStepTarget(1,5)",
+        )
+    }
+
+    /// 16. Compile-error: missing required step ID.
+    #[test]
+    fn wf_error_missing_step_id() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: missing_id
+when:
+  manual: {}
+steps:
+  - save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::MissingStepId { step: 0 }),
+            "must be MissingStepId(0)",
+        )
+    }
+
+    /// 17. Compile-error: step ID is a reserved word.
+    #[test]
+    fn wf_error_reserved_step_id() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: reserved_id
+when:
+  manual: {}
+steps:
+  - id: finish
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let error = adv_compile_error(source)?;
+        adv_ensure(
+            matches!(error, CompileError::InvalidName { field: "step id", value } if value.as_ref() == "finish"),
+            "must be InvalidName(step id, finish)",
+        )
+    }
+
+    /// 18. Compile-error: expression source overflow.
+    #[test]
+    fn wf_error_expression_overflow() -> Result<(), String> {
+        let expr = "1".repeat(4097);
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: expr_overflow\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition: \"{}\"\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n",
+            expr
+        );
+        let error = adv_compile_error(source.as_bytes())?;
+        adv_ensure(
+            matches!(error, CompileError::ExpressionLimitExceeded { limit: "source length", .. }),
+            "must be ExpressionLimitExceeded(source length)",
+        )
+    }
+
+    /// 19. Resource contract: fits within default budget.
+    #[test]
+    fn wf_resource_contract_fits_budget() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: fits_budget
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let contract = workflow.resource_contract();
+        adv_ensure(usize::from(workflow.node_count()) <= usize::from(contract.max_steps), "fits max_steps")?;
+        adv_ensure(usize::from(workflow.slot_count()) <= usize::from(contract.max_slots), "fits max_slots")
+    }
+
+    /// 20. Resource contract: exceeds budget rejected.
+    #[test]
+    fn wf_resource_contract_exceeds_budget() -> Result<(), String> {
+        let mut parts = WorkflowParts {
+            name: Box::<str>::from("exceeds_budget"),
+            digest: WorkflowDigest::from_bytes([0x44; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    error_slot: None,
+                    on_error: None,
+                    kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    error_slot: None,
+                    on_error: None,
+                    kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract { max_steps: 0, ..ResourceContract::DEFAULT },
+            step_names: Box::new([]),
+        };
+        adv_ensure(CompiledWorkflow::try_from_parts(parts.clone()).is_err(), "must reject max_steps=0")?;
+        parts.resource_contract = ResourceContract::DEFAULT;
+        let wf = CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e:?}"))?;
+        adv_ensure(wf.node_count() == 2, "fixed has 2 nodes")
+    }
+
+    /// 21. step_names() returns YAML step IDs.
+    #[test]
+    fn wf_step_names_returns_yaml_ids() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: step_names_test
+when:
+  manual: {}
+steps:
+  - id: first_step
+    save:
+      value: 1
+  - id: second_step
+    save:
+      value: 2
+  - id: third_step
+    save:
+      value: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("first_step"), "0=first_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("second_step"), "1=second_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("third_step"), "2=third_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")?;
+        adv_ensure(workflow.step_name(StepIdx::new(99)).is_none(), "99=None")
+    }
+
+    /// 22. digest() is deterministic.
+    #[test]
+    fn wf_digest_deterministic() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: deterministic
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 42
+  - id: transform
+    do:
+      action: 7
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let first = adv_compile_ok(source)?;
+        let second = adv_compile_ok(source)?;
+        adv_ensure(first.digest() == second.digest(), "same digest")?;
+        let other = adv_compile_ok(br#"version: velvet-ballastics/v1
+name: different
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 99
+  - id: done
+    finish:
+      result: 0
+"#)?;
+        adv_ensure(first.digest() != other.digest(), "different digest")
+    }
+
+    /// Additional: collect loop structure.
+    #[test]
+    fn wf_collect_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: collect_structure
+when:
+  manual: {}
+steps:
+  - id: source
+    save:
+      value: 1
+  - id: gather
+    collect:
+      source: 0
+      limit: 10
+      page_size: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "5 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("CollectStart")?;
+        let page = workflow.node(StepIdx::new(2)).ok_or("CollectPage")?;
+        let fin = workflow.node(StepIdx::new(3)).ok_or("CollectFinish")?;
+        match &start.kind {
+            CompiledNodeKind::CollectStart { source: src, limit, page_size, body, done } => {
+                adv_ensure(*src == SlotIdx::ZERO, "src=0")?;
+                adv_ensure(*limit == 10, "limit=10")?;
+                adv_ensure(*page_size == 3, "page_size=3")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected CollectStart, got {other:?}")),
+        }?;
+        match &page.kind {
+            CompiledNodeKind::CollectPage { collector_slot, body, done } => {
+                adv_ensure(*collector_slot == SlotIdx::ZERO, "collector=0")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected CollectPage, got {other:?}")),
+        }?;
+        match &fin.kind {
+            CompiledNodeKind::CollectFinish { collector_slot } => {
+                adv_ensure(*collector_slot == SlotIdx::ZERO, "collector=0")
+            }
+            other => Err(format!("expected CollectFinish, got {other:?}")),
+        }
+    }
+
+    /// Additional: reduce loop structure.
+    #[test]
+    fn wf_reduce_loop_structure() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: reduce_structure
+when:
+  manual: {}
+steps:
+  - id: source
+    save:
+      value: 1
+  - id: sum_values
+    reduce:
+      input: 0
+      accumulator: 1
+      initial: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.node_count() == 5, "5 nodes")?;
+        let start = workflow.node(StepIdx::new(1)).ok_or("ReduceStart")?;
+        match &start.kind {
+            CompiledNodeKind::ReduceStart { input, accumulator, initial, body, done } => {
+                adv_ensure(*input == SlotIdx::ZERO, "input=0")?;
+                adv_ensure(*accumulator == SlotIdx::new(1), "acc=1")?;
+                adv_ensure(*initial == ConstIdx::new(1), "init=1")?;
+                adv_ensure(*body == StepIdx::new(2), "body=2")?;
+                adv_ensure(*done == StepIdx::new(3), "done=3")
+            }
+            other => Err(format!("expected ReduceStart, got {other:?}")),
+        }
+    }
+
+    /// Additional: wait event without timeout.
+    #[test]
+    fn wf_wait_event_no_timeout() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: wait_event
+when:
+  manual: {}
+steps:
+  - id: event_slot
+    save:
+      value: 1
+  - id: wait_for_event
+    wait:
+      event: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let wait = workflow.node(StepIdx::new(1)).ok_or("missing wait")?;
+        match &wait.kind {
+            CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+                adv_ensure(*event == SlotIdx::ZERO, "event=0")?;
+                adv_ensure(timeout_slot.is_none(), "no timeout")
+            }
+            other => Err(format!("expected WaitEvent, got {other:?}")),
+        }
+    }
+
+    /// Additional: wait event with timeout.
+    #[test]
+    fn wf_wait_event_with_timeout() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: wait_event_timeout
+when:
+  manual: {}
+steps:
+  - id: event_slot
+    save:
+      value: 1
+  - id: timeout_val
+    save:
+      value: 2
+  - id: wait_for_event
+    wait:
+      event: 0
+      timeout: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let wait = workflow.node(StepIdx::new(2)).ok_or("missing wait")?;
+        match &wait.kind {
+            CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+                adv_ensure(*event == SlotIdx::ZERO, "event=0")?;
+                adv_ensure(*timeout_slot == Some(SlotIdx::new(1)), "timeout=1")
+            }
+            other => Err(format!("expected WaitEvent, got {other:?}")),
+        }
+    }
+
+    /// Additional: entry step always zero.
+    #[test]
+    fn wf_entry_step_zero() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: entry_check
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 1
+  - id: second
+    do:
+      action: 3
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.entry() == StepIdx::ZERO, "entry=0")
+    }
+
+    /// Additional: workflow name preserved.
+    #[test]
+    fn wf_name_preserved() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: my_special_workflow
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: true
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.name() == "my_special_workflow", "name matches")
+    }
+
+    /// Additional: constant pool values match save steps.
+    #[test]
+    fn wf_constant_values_match() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: const_check
+when:
+  manual: {}
+steps:
+  - id: val_a
+    save:
+      value: 42
+  - id: val_b
+    save:
+      value: 99
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let node_a = workflow.node(StepIdx::new(0)).ok_or("node 0")?;
+        match &node_a.kind {
+            CompiledNodeKind::SetConst { value } => {
+                let cv = workflow.constant(*value).ok_or("const")?;
+                adv_ensure(*cv == ConstValue::I64(42), "const=42")
+            }
+            other => Err(format!("expected SetConst, got {other:?}")),
+        }?;
+        let node_b = workflow.node(StepIdx::new(1)).ok_or("node 1")?;
+        match &node_b.kind {
+            CompiledNodeKind::SetConst { value } => {
+                let cv = workflow.constant(*value).ok_or("const")?;
+                adv_ensure(*cv == ConstValue::I64(99), "const=99")
+            }
+            other => Err(format!("expected SetConst, got {other:?}")),
+        }
+    }
+
+    /// Additional: choose both branches same target.
+    #[test]
+    fn wf_choose_same_target() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: same_target
+when:
+  manual: {}
+steps:
+  - id: flag
+    save:
+      value: true
+  - id: route
+    choose:
+      condition: 0
+      on_true: 2
+      on_false: 2
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let route = workflow.node(StepIdx::new(1)).ok_or("route")?;
+        match &route.kind {
+            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+                adv_ensure(branches.first().ok_or("branch")?.target == StepIdx::new(2), "true=2")?;
+                adv_ensure(*otherwise == Some(StepIdx::new(2)), "false=2")
+            }
+            other => Err(format!("expected ChooseSlot, got {other:?}")),
+        }
+    }
+
+    /// Additional: do output chains to finish.
+    #[test]
+    fn wf_do_output_chains_finish() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: do_chain
+when:
+  manual: {}
+steps:
+  - id: input_data
+    save:
+      value: 1
+  - id: action_call
+    do:
+      action: 7
+      input: 0
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        let do_node = workflow.node(StepIdx::new(1)).ok_or("do")?;
+        let finish = workflow.node(StepIdx::new(2)).ok_or("finish")?;
+        let do_out = do_node.output.ok_or("no output")?;
+        match &finish.kind {
+            CompiledNodeKind::Finish { result } => adv_ensure(*result == do_out, "result=do_out"),
+            other => Err(format!("expected Finish, got {other:?}")),
+        }
+    }
+
+    /// Additional: slot count reflects max slot.
+    #[test]
+    fn wf_slot_count_max() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: slot_max
+when:
+  manual: {}
+steps:
+  - id: first
+    save:
+      value: 1
+  - id: second
+    save:
+      value: 2
+  - id: third
+    save:
+      value: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.slot_count() >= 3, "at least 3 slots")
+    }
+
+    /// Additional: step_names for for_each expanded nodes.
+    #[test]
+    fn wf_step_names_for_each_expanded() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: foreach_names
+when:
+  manual: {}
+steps:
+  - id: data
+    save:
+      value: 1
+  - id: loop_step
+    for_each:
+      input: 0
+      item: 1
+      limit: 5
+  - id: done
+    finish:
+      result: 0
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("data"), "0=data")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("loop_step"), "1=loop_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("loop_step"), "2=loop_step")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")
+    }
+
+    /// Additional: step_names for repeat expanded nodes.
+    #[test]
+    fn wf_step_names_repeat_expanded() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
+name: repeat_names
+when:
+  manual: {}
+steps:
+  - id: retry_op
+    repeat:
+      max_attempts: 3
+  - id: done
+    finish:
+      result: 1
+"#;
+        let workflow = adv_compile_ok(source)?;
+        adv_ensure(workflow.step_name(StepIdx::new(0)) == Some("retry_op"), "0=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("retry_op"), "1=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("retry_op"), "2=retry_op")?;
+        adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")
+    }
+
 }

@@ -78,6 +78,26 @@ const fn path_segment_name(segment: crate::workflow::PathSegment) -> &'static st
     }
 }
 
+/// Taint-aware segment traversal. Returns the resolved value and its stored taint.
+fn traverse_accessor_segment_with_taint(
+    store: &ValueStore,
+    current: SlotValue,
+    segment: crate::workflow::PathSegment,
+) -> Result<(SlotValue, crate::value::Taint), EngineError> {
+    match (current, segment) {
+        (SlotValue::Object(object), crate::workflow::PathSegment::Field(field)) => {
+            store.object_field_with_taint(object, field)
+        }
+        (SlotValue::List(list), crate::workflow::PathSegment::Index(index)) => {
+            store.list_item_with_taint(list, index)
+        }
+        (value, segment) => Err(EngineError::UnsupportedAccessorTraversal {
+            segment: path_segment_name(segment),
+            found: value.type_name(),
+        }),
+    }
+}
+
 // ===== Public API =====
 
 pub(super) fn eval_accessor_inner(
@@ -105,9 +125,31 @@ pub(super) fn eval_accessor_with_taint_inner(
         .ok_or(EngineError::InvalidCompiledWorkflow {
             reason: "accessor index out of bounds",
         })?;
-    let root_taint = run.read_taint(program.root)?;
-    let value = eval_accessor_program(run, store, program)?;
-    Ok((value, root_taint))
+    let mut accumulated_taint = run.read_taint(program.root)?;
+    let mut current = *run.read_slot(program.root)?;
+
+    if program.path.is_empty() {
+        return Ok((current, accumulated_taint));
+    }
+
+    let mut index = 0usize;
+    while index < program.path.len() {
+        let segment = program.path.get(index).copied().ok_or({
+            EngineError::InternalInvariantViolation {
+                reason: "accessor path index checked by loop bound",
+            }
+        })?;
+        let (value, segment_taint) =
+            traverse_accessor_segment_with_taint(store, current, segment)?;
+        accumulated_taint = crate::value::join_taint(accumulated_taint, segment_taint);
+        current = value;
+        index = index
+            .checked_add(1)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "accessor path index overflow",
+            })?;
+    }
+    Ok((current, accumulated_taint))
 }
 
 pub(super) fn eval_load_accessor(
@@ -256,6 +298,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(3),
                     value: SlotValue::I64(123),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -347,6 +390,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(5),
                     value: SlotValue::List(inner_list),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -456,6 +500,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(0),
                     value: SlotValue::I64(1),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )

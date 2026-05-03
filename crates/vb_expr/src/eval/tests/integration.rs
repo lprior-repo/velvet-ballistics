@@ -3,6 +3,7 @@
 use vb_core::limits::MAX_EXPRESSION_STACK;
 use vb_core::value_store::ValueStore;
 use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
+use vb_core::value::Taint;
 
 use crate::bytecode;
 use crate::lexer::lex_expr;
@@ -950,8 +951,8 @@ fn eval_helper_with_store_length_returns_object_field_count() -> ExprResult<()> 
     let obj = store
         .insert_object(
             vec![
-                ObjectField { key: vb_core::ids::SymbolId::new(0), value: SlotValue::I64(1) },
-                ObjectField { key: vb_core::ids::SymbolId::new(1), value: SlotValue::I64(2) },
+                ObjectField { key: vb_core::ids::SymbolId::new(0), value: SlotValue::I64(1), taint: Taint::Clean },
+                ObjectField { key: vb_core::ids::SymbolId::new(1), value: SlotValue::I64(2), taint: Taint::Clean },
             ]
             .into_boxed_slice(),
         )
@@ -1070,7 +1071,7 @@ fn eval_helper_with_store_has_returns_false_for_missing_key() -> ExprResult<()> 
     let key_absent = vb_core::ids::SymbolId::new(99);
     let obj = store
         .insert_object(
-            vec![ObjectField { key: key_present, value: SlotValue::I64(1) }].into_boxed_slice(),
+            vec![ObjectField { key: key_present, value: SlotValue::I64(1), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|_| ExprError::UnexpectedEof)?;
     let args = [SlotValue::Object(obj), SlotValue::Symbol(key_absent)];
@@ -1143,12 +1144,12 @@ fn eval_helper_with_store_merge_combines_objects() -> ExprResult<()> {
     let key_b = vb_core::ids::SymbolId::new(2);
     let left = store
         .insert_object(
-            vec![ObjectField { key: key_a, value: SlotValue::I64(10) }].into_boxed_slice(),
+            vec![ObjectField { key: key_a, value: SlotValue::I64(10), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|_| ExprError::UnexpectedEof)?;
     let right = store
         .insert_object(
-            vec![ObjectField { key: key_b, value: SlotValue::I64(20) }].into_boxed_slice(),
+            vec![ObjectField { key: key_b, value: SlotValue::I64(20), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|_| ExprError::UnexpectedEof)?;
     let args = [SlotValue::Object(left), SlotValue::Object(right)];

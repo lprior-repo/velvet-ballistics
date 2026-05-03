@@ -314,6 +314,7 @@ fn replay_build_object(
         entries.push(ObjectField {
             key: *key,
             value,
+            taint: slot_taint,
         });
         index = index
             .checked_add(1)

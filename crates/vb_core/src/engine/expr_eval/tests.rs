@@ -3,7 +3,7 @@
 use crate::errors::EngineError;
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_EXPRESSION_STACK;
-use crate::value::{ConstValue, SlotValue};
+use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
@@ -202,6 +202,7 @@ fn exists_checks_object_field() -> Result<(), EngineError> {
         vec![ObjectField {
             key: sym,
             value: SlotValue::Bool(true),
+            taint: Taint::Clean,
         }]
         .into_boxed_slice(),
     )?;
@@ -296,6 +297,7 @@ fn merge_combines_objects() -> Result<(), EngineError> {
         vec![ObjectField {
             key: sym1,
             value: SlotValue::I64(1),
+            taint: Taint::Clean,
         }]
         .into_boxed_slice(),
     )?;
@@ -303,6 +305,7 @@ fn merge_combines_objects() -> Result<(), EngineError> {
         vec![ObjectField {
             key: sym2,
             value: SlotValue::I64(2),
+            taint: Taint::Clean,
         }]
         .into_boxed_slice(),
     )?;

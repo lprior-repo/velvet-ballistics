@@ -23,7 +23,7 @@ pub fn build_object(
                 reason: "build_object field index checked by loop bound",
             })?;
         let value = *run.read_slot(*slot)?;
-        entries.push(ObjectField { key: *key, value });
+        entries.push(ObjectField { key: *key, value, taint: Taint::Clean });
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
@@ -54,7 +54,7 @@ pub(crate) fn build_object_with_taint(
         let value = *run.read_slot(*slot)?;
         let slot_taint = run.read_taint(*slot)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
-        entries.push(ObjectField { key: *key, value });
+        entries.push(ObjectField { key: *key, value, taint: slot_taint });
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {

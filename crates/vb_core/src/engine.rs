@@ -542,6 +542,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(7),
                     value: SlotValue::I64(123),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
@@ -732,6 +733,7 @@ mod tests {
             Some(ObjectField {
                 key: duplicate_key,
                 value: SlotValue::I64(100),
+                taint: Taint::Clean,
             }),
         )?;
         ensure_equal(
@@ -739,6 +741,7 @@ mod tests {
             Some(ObjectField {
                 key: duplicate_key,
                 value: SlotValue::I64(200),
+                taint: Taint::Clean,
             }),
         )?;
         ensure_equal(
@@ -746,6 +749,7 @@ mod tests {
             Some(ObjectField {
                 key: tail_key,
                 value: SlotValue::Bool(false),
+                taint: Taint::Clean,
             }),
         )?;
         ensure_equal(
@@ -3155,7 +3159,7 @@ mod tests {
         let mut store = test_store();
         let sym = store.insert_symbol("key").map_err(|error| error.to_string())?;
         let obj = store.insert_object(
-            vec![ObjectField { key: sym, value: SlotValue::Bool(true) }].into_boxed_slice(),
+            vec![ObjectField { key: sym, value: SlotValue::Bool(true), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
@@ -3266,11 +3270,11 @@ mod tests {
         let sym1 = store.insert_symbol("a").map_err(|error| error.to_string())?;
         let sym2 = store.insert_symbol("b").map_err(|error| error.to_string())?;
         let obj1 = store.insert_object(
-            vec![ObjectField { key: sym1, value: SlotValue::I64(1) }].into_boxed_slice(),
+            vec![ObjectField { key: sym1, value: SlotValue::I64(1), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|error| error.to_string())?;
         let obj2 = store.insert_object(
-            vec![ObjectField { key: sym2, value: SlotValue::I64(2) }].into_boxed_slice(),
+            vec![ObjectField { key: sym2, value: SlotValue::I64(2), taint: Taint::Clean }].into_boxed_slice(),
         )
         .map_err(|error| error.to_string())?;
         let (value, taint) = taint_eval_expr_with_store(
@@ -3405,6 +3409,7 @@ mod tests {
                 vec![ObjectField {
                     key: SymbolId::new(7),
                     value: SlotValue::I64(123),
+                    taint: Taint::Clean,
                 }]
                 .into_boxed_slice(),
             )
