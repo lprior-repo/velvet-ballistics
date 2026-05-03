@@ -43,7 +43,7 @@ impl FlowGraph {
                 && self.nodes.contains_key(&edge.target_node)
             {
                 if let Some(count) = in_degree.get_mut(&edge.target_node) {
-                    *count += 1;
+                    *count = count.saturating_add(1);
                 }
                 if let Some(neighbors) = adjacency.get_mut(&edge.source_node) {
                     neighbors.push(&edge.target_node);
@@ -66,7 +66,7 @@ impl FlowGraph {
             if let Some(neighbors) = adjacency.get(node_id) {
                 for &neighbor in neighbors {
                     if let Some(degree) = in_degree.get_mut(neighbor) {
-                        *degree -= 1;
+                        *degree = degree.saturating_sub(1);
                         if *degree == 0 {
                             queue.push_back(neighbor);
                         }
@@ -121,9 +121,8 @@ impl FlowGraph {
                 let neighbors = adj.get(&current).cloned().unwrap_or_default();
 
                 let mut found_next = false;
-                while neighbor_idx < neighbors.len() {
-                    let neighbor = neighbors[neighbor_idx].clone();
-                    neighbor_idx += 1;
+                while let Some(neighbor) = neighbors.get(neighbor_idx).cloned() {
+                    neighbor_idx = neighbor_idx.saturating_add(1);
 
                     if neighbor == *start && path.len() > 1 {
                         cycles.push(path.clone());
@@ -137,10 +136,8 @@ impl FlowGraph {
                     }
                 }
 
-                if !found_next {
-                    if let Some(popped) = path.pop() {
-                        path_set.remove(&popped);
-                    }
+                if !found_next && let Some(popped) = path.pop() {
+                    path_set.remove(&popped);
                 }
             }
 

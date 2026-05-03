@@ -48,12 +48,28 @@ impl CapabilitySet {
     pub fn grants(&self, required: &Capability) -> bool {
         let mut i = 0;
         while i < self.grants.len() {
-            if let Some(grant) = self.grants.get(i) {
-                if !grant.name().is_empty()
-                    && required.name().starts_with(grant.name())
-                    && grant.action == required.action
-                {
-                    return true;
+            let Some(grant) = self.grants.get(i) else {
+                break;
+            };
+            match grant {
+                Capability::AnyWorkflow => return true,
+                Capability::Workflow(digest) => {
+                    match required {
+                        Capability::Action(_) => return true,
+                        Capability::Workflow(required_digest) => {
+                            if digest == required_digest {
+                                return true;
+                            }
+                        }
+                        Capability::AnyWorkflow => {}
+                    }
+                }
+                Capability::Action(granted_id) => {
+                    if let Capability::Action(required_id) = required
+                        && granted_id == required_id
+                    {
+                        return true;
+                    }
                 }
             }
             i = match i.checked_add(1) {

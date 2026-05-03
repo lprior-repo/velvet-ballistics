@@ -1,7 +1,9 @@
 //! Bytecode compilation tests.
 
+#[allow(unused_imports, dead_code)]
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 
+#[allow(unused_imports)]
 use crate::bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver, const_fold_expr, push_constant,
@@ -9,6 +11,7 @@ use crate::bytecode::{
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
 
+#[allow(dead_code)]
 fn resolve_test_reference(reference: &str) -> Option<SlotIdx> {
     match reference {
         "$a" => Some(SlotIdx::new(0)),
@@ -224,12 +227,14 @@ fn check_expr_stack_bound_returns_ok_within_limit() -> crate::ExprResult<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn compile(source: &str) -> crate::ExprResult<crate::bytecode::ExprProgram> {
     let tokens = lex_expr(source)?;
     let ast = parse_expr(&tokens)?;
     compile_expr_to_bytecode(&ast)
 }
 
+#[allow(dead_code)]
 fn compile_with_pool(
     source: &str,
 ) -> crate::ExprResult<(crate::bytecode::ExprProgram, Vec<ConstValue>)> {

@@ -317,14 +317,14 @@ fn validate_expr_slots(
     slot_count: usize,
 ) -> ValidationResult<()> {
     for op in expr.ops.iter() {
-        if let ExprOp::LoadSlot(slot) = op {
-            if slot.as_usize() >= slot_count {
-                return Err(ValidationError::SlotReferenceOutOfRange {
-                    slot: slot.as_usize(),
-                    slot_count,
-                    context: format!("expression {expr_index}"),
-                });
-            }
+        if let ExprOp::LoadSlot(slot) = op
+            && slot.as_usize() >= slot_count
+        {
+            return Err(ValidationError::SlotReferenceOutOfRange {
+                slot: slot.as_usize(),
+                slot_count,
+                context: format!("expression {expr_index}"),
+            });
         }
     }
     Ok(())
@@ -540,12 +540,12 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
             if out_usize < slot_count {
                 for read_slot in reads {
                     let read_usize = read_slot.as_usize();
-                    if read_usize < slot_count && read_usize != out_usize {
-                        if let Some(list) = adjacency.get_mut(out_usize) {
-                            if !list.contains(&read_usize) {
-                                list.push(read_usize);
-                            }
-                        }
+                    if read_usize < slot_count
+                        && read_usize != out_usize
+                        && let Some(list) = adjacency.get_mut(out_usize)
+                        && !list.contains(&read_usize)
+                    {
+                        list.push(read_usize);
                     }
                 }
             }
@@ -1143,18 +1143,15 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
         // nodes, that is a violation. In practice, we check the immediate `next`
         // edge: if a non-deterministic node's `next` points to another
         // non-deterministic node, that is a direct chain violation.
-        if let Some(next_step) = node.next {
-            let next_usize = next_step.as_usize();
-            if next_usize < node_count {
-                if let Some(next_node) = parts.nodes.get(next_usize) {
-                    if is_non_deterministic(&next_node.kind) {
-                        return Err(ValidationError::NonDeterministicPath {
-                            from_node: node_index,
-                            to_node: next_usize,
-                        });
-                    }
-                }
-            }
+        if let Some(next_step) = node.next
+            && next_step.as_usize() < node_count
+            && let Some(next_node) = parts.nodes.get(next_step.as_usize())
+            && is_non_deterministic(&next_node.kind)
+        {
+            return Err(ValidationError::NonDeterministicPath {
+                from_node: node_index,
+                to_node: next_step.as_usize(),
+            });
         }
 
         // Also check branch targets for Choose/ChooseSlot nodes. Choose nodes
