@@ -280,6 +280,15 @@ pub(crate) fn validate_replayed_event(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
 mod tests {
     use super::*;
     use crate::{
