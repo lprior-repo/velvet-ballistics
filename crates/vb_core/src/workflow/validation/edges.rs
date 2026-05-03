@@ -89,10 +89,6 @@ fn validate_kind_edges(
             let _ = branches;
             validate_forward_target(*join, ci, cid)
         }
-        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            let _ = entry;
-            validate_forward_target(*join, ci, cid)
-        }
         CompiledNodeKind::CollectStart { body, done, .. }
         | CompiledNodeKind::CollectPage { body, done, .. }
         | CompiledNodeKind::CollectNext { body, done, .. }

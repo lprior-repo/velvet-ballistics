@@ -44,15 +44,6 @@ pub(crate) fn validate_node(node: &super::super::node::CompiledNode, parts: &Wor
         } => validate_slot_and_steps(*iterator_slot, *body, *done, parts),
         super::super::node::CompiledNodeKind::ForEachJoin { output } => validate_slot(*output, parts.slot_count),
         super::super::node::CompiledNodeKind::TogetherStart { branches, join } => validate_together(branches, *join, parts),
-        super::super::node::CompiledNodeKind::TogetherBranch {
-            branch: _,
-            entry,
-            join,
-            accumulator,
-        } => {
-            validate_two_steps(*entry, *join, parts)?;
-            validate_slot(*accumulator, parts.slot_count)
-        }
         super::super::node::CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,

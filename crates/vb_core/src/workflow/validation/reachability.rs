@@ -143,10 +143,6 @@ pub(crate) fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<St
             }
             targets.push(*join);
         }
-        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            targets.push(*entry);
-            targets.push(*join);
-        }
         CompiledNodeKind::TogetherJoin { .. } => {}
         CompiledNodeKind::WaitEvent { .. } => {}
         CompiledNodeKind::ErrorHandler { body, handler } => {

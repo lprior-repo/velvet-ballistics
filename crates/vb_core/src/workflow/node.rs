@@ -77,14 +77,6 @@ pub enum CompiledNodeKind {
         branches: Box<[StepIdx]>,
         join: StepIdx,
     },
-    /// Execute one together branch.
-    TogetherBranch {
-        branch: u16,
-        entry: StepIdx,
-        join: StepIdx,
-        /// Slot holding the accumulator list (shared with TogetherStart).
-        accumulator: SlotIdx,
-    },
     /// Join together branches.
     TogetherJoin {
         branch_count: u16,

@@ -1201,9 +1201,10 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+        Command, DurabilityMode, ExplainNode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StorageWorkflowResolver,
-        map_runtime_inputs, parse_args, run_compiled_workflow,
+        build_explain_report, classify_node_kind, json_escape, map_runtime_inputs,
+        parse_args, run_compiled_workflow,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;

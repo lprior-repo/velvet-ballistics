@@ -328,7 +328,9 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::Copy { .. }
         | CompiledNodeKind::EvalExpr { .. }
         | CompiledNodeKind::Finish { .. }
-        | CompiledNodeKind::Jump { .. } => emit_linear_step_body(out, node),
+        | CompiledNodeKind::Jump { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. } => emit_linear_step_body(out, node),
         CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {
             emit_branch_step_body(out, &node.kind)
         }

@@ -73,23 +73,6 @@ pub fn execute_node_full(
                 .map(runtime_from_core)
         }
 
-        CompiledNodeKind::TogetherBranch {
-            branch,
-            entry,
-            join,
-            accumulator,
-        } => primitives::together::together_branch(
-            run,
-            store,
-            *branch,
-            *entry,
-            *join,
-            *accumulator,
-            node.output,
-        )
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core),
-
         CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
