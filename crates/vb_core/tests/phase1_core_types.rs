@@ -5,8 +5,8 @@ use core::str::FromStr;
 use vb_core::diagnostic::{Diagnostic, DiagnosticCode, Severity};
 use vb_core::errors::{CoreError, CoreResult, EngineError};
 use vb_core::ids::{
-    AccessorIdx, ActionId, BlobId, CheckedIndex, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo,
-    SlotIdx, StepIdx, SymbolId, WorkflowId,
+    AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo, SlotIdx,
+    StepIdx, SymbolId, WorkflowId,
 };
 use vb_core::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_DEPTH, MAX_EXPRESSIONS, MAX_RUN_NAME_LENGTH,
@@ -81,11 +81,11 @@ fn ids_expose_zero_min_max_checked_add_and_checked_index() {
     assert_eq!(ConstIdx::new(u16::MAX).checked_add(1), None);
     assert_eq!(SeqNo::MAX.checked_add(1), None);
 
-    assert_eq!(CheckedIndex::as_usize(StepIdx::new(1)), 1);
-    assert_eq!(CheckedIndex::as_usize(SlotIdx::new(2)), 2);
-    assert_eq!(CheckedIndex::as_usize(ExprIdx::new(3)), 3);
-    assert_eq!(CheckedIndex::as_usize(AccessorIdx::new(4)), 4);
-    assert_eq!(CheckedIndex::as_usize(ConstIdx::new(5)), 5);
+    assert_eq!(StepIdx::new(1).as_usize(), 1);
+    assert_eq!(SlotIdx::new(2).as_usize(), 2);
+    assert_eq!(ExprIdx::new(3).as_usize(), 3);
+    assert_eq!(AccessorIdx::new(4).as_usize(), 4);
+    assert_eq!(ConstIdx::new(5).as_usize(), 5);
 }
 
 #[test]
