@@ -61,11 +61,8 @@ pub fn verify_digests(
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
     }
-    if matches!(level, DigestCheck::Full) {
-        // TODO(Phase33): Action ABI digest requires per-action digest metadata.
-        // Stub: all action digests match until that metadata is modeled.
-        // When modeled, check action_abi_digest matches ActionContract hash.
-    }
+    // Action ABI digest verification is deferred to a future phase; the
+    // workflow-source and compiled-IR checks above are the meaningful ones.
     Ok(())
 }
 

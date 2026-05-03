@@ -745,6 +745,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(0);
     let mut evidence = EvidenceCollector::new();
+    let mut collect_states = crate::primitives::collect::CollectStates::new();
     let result = drive_deterministic_full(
         &workflow,
         &mut run,
@@ -753,6 +754,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         &[],
         RetryPolicy::NEVER,
         &mut evidence,
+        &mut collect_states,
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 }

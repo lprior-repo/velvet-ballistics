@@ -3341,3 +3341,335 @@ This section tracks known architectural defects discovered through adversarial r
 **Coding style:** No traits, no generics, no higher-order functions. A plain `pub fn validate(parts: &WorkflowParts) -> Result<ValidationOutput, ValidationError>` that each crate calls.
 
 **Resolves in:** Phase 42 (Validation Deduplication)
+
+---
+
+## 47. Durable Execution Architecture Contract
+
+`velvet-ballastics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
+
+### Log-First Invariants
+
+1. **Journal entry persisted = step happened.** Once a journal event is durably written (according to the active durability profile), that step is committed. Recovery never re-executes it without idempotency proof.
+2. **State is derived from journal, never the reverse.** Slot values, taint arrays, step states, and run status are all reconstructed by replaying journal events. No mutable state is the source of truth.
+3. **Side effects are never re-executed during replay unless declared idempotent.** Non-idempotent actions are blocked during replay by `ActionReplayTracker`. Idempotent actions require matching `ActionTicket.idempotency_key` on re-execution.
+4. **Recovery is deterministic.** Replaying the same journal events on the same compiled workflow digest must produce identical slot values, taint, step states, and terminal result. Any divergence is a `ReplayDiverged` error.
+5. **Journal sequence numbers are monotonic per run.** No gaps, no reordering. `SeqNo` is `u64` and wraps are forbidden (typed error before wrap).
+
+### Recovery Model
+
+Recovery follows the snapshot-plus-tail pattern:
+
+1. Load latest snapshot for the run (slot values, taint, step states at sequence N).
+2. Replay journal events from sequence N+1 onward.
+3. Each event is applied deterministically: `SlotWritten` updates slot+taint, `StepStarted`/`StepSucceeded` advances state machine, `ActionScheduled`/`ActionCompleted`/`ActionFailed` track action lifecycle.
+4. Terminal events (`RunFinished`, `RunFailed`, `RunCancelled`) end replay.
+5. If any event cannot be applied (missing prerequisite state, digest mismatch, corrupt record), recovery fails with a typed error — never silently continues.
+
+Epoch-based recovery (future): Crash recovery should support a "seal and start new segment" model where the current journal segment is sealed on crash detection and a new segment begins, preventing partial-write ambiguity. This is not required for v1 single-server but the journal format must not preclude it.
+
+### Single-Server Contract
+
+`velvet-ballastics` is a single-server engine. There is no distributed replication, no leader election, no quorum consensus, and no control plane. These are explicit v1 exclusions:
+
+- No Raft/Paxos consensus.
+- No multi-node replication.
+- No partition rebalancing.
+- No distributed log (Bifrost-equivalent).
+- No disaggregated storage tiering to object stores.
+
+The single-server constraint means:
+- Fjall is the sole durability mechanism. If the node loses power, recovery depends on Fjall's write-ahead log surviving the crash.
+- Strict durability mode (`persist_strict` + `fsync`) is the only profile that guarantees no data loss on power failure.
+- Journaled mode provides bounded data loss window (group commit batch interval).
+- Volatile mode is testing-only and accepts full loss on crash.
+
+### Tiered Durability Model
+
+| Profile | Write Path | Crash Safety | Use Case |
+|---------|-----------|--------------|----------|
+| `volatile` | No Fjall writes | None — all data lost | Benchmarks, unit tests |
+| `journaled` | Bounded Fjall writer queue, group commit | Bounded loss window (last batch) | Production default |
+| `strict` | Synchronous Fjall persist + fsync before ack | Zero data loss | Financial, compliance |
+
+### Compilation vs Interpretation
+
+Unlike orchestrators that interpret journal entries against SDK code (opaque foreign processes), `velvet-ballastics` compiles workflows to numeric IR and optionally to generated Rust:
+
+| Mode | Execution | When to Use |
+|------|-----------|-------------|
+| IR interpreter | Dispatch through `CompiledNodeKind` enum | Debugging, portability, semantic equivalence tests |
+| Generated Rust | Direct `match` arms on step indices, no dispatch | `maxperf` builds, production throughput |
+
+Generated Rust must preserve identical observable semantics to IR execution. Equivalence tests are mandatory before any generated mode is accepted for a primitive.
+
+### Bounded Execution Contract
+
+Every execution dimension is bounded by `ResourceContract`. The engine must reject or suspend before exceeding any bound. Silent truncation is forbidden.
+
+Key bounds enforced at runtime:
+- Steps per tick (`StepBudget`)
+- Total slots, expressions, constants, accessors (compile-time)
+- Expression stack depth (evaluator)
+- Queue depth (shard command queue)
+- Journal batch bytes (writer queue)
+- Fanout branches, collect items, retry attempts (per-primitive)
+- ValueStore arena entries (per-run cap, Phase 45)
+
+This is the Holzmann influence: bounded loops, bounded allocation, no hidden growth vectors.
+
+### Taint Propagation
+
+`Taint` is a three-level lattice: `Clean < DerivedFromSecret < Secret`. Propagation rules:
+
+1. `EvalExpr` joins taint from all loaded input slots.
+2. `BuildObject`/`BuildList` join taint from all field/item slots.
+3. `Finish` carries taint in the result signal `(SlotValue, Taint)`.
+4. Compile-time validation rejects workflows where a `Finish` result slot is `Secret`-tainted (defense-in-depth).
+5. Action output taint must be at least as restrictive as input taint for `DeterministicPure` and `IdempotentExternal` actions.
+6. `AtLeastOnceExternal` actions propagate conservatively as `DerivedFromSecret` when any input is tainted.
+7. Secret-tainted failure details must not enter public diagnostics without redaction.
+
+---
+
+## 48. Operator CLI Contract
+
+The CLI is the primary interface for operators and AI agents. It must provide the same operational affordances as mature orchestrators without cargo-culting their branding.
+
+### Canonical Command Surface
+
+```text
+velvet-ballastics validate <workflow.yaml>
+velvet-ballastics compile  <workflow.yaml> --emit <ir|rust> --out <file>
+velvet-ballastics explain  <workflow.yaml> [--json]
+velvet-ballastics diff     <workflow.yaml> [--against <old.yaml>] [--json]
+velvet-ballastics run      <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]
+velvet-ballastics run      <workflow.yaml> --step <step-id> --step-input <file> [--durability <mode>]
+velvet-ballastics run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]
+velvet-ballastics inspect <run-id> --db <path> [--json]
+velvet-ballastics events  <run-id> --db <path> [--jsonl] [--step <id>] [--tail <n>] [--limit <n>]
+velvet-ballastics trace   <run-id> --db <path> [--jsonl]
+velvet-ballastics replay  <run-id> --db <path> [--json]
+velvet-ballastics cancel  <run-id> --db <path>
+velvet-ballastics resume  <run-id> --db <path>
+velvet-ballastics retry   <run-id> --step <step-id> --db <path>
+velvet-ballastics answer  <run-id> --slot <slot-id> --value <file> --db <path>
+velvet-ballastics ipc-serve --socket <path> --db <path>
+velvet-ballastics bench-run <workflow.yaml>
+velvet-ballastics doctor  --db <path> [--json]
+```
+
+The `vb` binary name is a mandatory alias. Both `velvet-ballastics` and `vb` invoke the same binary.
+
+### Single-Step Testing
+
+`run --step <step-id>` executes exactly one step in isolation with explicit input. This is a first-class feature for debugging and validation.
+
+Contract:
+- Compile the workflow as normal.
+- Resolve `step-id` to `StepIdx` in the compiled IR.
+- Construct a minimal `RunFrame` with slots needed for the target step.
+- Execute `step_once()` once.
+- Report: step ID, step kind, input slots, output slot, engine signal, taint.
+- No journal, no persistence, no action dispatch — pure in-memory.
+- Exit 0 on success, 1 on step error, 2 on setup error.
+
+### Durable Execution Controls
+
+Strict operational distinction between lifecycle commands:
+
+| Command | What it does | Journal impact |
+|---------|-------------|----------------|
+| `cancel` | Halt a running/suspended run immediately | Appends `RunCancelled` event |
+| `resume` | Resume a suspended run from its current state | Continues journal from last event |
+| `retry` | Re-execute a single failed step within an existing run | Preserves journal prefix, appends retry events |
+| `replay` | Re-read full journal and verify state (read-only) | No journal mutation |
+| `answer` | Answer a pending `Ask` with a slot value | Appends `AskAnswered` event |
+
+`resubmit` (create a brand new run from the same workflow) is `run` with the same workflow — it gets a new `RunId` and fresh journal. It is not a lifecycle command.
+
+### Explain / Dry-Run
+
+`explain <workflow.yaml>` compiles without executing and reports the execution plan:
+
+- Step graph: every step ID, kind, output slot, next step
+- Control flow: branches (`Choose`), loops (`ForEach`/`Together`/`Collect`/`Reduce`/`Repeat`), linear chains
+- Resource contract: all 16 bounded fields
+- Action contracts: which steps are `Do` (side effects)
+- Suspension points: which steps can suspend (`Wait`/`Ask`/`Do`)
+- Slot layout: total slots, expressions, accessors, constants
+- Estimated max step count (budget computation)
+- Secrets usage: which steps reference `$secrets`
+- Trigger type
+
+`--json` produces machine-readable output. No `serde_json` in the binary — write JSON manually with format strings.
+
+### Semantic Diff
+
+`diff <workflow.yaml>` compares a workflow against its previously compiled version:
+
+- Textual diff: YAML source changes (line-level)
+- Semantic diff: changes in step count, control flow graph, resource contracts, secret usage, action contracts, retry policies
+- Digest comparison: if a compiled artifact exists in the DB, compare BLAKE3 digests
+- Exit codes: 0 = no semantic changes, 1 = semantic changes detected, 2 = error
+- `--json` for machine-readable output
+
+### Structured Observability
+
+Output format flags:
+- `--json` for snapshot commands (`inspect`, `explain`, `diff`, `doctor`)
+- `--jsonl` for streaming commands (`events`, `trace`, `replay`)
+
+Filter flags for `events`:
+- `--step <id>` — filter events by step index
+- `--tail <n>` — last N events
+- `--limit <n>` — maximum events to show
+- `--since <date>` — events after timestamp
+
+Logs, events, and trace serve different purposes and must not be merged. Trace includes: resolved inputs, evaluated conditions, expanded loops, chosen branches, retry attempts, emitted outputs.
+
+### CLI Design Rules
+
+- No giant overloaded commands. Each command does one operator job.
+- No hidden server-side magic. Local-first, local-only in v1.
+- No naming that depends on users knowing another platform.
+- Copy the operator affordances, not the branding.
+- Machine-readable output (`--json`/`--jsonl`) is mandatory for every reporting command. AI agents must be able to parse output without screen-scraping.
+
+---
+
+## 49. Phase Extension: Operator Features
+
+The following phases extend Section 35 for operator-facing features:
+
+| Phase | Name | Required delivery |
+|-------|------|-------------------|
+| 50 | Single-step testing | `run --step <id>` with input payload, isolated execution, step result reporting. Tests: step resolution, minimal frame construction, step_once execution, output reporting. |
+| 51 | Explain / dry-run | `explain` command with step graph, resource contract, suspension points, secrets usage, `--json` output. Tests: explain output matches compiled IR, JSON format validation. |
+| 52 | Durable lifecycle controls | `cancel`, `resume`, `retry`, `answer` CLI commands. Strict distinction between retry-step, replay-run, and resubmit-workflow. Tests: each lifecycle command against journaled runs, cancelled runs, suspended runs. |
+| 53 | Semantic diff | `diff` command with textual + semantic diff, digest comparison, exit codes. Tests: diff detects step changes, resource contract changes, secret changes. |
+| 54 | Structured observability | `--json`/`--jsonl` flags, filter flags (`--step`, `--tail`, `--limit`, `--since`). Tests: JSON output parses correctly, filter flags narrow results. |
+| 55 | Timer wheel | Replace `IndexMap<RunId, PendingTimer>` with `TimerWheel` backed by `BTreeMap<Instant, Vec<TimerEntry>>`. Automatic timer-driven resume in shard tick. Tests: timer firing, cancellation, next-deadline accuracy. |
+| 56 | Collect hardening | Per-run pagination state (replace global Mutex), time-based pagination limit, `RunId`-keyed state. Tests: concurrent collect runs, time limit enforcement, crash-recovery of pagination state. |
+| 57 | Recovery evidence chain | `SlotWritten` + `StepSucceeded` per deterministic step, `UnsupportedRecoveryState` hydration gate, fix stubbed `verify_digests` at `Full` level. Tests: crash recovery with full evidence chain, hydration failure on missing state. |
+| 58 | Codegen expansion | `BuildObject`, `BuildList`, helper expression ops (`Contains`, `Length`, `Empty`, `Sum`, `Count`, `Unique`), `RetryCheck`. IR/generated equivalence tests per newly supported primitive. |
+| 59 | Behavioral property tests | 11 required properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, taint safety, IR/generated parity. |
+| 60 | `vb` binary alias | Cargo.toml `[[bin]]` entry for `vb` pointing to same `main.rs`. Both `velvet-ballastics` and `vb` produce identical behavior. |
+
+---
+
+## 50. Competitive Performance Targets
+
+The following targets are derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). As a single-server engine with no replication overhead, `velvet-ballastics` must meet or exceed these on equivalent hardware.
+
+### Step-Level Latency Targets
+
+| Metric | Restate (replicated) | Velvet Ballastics (single-server) | Notes |
+|--------|---------------------|-----------------------------------|-------|
+| Single step p50 (no replication) | 3ms | <= 1ms | No network roundtrip for quorum |
+| Single step p50 (journaled) | 10ms | <= 5ms | Fjall group commit vs quorum replication |
+| Single step p50 (strict) | N/A (same as journaled) | <= 10ms | fsync on every step; Restate has no equivalent |
+| Full workflow p50 (9 steps, low load) | 31ms | <= 15ms | Compiled IR, no SDK roundtrip |
+| Full workflow p50 (9 steps, high load) | 116ms | <= 60ms | Single-server removes coordination overhead |
+| Full workflow p99 (9 steps, high load) | 163ms | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
+
+### Throughput Targets
+
+| Metric | Restate | Velvet Ballastics | Notes |
+|--------|---------|-------------------|-------|
+| Actions (steps) per second | 94,286 | >= 100,000 | Generated Rust mode must hit this |
+| Full workflows per second (9 steps) | 8,571 | >= 10,000 | Single-server removes replication overhead |
+| Concurrent active runs | 1,200 (test clients) | >= 4,096 | Frame pool capacity |
+
+### Why These Targets Are Achievable
+
+Restate pays for every step:
+1. Network roundtrip for quorum replication (fastest path is one RTT to 2 of 3 nodes)
+2. Epoch checking and leader validation on every event
+3. SDK roundtrip: server pushes to service process, service responds over network
+4. Tokio async overhead (scheduler, waker, polling)
+5. RocksDB async flush competing with event processing
+
+`velvet-ballastics` eliminates all five:
+1. No replication — local Fjall write
+2. No leader — single shard owns the run
+3. No SDK — action dispatch is a function call within the same process
+4. No async — synchronous deterministic loop
+5. No competing flush — Fjall writes happen through bounded writer queue, not in the hot path
+
+The generated Rust mode adds another advantage: no IR dispatch table lookup. Steps compile to direct `match` arms on constant step indices. This should bring single-step latency under 100 microseconds for pure computation steps (no I/O).
+
+### Measurement Contract
+
+Every performance claim must include:
+- `criterion` or `iai-callgrind` output with p50/p95/p99
+- Hardware: CPU model, cores, RAM, disk type (NVMe vs SSD)
+- Build profile: debug, release, maxperf, PGO
+- Execution mode: IR interpreter vs generated Rust
+- Durability profile: volatile, journaled, strict
+- Number of concurrent runs
+- Benchmark fixture digest (reproducible)
+
+---
+
+## 51. Execution Attempt Tracking
+
+When a run fails and is retried, the engine must reject stale events from previous execution attempts. This prevents split-brain between overlapping retries.
+
+### Contract
+
+1. Every run attempt gets a monotonically increasing `attempt: u16` counter.
+2. `ActionTicket` carries the `attempt` number.
+3. On retry, the attempt counter increments. Any `ActionCompleted`/`ActionFailed` event carrying a stale attempt number is rejected with `StaleAttempt { expected, found }`.
+4. Journal events are tagged with the attempt number.
+5. Recovery replays events for the latest attempt only. Events from earlier attempts are ignored.
+6. The attempt counter is journaled as part of `RunAccepted` and persists across crashes.
+
+This mirrors Restate's invocation execution attempt tracking, adapted for single-server synchronous execution.
+
+---
+
+## 52. Journal Trimming
+
+The journal cannot grow indefinitely. After a snapshot is taken, journal events older than the snapshot are eligible for trimming.
+
+### Trimming Contract
+
+1. A snapshot captures the full run state at `SeqNo` N.
+2. Once a snapshot at N is confirmed durable (fsynced), all journal events with `SeqNo <= N` for that run are eligible for deletion.
+3. Trimming must not delete events for runs that have no snapshot.
+4. Terminal runs (finished/failed/cancelled) are eligible for trimming after their final snapshot, subject to a retention policy (default: keep last N terminal runs per workflow).
+5. The `doctor` command must report journal size and suggest trimming if the journal exceeds a configured threshold.
+
+This prevents unbounded disk growth in long-running production deployments.
+
+---
+
+## 53. Converged Binary Design
+
+`velvet-ballastics` ships as a single binary that operates in different modes depending on the command invoked. This mirrors Restate's converged single-binary design, adapted for single-server operation.
+
+### Modes
+
+| Command | Binary Role | Components Active |
+|---------|-------------|-------------------|
+| `run` | Executor | Compiler + Engine + Storage |
+| `run-compiled` | Executor | Engine + Storage |
+| `validate` | Validator | YAML Parser + Validator |
+| `compile` | Compiler | YAML Parser + Validator + Compiler + Codegen |
+| `explain` | Analyzer | YAML Parser + Validator + Compiler |
+| `diff` | Analyzer | Compiler + Digest comparison |
+| `inspect` | Observer | Storage reader |
+| `events` | Observer | Storage reader |
+| `trace` | Observer | Storage reader |
+| `replay` | Observer | Storage reader + Recovery |
+| `ipc-serve` | Server | Engine + Storage + IPC server loop |
+| `cancel`/`resume`/`retry`/`answer` | Controller | Storage reader + Engine + Storage writer |
+| `bench-run` | Benchmarker | Compiler + Engine + Timer |
+| `doctor` | Diagnostics | Storage reader + Health checks |
+
+No mode starts components it doesn't need. The `validate` command never opens Fjall. The `inspect` command never compiles YAML. The `ipc-serve` command is the only mode that runs the full stack persistently.
+
+### Future Extension
+
+If `velvet-ballastics` ever supports distributed operation (v2+), the binary gains additional roles (log-server, controller, ingress) but the converged model persists: a single binary, configured by role, no separate services to deploy.

@@ -2,8 +2,11 @@
 //!
 //! When a step fails, the engine checks if the compiled node declares an
 //! `on_error` handler. If present, the PC is routed to the handler step and
-//! failure information is written to the designated error slot. If no handler
-//! exists, the run fails.
+//! the failed step index is written to the designated error slot as an `I64`.
+//! The `ErrorSlotData` struct captures full diagnostic details (code, message,
+//! step) for logging and auditing, but only the step index is written to the
+//! slot because the `SlotValue` type system does not support arbitrary strings.
+//! If no handler exists, the run fails.
 
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
@@ -24,12 +27,18 @@ pub enum ErrorHandlerOutcome {
     NoHandler,
 }
 
-/// Typed error information written to the error slot when routing to a handler.
+/// Diagnostic error information captured when routing to an error handler.
 ///
-/// The error slot is populated with an object containing three fields:
-/// - `code`: string failure code identifying the error category
+/// This struct is **not** written to the error slot. The slot system only
+/// supports `SlotValue` types (I64, Bool, Null, etc.) and cannot store
+/// arbitrary strings. Instead, only the failed step index is written as an
+/// `I64`. This struct remains available for logging, auditing, and test
+/// inspection of the full error context (code, message, step).
+///
+/// Fields:
+/// - `code`: machine-readable failure code string
 /// - `message`: human-readable error description
-/// - `step`: the step index that failed
+/// - `failed_step`: the step index that caused the failure
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorSlotData {
     /// Machine-readable failure code string.
@@ -54,7 +63,7 @@ impl ErrorSlotData {
     }
 }
 
-/// Converts an `EngineError` into a stable string code for the error slot.
+/// Converts an `EngineError` into a stable string code for diagnostic use.
 fn error_code_string(error: &EngineError) -> Box<str> {
     match error.runtime_code() {
         Some(code) => code.into(),
@@ -93,6 +102,7 @@ fn error_code_string(error: &EngineError) -> Box<str> {
             EngineError::RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
             EngineError::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
             EngineError::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
+            EngineError::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
             EngineError::TogetherBranchLimitExceeded { .. } => {
                 "TOGETHER_BRANCH_LIMIT_EXCEEDED"
             }
@@ -142,12 +152,14 @@ pub fn route_error_handler(
     Ok(ErrorHandlerOutcome::Routed)
 }
 
-/// Writes typed error information into the error slot.
+/// Writes the failed step index into the error slot.
 ///
 /// The error slot receives an `I64` encoding the failed step index. This is
-/// intentionally simple: the error code string and message are recovered from
-/// the failing error itself. The step index is written as an I64 value so the
-/// handler can inspect which step failed.
+/// intentionally limited: the `SlotValue` type system does not support storing
+/// arbitrary strings, so the error code and message cannot be written to the
+/// slot. Full diagnostic data is available via `ErrorSlotData` for logging and
+/// auditing. The handler can read the step index from the slot to determine
+/// which step failed.
 fn write_error_slot(
     run: &mut RunFrame,
     error_slot: SlotIdx,
@@ -160,10 +172,9 @@ fn write_error_slot(
         SlotValue::I64(i64::from(failed_step.get()));
     run.write_slot(error_slot, step_value)?;
 
-    // Also store the error code as metadata. Since we cannot store arbitrary
-    // strings in slots, we use a second approach: write the diagnostic code
-    // as a u16 packed value. For now, we write the step index and the handler
-    // can use the step state machine to inspect further.
+    // Only the step index is written. The error code and message are not
+    // representable as SlotValue and must be recovered through other means
+    // (e.g., ErrorSlotData for diagnostics).
     Ok(())
 }
 

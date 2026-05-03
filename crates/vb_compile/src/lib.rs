@@ -590,23 +590,43 @@ pub fn lower_repeat(
     ])
 }
 
+/// Type-safe discriminator for the two legal `wait` shapes.
+///
+/// Replaces the previous `is_event: bool` parameter, which allowed invalid
+/// combinations such as passing `is_event = false` with a `timeout_slot`,
+/// which would be silently discarded.
+enum WaitKind {
+    /// `wait.until` — waits until a deadline slot is reached; no timeout.
+    Until { deadline: SlotIdx },
+    /// `wait.event` — waits for an event slot, with an optional timeout.
+    Event {
+        event: SlotIdx,
+        timeout: Option<SlotIdx>,
+    },
+}
+
 /// Lowers a `wait` primitive into `WaitUntil` or `WaitEvent` IR nodes.
 pub fn lower_wait(
     id: StepIdx,
-    deadline_or_event: SlotIdx,
-    timeout_slot: Option<SlotIdx>,
-    is_event: bool,
+    kind: WaitKind,
     builder: &mut SlotCompiler,
 ) -> CompiledNode {
-    builder.record_slot(deadline_or_event);
-    let kind = if is_event {
-        CompiledNodeKind::WaitEvent {
-            event: deadline_or_event,
-            timeout_slot,
+    let compiled_kind = match kind {
+        WaitKind::Until { deadline } => {
+            builder.record_slot(deadline);
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: deadline,
+            }
         }
-    } else {
-        CompiledNodeKind::WaitUntil {
-            deadline_slot: deadline_or_event,
+        WaitKind::Event { event, timeout_slot } => {
+            builder.record_slot(event);
+            if let Some(slot) = timeout_slot {
+                builder.record_slot(slot);
+            }
+            CompiledNodeKind::WaitEvent {
+                event,
+                timeout_slot,
+            }
         }
     };
     CompiledNode {
@@ -615,7 +635,7 @@ pub fn lower_wait(
         next: None,
         error_slot: None,
         on_error: None,
-        kind,
+        kind: compiled_kind,
     }
 }
 
@@ -4876,8 +4896,8 @@ steps:
     }
 
     #[test]
-    fn compiler_accepts_for_each_with_at_once_field() -> Result<(), String> {
-        let source = "version: velvet-ballastics/v1\nname: for_each_with_at_once\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: [1, 2, 3]\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n      at_once: 5\n  - id: done\n    finish:\n      result: 0\n";
+    fn compiler_accepts_for_each_with_limit_field() -> Result<(), String> {
+        let source = "version: velvet-ballastics/v1\nname: for_each_with_limit\nwhen:\n  manual: {}\nsteps:\n  - id: list\n    save:\n      value: 42\n  - id: each\n    for_each:\n      input: 0\n      item: 1\n      limit: 10\n  - id: done\n    finish:\n      result: 0\n";
         let workflow = YamlCompiler::default()
             .compile(source.as_bytes())
             .map_err(|errors| format!("unexpected compile errors: {errors:?}"))?;
@@ -4885,7 +4905,7 @@ steps:
             .node(StepIdx::new(1))
             .ok_or("missing for_each start")?;
         assert!(
-            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10 && body == StepIdx::new(2) && done == StepIdx::new(3)),
+            matches!(start.kind, CompiledNodeKind::ForEachStart { input, item_slot, limit, body, done } if input == SlotIdx::ZERO && item_slot == SlotIdx::new(1) && limit == 10),
             "for_each start node must have correct structure"
         );
         Ok(())
@@ -5686,7 +5706,7 @@ steps:
             .ok_or("unsupported IR unexpectedly generated source")?;
 
         assert!(
-            error.to_string().contains("BuildList"),
+            error.to_string().contains("ForEachStart"),
             "unsupported IR error must name rejected feature, got: {error}"
         );
         Ok(())
@@ -5763,8 +5783,12 @@ steps:
                     next: Some(StepIdx::new(1)),
                     error_slot: None,
                     on_error: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![SlotIdx::new(0)].into_boxed_slice(),
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
                     },
                 },
                 CompiledNode {

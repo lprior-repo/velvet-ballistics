@@ -29,7 +29,7 @@ fn validation_errors_map_every_public_variant_to_an_exact_code() {
 fn core_errors_map_every_public_variant_to_an_exact_code() {
     let core = core_error_codes();
     assert_unique_codes(&core);
-    assert_eq!(core.len(), 34);
+    assert_eq!(core.len(), 35);
 }
 
 #[test]
@@ -370,6 +370,7 @@ fn core_error_codes() -> Vec<(DiagnosticCode, &'static str)> {
         CoreError::RepeatExhausted { max: 1 },
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
+        CoreError::CollectTimeLimitExceeded,
         CoreError::BudgetExceeded {
             budget: "b",
             limit: 1,
@@ -419,6 +420,7 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::RepeatExhausted { .. } => "RepeatExhausted",
         CoreError::CollectPageLimitExceeded => "CollectPageLimitExceeded",
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
+        CoreError::CollectTimeLimitExceeded => "CollectTimeLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
         CoreError::BudgetExceeded { .. } => "BudgetExceeded",
         CoreError::SlotUninitialized { .. } => "SlotUninitialized",

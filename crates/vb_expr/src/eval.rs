@@ -1262,10 +1262,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_helper_contains_returns_type_mismatch() -> ExprResult<()> {
-        // Given: Contains is a multi-arg helper that requires ValueStore context
-        // When: eval_expr_op encounters ExprOp::Contains in pure vb_expr path
-        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
+    fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1277,18 +1274,20 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Contains with I64 args".into(),
+            });
+        };
         assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "expected TypeMismatch for Contains, got: {result:?}"
+            expected.contains("list"),
+            "expected should mention list, got: {expected}"
         );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_append_returns_type_mismatch() -> ExprResult<()> {
-        // Given: Append is a multi-arg helper that requires ValueStore context
-        // When: eval_expr_op encounters ExprOp::Append in pure vb_expr path
-        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
+    fn eval_helper_append_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1300,18 +1299,20 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Append with I64 args".into(),
+            });
+        };
         assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "expected TypeMismatch for Append, got: {result:?}"
+            expected.contains("list"),
+            "expected should mention list, got: {expected}"
         );
         Ok(())
     }
 
     #[test]
-    fn eval_helper_merge_returns_type_mismatch() -> ExprResult<()> {
-        // Given: Merge is a multi-arg helper that requires ValueStore context
-        // When: eval_expr_op encounters ExprOp::Merge in pure vb_expr path
-        // Then: the result is Err(TypeMismatch) — ValueStore unavailable in pure eval
+    fn eval_helper_merge_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
                 ExprOp::LoadConst(ConstIdx::new(0)),
@@ -1323,9 +1324,14 @@ mod tests {
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Merge with I64 args".into(),
+            });
+        };
         assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "expected TypeMismatch for Merge, got: {result:?}"
+            expected.contains("object"),
+            "expected should mention object, got: {expected}"
         );
         Ok(())
     }

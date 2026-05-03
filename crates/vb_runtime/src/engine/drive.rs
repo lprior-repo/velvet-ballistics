@@ -15,7 +15,7 @@ use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{
     EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
-use crate::primitives;
+use crate::primitives::collect::CollectStates;
 
 /// Enhanced drive loop that handles all node kinds including
 /// iteration, compound, action, and suspension primitives.
@@ -31,6 +31,7 @@ pub fn drive_deterministic_full(
     contracts: &[ActionContract],
     retry_policy: RetryPolicy,
     evidence: &mut EvidenceCollector,
+    collect_states: &mut CollectStates,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     loop {
         if !budget.try_take().map_err(RuntimeEngineError::Core)? {
@@ -47,7 +48,9 @@ pub fn drive_deterministic_full(
 
         run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
 
-        let signal = execute_node_full(plan, run, store, node, contracts, retry_policy)?;
+        let signal = execute_node_full(
+            plan, run, store, node, contracts, retry_policy, collect_states,
+        )?;
 
         match mark_step_after_signal(run, pc, &signal) {
             Ok(()) => {}
@@ -76,13 +79,9 @@ pub fn drive_with_actions(
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let mut store = ValueStore::new();
     let mut evidence = EvidenceCollector::new();
+    let mut collect_states = CollectStates::new();
     drive_deterministic_full(
-        plan,
-        run,
-        budget,
-        &mut store,
-        contracts,
-        retry_policy,
-        &mut evidence,
+        plan, run, budget, &mut store, contracts, retry_policy,
+        &mut evidence, &mut collect_states,
     )
 }
