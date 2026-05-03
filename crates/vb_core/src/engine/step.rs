@@ -858,7 +858,7 @@ mod tests {
             &mut run,
             ticket,
             ActionFailureCode::Timeout,
-            true,
+            RetryPolicy::NonRetryable,
         )
         .map_err(|e| e.to_string())?;
 
@@ -922,6 +922,7 @@ mod tests {
                     kind: CompiledNodeKind::ErrorHandler {
                         body: StepIdx::new(1),
                         handler: StepIdx::new(2),
+                        error_slot: None,
                     },
                 },
                 CompiledNode {
