@@ -17,6 +17,7 @@ vb_yaml = { path = "../vb_yaml" }
 postcard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["alloc"] }
+serde_yaml = { workspace = true }
 
 [[bin]]
 name = "velvet-ballistics"

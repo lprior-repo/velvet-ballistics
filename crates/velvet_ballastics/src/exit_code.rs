@@ -134,7 +134,7 @@ mod tests {
             CliExitCode::ActionPolicyError as u8,
             CliExitCode::ReplayDivergence as u8,
         ];
-        let mut sorted = values;
+        let mut sorted: Vec<u8> = values.to_vec();
         sorted.sort_unstable();
         sorted.dedup();
         assert_eq!(sorted.len(), values.len(), "duplicate discriminant found");
