@@ -3854,7 +3854,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 2,
-            symbols_count: 0,
+            symbols_count: 1,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -5053,7 +5053,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             slot_count: 1,
-            symbols_count: 0,
+            symbols_count: 100,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -6521,6 +6521,7 @@ mod proptests {
             accessors: Box::new([]),
             constants: vec![ConstValue::Null].into_boxed_slice(),
             slot_count: 1,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -6577,6 +6578,7 @@ mod proptests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count: 3,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };

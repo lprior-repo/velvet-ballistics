@@ -1439,6 +1439,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         trace_capacity: 256,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut runtime = Runtime::new(shard_count, config);
     let run_id = RunId::new(100);
@@ -1508,6 +1509,7 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         trace_capacity: 256,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut runtime = Runtime::new(shard_count, config);
     let run_id = RunId::new(200);

@@ -809,6 +809,7 @@ fn compiled_from_nodes(
         slot_count: 2,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     })
     .ok()
 }
@@ -1289,6 +1290,7 @@ fn taint_expr_workflow(
         slot_count,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     })
     .ok()
 }
@@ -1369,21 +1371,21 @@ fn taint_slot_loading_bench(c: &mut Criterion) {
                 if let Some(ref workflow) = plan {
                     let mut frame = vb_core::new_run_frame(RunId::new(301), workflow);
                     if let Ok(ref mut run) = frame {
-                        let _ = run.write_slot_with_taint(
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(0),
                             SlotValue::I64(10),
                             Taint::Clean,
-                        );
-                        let _ = run.write_slot_with_taint(
+                        ));
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(1),
                             SlotValue::I64(3),
                             Taint::Clean,
-                        );
-                        let _ = run.write_slot_with_taint(
+                        ));
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(2),
                             SlotValue::I64(7),
                             Taint::Clean,
-                        );
+                        ));
                         let result = vb_core::eval_expr(black_box(workflow), run, ExprIdx::new(0));
                         black_box(result.is_ok())
                     } else {
@@ -1408,21 +1410,21 @@ fn taint_slot_loading_bench(c: &mut Criterion) {
                 if let Some(ref workflow) = plan {
                     let mut frame = vb_core::new_run_frame(RunId::new(302), workflow);
                     if let Ok(ref mut run) = frame {
-                        let _ = run.write_slot_with_taint(
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(0),
                             SlotValue::I64(10),
                             Taint::Clean,
-                        );
-                        let _ = run.write_slot_with_taint(
+                        ));
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(1),
                             SlotValue::I64(3),
                             Taint::Secret,
-                        );
-                        let _ = run.write_slot_with_taint(
+                        ));
+                        drop(run.write_slot_with_taint(
                             SlotIdx::new(2),
                             SlotValue::I64(7),
                             Taint::Clean,
-                        );
+                        ));
                         let result = vb_core::eval_expr(black_box(workflow), run, ExprIdx::new(0));
                         black_box(result.is_ok())
                     } else {
@@ -1507,6 +1509,7 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         slot_count: field_count.saturating_add(1),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     })
     .ok()
 }
@@ -1535,7 +1538,7 @@ fn taint_build_object_bench(c: &mut Criterion) {
                             let override_count = field_count.saturating_div(2);
                             let mut s = 0_u16;
                             while s < override_count {
-                                let _ = run.write_taint(SlotIdx::new(s), Taint::Secret);
+                                drop(run.write_taint(SlotIdx::new(s), Taint::Secret));
                                 s = s.saturating_add(1);
                             }
                             let signal = vb_core::run_until_blocked(
@@ -1616,6 +1619,7 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         slot_count: item_count.saturating_add(1),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     })
     .ok()
 }
@@ -1644,7 +1648,7 @@ fn taint_build_list_bench(c: &mut Criterion) {
                             let override_count = item_count.saturating_div(2);
                             let mut s = 0_u16;
                             while s < override_count {
-                                let _ = run.write_taint(SlotIdx::new(s), Taint::Secret);
+                                drop(run.write_taint(SlotIdx::new(s), Taint::Secret));
                                 s = s.saturating_add(1);
                             }
                             let signal = vb_core::run_until_blocked(
@@ -1762,6 +1766,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
         slot_count: 5,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     })
     .ok()
 }
@@ -1848,10 +1853,7 @@ fn taint_full_workflow_bench(c: &mut Criterion) {
 // ===== Submit artifact flow benchmarks =====
 
 fn submit_artifact_benches(c: &mut Criterion) {
-    let workflow = match vb_compile::compile_workflow(SMALL_WORKFLOW) {
-        Ok(w) => Some(w),
-        Err(_) => None,
-    };
+    let workflow = vb_compile::compile_workflow(SMALL_WORKFLOW).ok();
     let mut group = c.benchmark_group("submit_artifact");
 
     // Relaxed policy — no verification, just persist.
@@ -1947,10 +1949,7 @@ fn submit_artifact_benches(c: &mut Criterion) {
 // ===== WholeWorkflowBudget::compute benchmarks =====
 
 fn budget_compute_benches(c: &mut Criterion) {
-    let small_nodes = match vb_compile::compile_workflow(SMALL_WORKFLOW) {
-        Ok(wf) => Some(wf),
-        Err(_) => None,
-    };
+    let small_nodes = vb_compile::compile_workflow(SMALL_WORKFLOW).ok();
     let chain_10 = save_chain_workflow(10);
     let chain_1000 = save_chain_workflow(1000);
     let mut group = c.benchmark_group("budget_compute");
@@ -2072,7 +2071,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                 let mut i = 0_u16;
                 while i < 100 {
                     let run = RunId::new(u64::from(i));
-                    let event = if i % 5 == 0 {
+                    let event = if i.is_multiple_of(5) {
                         vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
                             run,
                             workflow: WorkflowDigest::from_bytes([0x11; 32]),
@@ -2099,7 +2098,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             result: SlotIdx::new(0),
                         }
                     };
-                    let _ = journal.append(black_box(event));
+                    drop(journal.append(black_box(event)));
                     i = i.saturating_add(1);
                 }
                 black_box(journal.snapshot().map(|e| e.len()))
@@ -2120,7 +2119,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                 let mut i = 0_u16;
                 while i < 1000 {
                     let run = RunId::new(u64::from(i));
-                    let event = if i % 5 == 0 {
+                    let event = if i.is_multiple_of(5) {
                         vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
                             run,
                             workflow: WorkflowDigest::from_bytes([0x11; 32]),
@@ -2147,7 +2146,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             result: SlotIdx::new(0),
                         }
                     };
-                    let _ = journal.append(black_box(event));
+                    drop(journal.append(black_box(event)));
                     i = i.saturating_add(1);
                 }
                 black_box(journal.snapshot().map(|e| e.len()))
@@ -2171,7 +2170,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                     run,
                     workflow: WorkflowDigest::from_bytes([0x22; 32]),
                 };
-                let _ = journal.append(event);
+                drop(journal.append(event));
                 i = i.saturating_add(1);
             }
             b.iter(|| black_box(journal.snapshot().map(|e| e.len())))

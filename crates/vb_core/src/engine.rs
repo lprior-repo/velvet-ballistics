@@ -1447,7 +1447,7 @@ mod tests {
     }
 
     #[test]
-    fn finish_with_uninitialized_result_slot_returns_slot_out_of_bounds() -> Result<(), String> {
+    fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("finish_empty_slot"),
             digest: WorkflowDigest::from_bytes([0xCC; 32]),
@@ -1478,7 +1478,7 @@ mod tests {
         let result = step_once(&workflow, &mut run, &mut store);
 
         match result {
-            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(0) => {
+            Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0) => {
                 ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
                 Ok(())
             }
@@ -1522,7 +1522,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_from_uninitialized_source_slot_returns_slot_out_of_bounds() -> Result<(), String> {
+    fn copy_from_uninitialized_source_slot_returns_slot_uninitialized() -> Result<(), String> {
         let workflow = copy_workflow(Some(SlotIdx::new(1))).map_err(|error| error.to_string())?;
         let mut run = test_frame(RunId::new(109), &workflow)?;
         let mut store = test_store();
@@ -1530,7 +1530,7 @@ mod tests {
         let result = step_once(&workflow, &mut run, &mut store);
 
         match result {
-            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(0) => {
+            Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0) => {
                 ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
                 Ok(())
             }

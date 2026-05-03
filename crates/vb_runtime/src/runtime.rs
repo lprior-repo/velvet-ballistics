@@ -2007,7 +2007,6 @@ mod tests {
             constants: Box::from([vb_core::value::ConstValue::I64(10)]),
             slot_count: 1,
             entry: StepIdx::ZERO,
-            symbols_count: 0,
             resource_contract: ResourceContract::DEFAULT,
             symbols_count: 0,
         };

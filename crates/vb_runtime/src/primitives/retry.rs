@@ -214,9 +214,9 @@ impl RetryState {
         // Use bitwise operations on the i64 directly to avoid sign issues.
         let current_delay_ms = u32::try_from((packed >> 32) & 0xFFFF_FFFF_i64)
             .map_err(|_| RetryPolicyError::InvalidRetryState)?;
-        let current_attempt = u16::try_from((packed >> 16) as u16)
+        let current_attempt = u16::try_from((packed >> 16) & 0xFFFF_i64)
             .map_err(|_| RetryPolicyError::InvalidRetryState)?;
-        let remaining = u16::try_from(packed as u16)
+        let remaining = u16::try_from(packed & 0xFFFF_i64)
             .map_err(|_| RetryPolicyError::InvalidRetryState)?;
         // current_attempt must be >= 1 unless this is a zero-initialized state
         if current_attempt == 0 && remaining > 0 {

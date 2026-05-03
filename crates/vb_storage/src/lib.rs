@@ -9990,6 +9990,7 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
         slot_count: 1,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     };
     let spoofed = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // Under Strict/Journaled, the checksum gate must reject this.
@@ -10062,6 +10063,7 @@ fn submit_artifact_stale_digest_rejected() {
         slot_count: 1,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        symbols_count: 0,
     };
     let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // The stale workflow claims the same digest as the original but has different

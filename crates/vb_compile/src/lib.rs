@@ -253,6 +253,7 @@ pub fn build_constant_pool(parts: &WorkflowParts) -> &[ConstValue] {
 ///
 /// This is the primary lowering step that converts step-level IR into the
 /// compiled node array used by the hot runtime.
+#[allow(clippy::too_many_arguments)]
 pub fn lower_steps_to_ir(
     nodes: Vec<CompiledNode>,
     expressions: Vec<ExprProgram>,

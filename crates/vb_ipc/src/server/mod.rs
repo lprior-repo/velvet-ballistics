@@ -20,7 +20,7 @@ pub mod impl_;
 pub mod ticket;
 pub mod trace;
 
-use error::IpcServerError;
+pub use error::IpcServerError;
 use handlers::{
     handle_answer_ask, handle_cancel_run, handle_complete_action,
     handle_fail_action, handle_health, handle_inspect_run, handle_list_events,

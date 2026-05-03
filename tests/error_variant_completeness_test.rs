@@ -419,6 +419,7 @@ fn core_error_variant_name(error: &CoreError) -> &'static str {
         CoreError::CollectItemLimitExceeded => "CollectItemLimitExceeded",
         CoreError::TogetherBranchLimitExceeded { .. } => "TogetherBranchLimitExceeded",
         CoreError::BudgetExceeded { .. } => "BudgetExceeded",
+        CoreError::SlotUninitialized { .. } => "SlotUninitialized",
     }
 }
 
@@ -792,6 +793,8 @@ fn workflow_error_variant_name(error: &WorkflowError) -> &'static str {
         WorkflowError::BackwardEdge { .. } => "BackwardEdge",
         WorkflowError::ImproperLoopNesting { .. } => "ImproperLoopNesting",
         WorkflowError::BudgetPolicyExceeded { .. } => "BudgetPolicyExceeded",
+        WorkflowError::SymbolOutOfBounds { .. } => "SymbolOutOfBounds",
+        WorkflowError::AccessorPathTooDeep { .. } => "AccessorPathTooDeep",
     }
 }
 

@@ -12,7 +12,8 @@ use vb_core::workflow::CompiledNode;
 
 use crate::engine::{
     compute_idempotency_key, drive_deterministic_full, execute_do, execute_do_without_contract,
-    execute_error_handler, execute_retry_check, RetryPolicy, RuntimeEngineError, RuntimeSignal,
+    execute_error_handler, execute_retry_check, resolve_contract, resume_action_outcome,
+    EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal,
 };
 use vb_core::action::ActionFailure;
 use vb_core::action::ActionFailureCode;
@@ -686,7 +687,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
 #[test]
 fn resolve_contract_returns_unknown_action_for_empty_contracts() {
     let contracts: Vec<vb_core::action::ActionContract> = Vec::new();
-    let result = transition::resolve_contract(ActionId::new(0), &contracts);
+    let result = resolve_contract(ActionId::new(0), &contracts);
     assert_eq!(
         result,
         Err(RuntimeEngineError::Action(
@@ -719,6 +720,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
     };
@@ -732,6 +734,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
     };
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(0);
+    let mut evidence = EvidenceCollector::new();
     let result = drive_deterministic_full(
         &workflow,
         &mut run,
@@ -739,6 +742,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         &mut store,
         &[],
         RetryPolicy::NEVER,
+        &mut evidence,
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 }

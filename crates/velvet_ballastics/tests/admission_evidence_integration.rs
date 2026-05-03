@@ -157,6 +157,7 @@ fn test_config() -> vb_runtime::shard::ShardConfig {
         trace_capacity: 256,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
     }
 }
 

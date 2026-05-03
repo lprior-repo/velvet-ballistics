@@ -1476,7 +1476,7 @@ fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter()
 }
 
 #[test]
-fn copy_from_uninitialized_source_slot_returns_slot_out_of_bounds() -> Result<(), String> {
+fn copy_from_uninitialized_source_slot_returns_slot_uninitialized() -> Result<(), String> {
     let workflow = copy_workflow(Some(SlotIdx::new(1))).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(109), &workflow)?;
     let mut store = test_store();
@@ -1484,16 +1484,19 @@ fn copy_from_uninitialized_source_slot_returns_slot_out_of_bounds() -> Result<()
     let result = step_once(&workflow, &mut run, &mut store);
 
     match result {
-        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(0) => {
+        Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0) => {
             ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
             Ok(())
         }
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
 
 #[test]
-fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
+fn drive_deterministic_stops_on_awaiting_action_signal -> Result<(), String> {
     let parts = WorkflowParts {
         name: Box::<str>::from("do_node"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
