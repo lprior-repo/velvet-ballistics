@@ -294,7 +294,7 @@ fn check_action_policy(parts: &WorkflowParts) -> Certificate {
 
     for node in parts.nodes.iter() {
         if let CompiledNodeKind::Do { action, .. } = node.kind {
-            do_count += 1;
+            do_count = do_count.saturating_add(1);
             // Every Do node has an action field by construction; we verify it
             // is non-zero as a sanity check (action 0 could be valid in some
             // systems but we flag it as worth reviewing).
@@ -304,16 +304,16 @@ fn check_action_policy(parts: &WorkflowParts) -> Certificate {
         }
 
         if let CompiledNodeKind::RetryCheck { .. } = node.kind {
-            retry_count += 1;
+            retry_count = retry_count.saturating_add(1);
         }
 
         if let CompiledNodeKind::ErrorHandler { .. } = node.kind {
-            error_handler_count += 1;
+            error_handler_count = error_handler_count.saturating_add(1);
         }
 
         if let CompiledNodeKind::RepeatStart { .. } = node.kind {
             // Repeat is a form of retry policy
-            retry_count += 1;
+            retry_count = retry_count.saturating_add(1);
         }
     }
 
@@ -358,13 +358,13 @@ fn check_strict_durability(parts: &WorkflowParts) -> Certificate {
     for node in parts.nodes.iter() {
         if let CompiledNodeKind::Finish { .. } = node.kind {
             has_finish = true;
-            finish_count += 1;
+            finish_count = finish_count.saturating_add(1);
         }
         if let CompiledNodeKind::ErrorHandler { .. } = node.kind {
-            error_handler_count += 1;
+            error_handler_count = error_handler_count.saturating_add(1);
         }
         if node.on_error.is_some() {
-            on_error_count += 1;
+            on_error_count = on_error_count.saturating_add(1);
         }
     }
 
@@ -422,8 +422,10 @@ fn check_reachability(parts: &WorkflowParts) -> Certificate {
 
     // BFS from entry
     let mut queue = vec![parts.entry.as_usize()];
-    if parts.entry.as_usize() < node_count {
-        visited[parts.entry.as_usize()] = true;
+    if parts.entry.as_usize() < node_count
+        && let Some(slot) = visited.get_mut(parts.entry.as_usize())
+    {
+            *slot = true;
     }
 
     while let Some(idx) = queue.pop() {
@@ -437,9 +439,14 @@ fn check_reachability(parts: &WorkflowParts) -> Certificate {
 
         for succ in successors {
             let succ_usize = succ.as_usize();
-            if succ_usize < node_count && !visited[succ_usize] {
-                visited[succ_usize] = true;
-                queue.push(succ_usize);
+            if succ_usize < node_count {
+                let is_visited = visited.get(succ_usize).copied().unwrap_or(true);
+                if !is_visited {
+                    if let Some(slot) = visited.get_mut(succ_usize) {
+                        *slot = true;
+                    }
+                    queue.push(succ_usize);
+                }
             }
         }
     }
@@ -606,9 +613,16 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
 
     // Check each pair of loop spans for improper nesting
     for i in 0..loop_spans.len() {
-        for j in (i + 1)..loop_spans.len() {
-            let (start_a, _body_a, done_a) = loop_spans[i];
-            let (start_b, body_b, done_b) = loop_spans[j];
+        let i_next = i.saturating_add(1);
+        for j in i_next..loop_spans.len() {
+            let (start_a, _body_a, done_a) = match loop_spans.get(i) {
+                Some(&span) => span,
+                None => continue,
+            };
+            let (start_b, body_b, done_b) = match loop_spans.get(j) {
+                Some(&span) => span,
+                None => continue,
+            };
 
             let a_start = start_a.as_usize();
             let a_done = done_a.as_usize();
@@ -621,23 +635,23 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
             }
 
             // Check for partial overlap: B starts inside A but ends outside A
-            if b_start > a_start && b_start < a_done {
-                if b_done > a_done {
-                    issues.push(format!(
-                        "loop at step {} spans to {} but inner loop at step {} extends to {}",
-                        a_start, a_done, b_start, b_done,
-                    ));
-                }
+            if b_start > a_start && b_start < a_done
+                && b_done > a_done
+            {
+                issues.push(format!(
+                    "loop at step {} spans to {} but inner loop at step {} extends to {}",
+                    a_start, a_done, b_start, b_done,
+                ));
             }
 
             // Check the reverse: A starts inside B but ends outside B
-            if a_start > b_start && a_start < b_done {
-                if a_done > b_done {
-                    issues.push(format!(
-                        "loop at step {} spans to {} but inner loop at step {} extends to {}",
-                        b_start, b_done, a_start, a_done,
-                    ));
-                }
+            if a_start > b_start && a_start < b_done
+                && a_done > b_done
+            {
+                issues.push(format!(
+                    "loop at step {} spans to {} but inner loop at step {} extends to {}",
+                    b_start, b_done, a_start, a_done,
+                ));
             }
 
             // Check body targets are within parent span

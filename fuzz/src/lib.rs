@@ -975,7 +975,11 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
     let mut offset = 2usize;
     for _ in 0..accessor_count {
         let root_byte = data.get(offset).copied().unwrap_or(0);
-        let safe_slot_count = if slot_count == 0 { 1u16 } else { slot_count };
+        let safe_slot_count: u16 = match slot_count {
+            0 => 1u16,
+            n => n,
+        };
+        #[allow(clippy::arithmetic_side_effects)]
         let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(
             safe_slot_count,
         ));

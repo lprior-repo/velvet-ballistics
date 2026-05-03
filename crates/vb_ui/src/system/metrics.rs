@@ -67,7 +67,7 @@ pub fn queue_pressure_color(depth: u32, max: u32) -> [f32; 4] {
 impl From<&ShardMetrics> for ShardDisplay {
     fn from(m: &ShardMetrics) -> Self {
         let pool_used_ratio = if m.frame_pool_total > 0 {
-            f64::from(m.frame_pool_total - m.frame_pool_free) / f64::from(m.frame_pool_total)
+            f64::from(m.frame_pool_total.saturating_sub(m.frame_pool_free)) / f64::from(m.frame_pool_total)
         } else {
             0.0
         };

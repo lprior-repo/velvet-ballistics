@@ -50,6 +50,7 @@ pub struct ActionTicketDisplay {
 impl ActionTicketDisplay {
     /// Creates a new ticket display from raw fields.
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         run: RunId,
         step: StepIdx,

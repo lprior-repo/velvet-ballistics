@@ -22,9 +22,10 @@ use super::types::{PlaybackSpeed, ReplayDiff};
 // ---------------------------------------------------------------------------
 
 /// Playback state of the replay controller.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum PlaybackState {
     /// Not playing; no run loaded.
+    #[default]
     Stopped,
     /// Auto-advancing at the given speed.
     Playing {
@@ -36,12 +37,6 @@ pub enum PlaybackState {
         /// Event index where playback was paused.
         position: u32,
     },
-}
-
-impl Default for PlaybackState {
-    fn default() -> Self {
-        Self::Stopped
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +76,12 @@ pub struct ReplayController {
     last_tick: Option<Instant>,
     /// Pending events accumulated across paginated ListEvents replies.
     pending_events: Vec<JournalEvent>,
+}
+
+impl Default for ReplayController {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ReplayController {
@@ -298,12 +299,15 @@ impl ReplayController {
         }
 
         // Auto-advance if playing.
-        if let PlaybackState::Playing { speed } = self.state {
-            if self.engine.is_some() {
+        if let PlaybackState::Playing { speed } = self.state
+            && self.engine.is_some()
+        {
                 let delay_ms = speed.event_delay_ms();
                 let elapsed = self
                     .last_tick
-                    .map_or(u64::MAX, |t| t.elapsed().as_millis() as u64);
+                    .map_or(u64::MAX, |t| {
+                        u64::try_from(t.elapsed().as_millis()).unwrap_or(u64::MAX)
+                    });
 
                 if elapsed >= delay_ms {
                     if self.current_position < self.total_events {
@@ -322,7 +326,6 @@ impl ReplayController {
                         self.last_tick = Some(Instant::now());
                     }
                 }
-            }
         }
 
         events
@@ -347,10 +350,10 @@ impl ReplayController {
                 if self.load_phase == LoadPhase::WaitingInspect {
                     self.load_phase = LoadPhase::WaitingEvents;
                     if let Some(run_id) = self.active_run {
-                        let _ = self.bridge.send(IpcRequest::ListEvents {
+                        self.bridge.send(IpcRequest::ListEvents {
                             run_id,
                             from_sequence: 0,
-                        });
+                        }).ok();
                     }
                 }
             }
