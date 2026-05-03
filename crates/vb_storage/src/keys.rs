@@ -7,6 +7,7 @@ use arrayvec::ArrayVec;
 use vb_core::{ActionId, RunId, WorkflowId};
 
 use crate::{
+    JournalError,
     constants::{
         DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
         JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
@@ -14,7 +15,6 @@ use crate::{
         PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
     },
     types::{EventSeq, StorageKey},
-    JournalError,
 };
 
 /// Encodes `[0x01][workflow_digest_32]`.
@@ -37,10 +37,7 @@ pub fn run_header_key(run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalErr
 }
 
 /// Encodes `[0x11][run_id_u64_be][seq_u64_be]`.
-pub fn run_event_key(
-    run: RunId,
-    seq: EventSeq,
-) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+pub fn run_event_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
     journal_key(run, seq)
 }
 
@@ -123,9 +120,7 @@ pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
             timestamp,
             run,
         } => index_status_key(state, timestamp, run)?.to_vec(),
-        StorageKey::IndexWorkflow { workflow, run } => {
-            index_workflow_key(workflow, run)?.to_vec()
-        }
+        StorageKey::IndexWorkflow { workflow, run } => index_workflow_key(workflow, run)?.to_vec(),
         StorageKey::IndexAction { action, run, step } => {
             index_action_key(action, run, step)?.to_vec()
         }

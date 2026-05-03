@@ -8,8 +8,8 @@ use crate::value::ConstValue;
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    check_expr_stack_bound, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram,
-    ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, ResourceContract, WorkflowParts,
+    check_expr_stack_bound,
 };
 
 use super::{ReplayEngine, ReplayError};
@@ -47,9 +47,7 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
         ReplayError::StepNotFound { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
-        ReplayError::NonDeterministicStep { step, .. } => {
-            CoreError::InvalidProgramCounter { step }
-        }
+        ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
         ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
     }
 }

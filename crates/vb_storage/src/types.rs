@@ -61,7 +61,9 @@ pub fn keyspace_options_for(kind: KeyspaceProfile) -> fjall::KeyspaceCreateOptio
 }
 
 /// Monotonic per-run event sequence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 #[repr(transparent)]
 pub struct EventSeq(u64);
 
@@ -150,9 +152,13 @@ pub struct RecordHeader {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageKey {
     /// Workflow source bytes by digest.
-    WorkflowSource { digest: [u8; crate::constants::DIGEST_BYTES] },
+    WorkflowSource {
+        digest: [u8; crate::constants::DIGEST_BYTES],
+    },
     /// Compiled IR bytes by digest.
-    CompiledIr { digest: [u8; crate::constants::DIGEST_BYTES] },
+    CompiledIr {
+        digest: [u8; crate::constants::DIGEST_BYTES],
+    },
     /// Run metadata by run id.
     RunHeader { run: RunId },
     /// Run event by run id and sequence.
@@ -160,7 +166,9 @@ pub enum StorageKey {
     /// Run snapshot by run id and sequence.
     RunSnapshot { run: RunId, seq: EventSeq },
     /// Blob bytes by digest.
-    Blob { digest: [u8; crate::constants::DIGEST_BYTES] },
+    Blob {
+        digest: [u8; crate::constants::DIGEST_BYTES],
+    },
     /// Status index marker.
     IndexStatus {
         state: u8,

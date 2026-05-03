@@ -9,7 +9,9 @@ use crate::{
     error::JournalError,
     events::JournalEvent,
     journal::FjallJournal,
-    types::{DurabilityProfile, JournalWriterFlushReport, JournalWriterQueueProfileCounts, StorageLimits},
+    types::{
+        DurabilityProfile, JournalWriterFlushReport, JournalWriterQueueProfileCounts, StorageLimits,
+    },
 };
 
 #[derive(Debug)]
@@ -80,9 +82,7 @@ impl JournalWriterQueue {
     }
 
     /// Returns pending write counts split by durability profile.
-    pub fn pending_profile_counts(
-        &self,
-    ) -> Result<JournalWriterQueueProfileCounts, JournalError> {
+    pub fn pending_profile_counts(&self) -> Result<JournalWriterQueueProfileCounts, JournalError> {
         let state = self
             .state
             .lock()

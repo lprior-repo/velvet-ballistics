@@ -48,8 +48,8 @@ pub use events::JournalEvent;
 pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
 };
-pub use types::*;
 pub use recovery::{ActionReplayTracker, RunSnapshot};
+pub use types::*;
 
 // Journal
 pub use journal::FjallJournal;
@@ -65,12 +65,13 @@ pub use types::JournalWriterFlushReport;
 
 // Codec
 pub use codec::{
-    decode_record, decode_record_header, encode_record, encode_record_header,
-    verify_digest_match,
+    decode_record, decode_record_header, encode_record, encode_record_header, verify_digest_match,
 };
 
 // Admission
-pub use admission::{AcceptedArtifact, VerificationProof, admit_compiled_artifact, submit_artifact};
+pub use admission::{
+    AcceptedArtifact, VerificationProof, admit_compiled_artifact, submit_artifact,
+};
 
 // ============================================================================
 // Convenience wrapper functions

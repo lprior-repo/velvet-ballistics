@@ -19,8 +19,13 @@ impl FjallJournal {
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
         crate::journal::verify_content_digest(&record.bytes, &record.digest)?;
         let key = blob_key(record.digest)?;
-        let value =
-            encode_record(MAGIC_BLOB, crate::records::RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        let value = encode_record(
+            MAGIC_BLOB,
+            crate::records::RecordKind::Blob,
+            0,
+            record,
+            MAX_BLOB_BYTES,
+        )?;
         self.blob.insert(key.to_vec(), value)?;
         Ok(())
     }

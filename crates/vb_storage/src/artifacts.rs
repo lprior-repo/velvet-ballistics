@@ -22,21 +22,16 @@ impl FjallJournal {
         let mut digests = Vec::new();
         for item in self.compiled_ir.prefix(prefix) {
             let raw_key = item.key()?;
-            let digest_bytes =
-                raw_key.get(1..).ok_or(JournalError::UnexpectedEof)?;
-            let digest_array =
-                <[u8; crate::constants::DIGEST_BYTES]>::try_from(digest_bytes)
-                    .map_err(|_| JournalError::UnexpectedEof)?;
+            let digest_bytes = raw_key.get(1..).ok_or(JournalError::UnexpectedEof)?;
+            let digest_array = <[u8; crate::constants::DIGEST_BYTES]>::try_from(digest_bytes)
+                .map_err(|_| JournalError::UnexpectedEof)?;
             digests.push(vb_core::WorkflowDigest::from_bytes(digest_array));
         }
         Ok(digests)
     }
 
     /// Removes a compiled IR artifact by digest.
-    pub fn remove_artifact(
-        &self,
-        digest: vb_core::WorkflowDigest,
-    ) -> Result<(), JournalError> {
+    pub fn remove_artifact(&self, digest: vb_core::WorkflowDigest) -> Result<(), JournalError> {
         let key = compiled_ir_key(digest.as_bytes())?;
         let exists = self.compiled_ir.contains_key(key.as_slice())?;
         if !exists {

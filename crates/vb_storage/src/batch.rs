@@ -103,8 +103,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// Inserts a blob record into the batch.
     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
         let key = blob_key(record.digest)?;
-        let value =
-            encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
         self.inner.insert(&self.journal.blob, key, value);
         Ok(())
     }

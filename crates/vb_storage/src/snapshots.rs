@@ -6,7 +6,7 @@ use crate::{
     codec::encode_record,
     constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
     error::JournalError,
-    keys::{run_snapshot_key},
+    keys::run_snapshot_key,
     recovery::RunSnapshot,
     types::EventSeq,
 };

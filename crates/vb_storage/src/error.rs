@@ -1,7 +1,7 @@
 //! Storage error types with diagnostic codes.
 
-use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 use crate::types::EventSeq;
+use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
 /// Storage and journal operation errors.
 #[derive(Debug, thiserror::Error)]

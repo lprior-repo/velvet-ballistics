@@ -3,11 +3,11 @@
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use crate::value::{join_taint, SlotValue, Taint};
+use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
-use super::{eval_expr_for_replay, slot_to_replay_err, ReplayError, ReplayExprStack};
+use super::{ReplayError, ReplayExprStack, eval_expr_for_replay, slot_to_replay_err};
 
 /// Internal action returned by `replay_step`.
 pub enum ReplayAction {

@@ -3,7 +3,7 @@
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{AccessorIdx, ConstIdx, SlotIdx, StepIdx};
-use crate::value::{join_taint, SlotValue, Taint};
+use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledWorkflow, ExprOp};
 

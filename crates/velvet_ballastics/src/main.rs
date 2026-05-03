@@ -73,7 +73,10 @@ fn main() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
-        Ok(Command::Validate { workflow, output: _ }) => cmd_validate(&workflow),
+        Ok(Command::Validate {
+            workflow,
+            output: _,
+        }) => cmd_validate(&workflow),
         Ok(Command::Compile {
             workflow,
             emit,
@@ -2106,11 +2109,11 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
 #[cfg(test)]
 mod tests {
     use super::{
+        Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
         build_step_frame, compile_bytes, decode_step_inputs, execute_step_isolated,
         map_runtime_inputs, node_kind_name, parse_args, run_compiled_workflow, signal_name,
-        write_step_inputs, Command, DurabilityMode, ParseError, StepTarget,
-        StorageWorkflowResolver, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+        write_step_inputs,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;

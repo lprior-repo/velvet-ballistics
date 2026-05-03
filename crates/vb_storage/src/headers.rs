@@ -44,8 +44,11 @@ impl FjallJournal {
         let prefix = [PREFIX_RUN_HEADER];
         for item in self.run_header.prefix(prefix) {
             let value = item.value()?;
-            let (_, header) =
-                decode_record(value.as_ref(), MAGIC_INDEX_RECORD, crate::constants::MAX_RUN_HEADER_BYTES)?;
+            let (_, header) = decode_record(
+                value.as_ref(),
+                MAGIC_INDEX_RECORD,
+                crate::constants::MAX_RUN_HEADER_BYTES,
+            )?;
             headers.push(header);
         }
         Ok(headers)

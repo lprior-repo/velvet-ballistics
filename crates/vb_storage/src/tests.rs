@@ -11,8 +11,8 @@
 )]
 mod tests {
     use super::{
-        BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DiagnosticCode,
-        DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue,
+        BatchBuilder, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES,
+        DiagnosticCode, EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriterQueue,
         KeyspaceProfile, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
         MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
         MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
@@ -455,7 +455,9 @@ mod tests {
             step: StepIdx::new(0),
         });
 
-journal.append_strict_batch(builder.as_slice()).expect("journal.append_strict_batch must succeed");
+        journal
+            .append_strict_batch(builder.as_slice())
+            .expect("journal.append_strict_batch must succeed");
         let events = journal
             .events_for_run(run)
             .expect("events_for_run should succeed");
@@ -481,8 +483,12 @@ journal.append_strict_batch(builder.as_slice()).expect("journal.append_strict_ba
             result: vb_core::SlotIdx::new(0),
         };
 
-queue.enqueue_strict(strict1.clone()).expect("queue.enqueue_strict must succeed");
-queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed");
+        queue
+            .enqueue_strict(strict1.clone())
+            .expect("queue.enqueue_strict must succeed");
+        queue
+            .enqueue_strict(strict2.clone())
+            .expect("queue.enqueue_strict must succeed");
         let report = flush_profile(&queue, &journal);
 
         let report = report.expect("flush_profile should succeed");
@@ -520,7 +526,9 @@ queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed"
             .expect("put_run_header must succeed");
         batch.commit().expect("batch.commit must succeed");
 
-        let source = journal.workflow_source(digest).expect("workflow source roundtrip");
+        let source = journal
+            .workflow_source(digest)
+            .expect("workflow source roundtrip");
         assert!(source.is_some());
         assert_eq!(source.unwrap().source, b"test workflow".to_vec());
 
@@ -538,11 +546,12 @@ queue.enqueue_strict(strict2.clone()).expect("queue.enqueue_strict must succeed"
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let mut batch = journal.batch().strict();
         batch
-                .put_blob(&BlobRecord {
-                    digest,
-                    bytes: blob_bytes,
-                }).expect("action must succeed");
-batch.commit().expect("batch.commit must succeed");
+            .put_blob(&BlobRecord {
+                digest,
+                bytes: blob_bytes,
+            })
+            .expect("action must succeed");
+        batch.commit().expect("batch.commit must succeed");
 
         let blob = journal.blob(digest).expect("blob roundtrip");
         assert!(blob.is_some());
@@ -561,15 +570,22 @@ batch.commit().expect("batch.commit must succeed");
 
         let mut batch = journal.batch();
         batch
-                .append_event(&JournalEvent::RunAccepted {
-                    run,
-                    seq: EventSeq::new(0),
-                    workflow: WorkflowDigest::from_bytes([3; 32]),
-                }).expect("action must succeed");
-batch.put_workflow_index(workflow, run).expect("batch.put_workflow_index must succeed");
-batch.put_action_index(action, run, step).expect("batch.put_action_index must succeed");
-batch.put_status_index(1, 5678, run).expect("batch.put_status_index must succeed");
-batch.commit().expect("batch.commit must succeed");
+            .append_event(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([3; 32]),
+            })
+            .expect("action must succeed");
+        batch
+            .put_workflow_index(workflow, run)
+            .expect("batch.put_workflow_index must succeed");
+        batch
+            .put_action_index(action, run, step)
+            .expect("batch.put_action_index must succeed");
+        batch
+            .put_status_index(1, 5678, run)
+            .expect("batch.put_status_index must succeed");
+        batch.commit().expect("batch.commit must succeed");
 
         let events = journal.events_for_run(run);
         let events = events.expect("events_for_run should succeed");
@@ -584,7 +600,7 @@ batch.commit().expect("batch.commit must succeed");
         let batch = journal.batch();
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);
-batch.commit().expect("batch.commit must succeed");
+        batch.commit().expect("batch.commit must succeed");
     }
 
     #[test]
@@ -606,18 +622,17 @@ batch.commit().expect("batch.commit must succeed");
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let mut batch = journal.batch();
         batch
-                .put_workflow_source(&WorkflowSourceRecord {
-                    digest,
-                    source,
-                }).expect("action must succeed");
+            .put_workflow_source(&WorkflowSourceRecord { digest, source })
+            .expect("action must succeed");
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
 
         batch
-                .put_compiled_ir(&CompiledIrRecord {
-                    digest,
-                    ir: b"ir".to_vec(),
-                }).expect("action must succeed");
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: b"ir".to_vec(),
+            })
+            .expect("action must succeed");
         assert_eq!(batch.len(), 2);
     }
 
@@ -636,8 +651,10 @@ batch.commit().expect("batch.commit must succeed");
         };
 
         let mut batch = journal.batch();
-batch.put_snapshot(&snapshot).expect("batch.put_snapshot must succeed");
-batch.commit().expect("batch.commit must succeed");
+        batch
+            .put_snapshot(&snapshot)
+            .expect("batch.put_snapshot must succeed");
+        batch.commit().expect("batch.commit must succeed");
 
         let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
         assert!(loaded.is_some());
@@ -705,14 +722,30 @@ batch.commit().expect("batch.commit must succeed");
             bytes: blob_bytes,
         };
 
-journal.put_workflow_source(&source).expect("journal.put_workflow_source must succeed");
-journal.put_compiled_ir(&ir).expect("journal.put_compiled_ir must succeed");
-journal.put_run_header(&header).expect("journal.put_run_header must succeed");
-journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
-journal.put_blob(&blob).expect("journal.put_blob must succeed");
-journal.put_status_index(1, 2, RunId::new(3)).expect("journal.put_status_index must succeed");
-        journal.put_workflow_index(WorkflowId::new(4), RunId::new(3)).expect("action must succeed");
-        journal.put_action_index(ActionId::new(5), RunId::new(3), StepIdx::new(6)).expect("action must succeed");
+        journal
+            .put_workflow_source(&source)
+            .expect("journal.put_workflow_source must succeed");
+        journal
+            .put_compiled_ir(&ir)
+            .expect("journal.put_compiled_ir must succeed");
+        journal
+            .put_run_header(&header)
+            .expect("journal.put_run_header must succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("journal.put_snapshot must succeed");
+        journal
+            .put_blob(&blob)
+            .expect("journal.put_blob must succeed");
+        journal
+            .put_status_index(1, 2, RunId::new(3))
+            .expect("journal.put_status_index must succeed");
+        journal
+            .put_workflow_index(WorkflowId::new(4), RunId::new(3))
+            .expect("action must succeed");
+        journal
+            .put_action_index(ActionId::new(5), RunId::new(3), StepIdx::new(6))
+            .expect("action must succeed");
 
         let found_source = journal
             .workflow_source(workflow_digest)
@@ -734,7 +767,9 @@ journal.put_status_index(1, 2, RunId::new(3)).expect("journal.put_status_index m
             .expect("snapshot lookup should succeed");
         assert_eq!(found_snapshot, Some(snapshot));
 
-        let found_blob = journal.blob(blob_digest).expect("blob lookup should succeed");
+        let found_blob = journal
+            .blob(blob_digest)
+            .expect("blob lookup should succeed");
         assert_eq!(found_blob, Some(blob));
     }
 
@@ -801,8 +836,12 @@ journal.put_status_index(1, 2, RunId::new(3)).expect("journal.put_status_index m
             seq: EventSeq::new(1),
         };
 
-queue.enqueue_journaled(journaled).expect("queue.enqueue_journaled must succeed");
-queue.enqueue_strict(strict).expect("queue.enqueue_strict must succeed");
+        queue
+            .enqueue_journaled(journaled)
+            .expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_strict(strict)
+            .expect("queue.enqueue_strict must succeed");
 
         assert!(matches!(
             queue.pending_profile_counts(),
@@ -829,8 +868,12 @@ queue.enqueue_strict(strict).expect("queue.enqueue_strict must succeed");
             result: vb_core::SlotIdx::new(0),
         };
 
-queue.enqueue_journaled(journaled.clone()).expect("queue.enqueue_journaled must succeed");
-queue.enqueue_strict(strict.clone()).expect("queue.enqueue_strict must succeed");
+        queue
+            .enqueue_journaled(journaled.clone())
+            .expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_strict(strict.clone())
+            .expect("queue.enqueue_strict must succeed");
         let report = flush_profile(&queue, &journal);
 
         let report = report.expect("flush_profile should succeed");
@@ -857,8 +900,12 @@ queue.enqueue_strict(strict.clone()).expect("queue.enqueue_strict must succeed")
             result: vb_core::SlotIdx::new(0),
         };
 
-journal.append_journaled(&accepted).expect("journal.append_journaled must succeed");
-journal.append_journaled(&finished).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&accepted)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&finished)
+            .expect("journal.append_journaled must succeed");
 
         let replay = journal
             .events_for_run(run)
@@ -1201,7 +1248,9 @@ journal.append_journaled(&finished).expect("journal.append_journaled must succee
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-journal.append_journaled(&event).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event)
+            .expect("journal.append_journaled must succeed");
 
         let run_b = RunId::new(20);
         let result = journal.events_for_run(run_b);
@@ -1223,7 +1272,9 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-journal.append_journaled(&event0).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event0)
+            .expect("journal.append_journaled must succeed");
 
         // Manually insert an event at seq 2 (skipping seq 1)
         let event2 = JournalEvent::StepStarted {
@@ -1231,7 +1282,9 @@ journal.append_journaled(&event0).expect("journal.append_journaled must succeed"
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
         };
-journal.append_journaled(&event2).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event2)
+            .expect("journal.append_journaled must succeed");
 
         let result = journal.events_for_run(run);
         let Err(JournalError::SequenceGap { expected, actual }) = result else {
@@ -1264,7 +1317,9 @@ journal.append_journaled(&event2).expect("journal.append_journaled must succeed"
             seq: EventSeq::new(7),
             workflow: WorkflowDigest::from_bytes([3; 32]),
         };
-journal.append_journaled(&event).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event)
+            .expect("journal.append_journaled must succeed");
 
         let result = journal.append_journaled(&event);
         let Err(JournalError::DuplicateEvent { run, seq }) = result else {
@@ -1579,9 +1634,11 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
             slots: vec![4, 5, 6],
         };
 
-append_journal_event(&journal, &event).expect("append_journal_event must succeed");
-journal.put_blob(&blob).expect("journal.put_blob must succeed");
-write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
+        append_journal_event(&journal, &event).expect("append_journal_event must succeed");
+        journal
+            .put_blob(&blob)
+            .expect("journal.put_blob must succeed");
+        write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
 
         let events = read_run_events(&journal, run);
         let events = events.expect("read_run_events should succeed");
@@ -1604,7 +1661,7 @@ write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([8; 32]),
         };
-append_journal_event(&journal, &event).expect("append_journal_event must succeed");
+        append_journal_event(&journal, &event).expect("append_journal_event must succeed");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = replay_journal(&journal, run, &mut tracker);
@@ -1651,14 +1708,18 @@ append_journal_event(&journal, &event).expect("append_journal_event must succeed
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
-journal.append_strict(&event0).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event0)
+            .expect("journal.append_strict must succeed");
 
         let event2 = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
         };
-journal.append_strict(&event2).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event2)
+            .expect("journal.append_strict must succeed");
 
         let result = journal.events_for_run(run);
         let Err(JournalError::SequenceGap { expected, actual }) = result else {
@@ -1683,7 +1744,9 @@ journal.append_strict(&event2).expect("journal.append_strict must succeed");
         };
         {
             let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+            journal
+                .append_strict(&event)
+                .expect("journal.append_strict must succeed");
         }
 
         let journal2 = FjallJournal::open(temp_dir.path(), None);
@@ -1705,11 +1768,10 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
 
         let source = vec![b'h', b'e', b'l', b'l', b'o'];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
-journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
+        let record = WorkflowSourceRecord { digest, source };
+        journal
+            .put_workflow_source(&record)
+            .expect("journal.put_workflow_source must succeed");
 
         let retrieved = journal
             .workflow_source(digest)
@@ -1747,7 +1809,9 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
             status: 1,
             accepted_at_ms: 1700000000,
         };
-journal.put_run_header(&record).expect("journal.put_run_header must succeed");
+        journal
+            .put_run_header(&record)
+            .expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(123))
@@ -1768,7 +1832,9 @@ journal.put_run_header(&record).expect("journal.put_run_header must succeed");
             digest,
             ir: vec![0xDE, 0xAD, 0xBE, 0xEF],
         };
-journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
+        journal
+            .put_compiled_ir(&record)
+            .expect("journal.put_compiled_ir must succeed");
 
         let retrieved = journal
             .compiled_ir(digest)
@@ -1790,7 +1856,9 @@ journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
             digest,
             bytes: blob_bytes,
         };
-journal.put_blob(&record).expect("journal.put_blob must succeed");
+        journal
+            .put_blob(&record)
+            .expect("journal.put_blob must succeed");
 
         let retrieved = journal.blob(digest).expect("blob lookup should succeed");
         assert_eq!(retrieved, Some(record));
@@ -1810,7 +1878,9 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
             workflow: WorkflowDigest::from_bytes([7; 32]),
             slots: vec![1, 2, 3],
         };
-journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("journal.put_snapshot must succeed");
 
         let retrieved = journal
             .snapshot(RunId::new(88), EventSeq::new(10))
@@ -1881,9 +1951,15 @@ journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
             step: StepIdx::new(0),
         };
 
-journal.append_journaled(&event_a0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&event_b0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&event_a1).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event_a0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event_b0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event_a1)
+            .expect("journal.append_journaled must succeed");
 
         let events_a = journal
             .events_for_run(run_a)
@@ -2195,7 +2271,9 @@ journal.append_journaled(&event_a1).expect("journal.append_journaled must succee
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2221,8 +2299,12 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
         };
-journal.append_strict(&accepted).expect("journal.append_strict must succeed");
-journal.append_strict(&started).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&accepted)
+            .expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&started)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2245,7 +2327,9 @@ journal.append_strict(&started).expect("journal.append_strict must succeed");
             seq: EventSeq::new(0),
             step,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2275,7 +2359,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             step,
             output,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2306,7 +2392,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             seq: EventSeq::new(0),
             slot,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2336,7 +2424,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             step,
             action,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2369,7 +2459,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             step,
             action,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2400,7 +2492,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             seq: EventSeq::new(0),
             result,
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2427,7 +2521,9 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             run,
             seq: EventSeq::new(0),
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2458,9 +2554,15 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             seq: EventSeq::new(2),
             result: vb_core::SlotIdx::new(0),
         };
-journal.append_strict(&e0).expect("journal.append_strict must succeed");
-journal.append_strict(&e1).expect("journal.append_strict must succeed");
-journal.append_strict(&e2).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&e0)
+            .expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&e1)
+            .expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&e2)
+            .expect("journal.append_strict must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2483,7 +2585,9 @@ journal.append_strict(&e2).expect("journal.append_strict must succeed");
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-journal.append_strict(&event).expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&event)
+            .expect("journal.append_strict must succeed");
 
         let result = journal.append_strict(&event);
         let Err(JournalError::DuplicateEvent {
@@ -2530,11 +2634,21 @@ journal.append_strict(&event).expect("journal.append_strict must succeed");
             seq: EventSeq::new(4),
             result: vb_core::SlotIdx::new(1),
         };
-journal.append_journaled(&e0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&e1).expect("journal.append_journaled must succeed");
-journal.append_journaled(&e2).expect("journal.append_journaled must succeed");
-journal.append_journaled(&e3).expect("journal.append_journaled must succeed");
-journal.append_journaled(&e4).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&e0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&e1)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&e2)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&e3)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&e4)
+            .expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2559,7 +2673,9 @@ journal.append_journaled(&e4).expect("journal.append_journaled must succeed");
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-journal.append_journaled(&event).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event)
+            .expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(RunId::new(2))
@@ -2602,11 +2718,21 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
             result: vb_core::SlotIdx::new(0),
         };
 
-journal.append_journaled(&a0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&b0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&a1).expect("journal.append_journaled must succeed");
-journal.append_journaled(&b1).expect("journal.append_journaled must succeed");
-journal.append_journaled(&a2).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&a0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&b0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&a1)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&b1)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&a2)
+            .expect("journal.append_journaled must succeed");
 
         let events_a = journal
             .events_for_run(run_a)
@@ -2636,7 +2762,9 @@ journal.append_journaled(&a2).expect("journal.append_journaled must succeed");
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-journal.append_journaled(&event).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event)
+            .expect("journal.append_journaled must succeed");
 
         let events = journal
             .events_for_run(run)
@@ -2658,7 +2786,9 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
             status: 0,
             accepted_at_ms: u64::MAX / 2,
         };
-journal.put_run_header(&record).expect("journal.put_run_header must succeed");
+        journal
+            .put_run_header(&record)
+            .expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(1))
@@ -2678,7 +2808,9 @@ journal.put_run_header(&record).expect("journal.put_run_header must succeed");
             workflow: test_digest(7),
             slots: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE],
         };
-journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("journal.put_snapshot must succeed");
 
         let retrieved = journal
             .snapshot(RunId::new(1), EventSeq::new(0))
@@ -2697,7 +2829,9 @@ journal.put_snapshot(&snapshot).expect("journal.put_snapshot must succeed");
             digest: stored_digest,
             ir: vec![1, 2, 3],
         };
-journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
+        journal
+            .put_compiled_ir(&record)
+            .expect("journal.put_compiled_ir must succeed");
 
         let result = journal
             .compiled_ir(test_digest(2))
@@ -2717,7 +2851,9 @@ journal.put_compiled_ir(&record).expect("journal.put_compiled_ir must succeed");
             digest: stored_digest,
             source,
         };
-journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
+        journal
+            .put_workflow_source(&record)
+            .expect("journal.put_workflow_source must succeed");
 
         let result = journal
             .workflow_source(test_digest(11))
@@ -3443,8 +3579,12 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
             status: 1,
             accepted_at_ms: 200,
         };
-journal.put_run_header(&original).expect("journal.put_run_header must succeed");
-journal.put_run_header(&updated).expect("journal.put_run_header must succeed");
+        journal
+            .put_run_header(&original)
+            .expect("journal.put_run_header must succeed");
+        journal
+            .put_run_header(&updated)
+            .expect("journal.put_run_header must succeed");
 
         let retrieved = journal
             .run_header(RunId::new(1))
@@ -3487,11 +3627,21 @@ journal.put_run_header(&updated).expect("journal.put_run_header must succeed");
             result: vb_core::SlotIdx::new(0),
         };
 
-journal.append_journaled(&r1_e0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&r1_e1).expect("journal.append_journaled must succeed");
-journal.append_journaled(&r2_e0).expect("journal.append_journaled must succeed");
-journal.append_journaled(&r2_e1).expect("journal.append_journaled must succeed");
-journal.append_journaled(&r2_e2).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&r1_e0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&r1_e1)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&r2_e0)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&r2_e1)
+            .expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&r2_e2)
+            .expect("journal.append_journaled must succeed");
 
         let events1 = journal
             .events_for_run(run1)
@@ -3608,7 +3758,9 @@ journal.append_journaled(&r2_e2).expect("journal.append_journaled must succeed")
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-journal.append_journaled(&event).expect("journal.append_journaled must succeed");
+        journal
+            .append_journaled(&event)
+            .expect("journal.append_journaled must succeed");
         let events = journal
             .events_for_run(run)
             .expect("should succeed with contiguous events");
@@ -3666,7 +3818,9 @@ journal.append_journaled(&event).expect("journal.append_journaled must succeed")
                 },
             ];
             for event in &events {
-journal.append_strict(event).expect("journal.append_strict must succeed");
+                journal
+                    .append_strict(event)
+                    .expect("journal.append_strict must succeed");
             }
         }
 
@@ -3692,7 +3846,9 @@ journal.append_strict(event).expect("journal.append_strict must succeed");
             status: 3,
             accepted_at_ms: 1700000000,
         };
-journal.put_run_header(&record).expect("journal.put_run_header must succeed");
+        journal
+            .put_run_header(&record)
+            .expect("journal.put_run_header must succeed");
         let retrieved = journal
             .run_header(RunId::new(42))
             .expect("lookup should succeed");
@@ -3718,7 +3874,9 @@ journal.put_run_header(&record).expect("journal.put_run_header must succeed");
             digest,
             bytes: blob_bytes,
         };
-journal.put_blob(&record).expect("journal.put_blob must succeed");
+        journal
+            .put_blob(&record)
+            .expect("journal.put_blob must succeed");
         let retrieved = journal.blob(digest).expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
@@ -3731,11 +3889,10 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
         let (_guard, journal) = open_journal();
         let source: Vec<u8> = vec![];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
-journal.put_workflow_source(&record).expect("journal.put_workflow_source must succeed");
+        let record = WorkflowSourceRecord { digest, source };
+        journal
+            .put_workflow_source(&record)
+            .expect("journal.put_workflow_source must succeed");
         let retrieved = journal
             .workflow_source(digest)
             .expect("lookup should succeed");
@@ -4227,10 +4384,7 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
         let bytes = vec![0u8; (MAX_BLOB_BYTES as usize).saturating_add(1)];
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
-        let record = BlobRecord {
-            digest,
-            bytes,
-        };
+        let record = BlobRecord { digest, bytes };
         assert!(matches!(
             journal.put_blob(&record),
             Err(JournalError::PayloadTooLarge { .. })
@@ -4247,7 +4401,9 @@ journal.put_workflow_source(&record).expect("journal.put_workflow_source must su
             digest,
             bytes: bytes.clone(),
         };
-journal.put_blob(&record).expect("journal.put_blob must succeed");
+        journal
+            .put_blob(&record)
+            .expect("journal.put_blob must succeed");
         assert_eq!(journal.blob(digest).expect("ok"), Some(record));
     }
 
@@ -4298,10 +4454,7 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
         let source = vec![0u8; (MAX_WORKFLOW_SOURCE_BYTES as usize).saturating_add(1)];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
+        let record = WorkflowSourceRecord { digest, source };
         assert!(matches!(
             journal.put_workflow_source(&record),
             Err(JournalError::PayloadTooLarge { .. })
@@ -4389,7 +4542,9 @@ journal.put_blob(&record).expect("journal.put_blob must succeed");
             seq: EventSeq::new(0),
             workflow: test_digest(1),
         };
-queue.enqueue_journaled(event.clone()).expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("queue.enqueue_journaled must succeed");
         assert!(matches!(
             queue.enqueue_journaled(event),
             Err(JournalError::QueueFull)
@@ -4485,8 +4640,12 @@ queue.enqueue_journaled(event.clone()).expect("queue.enqueue_journaled must succ
             seq: EventSeq::new(1),
         };
 
-queue.enqueue_journaled(accepted).expect("queue.enqueue_journaled must succeed");
-queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_journaled(accepted)
+            .expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_journaled(cancelled)
+            .expect("queue.enqueue_journaled must succeed");
         assert!(matches!(
             queue.flush_batch(&journal),
             Ok(report) if report.drained == 2 && report.written == 2
@@ -4513,8 +4672,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(1),
         };
 
-queue.enqueue_journaled(accepted.clone()).expect("queue.enqueue_journaled must succeed");
-queue.enqueue_strict(cancelled).expect("queue.enqueue_strict must succeed");
+        queue
+            .enqueue_journaled(accepted.clone())
+            .expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_strict(cancelled)
+            .expect("queue.enqueue_strict must succeed");
         assert!(matches!(
             queue.shutdown(&journal),
             Ok(report) if report.drained == 2 && report.written == 2
@@ -4542,9 +4705,15 @@ queue.enqueue_strict(cancelled).expect("queue.enqueue_strict must succeed");
             seq: EventSeq::new(1),
         };
 
-journal.append_journaled(&accepted).expect("journal.append_journaled must succeed");
-queue.enqueue_journaled(accepted).expect("queue.enqueue_journaled must succeed");
-queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed");
+        journal
+            .append_journaled(&accepted)
+            .expect("journal.append_journaled must succeed");
+        queue
+            .enqueue_journaled(accepted)
+            .expect("queue.enqueue_journaled must succeed");
+        queue
+            .enqueue_journaled(cancelled)
+            .expect("queue.enqueue_journaled must succeed");
 
         // This models the crash window where a prior attempt reached Fjall before
         // the queue could durably drain. Retrying accepts the identical event only.
@@ -4904,9 +5073,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             workflow: WorkflowDigest::from_bytes([1; 32]),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1, "one event must be stored");
         assert_eq!(events[0], event, "event must round-trip exactly");
     }
@@ -4922,9 +5095,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             step: StepIdx::new(1),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -4941,9 +5118,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             output: SlotIdx::new(3),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -4958,9 +5139,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(0),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -4977,9 +5162,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             action: ActionId::new(7),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -4996,9 +5185,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             action: ActionId::new(8),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5015,9 +5208,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             action: ActionId::new(9),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5033,9 +5230,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             result: SlotIdx::new(42),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5050,9 +5251,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(0),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5067,9 +5272,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(0),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5085,9 +5294,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             slot: SlotIdx::new(5),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5103,9 +5316,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             step: StepIdx::new(3),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
     }
@@ -5134,15 +5351,25 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             result: SlotIdx::new(0),
         };
         let mut batch = journal.batch();
-        batch.append_event(&event_a).expect("batch.append_event must succeed");
-        batch.append_event(&event_b).expect("batch.append_event must succeed");
-        batch.append_event(&event_a2).expect("batch.append_event must succeed");
+        batch
+            .append_event(&event_a)
+            .expect("batch.append_event must succeed");
+        batch
+            .append_event(&event_b)
+            .expect("batch.append_event must succeed");
+        batch
+            .append_event(&event_a2)
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let events_a = journal.events_for_run(run_a).expect("events_for_run A must succeed");
+        let events_a = journal
+            .events_for_run(run_a)
+            .expect("events_for_run A must succeed");
         assert_eq!(events_a.len(), 2, "run A must have exactly 2 events");
         assert_eq!(events_a[0], event_a);
         assert_eq!(events_a[1], event_a2);
-        let events_b = journal.events_for_run(run_b).expect("events_for_run B must succeed");
+        let events_b = journal
+            .events_for_run(run_b)
+            .expect("events_for_run B must succeed");
         assert_eq!(events_b.len(), 1, "run B must have exactly 1 event");
         assert_eq!(events_b[0], event_b);
     }
@@ -5168,12 +5395,20 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             accepted_at_ms: 200,
         };
         let mut batch = journal.batch();
-        batch.put_run_header(&header_1).expect("batch.put_run_header must succeed");
-        batch.put_run_header(&header_2).expect("batch.put_run_header must succeed");
+        batch
+            .put_run_header(&header_1)
+            .expect("batch.put_run_header must succeed");
+        batch
+            .put_run_header(&header_2)
+            .expect("batch.put_run_header must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let found_1 = journal.run_header(run_1).expect("run_header run_1 must succeed");
+        let found_1 = journal
+            .run_header(run_1)
+            .expect("run_header run_1 must succeed");
         assert_eq!(found_1, Some(header_1), "run 1 header must match exactly");
-        let found_2 = journal.run_header(run_2).expect("run_header run_2 must succeed");
+        let found_2 = journal
+            .run_header(run_2)
+            .expect("run_header run_2 must succeed");
         assert_eq!(found_2, Some(header_2), "run 2 header must match exactly");
     }
 
@@ -5196,12 +5431,20 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             slots: vec![4, 5, 6],
         };
         let mut batch = journal.batch();
-        batch.put_snapshot(&snap_a).expect("batch.put_snapshot must succeed");
-        batch.put_snapshot(&snap_b).expect("batch.put_snapshot must succeed");
+        batch
+            .put_snapshot(&snap_a)
+            .expect("batch.put_snapshot must succeed");
+        batch
+            .put_snapshot(&snap_b)
+            .expect("batch.put_snapshot must succeed");
         batch.commit().expect("batch.commit must succeed");
-        let found_a = journal.snapshot(run_a, EventSeq::new(0)).expect("snapshot A must succeed");
+        let found_a = journal
+            .snapshot(run_a, EventSeq::new(0))
+            .expect("snapshot A must succeed");
         assert_eq!(found_a, Some(snap_a), "snapshot for run A must match");
-        let found_b = journal.snapshot(run_b, EventSeq::new(0)).expect("snapshot B must succeed");
+        let found_b = journal
+            .snapshot(run_b, EventSeq::new(0))
+            .expect("snapshot B must succeed");
         assert_eq!(found_b, Some(snap_b), "snapshot for run B must match");
     }
 
@@ -5213,34 +5456,49 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run_2 = RunId::new(4002);
         let run_3 = RunId::new(4003);
         let mut batch = journal.batch();
-        batch.append_event(&JournalEvent::RunAccepted {
-            run: run_1,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        }).expect("batch.append_event must succeed");
-        batch.append_event(&JournalEvent::RunAccepted {
-            run: run_2,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([2; 32]),
-        }).expect("batch.append_event must succeed");
-        batch.append_event(&JournalEvent::RunAccepted {
-            run: run_3,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([3; 32]),
-        }).expect("batch.append_event must succeed");
+        batch
+            .append_event(&JournalEvent::RunAccepted {
+                run: run_1,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([1; 32]),
+            })
+            .expect("batch.append_event must succeed");
+        batch
+            .append_event(&JournalEvent::RunAccepted {
+                run: run_2,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([2; 32]),
+            })
+            .expect("batch.append_event must succeed");
+        batch
+            .append_event(&JournalEvent::RunAccepted {
+                run: run_3,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([3; 32]),
+            })
+            .expect("batch.append_event must succeed");
         batch.commit().expect("batch.commit must succeed");
         assert_eq!(
-            journal.events_for_run(run_1).expect("run_1 must succeed").len(),
+            journal
+                .events_for_run(run_1)
+                .expect("run_1 must succeed")
+                .len(),
             1,
             "run 1 must have 1 event"
         );
         assert_eq!(
-            journal.events_for_run(run_2).expect("run_2 must succeed").len(),
+            journal
+                .events_for_run(run_2)
+                .expect("run_2 must succeed")
+                .len(),
             1,
             "run 2 must have 1 event"
         );
         assert_eq!(
-            journal.events_for_run(run_3).expect("run_3 must succeed").len(),
+            journal
+                .events_for_run(run_3)
+                .expect("run_3 must succeed")
+                .len(),
             1,
             "run 3 must have 1 event"
         );
@@ -5269,13 +5527,21 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
         };
-        queue.enqueue_journaled(event_0.clone()).expect("enqueue 0 must succeed");
-        queue.enqueue_journaled(event_1.clone()).expect("enqueue 1 must succeed");
-        queue.enqueue_journaled(event_2.clone()).expect("enqueue 2 must succeed");
+        queue
+            .enqueue_journaled(event_0.clone())
+            .expect("enqueue 0 must succeed");
+        queue
+            .enqueue_journaled(event_1.clone())
+            .expect("enqueue 1 must succeed");
+        queue
+            .enqueue_journaled(event_2.clone())
+            .expect("enqueue 2 must succeed");
         let report = queue.drain_all(&journal).expect("drain_all must succeed");
         assert_eq!(report.drained, 3);
         assert_eq!(report.written, 3);
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events[0], event_0, "first event must be seq 0");
         assert_eq!(events[1], event_1, "second event must be seq 1");
         assert_eq!(events[2], event_2, "third event must be seq 2");
@@ -5296,11 +5562,17 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             run,
             seq: EventSeq::new(1),
         };
-        queue.enqueue_strict(event_0.clone()).expect("enqueue 0 must succeed");
-        queue.enqueue_strict(event_1.clone()).expect("enqueue 1 must succeed");
+        queue
+            .enqueue_strict(event_0.clone())
+            .expect("enqueue 0 must succeed");
+        queue
+            .enqueue_strict(event_1.clone())
+            .expect("enqueue 1 must succeed");
         let report = queue.drain_all(&journal).expect("drain_all must succeed");
         assert_eq!(report.drained, 2);
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events[0], event_0);
         assert_eq!(events[1], event_1);
     }
@@ -5321,12 +5593,18 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
         };
-        queue.enqueue_journaled(journaled_event.clone()).expect("enqueue journaled must succeed");
-        queue.enqueue_strict(strict_event.clone()).expect("enqueue strict must succeed");
+        queue
+            .enqueue_journaled(journaled_event.clone())
+            .expect("enqueue journaled must succeed");
+        queue
+            .enqueue_strict(strict_event.clone())
+            .expect("enqueue strict must succeed");
         let report = queue.drain_all(&journal).expect("drain_all must succeed");
         assert_eq!(report.drained, 2, "both events must be drained");
         assert_eq!(report.written, 2, "both events must be written");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 2);
         assert_eq!(events[0], journaled_event);
         assert_eq!(events[1], strict_event);
@@ -5343,10 +5621,16 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([4; 32]),
         };
-        queue.enqueue_journaled(event.clone()).expect("enqueue must succeed");
-        let report = queue.flush_batch(&journal).expect("flush_batch must succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("enqueue must succeed");
+        let report = queue
+            .flush_batch(&journal)
+            .expect("flush_batch must succeed");
         assert_eq!(report.written, 1, "one event must be written");
-        let events_before = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events_before = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events_before.len(), 1, "event must be on disk before drain");
         assert_eq!(events_before[0], event);
     }
@@ -5373,8 +5657,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let counts_empty = queue.pending_profile_counts().expect("counts must succeed");
         assert_eq!(counts_empty.journaled, 0);
         assert_eq!(counts_empty.strict, 0);
-        queue.enqueue_journaled(event.clone()).expect("enqueue 0 must succeed");
-        queue.enqueue_journaled(event.clone()).expect("enqueue 1 must succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("enqueue 0 must succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("enqueue 1 must succeed");
         queue.enqueue_strict(event).expect("enqueue 2 must succeed");
         let counts = queue.pending_profile_counts().expect("counts must succeed");
         assert_eq!(counts.journaled, 2, "two journaled events must be counted");
@@ -5387,9 +5675,13 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn journal_open_creates_fresh_database() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let events = journal.events_for_run(RunId::new(1)).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(RunId::new(1))
+            .expect("events_for_run must succeed");
         assert!(events.is_empty(), "fresh database must have no events");
-        let header = journal.run_header(RunId::new(1)).expect("run_header must succeed");
+        let header = journal
+            .run_header(RunId::new(1))
+            .expect("run_header must succeed");
         assert_eq!(header, None, "fresh database must have no headers");
         let blob = journal.blob([0; 32]).expect("blob must succeed");
         assert_eq!(blob, None, "fresh database must have no blobs");
@@ -5410,8 +5702,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         };
         {
             let journal = FjallJournal::open(&path, None).expect("setup: journal open");
-            journal.put_run_header(&header).expect("put_run_header must succeed");
-            journal.persist_strict().expect("persist_strict must succeed");
+            journal
+                .put_run_header(&header)
+                .expect("put_run_header must succeed");
+            journal
+                .persist_strict()
+                .expect("persist_strict must succeed");
         }
         let reopened = FjallJournal::open(&path, None).expect("reopen must succeed");
         let found = reopened.run_header(run).expect("run_header must succeed");
@@ -5435,13 +5731,18 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source = b"consistent_source".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
-        journal.put_workflow_source(&record).expect("put_workflow_source must succeed");
-        let found = journal.workflow_source(digest).expect("workflow_source must succeed");
-        assert_eq!(found, Some(record), "put-then-get must be consistent in same session");
+        let record = WorkflowSourceRecord { digest, source };
+        journal
+            .put_workflow_source(&record)
+            .expect("put_workflow_source must succeed");
+        let found = journal
+            .workflow_source(digest)
+            .expect("workflow_source must succeed");
+        assert_eq!(
+            found,
+            Some(record),
+            "put-then-get must be consistent in same session"
+        );
     }
 
     #[test]
@@ -5453,9 +5754,17 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             digest,
             ir: b"consistent_ir".to_vec(),
         };
-        journal.put_compiled_ir(&record).expect("put_compiled_ir must succeed");
-        let found = journal.compiled_ir(digest).expect("compiled_ir must succeed");
-        assert_eq!(found, Some(record), "put-then-get must be consistent in same session");
+        journal
+            .put_compiled_ir(&record)
+            .expect("put_compiled_ir must succeed");
+        let found = journal
+            .compiled_ir(digest)
+            .expect("compiled_ir must succeed");
+        assert_eq!(
+            found,
+            Some(record),
+            "put-then-get must be consistent in same session"
+        );
     }
 
     #[test]
@@ -5470,9 +5779,15 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             status: 7,
             accepted_at_ms: 123456789,
         };
-        journal.put_run_header(&record).expect("put_run_header must succeed");
+        journal
+            .put_run_header(&record)
+            .expect("put_run_header must succeed");
         let found = journal.run_header(run).expect("run_header must succeed");
-        assert_eq!(found, Some(record), "put-then-get must be consistent in same session");
+        assert_eq!(
+            found,
+            Some(record),
+            "put-then-get must be consistent in same session"
+        );
     }
 
     #[test]
@@ -5487,9 +5802,15 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             workflow: WorkflowDigest::from_bytes([0xAA; 32]),
             slots: vec![0xDE, 0xAD],
         };
-        journal.put_snapshot(&snapshot).expect("put_snapshot must succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot must succeed");
         let found = journal.snapshot(run, seq).expect("snapshot must succeed");
-        assert_eq!(found, Some(snapshot), "put-then-get must be consistent in same session");
+        assert_eq!(
+            found,
+            Some(snapshot),
+            "put-then-get must be consistent in same session"
+        );
     }
 
     #[test]
@@ -5504,7 +5825,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         };
         journal.put_blob(&record).expect("put_blob must succeed");
         let found = journal.blob(digest).expect("blob must succeed");
-        assert_eq!(found, Some(record), "put-then-get must be consistent in same session");
+        assert_eq!(
+            found,
+            Some(record),
+            "put-then-get must be consistent in same session"
+        );
     }
 
     // --- Index queries (tests 31-35) ---
@@ -5516,9 +5841,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let state: u8 = 3;
         let timestamp: u64 = 1700000000;
         let run = RunId::new(7001);
-        journal.put_status_index(state, timestamp, run).expect("put_status_index must succeed");
+        journal
+            .put_status_index(state, timestamp, run)
+            .expect("put_status_index must succeed");
         let key = index_status_key(state, timestamp, run).expect("key must succeed");
-        let value = journal.index_status.get(key.as_slice()).expect("get must succeed");
+        let value = journal
+            .index_status
+            .get(key.as_slice())
+            .expect("get must succeed");
         assert!(value.is_some(), "status index entry must exist after put");
     }
 
@@ -5528,9 +5858,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let workflow = WorkflowId::new(42);
         let run = RunId::new(7002);
-        journal.put_workflow_index(workflow, run).expect("put_workflow_index must succeed");
+        journal
+            .put_workflow_index(workflow, run)
+            .expect("put_workflow_index must succeed");
         let key = index_workflow_key(workflow, run).expect("key must succeed");
-        let value = journal.index_workflow.get(key.as_slice()).expect("get must succeed");
+        let value = journal
+            .index_workflow
+            .get(key.as_slice())
+            .expect("get must succeed");
         assert!(value.is_some(), "workflow index entry must exist after put");
     }
 
@@ -5541,9 +5876,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let action = ActionId::new(7);
         let run = RunId::new(7003);
         let step = StepIdx::new(2);
-        journal.put_action_index(action, run, step).expect("put_action_index must succeed");
+        journal
+            .put_action_index(action, run, step)
+            .expect("put_action_index must succeed");
         let key = index_action_key(action, run, step).expect("key must succeed");
-        let value = journal.index_action.get(key.as_slice()).expect("get must succeed");
+        let value = journal
+            .index_action
+            .get(key.as_slice())
+            .expect("get must succeed");
         assert!(value.is_some(), "action index entry must exist after put");
     }
 
@@ -5555,15 +5895,39 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run_1 = RunId::new(7010);
         let run_2 = RunId::new(7011);
         let run_3 = RunId::new(7012);
-        journal.put_status_index(state, 100, run_1).expect("put_status_index 1 must succeed");
-        journal.put_status_index(state, 200, run_2).expect("put_status_index 2 must succeed");
-        journal.put_status_index(state, 300, run_3).expect("put_status_index 3 must succeed");
+        journal
+            .put_status_index(state, 100, run_1)
+            .expect("put_status_index 1 must succeed");
+        journal
+            .put_status_index(state, 200, run_2)
+            .expect("put_status_index 2 must succeed");
+        journal
+            .put_status_index(state, 300, run_3)
+            .expect("put_status_index 3 must succeed");
         let key_1 = index_status_key(state, 100, run_1).expect("key 1 must succeed");
         let key_2 = index_status_key(state, 200, run_2).expect("key 2 must succeed");
         let key_3 = index_status_key(state, 300, run_3).expect("key 3 must succeed");
-        assert!(journal.index_status.get(key_1.as_slice()).expect("get 1").is_some());
-        assert!(journal.index_status.get(key_2.as_slice()).expect("get 2").is_some());
-        assert!(journal.index_status.get(key_3.as_slice()).expect("get 3").is_some());
+        assert!(
+            journal
+                .index_status
+                .get(key_1.as_slice())
+                .expect("get 1")
+                .is_some()
+        );
+        assert!(
+            journal
+                .index_status
+                .get(key_2.as_slice())
+                .expect("get 2")
+                .is_some()
+        );
+        assert!(
+            journal
+                .index_status
+                .get(key_3.as_slice())
+                .expect("get 3")
+                .is_some()
+        );
     }
 
     #[test]
@@ -5574,15 +5938,39 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run_1 = RunId::new(7020);
         let run_2 = RunId::new(7021);
         let run_3 = RunId::new(7022);
-        journal.put_workflow_index(workflow, run_1).expect("put 1 must succeed");
-        journal.put_workflow_index(workflow, run_2).expect("put 2 must succeed");
-        journal.put_workflow_index(workflow, run_3).expect("put 3 must succeed");
+        journal
+            .put_workflow_index(workflow, run_1)
+            .expect("put 1 must succeed");
+        journal
+            .put_workflow_index(workflow, run_2)
+            .expect("put 2 must succeed");
+        journal
+            .put_workflow_index(workflow, run_3)
+            .expect("put 3 must succeed");
         let key_1 = index_workflow_key(workflow, run_1).expect("key 1 must succeed");
         let key_2 = index_workflow_key(workflow, run_2).expect("key 2 must succeed");
         let key_3 = index_workflow_key(workflow, run_3).expect("key 3 must succeed");
-        assert!(journal.index_workflow.get(key_1.as_slice()).expect("get 1").is_some());
-        assert!(journal.index_workflow.get(key_2.as_slice()).expect("get 2").is_some());
-        assert!(journal.index_workflow.get(key_3.as_slice()).expect("get 3").is_some());
+        assert!(
+            journal
+                .index_workflow
+                .get(key_1.as_slice())
+                .expect("get 1")
+                .is_some()
+        );
+        assert!(
+            journal
+                .index_workflow
+                .get(key_2.as_slice())
+                .expect("get 2")
+                .is_some()
+        );
+        assert!(
+            journal
+                .index_workflow
+                .get(key_3.as_slice())
+                .expect("get 3")
+                .is_some()
+        );
     }
 
     // --- Record builder (tests 36-40) ---
@@ -5626,7 +6014,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
         });
-        assert_eq!(builder.len(), 3, "builder must have len 3 after three pushes");
+        assert_eq!(
+            builder.len(),
+            3,
+            "builder must have len 3 after three pushes"
+        );
     }
 
     #[test]
@@ -5646,8 +6038,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         builder.push(e1.clone());
         let slice = builder.as_slice();
         assert_eq!(slice.len(), 2);
-        assert_eq!(slice[0], e0, "first slice element must match first pushed event");
-        assert_eq!(slice[1], e1, "second slice element must match second pushed event");
+        assert_eq!(
+            slice[0], e0,
+            "first slice element must match first pushed event"
+        );
+        assert_eq!(
+            slice[1], e1,
+            "second slice element must match second pushed event"
+        );
     }
 
     #[test]
@@ -5672,8 +6070,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             result: SlotIdx::new(0),
         });
         assert_eq!(builder.len(), 3);
-        journal.append_strict_batch(builder.as_slice()).expect("append_strict_batch must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        journal
+            .append_strict_batch(builder.as_slice())
+            .expect("append_strict_batch must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 3, "three events must be stored");
     }
 
@@ -5695,23 +6097,26 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let mut batch = journal.batch();
         let source = b"a".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        batch.put_workflow_source(&WorkflowSourceRecord {
-            digest,
-            source,
-        }).expect("put 1 must succeed");
+        batch
+            .put_workflow_source(&WorkflowSourceRecord { digest, source })
+            .expect("put 1 must succeed");
         assert_eq!(batch.len(), 1, "batch must have len 1 after first put");
-        batch.put_compiled_ir(&CompiledIrRecord {
-            digest,
-            ir: b"ir".to_vec(),
-        }).expect("put 2 must succeed");
+        batch
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: b"ir".to_vec(),
+            })
+            .expect("put 2 must succeed");
         assert_eq!(batch.len(), 2, "batch must have len 2 after second put");
-        batch.put_run_header(&RunHeaderRecord {
-            run: RunId::new(9001),
-            workflow_id: WorkflowId::new(1),
-            compiled_digest: digest,
-            status: 0,
-            accepted_at_ms: 0,
-        }).expect("put 3 must succeed");
+        batch
+            .put_run_header(&RunHeaderRecord {
+                run: RunId::new(9001),
+                workflow_id: WorkflowId::new(1),
+                compiled_digest: digest,
+                status: 0,
+                accepted_at_ms: 0,
+            })
+            .expect("put 3 must succeed");
         assert_eq!(batch.len(), 3, "batch must have len 3 after third put");
     }
 
@@ -5722,14 +6127,17 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let mut batch = journal.batch();
         let source = b"data".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        batch.put_workflow_source(&WorkflowSourceRecord {
-            digest,
-            source,
-        }).expect("put must succeed");
+        batch
+            .put_workflow_source(&WorkflowSourceRecord { digest, source })
+            .expect("put must succeed");
         assert_eq!(batch.len(), 1, "batch must have 1 operation before commit");
         batch.commit().expect("commit must succeed");
         let fresh_batch = journal.batch();
-        assert_eq!(fresh_batch.len(), 0, "new batch after commit must start at 0");
+        assert_eq!(
+            fresh_batch.len(),
+            0,
+            "new batch after commit must start at 0"
+        );
     }
 
     #[test]
@@ -5744,7 +6152,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             workflow: WorkflowDigest::from_bytes([0x43; 32]),
             slots: vec![1, 2],
         };
-        batch.put_snapshot(&snapshot).expect("put_snapshot must succeed");
+        batch
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot must succeed");
         assert_eq!(batch.len(), 1, "batch len must be 1 after put_snapshot");
     }
 
@@ -5762,16 +6172,21 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             0,
             &record,
             MAX_WORKFLOW_SOURCE_BYTES,
-        ).expect("encode must succeed");
+        )
+        .expect("encode must succeed");
         let (envelope, decoded) = decode_record::<WorkflowSourceRecord>(
             &encoded,
             MAGIC_WORKFLOW_SOURCE,
             MAX_WORKFLOW_SOURCE_BYTES,
-        ).expect("decode must succeed");
+        )
+        .expect("decode must succeed");
         assert_eq!(envelope.magic, MAGIC_WORKFLOW_SOURCE);
         assert_eq!(envelope.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(envelope.record_kind, RecordKind::WorkflowSource.id());
-        assert_eq!(decoded, record, "decoded record must exactly match original");
+        assert_eq!(
+            decoded, record,
+            "decoded record must exactly match original"
+        );
     }
 
     #[test]
@@ -5795,7 +6210,8 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             0,
             b"payload",
             128,
-        ).expect("encode_record_header must succeed");
+        )
+        .expect("encode_record_header must succeed");
         assert_eq!(header.len(), 60, "encoded header must be exactly 60 bytes");
     }
 
@@ -5808,18 +6224,29 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let source_bytes = b"atomic_source".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
         let mut batch = journal.batch();
-        batch.put_workflow_source(&WorkflowSourceRecord {
-            digest,
-            source: source_bytes,
-        }).expect("put_workflow_source must succeed");
-        batch.put_compiled_ir(&CompiledIrRecord {
-            digest,
-            ir: b"atomic_ir".to_vec(),
-        }).expect("put_compiled_ir must succeed");
+        batch
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest,
+                source: source_bytes,
+            })
+            .expect("put_workflow_source must succeed");
+        batch
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: b"atomic_ir".to_vec(),
+            })
+            .expect("put_compiled_ir must succeed");
         batch.commit().expect("commit must succeed");
-        let source = journal.workflow_source(digest).expect("workflow_source must succeed");
-        let ir = journal.compiled_ir(digest).expect("compiled_ir must succeed");
-        assert!(source.is_some(), "source must be present after atomic commit");
+        let source = journal
+            .workflow_source(digest)
+            .expect("workflow_source must succeed");
+        let ir = journal
+            .compiled_ir(digest)
+            .expect("compiled_ir must succeed");
+        assert!(
+            source.is_some(),
+            "source must be present after atomic commit"
+        );
         assert!(ir.is_some(), "IR must be present after atomic commit");
         assert_eq!(source.unwrap().source, b"atomic_source".to_vec());
         assert_eq!(ir.unwrap().ir, b"atomic_ir".to_vec());
@@ -5832,22 +6259,28 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run = RunId::new(9003);
         let digest = WorkflowDigest::from_bytes([0xCD; 32]);
         let mut batch = journal.batch();
-        batch.put_run_header(&RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(1),
-            compiled_digest: digest,
-            status: 1,
-            accepted_at_ms: 555,
-        }).expect("put_run_header must succeed");
-        batch.append_event(&JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        }).expect("append_event must succeed");
+        batch
+            .put_run_header(&RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(1),
+                compiled_digest: digest,
+                status: 1,
+                accepted_at_ms: 555,
+            })
+            .expect("put_run_header must succeed");
+        batch
+            .append_event(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            })
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
         let header = journal.run_header(run).expect("run_header must succeed");
         assert!(header.is_some(), "header must be present");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
         assert_eq!(events.len(), 1, "event must be present");
     }
 
@@ -5862,24 +6295,34 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         {
             let journal = FjallJournal::open(&path, None).expect("setup: journal open");
             let mut batch = journal.batch().strict();
-            batch.put_workflow_source(&WorkflowSourceRecord {
-                digest,
-                source: ws_bytes,
-            }).expect("put_workflow_source must succeed");
-            batch.put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"strict_ir".to_vec(),
-            }).expect("put_compiled_ir must succeed");
-            batch.put_blob(&BlobRecord {
-                digest: blob_digest,
-                bytes: blob_bytes,
-            }).expect("put_blob must succeed");
+            batch
+                .put_workflow_source(&WorkflowSourceRecord {
+                    digest,
+                    source: ws_bytes,
+                })
+                .expect("put_workflow_source must succeed");
+            batch
+                .put_compiled_ir(&CompiledIrRecord {
+                    digest,
+                    ir: b"strict_ir".to_vec(),
+                })
+                .expect("put_compiled_ir must succeed");
+            batch
+                .put_blob(&BlobRecord {
+                    digest: blob_digest,
+                    bytes: blob_bytes,
+                })
+                .expect("put_blob must succeed");
             batch.commit().expect("commit must succeed");
         }
         let reopened = FjallJournal::open(&path, None).expect("reopen must succeed");
-        let ws = reopened.workflow_source(digest).expect("workflow_source must succeed");
+        let ws = reopened
+            .workflow_source(digest)
+            .expect("workflow_source must succeed");
         assert_eq!(ws.unwrap().source, b"strict_ws".to_vec());
-        let ir = reopened.compiled_ir(digest).expect("compiled_ir must succeed");
+        let ir = reopened
+            .compiled_ir(digest)
+            .expect("compiled_ir must succeed");
         assert_eq!(ir.unwrap().ir, b"strict_ir".to_vec());
         let bl = reopened.blob(blob_digest).expect("blob must succeed");
         assert_eq!(bl.unwrap().bytes, b"strict_blob".to_vec());
@@ -5892,7 +6335,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let batch = journal.batch().strict();
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);
-        batch.commit().expect("empty strict batch commit must succeed");
+        batch
+            .commit()
+            .expect("empty strict batch commit must succeed");
     }
 
     #[test]
@@ -5906,37 +6351,52 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let run = RunId::new(9005);
         let mut batch = journal.batch();
-        batch.put_workflow_source(&WorkflowSourceRecord {
-            digest: digest_1,
-            source: ws_bytes,
-        }).expect("put 1 must succeed");
-        batch.put_compiled_ir(&CompiledIrRecord {
-            digest: digest_2,
-            ir: b"ir".to_vec(),
-        }).expect("put 2 must succeed");
-        batch.put_run_header(&RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(1),
-            compiled_digest: digest_1,
-            status: 1,
-            accepted_at_ms: 100,
-        }).expect("put 3 must succeed");
-        batch.put_blob(&BlobRecord {
-            digest: blob_digest,
-            bytes: blob_bytes,
-        }).expect("put 4 must succeed");
-        batch.put_snapshot(&RunSnapshot {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest_1,
-            slots: vec![42],
-        }).expect("put 5 must succeed");
+        batch
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest: digest_1,
+                source: ws_bytes,
+            })
+            .expect("put 1 must succeed");
+        batch
+            .put_compiled_ir(&CompiledIrRecord {
+                digest: digest_2,
+                ir: b"ir".to_vec(),
+            })
+            .expect("put 2 must succeed");
+        batch
+            .put_run_header(&RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(1),
+                compiled_digest: digest_1,
+                status: 1,
+                accepted_at_ms: 100,
+            })
+            .expect("put 3 must succeed");
+        batch
+            .put_blob(&BlobRecord {
+                digest: blob_digest,
+                bytes: blob_bytes,
+            })
+            .expect("put 4 must succeed");
+        batch
+            .put_snapshot(&RunSnapshot {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest_1,
+                slots: vec![42],
+            })
+            .expect("put 5 must succeed");
         batch.commit().expect("commit must succeed");
         assert!(journal.workflow_source(digest_1).expect("ws").is_some());
         assert!(journal.compiled_ir(digest_2).expect("ir").is_some());
         assert!(journal.run_header(run).expect("rh").is_some());
         assert!(journal.blob(blob_digest).expect("bl").is_some());
-        assert!(journal.snapshot(run, EventSeq::new(0)).expect("sn").is_some());
+        assert!(
+            journal
+                .snapshot(run, EventSeq::new(0))
+                .expect("sn")
+                .is_some()
+        );
     }
 
     #[test]
@@ -5964,8 +6424,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         batch.append_event(&e1).expect("append 1 must succeed");
         batch.append_event(&e2).expect("append 2 must succeed");
         batch.commit().expect("commit must succeed");
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
-        assert_eq!(events, vec![e0, e1, e2], "replayed events must match input exactly");
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run must succeed");
+        assert_eq!(
+            events,
+            vec![e0, e1, e2],
+            "replayed events must match input exactly"
+        );
     }
 
     #[test]
@@ -5974,16 +6440,21 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source = b"exact_bytes_source".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
+        let record = WorkflowSourceRecord { digest, source };
         let mut batch = journal.batch();
-        batch.put_workflow_source(&record).expect("put must succeed");
+        batch
+            .put_workflow_source(&record)
+            .expect("put must succeed");
         batch.commit().expect("commit must succeed");
-        let found = journal.workflow_source(digest).expect("lookup must succeed");
+        let found = journal
+            .workflow_source(digest)
+            .expect("lookup must succeed");
         let found_record = found.expect("record must exist");
-        assert_eq!(found_record.source, b"exact_bytes_source".to_vec(), "source bytes must match exactly");
+        assert_eq!(
+            found_record.source,
+            b"exact_bytes_source".to_vec(),
+            "source bytes must match exactly"
+        );
         assert_eq!(found_record.digest, digest, "digest must match");
     }
 
@@ -6001,7 +6472,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         batch.commit().expect("commit must succeed");
         let found = journal.compiled_ir(digest).expect("lookup must succeed");
         let found_record = found.expect("record must exist");
-        assert_eq!(found_record.ir, b"exact_ir_bytes".to_vec(), "IR bytes must match exactly");
+        assert_eq!(
+            found_record.ir,
+            b"exact_ir_bytes".to_vec(),
+            "IR bytes must match exactly"
+        );
         assert_eq!(found_record.digest, digest);
     }
 
@@ -6027,10 +6502,19 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let found = journal.run_header(run).expect("lookup must succeed");
         let found_record = found.expect("record must exist");
         assert_eq!(found_record.run, run, "run must match");
-        assert_eq!(found_record.workflow_id, workflow_id, "workflow_id must match");
-        assert_eq!(found_record.compiled_digest, compiled_digest, "compiled_digest must match");
+        assert_eq!(
+            found_record.workflow_id, workflow_id,
+            "workflow_id must match"
+        );
+        assert_eq!(
+            found_record.compiled_digest, compiled_digest,
+            "compiled_digest must match"
+        );
         assert_eq!(found_record.status, status, "status must match");
-        assert_eq!(found_record.accepted_at_ms, accepted_at_ms, "accepted_at_ms must match");
+        assert_eq!(
+            found_record.accepted_at_ms, accepted_at_ms,
+            "accepted_at_ms must match"
+        );
     }
 
     #[test]
@@ -6070,7 +6554,11 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         batch.commit().expect("commit must succeed");
         let found = journal.blob(digest).expect("lookup must succeed");
         let found_record = found.expect("record must exist");
-        assert_eq!(found_record.bytes, b"batch_blob_exact".to_vec(), "blob bytes must match exactly");
+        assert_eq!(
+            found_record.bytes,
+            b"batch_blob_exact".to_vec(),
+            "blob bytes must match exactly"
+        );
         assert_eq!(found_record.digest, digest);
     }
 
@@ -6082,11 +6570,19 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let timestamp: u64 = 55555;
         let run = RunId::new(9009);
         let mut batch = journal.batch();
-        batch.put_status_index(state, timestamp, run).expect("put_status_index must succeed");
+        batch
+            .put_status_index(state, timestamp, run)
+            .expect("put_status_index must succeed");
         batch.commit().expect("commit must succeed");
         let key = index_status_key(state, timestamp, run).expect("key must succeed");
-        let value = journal.index_status.get(key.as_slice()).expect("get must succeed");
-        assert!(value.is_some(), "status index must exist after batch commit");
+        let value = journal
+            .index_status
+            .get(key.as_slice())
+            .expect("get must succeed");
+        assert!(
+            value.is_some(),
+            "status index must exist after batch commit"
+        );
     }
 
     #[test]
@@ -6097,11 +6593,19 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run = RunId::new(9010);
         let step = StepIdx::new(4);
         let mut batch = journal.batch();
-        batch.put_action_index(action, run, step).expect("put_action_index must succeed");
+        batch
+            .put_action_index(action, run, step)
+            .expect("put_action_index must succeed");
         batch.commit().expect("commit must succeed");
         let key = index_action_key(action, run, step).expect("key must succeed");
-        let value = journal.index_action.get(key.as_slice()).expect("get must succeed");
-        assert!(value.is_some(), "action index must exist after batch commit");
+        let value = journal
+            .index_action
+            .get(key.as_slice())
+            .expect("get must succeed");
+        assert!(
+            value.is_some(),
+            "action index must exist after batch commit"
+        );
     }
 
     #[test]
@@ -6117,7 +6621,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         journal.append_journaled(&event).expect("append journaled");
         drop(journal);
         let journal2 = FjallJournal::open(temp_dir.path(), None).expect("setup: journal reopen");
-        let result = journal2.events_for_run(run).expect("events_for_run succeeds");
+        let result = journal2
+            .events_for_run(run)
+            .expect("events_for_run succeeds");
         // Journaled durability does not guarantee persistence without flush
         // Either the event is present (Fjall flushed on drop) or absent (acceptable)
         assert!(result.len() <= 1, "at most one event expected");
@@ -6136,8 +6642,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         journal.append_journaled(&event).expect("append journaled");
         drop(journal);
         let journal2 = FjallJournal::open(temp_dir.path(), None).expect("setup: journal reopen");
-        let events = journal2.events_for_run(run).expect("events_for_run succeeds");
-        assert_eq!(events.len(), 1, "flushed journaled event must survive reopen");
+        let events = journal2
+            .events_for_run(run)
+            .expect("events_for_run succeeds");
+        assert_eq!(
+            events.len(),
+            1,
+            "flushed journaled event must survive reopen"
+        );
     }
 
     #[test]
@@ -6153,7 +6665,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         journal.append_strict(&event).expect("append strict");
         drop(journal);
         let journal2 = FjallJournal::open(temp_dir.path(), None).expect("setup: journal reopen");
-        let events = journal2.events_for_run(run).expect("events_for_run succeeds");
+        let events = journal2
+            .events_for_run(run)
+            .expect("events_for_run succeeds");
         assert_eq!(events.len(), 1, "strict event must survive reopen");
     }
 
@@ -6221,7 +6735,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_events_for_run_on_empty_journal_returns_empty() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let events = journal.events_for_run(RunId::new(9999)).expect("events_for_run");
+        let events = journal
+            .events_for_run(RunId::new(9999))
+            .expect("events_for_run");
         assert_eq!(events.len(), 0, "no events for nonexistent run");
     }
 
@@ -6237,7 +6753,9 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
     fn adversarial_snapshot_for_nonexistent_run_returns_none() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let snapshot = journal.snapshot(RunId::new(7777), EventSeq::new(0)).expect("snapshot");
+        let snapshot = journal
+            .snapshot(RunId::new(7777), EventSeq::new(0))
+            .expect("snapshot");
         assert!(snapshot.is_none(), "no snapshot for nonexistent run");
     }
 
@@ -6285,7 +6803,6 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         }
     }
 
-
     #[test]
     fn adversarial_batch_two_sequential_commits_both_visible() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -6326,7 +6843,10 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
             slots: vec![],
         };
         journal.put_snapshot(&snap).expect("put");
-        let loaded = journal.snapshot(run, EventSeq::new(0)).expect("get").expect("must exist");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(0))
+            .expect("get")
+            .expect("must exist");
         assert_eq!(loaded.slots.len(), 0);
         assert_eq!(loaded.run, run);
     }
@@ -6352,12 +6872,12 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source: Vec<u8> = vec![];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
+        let record = WorkflowSourceRecord { digest, source };
         journal.put_workflow_source(&record).expect("put");
-        let loaded = journal.workflow_source(digest).expect("get").expect("must exist");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("get")
+            .expect("must exist");
         assert_eq!(loaded.source, vec![]);
     }
 
@@ -6470,7 +6990,6 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         assert_eq!(header.accepted_at_ms, 200);
     }
 
-
     #[test]
     fn adversarial_batch_commit_with_5_puts_persists_all() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -6481,10 +7000,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run = RunId::new(9050);
         let mut batch = journal.batch();
         batch
-            .put_workflow_source(&WorkflowSourceRecord {
-                digest: d1,
-                source,
-            })
+            .put_workflow_source(&WorkflowSourceRecord { digest: d1, source })
             .expect("put1");
         batch
             .put_compiled_ir(&CompiledIrRecord {
@@ -6509,9 +7025,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
                 bytes: blob_bytes,
             })
             .expect("put4");
-        batch
-            .put_status_index(1, 0, run)
-            .expect("put5");
+        batch.put_status_index(1, 0, run).expect("put5");
         batch.commit().expect("commit");
         assert!(journal.workflow_source(d1).expect("g1").is_some());
         assert!(journal.compiled_ir(d2).expect("g2").is_some());
@@ -6545,10 +7059,23 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         assert!(journal.run_header(RunId::new(1)).expect("header").is_none());
-        assert!(journal.workflow_source(WorkflowDigest::from_bytes([0; 32])).expect("source").is_none());
-        assert!(journal.compiled_ir(WorkflowDigest::from_bytes([0; 32])).expect("ir").is_none());
+        assert!(
+            journal
+                .workflow_source(WorkflowDigest::from_bytes([0; 32]))
+                .expect("source")
+                .is_none()
+        );
+        assert!(
+            journal
+                .compiled_ir(WorkflowDigest::from_bytes([0; 32]))
+                .expect("ir")
+                .is_none()
+        );
         assert!(journal.blob([0; 32]).expect("blob").is_none());
-        assert_eq!(journal.events_for_run(RunId::new(1)).expect("events").len(), 0);
+        assert_eq!(
+            journal.events_for_run(RunId::new(1)).expect("events").len(),
+            0
+        );
     }
 
     #[test]
@@ -6573,8 +7100,14 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
                 slots: vec![2u8],
             })
             .expect("snap2");
-        let s1 = journal.snapshot(run1, EventSeq::new(0)).expect("get1").expect("exists");
-        let s2 = journal.snapshot(run2, EventSeq::new(0)).expect("get2").expect("exists");
+        let s1 = journal
+            .snapshot(run1, EventSeq::new(0))
+            .expect("get1")
+            .expect("exists");
+        let s2 = journal
+            .snapshot(run2, EventSeq::new(0))
+            .expect("get2")
+            .expect("exists");
         assert_eq!(s1.workflow, WorkflowDigest::from_bytes([1; 32]));
         assert_eq!(s2.workflow, WorkflowDigest::from_bytes([2; 32]));
     }
@@ -6608,7 +7141,10 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let batch = journal.batch().strict();
-        batch.strict().commit().expect("empty strict commit must succeed");
+        batch
+            .strict()
+            .commit()
+            .expect("empty strict commit must succeed");
     }
 
     #[test]
@@ -6645,10 +7181,7 @@ queue.enqueue_journaled(cancelled).expect("queue.enqueue_journaled must succeed"
         let run = RunId::new(9070);
         let mut batch = journal.batch();
         batch
-            .put_workflow_source(&WorkflowSourceRecord {
-                digest,
-                source,
-            })
+            .put_workflow_source(&WorkflowSourceRecord { digest, source })
             .expect("ws");
         batch
             .put_compiled_ir(&CompiledIrRecord {

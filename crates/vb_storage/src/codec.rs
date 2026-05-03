@@ -4,13 +4,13 @@
 //! Each record is prefixed with a 60-byte header containing magic,
 //! schema version, kind, lengths, sequence, digest, and CRC.
 
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::{
-    binary::{read_u16, read_u32, read_u64, write_u16, write_u32, write_u64, write_digest},
+    binary::{read_u16, read_u32, read_u64, write_digest, write_u16, write_u32, write_u64},
     constants::{
-        CURRENT_SCHEMA_VERSION, CRC_OFFSET, DIGEST_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT,
+        CRC_OFFSET, CURRENT_SCHEMA_VERSION, DIGEST_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT,
         MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
         RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
     },
@@ -105,11 +105,10 @@ pub fn verify_digest_match(
 }
 
 fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError> {
-    let payload_len =
-        u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
-            len: 4_294_967_295,
-            max,
-        })?;
+    let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
+        len: 4_294_967_295,
+        max,
+    })?;
     if payload_len > max {
         return Err(JournalError::PayloadTooLarge {
             len: payload_len,
@@ -126,12 +125,13 @@ fn encode_record_payload(
     payload: &[u8],
     payload_len: u32,
 ) -> Result<Vec<u8>, JournalError> {
-    let capacity = RECORD_HEADER_BYTES
-        .checked_add(payload.len())
-        .ok_or(JournalError::PayloadTooLarge {
-            len: payload_len,
-            max: 4_294_967_295,
-        })?;
+    let capacity =
+        RECORD_HEADER_BYTES
+            .checked_add(payload.len())
+            .ok_or(JournalError::PayloadTooLarge {
+                len: payload_len,
+                max: 4_294_967_295,
+            })?;
     let header = build_record_header(magic, kind, sequence, payload, payload_len)?;
 
     let mut encoded = Vec::with_capacity(capacity);
@@ -250,7 +250,9 @@ fn digest_from_header(header: &[u8]) -> Result<[u8; DIGEST_BYTES], JournalError>
     <[u8; DIGEST_BYTES]>::try_from(digest).map_err(|_| JournalError::UnexpectedEof)
 }
 
-pub(crate) fn next_seq(seq: crate::types::EventSeq) -> Result<crate::types::EventSeq, JournalError> {
+pub(crate) fn next_seq(
+    seq: crate::types::EventSeq,
+) -> Result<crate::types::EventSeq, JournalError> {
     seq.get()
         .checked_add(1)
         .map(crate::types::EventSeq::new)

@@ -12,11 +12,11 @@ use crate::{
     batch::JournalWriteBatch,
     codec::{decode_record, encode_record},
     constants::{
-        KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
+        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_BLOB, KEYSPACE_WORKFLOW_SOURCE, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+        KEYSPACE_WORKFLOW_SOURCE, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
+        MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
@@ -33,10 +33,7 @@ use fjall::Readable;
 
 /// Verifies that content bytes hash to the expected digest.
 /// Used at admission time to prevent digest forgery.
-pub(crate) fn verify_content_digest(
-    content: &[u8],
-    expected: &[u8],
-) -> Result<(), JournalError> {
+pub(crate) fn verify_content_digest(content: &[u8], expected: &[u8]) -> Result<(), JournalError> {
     let computed = blake3::hash(content);
     if computed.as_bytes() == expected {
         Ok(())
@@ -63,10 +60,7 @@ pub struct FjallJournal {
 
 impl FjallJournal {
     /// Opens or creates the journal at `path`.
-    pub fn open(
-        path: impl AsRef<Path>,
-        config: Option<FjallConfig>,
-    ) -> Result<Self, JournalError> {
+    pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
         let config = config.unwrap_or_default();
         let database = fjall::Database::builder(path)
             .cache_size(config.cache_size_bytes)
@@ -132,10 +126,7 @@ impl FjallJournal {
     /// Stores immutable workflow source bytes by digest.
     ///
     /// The source bytes are verified against the claimed digest before storage.
-    pub fn put_workflow_source(
-        &self,
-        record: &WorkflowSourceRecord,
-    ) -> Result<(), JournalError> {
+    pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
         verify_content_digest(&record.source, &record.digest.as_bytes())?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
@@ -236,7 +227,10 @@ impl FjallJournal {
         Ok(())
     }
 
-    pub(crate) fn append_queued_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+    pub(crate) fn append_queued_unpersisted(
+        &self,
+        event: &JournalEvent,
+    ) -> Result<(), JournalError> {
         match self.append_unpersisted(event) {
             Ok(()) => Ok(()),
             Err(JournalError::DuplicateEvent { run, seq }) => {

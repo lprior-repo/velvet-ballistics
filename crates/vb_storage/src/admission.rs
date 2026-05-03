@@ -2,11 +2,7 @@
 //!
 //! Provides artifact submission and admission flows with policy-controlled durability.
 
-use crate::{
-    error::JournalError,
-    records::CompiledIrRecord,
-    types::EventSeq,
-};
+use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
 
 use crate::journal::FjallJournal;
 
@@ -96,8 +92,8 @@ pub fn submit_artifact(
             // where the digest field is part of its own hash input.
             let mut parts_for_hash = parts.clone();
             parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-            let hash_bytes =
-                postcard::to_allocvec(&parts_for_hash).map_err(|_| JournalError::ArtifactMalformed)?;
+            let hash_bytes = postcard::to_allocvec(&parts_for_hash)
+                .map_err(|_| JournalError::ArtifactMalformed)?;
             let computed = blake3::hash(&hash_bytes);
             if computed.as_bytes() != &workflow.digest().as_bytes() {
                 return Err(JournalError::ArtifactChecksumMismatch);
