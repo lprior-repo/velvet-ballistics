@@ -93,3 +93,55 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
     }
     suggestions
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::types::{FailureCode, Incident, IncidentContext, IncidentSeverity, SideEffectCertainty};
+    use std::time::Instant;
+
+    fn make_incident(code: FailureCode, certainty: SideEffectCertainty) -> Incident {
+        Incident {
+            id: 1,
+            severity: IncidentSeverity::Major,
+            failure_code: code,
+            run_id: 1,
+            workflow_name: String::from("test"),
+            step_id: None,
+            step_name: None,
+            error_message: String::from("error"),
+            replay_safe: true,
+            side_effect_certainty: certainty,
+            timestamp: Instant::now(),
+            context: IncidentContext {
+                slot_values_before: Vec::new(),
+                taint_changes: Vec::new(),
+                action_attempts: 0,
+                last_action_idempotency_key: None,
+            },
+        }
+    }
+
+    #[test]
+    fn test_action_timeout_suggests_increase_timeout() {
+        let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
+    }
+
+    #[test]
+    fn test_taint_leak_suggests_fix_secret_leak() {
+        let incident = make_incident(FailureCode::TaintLeak, SideEffectCertainty::Certain);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
+    }
+
+    #[test]
+    fn test_unknown_certainty_adds_pin_idempotency() {
+        let incident = make_incident(FailureCode::Unknown("x".into()), SideEffectCertainty::Unknown);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
+        // The Unknown failure code itself should also add ManualIntervention.
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+    }
+}

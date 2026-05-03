@@ -6,7 +6,7 @@
 
 use std::time::Instant;
 
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_core::WorkflowDigest;
 use vb_ipc::server::IpcResponse;
 use vb_ipc::{IpcTraceEvent, IpcTraceEventKind};
@@ -525,6 +525,7 @@ fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::StepIdx;
 
     // -- PlaybackState defaults --
 

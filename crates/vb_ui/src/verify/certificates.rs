@@ -666,3 +666,176 @@ fn check_loop_nesting(parts: &WorkflowParts) -> Certificate {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ids::{SlotIdx, StepIdx};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+    use vb_core::ids::WorkflowDigest;
+
+    fn minimal_parts() -> WorkflowParts {
+        WorkflowParts {
+            name: String::from("test").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        }
+    }
+
+    fn empty_parts() -> WorkflowParts {
+        WorkflowParts {
+            name: String::from("empty").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Vec::new().into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 0,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        }
+    }
+
+    #[test]
+    fn test_empty_nodes_fails_structural_validity() {
+        let result = VerificationResult::analyze(&empty_parts());
+        let structural = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        assert!(structural.is_some());
+        let cert = structural.unwrap_or_else(|| panic!("structural cert missing"));
+        assert!(
+            matches!(cert.status, CertificateStatus::Fail(_)),
+            "expected Fail for empty nodes, got {:?}",
+            cert.status
+        );
+    }
+
+    #[test]
+    fn test_single_finish_node_passes_all() {
+        let result = VerificationResult::analyze(&minimal_parts());
+        // Structural validity should pass.
+        let structural = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        assert!(structural.is_some());
+        assert!(
+            matches!(
+                structural.unwrap_or_else(|| panic!("cert missing")).status,
+                CertificateStatus::Pass
+            )
+        );
+
+        // Strict durability should warn (Finish node present but no error handlers).
+        let durability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StrictDurability);
+        assert!(durability.is_some());
+        let dur_status = &durability.unwrap_or_else(|| panic!("cert missing")).status;
+        // A single Finish node with no error handlers/on_error produces Warn.
+        assert!(
+            matches!(dur_status, CertificateStatus::Pass | CertificateStatus::Warn(_)),
+            "expected Pass or Warn for strict durability, got {:?}",
+            dur_status
+        );
+
+        // Reachability should pass (single node reachable from entry).
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        assert!(
+            matches!(
+                reachability.unwrap_or_else(|| panic!("cert missing")).status,
+                CertificateStatus::Pass
+            )
+        );
+    }
+
+    #[test]
+    fn test_unreachable_node_fails_reachability() {
+        // Node 0 is a Nop with no next (entry), node 1 is a Finish but unreachable.
+        let parts = WorkflowParts {
+            name: String::from("unreachable").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        assert!(
+            matches!(
+                reachability.unwrap_or_else(|| panic!("cert missing")).status,
+                CertificateStatus::Fail(_)
+            )
+        );
+    }
+
+    #[test]
+    fn test_analysis_counts_match() {
+        let result = VerificationResult::analyze(&minimal_parts());
+        // total_checks should equal the number of certificates.
+        assert_eq!(result.total_checks, result.certificates.len());
+        assert_eq!(result.total_checks, 8);
+
+        // pass_count + fail_count + warn_count should equal total_checks.
+        let sum = result.pass_count + result.fail_count + result.warn_count;
+        assert_eq!(sum, result.total_checks);
+    }
+}
