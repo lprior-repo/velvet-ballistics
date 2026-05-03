@@ -1,13 +1,26 @@
-use super::certificates::TaintPath;
+//! Basic taint source detection for compiled workflows.
 
-/// Analyze taint flow through a workflow graph.
+use vb_core::ids::StepIdx;
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
+
+/// Identifies nodes that could introduce secret values into the workflow.
 ///
-/// For now, returns empty results. Real implementation traces slot taint
-/// through the compiled node graph by:
-///
-/// 1. Finding all nodes that read from secret-tainted slots
-/// 2. Tracing forward through data flow to find sinks
-/// 3. Checking if any path reaches the Finish node's result slot
-pub fn analyze_taint() -> Vec<TaintPath> {
-    Vec::new()
+/// Currently detects `WaitEvent` and `Ask` nodes as potential secret sources,
+/// since they receive external input that could contain sensitive data.
+pub fn find_secret_sources(parts: &WorkflowParts) -> Vec<StepIdx> {
+    let mut sources: Vec<StepIdx> = Vec::new();
+
+    for node in parts.nodes.iter() {
+        match node.kind {
+            CompiledNodeKind::WaitEvent { .. } => {
+                sources.push(node.id);
+            }
+            CompiledNodeKind::Ask { .. } => {
+                sources.push(node.id);
+            }
+            _ => {}
+        }
+    }
+
+    sources
 }
