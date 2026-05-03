@@ -5,7 +5,7 @@
 //! - Recovery state types
 //! - Frame seed types for live-frame reconstruction
 
-use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
+use crate::{EventSeq, JournalError};
 use serde::{Deserialize, Serialize};
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 

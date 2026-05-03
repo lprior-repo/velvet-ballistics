@@ -165,6 +165,8 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
             id: vb_core::StepIdx::new(0),
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },
@@ -236,6 +238,8 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
             id: vb_core::StepIdx::new(0),
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },
@@ -346,6 +350,8 @@ pub fn fuzz_resource_budget(data: &[u8]) {
                 id: vb_core::StepIdx::new(0),
                 output: Some(vb_core::SlotIdx::new(0)),
                 next: Some(vb_core::StepIdx::new(1)),
+                error_slot: None,
+                on_error: None,
                 kind: vb_core::CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
                 },
@@ -354,6 +360,8 @@ pub fn fuzz_resource_budget(data: &[u8]) {
                 id: vb_core::StepIdx::new(1),
                 output: None,
                 next: None,
+                error_slot: None,
+                on_error: None,
                 kind: vb_core::CompiledNodeKind::Finish {
                     result: vb_core::SlotIdx::new(0),
                 },
@@ -607,6 +615,8 @@ fn build_fuzz_node(
         id: step_idx,
         output,
         next: next_step,
+        error_slot: None,
+        on_error: None,
         kind,
     }
 }
@@ -749,6 +759,8 @@ fn build_fuzz_budget_node(
         id: step_idx,
         output: Some(safe_slot),
         next: next_step,
+        error_slot: None,
+        on_error: None,
         kind,
     }
 }
@@ -788,6 +800,8 @@ pub fn fuzz_admission_flow(data: &[u8]) {
                 id: step_idx,
                 output: None,
                 next: None,
+                error_slot: None,
+                on_error: None,
                 kind: vb_core::CompiledNodeKind::Finish {
                     result: vb_core::SlotIdx::new(max_slot),
                 },
@@ -797,6 +811,8 @@ pub fn fuzz_admission_flow(data: &[u8]) {
                 id: step_idx,
                 output: Some(vb_core::SlotIdx::new(max_slot)),
                 next: next_step,
+                error_slot: None,
+                on_error: None,
                 kind: vb_core::CompiledNodeKind::Nop,
             });
         }
@@ -981,6 +997,8 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
             id: vb_core::StepIdx::new(0),
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(max_slot),
             },
@@ -990,6 +1008,7 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
         accessors: accessors.into(),
         constants: Box::new([]),
         slot_count,
+        symbols_count: 0,
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
     };

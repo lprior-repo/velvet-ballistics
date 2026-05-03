@@ -6499,6 +6499,8 @@ mod proptests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: vb_core::ExprIdx::new(0),
                     },
@@ -6507,6 +6509,8 @@ mod proptests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -6550,6 +6554,8 @@ mod proptests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(2)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Do {
                         action: ActionId::new(5),
                         input: SlotIdx::new(0),
@@ -6559,6 +6565,8 @@ mod proptests {
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },

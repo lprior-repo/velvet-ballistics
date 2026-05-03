@@ -6,11 +6,9 @@
 //! - Incomplete run discovery
 //! - Digest verification
 
-use crate::recovery::types::{
-    ActionReplayTracker, DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult,
-};
-use crate::{EventSeq, FjallJournal, JournalEvent};
-use vb_core::{RunId, StepIdx, WorkflowDigest};
+use crate::recovery::types::{DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult};
+use crate::{FjallJournal, JournalEvent};
+use vb_core::{RunId, WorkflowDigest};
 
 /// Verifies that the workflow source digest matches the stored record.
 pub fn check_workflow_source_digest(

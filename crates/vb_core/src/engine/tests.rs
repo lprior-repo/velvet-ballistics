@@ -1,0 +1,1927 @@
+//! Engine tests.
+
+use crate::errors::EngineError;
+use crate::frame::StepState;
+use crate::ids::{
+    AccessorIdx, ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
+    SymbolId, WorkflowDigest,
+};
+use crate::value::{ConstValue, SlotValue, Taint, join_taint};
+use crate::value_store::{ObjectField, ValueStore};
+use crate::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
+    ExprProgram, PathSegment, SlotBranch, WorkflowParts,
+};
+
+use super::{EngineSignal, StepBudget, build_list_impl, build_object_impl, eval_accessor,
+    eval_accessor_with_store, eval_expr, new_run_frame, run_until_blocked, step_once};
+
+fn test_store() -> ValueStore {
+    ValueStore::new()
+}
+
+#[test]
+fn set_chain_finishes_with_slot_value() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(7), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+    ensure_equal(
+        result,
+        Ok(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+    )?;
+    ensure_equal(run.executed(), 2)?;
+    Ok(())
+}
+
+#[test]
+fn set_chain_finishes_with_object_slot_value() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::Bool(true)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(8), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+    ensure_equal(
+        result,
+        Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean)),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn const_finish_returns_constant_pool_value() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::Bool(true)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(9), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected const finish result: {result:?}"))
+    }
+}
+
+#[test]
+fn set_const_rejects_missing_constant() -> Result<(), String> {
+    let result = missing_constant_workflow(ConstIdx::new(1));
+
+    match result {
+        Err(crate::WorkflowError::ConstOutOfBounds { constant })
+            if constant == ConstIdx::new(1) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected const validation result: {other:?}")),
+    }
+}
+
+#[test]
+fn zero_budget_exhausts_without_execution() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(7), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
+    ensure_equal(run.executed(), 0)?;
+    ensure_equal(run.pc(), StepIdx::new(0))?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Pending))?;
+    Ok(())
+}
+
+#[test]
+fn step_budget_try_take_consumes_exactly_one_transition() -> Result<(), String> {
+    let mut budget = StepBudget::new(1);
+
+    ensure_equal(budget.try_take().map_err(|error| error.to_string())?, true)?;
+    ensure_equal(budget.remaining(), 0)?;
+    ensure_equal(budget.try_take().map_err(|error| error.to_string())?, false)?;
+    ensure_equal(budget.remaining(), 0)?;
+    Ok(())
+}
+
+#[test]
+fn one_budget_executes_one_transition_and_exhausts() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(42)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(17), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
+    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.pc(), StepIdx::new(1))?;
+    ensure_equal(run.read_slot(SlotIdx::new(0)), Ok(&SlotValue::I64(42)))?;
+    Ok(())
+}
+
+#[test]
+fn copy_preserves_value_and_taint() -> Result<(), String> {
+    let workflow = copy_workflow(Some(SlotIdx::new(1))).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(18), &workflow)?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::I64(77),
+        Taint::DerivedFromSecret,
+    )
+    .map_err(|error| error.to_string())?;
+
+    let mut store = test_store();
+    let signal =
+        step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+
+    ensure_equal(signal, EngineSignal::Continue)?;
+    ensure_equal(run.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(77)))?;
+    ensure_equal(
+        run.read_taint(SlotIdx::new(1)),
+        Ok(Taint::DerivedFromSecret),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn failed_node_is_marked_failed_on_typed_error() -> Result<(), String> {
+    let workflow = copy_workflow(None).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(19), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    ensure_equal(
+        result,
+        Err(EngineError::MissingOutputSlot {
+            step: StepIdx::new(0),
+        }),
+    )?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+    Ok(())
+}
+
+#[test]
+fn choose_slot_takes_first_true_branch() -> Result<(), String> {
+    let workflow = choose_slot_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(8), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(11), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn choose_slot_takes_later_true_branch() -> Result<(), String> {
+    let workflow = choose_slot_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(10), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(false), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(22), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn choose_slot_takes_otherwise_when_no_branch_matches() -> Result<(), String> {
+    let workflow = choose_slot_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(9), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(false), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(false), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn choose_slot_rejects_non_bool_condition_with_type_mismatch() -> Result<(), String> {
+    let workflow = choose_slot_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(11), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
+        Err(EngineError::TypeMismatch {
+            expected: "boolean",
+            found: "number",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn choose_slot_otherwise_taken_when_no_branch_matches() -> Result<(), String> {
+    let workflow =
+        choose_slot_without_otherwise_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(12), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(false), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(false), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn choose_expr_takes_first_true_branch() -> Result<(), String> {
+    let workflow = choose_expr_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(13), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(11), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn choose_expr_takes_later_true_branch() -> Result<(), String> {
+    let workflow = choose_expr_workflow_with(
+        ConstValue::Bool(false),
+        ConstValue::Bool(true),
+        Some(StepIdx::new(3)),
+    )
+    .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(20), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(22), Taint::Clean),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn choose_expr_takes_otherwise_when_all_false() -> Result<(), String> {
+    let workflow = choose_expr_workflow_with(
+        ConstValue::Bool(false),
+        ConstValue::Bool(false),
+        Some(StepIdx::new(3)),
+    )
+    .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(21), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(99), Taint::Clean),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn choose_expr_rejects_non_bool_condition() -> Result<(), String> {
+    let workflow = choose_expr_workflow_with(
+        ConstValue::I64(1),
+        ConstValue::Bool(true),
+        Some(StepIdx::new(3)),
+    )
+    .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(22), &workflow)?;
+    let mut store = test_store();
+
+    match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
+        Err(EngineError::TypeMismatch {
+            expected: "boolean",
+            found: "number",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn choose_expr_otherwise_taken_when_no_branch_matches() -> Result<(), String> {
+    let workflow =
+        choose_expr_workflow_with(ConstValue::Bool(false), ConstValue::Bool(false), Some(StepIdx::new(3)))
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(25), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(99), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn public_eval_expr_returns_exact_value() -> Result<(), String> {
+    let workflow = eval_add_workflow().map_err(|error| error.to_string())?;
+    let run = test_frame(RunId::new(23), &workflow)?;
+
+    let (value, _taint) =
+        eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())?;
+
+    ensure_equal(value, SlotValue::I64(42))?;
+    Ok(())
+}
+
+#[test]
+fn public_eval_expr_rejects_invalid_expr_index() -> Result<(), String> {
+    let workflow = eval_add_workflow().map_err(|error| error.to_string())?;
+    let run = test_frame(RunId::new(26), &workflow)?;
+
+    match eval_expr(&workflow, &run, ExprIdx::new(1)) {
+        Err(EngineError::ExprOutOfBounds { expr }) if expr == ExprIdx::new(1) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn public_eval_accessor_loads_root_value() -> Result<(), String> {
+    let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(24), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(value, SlotValue::I64(77))?;
+    Ok(())
+}
+
+#[test]
+fn eval_accessor_identity_path_returns_root_handle_without_store() -> Result<(), String> {
+    let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(120), &workflow)?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Object(ObjectId::new(42)),
+        Taint::Clean,
+    )
+    .map_err(|error| error.to_string())?;
+
+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(value, SlotValue::Object(ObjectId::new(42)))?;
+    Ok(())
+}
+
+#[test]
+fn public_eval_accessor_rejects_invalid_accessor_index() -> Result<(), String> {
+    let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
+    let run = test_frame(RunId::new(27), &workflow)?;
+
+    match eval_accessor(&workflow, &run, AccessorIdx::new(1)) {
+        Err(EngineError::InvalidCompiledWorkflow {
+            reason: "accessor index out of bounds",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_expr_node_uses_fixed_stack_and_writes_output() -> Result<(), String> {
+    let workflow = eval_add_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(14), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(42), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn load_accessor_with_empty_path_loads_root_slot() -> Result<(), String> {
+    let workflow = accessor_workflow(Box::new([])).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(15), &workflow)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    if result == EngineSignal::Finished(SlotValue::I64(77), Taint::Clean) {
+        Ok(())
+    } else {
+        Err(format!("unexpected result: {result:?}"))
+    }
+}
+
+#[test]
+fn public_eval_accessor_reports_typed_error_without_store() -> Result<(), String> {
+    let workflow =
+        accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(16), &workflow)?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Object(ObjectId::new(0)),
+        Taint::Clean,
+    )
+    .map_err(|error| error.to_string())?;
+
+    match eval_accessor(&workflow, &run, AccessorIdx::new(0)) {
+        Err(EngineError::UnsupportedAccessorTraversal {
+            segment: "field",
+            found: "object",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn load_accessor_reads_object_field_through_store() -> Result<(), String> {
+    let workflow =
+        accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(28), &workflow)?;
+    let mut store = test_store();
+    let object = store
+        .insert_object(
+            vec![ObjectField {
+                key: SymbolId::new(7),
+                value: SlotValue::I64(123),
+            }]
+            .into_boxed_slice(),
+        )
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(object), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(123), Taint::Clean),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn eval_accessor_reads_list_item_through_store() -> Result<(), String> {
+    let workflow = accessor_workflow(vec![PathSegment::Index(1)].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(29), &workflow)?;
+    let mut store = test_store();
+    let list = store
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+        .map_err(|error| error.to_string())?;
+
+    ensure_equal(value, SlotValue::I64(2))?;
+    Ok(())
+}
+
+#[test]
+fn eval_accessor_reports_missing_field_precisely() -> Result<(), String> {
+    let workflow =
+        accessor_workflow(vec![PathSegment::Field(SymbolId::new(9))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(30), &workflow)?;
+    let mut store = test_store();
+    let object = store
+        .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(object), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+        Err(EngineError::ObjectFieldNotFound { field }) if field == SymbolId::new(9) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_accessor_reports_list_index_precisely() -> Result<(), String> {
+    let workflow = accessor_workflow(vec![PathSegment::Index(4)].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(31), &workflow)?;
+    let mut store = test_store();
+    let list = store
+        .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+        Err(EngineError::ListIndexOutOfBounds { index: 4 }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_accessor_rejects_field_traversal_on_scalar_value() -> Result<(), String> {
+    let workflow =
+        accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(121), &workflow)?;
+    let mut store = test_store();
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+
+    match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+        Err(EngineError::UnsupportedAccessorTraversal {
+            segment: "field",
+            found: "number",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_accessor_reports_object_handle_bounds() -> Result<(), String> {
+    let workflow =
+        accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(122), &workflow)?;
+    let mut store = test_store();
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Object(ObjectId::new(99)),
+        Taint::Clean,
+    )
+    .map_err(|error| error.to_string())?;
+
+    match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+        Err(EngineError::ObjectOutOfBounds { object }) if object == ObjectId::new(99) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_accessor_reports_list_handle_bounds() -> Result<(), String> {
+    let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(123), &workflow)?;
+    let mut store = test_store();
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::List(ListId::new(88)),
+        Taint::Clean,
+    )
+    .map_err(|error| error.to_string())?;
+
+    match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+        Err(EngineError::ListOutOfBounds { list }) if list == ListId::new(88) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn build_list_copies_slot_values_in_exact_item_order() -> Result<(), String> {
+    let mut store = test_store();
+    let mut run = crate::RunFrame::new(RunId::new(32), StepIdx::new(0), 1, 3)
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(1), SlotValue::Bool(true))
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(2), SlotValue::Null)
+        .map_err(|error| error.to_string())?;
+
+    let list = build_list_impl(
+        &mut store,
+        &run,
+        &[SlotIdx::new(1), SlotIdx::new(0), SlotIdx::new(2)],
+    )
+    .map_err(|error| error.to_string())?;
+    let items = store.list(list).map_err(|error| error.to_string())?;
+
+    ensure_equal(items.len(), 3)?;
+    ensure_equal(items.first().copied(), Some(SlotValue::Bool(true)))?;
+    ensure_equal(items.get(1).copied(), Some(SlotValue::I64(10)))?;
+    ensure_equal(items.get(2).copied(), Some(SlotValue::Null))?;
+    Ok(())
+}
+
+#[test]
+fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(), String> {
+    let mut store = test_store();
+    let mut run = crate::RunFrame::new(RunId::new(33), StepIdx::new(0), 1, 3)
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(100))
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(1), SlotValue::I64(200))
+        .map_err(|error| error.to_string())?;
+    run.write_slot(SlotIdx::new(2), SlotValue::Bool(false))
+        .map_err(|error| error.to_string())?;
+    let duplicate_key = SymbolId::new(7);
+    let tail_key = SymbolId::new(9);
+
+    let object = build_object_impl(
+        &mut store,
+        &run,
+        &[
+            (duplicate_key, SlotIdx::new(0)),
+            (duplicate_key, SlotIdx::new(1)),
+            (tail_key, SlotIdx::new(2)),
+        ],
+    )
+    .map_err(|error| error.to_string())?;
+    let fields = store.object(object).map_err(|error| error.to_string())?;
+
+    ensure_equal(fields.len(), 3)?;
+    ensure_equal(
+        fields.first().copied(),
+        Some(ObjectField {
+            key: duplicate_key,
+            value: SlotValue::I64(100),
+        }),
+    )?;
+    ensure_equal(
+        fields.get(1).copied(),
+        Some(ObjectField {
+            key: duplicate_key,
+            value: SlotValue::I64(200),
+        }),
+    )?;
+    ensure_equal(
+        fields.get(2).copied(),
+        Some(ObjectField {
+            key: tail_key,
+            value: SlotValue::Bool(false),
+        }),
+    )?;
+    ensure_equal(
+        store
+            .object_field(object, duplicate_key)
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(100),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn build_list_rejects_unreadable_item_slot_without_inserting() -> Result<(), String> {
+    let mut store = test_store();
+    let run = crate::RunFrame::new(RunId::new(34), StepIdx::new(0), 1, 1)
+        .map_err(|error| error.to_string())?;
+
+    match build_list_impl(&mut store, &run, &[SlotIdx::new(1)]) {
+        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(1) => {
+            ensure_equal(store.list_count(), 0)
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn build_object_rejects_unreadable_field_slot_without_inserting() -> Result<(), String> {
+    let mut store = test_store();
+    let run = crate::RunFrame::new(RunId::new(35), StepIdx::new(0), 1, 1)
+        .map_err(|error| error.to_string())?;
+
+    match build_object_impl(&mut store, &run, &[(SymbolId::new(1), SlotIdx::new(1))]) {
+        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(1) => {
+            ensure_equal(store.object_count(), 0)
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn build_nodes_finish_with_constructed_handles() -> Result<(), String> {
+    let workflow = construction_workflow().map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(36), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+        .map_err(|error| error.to_string())?;
+    let object = match result {
+        EngineSignal::Finished(SlotValue::Object(object), Taint::Clean) => object,
+        other => return Err(format!("unexpected result: {other:?}")),
+    };
+    let list = match store.object_field(object, SymbolId::new(1)) {
+        Ok(SlotValue::List(list)) => list,
+        other => return Err(format!("unexpected object field: {other:?}")),
+    };
+    let items = store.list(list).map_err(|error| error.to_string())?;
+
+    ensure_equal(items.first().copied(), Some(SlotValue::I64(11)))?;
+    ensure_equal(items.get(1).copied(), Some(SlotValue::I64(22)))?;
+    ensure_equal(
+        store.object_field(object, SymbolId::new(2)),
+        Ok(SlotValue::I64(11)),
+    )?;
+    Ok(())
+}
+
+// ===== Workflow helpers =====
+
+fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    CompiledWorkflow::try_from_parts(tiny_workflow_parts(value))
+}
+
+fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::<str>::from("tiny"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: tiny_workflow_nodes(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![value].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    }
+}
+
+fn missing_constant_workflow(
+    constant: ConstIdx,
+) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    let mut parts = tiny_workflow_parts(ConstValue::Null);
+    parts.nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst { value: constant },
+        },
+        tiny_finish_node(),
+    ]
+    .into_boxed_slice();
+    CompiledWorkflow::try_from_parts(parts)
+}
+
+fn tiny_workflow_nodes() -> Box<[CompiledNode]> {
+    vec![tiny_set_const_node(), tiny_finish_node()].into_boxed_slice()
+}
+
+fn tiny_set_const_node() -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    }
+}
+
+fn tiny_finish_node() -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }
+}
+
+fn choose_slot_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+    choose_slot_workflow_with_otherwise(Some(StepIdx::new(3)))
+}
+
+fn choose_slot_without_otherwise_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+    choose_slot_workflow_with_otherwise(Some(StepIdx::new(3)))
+}
+
+fn choose_slot_workflow_with_otherwise(
+    otherwise: Option<StepIdx>,
+) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: vec![
+                    SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    SlotBranch {
+                        condition: SlotIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]
+                .into_boxed_slice(),
+                otherwise,
+            },
+        },
+        set_const_node(1, 2, 0),
+        set_const_node(2, 2, 1),
+        set_const_node(3, 2, 2),
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        },
+    ];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("choose_slot"),
+        digest: WorkflowDigest::from_bytes([5; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![
+            ConstValue::I64(11),
+            ConstValue::I64(22),
+            ConstValue::I64(99),
+        ]
+        .into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn choose_expr_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+    choose_expr_workflow_with(
+        ConstValue::Bool(true),
+        ConstValue::Bool(false),
+        Some(StepIdx::new(3)),
+    )
+}
+
+fn choose_expr_workflow_with(
+    first: ConstValue,
+    second: ConstValue,
+    otherwise: Option<StepIdx>,
+) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    let true_expr =
+        ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
+            .map_err(crate::WorkflowError::Expression)?;
+    let false_expr =
+        ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(1))].into_boxed_slice())
+            .map_err(crate::WorkflowError::Expression)?;
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: vec![
+                    ExprBranch {
+                        condition: ExprIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    ExprBranch {
+                        condition: ExprIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]
+                .into_boxed_slice(),
+                otherwise,
+            },
+        },
+        set_const_node(1, 2, 2),
+        set_const_node(2, 2, 3),
+        set_const_node(3, 2, 4),
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        },
+    ];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("choose_expr"),
+        digest: WorkflowDigest::from_bytes([6; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: vec![true_expr, false_expr].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants: vec![
+            first,
+            second,
+            ConstValue::I64(11),
+            ConstValue::I64(22),
+            ConstValue::I64(99),
+        ]
+        .into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("copy"),
+        digest: WorkflowDigest::from_bytes([9; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Copy {
+                    source: SlotIdx::new(0),
+                },
+            },
+            tiny_finish_node(),
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+    let expression = ExprProgram::try_from_ops(
+        vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Add,
+        ]
+        .into_boxed_slice(),
+    )
+    .map_err(crate::WorkflowError::Expression)?;
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("eval_add"),
+        digest: WorkflowDigest::from_bytes([7; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: ExprIdx::new(0),
+                },
+            },
+            tiny_finish_node(),
+        ]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(19), ConstValue::I64(23)].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn accessor_workflow(
+    path: Box<[PathSegment]>,
+) -> Result<CompiledWorkflow, crate::WorkflowError> {
+    let expression = ExprProgram::try_from_ops(
+        vec![ExprOp::LoadAccessor(AccessorIdx::new(0))].into_boxed_slice(),
+    )
+    .map_err(crate::WorkflowError::Expression)?;
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("accessor"),
+        digest: WorkflowDigest::from_bytes([8; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: ExprIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path,
+        }]
+        .into_boxed_slice(),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 100,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("construction"),
+        digest: WorkflowDigest::from_bytes([0x36; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: Some(SlotIdx::new(2)),
+                next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::BuildList {
+                    items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: Some(SlotIdx::new(3)),
+                next: Some(StepIdx::new(4)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::BuildObject {
+                    fields: vec![
+                        (SymbolId::new(1), SlotIdx::new(2)),
+                        (SymbolId::new(2), SlotIdx::new(0)),
+                    ]
+                    .into_boxed_slice(),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(4),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(3),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(11), ConstValue::I64(22)].into_boxed_slice(),
+        slot_count: 4,
+        symbols_count: 3,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+}
+
+fn set_const_node(id: u16, output: u16, constant: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: Some(SlotIdx::new(output)),
+        next: Some(StepIdx::new(4)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(constant),
+        },
+    }
+}
+
+fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFrame, String> {
+    new_run_frame(run_id, workflow).map_err(|error| error.to_string())
+}
+
+fn eval_expr_value(
+    ops: Box<[ExprOp]>,
+    constants: Box<[ConstValue]>,
+) -> Result<SlotValue, String> {
+    let expression = ExprProgram::try_from_ops(ops).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::<str>::from("operator_expr"),
+        digest: WorkflowDigest::from_bytes([0x5A; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants,
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    })
+    .map_err(|error| error.to_string())?;
+    let run = test_frame(RunId::new(117), &workflow)?;
+
+    let (value, _taint) =
+        eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|error| error.to_string())?;
+    Ok(value)
+}
+
+fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
+where
+    T: core::fmt::Debug + PartialEq,
+{
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(format!("expected {expected:?}, found {actual:?}"))
+    }
+}
+
+#[test]
+fn budget_zero_drive_deterministic_returns_step_budget_exhausted_without_touching_frame()
+-> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(100), &workflow)?;
+    let mut store = test_store();
+    let initial_executed = run.executed();
+    let initial_pc = run.pc();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
+    ensure_equal(run.executed(), initial_executed)?;
+    ensure_equal(run.pc(), initial_pc)?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Pending))?;
+    Ok(())
+}
+
+#[test]
+fn budget_one_executes_exactly_one_transition_then_exhausts() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(7)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(101), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
+    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.pc(), StepIdx::new(1))?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
+    ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Pending))?;
+    Ok(())
+}
+
+#[test]
+fn budget_two_completes_two_step_workflow_with_finish() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(55)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(102), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::new(2), &mut store);
+
+    ensure_equal(
+        result,
+        Ok(EngineSignal::Finished(SlotValue::I64(55), Taint::Clean)),
+    )?;
+    ensure_equal(run.executed(), 2)?;
+    Ok(())
+}
+
+#[test]
+fn step_budget_try_take_returns_false_after_depletion_without_error() -> Result<(), String> {
+    let mut budget = StepBudget::new(0);
+    let first = budget.try_take().map_err(|error| error.to_string())?;
+    ensure_equal(first, false)?;
+    ensure_equal(budget.remaining(), 0)?;
+
+    let mut budget_one = StepBudget::new(1);
+    let take1 = budget_one.try_take().map_err(|error| error.to_string())?;
+    ensure_equal(take1, true)?;
+    ensure_equal(budget_one.remaining(), 0)?;
+    let take2 = budget_one.try_take().map_err(|error| error.to_string())?;
+    ensure_equal(take2, false)?;
+    ensure_equal(budget_one.remaining(), 0)?;
+    Ok(())
+}
+
+#[test]
+fn step_budget_max_does_not_overflow_on_consecutive_takes() -> Result<(), String> {
+    let mut budget = StepBudget::MAX;
+    ensure_equal(budget.remaining(), crate::limits::MAX_STEP_BUDGET)?;
+    let take = budget.try_take().map_err(|error| error.to_string())?;
+    ensure_equal(take, true)?;
+    ensure_equal(budget.remaining(), crate::limits::MAX_STEP_BUDGET - 1)?;
+    Ok(())
+}
+
+#[test]
+fn step_once_with_invalid_pc_rejected_by_set_pc() -> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(103), &workflow)?;
+
+    let result = run.set_pc(StepIdx::new(99));
+
+    match result {
+        Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("nop_no_next"),
+        digest: WorkflowDigest::from_bytes([0xAA; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+            }]
+            .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 0,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(104), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(0) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("set_const_no_output"),
+        digest: WorkflowDigest::from_bytes([0xBB; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(1)].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(105), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::MissingOutputSlot { step }) if step == StepIdx::new(0) => {
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn finish_with_uninitialized_result_slot_returns_slot_out_of_bounds() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("finish_empty_slot"),
+        digest: WorkflowDigest::from_bytes([0xCC; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(106), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(0) => {
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn failed_step_is_marked_failed_in_frame_after_engine_error() -> Result<(), String> {
+    let workflow = copy_workflow(None).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(107), &workflow)?;
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
+        .map_err(|error| error.to_string())?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    ensure_equal(
+        result,
+        Err(EngineError::MissingOutputSlot {
+            step: StepIdx::new(0),
+        }),
+    )?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+    Ok(())
+}
+
+#[test]
+fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter()
+-> Result<(), String> {
+    let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(108), &workflow)?;
+
+    let result = run.set_pc(StepIdx::new(200));
+
+    match result {
+        Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(200) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn copy_from_uninitialized_source_slot_returns_slot_out_of_bounds() -> Result<(), String> {
+    let workflow = copy_workflow(Some(SlotIdx::new(1))).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(109), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(0) => {
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("do_node"),
+        digest: WorkflowDigest::from_bytes([0xDD; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(110), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::AwaitingAction))?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
+    Ok(())
+}
+
+#[test]
+fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("wait_node"),
+        digest: WorkflowDigest::from_bytes([0xEE; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(111), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::AwaitingWait))?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
+    Ok(())
+}
+
+#[test]
+fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("ask_node"),
+        digest: WorkflowDigest::from_bytes([0xFF; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(112), &workflow)?;
+    let mut store = test_store();
+
+    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
+
+    ensure_equal(result, Ok(EngineSignal::AwaitingAsk))?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))?;
+    Ok(())
+}
+
+#[test]
+fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), String> {
+    let expression = ExprProgram::try_from_ops(
+        vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Div,
+        ]
+        .into_boxed_slice(),
+    )
+    .map_err(|error| error.to_string())?;
+    let parts = WorkflowParts {
+        name: Box::<str>::from("div_zero"),
+        digest: WorkflowDigest::from_bytes([0x11; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(10), ConstValue::I64(0)].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(113), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::DivisionByZero) => {
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), String> {
+    let expression = ExprProgram::try_from_ops(
+        vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::Mul,
+        ]
+        .into_boxed_slice(),
+    )
+    .map_err(|error| error.to_string())?;
+    let parts = WorkflowParts {
+        name: Box::<str>::from("int_overflow"),
+        digest: WorkflowDigest::from_bytes([0x22; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(i64::MAX)].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(114), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        }) => {
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
+    let expression = ExprProgram::try_from_ops(
+        vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not].into_boxed_slice(),
+    )
+    .map_err(|error| error.to_string())?;
+    let parts = WorkflowParts {
+        name: Box::<str>::from("not_on_int"),
+        digest: WorkflowDigest::from_bytes([0x33; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: vec![expression].into_boxed_slice(),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+    };
+    let workflow =
+        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(115), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store);
+
+    match result {
+        Err(EngineError::TypeMismatch {
+            expected: "boolean",
+            found: "number",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn eval_expr_operator_truth_table_is_exact() -> Result<(), String> {
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Eq,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(5)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::NotEq,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(5), ConstValue::I64(6)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::And,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::Bool(true), ConstValue::Bool(false)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(false),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Or,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::Bool(false), ConstValue::Bool(true)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not].into_boxed_slice(),
+            vec![ConstValue::Bool(false)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Add,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::I64(11),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Sub,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::I64(3),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Mul,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::I64(28),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Div,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(20), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::I64(5),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Gt,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(7), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Gte,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(4), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Lt,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(3), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Lte,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(4), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Gt,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(3), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(false),
+    )?;
+    ensure_equal(
+        eval_expr_value(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Lt,
+            ]
+            .into_boxed_slice(),
+            vec![ConstValue::I64(4), ConstValue::I64(4)].into_boxed_slice(),
+        )?,
+        SlotValue::Bool(false),
+    )?;
+    Ok(())
+}

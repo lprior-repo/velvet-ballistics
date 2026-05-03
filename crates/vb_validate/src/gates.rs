@@ -78,7 +78,7 @@ fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
         depth = depth
             .checked_add(push_amount)
             .ok_or(ValidationError::ExpressionStackExceeded {
-                declared: usize::from(depth) + usize::from(push_amount),
+                declared: usize::from(depth).saturating_add(usize::from(push_amount)),
                 limit: usize::from(MAX_EXPR_STACK_DEPTH),
             })?;
         if depth > max_depth {
@@ -111,7 +111,7 @@ fn push_count(_op: &ExprOp) -> u8 {
 }
 
 /// Returns the net stack effect of a single expression opcode.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::as_conversions)]
 fn stack_effect(_op: &ExprOp) -> i8 {
     // pop_count and push_count return small u8 values (max 3).
     // We know push <= 1 and pop <= 3, so the result is always in i8 range.
@@ -1218,6 +1218,8 @@ mod tests {
             id: StepIdx::new(index),
             output: None,
             next: Some(StepIdx::new(index.saturating_add(1))),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }
     }
@@ -1227,6 +1229,8 @@ mod tests {
             id: StepIdx::new(index),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(result_slot),
             },
@@ -1238,6 +1242,8 @@ mod tests {
             id: StepIdx::new(index),
             output: Some(SlotIdx::new(output)),
             next: Some(StepIdx::new(index.saturating_add(1))),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(source),
             },
@@ -1363,6 +1369,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(99)), // out of range for slot_count=1
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = make_parts(vec![node], 1);
@@ -1416,6 +1424,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -1428,6 +1438,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(0),
                     body: StepIdx::new(1),
@@ -1446,6 +1458,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -1467,6 +1481,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -1489,6 +1505,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::TogetherStart {
                     branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
                     join: StepIdx::new(3),
@@ -1508,6 +1526,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::new([StepIdx::new(99)]),
                 join: StepIdx::new(1),
@@ -1527,6 +1547,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -1549,6 +1571,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::RepeatStart {
                     max_attempts: 3,
                     body: StepIdx::new(1),
@@ -1559,6 +1583,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: None,
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::RepeatAttempt {
                     attempt_slot: SlotIdx::new(0),
                     body: StepIdx::new(1),
@@ -1569,6 +1595,8 @@ mod tests {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::RepeatCheck {
                     attempt_slot: SlotIdx::new(0),
                     done: StepIdx::new(3),
@@ -1596,6 +1624,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: vb_core::ids::ConstIdx::new(0),
                 },
@@ -1605,6 +1635,8 @@ mod tests {
                 id: StepIdx::new(2),
                 output: Some(SlotIdx::new(2)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(1),
                 },
@@ -1622,6 +1654,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(1),
                 },
@@ -1630,6 +1664,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(1)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -1650,6 +1686,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
@@ -1666,6 +1704,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(1),
                 },
@@ -1674,6 +1714,8 @@ mod tests {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(1)),
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(2),
                 },
@@ -1682,6 +1724,8 @@ mod tests {
                 id: StepIdx::new(2),
                 output: Some(SlotIdx::new(2)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -1703,6 +1747,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: vb_core::ids::ConstIdx::new(0),
                 },
@@ -1712,6 +1758,8 @@ mod tests {
                 id: StepIdx::new(2),
                 output: Some(SlotIdx::new(2)),
                 next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -1720,6 +1768,8 @@ mod tests {
                 id: StepIdx::new(3),
                 output: Some(SlotIdx::new(3)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::BuildList {
                     items: Box::new([SlotIdx::new(1), SlotIdx::new(2)]),
                 },
@@ -1766,6 +1816,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1774,6 +1826,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Copy {
                         source: SlotIdx::new(0),
                     },
@@ -1803,6 +1857,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -1811,6 +1867,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1834,6 +1892,8 @@ mod tests {
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
@@ -1842,6 +1902,8 @@ mod tests {
                     id: StepIdx::new(1),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Copy {
                         source: SlotIdx::new(0),
                     },
@@ -1850,6 +1912,8 @@ mod tests {
                     id: StepIdx::new(2),
                     output: Some(SlotIdx::new(2)),
                     next: None,
+                    on_error: None,
+                    error_slot: None,
                     kind: CompiledNodeKind::Copy {
                         source: SlotIdx::new(1),
                     },
@@ -1946,6 +2010,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::BuildObject {
                 fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
             },
@@ -1966,6 +2032,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::BuildList {
                 items: Box::new([SlotIdx::new(50)]),
             },
@@ -1989,6 +2057,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::TogetherStart {
                     branches: Box::new([]),
                     join: StepIdx::new(1),
@@ -2007,6 +2077,8 @@ mod tests {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),

@@ -1079,6 +1079,8 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1252,6 +1254,8 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
             id: StepIdx::new(5), // id 5 but only 1 node (index 0)
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1270,6 +1274,8 @@ fn validate_node_bounds_rejects_next_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(99)), // next points to nonexistent node
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1288,6 +1294,8 @@ fn validate_node_bounds_accepts_next_at_last_index() {
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1296,6 +1304,8 @@ fn validate_node_bounds_accepts_next_at_last_index() {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1325,6 +1335,8 @@ fn validate_transition_target_rejects_jump_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Jump {
                 target: StepIdx::new(50),
             },
@@ -1343,6 +1355,8 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Choose {
                 branches: vec![ExprBranch {
                     condition: ExprIdx::new(0),
@@ -1373,6 +1387,8 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Choose {
                 branches: Box::new([]),
                 otherwise: Some(StepIdx::new(99)),
@@ -1392,6 +1408,8 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ChooseSlot {
                 branches: vec![SlotBranch {
                     condition: SlotIdx::new(0),
@@ -1415,6 +1433,8 @@ fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -1437,6 +1457,8 @@ fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(99)].into_boxed_slice(),
                 join: StepIdx::new(0),
@@ -1456,6 +1478,8 @@ fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(0)].into_boxed_slice(),
                 join: StepIdx::new(99),
@@ -1475,6 +1499,8 @@ fn validate_transition_target_rejects_together_branch_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherBranch {
                 branch: 0,
                 entry: StepIdx::new(99),
@@ -1496,6 +1522,8 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherBranch {
                 branch: 0,
                 entry: StepIdx::new(0),
@@ -1517,6 +1545,8 @@ fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::RepeatCheck {
                 attempt_slot: SlotIdx::new(0),
                 done: StepIdx::new(99),
@@ -1536,6 +1566,8 @@ fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::RetryCheck {
                 policy_slot: SlotIdx::new(0),
                 body: StepIdx::new(99),
@@ -1556,6 +1588,8 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(99),
                 handler: StepIdx::new(0),
@@ -1575,6 +1609,8 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(0),
                 handler: StepIdx::new(99),
@@ -1594,6 +1630,8 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1602,6 +1640,8 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1643,6 +1683,8 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
         nodes.push(CompiledNode {
             id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
             output: None,
+            on_error: None,
+            error_slot: None,
             next: if is_last {
                 None
             } else {
@@ -1932,6 +1974,8 @@ fn reachability_rejects_unreachable_second_node() {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1940,6 +1984,8 @@ fn reachability_rejects_unreachable_second_node() {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1948,6 +1994,8 @@ fn reachability_rejects_unreachable_second_node() {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -1971,6 +2019,8 @@ fn reachability_accepts_linear_chain() {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1979,6 +2029,8 @@ fn reachability_accepts_linear_chain() {
             id: StepIdx::new(1),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
@@ -1987,6 +2039,8 @@ fn reachability_accepts_linear_chain() {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -2017,6 +2071,8 @@ fn forward_edge_rejects_backward_next() {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -2025,6 +2081,8 @@ fn forward_edge_rejects_backward_next() {
             id: StepIdx::new(1),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
@@ -2033,6 +2091,8 @@ fn forward_edge_rejects_backward_next() {
             id: StepIdx::new(2),
             output: None,
             next: Some(StepIdx::new(1)), // backward edge
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2067,6 +2127,8 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: None,
@@ -2103,6 +2165,8 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: Some(StepIdx::new(1)),
@@ -2112,6 +2176,8 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2235,6 +2301,8 @@ fn accessor_validation_accepts_valid_accessor_reference() {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2267,6 +2335,8 @@ fn accessor_root_slot_must_be_in_bounds() {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -2288,6 +2358,8 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -2300,6 +2372,8 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(0),
             },
@@ -2308,6 +2382,8 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(2),
@@ -2361,6 +2437,8 @@ fn expression_with_no_ops_is_rejected() {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

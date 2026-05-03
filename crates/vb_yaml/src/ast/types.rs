@@ -1,0 +1,262 @@
+//! Typed AST type definitions for the workflow definition language.
+//!
+//! All AST types are pure data structures with no parsing logic.
+
+// ---------------------------------------------------------------------------
+// Top-level workflow AST
+// ---------------------------------------------------------------------------
+
+/// Top-level workflow AST produced by parsing a workflow YAML document.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkflowSource {
+    /// Language version string (e.g. "velvet-ballastics/v1").
+    pub version: String,
+    /// Workflow name.
+    pub name: String,
+    /// Trigger declaration.
+    pub trigger: TriggerAst,
+    /// Declared input fields.
+    pub inputs: Vec<InputField>,
+    /// Declared workflow-level variables.
+    pub vars: Vec<VarField>,
+    /// Declared secret references.
+    pub secrets: Vec<SecretField>,
+    /// Ordered step list.
+    pub steps: Vec<StepAst>,
+    /// Optional result mapping.
+    pub result: Option<ResultMapping>,
+    /// Inline examples / test cases.
+    pub examples: Vec<ExampleAst>,
+}
+
+// ---------------------------------------------------------------------------
+// Trigger
+// ---------------------------------------------------------------------------
+
+/// Trigger declaration: manual invocation or IPC.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TriggerAst {
+    /// Manual trigger (default).
+    Manual,
+    /// IPC trigger with a named channel.
+    Ipc {
+        /// Channel name.
+        name: String,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Step
+// ---------------------------------------------------------------------------
+
+/// A single workflow step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StepAst {
+    /// Unique step identifier.
+    pub id: String,
+    /// Human-readable name (optional).
+    pub name: Option<String>,
+    /// Condition expression for conditional execution.
+    pub condition: Option<String>,
+    /// The primitive operation.
+    pub primitive: StepPrimitive,
+    /// Resource / connector reference (optional).
+    pub with: Option<String>,
+    /// Retry policy (optional).
+    pub retry: Option<RetryPolicy>,
+    /// Error handler (optional).
+    pub on_error: Option<ErrorHandlerAst>,
+    /// Next-step label for explicit flow control (optional).
+    pub then: Option<String>,
+}
+
+/// The concrete primitive operation for a step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StepPrimitive {
+    /// Set a variable to a value.
+    Set {
+        /// Target variable name.
+        output: String,
+        /// Value expression.
+        value: String,
+    },
+    /// Save a constant value to slots (compile-layer alias for set).
+    Save {
+        /// Constant value expression.
+        value: ScalarValue,
+    },
+    /// Execute an action.
+    Do {
+        /// Action identifier.
+        action: String,
+        /// Input expression.
+        input: String,
+    },
+    /// Branching construct.
+    Choose {
+        /// Branch list.
+        branches: Vec<ChooseBranch>,
+        /// Default branch label (optional).
+        otherwise: Option<String>,
+    },
+    /// Parallel fan-out.
+    ForEach {
+        /// Loop variable name.
+        variable: String,
+        /// Input collection expression.
+        input: String,
+        /// Maximum concurrency (optional).
+        at_once: Option<u32>,
+        /// Body steps.
+        body: Vec<StepAst>,
+    },
+    /// Concurrent branches that run together.
+    Together {
+        /// Branch list.
+        branches: Vec<TogetherBranch>,
+    },
+    /// Paginated collection loop.
+    Collect {
+        /// Loop variable name.
+        variable: String,
+        /// Source expression.
+        source: String,
+        /// Maximum pages (optional).
+        pages: Option<u32>,
+        /// Items per page (optional).
+        items: Option<u32>,
+        /// Body steps.
+        body: Vec<StepAst>,
+    },
+    /// Left-fold reduction.
+    Reduce {
+        /// Accumulator variable name.
+        variable: String,
+        /// Input collection expression.
+        input: String,
+        /// Initial value expression.
+        initial: String,
+        /// Body steps.
+        body: Vec<StepAst>,
+    },
+    /// Retry loop.
+    Repeat {
+        /// Maximum retry attempts.
+        max_attempts: u16,
+        /// Body steps.
+        body: Vec<StepAst>,
+    },
+    /// Wait for an event or timeout.
+    Wait {
+        /// Event expression (optional).
+        event: Option<String>,
+        /// Timeout expression (optional).
+        timeout: Option<String>,
+    },
+    /// Ask for human input.
+    Ask {
+        /// Prompt text.
+        prompt: String,
+        /// Timeout expression (optional).
+        timeout: Option<String>,
+    },
+    /// Terminate the workflow with a result.
+    Finish {
+        /// Result expression or literal.
+        result: ScalarValue,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Supporting types
+// ---------------------------------------------------------------------------
+
+/// A scalar YAML value used in step fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScalarValue {
+    /// A string value.
+    String(String),
+    /// An integer value.
+    Integer(i64),
+}
+
+/// A branch inside a `Choose` primitive.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChooseBranch {
+    /// Condition label (the "when" field).
+    pub when: String,
+    /// Steps to execute when the condition matches.
+    pub steps: Vec<StepAst>,
+}
+
+/// A branch inside a `Together` primitive.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TogetherBranch {
+    /// Branch label.
+    pub label: String,
+    /// Steps to execute in this branch.
+    pub steps: Vec<StepAst>,
+}
+
+/// Retry policy for a step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryPolicy {
+    /// Maximum retry attempts.
+    pub max_attempts: u16,
+    /// Delay between retries (expression or duration string).
+    pub delay: Option<String>,
+}
+
+/// Error handler attached to a step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ErrorHandlerAst {
+    /// Handler label or step reference.
+    pub handler: String,
+}
+
+/// An input field declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InputField {
+    /// Field name.
+    pub name: String,
+    /// Field type annotation (optional).
+    pub field_type: Option<String>,
+    /// Default value expression (optional).
+    pub default: Option<String>,
+}
+
+/// A variable field declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VarField {
+    /// Variable name.
+    pub name: String,
+    /// Initial value expression.
+    pub value: Option<String>,
+}
+
+/// A secret reference declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SecretField {
+    /// Secret name.
+    pub name: String,
+    /// External key path (optional).
+    pub key: Option<String>,
+}
+
+/// Result mapping at the end of a workflow.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResultMapping {
+    /// Result expression.
+    pub value: String,
+}
+
+/// An inline example / test case.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExampleAst {
+    /// Example description.
+    pub description: Option<String>,
+    /// Input bindings for the example.
+    pub input: Option<String>,
+    /// Expected result expression.
+    pub expected: Option<String>,
+}

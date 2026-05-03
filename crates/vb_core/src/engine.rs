@@ -3928,7 +3928,6 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
-            symbols_count: 0,
         })
     }
 
@@ -4231,7 +4230,6 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
-            symbols_count: 0,
         })
         .map_err(|e| e.to_string())?;
 
@@ -4378,6 +4376,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(99)].into_boxed_slice(),
             slot_count: 4,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -4443,6 +4442,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42), ConstValue::I64(999)].into_boxed_slice(),
             slot_count: 5,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -4494,6 +4494,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 3,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -4674,6 +4675,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42), ConstValue::I64(100)].into_boxed_slice(),
             slot_count: 3,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -4691,6 +4693,9 @@ mod tests {
             Ok(other) => return Err(format!("expected Finished(42, Clean), got {other:?}")),
             Err(e) => return Err(format!("unexpected error: {e}")),
         }
+        Ok(())
+    }
+
     // Phase QA: Coverage gap closure -- new_run_frame, drive_deterministic, etc.
     // =========================================================================
 
@@ -4834,6 +4839,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::WaitUntil {
                     deadline_slot: SlotIdx::new(0),
                 },
@@ -4930,6 +4937,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(100)].into_boxed_slice(),
             slot_count: 5,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -4952,6 +4960,10 @@ mod tests {
         // Verify error slot content
         let error_value = run.read_slot(SlotIdx::new(2)).map_err(|e| format!("{e}"))?;
         ensure_equal(*error_value, SlotValue::I64(1))?; // failed step index
+        Ok(())
+    }
+
+    #[test]
     fn wait_event_node_suspends_with_awaiting_wait() -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("wait_event_test"),
@@ -4960,6 +4972,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::WaitEvent {
                     event: SlotIdx::new(0),
                     timeout_slot: None,
@@ -5030,6 +5044,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 6,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };
@@ -5054,6 +5069,10 @@ mod tests {
         ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
         // Handler step (1) should also be Failed
         ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Failed))?;
+        Ok(())
+    }
+
+    #[test]
     fn ask_resume_node_returns_unsupported_primitive() -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("ask_resume_test"),
@@ -5062,6 +5081,8 @@ mod tests {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::AskResume {
                     answer: SlotIdx::new(0),
                 },

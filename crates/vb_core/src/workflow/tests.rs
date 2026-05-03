@@ -205,6 +205,8 @@ fn workflow_parts_reject_node_id_mismatch() -> Result<(), String> {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -502,6 +504,8 @@ fn construction_parts(
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind,
         }]
         .into_boxed_slice(),
@@ -548,6 +552,8 @@ fn finish_const_parts_with(
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -600,12 +606,16 @@ fn branch_parts(
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: branch_kind,
             },
             CompiledNode {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -614,6 +624,8 @@ fn branch_parts(
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -687,6 +699,8 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -713,6 +727,8 @@ fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(99)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -737,6 +753,8 @@ fn workflow_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(5)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     }]
     .into_boxed_slice();
@@ -755,6 +773,8 @@ fn workflow_error_const_out_of_bounds_exact_variant() -> Result<(), String> {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(50),
         },
@@ -776,6 +796,8 @@ fn workflow_error_node_id_mismatch_exact_variant() -> Result<(), String> {
         id: StepIdx::new(7),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     }]
     .into_boxed_slice();
@@ -858,6 +880,8 @@ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Resu
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -882,6 +906,8 @@ fn workflow_set_const_out_of_bounds_constant_returns_const_out_of_bounds() -> Re
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(99),
         },
@@ -904,6 +930,8 @@ fn workflow_copy_out_of_bounds_source_slot_returns_slot_out_of_bounds() -> Resul
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(5),
         },
@@ -924,6 +952,8 @@ fn workflow_eval_expr_out_of_bounds_returns_expression_wrapped_error() -> Result
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::EvalExpr {
             expr: ExprIdx::new(99),
         },
@@ -948,6 +978,8 @@ fn workflow_node_output_slot_out_of_bounds_returns_slot_out_of_bounds() -> Resul
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(5)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     }]
     .into_boxed_slice();
@@ -966,6 +998,8 @@ fn workflow_jump_target_out_of_bounds_returns_step_out_of_bounds() -> Result<(),
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
@@ -985,6 +1019,8 @@ fn workflow_finish_result_slot_out_of_bounds_returns_slot_out_of_bounds() -> Res
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(10),
         },
@@ -1005,6 +1041,8 @@ fn workflow_nop_next_step_out_of_bounds_returns_step_out_of_bounds() -> Result<(
         id: StepIdx::new(0),
         output: None,
         next: Some(StepIdx::new(200)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Nop,
     }]
     .into_boxed_slice();
@@ -1025,6 +1063,8 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded(
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -1051,6 +1091,8 @@ fn workflow_build_list_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::BuildList {
             items: vec![SlotIdx::new(0), SlotIdx::new(5)].into_boxed_slice(),
         },
@@ -1073,6 +1115,8 @@ fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(1), StepIdx::new(99)].into_boxed_slice(),
                 join: StepIdx::new(2),
@@ -1082,12 +1126,16 @@ fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -1108,6 +1156,8 @@ fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Re
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(1)].into_boxed_slice(),
                 join: StepIdx::new(50),
@@ -1117,6 +1167,8 @@ fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Re
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -1136,6 +1188,8 @@ fn workflow_together_join_zero_branch_count_returns_resource_exceeded() -> Resul
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::TogetherJoin {
             branch_count: 0,
             accumulator: SlotIdx::new(0),
@@ -1160,6 +1214,8 @@ fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: 0,
                 body: StepIdx::new(1),
@@ -1170,12 +1226,16 @@ fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result
             id: StepIdx::new(1),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(2),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -1198,12 +1258,16 @@ fn workflow_second_node_id_mismatch_returns_node_id_mismatch() -> Result<(), Str
             id: StepIdx::new(0),
             output: None,
             next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(5),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -1328,12 +1392,16 @@ fn phase46_rejects_unreachable_node() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1342,6 +1410,8 @@ fn phase46_rejects_unreachable_node() -> Result<(), String> {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1363,18 +1433,24 @@ fn phase46_accepts_reachable_chain() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(1),
                 output: None,
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1395,12 +1471,16 @@ fn phase46_rejects_backward_next() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(1),
                 output: None,
                 next: Some(StepIdx::new(0)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1428,12 +1508,16 @@ fn phase46_accepts_jump_backward() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Jump {
                     target: StepIdx::new(0),
                 },
@@ -1456,6 +1540,8 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -1468,12 +1554,16 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: None,
                 next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(2),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(2),
                     body: StepIdx::new(1),
@@ -1484,6 +1574,8 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
                 id: StepIdx::new(3),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1512,6 +1604,8 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -1524,6 +1618,8 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
@@ -1536,12 +1632,16 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 id: StepIdx::new(2),
                 output: None,
                 next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(3),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(3),
                     body: StepIdx::new(2),
@@ -1552,6 +1652,8 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 id: StepIdx::new(4),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(4),
                     body: StepIdx::new(1),
@@ -1562,6 +1664,8 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 id: StepIdx::new(5),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1599,6 +1703,8 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -1611,6 +1717,8 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
@@ -1623,12 +1731,16 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 id: StepIdx::new(2),
                 output: None,
                 next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(3),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(3),
                     body: StepIdx::new(2),
@@ -1639,6 +1751,8 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 id: StepIdx::new(4),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(4),
                     body: StepIdx::new(1),
@@ -1649,6 +1763,8 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 id: StepIdx::new(5),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1682,6 +1798,8 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1714,6 +1832,8 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1743,6 +1863,8 @@ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -1751,6 +1873,8 @@ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(0)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -1785,6 +1909,8 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
@@ -1793,6 +1919,8 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1826,6 +1954,8 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
             id: StepIdx::new(0),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(99),
             },
@@ -1854,6 +1984,8 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> 
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::BuildList {
                 items: vec![SlotIdx::new(0), SlotIdx::new(50)].into_boxed_slice(),
             },
@@ -1882,6 +2014,8 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(200)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1911,6 +2045,8 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
                 id: StepIdx::new(0),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1919,6 +2055,8 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
                 id: StepIdx::new(1),
                 output: None,
                 next: None,
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

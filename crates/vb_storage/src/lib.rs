@@ -1445,6 +1445,7 @@ impl FjallJournal {
     }
 
     /// Returns a prefix iterator over the event keyspace for the given key prefix.
+    #[allow(dead_code)]
     pub(crate) fn event_keyspace_prefix(
         &self,
         prefix: &[u8],
@@ -1454,6 +1455,7 @@ impl FjallJournal {
     }
 
     /// Returns a prefix iterator over the snapshot keyspace for the given key prefix.
+    #[allow(dead_code)]
     pub(crate) fn snapshot_keyspace_prefix(
         &self,
         prefix: &[u8],
@@ -9639,6 +9641,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
 /// Computes the digest by hashing the serialized parts with the digest field zeroed,
 /// then sets the computed hash as the digest. This matches the checksum verification
 /// used in `submit_artifact`.
+#[cfg(test)]
 #[allow(dead_code)]
 fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
     use vb_core::{

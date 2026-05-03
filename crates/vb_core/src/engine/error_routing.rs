@@ -8,6 +8,7 @@
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{SlotIdx, StepIdx};
+use crate::CoreError;
 use crate::value::SlotValue;
 use crate::workflow::CompiledWorkflow;
 
@@ -96,6 +97,7 @@ fn error_code_string(error: &EngineError) -> Box<str> {
                 "TOGETHER_BRANCH_LIMIT_EXCEEDED"
             }
             EngineError::BudgetExceeded { .. } => "BUDGET_EXCEEDED",
+            &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
         }
         .into(),
     }
@@ -239,6 +241,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 4,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         }
@@ -274,6 +277,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         }
@@ -359,6 +363,7 @@ mod tests {
             accessors: Box::new([]),
             constants: vec![crate::value::ConstValue::I64(42)].into_boxed_slice(),
             slot_count: 2,
+            symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
         };

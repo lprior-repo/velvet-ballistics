@@ -588,7 +588,9 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
             id: StepIdx::new(step),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(step.saturating_add(1))),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
@@ -598,6 +600,8 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
         id: StepIdx::new(count),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -615,7 +619,9 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -623,7 +629,9 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             id: StepIdx::new(1),
             output: None,
             next: None,
-            kind: CompiledNodeKind::ChooseSlot {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::from([SlotBranch {
                     condition: SlotIdx::new(0),
                     target: StepIdx::new(2),
@@ -635,7 +643,9 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             id: StepIdx::new(2),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(4)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
@@ -643,7 +653,9 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             id: StepIdx::new(3),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(4)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(2),
             },
         },
@@ -651,7 +663,9 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
             id: StepIdx::new(4),
             output: None,
             next: None,
-            kind: CompiledNodeKind::Finish {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
         },
@@ -672,6 +686,8 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -685,6 +701,8 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -701,6 +719,8 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         id: StepIdx::new(1),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches: branches.into_boxed_slice(),
             otherwise: Some(StepIdx::new(102)),
@@ -710,6 +730,8 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         id: StepIdx::new(102),
         output: Some(SlotIdx::new(1)),
         next: Some(StepIdx::new(103)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(1),
         },
@@ -718,6 +740,8 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         id: StepIdx::new(103),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
@@ -735,7 +759,9 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -743,7 +769,9 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(1),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
-            kind: CompiledNodeKind::EvalExpr {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
@@ -751,7 +779,9 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(2),
             output: None,
             next: None,
-            kind: CompiledNodeKind::Finish {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
         },
@@ -1243,6 +1273,8 @@ fn taint_expr_workflow(
         id: StepIdx::new(0),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1427,7 +1459,9 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
             id: StepIdx::new(field_idx),
             output: Some(SlotIdx::new(field_idx)),
             next: Some(StepIdx::new(field_idx.saturating_add(1))),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(field_idx),
             },
         });
@@ -1446,6 +1480,8 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         id: StepIdx::new(build_idx),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(finish_idx)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::BuildObject {
             fields: fields.into_boxed_slice(),
         },
@@ -1454,6 +1490,8 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         id: StepIdx::new(finish_idx),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1537,7 +1575,9 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
             id: StepIdx::new(idx),
             output: Some(SlotIdx::new(idx)),
             next: Some(StepIdx::new(idx.saturating_add(1))),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(idx),
             },
         });
@@ -1549,6 +1589,8 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         id: StepIdx::new(build_idx),
         output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(finish_idx)),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::BuildList {
             items: items.into_boxed_slice(),
         },
@@ -1557,6 +1599,8 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         id: StepIdx::new(finish_idx),
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1644,7 +1688,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(1)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
@@ -1652,7 +1698,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(1),
             output: Some(SlotIdx::new(1)),
             next: Some(StepIdx::new(2)),
-            kind: CompiledNodeKind::SetConst {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
@@ -1660,7 +1708,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(2),
             output: Some(SlotIdx::new(2)),
             next: Some(StepIdx::new(3)),
-            kind: CompiledNodeKind::EvalExpr {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
@@ -1668,7 +1718,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(3),
             output: Some(SlotIdx::new(3)),
             next: Some(StepIdx::new(4)),
-            kind: CompiledNodeKind::BuildObject {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::BuildObject {
                 fields: Box::from([
                     (SymbolId::new(0), SlotIdx::new(0)),
                     (SymbolId::new(1), SlotIdx::new(2)),
@@ -1679,7 +1731,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(4),
             output: Some(SlotIdx::new(4)),
             next: Some(StepIdx::new(5)),
-            kind: CompiledNodeKind::BuildList {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::BuildList {
                 items: Box::from([SlotIdx::new(0), SlotIdx::new(2), SlotIdx::new(0)]),
             },
         },
@@ -1687,7 +1741,9 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
             id: StepIdx::new(5),
             output: None,
             next: None,
-            kind: CompiledNodeKind::Finish {
+            on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
         },

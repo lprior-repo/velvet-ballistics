@@ -289,6 +289,8 @@ pub fn lower_set(
         id,
         output: Some(output),
         next,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::SetConst { value },
     }
 }
@@ -307,6 +309,8 @@ pub fn lower_do(
         id,
         output,
         next,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::Do { action, input },
     }
 }
@@ -330,6 +334,8 @@ pub fn lower_choose(
         id,
         output: None,
         next: None,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -355,6 +361,8 @@ pub fn lower_for_each(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::ForEachStart {
                 input,
                 item_slot,
@@ -367,6 +375,8 @@ pub fn lower_for_each(
             id: body,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot,
                 body,
@@ -396,6 +406,8 @@ pub fn lower_together(
         id,
         output: Some(accumulator),
         next: None,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::TogetherStart {
             branches: branches.into_boxed_slice(),
             join,
@@ -405,6 +417,8 @@ pub fn lower_together(
         id: join,
         output: Some(accumulator),
         next: None,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
@@ -438,6 +452,8 @@ pub fn lower_collect(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::CollectStart {
                 source,
                 limit,
@@ -450,6 +466,8 @@ pub fn lower_collect(
             id: body,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::CollectPage {
                 collector_slot,
                 body,
@@ -460,6 +478,8 @@ pub fn lower_collect(
             id: done,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::CollectFinish { collector_slot },
         },
     ])
@@ -483,6 +503,8 @@ pub fn lower_reduce(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::ReduceStart {
                 input,
                 accumulator,
@@ -495,6 +517,8 @@ pub fn lower_reduce(
             id: body,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::ReduceNext {
                 iterator_slot,
                 accumulator,
@@ -506,6 +530,8 @@ pub fn lower_reduce(
             id: done,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::ReduceFinish { accumulator },
         },
     ])
@@ -530,6 +556,8 @@ pub fn lower_repeat(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body,
@@ -540,6 +568,8 @@ pub fn lower_repeat(
             id: body,
             output: Some(attempt_slot),
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::RepeatAttempt {
                 attempt_slot,
                 body,
@@ -550,6 +580,8 @@ pub fn lower_repeat(
             id: done,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::RepeatFinish {
                 result: attempt_slot,
             },
@@ -580,6 +612,8 @@ pub fn lower_wait(
         id,
         output: None,
         next: None,
+        error_slot: None,
+        on_error: None,
         kind,
     }
 }
@@ -607,6 +641,8 @@ pub fn lower_ask(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::Ask {
                 prompt,
                 timeout_slot,
@@ -616,6 +652,8 @@ pub fn lower_ask(
             id: resume,
             output: Some(answer),
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::AskResume { answer },
         },
     ])
@@ -628,6 +666,8 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
         id,
         output: None,
         next: None,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::Finish { result },
     }
 }
@@ -2918,6 +2958,8 @@ fn set_const_node(
         id,
         output: Some(output),
         next: Some(next),
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::SetConst { value },
     })
 }
@@ -2980,6 +3022,8 @@ fn compile_slot_choose(
         id,
         output: None,
         next: None,
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches: vec![SlotBranch {
                 condition,
@@ -3006,6 +3050,8 @@ fn compile_literal_choose(
         id,
         output: Some(output),
         next: Some(if value { on_true } else { on_false }),
+        error_slot: None,
+        on_error: None,
         kind: CompiledNodeKind::SetConst { value: constant },
     })
 }
@@ -3068,6 +3114,8 @@ fn compile_together(
             id,
             output: Some(accumulator),
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: branches.into_boxed_slice(),
                 join,
@@ -3077,6 +3125,8 @@ fn compile_together(
             id: join,
             output: Some(accumulator),
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator,
@@ -3282,6 +3332,8 @@ fn compile_finish_result(
             id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::Finish { result: slot },
         }]);
     }
@@ -3297,12 +3349,16 @@ fn compile_finish_result(
             id,
             output: Some(output),
             next: Some(finish_id),
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::SetConst { value },
         },
         CompiledNode {
             id: finish_id,
             output: None,
             next: None,
+            error_slot: None,
+            on_error: None,
             kind: CompiledNodeKind::Finish { result: output },
         },
     ])
@@ -5680,6 +5736,8 @@ steps:
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(0)),
                     next: Some(StepIdx::new(1)),
+                    error_slot: None,
+                    on_error: None,
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
@@ -5688,6 +5746,8 @@ steps:
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    error_slot: None,
+                    on_error: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -5714,6 +5774,8 @@ steps:
                     id: StepIdx::new(0),
                     output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
+                    error_slot: None,
+                    on_error: None,
                     kind: CompiledNodeKind::BuildList {
                         items: vec![SlotIdx::new(0)].into_boxed_slice(),
                     },
@@ -5722,6 +5784,8 @@ steps:
                     id: StepIdx::new(1),
                     output: None,
                     next: None,
+                    error_slot: None,
+                    on_error: None,
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },

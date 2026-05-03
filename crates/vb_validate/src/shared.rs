@@ -204,6 +204,8 @@ mod tests {
             id: StepIdx::new(index),
             output: None,
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(result_slot),
             },
@@ -250,6 +252,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(99)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = make_parts(vec![node], 1);
@@ -267,6 +271,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(99)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = make_parts(vec![node], 1);
@@ -286,6 +292,8 @@ mod tests {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(99)),
             next: None,
+            on_error: None,
+            error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
         let parts = make_parts(vec![node], 1);
