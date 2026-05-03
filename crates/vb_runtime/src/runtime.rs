@@ -101,6 +101,12 @@ impl Runtime {
         shard.enqueue(ShardCommand::Cancel { run })
     }
 
+    /// Resumes a suspended run from its current program counter.
+    pub fn resume_run(&self, run: RunId) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::Resume { run })
+    }
+
     /// Inspects run state.
     pub fn inspect_run(&self, run: RunId, correlation: u64) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
