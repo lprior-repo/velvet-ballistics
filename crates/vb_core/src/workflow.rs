@@ -3349,9 +3349,15 @@ mod tests {
             ],
             1,
         );
-        CompiledWorkflow::try_from_parts(parts)
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        let result = CompiledWorkflow::try_from_parts(parts).map(|_| ());
+        // Backward jumps create cycles and must be rejected
+        assert!(result.is_err(), "backward jump should be rejected as cycle");
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("jump cycle"),
+            "error should mention jump cycle"
+        );
+        Ok(())
     }
 
     #[test]

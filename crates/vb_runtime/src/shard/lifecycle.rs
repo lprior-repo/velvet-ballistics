@@ -358,8 +358,8 @@ impl Shard {
         let granted = state
             .admission
             .as_ref()
-            .map(|a| a.granted_capabilities())
-            .unwrap_or_else(CapabilitySet::empty);
+            .and_then(|a| Some(a.granted_capabilities()))
+            .unwrap_or(&CapabilitySet::empty());
         drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
@@ -369,7 +369,6 @@ impl Shard {
             RetryPolicy::NEVER,
             evidence,
             &mut state.collect_states,
-            granted,
         )
     }
 

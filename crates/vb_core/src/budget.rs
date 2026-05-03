@@ -851,6 +851,7 @@ fn compute_fanout_and_depth(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
     visited: &mut [bool],
+    in_path: &mut std::collections::HashSet<u16>,
     node_count: usize,
     current_depth: u16,
     max_fanout: &mut u16,

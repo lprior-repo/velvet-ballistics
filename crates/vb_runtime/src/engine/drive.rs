@@ -83,15 +83,6 @@ pub fn drive_deterministic_full(
             Err(e) => return Err(RuntimeEngineError::Core(e)),
         }
 
-        // Evidence chain: emit SlotWritten with actual value for all slot writes,
-        // including internal expression evaluations (SetConst, Copy, EvalExpr,
-        // BuildObject, BuildList). This satisfies Phase 40/44 requirement.
-        if let Some(slot) = node.output {
-            if let Ok(value) = run.read_slot(slot) {
-                evidence.push_slot_written(slot, value);
-            }
-        }
-
         // Evidence chain: emit StepSucceeded only when the step actually succeeded.
         // For signals like StepBudgetExhausted, AwaitingAction, AwaitingWait,
         // and AwaitingAsk, the step did not complete successfully, so we must

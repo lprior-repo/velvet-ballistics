@@ -93,7 +93,17 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Trace {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
     Retry {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    Resume {
         run_id: String,
         db: PathBuf,
         output: OutputFormat,
@@ -109,6 +119,13 @@ pub(crate) enum Command {
     Explain {
         workflow: PathBuf,
         #[allow(dead_code)]
+        output: OutputFormat,
+    },
+    Answer {
+        run_id: String,
+        step: u16,
+        value_file: PathBuf,
+        db: PathBuf,
         output: OutputFormat,
     },
 }
@@ -166,9 +183,12 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "inspect" => parse_inspect(args),
         "events" => parse_events(args),
         "replay" => parse_replay(args),
+        "trace" => parse_trace(args),
         "retry" => parse_retry(args),
+        "resume" => parse_resume(args),
         "bench-run" => parse_bench_run(args),
         "doctor" => parse_doctor(args),
+        "answer" => parse_answer(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }
@@ -334,6 +354,18 @@ fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
+
+fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Trace {
+        run_id,
+        db: PathBuf::from(db),
+        output,
+    })
+}
+
 fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -355,6 +387,25 @@ fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
     Ok(Command::Doctor {
+        db: PathBuf::from(db),
+        output,
+    })
+}
+
+fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
+    let step = step_raw
+        .parse::<u16>()
+        .map_err(|_| ParseError::InvalidSlot(step_raw))?;
+    let value_file =
+        named_flag(args, "--value-file").ok_or(ParseError::MissingArgument("--value-file"))?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Answer {
+        run_id,
+        step,
+        value_file: PathBuf::from(value_file),
         db: PathBuf::from(db),
         output,
     })

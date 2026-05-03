@@ -51,9 +51,12 @@ commands:
   inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
   events     <run_id> --db <path> [--json|--jsonl]     List run events
   replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
+  trace      <run_id> --db <path> [--json|--jsonl]     Show step-by-step execution trace
   retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
+  resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run
   bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
   doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
+  answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
   help                                                Print this message
   version                                             Print version
 
@@ -111,9 +114,18 @@ fn main() -> ExitCode {
         Ok(Command::Inspect { run_id, db, output }) => cmd_inspect(&run_id, &db, output),
         Ok(Command::Events { run_id, db, output }) => cmd_events(&run_id, &db, output),
         Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
+        Ok(Command::Trace { run_id, db, output }) => cmd_trace(&run_id, &db, output),
         Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
+        Ok(Command::Resume { run_id, db, output }) => cmd_resume(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
         Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
+        Ok(Command::Answer {
+            run_id,
+            step,
+            value_file,
+            db,
+            output,
+        }) => cmd_answer(&run_id, step, &value_file, &db, output),
         Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
     }
 }
@@ -1652,6 +1664,273 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 }
 
 
+fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    match journal.events_for_run(rid) {
+        Ok(events) => {
+            if events.is_empty() {
+                if output != OutputFormat::Text {
+                    json_out(
+                        &serde_json::json!({
+                            "run_id": run_id,
+                            "trace": [],
+                            "total": 0
+                        }),
+                        output,
+                    );
+                } else {
+                    outln!("no events found for run {run_id}");
+                }
+            } else {
+                match output {
+                    OutputFormat::Json => {
+                        let trace_entries: Vec<serde_json::Value> =
+                            events.iter().map(trace_entry_to_json).collect();
+                        json_out(
+                            &serde_json::json!({
+                                "run_id": run_id,
+                                "trace": trace_entries,
+                                "total": events.len()
+                            }),
+                            output,
+                        );
+                    }
+                    OutputFormat::Jsonl => {
+                        for event in &events {
+                            let json_val = trace_entry_to_json(event);
+                            outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
+                        }
+                        outln!("{{\"total\": {}}}", events.len());
+                    }
+                    OutputFormat::Text => {
+                        outln!("execution trace for run {run_id}");
+                        for (idx, event) in events.iter().enumerate() {
+                            print_trace_entry(idx, event);
+                        }
+                        outln!("{} event(s) total", events.len());
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading trace for run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading trace for run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
+    CliExitCode::Success.into()
+}
+
+fn print_trace_entry(idx: usize, event: &vb_storage::JournalEvent) {
+    match event {
+        vb_storage::JournalEvent::RunAccepted { seq, .. } => {
+            outln!("  [{}] RunAccepted at seq {}", idx, seq.get());
+        }
+        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
+            outln!("  [{}] StepStarted at step {} (seq {})", idx, step.get(), seq.get());
+        }
+        vb_storage::JournalEvent::StepSucceeded { seq, step, output, .. } => {
+            outln!(
+                "  [{}] StepSucceeded at step {} output={} (seq {})",
+                idx,
+                step.get(),
+                output.get(),
+                seq.get()
+            );
+        }
+        vb_storage::JournalEvent::ActionScheduled { seq, step, action, .. } => {
+            outln!(
+                "  [{}] ActionScheduled at step {} action={} (seq {})",
+                idx,
+                step.get(),
+                action.get(),
+                seq.get()
+            );
+        }
+        vb_storage::JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
+            outln!(
+                "  [{}] ActionCompleted at step {} action={} (seq {})",
+                idx,
+                step.get(),
+                action.get(),
+                seq.get()
+            );
+        }
+        vb_storage::JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
+            outln!(
+                "  [{}] ActionFailed at step {} action={} (seq {})",
+                idx,
+                step.get(),
+                action.get(),
+                seq.get()
+            );
+        }
+        vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
+            outln!("  [{}] SlotWritten slot={} (seq {})", idx, slot.get(), seq.get());
+        }
+        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
+            outln!("  [{}] WaitScheduled at step {} (seq {})", idx, step.get(), seq.get());
+        }
+        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
+            outln!("  [{}] AskScheduled at step {} (seq {})", idx, step.get(), seq.get());
+        }
+        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
+            outln!("  [{}] AskAnswered at step {} (seq {})", idx, step.get(), seq.get());
+        }
+        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
+            outln!("  [{}] RetryScheduled at step {} (seq {})", idx, step.get(), seq.get());
+        }
+        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
+            outln!("  [{}] RunCancelled (seq {})", idx, seq.get());
+        }
+        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
+            outln!("  [{}] RunFinished result={} (seq {})", idx, result.get(), seq.get());
+        }
+        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
+            outln!("  [{}] RunFailed (seq {})", idx, seq.get());
+        }
+    }
+}
+
+/// Convert a journal event to a structured trace JSON entry.
+fn trace_entry_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
+    match event {
+        vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunAccepted",
+                "run": run.get(),
+                "workflow": format!("{:?}", workflow)
+            })
+        }
+        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "StepStarted",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::StepSucceeded { seq, step, output, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "StepSucceeded",
+                "step": step.get(),
+                "output": output.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionScheduled { seq, step, action, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionScheduled",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionCompleted",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionFailed",
+                "step": step.get(),
+                "action": action.get()
+            })
+        }
+        vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "SlotWritten",
+                "slot": slot.get()
+            })
+        }
+        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "WaitScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "AskScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "AskAnswered",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RetryScheduled",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunCancelled"
+            })
+        }
+        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunFinished",
+                "result": result.get()
+            })
+        }
+        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunFailed"
+            })
+        }
+    }
+}
+
 fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
@@ -1769,6 +2048,137 @@ fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
                     }
                     None => {
                         outln!("Retry would resume from the beginning.");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
+fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    match journal.events_for_run(rid) {
+        Ok(events) => {
+            if events.is_empty() {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("run {run_id} not found")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("run {run_id}: no events found");
+                }
+                return CliExitCode::StorageError.into();
+            }
+
+            // Scan for suspension indicators: WaitScheduled or AskScheduled
+            // These indicate the run was suspended at that step.
+            let mut suspended_at_step: Option<u16> = None;
+            for event in &events {
+                match event {
+                    vb_storage::JournalEvent::WaitScheduledEvent { step, .. } => {
+                        suspended_at_step = Some(step.get());
+                    }
+                    vb_storage::JournalEvent::AskScheduledEvent { step, .. } => {
+                        suspended_at_step = Some(step.get());
+                    }
+                    _ => {}
+                }
+            }
+
+            // Check terminal status - the run must not be finished/failed/cancelled
+            let terminal = events.last();
+            let is_terminal = match terminal {
+                Some(vb_storage::JournalEvent::RunFinished { .. }) => true,
+                Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => true,
+                Some(vb_storage::JournalEvent::RunCancelled { .. }) => true,
+                _ => false,
+            };
+
+            if is_terminal {
+                let status = match terminal {
+                    Some(vb_storage::JournalEvent::RunFinished { .. }) => "finished",
+                    Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => "failed",
+                    Some(vb_storage::JournalEvent::RunCancelled { .. }) => "cancelled",
+                    _ => "unknown",
+                };
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("run {run_id} is {status}, not suspended")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("run {run_id} is {status}, not suspended; resume is not applicable");
+                }
+                return CliExitCode::ValidationFailed.into();
+            }
+
+            let resume_step = suspended_at_step;
+
+            if output != OutputFormat::Text {
+                json_out(
+                    &serde_json::json!({
+                        "run_id": run_id,
+                        "suspended_at_step": suspended_at_step,
+                        "status": "suspended",
+                        "resume_from_step": resume_step,
+                        "events": events.len()
+                    }),
+                    output,
+                );
+            } else {
+                match resume_step {
+                    Some(step) => {
+                        outln!(
+                            "Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."
+                        );
+                    }
+                    None => {
+                        outln!("Run {run_id} is active but no explicit suspension point found. Resume would continue from current state.");
                     }
                 }
             }
