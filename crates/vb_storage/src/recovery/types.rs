@@ -221,6 +221,8 @@ pub struct RunSnapshot {
     pub workflow: WorkflowDigest,
     /// Slot values at snapshot time, compact binary form.
     pub slots: Vec<u8>,
+    /// Slot taint markers at snapshot time, compact binary form.
+    pub taint: Vec<u8>,
 }
 
 /// Tracks which actions have been completed during recovery to prevent
