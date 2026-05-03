@@ -11,6 +11,7 @@ use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNode, CompiledWorkflow, ExprOp};
 
+pub mod choose;
 pub mod ops;
 pub mod step;
 
@@ -236,6 +237,10 @@ pub(crate) fn eval_expr_for_replay(
     Ok((value, taint_accum))
 }
 
-// Re-export for tests
-pub use ops::pop_pair;
+// Re-export for tests and re-exports from submodules
 pub use ops::pop_i64_pair;
+pub use ops::pop_pair;
+pub use step::replay_step;
+
+#[cfg(test)]
+mod tests;
