@@ -370,6 +370,7 @@ impl Shard {
             RetryPolicy::NEVER,
             evidence,
             &mut state.collect_states,
+            granted,
         )
     }
 

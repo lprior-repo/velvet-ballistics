@@ -377,6 +377,17 @@ fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
+fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Resume {
+        run_id,
+        db: PathBuf::from(db),
+        output,
+    })
+}
+
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
     let output = parse_output_format(args);

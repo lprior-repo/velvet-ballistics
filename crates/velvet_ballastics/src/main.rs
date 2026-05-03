@@ -2129,12 +2129,12 @@ fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 
             // Check terminal status - the run must not be finished/failed/cancelled
             let terminal = events.last();
-            let is_terminal = match terminal {
-                Some(vb_storage::JournalEvent::RunFinished { .. }) => true,
-                Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => true,
-                Some(vb_storage::JournalEvent::RunCancelled { .. }) => true,
-                _ => false,
-            };
+            let is_terminal = matches!(
+                terminal,
+                Some(vb_storage::JournalEvent::RunFinished { .. })
+                    | Some(vb_storage::JournalEvent::RunFailedEvent { .. })
+                    | Some(vb_storage::JournalEvent::RunCancelled { .. })
+            );
 
             if is_terminal {
                 let status = match terminal {
@@ -2200,6 +2200,27 @@ fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     }
 
     ExitCode::SUCCESS
+}
+
+fn cmd_answer(
+    _run_id: &str,
+    _step: u16,
+    _value_file: &std::path::Path,
+    _db: &std::path::Path,
+    output: OutputFormat,
+) -> ExitCode {
+    if output != OutputFormat::Text {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": "answer command not yet implemented"
+            }),
+            output,
+        );
+    } else {
+        errln!("answer command not yet implemented");
+    }
+    CliExitCode::RuntimeFailed.into()
 }
 
 fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
