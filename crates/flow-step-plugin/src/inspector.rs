@@ -31,14 +31,7 @@ mod tests {
     #[test]
     fn fields_for_kind_returns_empty_for_known_kinds() {
         for kind in [
-            "Task",
-            "Choice",
-            "Wait",
-            "Pass",
-            "Succeed",
-            "Fail",
-            "Parallel",
-            "Map",
+            "Task", "Choice", "Wait", "Pass", "Succeed", "Fail", "Parallel", "Map",
         ] {
             let fields = fields_for_kind(kind);
             assert!(

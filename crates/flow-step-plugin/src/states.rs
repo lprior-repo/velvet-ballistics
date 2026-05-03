@@ -301,8 +301,7 @@ mod tests {
             end: true,
         });
         let json = serde_json::to_string(&original).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: StepStateKind =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: StepStateKind = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         let json2 = serde_json::to_string(&back).unwrap_or_else(|e| panic!("re-ser: {e}"));
         assert_eq!(json, json2, "roundtrip should produce identical JSON");
     }
@@ -311,8 +310,7 @@ mod tests {
     fn succeed_roundtrip() {
         let original = StepStateKind::Succeed;
         let json = serde_json::to_string(&original).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: StepStateKind =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: StepStateKind = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         assert!(matches!(back, StepStateKind::Succeed));
     }
 
@@ -323,8 +321,7 @@ mod tests {
             cause: None,
         });
         let json = serde_json::to_string(&original).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: StepStateKind =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: StepStateKind = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         if let StepStateKind::Fail(data) = back {
             assert_eq!(data.error.as_deref(), Some("CustomError"));
             assert!(data.cause.is_none());
@@ -358,8 +355,7 @@ mod tests {
             condition: None,
         };
         let json = serde_json::to_string(&rule).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: ChoiceRule =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: ChoiceRule = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         assert!(back.variable.is_none());
         assert!(back.condition.is_none());
         assert_eq!(back.next.as_str(), "End");
@@ -385,8 +381,7 @@ mod tests {
     fn map_mode_roundtrip() {
         for mode in [MapMode::Inline, MapMode::Distributed] {
             let json = serde_json::to_string(&mode).unwrap_or_else(|e| panic!("ser: {e}"));
-            let back: MapMode =
-                serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+            let back: MapMode = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
             let json2 = serde_json::to_string(&back).unwrap_or_else(|e| panic!("re-ser: {e}"));
             assert_eq!(json, json2);
         }
@@ -397,15 +392,17 @@ mod tests {
     #[test]
     fn retry_policy_roundtrip() {
         let policy = RetryPolicy {
-            error_equals: vec![SmolStr::from("States.Timeout"), SmolStr::from("CustomError")],
+            error_equals: vec![
+                SmolStr::from("States.Timeout"),
+                SmolStr::from("CustomError"),
+            ],
             interval_seconds: Some(2),
             max_attempts: Some(3),
             backoff_rate: Some(1.5),
             max_delay_seconds: Some(60),
         };
         let json = serde_json::to_string(&policy).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: RetryPolicy =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: RetryPolicy = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         assert_eq!(back.error_equals.len(), 2);
         assert_eq!(back.interval_seconds, Some(2));
         assert_eq!(back.max_attempts, Some(3));
@@ -422,8 +419,7 @@ mod tests {
             max_delay_seconds: None,
         };
         let json = serde_json::to_string(&policy).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: RetryPolicy =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: RetryPolicy = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         assert!(back.interval_seconds.is_none());
         assert!(back.max_attempts.is_none());
         assert!(back.backoff_rate.is_none());
@@ -440,8 +436,7 @@ mod tests {
             next: SmolStr::from("ErrorHandler"),
         };
         let json = serde_json::to_string(&policy).unwrap_or_else(|e| panic!("ser: {e}"));
-        let back: CatchPolicy =
-            serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
+        let back: CatchPolicy = serde_json::from_str(&json).unwrap_or_else(|e| panic!("de: {e}"));
         assert_eq!(back.next.as_str(), "ErrorHandler");
         assert_eq!(back.result_path.as_deref(), Some("$.error"));
     }

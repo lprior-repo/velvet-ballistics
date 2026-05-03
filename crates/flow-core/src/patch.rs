@@ -9,18 +9,46 @@ use smol_str::SmolStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum FlowPatch {
-    InsertNode { node: FlowNodeRecord },
-    UpdateNode { id: NodeId, changes: NodeChangeSet },
-    RemoveNode { id: NodeId },
-    InsertEdge { edge: FlowEdgeRecord },
-    UpdateEdge { id: EdgeId, changes: EdgeChangeSet },
-    RemoveEdge { id: EdgeId },
-    InsertGroup { group: FlowGroupRecord },
-    UpdateGroup { id: GroupId, changes: GroupChangeSet },
-    RemoveGroup { id: GroupId },
-    SetViewport { viewport: ViewportState },
-    SetEntryNode { node: Option<NodeId> },
-    ReparentNodes { node_ids: Vec<NodeId>, new_parent: Option<GroupId> },
+    InsertNode {
+        node: FlowNodeRecord,
+    },
+    UpdateNode {
+        id: NodeId,
+        changes: NodeChangeSet,
+    },
+    RemoveNode {
+        id: NodeId,
+    },
+    InsertEdge {
+        edge: FlowEdgeRecord,
+    },
+    UpdateEdge {
+        id: EdgeId,
+        changes: EdgeChangeSet,
+    },
+    RemoveEdge {
+        id: EdgeId,
+    },
+    InsertGroup {
+        group: FlowGroupRecord,
+    },
+    UpdateGroup {
+        id: GroupId,
+        changes: GroupChangeSet,
+    },
+    RemoveGroup {
+        id: GroupId,
+    },
+    SetViewport {
+        viewport: ViewportState,
+    },
+    SetEntryNode {
+        node: Option<NodeId>,
+    },
+    ReparentNodes {
+        node_ids: Vec<NodeId>,
+        new_parent: Option<GroupId>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -100,8 +128,12 @@ pub enum FlowCommand {
 
 #[derive(Clone, Debug)]
 pub enum FlowEvent {
-    TransactionCommitted { summary: TransactionSummary },
-    TransactionRejected { reason: String },
+    TransactionCommitted {
+        summary: TransactionSummary,
+    },
+    TransactionRejected {
+        reason: String,
+    },
     SelectionChanged(SelectionState),
     ViewportChanged(ViewportState),
     DiagnosticsChanged(Vec<Diagnostic>),
@@ -151,8 +183,8 @@ pub enum DiagnosticSeverity {
 mod tests {
     use super::*;
     use crate::doc::{
-        EdgeStyle, FlowEdgeRecord, FlowGroupRecord, FlowNodeRecord, GroupKind,
-        NodeFlags, NodeUiState, SelectionState, ViewportState,
+        EdgeStyle, FlowEdgeRecord, FlowGroupRecord, FlowNodeRecord, GroupKind, NodeFlags,
+        NodeUiState, SelectionState, ViewportState,
     };
     use crate::ids::{EdgeId, GroupId, NodeId};
     use smol_str::SmolStr;
@@ -372,7 +404,11 @@ mod tests {
             node_ids: vec![nid("n1"), nid("n2")],
             new_parent: Some(gid("g1")),
         };
-        if let FlowPatch::ReparentNodes { node_ids, new_parent } = patch {
+        if let FlowPatch::ReparentNodes {
+            node_ids,
+            new_parent,
+        } = patch
+        {
             assert_eq!(node_ids.len(), 2);
             assert!(new_parent.is_some());
         } else {
@@ -386,7 +422,11 @@ mod tests {
             node_ids: vec![nid("n1")],
             new_parent: None,
         };
-        if let FlowPatch::ReparentNodes { node_ids, new_parent } = patch {
+        if let FlowPatch::ReparentNodes {
+            node_ids,
+            new_parent,
+        } = patch
+        {
             assert_eq!(node_ids.len(), 1);
             assert!(new_parent.is_none());
         } else {
@@ -431,7 +471,9 @@ mod tests {
         let txn = FlowTransaction {
             id: 1,
             label: SmolStr::from("add-node"),
-            patches: vec![FlowPatch::InsertNode { node: make_node("n1") }],
+            patches: vec![FlowPatch::InsertNode {
+                node: make_node("n1"),
+            }],
             origin: ChangeOrigin::User,
             merge_key: None,
         };
@@ -634,7 +676,9 @@ mod tests {
 
     #[test]
     fn patch_clone_preserves_data() {
-        let patch = FlowPatch::InsertNode { node: make_node("n1") };
+        let patch = FlowPatch::InsertNode {
+            node: make_node("n1"),
+        };
         let cloned = patch.clone();
         if let FlowPatch::InsertNode { node } = cloned {
             assert_eq!(node.id, nid("n1"));
@@ -647,7 +691,9 @@ mod tests {
 
     #[test]
     fn patch_serialization_roundtrip() {
-        let patch = FlowPatch::InsertNode { node: make_node("n1") };
+        let patch = FlowPatch::InsertNode {
+            node: make_node("n1"),
+        };
         let json = serde_json::to_string(&patch).expect("serialize");
         let back: FlowPatch = serde_json::from_str(&json).expect("deserialize");
         if let FlowPatch::InsertNode { node } = back {

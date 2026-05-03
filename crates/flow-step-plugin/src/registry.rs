@@ -448,17 +448,8 @@ mod tests {
         let mut reg = NodeKindRegistry::new();
         register_vb_kinds(&mut reg);
         let expected_kinds = [
-            "data",
-            "external",
-            "branch",
-            "terminal",
-            "loop",
-            "parallel",
-            "collect",
-            "reduce",
-            "suspend",
-            "error",
-            "control",
+            "data", "external", "branch", "terminal", "loop", "parallel", "collect", "reduce",
+            "suspend", "error", "control",
         ];
         assert_eq!(
             reg.all().len(),

@@ -97,10 +97,7 @@ fn check_edge_endpoints(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
 fn check_edge_ports(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
     for (edge_id, edge) in &graph.edges {
         if let Some(source_node) = graph.nodes.get(&edge.source_node) {
-            let port_exists = source_node
-                .ports
-                .iter()
-                .any(|p| p.id == edge.source_port);
+            let port_exists = source_node.ports.iter().any(|p| p.id == edge.source_port);
             if !port_exists {
                 diagnostics.push(diag(
                     DiagnosticSeverity::Error,
@@ -116,10 +113,7 @@ fn check_edge_ports(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
         }
 
         if let Some(target_node) = graph.nodes.get(&edge.target_node) {
-            let port_exists = target_node
-                .ports
-                .iter()
-                .any(|p| p.id == edge.target_port);
+            let port_exists = target_node.ports.iter().any(|p| p.id == edge.target_port);
             if !port_exists {
                 diagnostics.push(diag(
                     DiagnosticSeverity::Error,
@@ -212,8 +206,16 @@ mod tests {
                 .enumerate()
                 .map(|(i, p)| FlowPortRecord {
                     id: pid(p),
-                    side: if i % 2 == 0 { PortSide::Left } else { PortSide::Right },
-                    role: if i % 2 == 0 { PortRole::Target } else { PortRole::Source },
+                    side: if i % 2 == 0 {
+                        PortSide::Left
+                    } else {
+                        PortSide::Right
+                    },
+                    role: if i % 2 == 0 {
+                        PortRole::Target
+                    } else {
+                        PortRole::Source
+                    },
                     label: SmolStr::from(*p),
                     order: i as u16,
                     cardinality: Cardinality::One,
@@ -258,14 +260,12 @@ mod tests {
 
     fn valid_document() -> FlowDocument {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(
-            nid("n1"),
-            make_node_with_ports("n1", &["p-out"]),
-        );
-        doc.graph.nodes.insert(
-            nid("n2"),
-            make_node_with_ports("n2", &["p-in"]),
-        );
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-out"]));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-out", "n2", "p-in"),
@@ -334,7 +334,9 @@ mod tests {
     #[test]
     fn edge_missing_source_node_produces_error() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "ghost", "p-out", "n2", "p-in"),
@@ -350,7 +352,9 @@ mod tests {
     #[test]
     fn edge_missing_target_node_produces_error() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_with_ports("n1", &["p-out"]));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-out"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-out", "ghost", "p-in"),
@@ -387,8 +391,12 @@ mod tests {
     #[test]
     fn edge_missing_source_port_produces_error() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_with_ports("n1", &["p-other"]));
-        doc.graph.nodes.insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-other"]));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-out", "n2", "p-in"),
@@ -404,8 +412,12 @@ mod tests {
     #[test]
     fn edge_missing_target_port_produces_error() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_with_ports("n1", &["p-out"]));
-        doc.graph.nodes.insert(nid("n2"), make_node_with_ports("n2", &["p-other"]));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-out"]));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_with_ports("n2", &["p-other"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-out", "n2", "p-in"),
@@ -435,7 +447,9 @@ mod tests {
     #[test]
     fn self_loop_same_port_produces_warning() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_with_ports("n1", &["p-io"]));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-io"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-io", "n1", "p-io"),
@@ -451,7 +465,9 @@ mod tests {
     #[test]
     fn self_loop_different_ports_no_self_loop_warning() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_with_ports("n1", &["p-out", "p-in"]));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-out", "p-in"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "n1", "p-out", "n1", "p-in"),
@@ -527,7 +543,9 @@ mod tests {
         doc.graph.entry_node = Some(nid("ghost"));
         let validator = StructuralValidator;
         let diags = validator.validate(&doc);
-        let entry_diag = diags.iter().find(|d| d.code.as_str() == "entry-node-missing");
+        let entry_diag = diags
+            .iter()
+            .find(|d| d.code.as_str() == "entry-node-missing");
         assert!(entry_diag.is_some_and(|d| d.severity == DiagnosticSeverity::Error));
     }
 
@@ -537,21 +555,27 @@ mod tests {
         doc.graph.entry_node = Some(nid("ghost"));
         let validator = StructuralValidator;
         let diags = validator.validate(&doc);
-        let entry_diag = diags.iter().find(|d| d.code.as_str() == "entry-node-missing");
+        let entry_diag = diags
+            .iter()
+            .find(|d| d.code.as_str() == "entry-node-missing");
         assert!(entry_diag.is_some_and(|d| d.node.as_ref().is_some_and(|n| n == &nid("ghost"))));
     }
 
     #[test]
     fn edge_diagnostic_references_edge_id() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_with_ports("n2", &["p-in"]));
         doc.graph.edges.insert(
             eid("e1"),
             make_edge_with_ports("e1", "ghost", "p-out", "n2", "p-in"),
         );
         let validator = StructuralValidator;
         let diags = validator.validate(&doc);
-        let src_diag = diags.iter().find(|d| d.code.as_str() == "edge-source-missing");
+        let src_diag = diags
+            .iter()
+            .find(|d| d.code.as_str() == "edge-source-missing");
         assert!(src_diag.is_some_and(|d| d.edge.as_ref().is_some_and(|e| e == &eid("e1"))));
     }
 }

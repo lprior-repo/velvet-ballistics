@@ -1,28 +1,17 @@
 //! FlowEditor widget -- the main canvas for graph visualization and editing.
 
-use makepad_widgets::*;
 use flow_core::doc::FlowDocument;
+use makepad_widgets::*;
 
 /// Action types emitted by the flow editor.
 #[derive(Clone, Debug)]
 pub enum FlowEditorAction {
     DocumentChanged,
     SelectionChanged,
-    ViewportChanged {
-        pan_x: f64,
-        pan_y: f64,
-        zoom: f64,
-    },
-    NodeClicked {
-        node_id: flow_core::ids::NodeId,
-    },
-    EdgeClicked {
-        edge_id: flow_core::ids::EdgeId,
-    },
-    CanvasClicked {
-        world_x: f64,
-        world_y: f64,
-    },
+    ViewportChanged { pan_x: f64, pan_y: f64, zoom: f64 },
+    NodeClicked { node_id: flow_core::ids::NodeId },
+    EdgeClicked { edge_id: flow_core::ids::EdgeId },
+    CanvasClicked { world_x: f64, world_y: f64 },
 }
 
 script_mod! {

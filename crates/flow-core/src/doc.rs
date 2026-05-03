@@ -371,7 +371,10 @@ mod tests {
     #[test]
     fn graph_remove_edge() {
         let mut graph = FlowGraph::default();
-        graph.edges.insert(SmolStr::from("e1"), make_edge("e1", "n1", "out", "n2", "in"));
+        graph.edges.insert(
+            SmolStr::from("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
         let removed = graph.edges.shift_remove(&SmolStr::from("e1"));
         assert!(removed.is_some());
         assert!(graph.edges.is_empty());
@@ -415,8 +418,10 @@ mod tests {
     #[test]
     fn node_with_ports() {
         let mut node = make_node("n1");
-        node.ports.push(make_port("p1", PortSide::Left, PortRole::Target));
-        node.ports.push(make_port("p2", PortSide::Right, PortRole::Source));
+        node.ports
+            .push(make_port("p1", PortSide::Left, PortRole::Target));
+        node.ports
+            .push(make_port("p2", PortSide::Right, PortRole::Source));
         assert_eq!(node.ports.len(), 2);
     }
 
@@ -676,7 +681,9 @@ mod tests {
             SmolStr::from("e1"),
             make_edge("e1", "n1", "out", "n2", "in"),
         );
-        doc.graph.groups.insert(SmolStr::from("g1"), make_group("g1"));
+        doc.graph
+            .groups
+            .insert(SmolStr::from("g1"), make_group("g1"));
         doc.graph.entry_node = Some(SmolStr::from("n1"));
 
         let json = serde_json::to_string(&doc).expect("serialize");
@@ -685,6 +692,9 @@ mod tests {
         assert_eq!(back.graph.nodes.len(), 2);
         assert_eq!(back.graph.edges.len(), 1);
         assert_eq!(back.graph.groups.len(), 1);
-        assert_eq!(back.graph.entry_node.as_ref().map(|s| s.as_str()), Some("n1"));
+        assert_eq!(
+            back.graph.entry_node.as_ref().map(|s| s.as_str()),
+            Some("n1")
+        );
     }
 }

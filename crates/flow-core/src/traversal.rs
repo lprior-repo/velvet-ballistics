@@ -181,7 +181,9 @@ impl FlowGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doc::{EdgeStyle, EdgeUiState, FlowEdgeRecord, FlowGraph, FlowNodeRecord, NodeFlags, NodeUiState};
+    use crate::doc::{
+        EdgeStyle, EdgeUiState, FlowEdgeRecord, FlowGraph, FlowNodeRecord, NodeFlags, NodeUiState,
+    };
     use smol_str::SmolStr;
 
     fn nid(s: &str) -> NodeId {
@@ -403,7 +405,9 @@ mod tests {
         let g = single_node_graph();
         let result = g.topological_sort();
         assert!(result.is_some());
-        let order = result.as_ref().is_some_and(|v| v.len() == 1 && v[0] == nid("a"));
+        let order = result
+            .as_ref()
+            .is_some_and(|v| v.len() == 1 && v[0] == nid("a"));
         assert!(order);
     }
 
@@ -416,11 +420,11 @@ mod tests {
             let pos_a = v.iter().position(|x| *x == nid("a")).is_some();
             let pos_b = v.iter().position(|x| *x == nid("b")).is_some();
             let pos_c = v.iter().position(|x| *x == nid("c")).is_some();
-            pos_a && pos_b && pos_c
-                && v.iter().position(|x| *x == nid("a"))
-                    < v.iter().position(|x| *x == nid("b"))
-                && v.iter().position(|x| *x == nid("b"))
-                    < v.iter().position(|x| *x == nid("c"))
+            pos_a
+                && pos_b
+                && pos_c
+                && v.iter().position(|x| *x == nid("a")) < v.iter().position(|x| *x == nid("b"))
+                && v.iter().position(|x| *x == nid("b")) < v.iter().position(|x| *x == nid("c"))
         });
         assert!(order);
     }
@@ -436,9 +440,7 @@ mod tests {
             let pc = v.iter().position(|x| *x == nid("c"));
             let pd = v.iter().position(|x| *x == nid("d"));
             match (pa, pb, pc, pd) {
-                (Some(a), Some(b), Some(c), Some(d)) => {
-                    a < b && a < c && b < d && c < d
-                }
+                (Some(a), Some(b), Some(c), Some(d)) => a < b && a < c && b < d && c < d,
                 _ => false,
             }
         });
@@ -527,9 +529,9 @@ mod tests {
         let cycles = g.find_cycles();
         assert!(!cycles.is_empty());
         // The cycle should contain a, b, c
-        let has_cycle = cycles.iter().any(|c| {
-            c.contains(&nid("a")) && c.contains(&nid("b")) && c.contains(&nid("c"))
-        });
+        let has_cycle = cycles
+            .iter()
+            .any(|c| c.contains(&nid("a")) && c.contains(&nid("b")) && c.contains(&nid("c")));
         assert!(has_cycle);
     }
 

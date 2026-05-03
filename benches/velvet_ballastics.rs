@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 use vb_core::{
-    ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-    ExprIdx, ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue,
-    StepBudget, StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
+    ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
+    ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,
+    StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
 use vb_runtime::journal::RuntimeJournal;
 use vb_storage::{EventSeq, JournalEvent};
@@ -2203,8 +2203,7 @@ fn admission_gate_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("admission_gate");
     let digest = WorkflowDigest::from_bytes([0xAB; 32]);
     let always_present = vb_runtime::admission::AlwaysPresentArtifactStore::shared();
-    let any_workflow_caps =
-        vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
+    let any_workflow_caps = vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
     let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
         cap(ActionId::new(1)),
         cap(ActionId::new(2)),
@@ -2304,8 +2303,7 @@ fn admission_gate_benches(c: &mut Criterion) {
 fn capability_check_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("capability_check");
 
-    let any_workflow_caps =
-        vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
+    let any_workflow_caps = vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
     let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
         cap(ActionId::new(1)),
         cap(ActionId::new(2)),
@@ -2333,9 +2331,7 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = any_workflow_caps.grants(black_box(&cap(
-                    ActionId::new(99),
-                )));
+                let result = any_workflow_caps.grants(black_box(&cap(ActionId::new(99))));
                 black_box(result)
             })
         },
@@ -2350,9 +2346,7 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps.grants(black_box(&cap(
-                    ActionId::new(1),
-                )));
+                let result = action_caps.grants(black_box(&cap(ActionId::new(1))));
                 black_box(result)
             })
         },
@@ -2367,9 +2361,7 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = action_caps.grants(black_box(&cap(
-                    ActionId::new(99),
-                )));
+                let result = action_caps.grants(black_box(&cap(ActionId::new(99))));
                 black_box(result)
             })
         },
@@ -2384,9 +2376,7 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = empty_caps.grants(black_box(&cap(
-                    ActionId::new(1),
-                )));
+                let result = empty_caps.grants(black_box(&cap(ActionId::new(1))));
                 black_box(result)
             })
         },
@@ -2401,9 +2391,7 @@ fn capability_check_benches(c: &mut Criterion) {
         ),
         |b| {
             b.iter(|| {
-                let result = mixed_caps.grants(black_box(&cap(
-                    ActionId::new(2),
-                )));
+                let result = mixed_caps.grants(black_box(&cap(ActionId::new(2))));
                 black_box(result)
             })
         },

@@ -145,12 +145,14 @@ fn replay_step(
         CompiledNodeKind::Ask { .. } => replay_suspend(node, "Ask"),
         CompiledNodeKind::WaitUntil { .. } => replay_suspend(node, "WaitUntil"),
         CompiledNodeKind::WaitEvent { .. } => replay_suspend(node, "WaitEvent"),
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
-            replay_choose_slot(run, branches, *otherwise)
-        }
-        CompiledNodeKind::Choose { branches, otherwise } => {
-            replay_choose_expr(plan, run, store, branches, *otherwise)
-        }
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => replay_choose_slot(run, branches, *otherwise),
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => replay_choose_expr(plan, run, store, branches, *otherwise),
         _ => Err(ReplayError::Internal {
             reason: "unsupported node kind for replay",
         }),
@@ -193,7 +195,10 @@ fn replay_jump(run: &mut RunFrame, target: StepIdx) -> Result<ReplayAction, Repl
 }
 
 fn replay_suspend(node: &CompiledNode, kind: &'static str) -> Result<ReplayAction, ReplayError> {
-    Ok(ReplayAction::Suspended { step: node.id, kind })
+    Ok(ReplayAction::Suspended {
+        step: node.id,
+        kind,
+    })
 }
 
 fn replay_set_const(
@@ -607,10 +612,9 @@ fn eval_load_slot(
             reason: "unexpected error reading expression load slot",
         },
     })?;
-    let slot_taint =
-        run.read_taint(slot).map_err(|_| ReplayError::Internal {
-            reason: "read_taint failed",
-        })?;
+    let slot_taint = run.read_taint(slot).map_err(|_| ReplayError::Internal {
+        reason: "read_taint failed",
+    })?;
     *taint_accum = join_taint(*taint_accum, slot_taint);
     stack.push(value)
 }
@@ -643,9 +647,11 @@ fn eval_load_accessor(
     let accessor_program = plan.accessor(accessor).ok_or(ReplayError::Internal {
         reason: "accessor out of bounds",
     })?;
-    let root_taint = run.read_taint(accessor_program.root).map_err(|_| ReplayError::Internal {
-        reason: "read_taint failed for accessor root",
-    })?;
+    let root_taint = run
+        .read_taint(accessor_program.root)
+        .map_err(|_| ReplayError::Internal {
+            reason: "read_taint failed for accessor root",
+        })?;
     let value = eval_accessor_for_replay(run, store, accessor_program)?;
     *taint_accum = join_taint(*taint_accum, root_taint);
     stack.push(value)
@@ -683,41 +689,41 @@ fn eval_not(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
 
 fn eval_add(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
-    let result =
-        left.checked_add(right)
-            .ok_or(ReplayError::ExpressionEvalFailed {
-                step: StepIdx::ZERO,
-            })?;
+    let result = left
+        .checked_add(right)
+        .ok_or(ReplayError::ExpressionEvalFailed {
+            step: StepIdx::ZERO,
+        })?;
     stack.push(SlotValue::I64(result))
 }
 
 fn eval_sub(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
-    let result =
-        left.checked_sub(right)
-            .ok_or(ReplayError::ExpressionEvalFailed {
-                step: StepIdx::ZERO,
-            })?;
+    let result = left
+        .checked_sub(right)
+        .ok_or(ReplayError::ExpressionEvalFailed {
+            step: StepIdx::ZERO,
+        })?;
     stack.push(SlotValue::I64(result))
 }
 
 fn eval_mul(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
-    let result =
-        left.checked_mul(right)
-            .ok_or(ReplayError::ExpressionEvalFailed {
-                step: StepIdx::ZERO,
-            })?;
+    let result = left
+        .checked_mul(right)
+        .ok_or(ReplayError::ExpressionEvalFailed {
+            step: StepIdx::ZERO,
+        })?;
     stack.push(SlotValue::I64(result))
 }
 
 fn eval_div(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
-    let result =
-        left.checked_div(right)
-            .ok_or(ReplayError::ExpressionEvalFailed {
-                step: StepIdx::ZERO,
-            })?;
+    let result = left
+        .checked_div(right)
+        .ok_or(ReplayError::ExpressionEvalFailed {
+            step: StepIdx::ZERO,
+        })?;
     stack.push(SlotValue::I64(result))
 }
 
@@ -850,7 +856,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
+            step_names: Box::new([]),
         })
         .map_err(|_| CoreError::InvalidCompiledWorkflow {
             reason: "test workflow validation failed",

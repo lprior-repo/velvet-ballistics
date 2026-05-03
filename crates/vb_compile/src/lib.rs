@@ -607,11 +607,7 @@ pub enum WaitKind {
 }
 
 /// Lowers a `wait` primitive into `WaitUntil` or `WaitEvent` IR nodes.
-pub fn lower_wait(
-    id: StepIdx,
-    kind: WaitKind,
-    builder: &mut SlotCompiler,
-) -> CompiledNode {
+pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> CompiledNode {
     let compiled_kind = match kind {
         WaitKind::Until { deadline } => {
             builder.record_slot(deadline);
@@ -1972,12 +1968,10 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
         .last()
         .map(|s| s.as_usize())
         .unwrap_or(0)
-        .checked_add(
-            compiled_step_width(
-                steps.last().ok_or(CompileError::EmptySteps)?,
-                last_step,
-            )?,
-        )
+        .checked_add(compiled_step_width(
+            steps.last().ok_or(CompileError::EmptySteps)?,
+            last_step,
+        )?)
         .unwrap_or(0);
     let mut step_names: Vec<Box<str>> = Vec::new();
     step_names.resize_with(total_nodes, || Box::from(""));
@@ -3292,7 +3286,14 @@ fn compile_wait(
             if let Some(slot) = timeout_slot {
                 builder.record_slot(slot);
             }
-            lower_wait(id, WaitKind::Event { event: event_slot, timeout: timeout_slot }, &mut SlotCompiler::new())
+            lower_wait(
+                id,
+                WaitKind::Event {
+                    event: event_slot,
+                    timeout: timeout_slot,
+                },
+                &mut SlotCompiler::new(),
+            )
         }
         _ => {
             return Err(CompileError::StepFieldShape {
@@ -5794,7 +5795,7 @@ steps:
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
+            step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
@@ -5837,7 +5838,7 @@ steps:
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
+            step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
