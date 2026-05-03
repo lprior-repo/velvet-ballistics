@@ -383,35 +383,32 @@ fn visit_node_for_total_steps(
         CompiledNodeKind::ForEachStart {
             limit, body, done, ..
         } => {
-            let body_count = count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
-            let iter_count = u64::from(*limit).max(1);
-            total = total.saturating_add(body_count.saturating_mul(iter_count));
-            stack.push(*done);
+            total = count_and_push_loop_body(
+                nodes, *body, *done, u64::from(*limit), visited, node_count, total, stack,
+            )?;
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
         } => {
-            let body_count = count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
-            let iter_count = u64::from(*limit).max(1);
-            total = total.saturating_add(body_count.saturating_mul(iter_count));
-            stack.push(*done);
+            total = count_and_push_loop_body(
+                nodes, *body, *done, u64::from(*limit), visited, node_count, total, stack,
+            )?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let body_count = count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
             let iter_count =
                 u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-            total = total.saturating_add(body_count.saturating_mul(iter_count));
-            stack.push(*done);
+            total = count_and_push_loop_body(
+                nodes, *body, *done, iter_count, visited, node_count, total, stack,
+            )?;
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
             body,
             done,
         } => {
-            let body_count = count_body_region_nodes(nodes, *body, *done, visited, node_count)?;
-            let iter_count = u64::from(*max_attempts).max(1);
-            total = total.saturating_add(body_count.saturating_mul(iter_count));
-            stack.push(*done);
+            total = count_and_push_loop_body(
+                nodes, *body, *done, u64::from(*max_attempts), visited, node_count, total, stack,
+            )?;
         }
         _ => {
             push_successor_targets(&node.kind, stack);
@@ -420,6 +417,25 @@ fn visit_node_for_total_steps(
             }
         }
     }
+    Ok(total)
+}
+
+/// Counts body region steps for a loop header and adds multiplied iterations to total.
+#[inline]
+fn count_and_push_loop_body(
+    nodes: &[crate::workflow::CompiledNode],
+    body: StepIdx,
+    done: StepIdx,
+    iter_count: u64,
+    visited: &mut [bool],
+    node_count: usize,
+    mut total: u64,
+    stack: &mut Vec<StepIdx>,
+) -> Result<u64, WorkflowError> {
+    let body_count = count_body_region_nodes(nodes, body, done, visited, node_count)?;
+    let iter_count = iter_count.max(1);
+    total = total.saturating_add(body_count.saturating_mul(iter_count));
+    stack.push(done);
     Ok(total)
 }
 

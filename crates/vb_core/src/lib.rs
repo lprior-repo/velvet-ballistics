@@ -48,8 +48,8 @@ pub use engine::{
 pub use errors::{CoreError, CoreResult, EngineError};
 pub use frame::{RunFrame, StepState};
 pub use ids::{
-    AccessorIdx, ActionId, BlobId, CheckedIndex, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo,
-    SlotIdx, StepIdx, SymbolId, WorkflowDigest, WorkflowId,
+    AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo, SlotIdx,
+    StepIdx, SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use policy::RuntimePolicy;
 pub use span::{Located, SourceMap, Span, Spanned};

@@ -6,14 +6,6 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
-/// Converts compact indexes to `usize` for checked table access.
-pub trait CheckedIndex {
-    /// Returns the raw index widened to `usize`.
-    #[must_use]
-    #[allow(clippy::wrong_self_convention)]
-    fn as_usize(self) -> usize;
-}
-
 macro_rules! numeric_id {
     ($name:ident, $inner:ty, $accessor:ident) => {
         #[doc = concat!(stringify!($name), " numeric identifier.")]
@@ -49,23 +41,17 @@ macro_rules! numeric_id {
 
 macro_rules! checked_index {
     ($name:ident) => {
-        impl CheckedIndex for $name {
-            fn as_usize(self) -> usize {
-                usize::from(self.0)
-            }
-        }
-
         impl $name {
             /// Returns the index as `usize` for checked slice access.
             #[must_use]
             pub fn as_usize(self) -> usize {
-                <Self as CheckedIndex>::as_usize(self)
+                usize::from(self.0)
             }
         }
     };
 }
 
-numeric_id!(WorkflowId, u32, as_u32);
+numeric_id!(WorkflowId, u32, get);
 numeric_id!(StepIdx, u16, get);
 numeric_id!(SlotIdx, u16, get);
 numeric_id!(ExprIdx, u16, get);
@@ -75,9 +61,9 @@ numeric_id!(ConstIdx, u16, get);
 numeric_id!(SymbolId, u32, get);
 numeric_id!(ListId, u32, get);
 numeric_id!(ObjectId, u32, get);
-numeric_id!(BlobId, u64, as_u64);
-numeric_id!(RunId, u64, as_u64);
-numeric_id!(SeqNo, u64, as_u64);
+numeric_id!(BlobId, u64, get);
+numeric_id!(RunId, u64, get);
+numeric_id!(SeqNo, u64, get);
 
 checked_index!(StepIdx);
 checked_index!(SlotIdx);
@@ -179,15 +165,15 @@ mod tests {
     use super::{RunId, SlotIdx, StepIdx, WorkflowId};
 
     #[test]
-    fn workflow_id_as_u32_returns_inner_value() {
+    fn workflow_id_get_returns_inner_value() {
         let id = WorkflowId::new(42);
-        assert_eq!(id.as_u32(), 42);
+        assert_eq!(id.get(), 42);
     }
 
     #[test]
-    fn run_id_as_u64_returns_inner_value() {
+    fn run_id_get_returns_inner_value() {
         let id = RunId::new(12345);
-        assert_eq!(id.as_u64(), 12345);
+        assert_eq!(id.get(), 12345);
     }
 
     #[test]
@@ -294,19 +280,19 @@ mod tests {
     #[test]
     fn seq_no_zero_is_valid() {
         use super::SeqNo;
-        assert_eq!(SeqNo::ZERO.as_u64(), 0);
+        assert_eq!(SeqNo::ZERO.get(), 0);
     }
 
     #[test]
     fn seq_no_min_is_zero() {
         use super::SeqNo;
-        assert_eq!(SeqNo::MIN.as_u64(), 0);
+        assert_eq!(SeqNo::MIN.get(), 0);
     }
 
     #[test]
     fn seq_no_max_is_u64_max() {
         use super::SeqNo;
-        assert_eq!(SeqNo::MAX.as_u64(), u64::MAX);
+        assert_eq!(SeqNo::MAX.get(), u64::MAX);
     }
 
     #[test]
@@ -325,13 +311,13 @@ mod tests {
 
     #[test]
     fn run_id_zero_constant() {
-        assert_eq!(RunId::ZERO.as_u64(), 0);
+        assert_eq!(RunId::ZERO.get(), 0);
     }
 
     #[test]
     fn run_id_max_u64() {
         let id = RunId::new(u64::MAX);
-        assert_eq!(id.as_u64(), u64::MAX);
+        assert_eq!(id.get(), u64::MAX);
     }
 
     #[test]
@@ -366,19 +352,19 @@ mod tests {
     fn blob_id_max_u64_is_valid() {
         use super::BlobId;
         let id = BlobId::new(u64::MAX);
-        assert_eq!(id.as_u64(), u64::MAX);
+        assert_eq!(id.get(), u64::MAX);
     }
 
     #[test]
     fn workflow_id_zero_is_valid() {
         let id = WorkflowId::new(0);
-        assert_eq!(id.as_u32(), 0);
+        assert_eq!(id.get(), 0);
     }
 
     #[test]
     fn workflow_id_max_u32() {
         let id = WorkflowId::new(u32::MAX);
-        assert_eq!(id.as_u32(), u32::MAX);
+        assert_eq!(id.get(), u32::MAX);
     }
 
     #[test]
