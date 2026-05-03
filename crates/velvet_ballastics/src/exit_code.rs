@@ -8,6 +8,7 @@ use std::process::ExitCode;
 /// integration tests can match on the process exit status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+#[allow(dead_code)]
 pub(crate) enum CliExitCode {
     /// Operation completed successfully.
     Success = 0,
@@ -31,7 +32,18 @@ pub(crate) enum CliExitCode {
 
 impl From<CliExitCode> for ExitCode {
     fn from(code: CliExitCode) -> Self {
-        ExitCode::from(code as u8)
+        let byte = match code {
+            CliExitCode::Success => 0u8,
+            CliExitCode::ValidationFailed => 1,
+            CliExitCode::VerificationFailed => 2,
+            CliExitCode::CompileFailed => 3,
+            CliExitCode::RuntimeFailed => 4,
+            CliExitCode::StorageError => 5,
+            CliExitCode::IpcError => 6,
+            CliExitCode::ActionPolicyError => 7,
+            CliExitCode::ReplayDivergence => 8,
+        };
+        ExitCode::from(byte)
     }
 }
 
@@ -54,17 +66,31 @@ mod tests {
     use super::CliExitCode;
     use std::process::ExitCode;
 
+    fn to_byte(code: CliExitCode) -> u8 {
+        match code {
+            CliExitCode::Success => 0,
+            CliExitCode::ValidationFailed => 1,
+            CliExitCode::VerificationFailed => 2,
+            CliExitCode::CompileFailed => 3,
+            CliExitCode::RuntimeFailed => 4,
+            CliExitCode::StorageError => 5,
+            CliExitCode::IpcError => 6,
+            CliExitCode::ActionPolicyError => 7,
+            CliExitCode::ReplayDivergence => 8,
+        }
+    }
+
     #[test]
     fn discriminant_values_match_spec() {
-        assert_eq!(CliExitCode::Success as u8, 0);
-        assert_eq!(CliExitCode::ValidationFailed as u8, 1);
-        assert_eq!(CliExitCode::VerificationFailed as u8, 2);
-        assert_eq!(CliExitCode::CompileFailed as u8, 3);
-        assert_eq!(CliExitCode::RuntimeFailed as u8, 4);
-        assert_eq!(CliExitCode::StorageError as u8, 5);
-        assert_eq!(CliExitCode::IpcError as u8, 6);
-        assert_eq!(CliExitCode::ActionPolicyError as u8, 7);
-        assert_eq!(CliExitCode::ReplayDivergence as u8, 8);
+        assert_eq!(to_byte(CliExitCode::Success), 0);
+        assert_eq!(to_byte(CliExitCode::ValidationFailed), 1);
+        assert_eq!(to_byte(CliExitCode::VerificationFailed), 2);
+        assert_eq!(to_byte(CliExitCode::CompileFailed), 3);
+        assert_eq!(to_byte(CliExitCode::RuntimeFailed), 4);
+        assert_eq!(to_byte(CliExitCode::StorageError), 5);
+        assert_eq!(to_byte(CliExitCode::IpcError), 6);
+        assert_eq!(to_byte(CliExitCode::ActionPolicyError), 7);
+        assert_eq!(to_byte(CliExitCode::ReplayDivergence), 8);
     }
 
     #[test]
@@ -124,15 +150,15 @@ mod tests {
     #[test]
     fn all_variants_are_distinct() {
         let values: [u8; 9] = [
-            CliExitCode::Success as u8,
-            CliExitCode::ValidationFailed as u8,
-            CliExitCode::VerificationFailed as u8,
-            CliExitCode::CompileFailed as u8,
-            CliExitCode::RuntimeFailed as u8,
-            CliExitCode::StorageError as u8,
-            CliExitCode::IpcError as u8,
-            CliExitCode::ActionPolicyError as u8,
-            CliExitCode::ReplayDivergence as u8,
+            to_byte(CliExitCode::Success),
+            to_byte(CliExitCode::ValidationFailed),
+            to_byte(CliExitCode::VerificationFailed),
+            to_byte(CliExitCode::CompileFailed),
+            to_byte(CliExitCode::RuntimeFailed),
+            to_byte(CliExitCode::StorageError),
+            to_byte(CliExitCode::IpcError),
+            to_byte(CliExitCode::ActionPolicyError),
+            to_byte(CliExitCode::ReplayDivergence),
         ];
         let mut sorted: Vec<u8> = values.to_vec();
         sorted.sort_unstable();

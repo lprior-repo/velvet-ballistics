@@ -1992,11 +1992,11 @@ fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
 
             // Determine terminal status
             let terminal = events.last();
-            let is_failed = match terminal {
-                Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => true,
-                Some(vb_storage::JournalEvent::RunCancelled { .. }) => true,
-                _ => false,
-            };
+            let is_failed = matches!(
+                terminal,
+                Some(vb_storage::JournalEvent::RunFailedEvent { .. })
+                    | Some(vb_storage::JournalEvent::RunCancelled { .. })
+            );
 
             if !is_failed {
                 if output != OutputFormat::Text {
