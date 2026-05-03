@@ -421,6 +421,7 @@ mod tests {
             seq: snapshot_seq,
             workflow: test_digest(1),
             slots: Vec::new(),
+            taint: Vec::new(),
         };
         let tail = tail_after(events, snapshot_seq);
         let mut tail_tracker = ActionReplayTracker::new();
@@ -711,6 +712,7 @@ mod tests {
             seq: EventSeq::new(5),
             workflow: test_digest(1),
             slots: Vec::new(),
+            taint: Vec::new(),
         };
         let tail = vec![JournalEvent::StepSucceeded {
             run: RunId::new(1),
@@ -796,6 +798,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(2),
                 slot: SlotIdx::new(0),
+                value: None,
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -856,6 +859,7 @@ mod tests {
             seq: EventSeq::new(5),
             workflow: test_digest(1),
             slots: Vec::new(),
+            taint: Vec::new(),
         };
         let tail = vec![
             JournalEvent::StepStarted {

@@ -648,6 +648,7 @@ mod tests {
             seq,
             workflow: WorkflowDigest::from_bytes([5; 32]),
             slots: b"slot_data".to_vec(),
+            taint: Vec::new(),
         };
 
         let mut batch = journal.batch();
@@ -714,6 +715,7 @@ mod tests {
             seq: EventSeq::new(7),
             workflow: compiled_digest,
             slots: vec![8, 9],
+            taint: Vec::new(),
         };
         let blob_bytes = vec![10, 11];
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
@@ -1632,6 +1634,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([7; 32]),
             slots: vec![4, 5, 6],
+            taint: Vec::new(),
         };
 
         append_journal_event(&journal, &event).expect("append_journal_event must succeed");
@@ -1877,6 +1880,7 @@ mod tests {
             seq: EventSeq::new(10),
             workflow: WorkflowDigest::from_bytes([7; 32]),
             slots: vec![1, 2, 3],
+            taint: Vec::new(),
         };
         journal
             .put_snapshot(&snapshot)
@@ -2391,6 +2395,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             slot,
+            value: None,
         };
         journal
             .append_strict(&event)
@@ -2622,6 +2627,7 @@ mod tests {
             run,
             seq: EventSeq::new(2),
             slot: vb_core::SlotIdx::new(0),
+            value: None,
         };
         let e3 = JournalEvent::StepSucceeded {
             run,
@@ -2807,6 +2813,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(7),
             slots: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE],
+            taint: Vec::new(),
         };
         journal
             .put_snapshot(&snapshot)
@@ -2929,7 +2936,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq: EventSeq::new(0),
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .run_id(),
             run
@@ -3066,7 +3074,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .seq(),
             seq
@@ -3189,7 +3198,8 @@ mod tests {
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
-                slot: vb_core::SlotIdx::new(0)
+                slot: vb_core::SlotIdx::new(0),
+                value: None,
             }
             .record_kind(),
             RecordKind::SlotWritten
@@ -3312,6 +3322,7 @@ mod tests {
             run: RunId::new(4),
             seq: EventSeq::new(3),
             slot: vb_core::SlotIdx::new(7),
+            value: None,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 3, &event, 128)
             .expect("encoding should succeed");
@@ -3792,6 +3803,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(2),
                     slot: vb_core::SlotIdx::new(0),
+                    value: None,
                 },
                 JournalEvent::ActionScheduled {
                     run,
@@ -4416,6 +4428,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
             slots: vec![0u8; (MAX_SNAPSHOT_BYTES as usize).saturating_add(1)],
+            taint: Vec::new(),
         };
         assert!(matches!(
             journal.put_snapshot(&snap),
@@ -4430,6 +4443,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: test_digest(1),
             slots: vec![1, 2, 3],
+            taint: Vec::new(),
         };
         let mut enc = encode_record(
             MAGIC_SNAPSHOT,
@@ -5292,6 +5306,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             slot: SlotIdx::new(5),
+            value: None,
         };
         let mut batch = journal.batch();
         batch
@@ -5423,12 +5438,14 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0xA; 32]),
             slots: vec![1, 2, 3],
+            taint: Vec::new(),
         };
         let snap_b = RunSnapshot {
             run: run_b,
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0xB; 32]),
             slots: vec![4, 5, 6],
+            taint: Vec::new(),
         };
         let mut batch = journal.batch();
         batch
@@ -5801,6 +5818,7 @@ mod tests {
             seq,
             workflow: WorkflowDigest::from_bytes([0xAA; 32]),
             slots: vec![0xDE, 0xAD],
+            taint: Vec::new(),
         };
         journal
             .put_snapshot(&snapshot)
@@ -6151,6 +6169,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0x43; 32]),
             slots: vec![1, 2],
+            taint: Vec::new(),
         };
         batch
             .put_snapshot(&snapshot)
@@ -6384,6 +6403,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 workflow: digest_1,
                 slots: vec![42],
+                taint: Vec::new(),
             })
             .expect("put 5 must succeed");
         batch.commit().expect("commit must succeed");
@@ -6528,6 +6548,7 @@ mod tests {
             seq,
             workflow: WorkflowDigest::from_bytes([0xFA; 32]),
             slots: b"snapshot_data".to_vec(),
+            taint: Vec::new(),
         };
         let mut batch = journal.batch();
         batch.put_snapshot(&snapshot).expect("put must succeed");
@@ -6794,6 +6815,7 @@ mod tests {
                 seq: EventSeq::new(seq_val),
                 workflow: WorkflowDigest::from_bytes([1; 32]),
                 slots: vec![0u8],
+                taint: Vec::new(),
             };
             journal.put_snapshot(&snap).expect("put_snapshot");
         }
@@ -6841,6 +6863,7 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([1; 32]),
             slots: vec![],
+            taint: Vec::new(),
         };
         journal.put_snapshot(&snap).expect("put");
         let loaded = journal
@@ -7090,6 +7113,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 workflow: WorkflowDigest::from_bytes([1; 32]),
                 slots: vec![1u8],
+                taint: Vec::new(),
             })
             .expect("snap1");
         journal
@@ -7098,6 +7122,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 workflow: WorkflowDigest::from_bytes([2; 32]),
                 slots: vec![2u8],
+                taint: Vec::new(),
             })
             .expect("snap2");
         let s1 = journal
