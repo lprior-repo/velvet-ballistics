@@ -92,8 +92,19 @@ pub fn drive_deterministic_full(
             }
         }
 
-        // Evidence chain: emit StepSucceeded after execution with output slot.
-        evidence.push_step_succeeded(pc, node.output);
+        // Evidence chain: emit StepSucceeded only when the step actually succeeded.
+        // For signals like StepBudgetExhausted, AwaitingAction, AwaitingWait,
+        // and AwaitingAsk, the step did not complete successfully, so we must
+        // not emit a spurious StepSucceeded event.
+        match &signal {
+            RuntimeSignal::Continue | RuntimeSignal::Finished(_) => {
+                evidence.push_step_succeeded(pc, node.output);
+            }
+            RuntimeSignal::StepBudgetExhausted
+            | RuntimeSignal::AwaitingAction(_)
+            | RuntimeSignal::AwaitingWait
+            | RuntimeSignal::AwaitingAsk => {}
+        }
 
         match signal {
             RuntimeSignal::Continue => {}

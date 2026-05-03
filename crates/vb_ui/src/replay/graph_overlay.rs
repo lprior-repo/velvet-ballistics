@@ -901,6 +901,10 @@ mod tests {
             sinks: vec![StepIdx::new(1)],
             paths: vec![],
             finish_safe: true,
+            tainted_nodes: HashSet::new(),
+            clean_nodes: HashSet::new(),
+            forbidden_sinks: HashSet::new(),
+            flow_paths: Vec::new(),
         };
 
         let overlay = GraphOverlay::compute(
@@ -938,6 +942,10 @@ mod tests {
                 status: taint_overlay::TaintPathStatus::Dangerous,
             }],
             finish_safe: false,
+            tainted_nodes: HashSet::new(),
+            clean_nodes: HashSet::new(),
+            forbidden_sinks: HashSet::new(),
+            flow_paths: Vec::new(),
         };
 
         let overlay = GraphOverlay::compute(
@@ -1035,6 +1043,10 @@ mod tests {
             sinks: vec![],
             paths: vec![],
             finish_safe: true,
+            tainted_nodes: HashSet::new(),
+            clean_nodes: HashSet::new(),
+            forbidden_sinks: HashSet::new(),
+            flow_paths: Vec::new(),
         };
 
         let overlay = GraphOverlay::compute(
@@ -1098,6 +1110,10 @@ mod tests {
             sinks: vec![],
             paths: vec![],
             finish_safe: true,
+            tainted_nodes: HashSet::new(),
+            clean_nodes: HashSet::new(),
+            forbidden_sinks: HashSet::new(),
+            flow_paths: Vec::new(),
         };
 
         let overlay = GraphOverlay::compute(
@@ -1214,6 +1230,10 @@ mod tests {
             sinks: vec![],
             paths: vec![],
             finish_safe: true,
+            tainted_nodes: HashSet::new(),
+            clean_nodes: HashSet::new(),
+            forbidden_sinks: HashSet::new(),
+            flow_paths: Vec::new(),
         };
 
         let overlay = GraphOverlay::compute(

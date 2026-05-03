@@ -72,9 +72,14 @@ pub fn execute_do_without_contract(
 }
 
 /// Resumes an action outcome into the run frame.
+///
+/// When a retryable failure occurs, the original ticket is used to build a
+/// retry ticket with the correct action ID, incremented sequence number,
+/// incremented attempt count, and recomputed idempotency key.
 pub fn resume_action_outcome(
     run: &mut RunFrame,
     outcome: &vb_core::action::ActionOutcome,
+    original_ticket: &ActionTicket,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match outcome {
         vb_core::action::ActionOutcome::Ready(ready) => {
@@ -86,15 +91,32 @@ pub fn resume_action_outcome(
             Ok(RuntimeSignal::AwaitingAction(*ticket))
         }
         vb_core::action::ActionOutcome::Failed(failure) => {
-            let step = run.pc();
             if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
+                let next_seq = original_ticket
+                    .seq
+                    .checked_add(1)
+                    .ok_or(RuntimeEngineError::Core(
+                        EngineError::InternalInvariantViolation {
+                            reason: "seq_overflow_on_retry",
+                        },
+                    ))?;
+                let next_attempt = original_ticket
+                    .attempt
+                    .checked_add(1)
+                    .ok_or(RuntimeEngineError::Core(
+                        EngineError::InternalInvariantViolation {
+                            reason: "attempt_overflow_on_retry",
+                        },
+                    ))?;
+                let idempotency_key =
+                    compute_idempotency_key(run.run_id(), next_seq, original_ticket.action);
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: run.run_id(),
-                    step,
-                    seq: SeqNo::new(0),
-                    action: ActionId::new(0),
-                    attempt: 1,
-                    idempotency_key: 0,
+                    step: original_ticket.step,
+                    seq: next_seq,
+                    action: original_ticket.action,
+                    attempt: next_attempt,
+                    idempotency_key,
                 }))
             } else {
                 Err(RuntimeEngineError::Core(

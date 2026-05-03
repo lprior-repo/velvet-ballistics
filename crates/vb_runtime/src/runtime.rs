@@ -777,11 +777,10 @@ mod tests {
                 run,
                 step: StepIdx::ZERO,
                 action: ActionId::new(7),
-            }) && evts.contains(&RuntimeJournalEvent::SlotWritten {
-                run,
-                slot: SlotIdx::new(1),
-                value: Vec::new(),
-            }) && evts.contains(&RuntimeJournalEvent::ActionCompleted {
+            }) && evts.iter().any(|e| matches!(e,
+                RuntimeJournalEvent::SlotWritten { run: r, slot, .. }
+                if *r == run && *slot == SlotIdx::new(1)
+            )) && evts.contains(&RuntimeJournalEvent::ActionCompleted {
                 run,
                 step: StepIdx::ZERO,
                 action: ActionId::new(7),

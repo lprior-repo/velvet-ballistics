@@ -273,7 +273,8 @@ fn check_resource_bounds(parts: &WorkflowParts) -> Certificate {
 // ---------------------------------------------------------------------------
 
 fn check_taint_flow(parts: &WorkflowParts) -> Certificate {
-    let overlay = super::taint_overlay::compute_taint_overlay(parts);
+    let empty_taint = std::collections::HashMap::new();
+    let overlay = super::taint_overlay::compute_taint_overlay(parts, &empty_taint);
 
     // No secret sources at all -- clean pass.
     if overlay.sources.is_empty() {

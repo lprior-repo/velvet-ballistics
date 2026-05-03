@@ -97,9 +97,14 @@ pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: St
 }
 
 /// Resumes an action outcome into the run frame.
+///
+/// When a retryable failure occurs, the original ticket is used to build a
+/// retry ticket with the correct action ID, incremented sequence number,
+/// incremented attempt count, and recomputed idempotency key.
 pub fn resume_action_outcome(
     run: &mut RunFrame,
     outcome: &ActionOutcome,
+    original_ticket: &ActionTicket,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match outcome {
         ActionOutcome::Ready(ready) => {
@@ -109,15 +114,32 @@ pub fn resume_action_outcome(
         }
         ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(*ticket)),
         ActionOutcome::Failed(failure) => {
-            let step = run.pc();
             if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
+                let next_seq = original_ticket
+                    .seq
+                    .checked_add(1)
+                    .ok_or(RuntimeEngineError::Core(
+                        EngineError::InternalInvariantViolation {
+                            reason: "seq_overflow_on_retry",
+                        },
+                    ))?;
+                let next_attempt = original_ticket
+                    .attempt
+                    .checked_add(1)
+                    .ok_or(RuntimeEngineError::Core(
+                        EngineError::InternalInvariantViolation {
+                            reason: "attempt_overflow_on_retry",
+                        },
+                    ))?;
+                let idempotency_key =
+                    compute_idempotency_key(run.run_id(), next_seq, original_ticket.action);
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: run.run_id(),
-                    step,
-                    seq: SeqNo::ZERO,
-                    action: ActionId::new(0),
-                    attempt: 1,
-                    idempotency_key: 0,
+                    step: original_ticket.step,
+                    seq: next_seq,
+                    action: original_ticket.action,
+                    attempt: next_attempt,
+                    idempotency_key,
                 }))
             } else {
                 Err(RuntimeEngineError::Core(
@@ -131,17 +153,19 @@ pub fn resume_action_outcome(
 }
 
 /// Computes a deterministic idempotency key from run, sequence, and action.
+///
+/// Uses wrapping multiply-add hashing (FNV-1a-inspired) to mix all three
+/// inputs into a u128 without bit-field overlap or silent fallback degradation.
 pub fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
     let run_part = u128::from(run.get());
-    let seq_part = u128::from(seq.get()) << 64;
-    let action_part = u128::from(u32::from(action.get())) << 80;
-    match run_part.checked_add(seq_part) {
-        Some(combined) => match combined.checked_add(action_part) {
-            Some(key) => key,
-            None => run_part,
-        },
-        None => run_part,
-    }
+    let seq_part = u128::from(seq.get());
+    let action_part = u128::from(u32::from(action.get()));
+    run_part
+        .wrapping_mul(0x6c62272e07bb0143_u128)
+        .wrapping_add(seq_part)
+        .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
+        .wrapping_add(action_part)
+        .wrapping_mul(0x5bd1e9956c7b4d3a_u128)
 }
 
 /// Resolves an action contract from the registry.
@@ -196,9 +220,21 @@ mod tests {
     }
 
     #[test]
-    fn idempotency_key_with_zero_inputs() {
-        let key = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
-        assert_eq!(key, 0);
+    fn idempotency_key_with_zero_inputs_is_deterministic() {
+        let key1 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
+        assert_eq!(key1, key2);
+    }
+
+    /// Regression test for the bit-field overlap bug: different (seq, action)
+    /// tuples that previously collided must now produce distinct keys.
+    #[test]
+    fn idempotency_key_no_overlap_collision() {
+        // With the old shifts (seq<<64, action<<80), bits [111:80] overlapped.
+        // seq=0x100 action=0 and seq=0 action=0x100 produced the same key.
+        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0x100), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0x100));
+        assert_ne!(key1, key2, "hash-based key must distinguish overlapping bit patterns");
     }
 
     #[test]

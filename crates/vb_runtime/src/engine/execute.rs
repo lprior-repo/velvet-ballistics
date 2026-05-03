@@ -4,7 +4,8 @@
 
 use vb_core::action::ActionContract;
 use vb_core::frame::RunFrame;
-use vb_core::ids::SeqNo;
+use vb_core::ids::{SeqNo, SlotIdx};
+use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -14,6 +15,29 @@ use crate::engine::action::{
 use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
+
+/// Reads the current attempt count from the given policy slot.
+/// Returns 0 if the slot is uninitialized (first attempt), or the stored
+/// u16 attempt value if it contains an I64. Errors on type mismatch.
+fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<u16> {
+    match run.read_slot(slot) {
+        Ok(value) => match *value {
+            SlotValue::I64(v) => u16::try_from(v).map_err(|_| {
+                RuntimeEngineError::Core(vb_core::errors::EngineError::TypeMismatch {
+                    expected: "non-negative u16 attempt count",
+                    found: "out-of-range i64",
+                })
+            }),
+            _ => Err(RuntimeEngineError::Core(
+                vb_core::errors::EngineError::TypeMismatch {
+                    expected: "number",
+                    found: value.type_name(),
+                },
+            )),
+        },
+        Err(_) => Ok(0),
+    }
+}
 
 /// Executes one compiled node with full primitive dispatch.
 pub fn execute_node_full(
@@ -305,11 +329,12 @@ pub fn execute_node_full(
         }
 
         CompiledNodeKind::RetryCheck {
-            policy_slot: _,
+            policy_slot,
             body,
             exhausted,
         } => {
-            let target = execute_retry_check(1, retry_policy, *body, *exhausted);
+            let current_attempt = read_attempt_from_slot(run, *policy_slot)?;
+            let target = execute_retry_check(current_attempt, retry_policy, *body, *exhausted);
             run.set_pc(target).map_err(RuntimeEngineError::Core)?;
             run.increment_executed().map_err(RuntimeEngineError::Core)?;
             Ok(RuntimeSignal::Continue)
@@ -686,13 +711,13 @@ mod tests {
     }
 
     // =====================================================================
-    // RetryCheck: NEVER policy routes to exhausted (attempt 1 == max 1)
+    // RetryCheck: NEVER policy routes to exhausted (attempt 0 < max 1 -> body)
     // =====================================================================
 
     #[test]
-    fn execute_retry_check_never_policy_routes_to_exhausted() {
-        // Node 0: RetryCheck(body=0, exhausted=1) -- body can be backward, exhausted must be forward
-        // Node 1: Nop terminal
+    fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
+        // Uninitialized policy_slot -> attempt=0, NEVER policy: max_attempts=1
+        // 0 < 1, so routes to body (not exhausted).
         let node0 = CompiledNode {
             id: StepIdx::new(0),
             output: None,
@@ -716,7 +741,43 @@ mod tests {
         };
         let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs);
         assert!(result.is_ok(), "expected Ok, got {result:?}");
-        // NEVER policy: max_attempts=1, hardcoded attempt=1, so routes to exhausted=step1
+        // NEVER policy: max_attempts=1, attempt=0 < 1, routes to body=step0
+        let pc = run.pc();
+        assert_eq!(pc, StepIdx::new(0), "expected PC routed to body step 0");
+    }
+
+    // =====================================================================
+    // RetryCheck: NEVER policy with attempt=1 routes to exhausted
+    // =====================================================================
+
+    #[test]
+    fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
+        let node0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(0),
+                body: StepIdx::new(0),
+                exhausted: StepIdx::new(1),
+            },
+        };
+        let node1 = finish_node(1, 0);
+        let wf = make_workflow(vec![node0, node1], 4);
+        let mut run = make_run(4, 4);
+        // Write attempt=1 into the policy slot
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
+        let mut store = ValueStore::new();
+        let mut cs = CollectStates::new();
+        let n = match wf.node(StepIdx::ZERO) {
+            Some(n) => n,
+            None => return,
+        };
+        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs);
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        // NEVER policy: max_attempts=1, attempt=1 >= 1, routes to exhausted=step1
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(1), "expected PC routed to exhausted step 1");
     }
@@ -742,6 +803,7 @@ mod tests {
         let node1 = finish_node(1, 0);
         let wf = make_workflow(vec![node0, node1], 4);
         let mut run = make_run(4, 4);
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -753,6 +815,41 @@ mod tests {
         // DEFAULT policy: max_attempts=3, attempt=1 < 3, routes to body=step0
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(0), "expected PC routed to body step 0");
+    }
+
+    // =====================================================================
+    // RetryCheck: DEFAULT policy with attempt=3 routes to exhausted
+    // =====================================================================
+
+    #[test]
+    fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
+        let node0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(0),
+                body: StepIdx::new(0),
+                exhausted: StepIdx::new(1),
+            },
+        };
+        let node1 = finish_node(1, 0);
+        let wf = make_workflow(vec![node0, node1], 4);
+        let mut run = make_run(4, 4);
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(3));
+        let mut store = ValueStore::new();
+        let mut cs = CollectStates::new();
+        let n = match wf.node(StepIdx::ZERO) {
+            Some(n) => n,
+            None => return,
+        };
+        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::DEFAULT, &mut cs);
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        // DEFAULT policy: max_attempts=3, attempt=3 >= 3, routes to exhausted=step1
+        let pc = run.pc();
+        assert_eq!(pc, StepIdx::new(1), "expected PC routed to exhausted step 1");
     }
 
     // =====================================================================
