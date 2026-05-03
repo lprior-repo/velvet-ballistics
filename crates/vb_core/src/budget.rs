@@ -384,14 +384,28 @@ fn visit_node_for_total_steps(
             limit, body, done, ..
         } => {
             total = count_and_push_loop_body(
-                nodes, *body, *done, u64::from(*limit), visited, node_count, total, stack,
+                nodes,
+                *body,
+                *done,
+                u64::from(*limit),
+                visited,
+                node_count,
+                total,
+                stack,
             )?;
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
         } => {
             total = count_and_push_loop_body(
-                nodes, *body, *done, u64::from(*limit), visited, node_count, total, stack,
+                nodes,
+                *body,
+                *done,
+                u64::from(*limit),
+                visited,
+                node_count,
+                total,
+                stack,
             )?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
@@ -407,7 +421,14 @@ fn visit_node_for_total_steps(
             done,
         } => {
             total = count_and_push_loop_body(
-                nodes, *body, *done, u64::from(*max_attempts), visited, node_count, total, stack,
+                nodes,
+                *body,
+                *done,
+                u64::from(*max_attempts),
+                visited,
+                node_count,
+                total,
+                stack,
             )?;
         }
         _ => {
@@ -510,71 +531,62 @@ fn visit_body_region_node(
     // Recursively handle nested loop headers within the body region
     match &node.kind {
         CompiledNodeKind::ForEachStart {
-            limit,
-            body: inner_body,
-            done: inner_done,
-            ..
+            limit, body, done, ..
         } => {
-            let inner_body_count = count_body_region_nodes(
+            count = count_nested_for_region(
                 nodes,
-                *inner_body,
-                *inner_done,
+                *body,
+                *done,
+                u64::from(*limit).max(1),
                 global_visited,
                 node_count,
+                count,
+                stack,
             )?;
-            let iter_count = u64::from(*limit).max(1);
-            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-            stack.push(*inner_done);
         }
         CompiledNodeKind::CollectStart {
-            limit,
-            body: inner_body,
-            done: inner_done,
-            ..
+            limit, body, done, ..
         } => {
-            let inner_body_count = count_body_region_nodes(
+            count = count_nested_for_region(
                 nodes,
-                *inner_body,
-                *inner_done,
+                *body,
+                *done,
+                u64::from(*limit).max(1),
                 global_visited,
                 node_count,
+                count,
+                stack,
             )?;
-            let iter_count = u64::from(*limit).max(1);
-            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-            stack.push(*inner_done);
         }
-        CompiledNodeKind::ReduceStart {
-            body: inner_body,
-            done: inner_done,
-            ..
-        } => {
-            let inner_body_count = count_body_region_nodes(
+        CompiledNodeKind::ReduceStart { body, done, .. } => {
+            let iter = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            count = count_nested_for_region(
                 nodes,
-                *inner_body,
-                *inner_done,
+                *body,
+                *done,
+                iter,
                 global_visited,
                 node_count,
+                count,
+                stack,
             )?;
-            let iter_count =
-                u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-            stack.push(*inner_done);
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
-            body: inner_body,
-            done: inner_done,
+            body,
+            done,
+            ..
         } => {
-            let inner_body_count = count_body_region_nodes(
+            count = count_nested_for_region(
                 nodes,
-                *inner_body,
-                *inner_done,
+                *body,
+                *done,
+                u64::from(*max_attempts).max(1),
                 global_visited,
                 node_count,
+                count,
+                stack,
             )?;
-            let iter_count = u64::from(*max_attempts).max(1);
-            count = count.saturating_add(inner_body_count.saturating_mul(iter_count));
-            stack.push(*inner_done);
         }
         _ => {
             push_successor_targets(&node.kind, stack);
@@ -584,6 +596,22 @@ fn visit_body_region_node(
         }
     }
     Ok(count)
+}
+
+/// Counts a nested loop body within a region and adds multiplied iterations.
+#[inline]
+fn count_nested_for_region(
+    nodes: &[crate::workflow::CompiledNode],
+    body: StepIdx,
+    done: StepIdx,
+    iter_count: u64,
+    global_visited: &mut [bool],
+    node_count: usize,
+    mut count: u64,
+    stack: &mut Vec<StepIdx>,
+) -> Result<u64, WorkflowError> {
+    let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
+    Ok(count.saturating_add(body_count.saturating_mul(iter_count)))
 }
 
 /// Pushes all successor StepIdx targets from a node kind onto the stack,
