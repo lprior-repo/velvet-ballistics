@@ -1366,4 +1366,56 @@ mod tests {
         // Then it returns SecretResultLeak (E0406) -- taint propagates through nested composites
         assert_eq!(result, Err(ValidationError::SecretResultLeak));
     }
+
+    // ========================================================================
+    // Section 38 behavioral property tests
+    // ========================================================================
+
+    /// Section 38 test 4: Taint safety -- secret reaching Finish is caught
+    /// at validation time. Direct reference to secret in finish result.
+    #[test]
+    fn section38_taint_safety_secret_result_leak_direct_reference() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$secrets.api_key".into()),
+        )]);
+        wf.secrets.push("api_key".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Section 38 test 4: Secret propagates through a slot into Finish.
+    #[test]
+    fn section38_taint_safety_secret_result_leak_via_slot() {
+        let mut wf = make_workflow(vec![
+            save_step("cap", TypedValue::Reference("$secrets.token".into())),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("token".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Section 38 test 4: Secret input propagates into Finish.
+    #[test]
+    fn section38_taint_safety_secret_result_leak_via_input() {
+        let mut wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.credential".into()),
+        )]);
+        wf.inputs.push(InputDecl {
+            name: "credential".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// Section 38 test 4: Clean finish passes validation.
+    #[test]
+    fn section38_taint_safety_clean_finish_passes() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
 }

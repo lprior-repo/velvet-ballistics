@@ -1,144 +1,110 @@
-//! Timeline model for replay event scrubbing.
+//! Timeline strip model for replay event scrubbing (Phase 1C).
 //!
 //! Represents a run's journal as a linear sequence of event markers,
-//! each with a sequence number, timestamp, step reference, and event kind.
+//! each with a sequence number, timestamp, step reference, event kind, and color.
 
-use std::time::Instant;
-
-use vb_core::ids::{SeqNo, StepIdx};
+use vb_storage::JournalEvent;
 
 // ---------------------------------------------------------------------------
-// Timeline event kind
+// Color constants (cyberpunk palette)
 // ---------------------------------------------------------------------------
 
-/// Classification of events on the replay timeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TimelineEventKind {
-    /// Run was accepted into the system.
-    RunAccepted,
-    /// A step began executing.
-    StepStarted,
-    /// A step completed successfully.
-    StepSucceeded,
-    /// A step failed.
-    StepFailed,
-    /// An action was scheduled for execution.
-    ActionScheduled,
-    /// An action completed successfully.
-    ActionCompleted,
-    /// An action failed.
-    ActionFailed,
-    /// A slot was written.
-    SlotWritten,
-    /// A wait was scheduled.
-    WaitScheduled,
-    /// An ask was scheduled.
-    AskScheduled,
-    /// An ask was answered.
-    AskAnswered,
-    /// A retry was scheduled.
-    RetryScheduled,
-    /// The run was cancelled.
-    RunCancelled,
-    /// The run finished normally.
-    RunFinished,
-    /// The run failed.
-    RunFailed,
-}
+/// Neon cyan -- running / in-progress states.
+const NEON_CYAN: [f32; 4] = [0.0, 0.961, 1.0, 1.0];
+/// Neon green -- success states.
+const NEON_GREEN: [f32; 4] = [0.224, 1.0, 0.078, 1.0];
+/// Neon red -- failure states.
+const NEON_RED: [f32; 4] = [1.0, 0.027, 0.227, 1.0];
+/// Neon teal -- slot writes and run finished.
+const NEON_TEAL: [f32; 4] = [0.0, 0.898, 0.78, 1.0];
+/// Neon orange -- action dispatch.
+const NEON_ORANGE: [f32; 4] = [1.0, 0.42, 0.0, 1.0];
+/// Neon blue -- waiting.
+const NEON_BLUE: [f32; 4] = [0.176, 0.42, 1.0, 1.0];
+/// Neon yellow -- asking.
+const NEON_YELLOW: [f32; 4] = [1.0, 0.902, 0.0, 1.0];
+/// Neon magenta -- secret/taint.
+const NEON_MAGENTA: [f32; 4] = [1.0, 0.0, 0.667, 1.0];
+/// Dim grey -- cancelled.
+const DIM: [f32; 4] = [0.333, 0.333, 0.467, 1.0];
 
 // ---------------------------------------------------------------------------
-// Timeline event
+// TimelineEvent
 // ---------------------------------------------------------------------------
 
-/// A single event marker on the replay timeline.
-#[derive(Debug, Clone)]
+/// A single event marker on the replay timeline strip.
+#[derive(Debug, Clone, PartialEq)]
 pub struct TimelineEvent {
     /// Sequence number of this event in the journal.
-    pub seq: SeqNo,
-    /// What kind of event this is.
-    pub kind: TimelineEventKind,
+    pub seq: u32,
+    /// Event kind string (e.g. "RunAccepted", "ActionScheduled").
+    pub event_kind: String,
     /// Which step this event relates to, if any.
-    pub step: Option<StepIdx>,
-    /// When this event was recorded.
-    pub timestamp: Instant,
+    pub step_id: Option<u16>,
+    /// Timestamp in microseconds since epoch.
+    pub timestamp_micros: u64,
+    /// RGBA color for rendering.
+    pub color: [f32; 4],
 }
 
 // ---------------------------------------------------------------------------
-// Timeline
+// TimelineStrip
 // ---------------------------------------------------------------------------
 
 /// Ordered sequence of timeline events with a scrubbing cursor.
-pub struct Timeline {
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimelineStrip {
     events: Vec<TimelineEvent>,
-    cursor: Option<usize>,
+    cursor_index: Option<usize>,
 }
 
-impl Timeline {
-    /// Creates an empty timeline with no cursor.
+impl TimelineStrip {
+    /// Creates an empty strip with no cursor.
     #[must_use]
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
-            cursor: None,
+            cursor_index: None,
         }
     }
 
-    /// Creates a timeline pre-populated with events.
-    ///
-    /// Events are sorted by ascending sequence number.
+    /// Creates a strip pre-populated from storage journal events.
     #[must_use]
-    pub fn from_events(events: Vec<TimelineEvent>) -> Self {
-        let mut events = events;
-        events.sort_by_key(|e| e.seq);
-        Self {
-            events,
-            cursor: None,
-        }
-    }
-
-    /// Appends an event, maintaining sorted order by sequence number.
-    pub fn push(&mut self, event: TimelineEvent) {
-        let insert_pos = self
-            .events
+    pub fn from_journal_events(events: &[JournalEvent]) -> Self {
+        let timeline_events: Vec<TimelineEvent> = events
             .iter()
-            .position(|existing| existing.seq > event.seq)
-            .unwrap_or(self.events.len());
-        self.events.insert(insert_pos, event);
+            .map(|je| {
+                let (kind_str, step) = journal_event_info(je);
+                let color = Self::event_color(&kind_str);
+                TimelineEvent {
+                    seq: u32::try_from(je.seq().get()).unwrap_or(u32::MAX),
+                    event_kind: kind_str,
+                    step_id: step,
+                    timestamp_micros: 0,
+                    color,
+                }
+            })
+            .collect();
+        Self {
+            events: timeline_events,
+            cursor_index: None,
+        }
     }
 
-    /// Returns the number of events on the timeline.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.events.len()
-    }
-
-    /// Returns true if the timeline has no events.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
+    /// Sets the cursor position.
+    pub fn set_cursor(&mut self, index: usize) {
+        if self.events.is_empty() {
+            self.cursor_index = None;
+            return;
+        }
+        let max_index = self.events.len().saturating_sub(1);
+        self.cursor_index = Some(if index > max_index { max_index } else { index });
     }
 
     /// Returns the current cursor position, if set.
     #[must_use]
     pub fn cursor(&self) -> Option<usize> {
-        self.cursor
-    }
-
-    /// Moves the cursor to the given index.
-    ///
-    /// Clamps to the valid range. Set to `None` if the timeline is empty.
-    pub fn set_cursor(&mut self, idx: usize) {
-        if self.events.is_empty() {
-            self.cursor = None;
-            return;
-        }
-        self.cursor = Some(idx.min(self.events.len().saturating_sub(1)));
-    }
-
-    /// Returns the event at the given index.
-    #[must_use]
-    pub fn event_at(&self, idx: usize) -> Option<&TimelineEvent> {
-        self.events.get(idx)
+        self.cursor_index
     }
 
     /// Returns a slice of all events.
@@ -147,407 +113,464 @@ impl Timeline {
         &self.events
     }
 
-    /// Returns an iterator over events matching the given kind.
-    pub fn events_by_kind(
-        &self,
-        kind: TimelineEventKind,
-    ) -> impl Iterator<Item = (usize, &TimelineEvent)> {
-        self.events
-            .iter()
-            .enumerate()
-            .filter(move |(_, e)| e.kind == kind)
-    }
-
-    /// Returns an iterator over events related to a specific step.
-    pub fn step_events(&self, step: StepIdx) -> impl Iterator<Item = (usize, &TimelineEvent)> {
-        self.events
-            .iter()
-            .enumerate()
-            .filter(move |(_, e)| e.step == Some(step))
-    }
-
-    /// Returns the index of the first failure event (StepFailed, ActionFailed, or RunFailed).
+    /// Returns indices of events matching the given step id.
     #[must_use]
-    pub fn find_first_failure(&self) -> Option<usize> {
-        self.events.iter().position(|e| {
-            matches!(
-                e.kind,
-                TimelineEventKind::StepFailed
-                    | TimelineEventKind::ActionFailed
-                    | TimelineEventKind::RunFailed
-            )
-        })
-    }
-
-    /// Returns the index of the next ActionScheduled or ActionCompleted event
-    /// for the given step after the given starting index.
-    #[must_use]
-    pub fn find_next_action(&self, step: StepIdx, after: usize) -> Option<usize> {
-        let start = after.saturating_add(1);
+    pub fn filter_by_step(&self, step: u16) -> Vec<usize> {
         self.events
             .iter()
             .enumerate()
-            .skip(start)
-            .find(|(_, e)| {
-                e.step == Some(step)
-                    && matches!(
-                        e.kind,
-                        TimelineEventKind::ActionScheduled | TimelineEventKind::ActionCompleted
-                    )
-            })
+            .filter(|(_, e)| e.step_id == Some(step))
             .map(|(i, _)| i)
+            .collect()
     }
 
-    /// Returns a cyberpunk-themed color name for the given event kind.
-    ///
-    /// Color mapping:
-    /// - **neon_cyan**: running / in-progress states
-    /// - **neon_green**: success states
-    /// - **neon_red**: failure states
-    /// - **neon_blue**: wait / passive states
-    /// - **neon_yellow**: ask / interactive states
-    /// - **neon_orange**: action states
-    /// - **neon_purple**: terminal / meta states
+    /// Returns indices of events whose `event_kind` starts with the given prefix.
     #[must_use]
-    pub const fn kind_color(kind: TimelineEventKind) -> &'static str {
+    pub fn filter_by_kind(&self, kind: &str) -> Vec<usize> {
+        self.events
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.event_kind.starts_with(kind))
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// Finds the first `ActionFailed` or `RunFailed` event.
+    #[must_use]
+    pub fn jump_to_failure(&self) -> Option<usize> {
+        self.events
+            .iter()
+            .position(|e| e.event_kind == "ActionFailed" || e.event_kind == "RunFailed")
+    }
+
+    /// Finds the first `ActionScheduled` event for the given step.
+    #[must_use]
+    pub fn jump_to_action(&self, step: u16) -> Option<usize> {
+        self.events
+            .iter()
+            .position(|e| e.event_kind == "ActionScheduled" && e.step_id == Some(step))
+    }
+
+    /// Maps an event kind string to a cyberpunk RGBA color.
+    #[must_use]
+    pub fn event_color(kind: &str) -> [f32; 4] {
         match kind {
-            TimelineEventKind::RunAccepted
-            | TimelineEventKind::StepStarted
-            | TimelineEventKind::RetryScheduled => "neon_cyan",
-
-            TimelineEventKind::StepSucceeded
-            | TimelineEventKind::ActionCompleted
-            | TimelineEventKind::RunFinished => "neon_green",
-
-            TimelineEventKind::StepFailed
-            | TimelineEventKind::ActionFailed
-            | TimelineEventKind::RunFailed => "neon_red",
-
-            TimelineEventKind::WaitScheduled => "neon_blue",
-
-            TimelineEventKind::AskScheduled | TimelineEventKind::AskAnswered => "neon_yellow",
-
-            TimelineEventKind::ActionScheduled | TimelineEventKind::SlotWritten => "neon_orange",
-
-            TimelineEventKind::RunCancelled => "neon_purple",
+            "RunAccepted" | "StepStarted" | "AskAnswered" => NEON_CYAN,
+            "StepSucceeded" | "ActionCompleted" => NEON_GREEN,
+            "ActionFailed" | "RunFailed" => NEON_RED,
+            "SlotWritten" | "RunFinished" => NEON_TEAL,
+            "ActionScheduled" | "RetryScheduled" => NEON_ORANGE,
+            "WaitScheduled" => NEON_BLUE,
+            "AskScheduled" => NEON_YELLOW,
+            "RunCancelled" => DIM,
+            _ => NEON_MAGENTA,
         }
     }
 }
 
-impl Default for Timeline {
+impl Default for TimelineStrip {
     fn default() -> Self {
         Self::new()
     }
 }
 
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/// Extracts the event kind string and optional step id from a [`JournalEvent`].
+fn journal_event_info(je: &JournalEvent) -> (String, Option<u16>) {
+    match je {
+        JournalEvent::RunAccepted { .. } => ("RunAccepted".to_owned(), None),
+        JournalEvent::StepStarted { step, .. } => ("StepStarted".to_owned(), Some(step.get())),
+        JournalEvent::StepSucceeded { step, .. } => ("StepSucceeded".to_owned(), Some(step.get())),
+        JournalEvent::ActionScheduled { step, .. } => ("ActionScheduled".to_owned(), Some(step.get())),
+        JournalEvent::ActionCompletedEvent { step, .. } => ("ActionCompleted".to_owned(), Some(step.get())),
+        JournalEvent::ActionFailedEvent { step, .. } => ("ActionFailed".to_owned(), Some(step.get())),
+        JournalEvent::SlotWrittenEvent { .. } => ("SlotWritten".to_owned(), None),
+        JournalEvent::WaitScheduledEvent { step, .. } => ("WaitScheduled".to_owned(), Some(step.get())),
+        JournalEvent::AskScheduledEvent { step, .. } => ("AskScheduled".to_owned(), Some(step.get())),
+        JournalEvent::AskAnsweredEvent { step, .. } => ("AskAnswered".to_owned(), Some(step.get())),
+        JournalEvent::RetryScheduledEvent { step, .. } => ("RetryScheduled".to_owned(), Some(step.get())),
+        JournalEvent::RunCancelled { .. } => ("RunCancelled".to_owned(), None),
+        JournalEvent::RunFinished { .. } => ("RunFinished".to_owned(), None),
+        JournalEvent::RunFailedEvent { .. } => ("RunFailed".to_owned(), None),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::{ActionId, RunId, StepIdx};
+    use vb_storage::EventSeq;
 
-    fn make_event(seq: u64, kind: TimelineEventKind, step: Option<StepIdx>) -> TimelineEvent {
-        TimelineEvent {
-            seq: SeqNo::new(seq),
-            kind,
-            step,
-            timestamp: Instant::now(),
-        }
+    fn make_run_id() -> RunId { RunId::new(1) }
+    fn make_event_seq(val: u64) -> EventSeq { EventSeq::new(val) }
+    fn make_step(val: u16) -> StepIdx { StepIdx::new(val) }
+    fn make_action(val: u16) -> ActionId { ActionId::new(val) }
+
+    fn make_timeline_event(seq: u32, kind: &str, step: Option<u16>, ts: u64) -> TimelineEvent {
+        TimelineEvent { seq, event_kind: kind.to_owned(), step_id: step, timestamp_micros: ts, color: TimelineStrip::event_color(kind) }
+    }
+
+    fn je_run_accepted(seq: u64) -> JournalEvent {
+        JournalEvent::RunAccepted { run: make_run_id(), seq: make_event_seq(seq), workflow: vb_core::WorkflowDigest::from_bytes([0u8; 32]) }
+    }
+    fn je_step_started(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::StepStarted { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+    }
+    fn je_step_succeeded(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::StepSucceeded { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), output: vb_core::SlotIdx::new(0) }
+    }
+    fn je_action_scheduled(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::ActionScheduled { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+    }
+    fn je_action_completed(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::ActionCompletedEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+    }
+    fn je_action_failed(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::ActionFailedEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+    }
+    fn je_slot_written(seq: u64) -> JournalEvent {
+        JournalEvent::SlotWrittenEvent { run: make_run_id(), seq: make_event_seq(seq), slot: vb_core::SlotIdx::new(0), value: None }
+    }
+    fn je_wait_scheduled(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::WaitScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+    }
+    fn je_ask_scheduled(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::AskScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+    }
+    fn je_ask_answered(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::AskAnsweredEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+    }
+    fn je_retry_scheduled(seq: u64, step: u16) -> JournalEvent {
+        JournalEvent::RetryScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+    }
+    fn je_run_cancelled(seq: u64) -> JournalEvent {
+        JournalEvent::RunCancelled { run: make_run_id(), seq: make_event_seq(seq) }
+    }
+    fn je_run_finished(seq: u64) -> JournalEvent {
+        JournalEvent::RunFinished { run: make_run_id(), seq: make_event_seq(seq), result: vb_core::SlotIdx::new(0) }
+    }
+    fn je_run_failed(seq: u64) -> JournalEvent {
+        JournalEvent::RunFailedEvent { run: make_run_id(), seq: make_event_seq(seq) }
     }
 
     // -- Construction --
-
     #[test]
-    fn new_timeline_is_empty() {
-        let tl = Timeline::new();
-        assert!(tl.is_empty());
-        assert_eq!(tl.len(), 0);
-        assert_eq!(tl.cursor(), None);
+    fn new_strip_is_empty() {
+        let strip = TimelineStrip::new();
+        assert!(strip.events().is_empty());
+        assert_eq!(strip.cursor(), None);
     }
 
     #[test]
     fn default_is_same_as_new() {
-        let tl = Timeline::default();
-        assert!(tl.is_empty());
+        let strip = TimelineStrip::default();
+        assert!(strip.events().is_empty());
+        assert_eq!(strip.cursor(), None);
     }
 
     #[test]
-    fn from_events_sorts_by_seq() {
-        let e3 = make_event(30, TimelineEventKind::RunAccepted, None);
-        let e1 = make_event(10, TimelineEventKind::StepStarted, Some(StepIdx::new(0)));
-        let e2 = make_event(20, TimelineEventKind::SlotWritten, None);
-
-        let tl = Timeline::from_events(vec![e3, e1, e2]);
-        assert_eq!(tl.len(), 3);
-        assert_eq!(tl.events()[0].seq, SeqNo::new(10));
-        assert_eq!(tl.events()[1].seq, SeqNo::new(20));
-        assert_eq!(tl.events()[2].seq, SeqNo::new(30));
+    fn from_journal_events_converts_run_accepted() {
+        let journal = vec![je_run_accepted(1)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().len(), 1);
+        let ev = strip.events().get(0).expect("event at 0");
+        assert_eq!(ev.seq, 1);
+        assert_eq!(ev.event_kind, "RunAccepted");
+        assert_eq!(ev.step_id, None);
+        assert_eq!(ev.color, NEON_CYAN);
     }
 
-    // -- Push --
+    #[test]
+    fn from_journal_events_converts_multiple_variants() {
+        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 0), je_action_failed(4, 0), je_run_failed(5)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().len(), 5);
+        assert_eq!(strip.events().get(0).map(|e| e.event_kind.as_str()), Some("RunAccepted"));
+        assert_eq!(strip.events().get(1).map(|e| e.event_kind.as_str()), Some("StepStarted"));
+        assert_eq!(strip.events().get(2).map(|e| e.event_kind.as_str()), Some("ActionScheduled"));
+        assert_eq!(strip.events().get(3).map(|e| e.event_kind.as_str()), Some("ActionFailed"));
+        assert_eq!(strip.events().get(4).map(|e| e.event_kind.as_str()), Some("RunFailed"));
+    }
 
     #[test]
-    fn push_maintains_sorted_order() {
-        let mut tl = Timeline::new();
-        tl.push(make_event(20, TimelineEventKind::SlotWritten, None));
-        tl.push(make_event(10, TimelineEventKind::RunAccepted, None));
-        tl.push(make_event(30, TimelineEventKind::RunFinished, None));
-
-        assert_eq!(tl.len(), 3);
-        assert_eq!(tl.events()[0].seq, SeqNo::new(10));
-        assert_eq!(tl.events()[1].seq, SeqNo::new(20));
-        assert_eq!(tl.events()[2].seq, SeqNo::new(30));
+    fn from_journal_events_empty_slice() {
+        let strip = TimelineStrip::from_journal_events(&[]);
+        assert!(strip.events().is_empty());
+        assert_eq!(strip.cursor(), None);
     }
 
     // -- Cursor --
-
     #[test]
-    fn set_cursor_on_empty_is_none() {
-        let mut tl = Timeline::new();
-        tl.set_cursor(5);
-        assert_eq!(tl.cursor(), None);
-    }
-
-    #[test]
-    fn set_cursor_clamps_to_last_index() {
-        let mut tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::StepStarted, Some(StepIdx::new(0))),
-        ]);
-        tl.set_cursor(100);
-        assert_eq!(tl.cursor(), Some(1));
+    fn set_cursor_on_empty_stays_none() {
+        let mut strip = TimelineStrip::new();
+        strip.set_cursor(5);
+        assert_eq!(strip.cursor(), None);
     }
 
     #[test]
     fn set_cursor_to_valid_index() {
-        let mut tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::StepStarted, Some(StepIdx::new(0))),
-        ]);
-        tl.set_cursor(0);
-        assert_eq!(tl.cursor(), Some(0));
-    }
-
-    // -- event_at --
-
-    #[test]
-    fn event_at_returns_event() {
-        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
-        let ev = tl.event_at(0);
-        assert!(ev.is_some());
-        assert_eq!(ev.map(|e| e.seq), Some(SeqNo::new(1)));
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100), make_timeline_event(3, "StepSucceeded", Some(0), 200)];
+        let mut strip = TimelineStrip { events, cursor_index: None };
+        strip.set_cursor(1);
+        assert_eq!(strip.cursor(), Some(1));
     }
 
     #[test]
-    fn event_at_out_of_bounds_returns_none() {
-        let tl = Timeline::new();
-        assert!(tl.event_at(0).is_none());
-    }
-
-    // -- events_by_kind --
-
-    #[test]
-    fn events_by_kind_filters_correctly() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::StepStarted, Some(StepIdx::new(0))),
-            make_event(3, TimelineEventKind::RunAccepted, None),
-        ]);
-        let accepted: Vec<_> = tl.events_by_kind(TimelineEventKind::RunAccepted).collect();
-        assert_eq!(accepted.len(), 2);
-        assert_eq!(accepted[0].0, 0);
-        assert_eq!(accepted[1].0, 2);
+    fn set_cursor_clamps_to_last_index() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100)];
+        let mut strip = TimelineStrip { events, cursor_index: None };
+        strip.set_cursor(999);
+        assert_eq!(strip.cursor(), Some(1));
     }
 
     #[test]
-    fn events_by_kind_no_match_returns_empty() {
-        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
-        let failed: Vec<_> = tl.events_by_kind(TimelineEventKind::RunFailed).collect();
-        assert!(failed.is_empty());
+    fn set_cursor_to_zero_on_single_event() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
+        let mut strip = TimelineStrip { events, cursor_index: None };
+        strip.set_cursor(0);
+        assert_eq!(strip.cursor(), Some(0));
     }
 
-    // -- step_events --
-
+    // -- filter_by_step --
     #[test]
-    fn step_events_returns_events_for_step() {
-        let step0 = StepIdx::new(0);
-        let step1 = StepIdx::new(1);
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::StepStarted, Some(step0)),
-            make_event(3, TimelineEventKind::StepStarted, Some(step1)),
-            make_event(4, TimelineEventKind::StepSucceeded, Some(step0)),
-        ]);
-        let s0: Vec<_> = tl.step_events(step0).collect();
-        assert_eq!(s0.len(), 2);
-        assert_eq!(s0[0].0, 1);
-        assert_eq!(s0[1].0, 3);
+    fn filter_by_step_returns_matching_indices() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100), make_timeline_event(3, "StepStarted", Some(1), 200), make_timeline_event(4, "StepSucceeded", Some(0), 300)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.filter_by_step(0), vec![1, 3]);
     }
 
     #[test]
-    fn step_events_no_match_returns_empty() {
-        let tl = Timeline::from_events(vec![make_event(1, TimelineEventKind::RunAccepted, None)]);
-        let s: Vec<_> = tl.step_events(StepIdx::new(99)).collect();
-        assert!(s.is_empty());
-    }
-
-    // -- find_first_failure --
-
-    #[test]
-    fn find_first_failure_returns_first_failure() {
-        let step = StepIdx::new(0);
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::StepStarted, Some(step)),
-            make_event(3, TimelineEventKind::StepFailed, Some(step)),
-            make_event(4, TimelineEventKind::ActionFailed, Some(step)),
-        ]);
-        assert_eq!(tl.find_first_failure(), Some(2));
+    fn filter_by_step_no_match_returns_empty() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert!(strip.filter_by_step(99).is_empty());
     }
 
     #[test]
-    fn find_first_failure_returns_none_when_no_failures() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::RunFinished, None),
-        ]);
-        assert_eq!(tl.find_first_failure(), None);
+    fn filter_by_step_on_empty_strip() {
+        let strip = TimelineStrip::new();
+        assert!(strip.filter_by_step(0).is_empty());
+    }
+
+    // -- filter_by_kind --
+    #[test]
+    fn filter_by_kind_returns_matching_prefix() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(0), 100), make_timeline_event(3, "ActionCompleted", Some(0), 200), make_timeline_event(4, "ActionFailed", Some(1), 300)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.filter_by_kind("Action"), vec![1, 2, 3]);
     }
 
     #[test]
-    fn find_first_failure_finds_run_failed() {
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::RunFailed, None),
-        ]);
-        assert_eq!(tl.find_first_failure(), Some(1));
-    }
-
-    // -- find_next_action --
-
-    #[test]
-    fn find_next_action_returns_next_action_for_step() {
-        let step = StepIdx::new(0);
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::ActionScheduled, Some(step)),
-            make_event(3, TimelineEventKind::StepStarted, Some(step)),
-            make_event(4, TimelineEventKind::ActionCompleted, Some(step)),
-        ]);
-        // After index 0, next action for step 0 is at index 1.
-        assert_eq!(tl.find_next_action(step, 0), Some(1));
-        // After index 1, next action for step 0 is at index 3.
-        assert_eq!(tl.find_next_action(step, 1), Some(3));
+    fn filter_by_kind_exact_match() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.filter_by_kind("RunFailed"), vec![1]);
     }
 
     #[test]
-    fn find_next_action_returns_none_when_no_more_actions() {
-        let step = StepIdx::new(0);
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::ActionScheduled, Some(step)),
-        ]);
-        // After index 1, no more actions for step 0.
-        assert_eq!(tl.find_next_action(step, 1), None);
+    fn filter_by_kind_no_match_returns_empty() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert!(strip.filter_by_kind("NoSuchKind").is_empty());
     }
 
     #[test]
-    fn find_next_action_returns_none_for_wrong_step() {
-        let step0 = StepIdx::new(0);
-        let step1 = StepIdx::new(1);
-        let tl = Timeline::from_events(vec![
-            make_event(1, TimelineEventKind::RunAccepted, None),
-            make_event(2, TimelineEventKind::ActionScheduled, Some(step0)),
-        ]);
-        // No actions for step 1.
-        assert_eq!(tl.find_next_action(step1, 0), None);
+    fn filter_by_kind_on_empty_strip() {
+        let strip = TimelineStrip::new();
+        assert!(strip.filter_by_kind("RunAccepted").is_empty());
     }
 
-    // -- kind_color --
-
+    // -- jump_to_failure --
     #[test]
-    fn kind_color_running_states_are_cyan() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::RunAccepted),
-            "neon_cyan"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::StepStarted),
-            "neon_cyan"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::RetryScheduled),
-            "neon_cyan"
-        );
+    fn jump_to_failure_finds_action_failed() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionFailed", Some(0), 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
-    fn kind_color_success_states_are_green() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::StepSucceeded),
-            "neon_green"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::ActionCompleted),
-            "neon_green"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::RunFinished),
-            "neon_green"
-        );
+    fn jump_to_failure_finds_run_failed() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
-    fn kind_color_failure_states_are_red() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::StepFailed),
-            "neon_red"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::ActionFailed),
-            "neon_red"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::RunFailed),
-            "neon_red"
-        );
+    fn jump_to_failure_returns_first_failure() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionFailed", Some(0), 100), make_timeline_event(3, "RunFailed", None, 200)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
-    fn kind_color_wait_is_blue() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::WaitScheduled),
-            "neon_blue"
-        );
+    fn jump_to_failure_returns_none_when_no_failures() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFinished", None, 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_failure(), None);
     }
 
     #[test]
-    fn kind_color_ask_states_are_yellow() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::AskScheduled),
-            "neon_yellow"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::AskAnswered),
-            "neon_yellow"
-        );
+    fn jump_to_failure_on_empty_strip() {
+        let strip = TimelineStrip::new();
+        assert_eq!(strip.jump_to_failure(), None);
+    }
+
+    // -- jump_to_action --
+    #[test]
+    fn jump_to_action_finds_scheduled_for_step() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(3), 100), make_timeline_event(3, "ActionScheduled", Some(5), 200)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_action(3), Some(1));
+        assert_eq!(strip.jump_to_action(5), Some(2));
     }
 
     #[test]
-    fn kind_color_action_states_are_orange() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::ActionScheduled),
-            "neon_orange"
-        );
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::SlotWritten),
-            "neon_orange"
-        );
+    fn jump_to_action_returns_none_for_wrong_step() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(3), 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_action(99), None);
     }
 
     #[test]
-    fn kind_color_cancelled_is_purple() {
-        assert_eq!(
-            Timeline::kind_color(TimelineEventKind::RunCancelled),
-            "neon_purple"
-        );
+    fn jump_to_action_on_empty_strip() {
+        let strip = TimelineStrip::new();
+        assert_eq!(strip.jump_to_action(0), None);
+    }
+
+    // -- event_color --
+    #[test]
+    fn event_color_run_accepted_is_cyan() { assert_eq!(TimelineStrip::event_color("RunAccepted"), NEON_CYAN); }
+    #[test]
+    fn event_color_step_started_is_cyan() { assert_eq!(TimelineStrip::event_color("StepStarted"), NEON_CYAN); }
+    #[test]
+    fn event_color_ask_answered_is_cyan() { assert_eq!(TimelineStrip::event_color("AskAnswered"), NEON_CYAN); }
+    #[test]
+    fn event_color_step_succeeded_is_green() { assert_eq!(TimelineStrip::event_color("StepSucceeded"), NEON_GREEN); }
+    #[test]
+    fn event_color_action_completed_is_green() { assert_eq!(TimelineStrip::event_color("ActionCompleted"), NEON_GREEN); }
+    #[test]
+    fn event_color_action_failed_is_red() { assert_eq!(TimelineStrip::event_color("ActionFailed"), NEON_RED); }
+    #[test]
+    fn event_color_run_failed_is_red() { assert_eq!(TimelineStrip::event_color("RunFailed"), NEON_RED); }
+    #[test]
+    fn event_color_slot_written_is_teal() { assert_eq!(TimelineStrip::event_color("SlotWritten"), NEON_TEAL); }
+    #[test]
+    fn event_color_run_finished_is_teal() { assert_eq!(TimelineStrip::event_color("RunFinished"), NEON_TEAL); }
+    #[test]
+    fn event_color_action_scheduled_is_orange() { assert_eq!(TimelineStrip::event_color("ActionScheduled"), NEON_ORANGE); }
+    #[test]
+    fn event_color_retry_scheduled_is_orange() { assert_eq!(TimelineStrip::event_color("RetryScheduled"), NEON_ORANGE); }
+    #[test]
+    fn event_color_wait_scheduled_is_blue() { assert_eq!(TimelineStrip::event_color("WaitScheduled"), NEON_BLUE); }
+    #[test]
+    fn event_color_ask_scheduled_is_yellow() { assert_eq!(TimelineStrip::event_color("AskScheduled"), NEON_YELLOW); }
+    #[test]
+    fn event_color_run_cancelled_is_dim() { assert_eq!(TimelineStrip::event_color("RunCancelled"), DIM); }
+    #[test]
+    fn event_color_unknown_is_magenta() { assert_eq!(TimelineStrip::event_color("UnknownEvent"), NEON_MAGENTA); }
+
+    // -- Boundary and multi-failure --
+    #[test]
+    fn boundary_single_event_strip() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.events().len(), 1);
+        let mut s = strip.clone();
+        s.set_cursor(0);
+        assert_eq!(s.cursor(), Some(0));
+        s.set_cursor(100);
+        assert_eq!(s.cursor(), Some(0));
+    }
+
+    #[test]
+    fn multiple_failures_jump_to_first() {
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionFailed", Some(0), 100),
+            make_timeline_event(3, "StepSucceeded", Some(1), 200),
+            make_timeline_event(4, "ActionFailed", Some(2), 300),
+            make_timeline_event(5, "RunFailed", None, 400),
+        ];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_failure(), Some(1));
+    }
+
+    #[test]
+    fn full_journal_round_trip() {
+        let journal = vec![
+            je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 0),
+            je_action_completed(4, 0), je_slot_written(5), je_step_succeeded(6, 0),
+            je_wait_scheduled(7, 1), je_ask_scheduled(8, 2), je_ask_answered(9, 2),
+            je_retry_scheduled(10, 0), je_run_finished(11),
+        ];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().len(), 11);
+        let expected = ["RunAccepted", "StepStarted", "ActionScheduled", "ActionCompleted", "SlotWritten", "StepSucceeded", "WaitScheduled", "AskScheduled", "AskAnswered", "RetryScheduled", "RunFinished"];
+        for (i, exp) in expected.iter().enumerate() {
+            let ev = strip.events().get(i).expect("event exists");
+            assert_eq!(ev.event_kind, *exp, "mismatch at index {i}");
+        }
+    }
+
+    #[test]
+    fn from_journal_events_step_ids_preserved() {
+        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 5), je_step_succeeded(4, 10)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().get(0).and_then(|e| e.step_id), None);
+        assert_eq!(strip.events().get(1).and_then(|e| e.step_id), Some(0));
+        assert_eq!(strip.events().get(2).and_then(|e| e.step_id), Some(5));
+        assert_eq!(strip.events().get(3).and_then(|e| e.step_id), Some(10));
+    }
+
+    #[test]
+    fn cancelled_and_failed_journal_events() {
+        let journal = vec![je_run_accepted(1), je_run_cancelled(2)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().get(1).map(|e| e.event_kind.as_str()), Some("RunCancelled"));
+        assert_eq!(strip.events().get(1).map(|e| e.color), Some(DIM));
+
+        let journal2 = vec![je_run_accepted(1), je_run_failed(2)];
+        let strip2 = TimelineStrip::from_journal_events(&journal2);
+        assert_eq!(strip2.events().get(1).map(|e| e.event_kind.as_str()), Some("RunFailed"));
+        assert_eq!(strip2.events().get(1).map(|e| e.color), Some(NEON_RED));
+    }
+
+    #[test]
+    fn filter_by_kind_partial_prefix_match() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100), make_timeline_event(3, "RunFinished", None, 200), make_timeline_event(4, "RunCancelled", None, 300)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.filter_by_kind("Run"), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn jump_to_action_does_not_match_action_completed() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionCompleted", Some(0), 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        assert_eq!(strip.jump_to_action(0), None);
+    }
+
+    #[test]
+    fn events_returns_correct_slice() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100)];
+        let strip = TimelineStrip { events, cursor_index: None };
+        let slice = strip.events();
+        assert_eq!(slice.len(), 2);
+        assert_eq!(slice.get(0).map(|e| e.seq), Some(1));
+        assert_eq!(slice.get(1).map(|e| e.seq), Some(2));
+    }
+
+    #[test]
+    fn from_journal_events_seq_numbers() {
+        let journal = vec![je_run_accepted(42), je_step_started(99, 0), je_run_failed(255)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        assert_eq!(strip.events().get(0).map(|e| e.seq), Some(42));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(99));
+        assert_eq!(strip.events().get(2).map(|e| e.seq), Some(255));
     }
 }

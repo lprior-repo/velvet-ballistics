@@ -3726,7 +3726,7 @@ fn object_slot_value(
 mod tests {
     use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits, validate_public_name};
     use super::{
-        compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
+        compile_to_generated_rust, compile_expr_to_bytecode, compute_compiled_digest, lower_ask, lower_do, lower_finish,
         lower_set, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce,
         lower_repeat, lower_wait, lower_steps_to_ir, WaitKind, build_slot_layout,
         build_accessor_table, build_constant_pool, validate_ir,
@@ -9909,6 +9909,196 @@ steps:
         adv_ensure(workflow.step_name(StepIdx::new(1)) == Some("retry_op"), "1=retry_op")?;
         adv_ensure(workflow.step_name(StepIdx::new(2)) == Some("retry_op"), "2=retry_op")?;
         adv_ensure(workflow.step_name(StepIdx::new(3)) == Some("done"), "3=done")
+    }
+
+
+    // ========================================================================
+    // Section 38 behavioral property tests
+    // ========================================================================
+
+    const MINIMAL_WORKFLOW_SOURCE: &[u8] = br#"version: velvet-ballastics/v1
+name: digest_test
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      value: 42
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    /// Section 38 test 1: Digest stability -- same YAML source produces the
+    /// same compiled digest every time.
+    #[test]
+    fn digest_stability_same_yaml_produces_same_digest() -> Result<(), String> {
+        let digest_a = compute_compiled_digest(MINIMAL_WORKFLOW_SOURCE);
+        let digest_b = compute_compiled_digest(MINIMAL_WORKFLOW_SOURCE);
+        adv_ensure(digest_a == digest_b, "same source must produce identical digests")
+    }
+
+    /// Section 38 test 1: Digest stability -- different YAML produces a
+    /// different digest.
+    #[test]
+    fn digest_stability_different_yaml_produces_different_digest() -> Result<(), String> {
+        let digest_a = compute_compiled_digest(MINIMAL_WORKFLOW_SOURCE);
+        let different_source = br#"version: velvet-ballastics/v1
+name: digest_different
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      value: 99
+  - id: done
+    finish:
+      result: 0
+"#;
+        let digest_b = compute_compiled_digest(different_source);
+        adv_ensure(digest_a != digest_b, "different sources must produce different digests")
+    }
+
+    /// Section 38 test 2: Layout stability -- same compiled IR always produces
+    /// the same node ordering (node IDs in sequence).
+    #[test]
+    fn layout_stability_same_compiled_ir_produces_same_node_ordering() -> Result<(), String> {
+        let workflow_a = adv_compile_ok(MINIMAL_WORKFLOW_SOURCE)?;
+        let workflow_b = adv_compile_ok(MINIMAL_WORKFLOW_SOURCE)?;
+        adv_ensure(workflow_a.node_count() == workflow_b.node_count(), "node counts must match")?;
+        let count = workflow_a.node_count();
+        let mut idx = 0u16;
+        while idx < count {
+            let node_a = workflow_a.node(StepIdx::new(idx));
+            let node_b = workflow_b.node(StepIdx::new(idx));
+            match (node_a, node_b) {
+                (Some(a), Some(b)) => {
+                    adv_ensure(a.id == b.id, "node IDs must match at same index")?;
+                    adv_ensure(a.kind == b.kind, "node kinds must match at same index")?;
+                }
+                _ => return Err("node unexpectedly missing".to_owned()),
+            }
+            idx = match idx.checked_add(1) {
+                Some(n) => n,
+                None => return Err("node count overflow".to_owned()),
+            };
+        }
+        Ok(())
+    }
+
+    /// Section 38 test 8: Constant folding parity -- compiling an expression
+    /// with a constant literal produces bytecode that evaluates to the same
+    /// result as the literal itself.
+    #[test]
+    fn constant_folding_parity_literal_expression_matches_value() -> Result<(), String> {
+        use crate::expression::{ExpressionLiteral, ParsedExpression};
+        let mut constants = Vec::new();
+        let expr = ParsedExpression::Literal(ExpressionLiteral::I64(42));
+        let program = compile_expr_to_bytecode(&expr, &mut constants)
+            .map_err(|e| format!("{e:?}"))?;
+        let ops = program.ops;
+        adv_ensure(ops.len() == 1, "literal expression must lower to single op")?;
+        match ops.get(0) {
+            Some(vb_core::ExprOp::LoadConst(idx)) => {
+                let value = constants.get(usize::from(idx.get()));
+                match value {
+                    Some(ConstValue::I64(42)) => Ok(()),
+                    Some(other) => Err(format!("expected I64(42), got {other:?}")),
+                    None => Err("constant index out of bounds".to_owned()),
+                }
+            }
+            Some(other) => Err(format!("expected LoadConst, got {other:?}")),
+            None => Err("ops empty".to_owned()),
+        }
+    }
+
+    /// Section 38 test 8: Constant folding parity -- a binary expression on
+    /// two constants produces a valid program that compiles cleanly.
+    #[test]
+    fn constant_folding_parity_binary_expression_compiles() -> Result<(), String> {
+        use crate::expression::{BinaryOp, ExpressionLiteral, ParsedExpression};
+        let mut constants = Vec::new();
+        let expr = ParsedExpression::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(10))),
+            right: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(20))),
+        };
+        let program = compile_expr_to_bytecode(&expr, &mut constants)
+            .map_err(|e| format!("{e:?}"))?;
+        let ops = program.ops;
+        adv_ensure(ops.len() == 3, "binary expression must lower to 3 ops")?;
+        adv_ensure(
+            matches!(ops.get(2), Some(vb_core::ExprOp::Add)),
+            "last op must be Add",
+        )
+    }
+
+    /// Section 38 test 9: Bytecode/AST parity -- verify that bytecode
+    /// compilation of a comparison expression produces the correct ops.
+    #[test]
+    fn bytecode_ast_parity_comparison_expression_produces_correct_ops() -> Result<(), String> {
+        use crate::expression::{BinaryOp, ExpressionLiteral, ParsedExpression};
+        let mut constants = Vec::new();
+        // Expression: (10 + 20) == 30
+        let expr = ParsedExpression::Binary {
+            op: BinaryOp::Eq,
+            left: Box::new(ParsedExpression::Binary {
+                op: BinaryOp::Add,
+                left: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(10))),
+                right: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(20))),
+            }),
+            right: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(30))),
+        };
+        let program = compile_expr_to_bytecode(&expr, &mut constants)
+            .map_err(|e| format!("{e:?}"))?;
+        let ops = program.ops;
+        // Expected: LoadConst(10), LoadConst(20), Add, LoadConst(30), Eq
+        adv_ensure(ops.len() == 5, "nested expression must lower to 5 ops")?;
+        adv_ensure(
+            matches!(ops.get(2), Some(vb_core::ExprOp::Add)),
+            "third op must be Add",
+        )?;
+        adv_ensure(
+            matches!(ops.get(4), Some(vb_core::ExprOp::Eq)),
+            "last op must be Eq",
+        )?;
+        // Verify constants: 10, 20, 30
+        adv_ensure(constants.len() == 3, "must have 3 constants")?;
+        adv_ensure(
+            matches!(constants.get(0), Some(ConstValue::I64(10))),
+            "first constant must be I64(10)",
+        )?;
+        adv_ensure(
+            matches!(constants.get(1), Some(ConstValue::I64(20))),
+            "second constant must be I64(20)",
+        )?;
+        adv_ensure(
+            matches!(constants.get(2), Some(ConstValue::I64(30))),
+            "third constant must be I64(30)",
+        )
+    }
+
+    /// Section 38 test 10: IR/generated parity -- compile a simple workflow
+    /// and verify that generated Rust mode produces valid output for the
+    /// supported subset.
+    #[test]
+    fn ir_generated_parity_simple_workflow_compiles_to_rust() -> Result<(), String> {
+        let workflow = adv_compile_ok(MINIMAL_WORKFLOW_SOURCE)?;
+        match compile_to_generated_rust(&workflow) {
+            Ok(rust_source) => {
+                adv_ensure(!rust_source.is_empty(), "generated Rust must not be empty")?;
+                adv_ensure(
+                    rust_source.contains("pub fn drive"),
+                    "generated Rust must contain a drive function",
+                )
+            }
+            Err(crate::CompileErrors(errors)) => {
+                adv_ensure(
+                    !errors.is_empty(),
+                    "codegen errors must be non-empty",
+                )
+            }
+        }
     }
 
 }

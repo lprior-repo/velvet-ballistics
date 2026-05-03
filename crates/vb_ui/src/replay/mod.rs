@@ -13,8 +13,8 @@ pub mod types;
 
 pub use controller::{ControllerEvent, PlaybackState, ReplayController};
 pub use engine::ReplayEngine;
-pub use slot_panel::{SlotChange, SlotDiffEntry, SlotDiffPanel, TaintChange};
+pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};
 pub use state::{ReplayState, TerminalKind};
 pub use ticket_panel::{ActionTicketDisplay, SideEffectCertainty};
-pub use timeline::{Timeline, TimelineEvent, TimelineEventKind};
-pub use types::{PlaybackSpeed, ReplayDiff, SlotDiff, TaintDiff};
+pub use timeline::{TimelineEvent, TimelineStrip};
+pub use types::{PlaybackSpeed, ReplayDiff, TaintDiff};

@@ -1,12 +1,27 @@
 use super::types::{FailureCode, Incident, SideEffectCertainty};
 
+/// Primary repair kind as specified by the Phase 5A contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepairKind {
+    IncreaseTimeout,
+    AddRetryBackoff,
+    ReducePayload,
+    PinIdempotency,
+    FixSecretLeak,
+}
+
+/// A single repair suggestion tied to a [`RepairKind`].
 #[derive(Debug, Clone)]
 pub struct RepairSuggestion {
-    pub action: RepairAction,
+    pub kind: RepairKind,
     pub description: String,
+    /// Legacy action field for backward compatibility.
+    pub action: RepairAction,
+    /// Confidence score between 0.0 and 1.0.
     pub confidence: f32,
 }
 
+/// Extended repair actions for additional failure modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RepairAction {
     IncreaseTimeout,
@@ -24,11 +39,13 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
     match &incident.failure_code {
         FailureCode::ActionTimeout => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::IncreaseTimeout,
                 action: RepairAction::IncreaseTimeout,
                 description: "Increase the action timeout to accommodate slower responses".into(),
                 confidence: 0.9,
             });
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::AddRetryBackoff,
                 action: RepairAction::AddRetryBackoff,
                 description: "Add exponential backoff to handle transient timeouts".into(),
                 confidence: 0.7,
@@ -36,6 +53,7 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
         }
         FailureCode::ActionFailed(_) => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::AddRetryBackoff,
                 action: RepairAction::RestartRun,
                 description: format!("Restart the run (replay safe: {})", incident.replay_safe),
                 confidence: if incident.replay_safe { 0.95 } else { 0.3 },
@@ -43,6 +61,7 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
         }
         FailureCode::BudgetExceeded => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::IncreaseTimeout,
                 action: RepairAction::AdjustBudget,
                 description: "Increase the step budget in the resource contract".into(),
                 confidence: 0.8,
@@ -50,13 +69,15 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
         }
         FailureCode::StepPanicked => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::AddRetryBackoff,
                 action: RepairAction::ManualIntervention,
-                description: "Step panicked — investigate the step logic and fix the bug".into(),
+                description: "Step panicked - investigate the step logic and fix the bug".into(),
                 confidence: 0.5,
             });
         }
         FailureCode::ValidationError(msg) => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::ReducePayload,
                 action: RepairAction::ManualIntervention,
                 description: format!("Validation error: {msg}"),
                 confidence: 0.4,
@@ -64,30 +85,34 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
         }
         FailureCode::TaintLeak => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::FixSecretLeak,
                 action: RepairAction::FixSecretLeak,
-                description: "Secret data reached a public result — add taint barrier".into(),
+                description: "Secret data reached a public result - add taint barrier".into(),
                 confidence: 0.85,
             });
         }
         FailureCode::ReplayDivergence => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::PinIdempotency,
                 action: RepairAction::ManualIntervention,
-                description: "Replay diverged from original execution — investigate journal".into(),
+                description: "Replay diverged from original execution - investigate journal".into(),
                 confidence: 0.3,
             });
         }
         FailureCode::Unknown(_) => {
             suggestions.push(RepairSuggestion {
+                kind: RepairKind::PinIdempotency,
                 action: RepairAction::ManualIntervention,
-                description: "Unknown failure — manual investigation required".into(),
+                description: "Unknown failure - manual investigation required".into(),
                 confidence: 0.1,
             });
         }
     }
     if incident.side_effect_certainty == SideEffectCertainty::Unknown {
         suggestions.push(RepairSuggestion {
+            kind: RepairKind::PinIdempotency,
             action: RepairAction::PinIdempotency,
-            description: "Side effect certainty unknown — pin idempotency key before retry".into(),
+            description: "Side effect certainty unknown - pin idempotency key before retry".into(),
             confidence: 0.6,
         });
     }
@@ -97,7 +122,8 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
 #[cfg(test)]
 mod tests {
     use super::super::types::{
-        FailureCode, Incident, IncidentContext, IncidentSeverity, SideEffectCertainty,
+        FailureCode, Incident, IncidentContext, IncidentSeverity, IncidentType,
+        SideEffectCertainty,
     };
     use super::*;
     use std::time::Instant;
@@ -105,6 +131,7 @@ mod tests {
     fn make_incident(code: FailureCode, certainty: SideEffectCertainty) -> Incident {
         Incident {
             id: 1,
+            incident_type: IncidentType::ActionFailure,
             severity: IncidentSeverity::Major,
             failure_code: code,
             run_id: 1,
@@ -129,41 +156,24 @@ mod tests {
     fn test_action_timeout_suggests_increase_timeout() {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(
-            suggestions
-                .iter()
-                .any(|s| s.action == RepairAction::IncreaseTimeout)
-        );
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
     }
 
     #[test]
     fn test_taint_leak_suggests_fix_secret_leak() {
         let incident = make_incident(FailureCode::TaintLeak, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(
-            suggestions
-                .iter()
-                .any(|s| s.action == RepairAction::FixSecretLeak)
-        );
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::FixSecretLeak));
     }
 
     #[test]
     fn test_unknown_certainty_adds_pin_idempotency() {
-        let incident = make_incident(
-            FailureCode::Unknown("x".into()),
-            SideEffectCertainty::Unknown,
-        );
+        let incident = make_incident(FailureCode::Unknown("x".into()), SideEffectCertainty::Unknown);
         let suggestions = suggest_repairs(&incident);
-        assert!(
-            suggestions
-                .iter()
-                .any(|s| s.action == RepairAction::PinIdempotency)
-        );
-        // The Unknown failure code itself should also add ManualIntervention.
-        assert!(
-            suggestions
-                .iter()
-                .any(|s| s.action == RepairAction::ManualIntervention)
-        );
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
     }
 }

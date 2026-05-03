@@ -1,169 +1,210 @@
 //! Slot diff panel -- shows what changed at each replay event boundary.
+//!
+//! Phase 1D component: computes and renders slot-value diffs between two
+//! replay states, supporting both single-event inspection (via
+//! [`SlotDiffPanel::from_event`]) and full state comparison (via
+//! [`SlotDiffPanel::diff_between`]).
 
+use std::collections::HashMap;
 use vb_core::ids::SlotIdx;
-use vb_core::value::{SlotValue, Taint};
+use vb_core::value::SlotValue;
+use vb_storage::events::JournalEvent;
 
-// ---------------------------------------------------------------------------
-// Slot change
-// ---------------------------------------------------------------------------
-
-/// Describes how a slot's value changed between two replay states.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SlotChange {
-    /// Slot was written with a new value.
-    Written {
-        /// Previous value, or `None` if the slot was previously unset.
-        before: Option<SlotValue>,
-        /// New value after the write.
-        after: SlotValue,
-    },
-    /// Slot was cleared (value removed).
-    Cleared {
-        /// Value that was present before clearing.
-        before: SlotValue,
-    },
-    /// No change to the slot value.
-    Unchanged,
-}
-
-// ---------------------------------------------------------------------------
-// Taint change
-// ---------------------------------------------------------------------------
-
-/// Describes how a slot's taint changed between two replay states.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TaintChange {
-    /// Taint level changed.
-    Changed {
-        /// Taint before the transition.
-        before: Taint,
-        /// Taint after the transition.
-        after: Taint,
-    },
-    /// No change to the taint level.
-    Unchanged,
-}
-
-// ---------------------------------------------------------------------------
-// Slot diff (panel entry)
-// ---------------------------------------------------------------------------
-
-/// A single slot's value and taint transition at a replay boundary.
+/// Describes the kind of change observed for a single slot.
 ///
-/// This is the panel-specific diff type. It differs from
-/// [`super::types::SlotDiff`] which carries serialized string values
-/// for engine-level diffs; this type carries rich typed values for
-/// the UI panel display.
-#[derive(Debug, Clone)]
-pub struct SlotDiffEntry {
-    /// Which slot changed.
-    pub slot: SlotIdx,
-    /// How the value changed.
-    pub value_change: SlotChange,
-    /// How the taint changed.
-    pub taint_change: TaintChange,
+/// Stores formatted [`String`] representations rather than borrowed
+/// [`SlotValue`] references, so the diff is fully owned and can outlive
+/// the source data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SlotDiff {
+    /// Slot appeared with a new value (was absent in the previous state).
+    Created(String),
+    /// Slot value changed from `old` to `new`.
+    Modified {
+        /// Formatted previous value.
+        old: String,
+        /// Formatted new value.
+        new: String,
+    },
+    /// Slot was removed (present in previous state, absent in new state).
+    Deleted(String),
+    /// Slot value did not change but its taint label did.
+    TaintChanged {
+        /// Formatted previous taint.
+        old: String,
+        /// Formatted new taint.
+        new: String,
+    },
 }
 
-// ---------------------------------------------------------------------------
-// Slot diff panel
-// ---------------------------------------------------------------------------
+/// A single slot diff entry: which slot, and what changed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiffEntry {
+    /// Slot that changed.
+    pub slot: SlotIdx,
+    /// Description of the change.
+    pub diff: SlotDiff,
+}
 
 /// Panel model for displaying slot diffs at a replay boundary.
 pub struct SlotDiffPanel {
-    diffs: Vec<SlotDiffEntry>,
-    selected: Option<usize>,
+    entries: Vec<DiffEntry>,
+    event_seq: u32,
 }
 
 impl SlotDiffPanel {
-    /// Creates an empty panel with no selection.
+    /// Creates an empty panel (no entries, seq = 0).
     #[must_use]
     pub fn new() -> Self {
         Self {
-            diffs: Vec::new(),
-            selected: None,
+            entries: Vec::new(),
+            event_seq: 0,
         }
     }
 
-    /// Creates a panel pre-populated with diffs.
-    #[must_use]
-    pub fn from_changes(diffs: Vec<SlotDiffEntry>) -> Self {
-        Self {
-            diffs,
-            selected: None,
-        }
-    }
-
-    /// Returns all diffs in the panel.
-    #[must_use]
-    pub fn diffs(&self) -> &[SlotDiffEntry] {
-        &self.diffs
-    }
-
-    /// Returns the currently selected diff, if any.
-    #[must_use]
-    pub fn selected(&self) -> Option<&SlotDiffEntry> {
-        self.selected.and_then(|idx| self.diffs.get(idx))
-    }
-
-    /// Sets the selection to the given index.
+    /// Build a panel from a single [`JournalEvent::SlotWrittenEvent`].
     ///
-    /// Clamps to the valid range. Set to `None` if the panel is empty.
-    pub fn select(&mut self, idx: usize) {
-        if self.diffs.is_empty() {
-            self.selected = None;
-            return;
-        }
-        self.selected = Some(idx.min(self.diffs.len().saturating_sub(1)));
-    }
-
-    /// Clears the selection.
-    pub fn clear_selection(&mut self) {
-        self.selected = None;
-    }
-
-    /// Returns diffs where taint changed to a non-Clean value.
-    pub fn tainted_diffs(&self) -> impl Iterator<Item = &SlotDiffEntry> {
-        self.diffs.iter().filter(|d| {
-            matches!(
-                d.taint_change,
-                TaintChange::Changed {
-                    after: Taint::Secret | Taint::DerivedFromSecret,
-                    ..
-                }
-            )
-        })
-    }
-
-    /// Returns a human-readable string for a single diff entry.
+    /// For `SlotWrittenEvent` variants, records the slot write as
+    /// [`SlotDiff::Created`] (slot absent from `current_slots`) or
+    /// [`SlotDiff::Modified`] (slot present with a different value).
+    /// All other event variants produce an empty panel.
     #[must_use]
-    pub fn format_diff(diff: &SlotDiffEntry) -> String {
-        let value_str = match &diff.value_change {
-            SlotChange::Written { before, after } => {
-                let before_display = before
-                    .as_ref()
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|| String::from("<unset>"));
-                format!("{} -> {after}", before_display)
-            }
-            SlotChange::Cleared { before } => {
-                format!("{before} -> <cleared>")
-            }
-            SlotChange::Unchanged => String::from("(no change)"),
-        };
+    pub fn from_event(
+        event: &JournalEvent,
+        current_slots: &HashMap<SlotIdx, SlotValue>,
+    ) -> Self {
+        match event {
+            JournalEvent::SlotWrittenEvent {
+                seq, slot, value, ..
+            } => {
+                let new_value: Option<SlotValue> = match value {
+                    Some(bytes) => postcard::from_bytes(bytes).ok(),
+                    None => None,
+                };
+                let seq_val = seq.get();
 
-        let taint_str = match &diff.taint_change {
-            TaintChange::Changed { before, after } => {
-                format!("{before:?} -> {after:?}")
-            }
-            TaintChange::Unchanged => String::from("(no change)"),
-        };
+                let Some(new_val) = new_value else {
+                    return Self {
+                        entries: Vec::new(),
+                        event_seq: u32::try_from(seq_val).unwrap_or(u32::MAX),
+                    };
+                };
 
-        format!(
-            "slot[{}]: value={} taint={}",
-            diff.slot.get(),
-            value_str,
-            taint_str
-        )
+                let new_fmt = format!("{new_val:?}");
+
+                let diff = match current_slots.get(slot) {
+                    None => SlotDiff::Created(new_fmt),
+                    Some(old_val) => {
+                        let old_fmt = format!("{old_val:?}");
+                        if old_fmt == new_fmt {
+                            return Self {
+                                entries: Vec::new(),
+                                event_seq: u32::try_from(seq_val).unwrap_or(u32::MAX),
+                            };
+                        }
+                        SlotDiff::Modified {
+                            old: old_fmt,
+                            new: new_fmt,
+                        }
+                    }
+                };
+
+                let seq_u32 = u32::try_from(seq_val).unwrap_or(u32::MAX);
+                Self {
+                    entries: vec![DiffEntry {
+                        slot: *slot,
+                        diff,
+                    }],
+                    event_seq: seq_u32,
+                }
+            }
+            _ => Self::new(),
+        }
+    }
+
+    /// Compute all differences between two slot-state snapshots.
+    #[must_use]
+    pub fn diff_between(
+        before: &HashMap<SlotIdx, SlotValue>,
+        after: &HashMap<SlotIdx, SlotValue>,
+    ) -> Self {
+        let mut entries = Vec::new();
+
+        for (&slot, new_val) in after {
+            let new_fmt = format!("{new_val:?}");
+            match before.get(&slot) {
+                None => {
+                    entries.push(DiffEntry {
+                        slot,
+                        diff: SlotDiff::Created(new_fmt),
+                    });
+                }
+                Some(old_val) => {
+                    let old_fmt = format!("{old_val:?}");
+                    if old_fmt != new_fmt {
+                        entries.push(DiffEntry {
+                            slot,
+                            diff: SlotDiff::Modified {
+                                old: old_fmt,
+                                new: new_fmt,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        for (&slot, old_val) in before {
+            if after.get(&slot).is_none() {
+                entries.push(DiffEntry {
+                    slot,
+                    diff: SlotDiff::Deleted(format!("{old_val:?}")),
+                });
+            }
+        }
+
+        Self {
+            entries,
+            event_seq: 0,
+        }
+    }
+
+    /// Returns all diff entries in the panel.
+    #[must_use]
+    pub fn entries(&self) -> &[DiffEntry] {
+        &self.entries
+    }
+
+    /// Returns `true` if the panel contains at least one diff entry.
+    #[must_use]
+    pub fn has_changes(&self) -> bool {
+        !self.entries.is_empty()
+    }
+
+    /// Returns the event sequence number associated with this panel.
+    #[must_use]
+    pub const fn event_seq(&self) -> u32 {
+        self.event_seq
+    }
+
+    /// Returns a human-readable diff line for a single entry.
+    #[must_use]
+    pub fn format_entry(entry: &DiffEntry) -> String {
+        let slot_label = format!("SlotIdx({})", entry.slot.get());
+        match &entry.diff {
+            SlotDiff::Created(val) => {
+                format!("{slot_label}: <created> {val}")
+            }
+            SlotDiff::Modified { old, new } => {
+                format!("{slot_label}: {old} -> {new}")
+            }
+            SlotDiff::Deleted(val) => {
+                format!("{slot_label}: {val} -> <deleted>")
+            }
+            SlotDiff::TaintChanged { old, new } => {
+                format!("{slot_label}: taint {old} -> {new}")
+            }
+        }
     }
 }
 
@@ -176,235 +217,287 @@ impl Default for SlotDiffPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::ObjectId;
+    use vb_storage::types::EventSeq;
 
-    fn make_written_diff(slot: u16, before: Option<SlotValue>, after: SlotValue) -> SlotDiffEntry {
-        SlotDiffEntry {
+    fn slot_map(pairs: &[(u16, SlotValue)]) -> HashMap<SlotIdx, SlotValue> {
+        pairs.iter().map(|(k, v)| (SlotIdx::new(*k), *v)).collect()
+    }
+
+    fn make_slot_written_event(slot: u16, value: SlotValue, seq: u64) -> JournalEvent {
+        let bytes = postcard::to_allocvec(&value);
+        JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(seq),
             slot: SlotIdx::new(slot),
-            value_change: SlotChange::Written { before, after },
-            taint_change: TaintChange::Unchanged,
+            value: bytes.ok(),
         }
     }
 
-    fn make_tainted_diff(slot: u16, taint: Taint) -> SlotDiffEntry {
-        SlotDiffEntry {
-            slot: SlotIdx::new(slot),
-            value_change: SlotChange::Written {
-                before: None,
-                after: SlotValue::I64(42),
-            },
-            taint_change: TaintChange::Changed {
-                before: Taint::Clean,
-                after: taint,
-            },
+    fn make_step_started_event(seq: u64) -> JournalEvent {
+        JournalEvent::StepStarted {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(seq),
+            step: vb_core::ids::StepIdx::new(0),
         }
     }
-
-    // -- Construction --
 
     #[test]
     fn new_panel_is_empty() {
         let panel = SlotDiffPanel::new();
-        assert!(panel.diffs().is_empty());
-        assert!(panel.selected().is_none());
+        assert!(panel.entries().is_empty());
+        assert!(!panel.has_changes());
+        assert_eq!(panel.event_seq(), 0);
     }
 
     #[test]
-    fn default_is_same_as_new() {
+    fn default_matches_new() {
         let panel = SlotDiffPanel::default();
-        assert!(panel.diffs().is_empty());
+        assert!(panel.entries().is_empty());
+        assert!(!panel.has_changes());
     }
 
     #[test]
-    fn from_changes_populates_diffs() {
-        let diffs = vec![make_written_diff(0, None, SlotValue::Bool(true))];
-        let panel = SlotDiffPanel::from_changes(diffs);
-        assert_eq!(panel.diffs().len(), 1);
-    }
-
-    // -- Selection --
-
-    #[test]
-    fn select_on_empty_panel_is_none() {
-        let mut panel = SlotDiffPanel::new();
-        panel.select(0);
-        assert!(panel.selected().is_none());
+    fn from_event_non_slot_event_produces_empty() {
+        let event = make_step_started_event(5);
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(!panel.has_changes());
+        assert!(panel.entries().is_empty());
     }
 
     #[test]
-    fn select_clamps_to_last_index() {
-        let diffs = vec![
-            make_written_diff(0, None, SlotValue::I64(1)),
-            make_written_diff(1, None, SlotValue::I64(2)),
-        ];
-        let mut panel = SlotDiffPanel::from_changes(diffs);
-        panel.select(100);
+    fn from_event_slot_created_when_absent_from_current() {
+        let event = make_slot_written_event(12, SlotValue::Null, 42);
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        assert_eq!(panel.event_seq(), 42);
+        let entry = panel.entries().get(0).expect("entry exists");
+        assert_eq!(entry.slot, SlotIdx::new(12));
+        assert_eq!(entry.diff, SlotDiff::Created(String::from("Null")));
+    }
+
+    #[test]
+    fn from_event_slot_modified_when_present_in_current() {
+        let event = make_slot_written_event(5, SlotValue::I64(99), 10);
+        let current = slot_map(&[(5, SlotValue::I64(1))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        let entry = panel.entries().get(0).expect("entry exists");
+        assert_eq!(entry.slot, SlotIdx::new(5));
         assert_eq!(
-            panel.selected().map(|d| d.slot.get()),
-            Some(SlotIdx::new(1).get())
+            entry.diff,
+            SlotDiff::Modified {
+                old: String::from("I64(1)"),
+                new: String::from("I64(99)"),
+            }
         );
     }
 
     #[test]
-    fn select_valid_index_returns_diff() {
-        let diffs = vec![
-            make_written_diff(0, None, SlotValue::I64(1)),
-            make_written_diff(1, None, SlotValue::I64(2)),
-        ];
-        let mut panel = SlotDiffPanel::from_changes(diffs);
-        panel.select(0);
-        assert_eq!(panel.selected().map(|d| d.slot.get()), Some(0));
+    fn from_event_no_diff_when_same_value() {
+        let event = make_slot_written_event(3, SlotValue::Bool(true), 7);
+        let current = slot_map(&[(3, SlotValue::Bool(true))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(!panel.has_changes());
     }
 
     #[test]
-    fn clear_selection_resets_to_none() {
-        let diffs = vec![make_written_diff(0, None, SlotValue::I64(1))];
-        let mut panel = SlotDiffPanel::from_changes(diffs);
-        panel.select(0);
-        assert!(panel.selected().is_some());
-        panel.clear_selection();
-        assert!(panel.selected().is_none());
-    }
-
-    // -- tainted_diffs --
-
-    #[test]
-    fn tainted_diffs_returns_only_non_clean() {
-        let diffs = vec![
-            make_written_diff(0, None, SlotValue::I64(1)),
-            make_tainted_diff(1, Taint::Secret),
-            make_tainted_diff(2, Taint::DerivedFromSecret),
-            make_tainted_diff(3, Taint::Clean),
-        ];
-        let panel = SlotDiffPanel::from_changes(diffs);
-        let tainted: Vec<_> = panel.tainted_diffs().collect();
-        assert_eq!(tainted.len(), 2);
-        assert_eq!(tainted[0].slot.get(), 1);
-        assert_eq!(tainted[1].slot.get(), 2);
-    }
-
-    #[test]
-    fn tainted_diffs_returns_empty_when_none() {
-        let diffs = vec![make_written_diff(0, None, SlotValue::I64(1))];
-        let panel = SlotDiffPanel::from_changes(diffs);
-        let tainted: Vec<_> = panel.tainted_diffs().collect();
-        assert!(tainted.is_empty());
-    }
-
-    // -- format_diff --
-
-    #[test]
-    fn format_written_diff_with_no_prior() {
-        let diff = SlotDiffEntry {
-            slot: SlotIdx::new(5),
-            value_change: SlotChange::Written {
-                before: None,
-                after: SlotValue::Bool(true),
-            },
-            taint_change: TaintChange::Unchanged,
-        };
-        let formatted = SlotDiffPanel::format_diff(&diff);
-        assert!(formatted.contains("slot[5]"));
-        assert!(formatted.contains("<unset> -> true"));
-        assert!(formatted.contains("(no change)"));
-    }
-
-    #[test]
-    fn format_written_diff_with_prior() {
-        let diff = SlotDiffEntry {
-            slot: SlotIdx::new(3),
-            value_change: SlotChange::Written {
-                before: Some(SlotValue::I64(10)),
-                after: SlotValue::I64(20),
-            },
-            taint_change: TaintChange::Changed {
-                before: Taint::Clean,
-                after: Taint::Secret,
-            },
-        };
-        let formatted = SlotDiffPanel::format_diff(&diff);
-        assert!(formatted.contains("slot[3]"));
-        assert!(formatted.contains("10 -> 20"));
-        assert!(formatted.contains("Clean -> Secret"));
-    }
-
-    #[test]
-    fn format_cleared_diff() {
-        let diff = SlotDiffEntry {
-            slot: SlotIdx::new(7),
-            value_change: SlotChange::Cleared {
-                before: SlotValue::Null,
-            },
-            taint_change: TaintChange::Unchanged,
-        };
-        let formatted = SlotDiffPanel::format_diff(&diff);
-        assert!(formatted.contains("<cleared>"));
-    }
-
-    #[test]
-    fn format_unchanged_diff() {
-        let diff = SlotDiffEntry {
+    fn from_event_no_value_bytes_produces_empty() {
+        let event = JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(10),
             slot: SlotIdx::new(0),
-            value_change: SlotChange::Unchanged,
-            taint_change: TaintChange::Unchanged,
+            value: None,
         };
-        let formatted = SlotDiffPanel::format_diff(&diff);
-        assert!(formatted.contains("(no change)"));
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(!panel.has_changes());
+        assert_eq!(panel.event_seq(), 10);
     }
 
-    // -- Equality for SlotChange / TaintChange --
+    #[test]
+    fn diff_between_empty_states_produces_no_changes() {
+        let before = HashMap::new();
+        let after = HashMap::new();
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(!panel.has_changes());
+    }
 
     #[test]
-    fn slot_change_equality() {
-        let a = SlotChange::Written {
-            before: None,
-            after: SlotValue::I64(1),
+    fn diff_between_detects_created_slots() {
+        let before = HashMap::new();
+        let after = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        let entry = panel.entries().get(0).expect("entry");
+        assert_eq!(entry.slot, SlotIdx::new(1));
+        assert!(matches!(entry.diff, SlotDiff::Created(_)));
+    }
+
+    #[test]
+    fn diff_between_detects_deleted_slots() {
+        let before = slot_map(&[(7, SlotValue::Bool(false))]);
+        let after = HashMap::new();
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        let entry = panel.entries().get(0).expect("entry");
+        assert_eq!(entry.slot, SlotIdx::new(7));
+        assert!(matches!(entry.diff, SlotDiff::Deleted(_)));
+    }
+
+    #[test]
+    fn diff_between_detects_modified_slots() {
+        let before = slot_map(&[(3, SlotValue::I64(10))]);
+        let after = slot_map(&[(3, SlotValue::I64(20))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        let entry = panel.entries().get(0).expect("entry");
+        assert_eq!(entry.slot, SlotIdx::new(3));
+        assert_eq!(
+            entry.diff,
+            SlotDiff::Modified {
+                old: String::from("I64(10)"),
+                new: String::from("I64(20)"),
+            }
+        );
+    }
+
+    #[test]
+    fn diff_between_no_changes_when_identical() {
+        let before = slot_map(&[(2, SlotValue::Null), (4, SlotValue::Bool(true))]);
+        let after = slot_map(&[(2, SlotValue::Null), (4, SlotValue::Bool(true))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(!panel.has_changes());
+    }
+
+    #[test]
+    fn diff_between_multiple_changes() {
+        let before = slot_map(&[
+            (1, SlotValue::I64(10)),
+            (2, SlotValue::Bool(true)),
+            (3, SlotValue::Null),
+        ]);
+        let after = slot_map(&[
+            (1, SlotValue::I64(99)),
+            (3, SlotValue::Null),
+            (5, SlotValue::Bool(false)),
+        ]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 3);
+        let slots: Vec<SlotIdx> = panel.entries().iter().map(|e| e.slot).collect();
+        assert!(slots.contains(&SlotIdx::new(1)));
+        assert!(slots.contains(&SlotIdx::new(2)));
+        assert!(slots.contains(&SlotIdx::new(5)));
+        for entry in panel.entries() {
+            match entry.slot.get() {
+                1 => {
+                    assert_eq!(
+                        entry.diff,
+                        SlotDiff::Modified {
+                            old: String::from("I64(10)"),
+                            new: String::from("I64(99)"),
+                        }
+                    );
+                }
+                2 => {
+                    assert_eq!(entry.diff, SlotDiff::Deleted(String::from("Bool(true)")));
+                }
+                5 => {
+                    assert_eq!(entry.diff, SlotDiff::Created(String::from("Bool(false)")));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn format_entry_created() {
+        let entry = DiffEntry {
+            slot: SlotIdx::new(12),
+            diff: SlotDiff::Created(String::from("Null")),
         };
-        let b = SlotChange::Written {
-            before: None,
-            after: SlotValue::I64(1),
+        let result = SlotDiffPanel::format_entry(&entry);
+        assert_eq!(result, "SlotIdx(12): <created> Null");
+    }
+
+    #[test]
+    fn format_entry_modified() {
+        let entry = DiffEntry {
+            slot: SlotIdx::new(12),
+            diff: SlotDiff::Modified {
+                old: String::from("Null"),
+                new: String::from("Object(ObjectId(8472))"),
+            },
         };
+        let result = SlotDiffPanel::format_entry(&entry);
+        assert_eq!(result, "SlotIdx(12): Null -> Object(ObjectId(8472))");
+    }
+
+    #[test]
+    fn format_entry_deleted() {
+        let entry = DiffEntry {
+            slot: SlotIdx::new(7),
+            diff: SlotDiff::Deleted(String::from("Bool(true)")),
+        };
+        let result = SlotDiffPanel::format_entry(&entry);
+        assert_eq!(result, "SlotIdx(7): Bool(true) -> <deleted>");
+    }
+
+    #[test]
+    fn format_entry_taint_changed() {
+        let entry = DiffEntry {
+            slot: SlotIdx::new(4),
+            diff: SlotDiff::TaintChanged {
+                old: String::from("Clean"),
+                new: String::from("Secret"),
+            },
+        };
+        let result = SlotDiffPanel::format_entry(&entry);
+        assert_eq!(result, "SlotIdx(4): taint Clean -> Secret");
+    }
+
+    #[test]
+    fn from_event_seq_capped_to_u32_max() {
+        let event = make_slot_written_event(0, SlotValue::I64(1), u64::from(u32::MAX) + 1);
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert_eq!(panel.event_seq(), u32::MAX);
+    }
+
+    #[test]
+    fn slot_diff_equality_created() {
+        let a = SlotDiff::Created(String::from("Null"));
+        let b = SlotDiff::Created(String::from("Null"));
         assert_eq!(a, b);
     }
 
     #[test]
-    fn slot_change_inequality_different_after() {
-        let a = SlotChange::Written {
-            before: None,
-            after: SlotValue::I64(1),
-        };
-        let b = SlotChange::Written {
-            before: None,
-            after: SlotValue::I64(2),
+    fn slot_diff_inequality_created_vs_modified() {
+        let a = SlotDiff::Created(String::from("Null"));
+        let b = SlotDiff::Modified {
+            old: String::from("Null"),
+            new: String::from("Null"),
         };
         assert_ne!(a, b);
     }
 
     #[test]
-    fn taint_change_equality() {
-        assert_eq!(TaintChange::Unchanged, TaintChange::Unchanged);
-        assert_eq!(
-            TaintChange::Changed {
-                before: Taint::Clean,
-                after: Taint::Secret
-            },
-            TaintChange::Changed {
-                before: Taint::Clean,
-                after: Taint::Secret
-            }
-        );
-    }
-
-    #[test]
-    fn taint_change_inequality() {
-        assert_ne!(
-            TaintChange::Changed {
-                before: Taint::Clean,
-                after: Taint::Secret
-            },
-            TaintChange::Changed {
-                before: Taint::Clean,
-                after: Taint::DerivedFromSecret
-            }
-        );
+    fn from_event_object_value_formatting() {
+        let event = make_slot_written_event(8, SlotValue::Object(ObjectId::new(8472)), 15);
+        let current = slot_map(&[(8, SlotValue::Null)]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(panel.has_changes());
+        let entry = panel.entries().get(0).expect("entry");
+        let formatted = SlotDiffPanel::format_entry(entry);
+        assert!(formatted.contains("Object(ObjectId(8472))"));
+        assert!(formatted.contains("Null -> Object(ObjectId(8472))"));
     }
 }
