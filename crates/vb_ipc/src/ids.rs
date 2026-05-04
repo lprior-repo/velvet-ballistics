@@ -165,4 +165,132 @@ mod tests {
         assert_eq!(ask_id.wire_value(), action_id.wire_value());
         assert_ne!(ask_id, action_id);
     }
+
+    #[test]
+    fn ask_ticket_id_ordering_by_wire_value() {
+        let a = AskTicketId::from_wire(10);
+        let b = AskTicketId::from_wire(20);
+        assert!(a < b, "lower wire value should compare less");
+        assert!(b > a, "higher wire value should compare greater");
+    }
+
+    #[test]
+    fn action_ticket_id_ordering_by_wire_value() {
+        let a = ActionTicketId::from_wire(100);
+        let b = ActionTicketId::from_wire(200);
+        assert!(a < b);
+        assert!(b > a);
+    }
+
+    #[test]
+    fn ask_ticket_id_step_idx_masks_upper_bits() {
+        let wire = 0xFFFF_0000_0000_0042u64;
+        let id = AskTicketId::from_wire(wire);
+        assert_eq!(id.step_idx(), 0x0042);
+        assert_eq!(id.wire_value(), wire);
+    }
+
+    #[test]
+    fn action_ticket_id_step_idx_masks_upper_bits() {
+        let wire = 0xABCD_EF00_1234_FF00u64;
+        let id = ActionTicketId::from_wire(wire);
+        assert_eq!(id.step_idx(), 0xFF00);
+        assert_eq!(id.wire_value(), wire);
+    }
+
+    #[test]
+    fn ask_ticket_id_serde_roundtrip() {
+        let original = AskTicketId::from_wire(0x1234_5678_9ABC_DEF0);
+        let Ok(encoded) = postcard::to_allocvec(&original) else { return };
+        let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => { assert!(false, "decode should succeed"); return; }
+        };
+        assert_eq!(decoded.wire_value(), original.wire_value());
+    }
+
+    #[test]
+    fn action_ticket_id_serde_roundtrip() {
+        let original = ActionTicketId::from_wire(0xDEAD_BEEF_CAFE_BABE);
+        let Ok(encoded) = postcard::to_allocvec(&original) else { return };
+        let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => { assert!(false, "decode should succeed"); return; }
+        };
+        assert_eq!(decoded.wire_value(), original.wire_value());
+    }
+
+    #[test]
+    fn ask_ticket_id_serde_roundtrip_boundary() {
+        for wire in [0u64, u64::MAX, 0x0000_0000_0000_FFFF] {
+            let original = AskTicketId::from_wire(wire);
+            let Ok(encoded) = postcard::to_allocvec(&original) else { return };
+            let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
+                Ok(d) => d,
+                Err(_) => { assert!(false, "decode should succeed"); return; }
+            };
+            assert_eq!(decoded, original);
+        }
+    }
+
+    #[test]
+    fn action_ticket_id_serde_roundtrip_boundary() {
+        for wire in [0u64, u64::MAX, 0x0000_0000_0000_FFFF] {
+            let original = ActionTicketId::from_wire(wire);
+            let Ok(encoded) = postcard::to_allocvec(&original) else { return };
+            let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
+                Ok(d) => d,
+                Err(_) => { assert!(false, "decode should succeed"); return; }
+            };
+            assert_eq!(decoded, original);
+        }
+    }
+
+    #[test]
+    fn ask_ticket_id_hash_consistency() {
+        use std::collections::HashSet;
+        let a = AskTicketId::from_wire(42);
+        let b = AskTicketId::from_wire(42);
+        let mut set = HashSet::new();
+        assert!(set.insert(a));
+        assert!(!set.insert(b));
+    }
+
+    #[test]
+    fn action_ticket_id_hash_consistency() {
+        use std::collections::HashSet;
+        let a = ActionTicketId::from_wire(42);
+        let b = ActionTicketId::from_wire(42);
+        let mut set = HashSet::new();
+        assert!(set.insert(a));
+        assert!(!set.insert(b));
+    }
+
+    #[test]
+    fn ask_ticket_id_distinct_values_deduplicate() {
+        use std::collections::HashSet;
+        let set: HashSet<_> = [1u64, 2, 3].map(|w| AskTicketId::from_wire(w)).into_iter().collect();
+        assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn action_ticket_id_distinct_values_deduplicate() {
+        use std::collections::HashSet;
+        let set: HashSet<_> = [1u64, 2, 3].map(|w| ActionTicketId::from_wire(w)).into_iter().collect();
+        assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn ask_ticket_id_copy_is_equal() {
+        let original = AskTicketId::from_wire(12345);
+        let copy = original;
+        assert_eq!(copy, original);
+    }
+
+    #[test]
+    fn action_ticket_id_copy_is_equal() {
+        let original = ActionTicketId::from_wire(67890);
+        let copy = original;
+        assert_eq!(copy, original);
+    }
 }

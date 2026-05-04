@@ -4289,4 +4289,304 @@ fn resource_contract_default_max_retry_attempts_is_not_u16_max() {
 
 }
 
+// =========================================================================
+// Edge-case tests — CompiledNode variants, CompiledNodeKind, ExprOp,
+// ExprProgram, ExprBranch/SlotBranch
+// =========================================================================
+
+#[test]
+fn compiled_node_nop_construction_equality_and_debug() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    let node2 = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    assert_eq!(node, node2, "identical Nop nodes must be equal");
+    let debug_str = format!("{node:?}");
+    assert!(
+        debug_str.contains("Nop"),
+        "Debug output for Nop node must contain 'Nop': {debug_str}"
+    );
+}
+
+#[test]
+fn compiled_node_kind_set_const_field_access() -> Result<(), String> {
+    let const_idx = ConstIdx::new(42);
+    let kind = CompiledNodeKind::SetConst { value: const_idx };
+    let CompiledNodeKind::SetConst { value } = kind else {
+        return Err(String::from("expected SetConst variant"));
+    };
+    if value != const_idx {
+        return Err(String::from("SetConst value field mismatch"));
+    }
+    Ok(())
+}
+
+#[test]
+fn compiled_node_kind_copy_field_access() -> Result<(), String> {
+    let slot = SlotIdx::new(7);
+    let kind = CompiledNodeKind::Copy { source: slot };
+    let CompiledNodeKind::Copy { source } = kind else {
+        return Err(String::from("expected Copy variant"));
+    };
+    if source != slot {
+        return Err(String::from("Copy source field mismatch"));
+    }
+    Ok(())
+}
+
+#[test]
+fn compiled_node_kind_do_field_access() -> Result<(), String> {
+    let action = ActionId::new(3);
+    let input = SlotIdx::new(5);
+    let kind = CompiledNodeKind::Do { action, input };
+    let CompiledNodeKind::Do {
+        action: a,
+        input: i,
+    } = kind
+    else {
+        return Err(String::from("expected Do variant"));
+    };
+    if a != action {
+        return Err(String::from("Do action field mismatch"));
+    }
+    if i != input {
+        return Err(String::from("Do input field mismatch"));
+    }
+    Ok(())
+}
+
+#[test]
+fn compiled_node_kind_finish_equality_and_debug() {
+    let kind_a = CompiledNodeKind::Finish {
+        result: SlotIdx::new(99),
+    };
+    let kind_b = CompiledNodeKind::Finish {
+        result: SlotIdx::new(99),
+    };
+    assert_eq!(kind_a, kind_b, "identical Finish variants must be equal");
+    let debug_str = format!("{kind_a:?}");
+    assert!(
+        debug_str.contains("Finish"),
+        "Debug output for Finish must contain 'Finish': {debug_str}"
+    );
+}
+
+#[test]
+fn compiled_node_kind_variant_inequality() {
+    let nop = CompiledNodeKind::Nop;
+    let set_const = CompiledNodeKind::SetConst {
+        value: ConstIdx::new(0),
+    };
+    let finish = CompiledNodeKind::Finish {
+        result: SlotIdx::new(0),
+    };
+    assert_ne!(nop, set_const, "Nop and SetConst must not be equal");
+    assert_ne!(nop, finish, "Nop and Finish must not be equal");
+    assert_ne!(
+        set_const, finish,
+        "SetConst and Finish must not be equal"
+    );
+}
+
+#[test]
+fn expr_op_comparison_variants_pairwise_distinct() {
+    let ops = [
+        ExprOp::Eq,
+        ExprOp::NotEq,
+        ExprOp::Gt,
+        ExprOp::Gte,
+        ExprOp::Lt,
+        ExprOp::Lte,
+    ];
+    for (i, op_a) in ops.iter().enumerate() {
+        for (j, op_b) in ops.iter().enumerate() {
+            if i == j {
+                assert_eq!(op_a, op_b, "same index must be equal");
+            } else {
+                assert_ne!(op_a, op_b, "different ExprOp comparison variants must differ");
+            }
+        }
+    }
+}
+
+#[test]
+fn expr_op_arithmetic_variants_pairwise_distinct() {
+    let ops = [ExprOp::Add, ExprOp::Sub, ExprOp::Mul, ExprOp::Div];
+    for (i, op_a) in ops.iter().enumerate() {
+        for (j, op_b) in ops.iter().enumerate() {
+            if i == j {
+                assert_eq!(op_a, op_b, "same index must be equal");
+            } else {
+                assert_ne!(op_a, op_b, "different ExprOp arithmetic variants must differ");
+            }
+        }
+    }
+}
+
+#[test]
+fn expr_op_load_variants_with_max_indices() -> Result<(), String> {
+    let load_slot = ExprOp::LoadSlot(SlotIdx::new(u16::MAX));
+    let load_const = ExprOp::LoadConst(ConstIdx::new(u16::MAX));
+    let load_accessor = ExprOp::LoadAccessor(AccessorIdx::new(u16::MAX));
+
+    match load_slot {
+        ExprOp::LoadSlot(idx) if idx.get() == u16::MAX => {}
+        _ => return Err(String::from("LoadSlot max index mismatch")),
+    }
+    match load_const {
+        ExprOp::LoadConst(idx) if idx.get() == u16::MAX => {}
+        _ => return Err(String::from("LoadConst max index mismatch")),
+    }
+    match load_accessor {
+        ExprOp::LoadAccessor(idx) if idx.get() == u16::MAX => {}
+        _ => return Err(String::from("LoadAccessor max index mismatch")),
+    }
+
+    assert_ne!(load_slot, load_const);
+    assert_ne!(load_slot, load_accessor);
+    assert_ne!(load_const, load_accessor);
+    Ok(())
+}
+
+#[test]
+fn expr_program_construction_and_field_access() -> Result<(), String> {
+    let ops: Box<[ExprOp]> = vec![load(0)].into_boxed_slice();
+    let program = ExprProgram::try_from_ops(ops.clone()).map_err(|e| e.to_string())?;
+    if program.ops.len() != 1 {
+        return Err(format!(
+            "expected 1 op, got {}",
+            program.ops.len()
+        ));
+    }
+    if program.max_stack != 1 {
+        return Err(format!(
+            "expected max_stack=1, got {}",
+            program.max_stack
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn expr_branch_zero_offset_construction_and_equality() {
+    let branch_a = ExprBranch {
+        condition: ExprIdx::new(0),
+        target: StepIdx::new(0),
+    };
+    let branch_b = ExprBranch {
+        condition: ExprIdx::new(0),
+        target: StepIdx::new(0),
+    };
+    assert_eq!(branch_a, branch_b, "identical ExprBranch with zero offsets must be equal");
+    assert_eq!(branch_a.condition.get(), 0);
+    assert_eq!(branch_a.target.get(), 0);
+
+    let debug_str = format!("{branch_a:?}");
+    assert!(
+        debug_str.contains("ExprBranch"),
+        "Debug output must contain 'ExprBranch': {debug_str}"
+    );
+}
+
+#[test]
+fn expr_branch_max_values() {
+    let branch = ExprBranch {
+        condition: ExprIdx::new(u16::MAX),
+        target: StepIdx::new(u16::MAX),
+    };
+    assert_eq!(branch.condition.get(), u16::MAX);
+    assert_eq!(branch.target.get(), u16::MAX);
+
+    let branch_zero = ExprBranch {
+        condition: ExprIdx::new(0),
+        target: StepIdx::new(0),
+    };
+    assert_ne!(branch, branch_zero, "max and zero ExprBranch must differ");
+}
+
+#[test]
+fn slot_branch_zero_and_max_values() {
+    let branch_zero = SlotBranch {
+        condition: SlotIdx::new(0),
+        target: StepIdx::new(0),
+    };
+    let branch_max = SlotBranch {
+        condition: SlotIdx::new(u16::MAX),
+        target: StepIdx::new(u16::MAX),
+    };
+    assert_eq!(branch_zero.condition.get(), 0);
+    assert_eq!(branch_zero.target.get(), 0);
+    assert_eq!(branch_max.condition.get(), u16::MAX);
+    assert_eq!(branch_max.target.get(), u16::MAX);
+    assert_ne!(branch_zero, branch_max);
+}
+
+#[test]
+fn expr_op_boolean_and_helper_variants_equality() {
+    assert_eq!(ExprOp::And, ExprOp::And);
+    assert_eq!(ExprOp::Or, ExprOp::Or);
+    assert_eq!(ExprOp::Not, ExprOp::Not);
+    assert_ne!(ExprOp::And, ExprOp::Or);
+    assert_ne!(ExprOp::Not, ExprOp::And);
+
+    assert_eq!(ExprOp::Contains, ExprOp::Contains);
+    assert_eq!(ExprOp::StartsWith, ExprOp::StartsWith);
+    assert_eq!(ExprOp::EndsWith, ExprOp::EndsWith);
+    assert_ne!(ExprOp::Contains, ExprOp::StartsWith);
+    assert_ne!(ExprOp::StartsWith, ExprOp::EndsWith);
+
+    assert_eq!(ExprOp::Has, ExprOp::Has);
+    assert_eq!(ExprOp::Exists, ExprOp::Exists);
+    assert_eq!(ExprOp::Length, ExprOp::Length);
+    assert_eq!(ExprOp::Empty, ExprOp::Empty);
+    assert_ne!(ExprOp::Has, ExprOp::Exists);
+    assert_ne!(ExprOp::Length, ExprOp::Empty);
+
+    assert_eq!(ExprOp::Append, ExprOp::Append);
+    assert_eq!(ExprOp::AppendIf, ExprOp::AppendIf);
+    assert_eq!(ExprOp::Merge, ExprOp::Merge);
+    assert_eq!(ExprOp::Sum, ExprOp::Sum);
+    assert_eq!(ExprOp::Count, ExprOp::Count);
+    assert_eq!(ExprOp::Unique, ExprOp::Unique);
+    assert_ne!(ExprOp::Append, ExprOp::AppendIf);
+    assert_ne!(ExprOp::Sum, ExprOp::Count);
+    assert_ne!(ExprOp::Merge, ExprOp::Unique);
+}
+
+#[test]
+fn compiled_node_kind_jump_and_eval_expr_field_access() -> Result<(), String> {
+    let jump = CompiledNodeKind::Jump {
+        target: StepIdx::new(10),
+    };
+    let CompiledNodeKind::Jump { target } = jump else {
+        return Err(String::from("expected Jump variant"));
+    };
+    if target.get() != 10 {
+        return Err(String::from("Jump target mismatch"));
+    }
+
+    let eval_expr = CompiledNodeKind::EvalExpr {
+        expr: ExprIdx::new(5),
+    };
+    let CompiledNodeKind::EvalExpr { expr } = eval_expr else {
+        return Err(String::from("expected EvalExpr variant"));
+    };
+    if expr.get() != 5 {
+        return Err(String::from("EvalExpr expr mismatch"));
+    }
+    Ok(())
+}
+
 }
