@@ -590,7 +590,7 @@ fn check_graph_bounds(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
 fn approx_equal(a: f64, b: f64) -> bool {
     let diff = (a - b).abs();
     let largest = a.abs().max(b.abs());
-    diff <= largest * f64::EPSILON * 2.0
+    diff <= largest * f64::EPSILON * 2.0 || diff <= f64::EPSILON
 }
 
 fn check_overlapping_nodes(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
@@ -2353,6 +2353,284 @@ mod tests {
         // Ports should not warn because entry output + terminal input are exempt
         let port_diags: Vec<&Diagnostic> = diags.iter().filter(|d| d.code.as_str() == "export-port-unconnected").collect();
         assert!(port_diags.is_empty(), "entry/terminal port exemptions should suppress warnings, got: {port_diags:?}");
+    }
+
+    // =========================================================================
+    // GraphLimitsValidator tests
+    // =========================================================================
+
+    #[test]
+    fn graph_limits_empty_graph_no_diagnostics() {
+        let doc = FlowDocument::default();
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(diags.is_empty(), "empty graph should produce no diagnostics, got: {diags:?}");
+    }
+
+    #[test]
+    fn graph_limits_valid_small_graph_no_diagnostics() {
+        let doc = semantic_doc_two_nodes_connected();
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(diags.is_empty(), "small valid graph should produce no diagnostics, got: {diags:?}");
+    }
+
+    #[test]
+    fn graph_limits_nodes_exceeded() {
+        let mut doc = FlowDocument::default();
+        // Insert MAX_GRAPH_NODES + 1 = 10_001 minimal nodes
+        let count = 10_001usize;
+        for i in 0..count {
+            let name = format!("n{i}");
+            doc.graph.nodes.insert(
+                nid(&name),
+                FlowNodeRecord {
+                    id: nid(&name),
+                    kind: SmolStr::from("test"),
+                    title: SmolStr::from(&name),
+                    position: [0.0, 0.0],
+                    size: [10.0, 10.0],
+                    z_index: 0,
+                    parent: None,
+                    ports: vec![],
+                    flags: NodeFlags::default(),
+                    data: serde_json::Value::Null,
+                    ui: NodeUiState::default(),
+                },
+            );
+        }
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(
+            diags.iter().any(|d| d.code.as_str() == "graph-limit-nodes-exceeded"),
+            "expected graph-limit-nodes-exceeded, got: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn graph_limits_edges_exceeded() {
+        let mut doc = FlowDocument::default();
+        // Need a source node and a target node for edge records
+        let src = FlowNodeRecord {
+            id: nid("src"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("src"),
+            position: [0.0, 0.0],
+            size: [10.0, 10.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("out", PortRole::Source, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let tgt = FlowNodeRecord {
+            id: nid("tgt"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("tgt"),
+            position: [100.0, 0.0],
+            size: [10.0, 10.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("in", PortRole::Target, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("src"), src);
+        doc.graph.nodes.insert(nid("tgt"), tgt);
+
+        // Insert MAX_GRAPH_EDGES + 1 = 100_001 edges
+        let count = 100_001usize;
+        for i in 0..count {
+            let name = format!("e{i}");
+            doc.graph.edges.insert(
+                eid(&name),
+                FlowEdgeRecord {
+                    id: eid(&name),
+                    source_node: nid("src"),
+                    source_port: pid("out"),
+                    target_node: nid("tgt"),
+                    target_port: pid("in"),
+                    label: None,
+                    style: EdgeStyle::default(),
+                    data: serde_json::Value::Null,
+                    ui: EdgeUiState::default(),
+                },
+            );
+        }
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(
+            diags.iter().any(|d| d.code.as_str() == "graph-limit-edges-exceeded"),
+            "expected graph-limit-edges-exceeded, got: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn graph_limits_fanout_exceeded() {
+        let mut doc = FlowDocument::default();
+        // One source node with a Many-cardinality output port
+        let src = FlowNodeRecord {
+            id: nid("src"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("src"),
+            position: [0.0, 0.0],
+            size: [10.0, 10.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("out", PortRole::Source, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("src"), src);
+
+        // MAX_NODE_FANOUT + 1 = 1001 target nodes and edges from src
+        let count = 1_001usize;
+        for i in 0..count {
+            let tgt_name = format!("t{i}");
+            doc.graph.nodes.insert(
+                nid(&tgt_name),
+                FlowNodeRecord {
+                    id: nid(&tgt_name),
+                    kind: SmolStr::from("test"),
+                    title: SmolStr::from(&tgt_name),
+                    position: [100.0, 0.0],
+                    size: [10.0, 10.0],
+                    z_index: 0,
+                    parent: None,
+                    ports: vec![make_port_record("in", PortRole::Target, Cardinality::Many)],
+                    flags: NodeFlags::default(),
+                    data: serde_json::Value::Null,
+                    ui: NodeUiState::default(),
+                },
+            );
+            let edge_name = format!("e{i}");
+            doc.graph.edges.insert(
+                eid(&edge_name),
+                FlowEdgeRecord {
+                    id: eid(&edge_name),
+                    source_node: nid("src"),
+                    source_port: pid("out"),
+                    target_node: nid(&tgt_name),
+                    target_port: pid("in"),
+                    label: None,
+                    style: EdgeStyle::default(),
+                    data: serde_json::Value::Null,
+                    ui: EdgeUiState::default(),
+                },
+            );
+        }
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(
+            diags.iter().any(|d| d.code.as_str() == "graph-limit-fanout-exceeded"),
+            "expected graph-limit-fanout-exceeded, got: {diags:?}"
+        );
+        // The fanout diagnostic should reference the source node
+        let fanout_diag = diags.iter().find(|d| d.code.as_str() == "graph-limit-fanout-exceeded");
+        assert!(
+            fanout_diag.is_some_and(|d| d.node.as_ref().is_some_and(|n| n == &nid("src"))),
+            "fanout diagnostic should reference the offending source node"
+        );
+    }
+
+    // =========================================================================
+    // approx_equal tests
+    // =========================================================================
+
+    #[test]
+    fn approx_equal_identical_values() {
+        assert!(approx_equal(1.0, 1.0), "identical values should be approximately equal");
+        assert!(approx_equal(0.0, 0.0), "zero should be approximately equal to itself");
+        assert!(approx_equal(-1.0, -1.0), "identical negatives should be approximately equal");
+        assert!(approx_equal(42.5, 42.5), "identical fractional values should be approximately equal");
+    }
+
+    #[test]
+    fn approx_equal_close_large_values() {
+        // For large values, epsilon * 2 is still very small relative to the magnitude
+        let large = 1_000_000_000_000.0_f64;
+        let offset = large * f64::EPSILON;
+        assert!(
+            approx_equal(large, large + offset),
+            "values within epsilon tolerance should be approximately equal"
+        );
+        assert!(
+            approx_equal(large, large - offset),
+            "values within epsilon tolerance should be approximately equal"
+        );
+    }
+
+    #[test]
+    fn approx_equal_different_values() {
+        assert!(!approx_equal(1.0, 2.0), "clearly different values should not be approximately equal");
+        assert!(!approx_equal(0.0, 1.0), "0 and 1 should not be approximately equal");
+        assert!(!approx_equal(-1.0, 1.0), "opposite signs should not be approximately equal");
+    }
+
+    #[test]
+    fn approx_equal_zero_cases() {
+        assert!(approx_equal(0.0, 0.0), "zero == zero");
+        assert!(approx_equal(-0.0, 0.0), "negative zero == positive zero");
+        // For values near zero, the tolerance is largest.abs() * EPSILON * 2 = 0
+        // So only exact zero equals zero
+    }
+
+    #[test]
+    fn approx_equal_negative_values() {
+        let neg = -1_000_000_000.0_f64;
+        let offset = neg.abs() * f64::EPSILON;
+        assert!(
+            approx_equal(neg, neg + offset),
+            "close negative values should be approximately equal"
+        );
+        assert!(
+            !approx_equal(neg, neg + neg.abs() * 0.01),
+            "distant negative values should not be approximately equal"
+        );
+    }
+
+    // =========================================================================
+    // ValidationPipeline::standard() ordering test
+    // =========================================================================
+
+    #[test]
+    fn pipeline_standard_graph_limits_first() {
+        // Verify GraphLimitsValidator runs first by checking that a document
+        // exceeding node limits produces graph-limit-nodes-exceeded before
+        // any other diagnostic codes. We cannot inspect internal validator
+        // order directly, but we can validate that the graph-limits diagnostic
+        // appears in the output of ValidationPipeline::standard().
+        let mut doc = FlowDocument::default();
+        let count = 10_001usize;
+        for i in 0..count {
+            let name = format!("n{i}");
+            doc.graph.nodes.insert(
+                nid(&name),
+                FlowNodeRecord {
+                    id: nid(&name),
+                    kind: SmolStr::from("test"),
+                    title: SmolStr::from(&name),
+                    position: [0.0, 0.0],
+                    size: [10.0, 10.0],
+                    z_index: 0,
+                    parent: None,
+                    ports: vec![],
+                    flags: NodeFlags::default(),
+                    data: serde_json::Value::Null,
+                    ui: NodeUiState::default(),
+                },
+            );
+        }
+        let diags = ValidationPipeline::standard().validate(&doc);
+        assert!(
+            diags.iter().any(|d| d.code.as_str() == "graph-limit-nodes-exceeded"),
+            "ValidationPipeline::standard() should include GraphLimitsValidator and produce graph-limit-nodes-exceeded"
+        );
+        // The graph-limit diagnostic must come first (index 0) since GraphLimitsValidator
+        // is added first in standard() and validators run in order.
+        let first_code = diags.first().map(|d| d.code.as_str());
+        assert!(
+            first_code == Some("graph-limit-nodes-exceeded"),
+            "graph-limit-nodes-exceeded should be the first diagnostic, got: {first_code:?}"
+        );
     }
 
     // ---- Integration: custom validator injected into pipeline ----

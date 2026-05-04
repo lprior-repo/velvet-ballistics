@@ -198,6 +198,7 @@ impl From<ActionError> for RuntimeEngineError {
 impl RuntimeEngineError {
     /// Runtime code for exhausted retry policies.
     pub const RETRY_EXHAUSTED_RUNTIME_CODE: &str = "RETRY_EXHAUSTED";
+    pub const BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE: &str = "BRANCH_LIMIT_EXCEEDED";
 
     /// Returns the stable section 17 runtime code when this error has a direct mapping.
     #[must_use]
@@ -207,7 +208,7 @@ impl RuntimeEngineError {
             Self::Action(error) => error.runtime_code(),
             Self::RetryExhausted { .. } => Some(Self::RETRY_EXHAUSTED_RUNTIME_CODE),
             Self::TaintViolation { .. } => None,
-            Self::BranchLimitExceeded { .. } => None,
+            Self::BranchLimitExceeded { .. } => Some(Self::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE),
         }
     }
 }
