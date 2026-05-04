@@ -184,15 +184,15 @@ mod tests {
         let accumulator = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let entry = StepIdx::new(3);
-        let _join = StepIdx::new(4);
+        let join = StepIdx::new(4);
         list_in_slot(&mut run, &mut store, accumulator, vec![]);
 
         let result = together_branch(
             &mut run,
             &mut store,
-            1,
-            StepIdx::new(3),
-            StepIdx::new(4),
+            BranchIdx::new(0),
+            entry,
+            join,
             accumulator,
             Some(output),
         );
@@ -373,11 +373,11 @@ mod tests {
         let result = together_branch(
             &mut run,
             &mut store,
-            BranchIdx::new(0),
-            entry,
-            _join,
+            BranchIdx::new(1),
+            StepIdx::new(3),
+            StepIdx::new(4),
             accumulator,
-            Some(output),
+            None,
         );
         // Then it returns MissingOutputSlot
         match result {
