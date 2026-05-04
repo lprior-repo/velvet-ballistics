@@ -91,6 +91,26 @@ impl TimelineStrip {
         }
     }
 
+    /// Appends journal events to the strip, preserving existing events and
+    /// cursor position.
+    pub fn extend_from_journal(&mut self, events: &[JournalEvent]) {
+        let new_timeline: Vec<TimelineEvent> = events
+            .iter()
+            .map(|je| {
+                let (kind_str, step) = journal_event_info(je);
+                let color = Self::event_color(&kind_str);
+                TimelineEvent {
+                    seq: u32::try_from(je.seq().get()).unwrap_or(u32::MAX),
+                    event_kind: kind_str,
+                    step_id: step,
+                    timestamp_micros: 0,
+                    color,
+                }
+            })
+            .collect();
+        self.events.extend(new_timeline);
+    }
+
     /// Sets the cursor position.
     pub fn set_cursor(&mut self, index: usize) {
         if self.events.is_empty() {

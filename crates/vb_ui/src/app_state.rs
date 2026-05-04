@@ -32,6 +32,9 @@ pub struct AppState {
     /// Rich system screen model (topology, metrics, alerts, ticker, queues).
     /// Used by the renderer to produce `SystemFrame` data for the Makepad UI.
     pub system_screen: SystemScreen,
+    /// Last IPC wiring error, if any. Surfaces connection failures and IPC
+    /// errors in the System Overview screen so they are not silently swallowed.
+    pub last_ipc_error: Option<String>,
 }
 
 /// Replay Theater screen data.
@@ -157,6 +160,7 @@ impl AppState {
             verification: VerificationData::new(),
             workflow: WorkflowData::new(),
             system_screen: SystemScreen::new(),
+            last_ipc_error: None,
         }
     }
 

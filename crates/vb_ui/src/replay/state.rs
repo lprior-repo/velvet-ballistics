@@ -330,6 +330,936 @@ impl Default for ReplaySessionState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::frame::StepState;
+    use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_storage::{EventSeq, JournalEvent};
+
+    // Helper constants and functions for constructing test events.
+
+    const TEST_RUN: RunId = RunId::new(42);
+    const TEST_WORKFLOW: WorkflowDigest = WorkflowDigest::from_bytes([0u8; 32]);
+
+    fn seq(n: u64) -> EventSeq {
+        EventSeq::new(n)
+    }
+
+    fn run_accepted(seq_val: u64) -> JournalEvent {
+        JournalEvent::RunAccepted {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            workflow: TEST_WORKFLOW,
+        }
+    }
+
+    fn step_started(step: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::StepStarted {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+        }
+    }
+
+    fn step_succeeded(step: u16, output: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::StepSucceeded {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+            output: SlotIdx::new(output),
+        }
+    }
+
+    fn action_scheduled(step: u16, action: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::ActionScheduled {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+            action: ActionId::new(action),
+        }
+    }
+
+    fn action_completed(step: u16, action: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::ActionCompletedEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+            action: ActionId::new(action),
+        }
+    }
+
+    fn action_failed(step: u16, action: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::ActionFailedEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+            action: ActionId::new(action),
+        }
+    }
+
+    fn slot_written(slot: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::SlotWrittenEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            slot: SlotIdx::new(slot),
+            value: None,
+        }
+    }
+
+    fn wait_scheduled(step: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::WaitScheduledEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+        }
+    }
+
+    fn ask_scheduled(step: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::AskScheduledEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+        }
+    }
+
+    fn ask_answered(step: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::AskAnsweredEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+        }
+    }
+
+    fn retry_scheduled(step: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::RetryScheduledEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            step: StepIdx::new(step),
+        }
+    }
+
+    fn run_cancelled(seq_val: u64) -> JournalEvent {
+        JournalEvent::RunCancelled {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+        }
+    }
+
+    fn run_finished(result: u16, seq_val: u64) -> JournalEvent {
+        JournalEvent::RunFinished {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+            result: SlotIdx::new(result),
+        }
+    }
+
+    fn run_failed(seq_val: u64) -> JournalEvent {
+        JournalEvent::RunFailedEvent {
+            run: TEST_RUN,
+            seq: seq(seq_val),
+        }
+    }
+
+    // =====================================================================
+    // ReplayState::initial() tests
+    // =====================================================================
+
+    #[test]
+    fn initial_has_zero_run_id() {
+        let state = ReplayState::initial();
+        assert_eq!(state.run_id, RunId::ZERO, "initial run_id must be ZERO");
+    }
+
+    #[test]
+    fn initial_has_zero_seq() {
+        let state = ReplayState::initial();
+        assert_eq!(state.at_seq.get(), 0, "initial at_seq must be 0");
+    }
+
+    #[test]
+    fn initial_has_empty_step_states() {
+        let state = ReplayState::initial();
+        assert!(
+            state.step_states.is_empty(),
+            "initial step_states must be empty"
+        );
+    }
+
+    #[test]
+    fn initial_has_empty_slot_values() {
+        let state = ReplayState::initial();
+        assert!(
+            state.slot_values.is_empty(),
+            "initial slot_values must be empty"
+        );
+    }
+
+    #[test]
+    fn initial_has_empty_taint() {
+        let state = ReplayState::initial();
+        assert!(state.taint.is_empty(), "initial taint must be empty");
+    }
+
+    #[test]
+    fn initial_all_counters_are_zero() {
+        let state = ReplayState::initial();
+        assert_eq!(state.steps_completed, 0, "steps_completed must be 0");
+        assert_eq!(state.steps_failed, 0, "steps_failed must be 0");
+        assert_eq!(state.actions_dispatched, 0, "actions_dispatched must be 0");
+        assert_eq!(state.actions_completed, 0, "actions_completed must be 0");
+        assert_eq!(state.actions_failed, 0, "actions_failed must be 0");
+    }
+
+    #[test]
+    fn initial_is_not_terminal() {
+        let state = ReplayState::initial();
+        assert!(!state.is_terminal, "initial must not be terminal");
+        assert!(
+            state.terminal_kind.is_none(),
+            "initial terminal_kind must be None"
+        );
+    }
+
+    // =====================================================================
+    // apply_event -- RunAccepted
+    // =====================================================================
+
+    #[test]
+    fn apply_run_accepted_sets_run_id_and_seq() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_accepted(1));
+        assert_eq!(next.run_id, TEST_RUN);
+        assert_eq!(next.at_seq.get(), 1);
+    }
+
+    #[test]
+    fn apply_run_accepted_preserves_other_fields() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_accepted(1));
+        assert_eq!(next.steps_completed, 0);
+        assert_eq!(next.actions_dispatched, 0);
+        assert!(!next.is_terminal);
+    }
+
+    // =====================================================================
+    // apply_event -- StepStarted
+    // =====================================================================
+
+    #[test]
+    fn apply_step_started_inserts_running_state() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_started(0, 2));
+        let Some(&s) = next.step_states.get(&StepIdx::new(0)) else {
+            assert!(false, "step 0 must be present in step_states");
+            return;
+        };
+        assert_eq!(s, StepState::Running);
+        assert_eq!(next.at_seq.get(), 2);
+    }
+
+    #[test]
+    fn apply_step_started_does_not_increment_completed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_started(5, 1));
+        assert_eq!(
+            next.steps_completed, 0,
+            "StepStarted must not increment steps_completed"
+        );
+    }
+
+    // =====================================================================
+    // apply_event -- StepSucceeded
+    // =====================================================================
+
+    #[test]
+    fn apply_step_succeeded_inserts_succeeded_state() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_succeeded(3, 10, 5));
+        let Some(&s) = next.step_states.get(&StepIdx::new(3)) else {
+            assert!(false, "step 3 must be present in step_states");
+            return;
+        };
+        assert_eq!(s, StepState::Succeeded);
+    }
+
+    #[test]
+    fn apply_step_succeeded_increments_completed_counter() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_succeeded(0, 0, 1));
+        assert_eq!(next.steps_completed, 1);
+    }
+
+    #[test]
+    fn apply_step_succeeded_records_output_slot() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_succeeded(0, 7, 1));
+        let Some(v) = next.slot_values.get(&SlotIdx::new(7)) else {
+            assert!(false, "output slot 7 must be recorded");
+            return;
+        };
+        assert_eq!(v, "<written>");
+    }
+
+    // =====================================================================
+    // apply_event -- ActionScheduled
+    // =====================================================================
+
+    #[test]
+    fn apply_action_scheduled_increments_dispatched() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&action_scheduled(0, 0, 3));
+        assert_eq!(next.actions_dispatched, 1);
+        assert_eq!(next.at_seq.get(), 3);
+    }
+
+    #[test]
+    fn apply_multiple_action_scheduled_accumulates() {
+        let state = ReplayState::initial();
+        let s1 = state.apply_event(&action_scheduled(0, 0, 1));
+        let s2 = s1.apply_event(&action_scheduled(1, 1, 2));
+        let s3 = s2.apply_event(&action_scheduled(2, 2, 3));
+        assert_eq!(s3.actions_dispatched, 3);
+    }
+
+    // =====================================================================
+    // apply_event -- ActionCompletedEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_action_completed_increments_completed_counter() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&action_completed(0, 0, 4));
+        assert_eq!(next.actions_completed, 1);
+    }
+
+    // =====================================================================
+    // apply_event -- ActionFailedEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_action_failed_increments_failed_counter() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&action_failed(0, 0, 5));
+        assert_eq!(next.actions_failed, 1);
+    }
+
+    // =====================================================================
+    // apply_event -- SlotWrittenEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_slot_written_records_slot() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&slot_written(12, 6));
+        let Some(v) = next.slot_values.get(&SlotIdx::new(12)) else {
+            assert!(false, "slot 12 must be recorded");
+            return;
+        };
+        assert_eq!(v, "<written>");
+    }
+
+    #[test]
+    fn apply_slot_written_does_not_overwrite_existing() {
+        let mut init = ReplayState::initial();
+        init.slot_values
+            .insert(SlotIdx::new(5), String::from("custom"));
+        let next = init.apply_event(&slot_written(5, 1));
+        let Some(v) = next.slot_values.get(&SlotIdx::new(5)) else {
+            assert!(false, "slot 5 must be present");
+            return;
+        };
+        assert_eq!(
+            v, "custom",
+            "SlotWritten must not overwrite existing value"
+        );
+    }
+
+    // =====================================================================
+    // apply_event -- WaitScheduledEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_wait_scheduled_sets_waiting_state() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&wait_scheduled(2, 7));
+        let Some(&s) = next.step_states.get(&StepIdx::new(2)) else {
+            assert!(false, "step 2 must be present in step_states");
+            return;
+        };
+        assert_eq!(s, StepState::Waiting);
+    }
+
+    // =====================================================================
+    // apply_event -- AskScheduledEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_ask_scheduled_sets_asking_state() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&ask_scheduled(4, 8));
+        let Some(&s) = next.step_states.get(&StepIdx::new(4)) else {
+            assert!(false, "step 4 must be present in step_states");
+            return;
+        };
+        assert_eq!(s, StepState::Asking);
+    }
+
+    // =====================================================================
+    // apply_event -- AskAnsweredEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_ask_answered_transitions_to_running() {
+        let init = ReplayState::initial();
+        let asking = init.apply_event(&ask_scheduled(1, 1));
+        let answered = asking.apply_event(&ask_answered(1, 2));
+        let Some(&s) = answered.step_states.get(&StepIdx::new(1)) else {
+            assert!(false, "step 1 must be present in step_states");
+            return;
+        };
+        assert_eq!(s, StepState::Running);
+    }
+
+    // =====================================================================
+    // apply_event -- RetryScheduledEvent
+    // =====================================================================
+
+    #[test]
+    fn apply_retry_scheduled_is_informational_no_state_change() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&retry_scheduled(0, 9));
+        assert_eq!(next.steps_completed, 0);
+        assert_eq!(next.actions_dispatched, 0);
+        assert!(next.step_states.is_empty());
+        assert_eq!(
+            next.at_seq.get(), 9,
+            "seq must still update even for informational events"
+        );
+    }
+
+    // =====================================================================
+    // apply_event -- Terminal events
+    // =====================================================================
+
+    #[test]
+    fn apply_run_cancelled_sets_terminal_cancelled() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_cancelled(10));
+        assert!(next.is_terminal);
+        assert_eq!(next.terminal_kind, Some(TerminalKind::Cancelled));
+    }
+
+    #[test]
+    fn apply_run_finished_sets_terminal_finished() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_finished(0, 11));
+        assert!(next.is_terminal);
+        assert_eq!(next.terminal_kind, Some(TerminalKind::Finished));
+    }
+
+    #[test]
+    fn apply_run_failed_sets_terminal_failed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_failed(12));
+        assert!(next.is_terminal);
+        assert_eq!(next.terminal_kind, Some(TerminalKind::Failed));
+    }
+
+    #[test]
+    fn apply_run_failed_increments_steps_failed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_failed(1));
+        assert_eq!(
+            next.steps_failed, 1,
+            "RunFailedEvent must increment steps_failed"
+        );
+    }
+
+    #[test]
+    fn apply_run_cancelled_does_not_increment_steps_failed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_cancelled(1));
+        assert_eq!(
+            next.steps_failed, 0,
+            "RunCancelled must not increment steps_failed"
+        );
+    }
+
+    #[test]
+    fn apply_run_finished_does_not_increment_steps_failed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_finished(0, 1));
+        assert_eq!(
+            next.steps_failed, 0,
+            "RunFinished must not increment steps_failed"
+        );
+    }
+
+    // =====================================================================
+    // Event sequence tracking (at_seq updates)
+    // =====================================================================
+
+    #[test]
+    fn at_seq_tracks_monotonic_sequence_through_chain() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&run_accepted(1));
+        assert_eq!(s1.at_seq.get(), 1);
+        let s2 = s1.apply_event(&step_started(0, 2));
+        assert_eq!(s2.at_seq.get(), 2);
+        let s3 = s2.apply_event(&action_scheduled(0, 0, 3));
+        assert_eq!(s3.at_seq.get(), 3);
+    }
+
+    #[test]
+    fn at_seq_updates_even_for_informational_events() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&retry_scheduled(0, 99));
+        assert_eq!(next.at_seq.get(), 99);
+    }
+
+    // =====================================================================
+    // Multi-step lifecycle: full happy path
+    // =====================================================================
+
+    #[test]
+    fn full_lifecycle_happy_path() {
+        let init = ReplayState::initial();
+
+        // RunAccepted
+        let s1 = init.apply_event(&run_accepted(1));
+        assert_eq!(s1.run_id, TEST_RUN);
+        assert!(!s1.is_terminal);
+
+        // StepStarted
+        let s2 = s1.apply_event(&step_started(0, 2));
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Running)
+        );
+
+        // ActionScheduled
+        let s3 = s2.apply_event(&action_scheduled(0, 10, 3));
+        assert_eq!(s3.actions_dispatched, 1);
+
+        // ActionCompletedEvent
+        let s4 = s3.apply_event(&action_completed(0, 10, 4));
+        assert_eq!(s4.actions_completed, 1);
+
+        // StepSucceeded
+        let s5 = s4.apply_event(&step_succeeded(0, 20, 5));
+        assert_eq!(
+            s5.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Succeeded)
+        );
+        assert_eq!(s5.steps_completed, 1);
+        assert!(s5.slot_values.contains_key(&SlotIdx::new(20)));
+
+        // RunFinished
+        let s6 = s5.apply_event(&run_finished(20, 6));
+        assert!(s6.is_terminal);
+        assert_eq!(s6.terminal_kind, Some(TerminalKind::Finished));
+        assert_eq!(s6.at_seq.get(), 6);
+    }
+
+    // =====================================================================
+    // Immutability: apply_event does not mutate source
+    // =====================================================================
+
+    #[test]
+    fn apply_event_does_not_mutate_original() {
+        let init = ReplayState::initial();
+        let _next = init.apply_event(&step_started(0, 1));
+        // Original must remain unchanged
+        assert!(init.step_states.is_empty());
+        assert_eq!(init.at_seq.get(), 0);
+        assert_eq!(init.steps_completed, 0);
+    }
+
+    // =====================================================================
+    // Multiple steps lifecycle
+    // =====================================================================
+
+    #[test]
+    fn multiple_steps_accumulate_counters() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_succeeded(0, 0, 1));
+        let s2 = s1.apply_event(&step_succeeded(1, 1, 2));
+        let s3 = s2.apply_event(&step_succeeded(2, 2, 3));
+        assert_eq!(s3.steps_completed, 3);
+        assert_eq!(s3.step_states.len(), 3);
+    }
+
+    #[test]
+    fn ask_wait_lifecycle() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&ask_scheduled(0, 1));
+        assert_eq!(
+            s1.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Asking)
+        );
+
+        let s2 = s1.apply_event(&ask_answered(0, 2));
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Running)
+        );
+
+        let s3 = s2.apply_event(&wait_scheduled(1, 3));
+        assert_eq!(
+            s3.step_states.get(&StepIdx::new(1)),
+            Some(&StepState::Waiting)
+        );
+    }
+
+    // =====================================================================
+    // Action counter independence
+    // =====================================================================
+
+    #[test]
+    fn action_counters_are_independent() {
+        let state = ReplayState::initial();
+        let s1 = state.apply_event(&action_scheduled(0, 0, 1));
+        let s2 = s1.apply_event(&action_scheduled(0, 1, 2));
+        let s3 = s2.apply_event(&action_completed(0, 0, 3));
+        let s4 = s3.apply_event(&action_failed(0, 1, 4));
+        assert_eq!(s4.actions_dispatched, 2);
+        assert_eq!(s4.actions_completed, 1);
+        assert_eq!(s4.actions_failed, 1);
+    }
+
+    // =====================================================================
+    // Step overwrite: applying StepSucceeded over Running replaces state
+    // =====================================================================
+
+    #[test]
+    fn step_state_can_transition_from_running_to_succeeded() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_started(0, 1));
+        assert_eq!(
+            s1.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Running)
+        );
+        let s2 = s1.apply_event(&step_succeeded(0, 0, 2));
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Succeeded)
+        );
+    }
+
+    // =====================================================================
+    // at_seq is overwritten (not enforced monotonic)
+    // =====================================================================
+
+    #[test]
+    fn at_seq_overwrites_with_lower_value() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&run_accepted(100));
+        assert_eq!(s1.at_seq.get(), 100);
+        let s2 = s1.apply_event(&step_started(0, 5));
+        assert_eq!(
+            s2.at_seq.get(), 5,
+            "at_seq must reflect the event's seq even if lower"
+        );
+    }
+
+    // =====================================================================
+    // Terminal state persistence: subsequent events don't clear terminal
+    // =====================================================================
+
+    #[test]
+    fn terminal_state_persists_through_subsequent_event() {
+        let init = ReplayState::initial();
+        let terminal = init.apply_event(&run_cancelled(10));
+        assert!(terminal.is_terminal);
+        let after = terminal.apply_event(&step_started(0, 11));
+        assert!(
+            after.is_terminal,
+            "is_terminal must remain true after further events"
+        );
+        assert_eq!(
+            after.terminal_kind,
+            Some(TerminalKind::Cancelled),
+            "terminal_kind must persist"
+        );
+    }
+
+    // =====================================================================
+    // RunFinished counter invariants
+    // =====================================================================
+
+    #[test]
+    fn run_finished_does_not_increment_steps_completed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_finished(0, 1));
+        assert_eq!(
+            next.steps_completed, 0,
+            "RunFinished must not change steps_completed"
+        );
+    }
+
+    #[test]
+    fn run_finished_does_not_increment_action_counters() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_finished(0, 1));
+        assert_eq!(next.actions_dispatched, 0);
+        assert_eq!(next.actions_completed, 0);
+        assert_eq!(next.actions_failed, 0);
+    }
+
+    // =====================================================================
+    // RunCancelled counter invariants
+    // =====================================================================
+
+    #[test]
+    fn run_cancelled_preserves_existing_counters() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_succeeded(0, 0, 1));
+        let s2 = s1.apply_event(&action_scheduled(0, 0, 2));
+        let s3 = s2.apply_event(&action_completed(0, 0, 3));
+        let s4 = s3.apply_event(&action_failed(0, 1, 4));
+        let s5 = s4.apply_event(&run_cancelled(5));
+        assert_eq!(s5.steps_completed, 1, "cancelled must preserve steps_completed");
+        assert_eq!(s5.actions_dispatched, 1, "cancelled must preserve actions_dispatched");
+        assert_eq!(s5.actions_completed, 1, "cancelled must preserve actions_completed");
+        assert_eq!(s5.actions_failed, 1, "cancelled must preserve actions_failed");
+    }
+
+    // =====================================================================
+    // Terminal events don't alter step_states or slot_values
+    // =====================================================================
+
+    #[test]
+    fn run_cancelled_does_not_clear_step_states() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_started(0, 1));
+        assert_eq!(s1.step_states.len(), 1);
+        let s2 = s1.apply_event(&run_cancelled(2));
+        assert_eq!(
+            s2.step_states.len(), 1,
+            "RunCancelled must not clear step_states"
+        );
+    }
+
+    #[test]
+    fn run_failed_does_not_clear_slot_values() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_succeeded(0, 5, 1));
+        assert!(s1.slot_values.contains_key(&SlotIdx::new(5)));
+        let s2 = s1.apply_event(&run_failed(2));
+        assert!(
+            s2.slot_values.contains_key(&SlotIdx::new(5)),
+            "RunFailed must not clear slot_values"
+        );
+    }
+
+    // =====================================================================
+    // Multiple action events accumulate correctly
+    // =====================================================================
+
+    #[test]
+    fn multiple_action_completed_accumulates() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&action_completed(0, 0, 1));
+        let s2 = s1.apply_event(&action_completed(1, 1, 2));
+        let s3 = s2.apply_event(&action_completed(2, 2, 3));
+        assert_eq!(s3.actions_completed, 3);
+    }
+
+    #[test]
+    fn multiple_action_failed_accumulates() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&action_failed(0, 0, 1));
+        let s2 = s1.apply_event(&action_failed(1, 1, 2));
+        assert_eq!(s2.actions_failed, 2);
+    }
+
+    // =====================================================================
+    // Different steps tracked independently in step_states
+    // =====================================================================
+
+    #[test]
+    fn distinct_steps_are_tracked_independently() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_started(0, 1));
+        let s2 = s1.apply_event(&step_started(1, 2));
+        let s3 = s2.apply_event(&step_succeeded(0, 10, 3));
+        assert_eq!(
+            s3.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Succeeded),
+            "step 0 should be Succeeded"
+        );
+        assert_eq!(
+            s3.step_states.get(&StepIdx::new(1)),
+            Some(&StepState::Running),
+            "step 1 should still be Running"
+        );
+    }
+
+    // =====================================================================
+    // Two RunAccepted events: second overrides run_id
+    // =====================================================================
+
+    #[test]
+    fn second_run_accepted_overwrites_run_id() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&run_accepted(1));
+        assert_eq!(s1.run_id, TEST_RUN);
+
+        const OTHER_RUN: RunId = RunId::new(99);
+        let s2 = s1.apply_event(&JournalEvent::RunAccepted {
+            run: OTHER_RUN,
+            seq: seq(2),
+            workflow: TEST_WORKFLOW,
+        });
+        assert_eq!(s2.run_id, OTHER_RUN, "second RunAccepted must overwrite run_id");
+    }
+
+    // =====================================================================
+    // Clone independence
+    // =====================================================================
+
+    #[test]
+    fn cloned_state_is_independent() {
+        let init = ReplayState::initial();
+        let cloned = init.clone();
+        // Mutating init via apply_event should not affect cloned.
+        let _next = init.apply_event(&step_started(0, 1));
+        assert!(
+            cloned.step_states.is_empty(),
+            "cloned state must not be affected by mutations to original"
+        );
+    }
+
+    // =====================================================================
+    // Full failure lifecycle
+    // =====================================================================
+
+    #[test]
+    fn failure_lifecycle() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_started(0, 1));
+        let s2 = s1.apply_event(&action_scheduled(0, 10, 2));
+        let s3 = s2.apply_event(&action_failed(0, 10, 3));
+        let s4 = s3.apply_event(&run_failed(4));
+        assert!(s4.is_terminal);
+        assert_eq!(s4.terminal_kind, Some(TerminalKind::Failed));
+        assert_eq!(s4.actions_dispatched, 1);
+        assert_eq!(s4.actions_failed, 1);
+        assert_eq!(s4.steps_failed, 1);
+    }
+
+    // =====================================================================
+    // WaitScheduled then StepSucceeded transition
+    // =====================================================================
+
+    #[test]
+    fn step_can_transition_from_waiting_to_succeeded() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&wait_scheduled(3, 1));
+        assert_eq!(
+            s1.step_states.get(&StepIdx::new(3)),
+            Some(&StepState::Waiting)
+        );
+        let s2 = s1.apply_event(&step_succeeded(3, 0, 2));
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(3)),
+            Some(&StepState::Succeeded),
+            "step must transition from Waiting to Succeeded"
+        );
+    }
+
+    // =====================================================================
+    // StepSucceeded does not increment steps_failed
+    // =====================================================================
+
+    #[test]
+    fn step_succeeded_does_not_increment_steps_failed() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&step_succeeded(0, 0, 1));
+        assert_eq!(
+            next.steps_failed, 0,
+            "StepSucceeded must not increment steps_failed"
+        );
+    }
+
+    // =====================================================================
+    // ActionScheduled does not change step counters
+    // =====================================================================
+
+    #[test]
+    fn action_scheduled_does_not_affect_step_counters() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&action_scheduled(0, 0, 1));
+        assert_eq!(next.steps_completed, 0, "actions must not touch steps_completed");
+        assert_eq!(next.steps_failed, 0, "actions must not touch steps_failed");
+    }
+
+    // =====================================================================
+    // RunFinished at_seq is set correctly
+    // =====================================================================
+
+    #[test]
+    fn run_finished_sets_at_seq() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_finished(0, 42));
+        assert_eq!(next.at_seq.get(), 42);
+    }
+
+    // =====================================================================
+    // RunCancelled at_seq is set correctly
+    // =====================================================================
+
+    #[test]
+    fn run_cancelled_sets_at_seq() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_cancelled(77));
+        assert_eq!(next.at_seq.get(), 77);
+    }
+
+    // =====================================================================
+    // SlotWritten on a fresh slot vs already-written slot
+    // =====================================================================
+
+    #[test]
+    fn slot_written_on_fresh_slot_uses_default_value() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&slot_written(3, 1));
+        let Some(v) = next.slot_values.get(&SlotIdx::new(3)) else {
+            assert!(false, "slot 3 must be present");
+            return;
+        };
+        assert_eq!(v, "<written>");
+    }
+
+    // =====================================================================
+    // Step overwrite: Running -> Waiting (via WaitScheduled)
+    // =====================================================================
+
+    #[test]
+    fn step_state_can_transition_from_running_to_waiting() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&step_started(0, 1));
+        assert_eq!(
+            s1.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Running)
+        );
+        let s2 = s1.apply_event(&wait_scheduled(0, 2));
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Waiting),
+            "step must transition from Running to Waiting"
+        );
+    }
+
+    // =====================================================================
+    // RunAccepted does not set terminal
+    // =====================================================================
+
+    #[test]
+    fn run_accepted_does_not_set_terminal() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&run_accepted(1));
+        assert!(!next.is_terminal, "RunAccepted must not set is_terminal");
+        assert!(next.terminal_kind.is_none(), "RunAccepted must not set terminal_kind");
+    }
 
     // -- ReplaySessionState construction ------------------------------------
 
