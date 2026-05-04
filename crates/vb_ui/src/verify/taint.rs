@@ -1,4 +1,294 @@
-//! Basic taint source detection for compiled workflows.
+//! Taint tracking data structures for the verification view.
+//!
+//! Provides slot-level taint classification and propagation tracking used by
+//! the verification screen to visualise how sensitive data flows through a
+//! compiled workflow. The types here complement the overlay rendering in
+//! `taint_overlay.rs` by offering structured, queryable taint graphs.
+
+use std::collections::{HashMap, HashSet};
+
+use crate::theme::colors;
+
+// ---------------------------------------------------------------------------
+// TaintKind -- classification of sensitive data
+// ---------------------------------------------------------------------------
+
+/// Classification of the kind of sensitive data carried by a slot.
+///
+/// Severity ordering (highest to lowest): Secret > Pii > Financial >
+/// Authentication > Custom.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaintKind {
+    /// Cryptographic secrets, API keys, passwords.
+    Secret,
+    /// Personally identifiable information (names, emails, addresses).
+    Pii,
+    /// Financial data (credit card numbers, bank accounts).
+    Financial,
+    /// Authentication tokens, session IDs, OAuth credentials.
+    Authentication,
+    /// User-defined taint category.
+    Custom(String),
+}
+
+impl TaintKind {
+    /// Returns the cyberpunk palette colour for this taint kind.
+    ///
+    /// - Secret: neon magenta (`#ff00ff`)
+    /// - Pii: neon pink (`#ff2d7b`)
+    /// - Financial: neon orange (`#ff6b00`)
+    /// - Authentication: neon purple (`#b14dff`)
+    /// - Custom: neon cyan (`#00f5ff`)
+    #[must_use]
+    pub fn color(&self) -> [f32; 4] {
+        match self {
+            Self::Secret => colors::neon::MAGENTA,
+            Self::Pii => colors::neon::PINK,
+            Self::Financial => colors::neon::ORANGE,
+            Self::Authentication => colors::neon::PURPLE,
+            Self::Custom(_) => colors::neon::CYAN,
+        }
+    }
+
+    /// Numeric severity rank (higher is more dangerous).
+    ///
+    /// Secret = 4, Pii = 3, Financial = 2, Authentication = 1, Custom = 0.
+    #[must_use]
+    pub fn severity_rank(&self) -> u8 {
+        match self {
+            Self::Secret => 4,
+            Self::Pii => 3,
+            Self::Financial => 2,
+            Self::Authentication => 1,
+            Self::Custom(_) => 0,
+        }
+    }
+}
+
+impl std::fmt::Display for TaintKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Secret => write!(f, "Secret"),
+            Self::Pii => write!(f, "Pii"),
+            Self::Financial => write!(f, "Financial"),
+            Self::Authentication => write!(f, "Authentication"),
+            Self::Custom(name) => write!(f, "Custom({})", name),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TaintSource -- origin of tainted data
+// ---------------------------------------------------------------------------
+
+/// Describes where a taint enters the workflow graph.
+///
+/// A source is a specific slot at a specific step that introduces data
+/// of a given taint kind into the workflow.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaintSource {
+    /// The slot index where the taint originates.
+    pub slot: u32,
+    /// The step index where the taint originates.
+    pub step: u16,
+    /// The kind of sensitive data introduced.
+    pub kind: TaintKind,
+}
+
+// ---------------------------------------------------------------------------
+// TaintPropagation -- flow of taint from one slot to another
+// ---------------------------------------------------------------------------
+
+/// Describes taint flowing from one slot to another via a workflow step.
+///
+/// Represents a single directed edge in the taint propagation graph.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaintPropagation {
+    /// The source slot that carries taint.
+    pub from_slot: u32,
+    /// The destination slot that receives taint.
+    pub to_slot: u32,
+    /// The step that transfers taint from `from_slot` to `to_slot`.
+    pub via_step: u16,
+}
+
+// ---------------------------------------------------------------------------
+// TaintGraph -- queryable taint propagation graph
+// ---------------------------------------------------------------------------
+
+/// A directed graph of taint sources and propagation edges.
+///
+/// Supports queries such as "which slots are tainted?" and "what is the
+/// propagation path to a given slot?"
+#[derive(Debug, Clone, Default)]
+pub struct TaintGraph {
+    /// All taint sources (origins).
+    sources: Vec<TaintSource>,
+    /// All propagation edges (directed).
+    propagations: Vec<TaintPropagation>,
+}
+
+impl TaintGraph {
+    /// Creates a new empty taint graph.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            sources: Vec::new(),
+            propagations: Vec::new(),
+        }
+    }
+
+    /// Adds a taint source to the graph.
+    pub fn add_source(&mut self, source: TaintSource) {
+        self.sources.push(source);
+    }
+
+    /// Adds a taint propagation edge to the graph.
+    pub fn add_propagation(&mut self, prop: TaintPropagation) {
+        self.propagations.push(prop);
+    }
+
+    /// Returns a reference to the taint sources.
+    #[must_use]
+    pub fn sources(&self) -> &[TaintSource] {
+        &self.sources
+    }
+
+    /// Returns a reference to the taint propagations.
+    #[must_use]
+    pub fn propagations(&self) -> &[TaintPropagation] {
+        &self.propagations
+    }
+
+    /// Returns all slot indices that are tainted.
+    ///
+    /// This includes both source slots and any slot reachable via propagation
+    /// edges. Duplicates are removed and the result is sorted.
+    #[must_use]
+    pub fn tainted_slots(&self) -> Vec<u32> {
+        let mut slots: HashSet<u32> = HashSet::new();
+
+        for source in &self.sources {
+            slots.insert(source.slot);
+        }
+
+        // Walk propagations transitively from source slots.
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for prop in &self.propagations {
+                if slots.contains(&prop.from_slot) && slots.insert(prop.to_slot) {
+                    changed = true;
+                }
+            }
+        }
+
+        let mut result: Vec<u32> = slots.into_iter().collect();
+        result.sort_unstable();
+        result
+    }
+
+    /// Returns the propagation chain leading to a given slot.
+    ///
+    /// Traces backwards from `slot` through propagation edges to find the
+    /// shortest chain of propagations from any source slot to `slot`.
+    /// Returns an empty vec if `slot` is not tainted or is only a source.
+    #[must_use]
+    pub fn propagation_path_to(&self, slot: u32) -> Vec<TaintPropagation> {
+        let source_slots: HashSet<u32> =
+            self.sources.iter().map(|s| s.slot).collect();
+
+        // Build reverse adjacency: to_slot -> list of propagations leading to it.
+        let mut incoming: HashMap<u32, Vec<&TaintPropagation>> = HashMap::new();
+        for prop in &self.propagations {
+            incoming
+                .entry(prop.to_slot)
+                .or_default()
+                .push(prop);
+        }
+
+        // If the slot is a source and has no incoming edges, return empty.
+        if source_slots.contains(&slot) && !incoming.contains_key(&slot) {
+            return Vec::new();
+        }
+
+        // If the slot is not tainted at all, return empty.
+        if !source_slots.contains(&slot)
+            && !self
+                .propagations
+                .iter()
+                .any(|p| p.to_slot == slot)
+        {
+            return Vec::new();
+        }
+
+        // BFS backwards from `slot` to find shortest path to any source.
+        let mut parent: HashMap<u32, &TaintPropagation> = HashMap::new();
+        let mut visited: HashSet<u32> = HashSet::new();
+        visited.insert(slot);
+        let mut queue: Vec<u32> = vec![slot];
+
+        let mut found_source: Option<u32> = None;
+
+        while let Some(current) = queue.pop() {
+            if source_slots.contains(&current) && current != slot {
+                found_source = Some(current);
+                break;
+            }
+
+            if let Some(preds) = incoming.get(&current) {
+                for prop in preds {
+                    if visited.insert(prop.from_slot) {
+                        // Map to_slot -> propagation for reconstruction
+                        parent.insert(current, *prop);
+                        queue.push(prop.from_slot);
+                    }
+                }
+            }
+        }
+
+        // If the target slot itself is a source, no propagation path needed.
+        if source_slots.contains(&slot) {
+            return Vec::new();
+        }
+
+        // If we didn't find a source, the slot may still be reachable but
+        // we cannot trace a complete path. Return empty.
+        let Some(source_slot) = found_source else {
+            return Vec::new();
+        };
+
+        // Reconstruct path from slot back to source.
+        let mut path: Vec<TaintPropagation> = Vec::new();
+        let mut current = slot;
+        while let Some(&prop) = parent.get(&current) {
+            path.push(prop.clone());
+            current = prop.from_slot;
+            if current == source_slot {
+                break;
+            }
+        }
+        path.reverse();
+        path
+    }
+
+    /// Returns the most dangerous taint kind present in the graph.
+    ///
+    /// Severity ordering: Secret > Pii > Financial > Authentication > Custom.
+    /// Returns `None` if the graph has no sources.
+    #[must_use]
+    pub fn highest_severity(&self) -> Option<TaintKind> {
+        self.sources
+            .iter()
+            .map(|s| &s.kind)
+            .max_by_key(|k| k.severity_rank())
+            .cloned()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Legacy function (preserved for backwards compatibility)
+// ---------------------------------------------------------------------------
 
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
@@ -25,19 +315,309 @@ pub fn find_secret_sources(parts: &WorkflowParts) -> Vec<StepIdx> {
     sources
 }
 
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ========================================================================
+    // TaintKind tests
+    // ========================================================================
+
+    #[test]
+    fn test_taint_kind_color_secret_is_magenta() {
+        assert_eq!(TaintKind::Secret.color(), colors::neon::MAGENTA);
+    }
+
+    #[test]
+    fn test_taint_kind_color_pii_is_pink() {
+        assert_eq!(TaintKind::Pii.color(), colors::neon::PINK);
+    }
+
+    #[test]
+    fn test_taint_kind_color_financial_is_orange() {
+        assert_eq!(TaintKind::Financial.color(), colors::neon::ORANGE);
+    }
+
+    #[test]
+    fn test_taint_kind_color_authentication_is_purple() {
+        assert_eq!(TaintKind::Authentication.color(), colors::neon::PURPLE);
+    }
+
+    #[test]
+    fn test_taint_kind_color_custom_is_cyan() {
+        assert_eq!(
+            TaintKind::Custom(String::from("user-data")).color(),
+            colors::neon::CYAN
+        );
+    }
+
+    #[test]
+    fn test_taint_kind_severity_ordering() {
+        assert!(TaintKind::Secret.severity_rank() > TaintKind::Pii.severity_rank());
+        assert!(TaintKind::Pii.severity_rank() > TaintKind::Financial.severity_rank());
+        assert!(
+            TaintKind::Financial.severity_rank() > TaintKind::Authentication.severity_rank()
+        );
+        assert!(
+            TaintKind::Authentication.severity_rank() > TaintKind::Custom(String::new()).severity_rank()
+        );
+    }
+
+    #[test]
+    fn test_taint_kind_display() {
+        assert_eq!(format!("{}", TaintKind::Secret), "Secret");
+        assert_eq!(format!("{}", TaintKind::Pii), "Pii");
+        assert_eq!(format!("{}", TaintKind::Financial), "Financial");
+        assert_eq!(format!("{}", TaintKind::Authentication), "Authentication");
+        assert_eq!(
+            format!("{}", TaintKind::Custom(String::from("token"))),
+            "Custom(token)"
+        );
+    }
+
+    // ========================================================================
+    // TaintGraph -- add_source / add_propagation
+    // ========================================================================
+
+    #[test]
+    fn test_graph_add_source_and_access() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 1,
+            kind: TaintKind::Secret,
+        });
+        assert_eq!(graph.sources().len(), 1);
+        assert_eq!(graph.sources()[0].slot, 0);
+        assert_eq!(graph.sources()[0].step, 1);
+        assert_eq!(graph.sources()[0].kind, TaintKind::Secret);
+    }
+
+    #[test]
+    fn test_graph_add_propagation_and_access() {
+        let mut graph = TaintGraph::new();
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 2,
+        });
+        assert_eq!(graph.propagations().len(), 1);
+        assert_eq!(graph.propagations()[0].from_slot, 0);
+        assert_eq!(graph.propagations()[0].to_slot, 1);
+        assert_eq!(graph.propagations()[0].via_step, 2);
+    }
+
+    // ========================================================================
+    // TaintGraph -- tainted_slots
+    // ========================================================================
+
+    #[test]
+    fn test_tainted_slots_empty_graph() {
+        let graph = TaintGraph::new();
+        assert!(graph.tainted_slots().is_empty());
+    }
+
+    #[test]
+    fn test_tainted_slots_only_sources() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 5,
+            step: 0,
+            kind: TaintKind::Pii,
+        });
+        graph.add_source(TaintSource {
+            slot: 10,
+            step: 1,
+            kind: TaintKind::Secret,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(slots, vec![5u32, 10u32]);
+    }
+
+    #[test]
+    fn test_tainted_slots_includes_propagated() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 1,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 1,
+            to_slot: 3,
+            via_step: 2,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(slots, vec![0u32, 1u32, 3u32]);
+    }
+
+    // ========================================================================
+    // TaintGraph -- propagation_path_to
+    // ========================================================================
+
+    #[test]
+    fn test_propagation_path_to_source_slot_returns_empty() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        assert!(graph.propagation_path_to(0).is_empty());
+    }
+
+    #[test]
+    fn test_propagation_path_to_unrelated_slot_returns_empty() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        assert!(graph.propagation_path_to(99).is_empty());
+    }
+
+    #[test]
+    fn test_propagation_path_to_direct_propagation() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 2,
+            via_step: 1,
+        });
+        let path = graph.propagation_path_to(2);
+        assert_eq!(path.len(), 1);
+        assert_eq!(path[0].from_slot, 0);
+        assert_eq!(path[0].to_slot, 2);
+        assert_eq!(path[0].via_step, 1);
+    }
+
+    #[test]
+    fn test_propagation_path_to_chain() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 1,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 1,
+            to_slot: 3,
+            via_step: 2,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 3,
+            to_slot: 5,
+            via_step: 3,
+        });
+        let path = graph.propagation_path_to(5);
+        assert_eq!(path.len(), 3);
+        assert_eq!(path[0].from_slot, 0);
+        assert_eq!(path[0].to_slot, 1);
+        assert_eq!(path[1].from_slot, 1);
+        assert_eq!(path[1].to_slot, 3);
+        assert_eq!(path[2].from_slot, 3);
+        assert_eq!(path[2].to_slot, 5);
+    }
+
+    // ========================================================================
+    // TaintGraph -- highest_severity
+    // ========================================================================
+
+    #[test]
+    fn test_highest_severity_empty_graph() {
+        let graph = TaintGraph::new();
+        assert!(graph.highest_severity().is_none());
+    }
+
+    #[test]
+    fn test_highest_severity_single_source() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Financial,
+        });
+        assert_eq!(graph.highest_severity(), Some(TaintKind::Financial));
+    }
+
+    #[test]
+    fn test_highest_severity_picks_most_dangerous() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Custom(String::from("log")),
+        });
+        graph.add_source(TaintSource {
+            slot: 1,
+            step: 1,
+            kind: TaintKind::Authentication,
+        });
+        graph.add_source(TaintSource {
+            slot: 2,
+            step: 2,
+            kind: TaintKind::Pii,
+        });
+        graph.add_source(TaintSource {
+            slot: 3,
+            step: 3,
+            kind: TaintKind::Secret,
+        });
+        assert_eq!(graph.highest_severity(), Some(TaintKind::Secret));
+    }
+
+    #[test]
+    fn test_highest_severity_no_secret_picks_pii() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Financial,
+        });
+        graph.add_source(TaintSource {
+            slot: 1,
+            step: 1,
+            kind: TaintKind::Pii,
+        });
+        assert_eq!(graph.highest_severity(), Some(TaintKind::Pii));
+    }
+
+    // ========================================================================
+    // Legacy find_secret_sources tests
+    // ========================================================================
+
     use vb_core::ids::WorkflowDigest;
-    use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+    use vb_core::ids::SlotIdx;
+    use vb_core::workflow::{CompiledNode, ResourceContract};
 
     fn make_parts(kinds: Vec<CompiledNodeKind>) -> WorkflowParts {
         let nodes: Vec<CompiledNode> = kinds
             .into_iter()
             .enumerate()
             .map(|(i, kind)| CompiledNode {
-                id: StepIdx::new(i as u16),
+                id: StepIdx::new(
+                    u16::try_from(i).unwrap_or(u16::MAX),
+                ),
                 output: None,
                 next: None,
                 on_error: None,
@@ -111,5 +691,98 @@ mod tests {
         ]);
         let sources = find_secret_sources(&parts);
         assert!(sources.is_empty());
+    }
+
+    // ========================================================================
+    // TaintGraph -- transitive / diamond propagation
+    // ========================================================================
+
+    #[test]
+    fn test_tainted_slots_diamond_propagation() {
+        // 0 -> 1, 0 -> 2, 1 -> 3, 2 -> 3 (diamond merge)
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 1,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 2,
+            via_step: 2,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 1,
+            to_slot: 3,
+            via_step: 3,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 2,
+            to_slot: 3,
+            via_step: 4,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(slots, vec![0u32, 1u32, 2u32, 3u32]);
+    }
+
+    #[test]
+    fn test_propagation_path_to_diamond_picks_shortest() {
+        // 0 -> 1 (via step 1), 1 -> 3 (via step 3)
+        // 0 -> 2 (via step 2), 2 -> 3 (via step 4)
+        // Path to 3 should be one of the two shortest chains.
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 1,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 2,
+            via_step: 2,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 1,
+            to_slot: 3,
+            via_step: 3,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 2,
+            to_slot: 3,
+            via_step: 4,
+        });
+        let path = graph.propagation_path_to(3);
+        assert_eq!(path.len(), 2);
+        // Path should start at source slot 0 and end at slot 3.
+        assert_eq!(path[0].from_slot, 0);
+        assert_eq!(path[1].to_slot, 3);
+    }
+
+    #[test]
+    fn test_tainted_slots_with_orphan_propagation() {
+        // Propagation edge whose source is not tainted -- should not leak.
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 5,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0, // not tainted
+            to_slot: 1,
+            via_step: 1,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(slots, vec![5u32]);
     }
 }

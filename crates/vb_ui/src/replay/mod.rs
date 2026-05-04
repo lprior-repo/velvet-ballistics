@@ -16,7 +16,10 @@ pub use controller::{ControllerEvent, PlaybackState, ReplayController};
 pub use engine::ReplayEngine;
 pub use graph_overlay::{GraphOverlay, NodeOverlay, NodeOverlayState, OverlayBadge, OverlayConfig};
 pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};
-pub use state::{ReplayState, TerminalKind};
+pub use state::{ReplayBookmark, ReplaySessionState, ReplayState, TerminalKind};
 pub use ticket_panel::{ActionTicketDisplay, SideEffectCertainty};
 pub use timeline::{TimelineEvent, TimelineStrip};
-pub use types::{PlaybackSpeed, ReplayDiff, TaintDiff};
+pub use types::{
+    PlaybackSpeed, ReplayDiff, ReplayEvent, ReplayEventType, ReplaySlotByteDiff, ReplaySnapshot,
+    ReplayStepDetail, ReplayStepStatus, TaintDiff,
+};

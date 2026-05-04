@@ -6,10 +6,11 @@
 use vb_ipc::ShardMetrics;
 
 use crate::system::alerts::AlertManager;
+use crate::system::map::ShardNode;
 use crate::system::metrics::{HealthStatus, ShardDisplay, SystemMetrics};
 use crate::system::queue_monitor::{QueueMonitor, QueueStatus};
 use crate::system::ticker::EventTicker;
-use crate::system::topology::{JournalStatus, TopologySnapshot};
+use crate::system::topology::TopologySnapshot;
 
 // ---------------------------------------------------------------------------
 // QueueStatus display helper (re-exported for convenience)
@@ -71,15 +72,7 @@ impl SystemScreen {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            topology: TopologySnapshot {
-                shards: Vec::new(),
-                journal_writer_status: JournalStatus {
-                    queue_depth: 0,
-                    avg_latency_us: 0,
-                    healthy: true,
-                },
-                ipc_connections: 0,
-            },
+            topology: TopologySnapshot::from_shards(Vec::new()),
             metrics: SystemMetrics {
                 shards: Vec::new(),
                 total_active_runs: 0,
@@ -246,9 +239,19 @@ impl SystemScreen {
 
     /// Re-derive the topology snapshot from current metrics.
     fn sync_topology(&mut self) {
-        self.topology.shards = self.metrics.shards.clone();
-        // Journal and IPC fields are not available from ShardMetrics alone;
-        // keep existing values until a full runtime-metrics refresh.
+        self.topology = TopologySnapshot::from_shards(
+            self.metrics
+                .shards
+                .iter()
+                .map(|s| ShardNode::new(
+                    s.shard_id,
+                    s.active_runs,
+                    0,
+                    s.ready_queue_depth,
+                    s.action_queue_depth,
+                ))
+                .collect(),
+        );
     }
 }
 
@@ -415,9 +418,9 @@ mod tests {
         let mut screen = SystemScreen::new();
         screen.update_from_metrics(&stub_shard_metrics(0, 5, 2, 90, 100, 10.0));
         screen.update_from_metrics(&stub_shard_metrics(1, 8, 3, 85, 100, 15.0));
-        assert_eq!(screen.topology().shards.len(), 2);
-        assert_eq!(screen.topology().shards[0].shard_id, 0);
-        assert_eq!(screen.topology().shards[1].shard_id, 1);
+        assert_eq!(screen.topology().topology.shards.len(), 2);
+        assert_eq!(screen.topology().topology.shards[0].shard_id, 0);
+        assert_eq!(screen.topology().topology.shards[1].shard_id, 1);
     }
 
     // -- Alert accessor tests --
@@ -579,17 +582,11 @@ mod tests {
     }
 
     #[test]
-    fn topology_retains_journal_status_across_updates() {
+    fn topology_syncs_shards_from_metrics() {
         let mut screen = SystemScreen::new();
-        // Manually set journal status
-        screen.topology.journal_writer_status = JournalStatus {
-            queue_depth: 42,
-            avg_latency_us: 500,
-            healthy: false,
-        };
         screen.update_from_metrics(&stub_shard_metrics(0, 10, 5, 90, 100, 20.0));
-        // sync_topology should not overwrite journal fields
-        assert_eq!(screen.topology().journal_writer_status.queue_depth, 42);
-        assert!(!screen.topology().journal_writer_status.healthy);
+        // After update, topology should reflect the shard from metrics.
+        assert_eq!(screen.topology().topology.shards.len(), 1);
+        assert_eq!(screen.topology().topology.shards[0].shard_id, 0);
     }
 }
