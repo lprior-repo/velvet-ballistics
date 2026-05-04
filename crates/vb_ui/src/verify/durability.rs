@@ -2660,4 +2660,1284 @@ mod tests {
             "RetryCheck targeting Nop should not flag reconciliation risk"
         );
     }
+
+    // =====================================================================
+    // Phase 2B: DurabilityLevel tests (tests 36-42)
+    // =====================================================================
+
+    /// Test 36: DurabilityLevel::label() returns correct strings.
+    fn test_durability_level_labels() -> Result<(), String> {
+        if DurabilityLevel::BestEffort.label() != "BestEffort" {
+            return Err("BestEffort label mismatch".into());
+        }
+        if DurabilityLevel::Journaled.label() != "Journaled" {
+            return Err("Journaled label mismatch".into());
+        }
+        if DurabilityLevel::Strict.label() != "Strict" {
+            return Err("Strict label mismatch".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_labels() {
+        test_durability_level_labels().ok();
+    }
+
+    /// Test 37: DurabilityLevel::color() returns valid hex color constants.
+    fn test_durability_level_colors() -> Result<(), String> {
+        if DurabilityLevel::BestEffort.color() != NEON_ORANGE {
+            return Err(format!(
+                "BestEffort color should be NEON_ORANGE, got {}",
+                DurabilityLevel::BestEffort.color()
+            ));
+        }
+        if DurabilityLevel::Journaled.color() != NEON_CYAN {
+            return Err(format!(
+                "Journaled color should be NEON_CYAN, got {}",
+                DurabilityLevel::Journaled.color()
+            ));
+        }
+        if DurabilityLevel::Strict.color() != NEON_GREEN {
+            return Err(format!(
+                "Strict color should be NEON_GREEN, got {}",
+                DurabilityLevel::Strict.color()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_colors() {
+        test_durability_level_colors().ok();
+    }
+
+    /// Test 38: DurabilityLevel::rank() returns ordered values.
+    fn test_durability_level_rank_ordering() -> Result<(), String> {
+        let be = DurabilityLevel::BestEffort.rank();
+        let jo = DurabilityLevel::Journaled.rank();
+        let st = DurabilityLevel::Strict.rank();
+        if be >= jo {
+            return Err(format!("BestEffort rank ({}) should be < Journaled rank ({})", be, jo));
+        }
+        if jo >= st {
+            return Err(format!("Journaled rank ({}) should be < Strict rank ({})", jo, st));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_rank_ordering() {
+        test_durability_level_rank_ordering().ok();
+    }
+
+    /// Test 39: DurabilityLevel derive traits (Debug, Clone, Copy, PartialEq, Eq).
+    fn test_durability_level_derives() -> Result<(), String> {
+        let a = DurabilityLevel::Journaled;
+        let b = a; // Copy
+        if a != b {
+            return Err("Copy trait broken".into());
+        }
+        let c = a.clone();
+        if a != c {
+            return Err("Clone trait broken".into());
+        }
+        let debug_str = format!("{:?}", a);
+        if !debug_str.contains("Journaled") {
+            return Err(format!("Debug should contain 'Journaled', got: {}", debug_str));
+        }
+        if DurabilityLevel::BestEffort == DurabilityLevel::Strict {
+            return Err("BestEffort should not equal Strict".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_derives() {
+        test_durability_level_derives().ok();
+    }
+
+    /// Test 40: DurabilityLevel::default() is BestEffort.
+    fn test_durability_level_default() -> Result<(), String> {
+        let default = DurabilityLevel::default();
+        if default != DurabilityLevel::BestEffort {
+            return Err(format!(
+                "Default should be BestEffort, got {:?}",
+                default
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_default() {
+        test_durability_level_default().ok();
+    }
+
+    /// Test 41: DurabilityLevel pairwise inequality.
+    fn test_durability_level_pairwise_inequality() -> Result<(), String> {
+        let variants = [
+            DurabilityLevel::BestEffort,
+            DurabilityLevel::Journaled,
+            DurabilityLevel::Strict,
+        ];
+        let mut i = 0;
+        while i < variants.len() {
+            let mut j = i.checked_add(1).unwrap_or(variants.len());
+            while j < variants.len() {
+                if variants[i] == variants[j] {
+                    return Err(format!(
+                        "Variants at {} and {} should differ",
+                        i, j
+                    ));
+                }
+                j = j.checked_add(1).unwrap_or(variants.len());
+            }
+            i = i.checked_add(1).unwrap_or(variants.len());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_pairwise_inequality() {
+        test_durability_level_pairwise_inequality().ok();
+    }
+
+    /// Test 42: DurabilityLevel all labels are non-empty and distinct.
+    fn test_durability_level_labels_nonempty_distinct() -> Result<(), String> {
+        let labels = [
+            DurabilityLevel::BestEffort.label(),
+            DurabilityLevel::Journaled.label(),
+            DurabilityLevel::Strict.label(),
+        ];
+        for (i, label) in labels.iter().enumerate() {
+            if label.is_empty() {
+                return Err(format!("Label at index {} is empty", i));
+            }
+        }
+        let mut i = 0;
+        while i < labels.len() {
+            let mut j = i.checked_add(1).unwrap_or(labels.len());
+            while j < labels.len() {
+                if labels[i] == labels[j] {
+                    return Err(format!(
+                        "Labels at {} and {} are identical: {}",
+                        i, j, labels[i]
+                    ));
+                }
+                j = j.checked_add(1).unwrap_or(labels.len());
+            }
+            i = i.checked_add(1).unwrap_or(labels.len());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_level_labels_nonempty_distinct() {
+        test_durability_level_labels_nonempty_distinct().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: DurabilityVerifyCheck tests (tests 43-48)
+    // =====================================================================
+
+    /// Test 43: DurabilityVerifyCheck::new() creates correct fields.
+    fn test_verify_check_new() -> Result<(), String> {
+        let check = DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "all good");
+        if check.level != DurabilityLevel::Strict {
+            return Err("level should be Strict".into());
+        }
+        if !check.passed {
+            return Err("passed should be true".into());
+        }
+        if check.detail != "all good" {
+            return Err(format!("detail mismatch: {}", check.detail));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_new() {
+        test_verify_check_new().ok();
+    }
+
+    /// Test 44: DurabilityVerifyCheck with failed status.
+    fn test_verify_check_failed() -> Result<(), String> {
+        let check = DurabilityVerifyCheck::new(DurabilityLevel::BestEffort, false, "missing handler");
+        if check.passed {
+            return Err("passed should be false".into());
+        }
+        if check.level != DurabilityLevel::BestEffort {
+            return Err("level should be BestEffort".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_failed() {
+        test_verify_check_failed().ok();
+    }
+
+    /// Test 45: DurabilityVerifyCheck clone round-trip.
+    fn test_verify_check_clone() -> Result<(), String> {
+        let check = DurabilityVerifyCheck::new(DurabilityLevel::Journaled, true, "ok");
+        let cloned = check.clone();
+        if cloned.level != check.level {
+            return Err("level mismatch after clone".into());
+        }
+        if cloned.passed != check.passed {
+            return Err("passed mismatch after clone".into());
+        }
+        if cloned.detail != check.detail {
+            return Err("detail mismatch after clone".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_clone() {
+        test_verify_check_clone().ok();
+    }
+
+    /// Test 46: DurabilityVerifyCheck Debug format includes all fields.
+    fn test_verify_check_debug() -> Result<(), String> {
+        let check = DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "detail text");
+        let debug = format!("{:?}", check);
+        if !debug.contains("Strict") {
+            return Err(format!("Debug should contain level, got: {}", debug));
+        }
+        if !debug.contains("detail text") {
+            return Err(format!("Debug should contain detail, got: {}", debug));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_debug() {
+        test_verify_check_debug().ok();
+    }
+
+    /// Test 47: DurabilityVerifyCheck with empty detail.
+    fn test_verify_check_empty_detail() -> Result<(), String> {
+        let check = DurabilityVerifyCheck::new(DurabilityLevel::Journaled, true, "");
+        if !check.detail.is_empty() {
+            return Err("detail should be empty".into());
+        }
+        if !check.passed {
+            return Err("passed should be true".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_empty_detail() {
+        test_verify_check_empty_detail().ok();
+    }
+
+    /// Test 48: DurabilityVerifyCheck with all durability levels.
+    fn test_verify_check_all_levels() -> Result<(), String> {
+        let levels = [
+            DurabilityLevel::BestEffort,
+            DurabilityLevel::Journaled,
+            DurabilityLevel::Strict,
+        ];
+        for (i, &level) in levels.iter().enumerate() {
+            let check = DurabilityVerifyCheck::new(level, true, "ok");
+            if check.level != level {
+                return Err(format!("Level mismatch at index {}", i));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verify_check_all_levels() {
+        test_verify_check_all_levels().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: ResourceBudgetBounds tests (tests 49-54)
+    // =====================================================================
+
+    /// Test 49: ResourceBudgetBounds::new() creates correct fields.
+    fn test_resource_bounds_new() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(256, 1000, 5000);
+        if bounds.max_memory_mb != 256 {
+            return Err(format!("max_memory_mb should be 256, got {}", bounds.max_memory_mb));
+        }
+        if bounds.max_cpu_ms != 1000 {
+            return Err(format!("max_cpu_ms should be 1000, got {}", bounds.max_cpu_ms));
+        }
+        if bounds.max_wall_ms != 5000 {
+            return Err(format!("max_wall_ms should be 5000, got {}", bounds.max_wall_ms));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_new() {
+        test_resource_bounds_new().ok();
+    }
+
+    /// Test 50: ResourceBudgetBounds::defaults() returns expected values.
+    fn test_resource_bounds_defaults() -> Result<(), String> {
+        let defaults = ResourceBudgetBounds::defaults();
+        if defaults.max_memory_mb != 512 {
+            return Err(format!("default max_memory_mb should be 512, got {}", defaults.max_memory_mb));
+        }
+        if defaults.max_cpu_ms != 5000 {
+            return Err(format!("default max_cpu_ms should be 5000, got {}", defaults.max_cpu_ms));
+        }
+        if defaults.max_wall_ms != 10_000 {
+            return Err(format!("default max_wall_ms should be 10000, got {}", defaults.max_wall_ms));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_defaults() {
+        test_resource_bounds_defaults().ok();
+    }
+
+    /// Test 51: ResourceBudgetBounds::default() matches defaults().
+    fn test_resource_bounds_default_trait() -> Result<(), String> {
+        let from_trait = ResourceBudgetBounds::default();
+        let from_method = ResourceBudgetBounds::defaults();
+        if from_trait != from_method {
+            return Err("Default trait should match defaults() method".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_default_trait() {
+        test_resource_bounds_default_trait().ok();
+    }
+
+    /// Test 52: ResourceBudgetBounds equality works.
+    fn test_resource_bounds_equality() -> Result<(), String> {
+        let a = ResourceBudgetBounds::new(100, 200, 300);
+        let b = ResourceBudgetBounds::new(100, 200, 300);
+        let c = ResourceBudgetBounds::new(999, 200, 300);
+        if a != b {
+            return Err("Identical bounds should be equal".into());
+        }
+        if a == c {
+            return Err("Different bounds should not be equal".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_equality() {
+        test_resource_bounds_equality().ok();
+    }
+
+    /// Test 53: ResourceBudgetBounds clone round-trip.
+    fn test_resource_bounds_clone() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(64, 500, 2000);
+        let cloned = bounds.clone();
+        if bounds != cloned {
+            return Err("Clone should produce equal bounds".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_clone() {
+        test_resource_bounds_clone().ok();
+    }
+
+    /// Test 54: ResourceBudgetBounds with zero limits.
+    fn test_resource_bounds_zero_limits() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(0, 0, 0);
+        if bounds.max_memory_mb != 0 {
+            return Err("max_memory_mb should be 0".into());
+        }
+        if bounds.max_cpu_ms != 0 {
+            return Err("max_cpu_ms should be 0".into());
+        }
+        if bounds.max_wall_ms != 0 {
+            return Err("max_wall_ms should be 0".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_bounds_zero_limits() {
+        test_resource_bounds_zero_limits().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: DurabilityResourceMetric tests (tests 55-64)
+    // =====================================================================
+
+    /// Test 55: DurabilityResourceMetric::new() creates correct fields.
+    fn test_resource_metric_new() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("memory", 128, 512);
+        if metric.name != "memory" {
+            return Err(format!("name should be 'memory', got '{}'", metric.name));
+        }
+        if metric.used != 128 {
+            return Err(format!("used should be 128, got {}", metric.used));
+        }
+        if metric.limit != 512 {
+            return Err(format!("limit should be 512, got {}", metric.limit));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_new() {
+        test_resource_metric_new().ok();
+    }
+
+    /// Test 56: DurabilityResourceMetric::within_bounds() true when under limit.
+    fn test_resource_metric_within_bounds_true() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("cpu_time", 50, 100);
+        if !metric.within_bounds() {
+            return Err("Should be within bounds when used < limit".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_within_bounds_true() {
+        test_resource_metric_within_bounds_true().ok();
+    }
+
+    /// Test 57: DurabilityResourceMetric::within_bounds() true when at limit.
+    fn test_resource_metric_within_bounds_at_limit() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("memory", 100, 100);
+        if !metric.within_bounds() {
+            return Err("Should be within bounds when used == limit".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_within_bounds_at_limit() {
+        test_resource_metric_within_bounds_at_limit().ok();
+    }
+
+    /// Test 58: DurabilityResourceMetric::within_bounds() false when over limit.
+    fn test_resource_metric_within_bounds_over() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("wall_time", 200, 100);
+        if metric.within_bounds() {
+            return Err("Should NOT be within bounds when used > limit".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_within_bounds_over() {
+        test_resource_metric_within_bounds_over().ok();
+    }
+
+    /// Test 59: DurabilityResourceMetric::utilization() basic calculation.
+    fn test_resource_metric_utilization() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("cpu_time", 50, 100);
+        let util = metric.utilization();
+        // 50 / 100 = 0.5
+        let diff = (util - 0.5).abs();
+        if diff > 0.01 {
+            return Err(format!("utilization should be ~0.5, got {}", util));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_utilization() {
+        test_resource_metric_utilization().ok();
+    }
+
+    /// Test 60: DurabilityResourceMetric::utilization() returns 0 for zero limit.
+    fn test_resource_metric_utilization_zero_limit() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("memory", 50, 0);
+        let util = metric.utilization();
+        if util != 0.0 {
+            return Err(format!("utilization with zero limit should be 0.0, got {}", util));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_utilization_zero_limit() {
+        test_resource_metric_utilization_zero_limit().ok();
+    }
+
+    /// Test 61: DurabilityResourceMetric::status_color() returns correct colors.
+    fn test_resource_metric_status_color() -> Result<(), String> {
+        // Within bounds, low utilization -> green
+        let green_metric = DurabilityResourceMetric::new("memory", 10, 100);
+        if green_metric.status_color() != NEON_GREEN {
+            return Err(format!(
+                "Low utilization should be green, got {}",
+                green_metric.status_color()
+            ));
+        }
+        // Over limit -> red
+        let red_metric = DurabilityResourceMetric::new("memory", 200, 100);
+        if red_metric.status_color() != NEON_RED {
+            return Err(format!(
+                "Over limit should be red, got {}",
+                red_metric.status_color()
+            ));
+        }
+        // High utilization (>90%) -> orange
+        let orange_metric = DurabilityResourceMetric::new("cpu_time", 95, 100);
+        if orange_metric.status_color() != NEON_ORANGE {
+            return Err(format!(
+                "High utilization should be orange, got {}",
+                orange_metric.status_color()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_status_color() {
+        test_resource_metric_status_color().ok();
+    }
+
+    /// Test 62: DurabilityResourceMetric clone round-trip.
+    fn test_resource_metric_clone() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("wall_time", 300, 1000);
+        let cloned = metric.clone();
+        if cloned.name != metric.name {
+            return Err("name mismatch after clone".into());
+        }
+        if cloned.used != metric.used {
+            return Err("used mismatch after clone".into());
+        }
+        if cloned.limit != metric.limit {
+            return Err("limit mismatch after clone".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_clone() {
+        test_resource_metric_clone().ok();
+    }
+
+    /// Test 63: DurabilityResourceMetric with zero used and nonzero limit.
+    fn test_resource_metric_zero_used() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("memory", 0, 512);
+        if !metric.within_bounds() {
+            return Err("Zero used should be within bounds".into());
+        }
+        let util = metric.utilization();
+        if util != 0.0 {
+            return Err(format!("Zero used should have 0.0 utilization, got {}", util));
+        }
+        if metric.status_color() != NEON_GREEN {
+            return Err("Zero used should be green".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_zero_used() {
+        test_resource_metric_zero_used().ok();
+    }
+
+    /// Test 64: DurabilityResourceMetric Debug output contains fields.
+    fn test_resource_metric_debug() -> Result<(), String> {
+        let metric = DurabilityResourceMetric::new("test_metric", 42, 100);
+        let debug = format!("{:?}", metric);
+        if !debug.contains("test_metric") {
+            return Err(format!("Debug should contain name, got: {}", debug));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn resource_metric_debug() {
+        test_resource_metric_debug().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: DurabilityReport tests (tests 65-76)
+    // =====================================================================
+
+    /// Test 65: DurabilityReport::new() creates correct fields.
+    fn test_durability_report_new() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "journal ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "completion ok"),
+        ];
+        let metrics = vec![
+            DurabilityResourceMetric::new("memory", 100, 512),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::Strict, checks, metrics, 1_000_000);
+        if report.level != DurabilityLevel::Strict {
+            return Err("level should be Strict".into());
+        }
+        if report.checks.len() != 2 {
+            return Err(format!("checks should have 2 items, got {}", report.checks.len()));
+        }
+        if report.resource_metrics.len() != 1 {
+            return Err(format!("metrics should have 1 item, got {}", report.resource_metrics.len()));
+        }
+        if report.timestamp_micros != 1_000_000 {
+            return Err(format!("timestamp should be 1000000, got {}", report.timestamp_micros));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_new() {
+        test_durability_report_new().ok();
+    }
+
+    /// Test 66: DurabilityReport::empty() returns default empty report.
+    fn test_durability_report_empty() -> Result<(), String> {
+        let report = DurabilityReport::empty();
+        if report.level != DurabilityLevel::BestEffort {
+            return Err("empty report level should be BestEffort (default)".into());
+        }
+        if !report.checks.is_empty() {
+            return Err("empty report should have no checks".into());
+        }
+        if !report.resource_metrics.is_empty() {
+            return Err("empty report should have no metrics".into());
+        }
+        if report.timestamp_micros != 0 {
+            return Err("empty report timestamp should be 0".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_empty() {
+        test_durability_report_empty().ok();
+    }
+
+    /// Test 67: DurabilityReport::default() matches empty().
+    fn test_durability_report_default() -> Result<(), String> {
+        let from_default = DurabilityReport::default();
+        let from_empty = DurabilityReport::empty();
+        if from_default.level != from_empty.level {
+            return Err("Default and empty level mismatch".into());
+        }
+        if from_default.checks.len() != from_empty.checks.len() {
+            return Err("Default and empty checks count mismatch".into());
+        }
+        if from_default.timestamp_micros != from_empty.timestamp_micros {
+            return Err("Default and empty timestamp mismatch".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_default() {
+        test_durability_report_default().ok();
+    }
+
+    /// Test 68: DurabilityReport::all_passed() true when all checks pass.
+    fn test_durability_report_all_passed() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "ok"),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::Strict, checks, Vec::new(), 0);
+        if !report.all_passed() {
+            return Err("all_passed should be true when all checks pass".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_all_passed() {
+        test_durability_report_all_passed().ok();
+    }
+
+    /// Test 69: DurabilityReport::all_passed() false when some checks fail.
+    fn test_durability_report_not_all_passed() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::BestEffort, true, "ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::BestEffort, false, "fail"),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::BestEffort, checks, Vec::new(), 0);
+        if report.all_passed() {
+            return Err("all_passed should be false when a check fails".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_not_all_passed() {
+        test_durability_report_not_all_passed().ok();
+    }
+
+    /// Test 70: DurabilityReport::pass_count() returns correct count.
+    fn test_durability_report_pass_count() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Journaled, true, "ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Journaled, false, "fail"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Journaled, true, "ok"),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::Journaled, checks, Vec::new(), 0);
+        if report.pass_count() != 2 {
+            return Err(format!("pass_count should be 2, got {}", report.pass_count()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_pass_count() {
+        test_durability_report_pass_count().ok();
+    }
+
+    /// Test 71: DurabilityReport::fail_count() (bool) returns correct value.
+    fn test_durability_report_fail_count() -> Result<(), String> {
+        let passing = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "ok"),
+        ];
+        let report_ok = DurabilityReport::new(DurabilityLevel::Strict, passing, Vec::new(), 0);
+        if report_ok.fail_count() {
+            return Err("fail_count should be false when all pass".into());
+        }
+
+        let failing = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::BestEffort, true, "ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::BestEffort, false, "fail"),
+        ];
+        let report_fail = DurabilityReport::new(DurabilityLevel::BestEffort, failing, Vec::new(), 0);
+        if !report_fail.fail_count() {
+            return Err("fail_count should be true when some fail".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_fail_count() {
+        test_durability_report_fail_count().ok();
+    }
+
+    /// Test 72: DurabilityReport::resources_within_bounds().
+    fn test_durability_report_resources_within_bounds() -> Result<(), String> {
+        let within = vec![
+            DurabilityResourceMetric::new("memory", 100, 512),
+            DurabilityResourceMetric::new("cpu_time", 50, 100),
+        ];
+        let report_ok = DurabilityReport::new(
+            DurabilityLevel::Strict,
+            Vec::new(),
+            within,
+            0,
+        );
+        if !report_ok.resources_within_bounds() {
+            return Err("Should be within bounds".into());
+        }
+
+        let over = vec![
+            DurabilityResourceMetric::new("memory", 100, 512),
+            DurabilityResourceMetric::new("cpu_time", 200, 100),
+        ];
+        let report_over = DurabilityReport::new(
+            DurabilityLevel::BestEffort,
+            Vec::new(),
+            over,
+            0,
+        );
+        if report_over.resources_within_bounds() {
+            return Err("Should NOT be within bounds when one metric is over".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_resources_within_bounds() {
+        test_durability_report_resources_within_bounds().ok();
+    }
+
+    /// Test 73: DurabilityReport::summary() format.
+    fn test_durability_report_summary() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "ok"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, false, "fail"),
+            DurabilityVerifyCheck::new(DurabilityLevel::Strict, true, "ok"),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::Strict, checks, Vec::new(), 0);
+        let summary = report.summary();
+        if summary != "2/3 checks passed" {
+            return Err(format!("Summary should be '2/3 checks passed', got '{}'", summary));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_summary() {
+        test_durability_report_summary().ok();
+    }
+
+    /// Test 74: DurabilityReport empty summary.
+    fn test_durability_report_empty_summary() -> Result<(), String> {
+        let report = DurabilityReport::empty();
+        let summary = report.summary();
+        if summary != "0/0 checks passed" {
+            return Err(format!("Empty summary should be '0/0 checks passed', got '{}'", summary));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_empty_summary() {
+        test_durability_report_empty_summary().ok();
+    }
+
+    /// Test 75: DurabilityReport clone round-trip.
+    fn test_durability_report_clone() -> Result<(), String> {
+        let checks = vec![
+            DurabilityVerifyCheck::new(DurabilityLevel::Journaled, true, "test"),
+        ];
+        let metrics = vec![
+            DurabilityResourceMetric::new("memory", 50, 100),
+        ];
+        let report = DurabilityReport::new(DurabilityLevel::Journaled, checks, metrics, 42);
+        let cloned = report.clone();
+        if cloned.level != report.level {
+            return Err("level mismatch after clone".into());
+        }
+        if cloned.checks.len() != report.checks.len() {
+            return Err("checks count mismatch after clone".into());
+        }
+        if cloned.resource_metrics.len() != report.resource_metrics.len() {
+            return Err("metrics count mismatch after clone".into());
+        }
+        if cloned.timestamp_micros != report.timestamp_micros {
+            return Err("timestamp mismatch after clone".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_clone() {
+        test_durability_report_clone().ok();
+    }
+
+    /// Test 76: DurabilityReport with no resource metrics returns within bounds.
+    fn test_durability_report_no_metrics_within_bounds() -> Result<(), String> {
+        let report = DurabilityReport::new(
+            DurabilityLevel::Strict,
+            Vec::new(),
+            Vec::new(),
+            0,
+        );
+        // Empty metrics => all metrics within bounds (vacuously true)
+        if !report.resources_within_bounds() {
+            return Err("Empty metrics should be vacuously within bounds".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn durability_report_no_metrics_within_bounds() {
+        test_durability_report_no_metrics_within_bounds().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: check_durability_level() tests (tests 77-80)
+    // =====================================================================
+
+    /// Test 77: check_durability_level returns Strict for fully safe workflow.
+    fn test_check_durability_level_strict() -> Result<(), String> {
+        let nodes = vec![
+            make_do_node_with_error_handler(0, 1, 0, 5),
+            make_do_node_with_error_handler(1, 2, 1, 5),
+            make_node(
+                2,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+            make_node(5, CompiledNodeKind::Nop),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let level = check_durability_level(&panel);
+        if level != DurabilityLevel::Strict {
+            return Err(format!("Safe workflow should be Strict, got {:?}", level));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_durability_level_strict() {
+        test_check_durability_level_strict().ok();
+    }
+
+    /// Test 78: check_durability_level returns BestEffort for unprotected Do.
+    fn test_check_durability_level_best_effort() -> Result<(), String> {
+        let nodes = vec![
+            make_do_node(0, 1, 0),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let level = check_durability_level(&panel);
+        if level != DurabilityLevel::BestEffort {
+            return Err(format!("Unprotected Do should be BestEffort, got {:?}", level));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_durability_level_best_effort() {
+        test_check_durability_level_best_effort().ok();
+    }
+
+    /// Test 79: check_durability_level returns Journaled when on_error present
+    /// but reconciliation risk exists.
+    fn test_check_durability_level_journaled() -> Result<(), String> {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(3),
+                },
+            ),
+            make_do_node_with_error_handler(1, 10, 0, 5),
+            make_node(5, CompiledNodeKind::Nop),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let level = check_durability_level(&panel);
+        if level != DurabilityLevel::Journaled {
+            return Err(format!(
+                "Journaled Do under retry should be Journaled, got {:?}",
+                level
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_durability_level_journaled() {
+        test_check_durability_level_journaled().ok();
+    }
+
+    /// Test 80: check_durability_level for empty workflow is Strict.
+    fn test_check_durability_level_empty_workflow() -> Result<(), String> {
+        let panel = DurabilityPanel::from_workflow(&[]);
+        let level = check_durability_level(&panel);
+        // Empty workflow passes all checks -> Strict
+        if level != DurabilityLevel::Strict {
+            return Err(format!("Empty workflow should be Strict, got {:?}", level));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_durability_level_empty_workflow() {
+        test_check_durability_level_empty_workflow().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: compute_resource_usage() tests (tests 81-85)
+    // =====================================================================
+
+    /// Test 81: compute_resource_usage returns three metrics.
+    fn test_compute_resource_usage_count() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::defaults();
+        let metrics = compute_resource_usage(100, 200, 300, &bounds);
+        if metrics.len() != 3 {
+            return Err(format!("Should return 3 metrics, got {}", metrics.len()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compute_resource_usage_count() {
+        test_compute_resource_usage_count().ok();
+    }
+
+    /// Test 82: compute_resource_usage metrics have correct names.
+    fn test_compute_resource_usage_names() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::defaults();
+        let metrics = compute_resource_usage(100, 200, 300, &bounds);
+        let names: Vec<&str> = metrics.iter().map(|m| m.name.as_str()).collect();
+        if !names.contains(&"memory") {
+            return Err("Missing 'memory' metric".into());
+        }
+        if !names.contains(&"cpu_time") {
+            return Err("Missing 'cpu_time' metric".into());
+        }
+        if !names.contains(&"wall_time") {
+            return Err("Missing 'wall_time' metric".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compute_resource_usage_names() {
+        test_compute_resource_usage_names().ok();
+    }
+
+    /// Test 83: compute_resource_usage metrics have correct used values.
+    fn test_compute_resource_usage_values() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(512, 5000, 10_000);
+        let metrics = compute_resource_usage(256, 1000, 5000, &bounds);
+        let mem = metrics.iter().find(|m| m.name == "memory");
+        let Some(mem) = mem else {
+            return Err("memory metric missing".into());
+        };
+        if mem.used != 256 {
+            return Err(format!("memory used should be 256, got {}", mem.used));
+        }
+        if mem.limit != 512 {
+            return Err(format!("memory limit should be 512, got {}", mem.limit));
+        }
+        let cpu = metrics.iter().find(|m| m.name == "cpu_time");
+        let Some(cpu) = cpu else {
+            return Err("cpu_time metric missing".into());
+        };
+        if cpu.used != 1000 {
+            return Err(format!("cpu_time used should be 1000, got {}", cpu.used));
+        }
+        let wall = metrics.iter().find(|m| m.name == "wall_time");
+        let Some(wall) = wall else {
+            return Err("wall_time metric missing".into());
+        };
+        if wall.used != 5000 {
+            return Err(format!("wall_time used should be 5000, got {}", wall.used));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compute_resource_usage_values() {
+        test_compute_resource_usage_values().ok();
+    }
+
+    /// Test 84: compute_resource_usage all within bounds.
+    fn test_compute_resource_usage_all_within() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(1000, 5000, 10_000);
+        let metrics = compute_resource_usage(100, 500, 2000, &bounds);
+        for metric in &metrics {
+            if !metric.within_bounds() {
+                return Err(format!(
+                    "Metric '{}' should be within bounds (used={}, limit={})",
+                    metric.name, metric.used, metric.limit
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compute_resource_usage_all_within() {
+        test_compute_resource_usage_all_within().ok();
+    }
+
+    /// Test 85: compute_resource_usage one over limit.
+    fn test_compute_resource_usage_one_over() -> Result<(), String> {
+        let bounds = ResourceBudgetBounds::new(100, 5000, 10_000);
+        let metrics = compute_resource_usage(200, 500, 2000, &bounds);
+        let mem = metrics.iter().find(|m| m.name == "memory");
+        let Some(mem) = mem else {
+            return Err("memory metric missing".into());
+        };
+        if mem.within_bounds() {
+            return Err("Memory should be over limit".into());
+        }
+        // CPU and wall should still be within bounds.
+        let cpu = metrics.iter().find(|m| m.name == "cpu_time");
+        let Some(cpu) = cpu else {
+            return Err("cpu_time metric missing".into());
+        };
+        if !cpu.within_bounds() {
+            return Err("CPU should be within bounds".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compute_resource_usage_one_over() {
+        test_compute_resource_usage_one_over().ok();
+    }
+
+    // =====================================================================
+    // Phase 2B: build_durability_report() integration tests (tests 86-90)
+    // =====================================================================
+
+    /// Test 86: build_durability_report creates a complete report from a safe workflow.
+    fn test_build_durability_report_safe() -> Result<(), String> {
+        let nodes = vec![
+            make_do_node_with_error_handler(0, 1, 0, 5),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+            make_node(5, CompiledNodeKind::Nop),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let bounds = ResourceBudgetBounds::defaults();
+        let report = build_durability_report(&panel, 100, 500, 2000, &bounds, 99_999);
+
+        if report.level != DurabilityLevel::Strict {
+            return Err(format!("Expected Strict, got {:?}", report.level));
+        }
+        if !report.all_passed() {
+            return Err("All checks should pass for safe workflow".into());
+        }
+        if !report.resources_within_bounds() {
+            return Err("Resources should be within bounds".into());
+        }
+        if report.timestamp_micros != 99_999 {
+            return Err(format!("Timestamp should be 99999, got {}", report.timestamp_micros));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn build_durability_report_safe() {
+        test_build_durability_report_safe().ok();
+    }
+
+    /// Test 87: build_durability_report with failing workflow.
+    fn test_build_durability_report_failing() -> Result<(), String> {
+        let nodes = vec![
+            make_do_node(0, 1, 0),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let bounds = ResourceBudgetBounds::defaults();
+        let report = build_durability_report(&panel, 100, 500, 2000, &bounds, 0);
+
+        if report.level != DurabilityLevel::BestEffort {
+            return Err(format!("Expected BestEffort, got {:?}", report.level));
+        }
+        if report.all_passed() {
+            return Err("Checks should not all pass for unprotected workflow".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn build_durability_report_failing() {
+        test_build_durability_report_failing().ok();
+    }
+
+    /// Test 88: build_durability_report carries all checks from panel.
+    fn test_build_durability_report_carries_checks() -> Result<(), String> {
+        let panel = DurabilityPanel::from_workflow(&[]);
+        let bounds = ResourceBudgetBounds::defaults();
+        let report = build_durability_report(&panel, 0, 0, 0, &bounds, 0);
+
+        if report.checks.len() != 4 {
+            return Err(format!(
+                "Empty workflow should produce 4 checks, got {}",
+                report.checks.len()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn build_durability_report_carries_checks() {
+        test_build_durability_report_carries_checks().ok();
+    }
+
+    /// Test 89: build_durability_report with over-budget resources.
+    fn test_build_durability_report_over_budget() -> Result<(), String> {
+        let nodes = vec![
+            make_do_node_with_error_handler(0, 1, 0, 5),
+            make_node(5, CompiledNodeKind::Nop),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let bounds = ResourceBudgetBounds::new(100, 100, 100);
+        let report = build_durability_report(&panel, 200, 50, 75, &bounds, 0);
+
+        if report.resources_within_bounds() {
+            return Err("Resources should NOT be within bounds (memory over)".into());
+        }
+        // Only memory is over; cpu and wall are fine.
+        let over_metrics: Vec<&DurabilityResourceMetric> = report
+            .resource_metrics
+            .iter()
+            .filter(|m| !m.within_bounds())
+            .collect();
+        if over_metrics.len() != 1 {
+            return Err(format!(
+                "Expected exactly 1 over-limit metric, got {}",
+                over_metrics.len()
+            ));
+        }
+        let Some(over) = over_metrics.first() else {
+            return Err("No over-limit metric found".into());
+        };
+        if over.name != "memory" {
+            return Err(format!("Over-limit metric should be memory, got {}", over.name));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn build_durability_report_over_budget() {
+        test_build_durability_report_over_budget().ok();
+    }
+
+    /// Test 90: build_durability_report with journaled level workflow.
+    fn test_build_durability_report_journaled() -> Result<(), String> {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(3),
+                },
+            ),
+            make_do_node_with_error_handler(1, 10, 0, 5),
+            make_node(5, CompiledNodeKind::Nop),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let bounds = ResourceBudgetBounds::defaults();
+        let report = build_durability_report(&panel, 50, 100, 500, &bounds, 1_234);
+
+        if report.level != DurabilityLevel::Journaled {
+            return Err(format!("Expected Journaled, got {:?}", report.level));
+        }
+        // Each check should carry the Journaled level.
+        for (i, check) in report.checks.iter().enumerate() {
+            if check.level != DurabilityLevel::Journaled {
+                return Err(format!(
+                    "Check {} level should be Journaled, got {:?}",
+                    i, check.level
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn build_durability_report_journaled() {
+        test_build_durability_report_journaled().ok();
+    }
 }

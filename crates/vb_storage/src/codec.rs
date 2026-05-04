@@ -1222,4 +1222,457 @@ mod tests {
         );
         Ok(())
     }
+
+    // =========================================================================
+    // All magic bytes are distinct and well-formed
+    // =========================================================================
+
+    #[test]
+    fn all_magic_constants_are_distinct() {
+        let magics = [
+            MAGIC_WORKFLOW_SOURCE,
+            MAGIC_COMPILED_ARTIFACT,
+            MAGIC_JOURNAL_EVENT,
+            MAGIC_SNAPSHOT,
+            MAGIC_BLOB,
+            MAGIC_INDEX_RECORD,
+        ];
+        for (i, &a) in magics.iter().enumerate() {
+            for (j, &b) in magics.iter().enumerate() {
+                if i != j {
+                    assert_ne!(a, b, "magic at index {i} must differ from magic at index {j}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn magic_bytes_match_ascii_sentinels() {
+        // VBSR = 0x56425352
+        assert_eq!(MAGIC_WORKFLOW_SOURCE, 0x5642_5352);
+        // VBIR = 0x56424952
+        assert_eq!(MAGIC_COMPILED_ARTIFACT, 0x5642_4952);
+        // VBJE = 0x56424A45
+        assert_eq!(MAGIC_JOURNAL_EVENT, 0x5642_4A45);
+        // VBSN = 0x5642534E
+        assert_eq!(MAGIC_SNAPSHOT, 0x5642_534E);
+        // VBBL = 0x5642424C
+        assert_eq!(MAGIC_BLOB, 0x5642_424C);
+        // VBIX = 0x56424958
+        assert_eq!(MAGIC_INDEX_RECORD, 0x5642_4958);
+    }
+
+    // =========================================================================
+    // RecordKind::id() round-trip for all variants
+    // =========================================================================
+
+    #[test]
+    fn record_kind_ids_are_distinct() {
+        let kinds = [
+            RecordKind::WorkflowSource,
+            RecordKind::CompiledIr,
+            RecordKind::RunHeader,
+            RecordKind::RunAccepted,
+            RecordKind::StepStarted,
+            RecordKind::SlotWritten,
+            RecordKind::ActionScheduled,
+            RecordKind::ActionCompleted,
+            RecordKind::ActionFailed,
+            RecordKind::WaitScheduled,
+            RecordKind::AskScheduled,
+            RecordKind::AskAnswered,
+            RecordKind::RetryScheduled,
+            RecordKind::StepFailed,
+            RecordKind::RunCancelled,
+            RecordKind::RunFinished,
+            RecordKind::RunFailed,
+            RecordKind::Snapshot,
+            RecordKind::Blob,
+            RecordKind::IndexUpdate,
+        ];
+        let mut seen = std::collections::HashSet::new();
+        for kind in &kinds {
+            let id = kind.id();
+            assert!(
+                seen.insert(id),
+                "RecordKind::{kind:?} produced duplicate id {id}"
+            );
+        }
+        assert_eq!(seen.len(), kinds.len(), "all kind ids must be unique");
+    }
+
+    #[test]
+    fn record_kind_ids_match_discriminant_values() {
+        assert_eq!(RecordKind::WorkflowSource.id(), 1);
+        assert_eq!(RecordKind::CompiledIr.id(), 2);
+        assert_eq!(RecordKind::RunHeader.id(), 3);
+        assert_eq!(RecordKind::RunAccepted.id(), 10);
+        assert_eq!(RecordKind::StepStarted.id(), 11);
+        assert_eq!(RecordKind::SlotWritten.id(), 12);
+        assert_eq!(RecordKind::ActionScheduled.id(), 13);
+        assert_eq!(RecordKind::ActionCompleted.id(), 14);
+        assert_eq!(RecordKind::ActionFailed.id(), 15);
+        assert_eq!(RecordKind::WaitScheduled.id(), 16);
+        assert_eq!(RecordKind::AskScheduled.id(), 17);
+        assert_eq!(RecordKind::AskAnswered.id(), 18);
+        assert_eq!(RecordKind::RetryScheduled.id(), 19);
+        assert_eq!(RecordKind::StepFailed.id(), 20);
+        assert_eq!(RecordKind::RunCancelled.id(), 21);
+        assert_eq!(RecordKind::RunFinished.id(), 22);
+        assert_eq!(RecordKind::RunFailed.id(), 23);
+        assert_eq!(RecordKind::Snapshot.id(), 30);
+        assert_eq!(RecordKind::Blob.id(), 40);
+        assert_eq!(RecordKind::IndexUpdate.id(), 50);
+    }
+
+    // =========================================================================
+    // Kind-family validation: each magic rejects wrong kind
+    // =========================================================================
+
+    #[test]
+    fn encode_rejects_compiled_ir_kind_with_workflow_source_magic() {
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            128,
+        );
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "CompiledIr kind with MAGIC_WORKFLOW_SOURCE must fail, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn encode_rejects_workflow_source_kind_with_compiled_ir_magic() {
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::WorkflowSource,
+            0,
+            &record,
+            128,
+        );
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "WorkflowSource kind with MAGIC_COMPILED_ARTIFACT must fail, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn encode_rejects_snapshot_kind_with_blob_magic() {
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_BLOB,
+            RecordKind::Snapshot,
+            0,
+            &record,
+            128,
+        );
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "Snapshot kind with MAGIC_BLOB must fail, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn encode_rejects_blob_kind_with_journal_event_magic() {
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::Blob,
+            0,
+            &record,
+            128,
+        );
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "Blob kind with MAGIC_JOURNAL_EVENT must fail, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn encode_rejects_run_header_kind_with_snapshot_magic() {
+        let record = WorkflowSourceRecord {
+            digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            source: vec![1],
+        };
+        let result = encode_record(
+            MAGIC_SNAPSHOT,
+            RecordKind::RunHeader,
+            0,
+            &record,
+            128,
+        );
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "RunHeader kind with MAGIC_SNAPSHOT must fail, got {result:?}"
+        );
+    }
+
+    // =========================================================================
+    // Payload boundary: one byte over max is rejected
+    // =========================================================================
+
+    #[test]
+    fn encode_rejects_payload_one_byte_over_max() -> Result<(), JournalError> {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(0),
+            seq: EventSeq::new(0),
+        };
+        // Discover actual payload size
+        let probe = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let payload_len = probe.len().saturating_sub(RECORD_HEADER_BYTES);
+        // max_len = actual size - 1 so the payload is exactly one byte too large
+        let max_len = u32::try_from(payload_len.saturating_sub(1)).unwrap_or(u32::MAX);
+        let result = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            max_len,
+        );
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { len, max }) if len == u32::try_from(payload_len).unwrap_or(u32::MAX) && max == max_len),
+            "payload one byte over max must be rejected with exact sizes, got {result:?}"
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // Malformed input: extra trailing bytes after payload are ignored
+    // =========================================================================
+
+    #[test]
+    fn decode_ignores_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+        };
+        let mut bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        // Append garbage after the valid record
+        bytes.push(0xFF);
+        bytes.push(0xFE);
+        bytes.push(0xFD);
+        let (_, decoded) = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+        assert_eq!(decoded, event, "trailing bytes should be ignored on decode");
+        Ok(())
+    }
+
+    // =========================================================================
+    // Malformed input: header-only input with no payload bytes
+    // =========================================================================
+
+    #[test]
+    fn decode_rejects_header_only_input_with_nonzero_payload_len() -> Result<(), JournalError> {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+        };
+        let full = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        // Keep only the header portion
+        let header_only = &full[..RECORD_HEADER_BYTES];
+        let result = decode_record::<JournalEvent>(header_only, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        // The header declares a nonzero payload_len but no payload bytes follow
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "header-only with nonzero payload_len must yield UnexpectedEof, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // Malformed input: zero-byte payload declared but header digest mismatch
+    // =========================================================================
+
+    #[test]
+    fn decode_rejects_mismatched_digest_in_header() -> Result<(), JournalError> {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+        };
+        let mut bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        // Corrupt the digest bytes (offsets 24..56 are the 32-byte digest)
+        // Modify one byte in the digest region
+        let digest_offset = 24;
+        if let Some(byte) = bytes.get_mut(digest_offset) {
+            *byte = byte.wrapping_add(1);
+        }
+        // Recompute CRC so the header is internally consistent but digest is wrong
+        let checksum = crc32c::crc32c(&bytes[..CRC_OFFSET]);
+        let crc_bytes = checksum.to_le_bytes();
+        if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
+            slice.copy_from_slice(&crc_bytes);
+        }
+        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "corrupted digest must yield PayloadDigestMismatch, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // Kind family: MAGIC_INDEX_RECORD accepts RunHeader (3) and IndexUpdate (50)
+    // =========================================================================
+
+    #[test]
+    fn encode_accepts_run_header_kind_with_index_record_magic() -> Result<(), JournalError> {
+        let record = crate::records::RunHeaderRecord {
+            run: RunId::new(1),
+            workflow_id: vb_core::WorkflowId::new(1),
+            compiled_digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+            status: 0,
+            accepted_at_ms: 100,
+        };
+        let result = encode_record(
+            MAGIC_INDEX_RECORD,
+            RecordKind::RunHeader,
+            1,
+            &record,
+            MAX_RUN_HEADER_BYTES,
+        );
+        assert!(result.is_ok(), "RunHeader (kind 3) should be accepted by MAGIC_INDEX_RECORD");
+        Ok(())
+    }
+
+    // =========================================================================
+    // StepSucceeded event maps to SlotWritten record kind
+    // =========================================================================
+
+    #[test]
+    fn step_succeeded_event_maps_to_slot_written_kind() {
+        let event = JournalEvent::StepSucceeded {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(0),
+        };
+        assert_eq!(
+            event.record_kind(),
+            RecordKind::SlotWritten,
+            "StepSucceeded event should map to SlotWritten record kind"
+        );
+    }
+
+    // =========================================================================
+    // Encode header with zero-length payload
+    // =========================================================================
+
+    #[test]
+    fn encode_record_header_with_empty_payload() -> Result<(), JournalError> {
+        let payload: &[u8] = &[];
+        let header = encode_record_header(
+            MAGIC_BLOB,
+            RecordKind::Blob,
+            0,
+            payload,
+            1024,
+        )?;
+        let decoded = decode_record_header(&header, MAGIC_BLOB, 1024)?;
+        assert_eq!(decoded.payload_len, 0, "empty payload should report zero length");
+        assert_eq!(decoded.magic, MAGIC_BLOB);
+        Ok(())
+    }
+
+    // =========================================================================
+    // Encode header round-trip preserves all fields
+    // =========================================================================
+
+    #[test]
+    fn header_roundtrip_preserves_sequence_and_kind() -> Result<(), JournalError> {
+        let payload = b"test";
+        let sequence: u64 = 0xDEAD_BEEF_CAFE_BABE;
+        let header = encode_record_header(
+            MAGIC_WORKFLOW_SOURCE,
+            RecordKind::WorkflowSource,
+            sequence,
+            payload,
+            1024,
+        )?;
+        let decoded = decode_record_header(&header, MAGIC_WORKFLOW_SOURCE, 1024)?;
+        assert_eq!(decoded.sequence, sequence, "sequence must survive round-trip");
+        assert_eq!(decoded.record_kind, RecordKind::WorkflowSource.id());
+        assert_eq!(decoded.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(decoded.header_len, RECORD_HEADER_LEN);
+        Ok(())
+    }
+
+    // =========================================================================
+    // Schema version: old version triggers migration required
+    // =========================================================================
+
+    #[test]
+    fn decode_rejects_old_schema_version_with_migration_required() -> Result<(), JournalError> {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+        };
+        let mut bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        // Write schema version 0 at offset 4 (u16 LE)
+        let old_version: u16 = 0;
+        let version_bytes = old_version.to_le_bytes();
+        if let Some(slice) = bytes.get_mut(4..6) {
+            slice.copy_from_slice(&version_bytes);
+        }
+        // Recompute CRC after modifying header
+        let checksum = crc32c::crc32c(&bytes[..CRC_OFFSET]);
+        let crc_bytes = checksum.to_le_bytes();
+        if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
+            slice.copy_from_slice(&crc_bytes);
+        }
+        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        assert!(
+            matches!(result, Err(JournalError::MigrationRequired { from, to }) if from == 0 && to == CURRENT_SCHEMA_VERSION),
+            "old schema must yield MigrationRequired, got {:?}",
+            result
+        );
+        Ok(())
+    }
 }
