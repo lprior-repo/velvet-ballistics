@@ -6,6 +6,14 @@
 mod tests {
     use super::*;
     use vb_core::ids::StepIdx;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+
+    // Explicit imports from parent graph_builder module
+    use crate::graph_builder::{
+        build_document, build_ports, classify_node_kind, collect_span, compute_node_size,
+        EdgeStyle, Cardinality, FlowPortRecord, GroupKind, PortRole, PortSide, SmolStr,
+    };
+    use crate::verify::certificates::verify_workflow;
 
     fn make_nop_node(id: u16, next: Option<u16>) -> CompiledNode {
         CompiledNode {

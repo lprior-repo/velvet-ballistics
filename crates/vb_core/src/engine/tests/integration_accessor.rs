@@ -1,12 +1,12 @@
 //! Integration tests for accessor evaluation.
 
 use crate::errors::EngineError;
-use crate::ids::{AccessorIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{AccessorIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, PathSegment,
-    ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp,
+    ExprProgram, PathSegment, ResourceContract, WorkflowParts,
 };
 
 use crate::engine::{EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store,

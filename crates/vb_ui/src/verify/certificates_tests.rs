@@ -7,7 +7,15 @@ mod tests {
     use super::*;
     use vb_core::ids::WorkflowDigest;
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+    // Certificate types from the parent module
+    use crate::verify::certificates::{
+        Certificate, CertificateKind, CertificateStatus, CheckStatus,
+        VerificationResult, collect_successors, verify_workflow,
+    };
+    // EdgeStyle and GroupKind from graph_builder
+    use crate::graph_builder::{EdgeStyle, GroupKind};
 
     fn minimal_parts() -> WorkflowParts {
         WorkflowParts {

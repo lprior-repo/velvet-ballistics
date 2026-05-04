@@ -5,7 +5,21 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::{ActionId, SlotIdx};
+    use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+
+    // All durability module types - use full path since super::* doesn't capture them
+    use crate::verify::durability::{
+        DurabilityCheck, DurabilityLevel, DurabilityPanel, DurabilityReport,
+        DurabilityResourceMetric, DurabilityVerifyCheck, ReplayRisk,
+        ResourceBudgetBounds, check_durability_level, build_durability_report,
+        compute_resource_usage,
+    };
+
+    // Re-exported color constants from screen.rs
+    use crate::verify::durability::{
+        NEON_CYAN, NEON_GREEN, NEON_ORANGE, NEON_RED,
+    };
 
     /// Helper to make a minimal CompiledNode with a given kind and no optional fields.
     fn make_node(id: u16, kind: CompiledNodeKind) -> CompiledNode {

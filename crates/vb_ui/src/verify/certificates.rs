@@ -1088,7 +1088,7 @@ fn check_reachability(parts: &WorkflowParts) -> Certificate {
 }
 
 /// Collect all successor step indices from a node kind.
-fn collect_successors(
+pub(crate) fn collect_successors(
     kind: &CompiledNodeKind,
     next: Option<StepIdx>,
     on_error: Option<StepIdx>,

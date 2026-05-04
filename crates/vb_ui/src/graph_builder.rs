@@ -1262,7 +1262,7 @@ fn build_loop_groups(nodes: &[CompiledNode], groups: &mut IndexMap<SmolStr, Flow
 ///
 /// Returns node IDs for each index in `[start, end]`. If `end` < `start` or
 /// either bound exceeds `total`, returns an empty list.
-fn collect_span(start: usize, end: usize, total: usize) -> Vec<SmolStr> {
+pub(crate) fn collect_span(start: usize, end: usize, total: usize) -> Vec<SmolStr> {
     if end < start || end >= total {
         return Vec::new();
     }
