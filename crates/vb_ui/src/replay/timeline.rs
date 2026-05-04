@@ -201,6 +201,59 @@ impl Default for TimelineStrip {
 }
 
 // ---------------------------------------------------------------------------
+// TimelineChip
+// ---------------------------------------------------------------------------
+
+/// A renderable chip descriptor for the timeline strip.
+///
+/// Each chip represents one event in the journal, carrying its label,
+/// neon color, sequence number, optional step reference, and whether it
+/// sits at the current scrubbing cursor position.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimelineChip {
+    /// Short event kind label, e.g. `"StepStarted"`, `"SlotWritten"`.
+    pub label: String,
+    /// RGBA neon color from the cyberpunk palette.
+    pub color: [f32; 4],
+    /// Journal event sequence number.
+    pub seq: u64,
+    /// Step index this event relates to, if any.
+    pub step: Option<u32>,
+    /// `true` when this chip is at the current cursor position.
+    pub is_cursor: bool,
+}
+
+impl TimelineStrip {
+    /// Converts every event in the strip into a [`TimelineChip`] suitable for
+    /// Makepad rendering.
+    ///
+    /// The chip at the current cursor index (if set) is marked with
+    /// `is_cursor = true`; all others receive `false`.
+    #[must_use]
+    pub fn build_chips(&self) -> Vec<TimelineChip> {
+        self.events
+            .iter()
+            .enumerate()
+            .map(|(index, ev)| {
+                let seq = u64::from(ev.seq);
+                let step = ev.step_id.map(u32::from);
+                let is_cursor = match self.cursor_index {
+                    Some(ci) => index == ci,
+                    None => false,
+                };
+                TimelineChip {
+                    label: ev.event_kind.clone(),
+                    color: ev.color,
+                    seq,
+                    step,
+                    is_cursor,
+                }
+            })
+            .collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -825,5 +878,153 @@ mod tests {
             let all_zero = ev.color.iter().all(|c| *c == 0.0f32);
             assert!(!all_zero, "all-zero color at index {i}");
         }
+    }
+
+    // =========================================================================
+    // build_chips tests
+    // =========================================================================
+
+    #[test]
+    fn build_chips_empty_strip_returns_empty() {
+        let strip = TimelineStrip::new();
+        let chips = strip.build_chips();
+        assert!(chips.is_empty());
+    }
+
+    #[test]
+    fn build_chips_single_event_no_cursor() {
+        let events = vec![make_timeline_event(7, "RunAccepted", None, 0)];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        let chips = strip.build_chips();
+        assert_eq!(chips.len(), 1);
+        let chip = chips.first().expect("chip at 0");
+        assert_eq!(chip.label, "RunAccepted");
+        assert_eq!(chip.color, NEON_CYAN);
+        assert_eq!(chip.seq, 7);
+        assert_eq!(chip.step, None);
+        assert!(!chip.is_cursor);
+    }
+
+    #[test]
+    fn build_chips_cursor_marks_correct_event() {
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 100),
+            make_timeline_event(3, "StepSucceeded", Some(0), 200),
+        ];
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        strip.set_cursor(1);
+        let chips = strip.build_chips();
+        assert_eq!(chips.len(), 3);
+        assert!(!chips.get(0).expect("0").is_cursor);
+        assert!(chips.get(1).expect("1").is_cursor);
+        assert!(!chips.get(2).expect("2").is_cursor);
+    }
+
+    #[test]
+    fn build_chips_step_u32_widened_from_u16() {
+        let events = vec![make_timeline_event(10, "StepStarted", Some(500), 0)];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        let chips = strip.build_chips();
+        let chip = chips.first().expect("chip at 0");
+        assert_eq!(chip.step, Some(500));
+        assert_eq!(chip.seq, 10);
+    }
+
+    #[test]
+    fn build_chips_colors_match_event_color() {
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionFailed", Some(0), 0),
+            make_timeline_event(3, "SlotWritten", None, 0),
+            make_timeline_event(4, "AskScheduled", Some(1), 0),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        let chips = strip.build_chips();
+        assert_eq!(chips.get(0).map(|c| c.color), Some(NEON_CYAN));
+        assert_eq!(chips.get(1).map(|c| c.color), Some(NEON_RED));
+        assert_eq!(chips.get(2).map(|c| c.color), Some(NEON_TEAL));
+        assert_eq!(chips.get(3).map(|c| c.color), Some(NEON_YELLOW));
+    }
+
+    #[test]
+    fn build_chips_from_journal_events_full_pipeline() {
+        let journal = vec![
+            je_run_accepted(1),
+            je_step_started(2, 0),
+            je_action_scheduled(3, 0),
+            je_action_completed(4, 0),
+            je_step_succeeded(5, 0),
+            je_run_finished(6),
+        ];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        let chips = strip.build_chips();
+        assert_eq!(chips.len(), 6);
+        let expected = [
+            ("RunAccepted", NEON_CYAN, 1u64, None),
+            ("StepStarted", NEON_CYAN, 2, Some(0)),
+            ("ActionScheduled", NEON_ORANGE, 3, Some(0)),
+            ("ActionCompleted", NEON_GREEN, 4, Some(0)),
+            ("StepSucceeded", NEON_GREEN, 5, Some(0)),
+            ("RunFinished", NEON_TEAL, 6, None),
+        ];
+        for (i, (exp_label, exp_color, exp_seq, exp_step)) in expected.iter().enumerate() {
+            let chip = chips.get(i).expect("chip exists");
+            assert_eq!(chip.label, *exp_label, "label mismatch at {i}");
+            assert_eq!(chip.color, *exp_color, "color mismatch at {i}");
+            assert_eq!(chip.seq, *exp_seq, "seq mismatch at {i}");
+            assert_eq!(chip.step, *exp_step, "step mismatch at {i}");
+            assert!(!chip.is_cursor, "no cursor set, but chip {i} says is_cursor");
+        }
+    }
+
+    #[test]
+    fn build_chips_cursor_at_last_index() {
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunFinished", None, 0),
+        ];
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        strip.set_cursor(1);
+        let chips = strip.build_chips();
+        assert!(!chips.get(0).expect("0").is_cursor);
+        assert!(chips.get(1).expect("1").is_cursor);
+    }
+
+    #[test]
+    fn build_chips_cursor_clamped_then_builds() {
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 0),
+        ];
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
+        // Cursor clamps to last valid index (1).
+        strip.set_cursor(999);
+        let chips = strip.build_chips();
+        assert!(!chips.get(0).expect("0").is_cursor);
+        assert!(chips.get(1).expect("1").is_cursor);
+        // Verify the clamped chip still has correct data.
+        let cursor_chip = chips.get(1).expect("cursor chip");
+        assert_eq!(cursor_chip.label, "StepStarted");
+        assert_eq!(cursor_chip.seq, 2);
+        assert_eq!(cursor_chip.step, Some(0));
     }
 }
