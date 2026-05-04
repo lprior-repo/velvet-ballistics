@@ -1932,4 +1932,216 @@ mod tests {
         assert!(recovered.is_ok());
         assert_eq!(recovered.ok().expect("test setup"), event);
     }
+
+    // =========================================================================
+    // Edge-case tests -- ActionTicket construction, ActionError display,
+    // ActionId equality, ActionContract fields/defaults, zero timeout
+    // =========================================================================
+
+    #[test]
+    fn action_ticket_construction_all_fields_accessible() {
+        let ticket = ActionTicket {
+            run: RunId::new(999),
+            step: StepIdx::new(42),
+            seq: SeqNo::new(100),
+            action: ActionId::new(7),
+            attempt: 3,
+            idempotency_key: 0xDEADBEEF_u128,
+            capacity: 10,
+        };
+        assert_eq!(ticket.run, RunId::new(999));
+        assert_eq!(ticket.step, StepIdx::new(42));
+        assert_eq!(ticket.seq, SeqNo::new(100));
+        assert_eq!(ticket.action, ActionId::new(7));
+        assert_eq!(ticket.attempt, 3);
+        assert_eq!(ticket.idempotency_key, 0xDEADBEEF_u128);
+        assert_eq!(ticket.capacity, 10);
+    }
+
+    #[test]
+    fn action_ticket_with_zero_timeout_via_contract() {
+        let contract = ActionContract {
+            id: ActionId::new(10),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 512,
+            max_output_bytes: 512,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+        // Zero timeout is a valid edge case; the contract should still be constructable.
+        assert_eq!(contract.timeout_ms, 0);
+        assert_eq!(contract.id, ActionId::new(10));
+    }
+
+    #[test]
+    fn action_error_unknown_action_display_message() {
+        let error = ActionError::UnknownAction {
+            action: ActionId::new(77),
+        };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("unknown action"),
+            "display must contain 'unknown action', got: {msg}"
+        );
+        assert!(
+            msg.contains("ActionId(77)"),
+            "display must contain the action id, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn action_error_timeout_display_via_failure_code() {
+        // ActionError does not have a Timeout variant directly, but
+        // ActionFailureCode::Timeout exists. Verify its discriminant and
+        // that ActionFailure carries it.
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: RetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        assert_eq!(failure.code, ActionFailureCode::Timeout);
+        // Verify the Timeout repr is 1 (defined as = 1 in the enum).
+        assert_eq!(failure_code_repr(ActionFailureCode::Timeout), 1);
+    }
+
+    #[test]
+    fn action_error_payload_too_large_display_contains_both_sizes() {
+        let error = ActionError::PayloadTooLarge {
+            max_bytes: 100,
+            actual_bytes: 250,
+        };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("100"),
+            "display must contain max_bytes, got: {msg}"
+        );
+        assert!(
+            msg.contains("250"),
+            "display must contain actual_bytes, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn action_error_equality_all_variants() {
+        // Verify PartialEq works for each variant.
+        assert_eq!(
+            ActionError::UnknownAction {
+                action: ActionId::new(1)
+            },
+            ActionError::UnknownAction {
+                action: ActionId::new(1)
+            }
+        );
+        assert_eq!(ActionError::InvalidTicket, ActionError::InvalidTicket);
+        assert_eq!(
+            ActionError::PayloadTooLarge {
+                max_bytes: 10,
+                actual_bytes: 20
+            },
+            ActionError::PayloadTooLarge {
+                max_bytes: 10,
+                actual_bytes: 20
+            }
+        );
+        assert_eq!(
+            ActionError::OutputSlotOutOfBounds {
+                slot: 3,
+                max_slots: 2
+            },
+            ActionError::OutputSlotOutOfBounds {
+                slot: 3,
+                max_slots: 2
+            }
+        );
+        assert_eq!(
+            ActionError::NonIdempotentReplayBlocked,
+            ActionError::NonIdempotentReplayBlocked
+        );
+        assert_eq!(
+            ActionError::CompletionAlreadyRecorded,
+            ActionError::CompletionAlreadyRecorded
+        );
+        assert_eq!(ActionError::QueueFull, ActionError::QueueFull);
+        assert_eq!(ActionError::EncodingFailed, ActionError::EncodingFailed);
+        assert_eq!(ActionError::DispatchFailed, ActionError::DispatchFailed);
+    }
+
+    #[test]
+    fn action_error_inequality_different_variants() {
+        let a = ActionError::QueueFull;
+        let b = ActionError::EncodingFailed;
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn action_id_creation_and_equality() {
+        let id_a = ActionId::new(42);
+        let id_b = ActionId::new(42);
+        let id_c = ActionId::new(43);
+        assert_eq!(id_a, id_b);
+        assert_ne!(id_a, id_c);
+        assert_eq!(id_a.get(), 42);
+    }
+
+    #[test]
+    fn action_id_max_value() {
+        let id = ActionId::new(u16::MAX);
+        assert_eq!(id.get(), u16::MAX);
+    }
+
+    #[test]
+    fn action_contract_fields_and_required_capabilities() {
+        let contract = ActionContract {
+            id: ActionId::new(5),
+            input_slot_count: 3,
+            output_slot_count: 2,
+            max_input_bytes: 4096,
+            max_output_bytes: 2048,
+            timeout_ms: 30_000,
+            idempotency: Idempotency::IdempotentExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::KeyRequired,
+            required_capabilities: Box::new([Capability::new(
+                String::from("file_read").into_boxed_str(),
+                ActionId::new(5),
+            )]),
+        };
+        assert_eq!(contract.id, ActionId::new(5));
+        assert_eq!(contract.input_slot_count, 3);
+        assert_eq!(contract.output_slot_count, 2);
+        assert_eq!(contract.max_input_bytes, 4096);
+        assert_eq!(contract.max_output_bytes, 2048);
+        assert_eq!(contract.timeout_ms, 30_000);
+        assert_eq!(contract.idempotency, Idempotency::IdempotentExternal);
+        assert_eq!(contract.side_effect, SideEffect::Writes);
+        assert_eq!(contract.retry_safety, RetrySafety::KeyRequired);
+        assert_eq!(contract.required_capabilities.len(), 1);
+    }
+
+    #[test]
+    fn action_contract_default_like_values() {
+        // Verify a minimal "default-like" contract with zero-count fields.
+        let contract = ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+        assert_eq!(contract.id, ActionId::new(0));
+        assert_eq!(contract.input_slot_count, 0);
+        assert_eq!(contract.output_slot_count, 0);
+        assert!(contract.required_capabilities.is_empty());
+    }
 }

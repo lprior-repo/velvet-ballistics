@@ -836,4 +836,258 @@ mod tests {
             assert!(order.is_empty());
         }
     }
+
+    // =========================================================================
+    // NEW: Additional edge-case traversal tests (blackhat-fixes batch)
+    // =========================================================================
+
+    /// 1. reachable_from with disconnected components: two separate chains in
+    ///    one graph; reachable from one chain should not include the other.
+    #[test]
+    fn reachable_from_disconnected_components() {
+        // Chain A: a1 -> a2 -> a3 ; Chain B: b1 -> b2
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a1"), make_node("a1"));
+        g.nodes.insert(nid("a2"), make_node("a2"));
+        g.nodes.insert(nid("a3"), make_node("a3"));
+        g.nodes.insert(nid("b1"), make_node("b1"));
+        g.nodes.insert(nid("b2"), make_node("b2"));
+        g.edges.insert(eid("ea1"), make_edge("ea1", "a1", "a2"));
+        g.edges.insert(eid("ea2"), make_edge("ea2", "a2", "a3"));
+        g.edges.insert(eid("eb1"), make_edge("eb1", "b1", "b2"));
+
+        let reach_a1 = g.reachable_from(&nid("a1"));
+        assert_eq!(reach_a1.len(), 3);
+        assert!(reach_a1.contains(&nid("a1")));
+        assert!(reach_a1.contains(&nid("a2")));
+        assert!(reach_a1.contains(&nid("a3")));
+        assert!(!reach_a1.contains(&nid("b1")));
+        assert!(!reach_a1.contains(&nid("b2")));
+
+        let reach_b1 = g.reachable_from(&nid("b1"));
+        assert_eq!(reach_b1.len(), 2);
+        assert!(reach_b1.contains(&nid("b1")));
+        assert!(reach_b1.contains(&nid("b2")));
+        assert!(!reach_b1.contains(&nid("a1")));
+
+        // Starting from a leaf in chain A only reaches itself
+        let reach_a3 = g.reachable_from(&nid("a3"));
+        assert_eq!(reach_a3.len(), 1);
+        assert!(reach_a3.contains(&nid("a3")));
+    }
+
+    /// 2. reachable_from with a node that is only a target (has only incoming
+    ///    edges, no outgoing edges).
+    #[test]
+    fn reachable_from_sink_node_only_returns_itself() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("src"), make_node("src"));
+        g.nodes.insert(nid("mid"), make_node("mid"));
+        g.nodes.insert(nid("sink"), make_node("sink"));
+        g.edges.insert(eid("e1"), make_edge("e1", "src", "mid"));
+        g.edges.insert(eid("e2"), make_edge("e2", "mid", "sink"));
+
+        let reach_sink = g.reachable_from(&nid("sink"));
+        assert_eq!(reach_sink.len(), 1);
+        assert!(reach_sink.contains(&nid("sink")));
+    }
+
+    /// 3. Topological sort with a deeply nested DAG (linear chain of 20 nodes).
+    ///    Verifies topological order is maintained across the entire depth.
+    #[test]
+    fn topo_sort_deeply_nested_dag() {
+        let mut g = FlowGraph::default();
+        let depth: usize = 20;
+        for i in 0..depth {
+            let label = format!("n{i}");
+            g.nodes.insert(nid(&label), make_node(&label));
+        }
+        for i in 0..depth.saturating_sub(1) {
+            let src = format!("n{i}");
+            let tgt = format!("n{}", i.saturating_add(1));
+            let eid_label = format!("e{i}");
+            g.edges.insert(eid(&eid_label), make_edge(&eid_label, &src, &tgt));
+        }
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert_eq!(order.len(), depth);
+            // Every node must appear before its successor
+            for i in 0..depth.saturating_sub(1) {
+                let cur = nid(&format!("n{i}"));
+                let nxt = nid(&format!("n{}", i.saturating_add(1)));
+                let pos_cur = order.iter().position(|x| *x == cur);
+                let pos_nxt = order.iter().position(|x| *x == nxt);
+                assert!(
+                    pos_cur.is_some_and(|pc| pos_nxt.is_some_and(|pn| pc < pn)),
+                    "node n{i} must precede n{}",
+                    i.saturating_add(1)
+                );
+            }
+        }
+    }
+
+    /// 4. Verify MAX_TRAVERSAL_ENTRIES constant is exactly 50_000.
+    #[test]
+    fn max_traversal_entries_is_50k() {
+        assert_eq!(MAX_TRAVERSAL_ENTRIES, 50_000);
+    }
+
+    /// 5. find_cycles on a self-loop: node a -> a. The algorithm requires
+    ///    path.len() > 1 when the neighbor equals start, so a single-node
+    ///    self-loop should not report a cycle. Verify it does not panic and
+    ///    confirm the expected empty result.
+    #[test]
+    fn find_cycles_self_loop_single_node_no_report() {
+        let g = self_loop_graph();
+        let cycles = g.find_cycles();
+        // Self-loop: path starts as [a], then neighbor==start but path.len()==1,
+        // so the condition `path.len() > 1` fails. No cycle should be reported.
+        assert!(
+            cycles.is_empty(),
+            "single-node self-loop should not report a cycle because path.len() == 1"
+        );
+    }
+
+    /// 6. Wide DAG: one root node fans out to many leaf nodes.
+    ///    topological_sort should succeed and the root must precede all leaves.
+    #[test]
+    fn topo_sort_wide_fan_out_dag() {
+        let mut g = FlowGraph::default();
+        let fanout: usize = 50;
+        g.nodes.insert(nid("root"), make_node("root"));
+        for i in 0..fanout {
+            let leaf = format!("leaf{i}");
+            g.nodes.insert(nid(&leaf), make_node(&leaf));
+            let eid_label = format!("e{i}");
+            g.edges.insert(eid(&eid_label), make_edge(&eid_label, "root", &leaf));
+        }
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert_eq!(order.len(), fanout.saturating_add(1));
+            let root_pos = order.iter().position(|x| *x == nid("root"));
+            assert!(root_pos.is_some());
+            for i in 0..fanout {
+                let leaf_id = nid(&format!("leaf{i}"));
+                let leaf_pos = order.iter().position(|x| *x == leaf_id);
+                assert!(
+                    leaf_pos.is_some_and(|lp| root_pos.is_some_and(|rp| rp < lp)),
+                    "root must precede leaf{i}"
+                );
+            }
+        }
+    }
+
+    /// 7. find_cycles with graph containing an island (disconnected acyclic
+    ///    component) plus a separate cyclic component. Only the cycle should
+    ///    be reported.
+    #[test]
+    fn find_cycles_island_plus_separate_cycle() {
+        let mut g = FlowGraph::default();
+        // Island: x -> y (acyclic, disconnected)
+        g.nodes.insert(nid("x"), make_node("x"));
+        g.nodes.insert(nid("y"), make_node("y"));
+        g.edges.insert(eid("ex"), make_edge("ex", "x", "y"));
+        // Cycle: a -> b -> c -> a
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "b", "c"));
+        g.edges.insert(eid("e3"), make_edge("e3", "c", "a"));
+
+        let cycles = g.find_cycles();
+        assert!(!cycles.is_empty(), "cycle between a,b,c should be detected");
+        // No cycle should contain x or y
+        for cycle in &cycles {
+            assert!(
+                !cycle.contains(&nid("x")),
+                "island node x should not appear in any cycle"
+            );
+            assert!(
+                !cycle.contains(&nid("y")),
+                "island node y should not appear in any cycle"
+            );
+        }
+    }
+
+    /// 8. topological_sort with multiple parallel edges between the same pair.
+    ///    Should still succeed and produce a valid ordering.
+    #[test]
+    fn topo_sort_parallel_edges_same_pair() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "a", "b"));
+        g.edges.insert(eid("e3"), make_edge("e3", "a", "b"));
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert_eq!(order.len(), 2);
+            let pa = order.iter().position(|x| *x == nid("a"));
+            let pb = order.iter().position(|x| *x == nid("b"));
+            assert!(pa.is_some_and(|a| pb.is_some_and(|b| a < b)));
+        }
+    }
+
+    /// 9. reachable_from on a graph with a cycle plus a tail leading into the
+    ///    cycle. All nodes should be reachable from the tail entry point.
+    #[test]
+    fn reachable_from_tail_into_cycle() {
+        // entry -> a -> b -> c -> b (cycle between b and c)
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("entry"), make_node("entry"));
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.edges.insert(eid("e0"), make_edge("e0", "entry", "a"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "b", "c"));
+        g.edges.insert(eid("e3"), make_edge("e3", "c", "b"));
+
+        let reach = g.reachable_from(&nid("entry"));
+        assert_eq!(reach.len(), 4);
+        assert!(reach.contains(&nid("entry")));
+        assert!(reach.contains(&nid("a")));
+        assert!(reach.contains(&nid("b")));
+        assert!(reach.contains(&nid("c")));
+    }
+
+    /// 10. connected_edges for a node that does not exist in the graph returns
+    ///     an empty list (no panic).
+    #[test]
+    fn connected_edges_for_nonexistent_node_returns_empty() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        // Query a node that is not in the graph
+        assert!(g.connected_edges(&nid("ghost")).is_empty());
+    }
+
+    /// 11. reachable_from on a non-existent node in a graph that has actual
+    ///     nodes and edges returns empty (not the same as the existing test
+    ///     which queries an empty graph).
+    #[test]
+    fn reachable_from_nonexistent_in_populated_graph() {
+        let g = linear_chain_graph();
+        let reach = g.reachable_from(&nid("does_not_exist"));
+        assert!(reach.is_empty());
+    }
+
+    /// 12. incomers/outgoers for a node that exists but has no edges at all
+    ///     in a graph where other nodes do have edges.
+    #[test]
+    fn incomers_outgoers_isolated_node_in_connected_graph() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        // c is isolated
+        assert!(g.incomers(&nid("c")).is_empty());
+        assert!(g.outgoers(&nid("c")).is_empty());
+    }
 }

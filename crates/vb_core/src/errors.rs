@@ -415,8 +415,8 @@ impl CoreError {
 
 #[cfg(test)]
 mod tests {
-    use super::{CoreError, DiagnosticCode};
-    use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+    use super::{CoreError, DiagnosticCode, EngineError};
+    use crate::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
 
     // -- diagnostic_code is correct for every variant --
 
@@ -1199,5 +1199,177 @@ mod tests {
             return Err(String::from("unexpected limit"));
         }
         Ok(())
+    }
+
+    // =========================================================================
+    // Edge-case tests -- EngineError display, runtime_code mappings,
+    // equality, and boundary variants
+    // =========================================================================
+
+    #[test]
+    fn engine_error_is_core_error_alias() {
+        // EngineError is documented as a backward-compatible alias for CoreError.
+        let error: EngineError = CoreError::DivisionByZero;
+        assert_eq!(error, CoreError::DivisionByZero);
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1103));
+    }
+
+    #[test]
+    fn engine_error_slot_uninitialized_display() {
+        let error = CoreError::SlotUninitialized {
+            slot: SlotIdx::new(7),
+        };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("slot not initialized"),
+            "display must contain 'slot not initialized', got: {msg}"
+        );
+        assert!(
+            msg.contains("SlotIdx(7)"),
+            "display must contain slot index, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn engine_error_step_budget_exhausted_display() {
+        let error = CoreError::StepBudgetExhausted;
+        assert_eq!(error.to_string(), "step budget exhausted");
+    }
+
+    #[test]
+    fn engine_error_queue_full_display() {
+        let error = CoreError::QueueFull;
+        assert_eq!(error.to_string(), "queue full");
+    }
+
+    #[test]
+    fn engine_error_non_finite_number_display() {
+        let error = CoreError::NonFiniteNumber;
+        assert_eq!(error.to_string(), "non-finite number is not allowed");
+    }
+
+    #[test]
+    fn engine_error_allocation_failed_display() {
+        let error = CoreError::AllocationFailed;
+        assert_eq!(error.to_string(), "allocation failed");
+    }
+
+    #[test]
+    fn engine_error_runtime_code_capability_denied() {
+        use crate::capability::{Capability, CapabilitySet};
+        let cap = Capability::new(String::from("file_read").into_boxed_str(), ActionId::new(1));
+        let error = CoreError::CapabilityDenied {
+            action: ActionId::new(1),
+            required: cap,
+            granted: CapabilitySet::empty(),
+        };
+        assert_eq!(error.runtime_code(), Some("CAPABILITY_DENIED"));
+    }
+
+    #[test]
+    fn engine_error_runtime_code_parallel_limit_exceeded() {
+        let error = CoreError::ParallelLimitExceeded { limit: 10 };
+        // ParallelLimitExceeded does not have a direct runtime_code mapping.
+        assert_eq!(error.runtime_code(), None);
+    }
+
+    #[test]
+    fn engine_error_runtime_code_together_branch_limit_exceeded() {
+        let error = CoreError::TogetherBranchLimitExceeded { max: 8 };
+        // TogetherBranchLimitExceeded does not have a direct runtime_code mapping.
+        assert_eq!(error.runtime_code(), None);
+    }
+
+    #[test]
+    fn engine_error_equality_same_variant() {
+        let a = CoreError::DivisionByZero;
+        let b = CoreError::DivisionByZero;
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn engine_error_inequality_different_variants() {
+        let a = CoreError::DivisionByZero;
+        let b = CoreError::NonFiniteNumber;
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn engine_error_budget_exceeded_display_contains_both_fields() {
+        let error = CoreError::BudgetExceeded {
+            budget: "memory",
+            limit: 512,
+        };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("memory"),
+            "display must contain budget name, got: {msg}"
+        );
+        assert!(
+            msg.contains("512"),
+            "display must contain limit, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn engine_error_resource_limit_exceeded_display() {
+        let error = CoreError::ResourceLimitExceeded {
+            resource: "connections",
+        };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("connections"),
+            "display must contain resource name, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn engine_error_expression_stack_overflow_display_contains_max() {
+        let error = CoreError::ExpressionStackOverflow { max: 32 };
+        let msg = error.to_string();
+        assert!(
+            msg.contains("32"),
+            "display must contain max value, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn engine_error_type_mismatch_equality() {
+        let a = CoreError::TypeMismatch {
+            expected: "list",
+            found: "number",
+        };
+        let b = CoreError::TypeMismatch {
+            expected: "list",
+            found: "number",
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn engine_error_type_mismatch_inequality() {
+        let a = CoreError::TypeMismatch {
+            expected: "list",
+            found: "number",
+        };
+        let b = CoreError::TypeMismatch {
+            expected: "bool",
+            found: "number",
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn engine_error_runtime_code_repeat_exhausted() {
+        let error = CoreError::RepeatExhausted { max: 3 };
+        assert_eq!(error.runtime_code(), Some("REPEAT_LIMIT_REACHED"));
+    }
+
+    #[test]
+    fn engine_error_diagnostic_code_slot_uninitialized() {
+        let error = CoreError::SlotUninitialized {
+            slot: SlotIdx::new(0),
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1012));
     }
 }
