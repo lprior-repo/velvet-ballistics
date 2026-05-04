@@ -22,6 +22,9 @@ pub mod impl_;
 pub mod ticket;
 pub mod trace;
 
+#[cfg(test)]
+mod impl_tests;
+
 use crate::{
     IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
     IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, RunSummary, SubmitRunPayload,

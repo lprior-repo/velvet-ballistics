@@ -2637,3 +2637,1247 @@ fn run_resource_limits_retry_attempts_exceeding_hard_rejected() {
 fn run_resource_limits_zero_queue_depth_rejected() {
     resource_limits_zero_queue_depth_rejected().unwrap()
 }
+
+// =========================================================================
+// BLACKHAT comprehensive security regression tests
+// =========================================================================
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Secret taint propagation through composite values
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_composite_finish_directly_with_secret_reference() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Composite(vec![
+            TypedValue::Reference("$secrets.password".into()),
+        ]),
+    )]);
+    wf.secrets.push("password".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: composite in finish directly referencing a secret must leak"
+    );
+}
+
+#[test]
+fn blackhat_composite_finish_with_secret_slot_and_clean_literal() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$secrets.api_key".into())),
+        finish_step(
+            "done",
+            TypedValue::Composite(vec![
+                TypedValue::Slot(0),
+                TypedValue::Literal(ValueType::Text),
+            ]),
+        ),
+    ]);
+    wf.secrets.push("api_key".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: composite of secret slot + clean literal in finish must leak"
+    );
+}
+
+#[test]
+fn blackhat_composite_of_composites_carries_secret_taint() {
+    let mut wf = make_workflow(vec![
+        save_step(
+            "outer",
+            TypedValue::Composite(vec![
+                TypedValue::Composite(vec![
+                    TypedValue::Reference("$secrets.innermost".into()),
+                ]),
+            ]),
+        ),
+        finish_step("done", TypedValue::Slot(0)),
+    ]);
+    wf.secrets.push("innermost".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: nested composites must propagate secret taint outward"
+    );
+}
+
+#[test]
+fn blackhat_composite_with_two_secret_inputs_leaks() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Composite(vec![
+            TypedValue::Reference("$input.username".into()),
+            TypedValue::Reference("$input.token".into()),
+        ]),
+    )]);
+    wf.inputs.push(InputDecl {
+        name: "username".to_owned(),
+        schema_type: ValueType::Text,
+        is_secret: false,
+    });
+    wf.inputs.push(InputDecl {
+        name: "token".to_owned(),
+        schema_type: ValueType::Text,
+        is_secret: true,
+    });
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: composite with one secret input and one clean must still leak"
+    );
+}
+
+#[test]
+fn blackhat_composite_with_only_clean_elements_passes() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Composite(vec![
+            TypedValue::Literal(ValueType::Number),
+            TypedValue::Literal(ValueType::Text),
+            TypedValue::Literal(ValueType::Boolean),
+        ]),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: composite with only clean literals must pass"
+    );
+}
+
+#[test]
+fn blackhat_secret_propagates_through_save_then_composite_then_finish() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$secrets.cred".into())),
+        save_step(
+            "s1",
+            TypedValue::Composite(vec![
+                TypedValue::Slot(0),
+                TypedValue::Literal(ValueType::Number),
+            ]),
+        ),
+        save_step("s2", TypedValue::Slot(1)),
+        finish_step("done", TypedValue::Slot(2)),
+    ]);
+    wf.secrets.push("cred".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: secret through save->composite->relay->finish must leak"
+    );
+}
+
+#[test]
+fn blackhat_secret_in_composite_saved_to_slot_then_relayed() {
+    let mut wf = make_workflow(vec![
+        save_step(
+            "s0",
+            TypedValue::Composite(vec![
+                TypedValue::Reference("$secrets.key".into()),
+            ]),
+        ),
+        save_step("s1", TypedValue::Slot(0)),
+        finish_step("done", TypedValue::Slot(1)),
+    ]);
+    wf.secrets.push("key".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: composite with secret saved to slot, then relayed, must leak"
+    );
+}
+
+#[test]
+fn blackhat_composite_with_secret_var_reference() {
+    // vars are always clean, so this should pass
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Composite(vec![
+            TypedValue::Reference("$vars.count".into()),
+            TypedValue::Literal(ValueType::Number),
+        ]),
+    )]);
+    wf.vars.push(("count".to_owned(), ValueType::Number));
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: composite with var reference should be clean since vars are never secret"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Resource limits - zero limits should fail
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_zero_max_accessors_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_accessors: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_accessors".to_owned(),
+        }),
+        "blackhat: zero max_accessors must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_expressions_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_expressions: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_expressions".to_owned(),
+        }),
+        "blackhat: zero max_expressions must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_expr_stack_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_expr_stack: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_expr_stack".to_owned(),
+        }),
+        "blackhat: zero max_expr_stack must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_step_budget_per_tick_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_step_budget_per_tick: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_step_budget_per_tick".to_owned(),
+        }),
+        "blackhat: zero max_step_budget_per_tick must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_output_bytes_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_output_bytes: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_output_bytes".to_owned(),
+        }),
+        "blackhat: zero max_output_bytes must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_blob_bytes_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_blob_bytes: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_blob_bytes".to_owned(),
+        }),
+        "blackhat: zero max_blob_bytes must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_ipc_payload_bytes_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_ipc_payload_bytes: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_ipc_payload_bytes".to_owned(),
+        }),
+        "blackhat: zero max_ipc_payload_bytes must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_retry_attempts_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_retry_attempts: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_retry_attempts".to_owned(),
+        }),
+        "blackhat: zero max_retry_attempts must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_journal_batch_bytes_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_journal_batch_bytes: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_journal_batch_bytes".to_owned(),
+        }),
+        "blackhat: zero max_journal_batch_bytes must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_steps_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_steps: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_steps".to_owned(),
+        }),
+        "blackhat: zero max_steps must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_zero_max_slots_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_slots: 0,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitRequired {
+            resource: "max_slots".to_owned(),
+        }),
+        "blackhat: zero max_slots must be rejected"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Resource limits - declared exceeding hard limits
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_max_accessors_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_accessors: 100_000,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_accessors".to_owned(),
+        }),
+        "blackhat: max_accessors exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_expressions_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_expressions: 50_000,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_expressions".to_owned(),
+        }),
+        "blackhat: max_expressions exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_expr_stack_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_expr_stack: 1_024,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_expr_stack".to_owned(),
+        }),
+        "blackhat: max_expr_stack exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_step_budget_per_tick_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_step_budget_per_tick: 1_000_000,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_step_budget_per_tick".to_owned(),
+        }),
+        "blackhat: max_step_budget_per_tick exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_input_bytes_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_input_bytes: 10_485_760,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_input_bytes".to_owned(),
+        }),
+        "blackhat: max_input_bytes exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_output_bytes_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_output_bytes: 10_485_760,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_output_bytes".to_owned(),
+        }),
+        "blackhat: max_output_bytes exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_blob_bytes_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_blob_bytes: 100_000_000,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_blob_bytes".to_owned(),
+        }),
+        "blackhat: max_blob_bytes exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_ipc_payload_bytes_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_ipc_payload_bytes: 10_485_760,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_ipc_payload_bytes".to_owned(),
+        }),
+        "blackhat: max_ipc_payload_bytes exceeding hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_max_journal_batch_bytes_exceeding_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_journal_batch_bytes: 10_485_760,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_journal_batch_bytes".to_owned(),
+        }),
+        "blackhat: max_journal_batch_bytes exceeding hard limit must be rejected"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Type checking - Choose with non-boolean conditions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_choose_with_number_slot_fails_type_check() {
+    let wf = make_workflow(vec![
+        save_step("s0", TypedValue::Literal(ValueType::Number)),
+        choose_step("route", TypedValue::Slot(0)),
+    ]);
+    assert_eq!(
+        validate_types(&wf),
+        Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "number".to_owned(),
+        }),
+        "blackhat: choose with number slot must fail type check"
+    );
+}
+
+#[test]
+fn blackhat_choose_with_text_slot_fails_type_check() {
+    let wf = make_workflow(vec![
+        save_step("s0", TypedValue::Literal(ValueType::Text)),
+        choose_step("route", TypedValue::Slot(0)),
+    ]);
+    assert_eq!(
+        validate_types(&wf),
+        Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "text".to_owned(),
+        }),
+        "blackhat: choose with text slot must fail type check"
+    );
+}
+
+#[test]
+fn blackhat_choose_with_null_literal_fails_type_check() {
+    let wf = make_workflow(vec![choose_step(
+        "route",
+        TypedValue::Literal(ValueType::Null),
+    )]);
+    assert_eq!(
+        validate_types(&wf),
+        Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "null".to_owned(),
+        }),
+        "blackhat: choose with null literal must fail type check"
+    );
+}
+
+#[test]
+fn blackhat_choose_with_any_type_from_unknown_reference_passes() {
+    let wf = make_workflow(vec![choose_step(
+        "route",
+        TypedValue::Reference("$input.missing_field".into()),
+    )]);
+    assert_eq!(
+        validate_types(&wf),
+        Ok(()),
+        "blackhat: choose with unresolved reference resolves as Any and should pass"
+    );
+}
+
+#[test]
+fn blackhat_choose_with_boolean_from_secret_input_passes_type_check() {
+    let mut wf = make_workflow(vec![choose_step(
+        "route",
+        TypedValue::Reference("$input.is_admin".into()),
+    )]);
+    wf.inputs.push(InputDecl {
+        name: "is_admin".to_owned(),
+        schema_type: ValueType::Boolean,
+        is_secret: true,
+    });
+    assert_eq!(
+        validate_types(&wf),
+        Ok(()),
+        "blackhat: choose with boolean input (even if secret) should pass type check"
+    );
+}
+
+#[test]
+fn blackhat_multiple_chooses_first_bad_stops_early() {
+    let wf = make_workflow(vec![
+        choose_step("route1", TypedValue::Literal(ValueType::Number)),
+        choose_step("route2", TypedValue::Literal(ValueType::Boolean)),
+    ]);
+    assert_eq!(
+        validate_types(&wf),
+        Err(ValidationError::TypeMismatch {
+            expected: "boolean".to_owned(),
+            found: "number".to_owned(),
+        }),
+        "blackhat: first bad choose must stop validation early"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Reference resolution paths
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_input_reference_resolves_correct_type_and_taint() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$input.name".into()),
+    )]);
+    wf.inputs.push(InputDecl {
+        name: "name".to_owned(),
+        schema_type: ValueType::Text,
+        is_secret: false,
+    });
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: $input.name for clean input must pass taint"
+    );
+}
+
+#[test]
+fn blackhat_input_reference_with_nested_path_resolves() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$input.user.profile.name".into()),
+    )]);
+    wf.inputs.push(InputDecl {
+        name: "user".to_owned(),
+        schema_type: ValueType::Object,
+        is_secret: false,
+    });
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: deeply nested input path must resolve to input fact"
+    );
+}
+
+#[test]
+fn blackhat_var_reference_resolves_clean() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$var.counter".into()),
+    )]);
+    wf.vars.push(("counter".to_owned(), ValueType::Number));
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: $var alias must resolve and vars are always clean"
+    );
+}
+
+#[test]
+fn blackhat_vars_reference_resolves_clean() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$vars.counter".into()),
+    )]);
+    wf.vars.push(("counter".to_owned(), ValueType::Number));
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: $vars reference must resolve and vars are always clean"
+    );
+}
+
+#[test]
+fn blackhat_secrets_reference_resolves_tainted() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$secrets.db_password".into()),
+    )]);
+    wf.secrets.push("db_password".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: $secrets.X must resolve as tainted"
+    );
+}
+
+#[test]
+fn blackhat_secrets_nested_path_resolves_tainted() {
+    let mut wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$secrets.db.connection".into()),
+    )]);
+    wf.secrets.push("db".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: $secrets.X.Y must resolve using first segment and be tainted"
+    );
+}
+
+#[test]
+fn blackhat_unknown_root_reference_is_clean() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$output.result".into()),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: unknown root like $output should resolve as clean"
+    );
+}
+
+#[test]
+fn blackhat_reference_without_dollar_is_clean() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("plain_string".into()),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: reference without $ prefix must be clean text"
+    );
+}
+
+#[test]
+fn blackhat_reference_without_dot_suffix_is_clean_any() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$input".into()),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: reference with $ but no dot must be clean"
+    );
+}
+
+#[test]
+fn blackhat_secrets_reference_with_dot_only_is_clean() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Reference("$secrets.".into()),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: $secrets. with empty name should resolve clean (no match)"
+    );
+}
+
+#[test]
+fn blackhat_input_and_secrets_same_name_different_taint() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$input.key".into())),
+        save_step("s1", TypedValue::Reference("$secrets.key".into())),
+        finish_step("done", TypedValue::Slot(0)),
+    ]);
+    wf.inputs.push(InputDecl {
+        name: "key".to_owned(),
+        schema_type: ValueType::Text,
+        is_secret: false,
+    });
+    wf.secrets.push("key".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: same name in input (clean) and secrets, finishing input slot is clean"
+    );
+}
+
+#[test]
+fn blackhat_input_and_secrets_same_name_secret_finishes_tainted() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$input.key".into())),
+        save_step("s1", TypedValue::Reference("$secrets.key".into())),
+        finish_step("done", TypedValue::Slot(1)),
+    ]);
+    wf.inputs.push(InputDecl {
+        name: "key".to_owned(),
+        schema_type: ValueType::Text,
+        is_secret: false,
+    });
+    wf.secrets.push("key".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: same name in input and secrets, finishing secrets slot is tainted"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BLACKHAT: Edge cases - empty workflow, single-step, max-value limits
+// ---------------------------------------------------------------------------
+
+#[test]
+fn blackhat_empty_workflow_passes_both_validators() {
+    let wf = make_workflow(vec![]);
+    assert_eq!(validate_types(&wf), Ok(()));
+    assert_eq!(validate_taint(&wf), Ok(()));
+}
+
+#[test]
+fn blackhat_single_save_step_workflow_passes_types() {
+    let wf = make_workflow(vec![save_step(
+        "only",
+        TypedValue::Literal(ValueType::Number),
+    )]);
+    assert_eq!(validate_types(&wf), Ok(()));
+    assert_eq!(validate_taint(&wf), Ok(()));
+}
+
+#[test]
+fn blackhat_single_choose_step_with_boolean_passes() {
+    let wf = make_workflow(vec![choose_step(
+        "only",
+        TypedValue::Literal(ValueType::Boolean),
+    )]);
+    assert_eq!(validate_types(&wf), Ok(()));
+    assert_eq!(validate_taint(&wf), Ok(()));
+}
+
+#[test]
+fn blackhat_single_finish_step_with_literal_passes() {
+    let wf = make_workflow(vec![finish_step(
+        "only",
+        TypedValue::Literal(ValueType::Number),
+    )]);
+    assert_eq!(validate_types(&wf), Ok(()));
+    assert_eq!(validate_taint(&wf), Ok(()));
+}
+
+#[test]
+fn blackhat_resource_limits_at_exact_hard_limit_passes() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_steps: 1_000,
+            max_slots: 65_535,
+            max_constants: 8_192,
+            max_accessors: 8_192,
+            max_expressions: 4_096,
+            max_expr_stack: 64,
+            max_step_budget_per_tick: 10_000,
+            max_input_bytes: 1_048_576,
+            max_output_bytes: 1_048_576,
+            max_blob_bytes: 16_777_216,
+            max_ipc_payload_bytes: 1_048_576,
+            max_retry_attempts: 10,
+            max_fanout: 256,
+            max_collect_items: 1_000,
+            max_queue_depth: 1_024,
+            max_journal_batch_bytes: 1_048_576,
+        },
+    };
+    let hard = ResourceLimits::default();
+    assert_eq!(
+        validate_resource_limits(&wf, &hard),
+        Ok(()),
+        "blackhat: resource limits exactly at hard limits must pass"
+    );
+}
+
+#[test]
+fn blackhat_resource_limits_one_over_hard_limit_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_steps: 1_001,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_steps".to_owned(),
+        }),
+        "blackhat: max_steps one over hard limit must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_resource_limits_actual_equals_declared_passes() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![
+            finish_step("s0", TypedValue::Literal(ValueType::Number)),
+            finish_step("s1", TypedValue::Literal(ValueType::Number)),
+            finish_step("s2", TypedValue::Literal(ValueType::Number)),
+        ],
+        resource_contract: ResourceLimits {
+            max_steps: 3,
+            max_slots: 65_535,
+            max_constants: 8_192,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    assert_eq!(
+        validate_resource_limits(&wf, &hard),
+        Ok(()),
+        "blackhat: actual step count exactly equal to declared max_steps must pass"
+    );
+}
+
+#[test]
+fn blackhat_resource_limits_actual_exceeds_declared_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![
+            finish_step("s0", TypedValue::Literal(ValueType::Number)),
+            finish_step("s1", TypedValue::Literal(ValueType::Number)),
+            finish_step("s2", TypedValue::Literal(ValueType::Number)),
+            finish_step("s3", TypedValue::Literal(ValueType::Number)),
+        ],
+        resource_contract: ResourceLimits {
+            max_steps: 3,
+            max_slots: 65_535,
+            max_constants: 8_192,
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert_eq!(
+        result,
+        Err(ValidationError::LimitExceeded {
+            resource: "max_steps".to_owned(),
+        }),
+        "blackhat: 4 actual steps with declared max_steps=3 must be rejected"
+    );
+}
+
+#[test]
+fn blackhat_workflow_with_only_saves_and_no_finish_passes() {
+    let wf = make_workflow(vec![
+        save_step("s0", TypedValue::Literal(ValueType::Number)),
+        save_step("s1", TypedValue::Literal(ValueType::Text)),
+    ]);
+    assert_eq!(validate_types(&wf), Ok(()));
+    assert_eq!(validate_taint(&wf), Ok(()));
+}
+
+#[test]
+fn blackhat_save_secret_then_clean_save_then_clean_finish_passes() {
+    let mut wf = make_workflow(vec![
+        save_step("secret_slot", TypedValue::Reference("$secrets.ignored".into())),
+        save_step("clean_slot", TypedValue::Literal(ValueType::Text)),
+        finish_step("done", TypedValue::Slot(1)),
+    ]);
+    wf.secrets.push("ignored".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: finishing a clean slot while another slot has secret data should pass"
+    );
+}
+
+#[test]
+fn blackhat_multiple_finishes_only_first_leak_detected() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$secrets.early".into())),
+        finish_step("leak", TypedValue::Slot(0)),
+        finish_step("clean", TypedValue::Literal(ValueType::Number)),
+    ]);
+    wf.secrets.push("early".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: first tainted finish must be detected; second clean finish not reached"
+    );
+}
+
+#[test]
+fn blackhat_save_overwrites_slot_taint_from_secret_to_clean() {
+    let mut wf = make_workflow(vec![
+        save_step("s0", TypedValue::Reference("$secrets.x".into())),
+        save_step("s0_overwrite", TypedValue::Literal(ValueType::Number)),
+        finish_step("done", TypedValue::Slot(0)),
+    ]);
+    wf.secrets.push("x".to_owned());
+    // slot 0 gets tainted by s0, then overwritten to clean by s0_overwrite
+    // BUT: the overwrite uses write_slot which writes to slots[index],
+    // where index=1 for the second save_step. So slot 0 stays tainted.
+    assert_eq!(
+        validate_taint(&wf),
+        Err(ValidationError::SecretResultLeak),
+        "blackhat: slot 0 remains tainted; second save writes to slot 1, not slot 0"
+    );
+}
+
+#[test]
+fn blackhat_taint_does_not_propagate_through_choose() {
+    let mut wf = make_workflow(vec![
+        save_step("flag", TypedValue::Reference("$secrets.selector".into())),
+        choose_step("route", TypedValue::Slot(0)),
+        save_step("result", TypedValue::Literal(ValueType::Number)),
+        finish_step("done", TypedValue::Slot(2)),
+    ]);
+    wf.secrets.push("selector".to_owned());
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: taint in choose condition must not propagate to subsequent steps"
+    );
+}
+
+#[test]
+fn blackhat_composite_of_empty_vec_is_clean() {
+    let wf = make_workflow(vec![finish_step(
+        "done",
+        TypedValue::Composite(vec![]),
+    )]);
+    assert_eq!(
+        validate_taint(&wf),
+        Ok(()),
+        "blackhat: empty composite in finish should be clean"
+    );
+}
+
+#[test]
+fn blackhat_resource_limits_all_zero_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_steps: 0,
+            max_slots: 0,
+            max_constants: 0,
+            max_accessors: 0,
+            max_expressions: 0,
+            max_expr_stack: 0,
+            max_step_budget_per_tick: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            max_blob_bytes: 0,
+            max_ipc_payload_bytes: 0,
+            max_retry_attempts: 0,
+            max_fanout: 0,
+            max_collect_items: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert!(
+        matches!(result, Err(ValidationError::LimitRequired { .. })),
+        "blackhat: all-zero resource limits must be rejected with LimitRequired, got {result:?}"
+    );
+    if let Err(ValidationError::LimitRequired { resource }) = result {
+        assert_eq!(
+            resource, "max_steps",
+            "blackhat: first zero limit checked should be max_steps"
+        );
+    }
+}
+
+#[test]
+fn blackhat_resource_limits_all_exceeding_hard_rejected() {
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_steps: 999_999,
+            max_slots: 999_999,
+            max_constants: 999_999,
+            max_accessors: 999_999,
+            max_expressions: 999_999,
+            max_expr_stack: 999_999,
+            max_step_budget_per_tick: 999_999,
+            max_input_bytes: 999_999,
+            max_output_bytes: 999_999,
+            max_blob_bytes: 999_999,
+            max_ipc_payload_bytes: 999_999,
+            max_retry_attempts: 999_999,
+            max_fanout: 999_999,
+            max_collect_items: 999_999,
+            max_queue_depth: 999_999,
+            max_journal_batch_bytes: 999_999,
+        },
+    };
+    let hard = ResourceLimits::default();
+    let result = validate_resource_limits(&wf, &hard);
+    assert!(
+        matches!(result, Err(ValidationError::LimitExceeded { .. })),
+        "blackhat: all limits exceeding hard must be rejected with LimitExceeded, got {result:?}"
+    );
+    if let Err(ValidationError::LimitExceeded { resource }) = result {
+        assert_eq!(
+            resource, "max_steps",
+            "blackhat: first limit exceeding hard should be max_steps"
+        );
+    }
+}

@@ -173,6 +173,14 @@ pub enum RuntimeEngineError {
         /// Step where the violation occurred.
         step: StepIdx,
     },
+    /// TogetherStart branch count exceeds the u16 representation limit.
+    #[error("branch count {requested} exceeds maximum {max}")]
+    BranchLimitExceeded {
+        /// Maximum representable branch count.
+        max: usize,
+        /// Requested branch count.
+        requested: usize,
+    },
 }
 
 impl From<EngineError> for RuntimeEngineError {
@@ -199,6 +207,7 @@ impl RuntimeEngineError {
             Self::Action(error) => error.runtime_code(),
             Self::RetryExhausted { .. } => Some(Self::RETRY_EXHAUSTED_RUNTIME_CODE),
             Self::TaintViolation { .. } => None,
+            Self::BranchLimitExceeded { .. } => None,
         }
     }
 }

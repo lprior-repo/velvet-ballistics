@@ -2,6 +2,10 @@ use crate::doc::*;
 use crate::ids::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// Maximum number of entries allowed in traversal HashMap/HashSet accumulators.
+/// Prevents unbounded memory growth when processing pathological inputs.
+const MAX_TRAVERSAL_ENTRIES: usize = 50_000;
+
 impl FlowGraph {
     /// Returns all edges whose target is the given node.
     pub fn incomers(&self, node_id: &NodeId) -> Vec<&FlowEdgeRecord> {
@@ -30,8 +34,9 @@ impl FlowGraph {
     /// Returns a topological ordering of nodes, or `None` if the graph contains a cycle.
     /// Uses Kahn's algorithm (BFS-based).
     pub fn topological_sort(&self) -> Option<Vec<NodeId>> {
-        let mut in_degree: HashMap<&NodeId, usize> = HashMap::new();
-        let mut adjacency: HashMap<&NodeId, Vec<&NodeId>> = HashMap::new();
+        let cap = self.nodes.len().min(MAX_TRAVERSAL_ENTRIES);
+        let mut in_degree: HashMap<&NodeId, usize> = HashMap::with_capacity(cap);
+        let mut adjacency: HashMap<&NodeId, Vec<&NodeId>> = HashMap::with_capacity(cap);
 
         for node_id in self.nodes.keys() {
             in_degree.entry(node_id).or_insert(0);
@@ -85,7 +90,8 @@ impl FlowGraph {
     /// Finds all simple cycles in the graph using Johnson's algorithm approach.
     /// Returns a list of cycles, where each cycle is a list of node IDs.
     pub fn find_cycles(&self) -> Vec<Vec<NodeId>> {
-        let mut adj: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+        let cap = self.nodes.len().min(MAX_TRAVERSAL_ENTRIES);
+        let mut adj: HashMap<NodeId, Vec<NodeId>> = HashMap::with_capacity(cap);
         for node_id in self.nodes.keys() {
             adj.entry(node_id.clone()).or_default();
         }
@@ -100,7 +106,7 @@ impl FlowGraph {
         }
 
         let mut cycles: Vec<Vec<NodeId>> = Vec::new();
-        let mut visited: HashSet<NodeId> = HashSet::new();
+        let mut visited: HashSet<NodeId> = HashSet::with_capacity(cap);
 
         let node_ids: Vec<NodeId> = self.nodes.keys().cloned().collect();
 
@@ -110,7 +116,7 @@ impl FlowGraph {
             }
 
             let mut path: Vec<NodeId> = Vec::new();
-            let mut path_set: HashSet<NodeId> = HashSet::new();
+            let mut path_set: HashSet<NodeId> = HashSet::with_capacity(cap);
             let mut stack: Vec<(NodeId, usize)> = Vec::new();
 
             stack.push((start.clone(), 0));
@@ -153,7 +159,8 @@ impl FlowGraph {
             return Vec::new();
         }
 
-        let mut visited: HashSet<NodeId> = HashSet::new();
+        let cap = self.nodes.len().min(MAX_TRAVERSAL_ENTRIES);
+        let mut visited: HashSet<NodeId> = HashSet::with_capacity(cap);
         let mut queue: VecDeque<NodeId> = VecDeque::new();
         let mut result: Vec<NodeId> = Vec::new();
 

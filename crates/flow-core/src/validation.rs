@@ -5,6 +5,18 @@ use smol_str::SmolStr;
 use std::collections::{HashMap, HashSet};
 
 // ---------------------------------------------------------------------------
+// Graph size limits (DoS prevention)
+// ---------------------------------------------------------------------------
+
+const MAX_GRAPH_NODES: usize = 10_000;
+const MAX_GRAPH_EDGES: usize = 100_000;
+const MAX_NODE_FANOUT: usize = 1_000;
+
+/// Maximum number of entries allowed in validation HashMap/HashSet accumulators.
+/// Prevents unbounded memory growth when processing pathological inputs.
+const MAX_VALIDATION_ENTRIES: usize = 50_000;
+
+// ---------------------------------------------------------------------------
 // Validation level
 // ---------------------------------------------------------------------------
 
@@ -67,6 +79,72 @@ fn diagnostic_to_finding(d: &Diagnostic) -> ValidationFinding {
 
 pub trait FlowValidator: Send + Sync {
     fn validate(&self, doc: &FlowDocument) -> Vec<Diagnostic>;
+}
+
+// ---------------------------------------------------------------------------
+// Graph limits validator (phase 0 - DoS gate)
+// ---------------------------------------------------------------------------
+
+pub struct GraphLimitsValidator;
+
+impl FlowValidator for GraphLimitsValidator {
+    fn validate(&self, doc: &FlowDocument) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+
+        let node_count = doc.graph.nodes.len();
+        if node_count > MAX_GRAPH_NODES {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "graph-limit-nodes-exceeded",
+                format!(
+                    "graph has {node_count} nodes, exceeding the maximum of {MAX_GRAPH_NODES}"
+                ),
+                None,
+                None,
+            ));
+        }
+
+        let edge_count = doc.graph.edges.len();
+        if edge_count > MAX_GRAPH_EDGES {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "graph-limit-edges-exceeded",
+                format!(
+                    "graph has {edge_count} edges, exceeding the maximum of {MAX_GRAPH_EDGES}"
+                ),
+                None,
+                None,
+            ));
+        }
+
+        check_node_fanout(&doc.graph, &mut diagnostics);
+
+        diagnostics
+    }
+}
+
+fn check_node_fanout(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
+    let cap = graph.edges.len().min(MAX_VALIDATION_ENTRIES);
+    let mut fanout: HashMap<NodeId, usize> = HashMap::with_capacity(cap);
+    for edge in graph.edges.values() {
+        if graph.nodes.contains_key(&edge.source_node) {
+            let count = fanout.entry(edge.source_node.clone()).or_insert(0);
+            *count = count.saturating_add(1);
+        }
+    }
+    for (node_id, count) in &fanout {
+        if *count > MAX_NODE_FANOUT {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "graph-limit-fanout-exceeded",
+                format!(
+                    "node '{node_id}' has {count} outgoing edges, exceeding the maximum fanout of {MAX_NODE_FANOUT}"
+                ),
+                Some(node_id.clone()),
+                None,
+            ));
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +370,8 @@ fn semantic_check_edge_connectivity(graph: &FlowGraph, diagnostics: &mut Vec<Dia
 }
 
 fn semantic_check_orphan_nodes(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    let mut connected_nodes: HashSet<NodeId> = HashSet::new();
+    let cap = graph.edges.len().min(MAX_VALIDATION_ENTRIES);
+    let mut connected_nodes: HashSet<NodeId> = HashSet::with_capacity(cap);
     for edge in graph.edges.values() {
         if graph.nodes.contains_key(&edge.source_node) {
             connected_nodes.insert(edge.source_node.clone());
@@ -370,7 +449,8 @@ fn semantic_check_overlapping_groups(graph: &FlowGraph, diagnostics: &mut Vec<Di
 }
 
 fn semantic_check_port_type_compatibility(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    let mut port_edges: HashMap<(NodeId, PortId), Vec<EdgeId>> = HashMap::new();
+    let cap = graph.edges.len().min(MAX_VALIDATION_ENTRIES);
+    let mut port_edges: HashMap<(NodeId, PortId), Vec<EdgeId>> = HashMap::with_capacity(cap);
     for (edge_id, edge) in &graph.edges {
         if !graph.nodes.contains_key(&edge.source_node) {
             continue;
@@ -399,7 +479,8 @@ fn semantic_check_port_type_compatibility(graph: &FlowGraph, diagnostics: &mut V
 }
 
 fn semantic_check_duplicate_edges(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    let mut seen: HashMap<(NodeId, PortId, NodeId, PortId), EdgeId> = HashMap::new();
+    let cap = graph.edges.len().min(MAX_VALIDATION_ENTRIES);
+    let mut seen: HashMap<(NodeId, PortId, NodeId, PortId), EdgeId> = HashMap::with_capacity(cap);
     for (edge_id, edge) in &graph.edges {
         let key = (edge.source_node.clone(), edge.source_port.clone(), edge.target_node.clone(), edge.target_port.clone());
         match seen.entry(key) {
@@ -453,7 +534,8 @@ fn check_node_metadata(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
 }
 
 fn check_duplicate_node_names(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    let mut seen: HashMap<SmolStr, NodeId> = HashMap::new();
+    let cap = graph.nodes.len().min(MAX_VALIDATION_ENTRIES);
+    let mut seen: HashMap<SmolStr, NodeId> = HashMap::with_capacity(cap);
     for (node_id, node) in &graph.nodes {
         let title = &node.title;
         if title.is_empty() { continue; }
@@ -505,6 +587,12 @@ fn check_graph_bounds(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
     }
 }
 
+fn approx_equal(a: f64, b: f64) -> bool {
+    let diff = (a - b).abs();
+    let largest = a.abs().max(b.abs());
+    diff <= largest * f64::EPSILON * 2.0
+}
+
 fn check_overlapping_nodes(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
     let nodes: Vec<(&NodeId, &FlowNodeRecord)> = graph.nodes.iter().collect();
     let len = nodes.len();
@@ -517,7 +605,7 @@ fn check_overlapping_nodes(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>)
             let bx = node_b.position[0];
             let by = node_b.position[1];
             if !ax.is_finite() || !ay.is_finite() || !bx.is_finite() || !by.is_finite() { continue; }
-            if (ax - bx).abs() < f64::EPSILON && (ay - by).abs() < f64::EPSILON {
+            if approx_equal(ax, bx) && approx_equal(ay, by) {
                 diagnostics.push(diag(
                     DiagnosticSeverity::Warning,
                     "export-overlapping-nodes",
@@ -531,7 +619,8 @@ fn check_overlapping_nodes(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>)
 }
 
 fn check_port_connections(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
-    let mut connected_ports: HashSet<(NodeId, PortId)> = HashSet::new();
+    let cap = graph.edges.len().saturating_mul(2).min(MAX_VALIDATION_ENTRIES);
+    let mut connected_ports: HashSet<(NodeId, PortId)> = HashSet::with_capacity(cap);
     for edge in graph.edges.values() {
         if graph.nodes.contains_key(&edge.source_node) {
             connected_ports.insert((edge.source_node.clone(), edge.source_port.clone()));
@@ -588,6 +677,7 @@ impl ValidationPipeline {
 
     pub fn standard() -> Self {
         let mut pipeline = Self::new();
+        pipeline.add_validator(Box::new(GraphLimitsValidator));
         pipeline.add_validator(Box::new(StructuralValidator));
         pipeline.add_validator(Box::new(SemanticValidator));
         pipeline.add_validator(Box::new(ExportValidator));

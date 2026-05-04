@@ -16,20 +16,24 @@ use crate::engine::types::{
 };
 use crate::primitives::collect::CollectStates;
 
-fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> u16 {
+fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> RuntimeEngineResult<u16> {
     let mut max_branches: u16 = 0;
     for i in 0..plan.node_count() {
         let step = StepIdx::new(i);
         if let Some(node) = plan.node(step)
             && let CompiledNodeKind::TogetherStart { branches, .. } = &node.kind
         {
-            let branch_count = u16::try_from(branches.len()).unwrap_or(u16::MAX);
+            let branch_count =
+                u16::try_from(branches.len()).map_err(|_| RuntimeEngineError::BranchLimitExceeded {
+                    max: u16::MAX.into(),
+                    requested: branches.len(),
+                })?;
             if branch_count > max_branches {
                 max_branches = branch_count;
             }
         }
     }
-    max_branches
+    Ok(max_branches)
 }
 
 /// Enhanced drive loop that handles all node kinds including
@@ -50,7 +54,7 @@ pub fn drive_deterministic_full(
     collect_states: &mut CollectStates,
     granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let max_parallel = compute_max_parallel_in_flight(plan);
+    let max_parallel = compute_max_parallel_in_flight(plan)?;
     run.set_max_parallel_in_flight(max_parallel)
         .map_err(RuntimeEngineError::Core)?;
 
