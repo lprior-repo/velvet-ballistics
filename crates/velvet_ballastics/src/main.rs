@@ -57,6 +57,7 @@ commands:
   bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
   doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
   answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
+  graph      <workflow.yaml> [--json|--jsonl]          Output control flow graph in DOT format
   help                                                Print this message
   version                                             Print version
 
@@ -126,6 +127,7 @@ fn main() -> ExitCode {
             db,
             output,
         }) => cmd_answer(&run_id, step, &value_file, &db, output),
+        Ok(Command::Graph { workflow, output }) => cmd_graph(&workflow, output),
         Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
     }
 }
@@ -2712,6 +2714,259 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
     }
 }
 
+
+fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    let mut dot_lines: Vec<String> = Vec::new();
+    dot_lines.push("digraph workflow {".to_string());
+    dot_lines.push("    node [shape=box];".to_string());
+
+    let node_count = compiled.node_count();
+    let mut edge_count: usize = 0;
+
+    // Declare all nodes
+    for i in 0..node_count {
+        let step = vb_core::StepIdx::new(i);
+        let label = match compiled.step_name(step) {
+            Some(name) => format!("{i}: {name}"),
+            None => {
+                let node = match compiled.node(step) {
+                    Some(n) => n,
+                    None => continue,
+                };
+                let kind_label = node_kind_label(&node.kind);
+                format!("{i}: {kind_label}")
+            }
+        };
+        let escaped = label.replace('"', "\\\"");
+        dot_lines.push(format!("    node_{i} [label=\"{escaped}\"];"));
+    }
+
+    // Add edges
+    for i in 0..node_count {
+        let step = vb_core::StepIdx::new(i);
+        let node = match compiled.node(step) {
+            Some(n) => n,
+            None => continue,
+        };
+
+        if let Some(next) = node.next {
+            dot_lines.push(format!("    node_{i} -> node_{};", next.get()));
+            edge_count = match edge_count.checked_add(1) {
+                Some(c) => c,
+                None => edge_count,
+            };
+        }
+        if let Some(on_error) = node.on_error {
+            dot_lines.push(format!(
+                "    node_{i} -> node_{} [style=dashed,color=red,label=\"on_error\"];",
+                on_error.get()
+            ));
+            edge_count = match edge_count.checked_add(1) {
+                Some(c) => c,
+                None => edge_count,
+            };
+        }
+        let extra_edges = collect_kind_edges(i, &node.kind);
+        for (from, to, label) in &extra_edges {
+            let edge_decl = if label.is_empty() {
+                format!("    node_{from} -> node_{to};")
+            } else {
+                let escaped = label.replace('"', "\\\"");
+                format!("    node_{from} -> node_{to} [label=\"{escaped}\"];")
+            };
+            dot_lines.push(edge_decl);
+            edge_count = match edge_count.checked_add(1) {
+                Some(c) => c,
+                None => edge_count,
+            };
+        }
+    }
+
+    dot_lines.push("}".to_string());
+    let dot_string = dot_lines.join("\n");
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "format": "dot",
+                "nodes": node_count,
+                "edges": edge_count,
+                "dot": dot_string
+            }),
+            output,
+        );
+    } else {
+        outln!("{dot_string}");
+    }
+
+    CliExitCode::Success.into()
+}
+
+fn node_kind_label(kind: &vb_core::CompiledNodeKind) -> &'static str {
+    match kind {
+        vb_core::CompiledNodeKind::Nop => "nop",
+        vb_core::CompiledNodeKind::SetConst { .. } => "set_const",
+        vb_core::CompiledNodeKind::Copy { .. } => "copy",
+        vb_core::CompiledNodeKind::EvalExpr { .. } => "eval_expr",
+        vb_core::CompiledNodeKind::BuildObject { .. } => "build_object",
+        vb_core::CompiledNodeKind::BuildList { .. } => "build_list",
+        vb_core::CompiledNodeKind::Do { .. } => "do",
+        vb_core::CompiledNodeKind::Choose { .. } => "choose",
+        vb_core::CompiledNodeKind::ChooseSlot { .. } => "choose_slot",
+        vb_core::CompiledNodeKind::ForEachStart { .. } => "for_each_start",
+        vb_core::CompiledNodeKind::ForEachNext { .. } => "for_each_next",
+        vb_core::CompiledNodeKind::ForEachJoin { .. } => "for_each_join",
+        vb_core::CompiledNodeKind::TogetherStart { .. } => "together_start",
+        vb_core::CompiledNodeKind::TogetherBranch { .. } => "together_branch",
+        vb_core::CompiledNodeKind::TogetherJoin { .. } => "together_join",
+        vb_core::CompiledNodeKind::CollectStart { .. } => "collect_start",
+        vb_core::CompiledNodeKind::CollectPage { .. } => "collect_page",
+        vb_core::CompiledNodeKind::CollectNext { .. } => "collect_next",
+        vb_core::CompiledNodeKind::CollectFinish { .. } => "collect_finish",
+        vb_core::CompiledNodeKind::ReduceStart { .. } => "reduce_start",
+        vb_core::CompiledNodeKind::ReduceNext { .. } => "reduce_next",
+        vb_core::CompiledNodeKind::ReduceFinish { .. } => "reduce_finish",
+        vb_core::CompiledNodeKind::RepeatStart { .. } => "repeat_start",
+        vb_core::CompiledNodeKind::RepeatAttempt { .. } => "repeat_attempt",
+        vb_core::CompiledNodeKind::RepeatCheck { .. } => "repeat_check",
+        vb_core::CompiledNodeKind::RepeatFinish { .. } => "repeat_finish",
+        vb_core::CompiledNodeKind::WaitUntil { .. } => "wait_until",
+        vb_core::CompiledNodeKind::WaitEvent { .. } => "wait_event",
+        vb_core::CompiledNodeKind::Ask { .. } => "ask",
+        vb_core::CompiledNodeKind::AskResume { .. } => "ask_resume",
+        vb_core::CompiledNodeKind::RetryCheck { .. } => "retry_check",
+        vb_core::CompiledNodeKind::ErrorHandler { .. } => "error_handler",
+        vb_core::CompiledNodeKind::Jump { .. } => "jump",
+        vb_core::CompiledNodeKind::Finish { .. } => "finish",
+    }
+}
+
+fn collect_kind_edges(
+    node_idx: u16,
+    kind: &vb_core::CompiledNodeKind,
+) -> Vec<(u16, u16, String)> {
+    let mut edges: Vec<(u16, u16, String)> = Vec::new();
+    match kind {
+        vb_core::CompiledNodeKind::Choose { branches, otherwise } => {
+            for branch in branches.iter() {
+                edges.push((node_idx, branch.target.get(), String::new()));
+            }
+            if let Some(fallback) = otherwise {
+                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
+            }
+        }
+        vb_core::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for branch in branches.iter() {
+                edges.push((node_idx, branch.target.get(), String::new()));
+            }
+            if let Some(fallback) = otherwise {
+                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
+            }
+        }
+        vb_core::CompiledNodeKind::ForEachStart { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::ForEachNext { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::TogetherStart { branches, join } => {
+            for branch_step in branches.iter() {
+                edges.push((node_idx, branch_step.get(), "branch".to_string()));
+            }
+            edges.push((node_idx, join.get(), "join".to_string()));
+        }
+        vb_core::CompiledNodeKind::TogetherBranch { entry, join, .. } => {
+            edges.push((node_idx, entry.get(), "entry".to_string()));
+            edges.push((node_idx, join.get(), "join".to_string()));
+        }
+        vb_core::CompiledNodeKind::TogetherJoin { .. } => {}
+        vb_core::CompiledNodeKind::CollectStart { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::CollectPage { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::CollectNext { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::CollectFinish { .. } => {}
+        vb_core::CompiledNodeKind::ReduceStart { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::ReduceNext { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::ReduceFinish { .. } => {}
+        vb_core::CompiledNodeKind::RepeatStart { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::RepeatAttempt { body, done, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::RepeatCheck { done, .. } => {
+            edges.push((node_idx, done.get(), "done".to_string()));
+        }
+        vb_core::CompiledNodeKind::RepeatFinish { .. } => {}
+        vb_core::CompiledNodeKind::ErrorHandler { body, handler, .. } => {
+            edges.push((node_idx, body.get(), "body".to_string()));
+            edges.push((node_idx, handler.get(), "handler".to_string()));
+        }
+        vb_core::CompiledNodeKind::Jump { target } => {
+            edges.push((node_idx, target.get(), String::new()));
+        }
+        vb_core::CompiledNodeKind::ForEachJoin { .. }
+        | vb_core::CompiledNodeKind::Nop
+        | vb_core::CompiledNodeKind::SetConst { .. }
+        | vb_core::CompiledNodeKind::Copy { .. }
+        | vb_core::CompiledNodeKind::EvalExpr { .. }
+        | vb_core::CompiledNodeKind::BuildObject { .. }
+        | vb_core::CompiledNodeKind::BuildList { .. }
+        | vb_core::CompiledNodeKind::Do { .. }
+        | vb_core::CompiledNodeKind::WaitUntil { .. }
+        | vb_core::CompiledNodeKind::WaitEvent { .. }
+        | vb_core::CompiledNodeKind::Ask { .. }
+        | vb_core::CompiledNodeKind::AskResume { .. }
+        | vb_core::CompiledNodeKind::RetryCheck { .. }
+        | vb_core::CompiledNodeKind::Finish { .. } => {}
+    }
+    edges
+}
 
 fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow) {

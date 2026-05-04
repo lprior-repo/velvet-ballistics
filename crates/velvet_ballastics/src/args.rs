@@ -128,6 +128,10 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Graph {
+        workflow: PathBuf,
+        output: OutputFormat,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,6 +193,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "bench-run" => parse_bench_run(args),
         "doctor" => parse_doctor(args),
         "answer" => parse_answer(args),
+        "graph" => parse_graph(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }
@@ -420,6 +425,12 @@ fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
         db: PathBuf::from(db),
         output,
     })
+}
+
+fn parse_graph(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let output = parse_output_format(args);
+    Ok(Command::Graph { workflow, output })
 }
 
 fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
@@ -845,5 +856,35 @@ mod tests {
             matches!(parsed, Err(ParseError::UnknownProfile(_))),
             "unexpected parse result: {parsed:?}"
         );
+    }
+
+    #[test]
+    fn parse_graph_defaults_to_text_output() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "graph", "workflow.yaml"]));
+        assert!(
+            matches!(parsed, Ok(Command::Graph { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Graph { workflow, output }) = parsed {
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_graph_accepts_json_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "graph",
+            "workflow.yaml",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Graph { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Graph { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Json);
+        }
     }
 }
