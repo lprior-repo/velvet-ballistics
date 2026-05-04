@@ -89,6 +89,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         BudgetExceeded { .. } => "BUDGET_EXCEEDED",
         ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
         &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
+        CapabilityDenied { .. } => "CAPABILITY_DENIED",
     }
 }
 

@@ -22,6 +22,7 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
             action: ActionId::new(0),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         }),
         EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
         EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,

@@ -113,6 +113,7 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     }
 }
 
@@ -155,6 +156,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let policy = crate::engine::RetryPolicy {
         max_attempts: 2,
@@ -1816,6 +1818,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -2158,6 +2161,7 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
         action: ActionId::new(99),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -2650,6 +2654,7 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
         action: ActionId::new(1),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Unknown,
@@ -3399,6 +3404,7 @@ fn shard_action_completed_full_writes_slot_and_advances() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -3422,11 +3428,10 @@ fn shard_action_completed_full_writes_slot_and_advances() {
     });
     let found_slot = events
         .iter()
-        .any(|e| *e == TraceEvent::SlotWritten {
-            run,
-            slot: SlotIdx::new(0),
-            value: Vec::new(),
-        });
+        .any(|e| matches!(e,
+            TraceEvent::SlotWritten { run: r, slot, .. }
+            if *r == run && *slot == SlotIdx::new(0)
+        ));
     assert_eq!(found_action, true);
     assert_eq!(found_slot, true);
 }
@@ -3457,6 +3462,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -3559,6 +3565,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+            capacity: 1,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -3577,6 +3584,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
         action: ActionId::new(0),
         attempt: 2,
         idempotency_key: 0,
+            capacity: 1,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {

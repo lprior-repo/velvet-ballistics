@@ -474,7 +474,7 @@ fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             // Output slot not available from trace; use a sentinel.
             output: SlotIdx::new(0),
         }),
-        IpcTraceEventKind::SlotWritten { run, slot } => Some(JournalEvent::SlotWrittenEvent {
+        IpcTraceEventKind::SlotWritten { run, slot, .. } => Some(JournalEvent::SlotWrittenEvent {
             run,
             seq,
             slot,
@@ -642,6 +642,7 @@ mod tests {
             kind: IpcTraceEventKind::SlotWritten {
                 run: RunId::new(1),
                 slot: SlotIdx::new(7),
+                value: Vec::new(),
             },
         };
         let journal = trace_to_journal(trace);
@@ -792,6 +793,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     fn make_action_scheduled(
         run: RunId,
         seq: u64,

@@ -29,7 +29,7 @@ pub fn together_start(
         });
     }
     let current = run.parallel_in_flight();
-    let max = run.max_parallel_in_flight();
+    let max = run.max_parallel_in_flight_limit();
     if current.saturating_add(count) > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }
@@ -218,6 +218,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("slot write must succeed"));
 
+        run.add_parallel_in_flight(2).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -399,6 +400,7 @@ mod tests {
         let accumulator = SlotIdx::new(0);
         list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
         // When calling together_join with output=None
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -431,6 +433,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write must succeed"));
         // When calling together_join with next=None
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -647,6 +650,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -687,6 +691,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -732,6 +737,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -774,6 +780,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1106,6 +1113,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(2).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1153,6 +1161,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join with branch_count=3
+        run.add_parallel_in_flight(3).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1195,6 +1204,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(2).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1241,6 +1251,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join
+        run.add_parallel_in_flight(2).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1340,6 +1351,7 @@ mod tests {
         let accumulator = SlotIdx::new(0);
         list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
         // When calling together_join with output=None
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1534,6 +1546,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join with branch_count=1
+        run.add_parallel_in_flight(1).ok();
         let result = together_join(
             &mut run,
             &mut store,
@@ -1646,6 +1659,7 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("write"));
         // When calling together_join with branch_count=4
+        run.add_parallel_in_flight(4).ok();
         let result = together_join(
             &mut run,
             &mut store,

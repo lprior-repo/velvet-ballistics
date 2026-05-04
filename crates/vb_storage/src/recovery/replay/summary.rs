@@ -13,7 +13,6 @@ use crate::recovery::types::{
 };
 use vb_core::{RunId, SlotIdx, StepIdx};
 
-
 /// Applies an event's effects to a runtime summary.
 pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEvent) {
     match event {
@@ -87,9 +86,20 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
     Ok(RecoveryHydration::Summary(summary))
 }
 
-/// Builds a minimal live-frame seed from already ordered journal events.
+/// Builder that constructs a [`RecoveryFrameSeed`] from journal events.
+pub struct RecoveryFrameSeedBuilder;
+
+impl RecoveryFrameSeedBuilder {
+    /// Build a frame seed from a pre-collected event slice.
+    pub fn build(events: &[JournalEvent]) -> RecoveryResult<RecoveryFrameSeed> {
+        recover_runtime_frame_seed_from_events(events)
+    }
+}
+
+/// Recovers a [`RecoveryFrameSeed`] from ordered journal events.
 ///
-/// Derives step states, dimensions, and program counter from durable lifecycle events.
+/// Reconstructs step states, dimensions, and program counter from the
+/// durable event sequence.
 pub fn recover_runtime_frame_seed_from_events(
     events: &[JournalEvent],
 ) -> RecoveryResult<RecoveryFrameSeed> {
@@ -113,9 +123,9 @@ pub fn recover_runtime_frame_seed_from_events(
     };
 
     let mut step_states: HashMap<StepIdx, RecoveredStepState> = HashMap::new();
-    let mut max_step_idx = StepIdx::ZERO;
+    let mut max_step_idx: Option<StepIdx> = None;
     let mut min_step_idx = StepIdx::MAX;
-    let mut max_slot_idx = SlotIdx::ZERO;
+    let mut max_slot_idx: Option<SlotIdx> = None;
     let mut pc = StepIdx::ZERO;
 
     for event in events {
@@ -125,7 +135,6 @@ pub fn recover_runtime_frame_seed_from_events(
                 detail: "frame seed recovery received events for multiple runs".to_owned(),
             });
         }
-
         summary.last_seq = event.seq();
         apply_summary_event(&mut summary, event);
 
@@ -135,48 +144,69 @@ pub fn recover_runtime_frame_seed_from_events(
             }
             JournalEvent::StepStarted { step, .. } => {
                 let idx = *step;
-                if idx > max_step_idx {
-                    max_step_idx = idx;
+                if max_step_idx.is_none_or(|m| idx > m) {
+                    max_step_idx = Some(idx);
                 }
                 if idx < min_step_idx {
                     min_step_idx = idx;
                 }
                 step_states.insert(idx, RecoveredStepState::Running);
-                pc = idx;
+                if idx > pc {
+                    pc = idx;
+                }
             }
             JournalEvent::StepSucceeded { step, output, .. } => {
                 step_states.insert(*step, RecoveredStepState::Succeeded);
-                pc = *step;
-                if output.as_usize() > max_slot_idx.as_usize() {
-                    max_slot_idx = *output;
+                if *step > pc {
+                    pc = *step;
+                }
+                if max_slot_idx.is_none_or(|m| output > &m) {
+                    max_slot_idx = Some(*output);
                 }
             }
-            JournalEvent::RunFailedEvent { .. } => {
-                // Step-level failure is not tracked by a dedicated event;
-                // the run-level failure is captured in the summary.
-            }
+            JournalEvent::RunFailedEvent { .. } => {}
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 step_states.insert(*step, RecoveredStepState::Waiting);
+                if *step > pc {
+                    pc = *step;
+                }
             }
             JournalEvent::AskScheduledEvent { step, .. } => {
                 step_states.insert(*step, RecoveredStepState::Asking);
+                if *step > pc {
+                    pc = *step;
+                }
             }
             JournalEvent::SlotWrittenEvent { slot, .. } => {
-                if slot.as_usize() > max_slot_idx.as_usize() {
-                    max_slot_idx = *slot;
+                if max_slot_idx.is_none_or(|m| slot > &m) {
+                    max_slot_idx = Some(*slot);
                 }
             }
             JournalEvent::RunFinished { result, .. } => {
-                if result.as_usize() > max_slot_idx.as_usize() {
-                    max_slot_idx = *result;
+                if max_slot_idx.is_none_or(|m| result > &m) {
+                    max_slot_idx = Some(*result);
                 }
             }
             _ => {}
         }
     }
 
-    let step_count = max_step_idx.as_usize().saturating_add(1) as u16;
-    let slot_count = max_slot_idx.as_usize().saturating_add(1) as u16;
+    let step_count = max_step_idx
+        .map(|m| {
+            m.get()
+                .checked_add(1)
+                .ok_or(RecoveryError::FrameDimensionOverflow { run })
+        })
+        .transpose()?
+        .unwrap_or(0);
+    let slot_count = max_slot_idx
+        .map(|m| {
+            m.get()
+                .checked_add(1)
+                .ok_or(RecoveryError::FrameDimensionOverflow { run })
+        })
+        .transpose()?
+        .unwrap_or(0);
     let first_step = if min_step_idx == StepIdx::MAX {
         StepIdx::ZERO
     } else {

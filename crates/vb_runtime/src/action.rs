@@ -129,6 +129,7 @@ fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionRes
         action: input.action,
         attempt: input.ticket.attempt,
         idempotency_key: input.ticket.idempotency_key,
+            capacity: 1,
     };
     Ok(ActionOutcome::Suspended(ticket))
 }
@@ -180,6 +181,7 @@ mod tests {
                 action: ActionId::new(action),
                 attempt: 1,
                 idempotency_key: 0,
+            capacity: 1,
             },
         }
     }
@@ -230,6 +232,7 @@ mod tests {
                     action: ActionId::new(5),
                     attempt: 1,
                     idempotency_key: 0,
+            capacity: 1,
                 }))
             ),
         }
@@ -456,6 +459,7 @@ mod tests {
                         action: ActionId::new(0),
                         attempt: 1,
                         idempotency_key: 0,
+            capacity: 1,
                     }))
                 );
             }
@@ -660,6 +664,7 @@ mod tests {
                 action: ActionId::new(2),
                 attempt: 1,
                 idempotency_key: 0,
+            capacity: 1,
             },
         };
         let contract = match registry.resolve_compile_time(ActionId::new(2)) {
@@ -681,6 +686,7 @@ mod tests {
                         action: ActionId::new(2),
                         attempt: 1,
                         idempotency_key: 0,
+            capacity: 1,
                     }))
                 );
             }
@@ -726,6 +732,7 @@ mod tests {
                 action: ActionId::new(3),
                 attempt: 2,
                 idempotency_key: 99,
+            capacity: 1,
             },
         };
         let contract = match registry.resolve_compile_time(ActionId::new(3)) {
@@ -754,6 +761,7 @@ mod tests {
                         action: ActionId::new(0),
                         attempt: 0,
                         idempotency_key: 0,
+            capacity: 1,
                     }))
                 );
             }
@@ -783,6 +791,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 0,
             idempotency_key: 42,
+            capacity: 1,
         };
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));
         assert_eq!(tracker.is_completed(&ticket), true);
@@ -800,6 +809,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 0,
             idempotency_key: 99,
+            capacity: 1,
         };
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));
         assert_eq!(
@@ -819,6 +829,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 0,
             idempotency_key: 1,
+            capacity: 1,
         };
         let ticket_b = ActionTicket {
             run: RunId::new(0),
@@ -827,6 +838,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 0,
             idempotency_key: 2,
+            capacity: 1,
         };
         let ticket_c = ActionTicket {
             run: RunId::new(0),
@@ -835,6 +847,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 0,
             idempotency_key: 3,
+            capacity: 1,
         };
         assert_eq!(tracker.mark_completed(&ticket_a), Ok(()));
         assert_eq!(tracker.mark_completed(&ticket_b), Ok(()));

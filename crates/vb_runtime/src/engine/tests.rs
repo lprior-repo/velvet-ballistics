@@ -21,6 +21,7 @@ use vb_core::action::ActionFailureCode;
 use vb_core::action::ActionOutcome;
 use vb_core::action::ActionTicket;
 use vb_core::action::RetryPolicy as VbRetryPolicy;
+use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::Taint;
@@ -289,6 +290,7 @@ fn runtime_signal_awaiting_action_equality_matches_on_ticket() {
         action: ActionId::new(5),
         attempt: 1,
         idempotency_key: 42,
+        capacity: 1,
     };
     let a = RuntimeSignal::AwaitingAction(ticket);
     let b = RuntimeSignal::AwaitingAction(ticket);
@@ -304,6 +306,7 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         action: ActionId::new(1),
         attempt: 1,
         idempotency_key: 0,
+        capacity: 1,
     });
     let b = RuntimeSignal::AwaitingAction(ActionTicket {
         run: RunId::new(2),
@@ -312,6 +315,7 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         action: ActionId::new(1),
         attempt: 1,
         idempotency_key: 0,
+        capacity: 1,
     });
     assert_ne!(a, b);
 }
@@ -484,6 +488,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         SeqNo::new(0),
         contract_ref,
         &registry_contracts,
+        &CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -542,6 +547,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         SeqNo::new(0),
         contract_ref,
         &registry_contracts,
+        &CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -579,6 +585,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         SeqNo::new(0),
         &dummy_contract,
         &empty_contracts,
+        &CapabilitySet::empty(),
     );
     assert_eq!(
         result,
@@ -627,6 +634,7 @@ fn make_original_ticket() -> ActionTicket {
         action: ActionId::new(7),
         attempt: 3,
         idempotency_key: compute_idempotency_key(RunId::new(1), SeqNo::new(10), ActionId::new(7)),
+        capacity: 1,
     }
 }
 
@@ -687,6 +695,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
         action: ActionId::new(3),
         attempt: 2,
         idempotency_key: 99,
+        capacity: 1,
     };
     let outcome = ActionOutcome::Suspended(ticket);
     let original = make_original_ticket();
@@ -700,6 +709,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
             action: ActionId::new(3),
             attempt: 2,
             idempotency_key: 99,
+            capacity: 1,
         }))
     );
 }
@@ -1202,7 +1212,7 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0 });
+    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     // Verify the taint was preserved in the frame.
@@ -1229,7 +1239,7 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0 });
+    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     let stored_taint = run.read_taint(SlotIdx::new(0));
@@ -1258,7 +1268,7 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0 });
+    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     let stored_taint = run.read_taint(SlotIdx::new(0));
@@ -1285,9 +1295,10 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
         action: ActionId::new(5),
         attempt: 3,
         idempotency_key: 12345,
+        capacity: 1,
     };
     let outcome = ActionOutcome::Suspended(original_ticket);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0 });
+    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
     match result {
         Ok(RuntimeSignal::AwaitingAction(returned_ticket)) => {
             assert_eq!(returned_ticket.run, RunId::new(7));
@@ -1327,6 +1338,7 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         action: ActionId::new(3),
         attempt: 2,
         idempotency_key: 100,
+        capacity: 1,
     };
     let result = resume_action_outcome(&mut run, &outcome, &original);
     match result {
@@ -1381,6 +1393,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         SeqNo::new(1),
         contract_ref,
         &registry,
+        &CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {

@@ -2,8 +2,9 @@
 
 //! Typed core failures with stable diagnostic codes.
 
+use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::DiagnosticCode;
-use crate::ids::{BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+use crate::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -205,6 +206,16 @@ pub enum CoreError {
         /// The configured limit.
         limit: u16,
     },
+    /// An action required a capability that was not granted at admission.
+    #[error("capability denied for action {action:?}: required {required:?}, granted {granted:?}")]
+    CapabilityDenied {
+        /// Action that required the capability.
+        action: ActionId,
+        /// Capability that was required but not granted.
+        required: Capability,
+        /// Capabilities that were granted at admission time.
+        granted: CapabilitySet,
+    },
     /// A resource budget was exceeded during execution.
     #[error("budget exceeded: {budget} limit was {limit}")]
     BudgetExceeded {
@@ -227,7 +238,7 @@ impl CoreError {
     /// Slot uninitialized diagnostic code.
     pub const SLOT_UNINITIALIZED_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
     /// Expression out-of-bounds diagnostic code.
-    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
+    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1014);
     /// Constant out-of-bounds diagnostic code.
     pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1013);
     /// Type mismatch diagnostic code.
@@ -292,6 +303,8 @@ impl CoreError {
     pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1407);
     /// Parallel limit exceeded diagnostic code.
     pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
+    /// Capability denied diagnostic code.
+    pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1409);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -319,6 +332,8 @@ impl CoreError {
     pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
     /// Runtime code for budget exceeded failures.
     pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
+    /// Capability denied runtime code.
+    pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = "CAPABILITY_DENIED";
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -360,6 +375,7 @@ impl CoreError {
             Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
             Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
+            Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
         }
     }
@@ -391,6 +407,7 @@ impl CoreError {
             | Self::CollectItemLimitExceeded
             | Self::CollectTimeLimitExceeded => Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE),
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
+            Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -435,7 +452,7 @@ mod tests {
         let error = CoreError::ExprOutOfBounds {
             expr: ExprIdx::new(7),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1012));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1014));
         assert_eq!(
             error.to_string(),
             "expression index out of bounds: ExprIdx(7)"

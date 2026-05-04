@@ -712,6 +712,7 @@ mod tests {
             action: ActionId::new(5),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         assert_eq!(ticket.idempotency_key, 0);
         assert_eq!(ticket.run, RunId::new(1));
@@ -767,6 +768,7 @@ mod tests {
             action: ActionId::new(5),
             attempt: 1,
             idempotency_key: 100,
+            capacity: 1,
         };
         let ticket_b = ActionTicket {
             run: RunId::new(2),
@@ -775,6 +777,7 @@ mod tests {
             action: ActionId::new(5),
             attempt: 1,
             idempotency_key: 100,
+            capacity: 1,
         };
         assert_ne!(ticket_a, ticket_b);
     }
@@ -891,6 +894,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 999,
+            capacity: 1,
         };
         let outcome = ActionOutcome::Suspended(ticket);
         match outcome {
@@ -1601,6 +1605,7 @@ mod tests {
             ActionId::new(5),
             2,
             12345,
+            1,
         );
         assert_eq!(ticket.run, RunId::new(42));
         assert_eq!(ticket.step, StepIdx::new(3));
@@ -1619,6 +1624,7 @@ mod tests {
             ActionId::new(0),
             1,
             0,
+            1,
         );
         assert_eq!(ticket.idempotency_key, 0);
         assert_eq!(ticket.attempt, 1);
@@ -1633,6 +1639,7 @@ mod tests {
             ActionId::new(u16::MAX),
             u16::MAX,
             u128::MAX,
+            u16::MAX,
         );
         assert_eq!(ticket.run, RunId::new(u64::MAX));
         assert_eq!(ticket.step, StepIdx::new(u16::MAX));
@@ -1747,6 +1754,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let outcome = ActionOutcome::Suspended(ticket);
         let result = validate_action_outcome(&contract, &outcome);
@@ -1764,6 +1772,7 @@ mod tests {
             action: ActionId::new(7),
             attempt: 1,
             idempotency_key: 999,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Suspended {
             ticket,
@@ -1799,6 +1808,7 @@ mod tests {
             action: ActionId::new(8),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Completed {
             ticket,
@@ -1828,6 +1838,7 @@ mod tests {
             action: ActionId::new(9),
             attempt: 3,
             idempotency_key: 0,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Failed {
             ticket,
@@ -1857,6 +1868,7 @@ mod tests {
             action: ActionId::new(3),
             attempt: 1,
             idempotency_key: 12345,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Suspended {
             ticket,
@@ -1882,6 +1894,7 @@ mod tests {
             action: ActionId::new(2),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Completed {
             ticket,
@@ -1905,6 +1918,7 @@ mod tests {
             action: ActionId::new(4),
             attempt: 2,
             idempotency_key: 0,
+            capacity: 1,
         };
         let event = ActionJournalEvent::Failed {
             ticket,

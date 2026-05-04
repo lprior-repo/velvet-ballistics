@@ -4008,6 +4008,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume with a successful completion.
@@ -4045,6 +4046,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume with secret-tainted output.
@@ -4085,6 +4087,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume with failure.
@@ -4123,6 +4126,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume with a non-retryable failure.
@@ -4161,6 +4165,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume with completion.
@@ -4198,6 +4203,7 @@ mod tests {
             action: ActionId::new(5),
             attempt: 1,
             idempotency_key: 42,
+            capacity: 1,
         };
 
         let event = journal_action_suspended(
@@ -4286,6 +4292,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Resume should fail because Do node has no next step.
@@ -4324,6 +4331,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         let (_signal, journal) = resume_action_completion(
@@ -4750,6 +4758,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         let result = resume_action_completion(
@@ -4788,6 +4797,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         // Output slot is out of bounds (workflow has only 2 slots: 0 and 1)

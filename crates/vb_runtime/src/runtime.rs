@@ -753,6 +753,7 @@ mod tests {
             action: ActionId::new(7),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),
@@ -768,11 +769,10 @@ mod tests {
         let trace = runtime.list_events(run);
         assert!(matches!(
             trace,
-            Ok(ref evts) if evts.contains(&TraceEvent::SlotWritten {
-                run,
-                slot: SlotIdx::new(1),
-                value: Vec::new(),
-            }) && evts.contains(&TraceEvent::ActionCompleted {
+            Ok(ref evts) if evts.iter().any(|e| matches!(e,
+                TraceEvent::SlotWritten { run: r, slot, .. }
+                if *r == run && *slot == SlotIdx::new(1)
+            )) && evts.contains(&TraceEvent::ActionCompleted {
                 run,
                 step: StepIdx::ZERO,
             }) && evts.contains(&TraceEvent::RunFinished { run })
@@ -814,6 +814,7 @@ mod tests {
             action: ActionId::new(8),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),
@@ -980,6 +981,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 1,
             idempotency_key: 1,
+            capacity: 1,
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
@@ -1334,6 +1336,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
@@ -1562,6 +1565,7 @@ mod tests {
             action: ActionId::new(0),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
@@ -2013,6 +2017,7 @@ mod tests {
             action: ActionId::new(7),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),

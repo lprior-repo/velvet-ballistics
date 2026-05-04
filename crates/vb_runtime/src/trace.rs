@@ -359,7 +359,7 @@ mod tests {
         let slot = SlotIdx::new(3);
         assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
         assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
-        assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+        assert_eq!(TraceEvent::SlotWritten { run, slot, value: Vec::new() }.run_id(), run);
         assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
         assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
         assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
@@ -581,7 +581,7 @@ mod tests {
         // Then they all return the correct run
         assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
         assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
-        assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+        assert_eq!(TraceEvent::SlotWritten { run, slot, value: Vec::new() }.run_id(), run);
         assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
         assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
         assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
@@ -624,10 +624,12 @@ mod tests {
         let e1 = TraceEvent::SlotWritten {
             run: RunId::new(3),
             slot: SlotIdx::new(5),
+            value: Vec::new(),
         };
         let e2 = TraceEvent::SlotWritten {
             run: RunId::new(3),
             slot: SlotIdx::new(5),
+            value: Vec::new(),
         };
         assert_eq!(e1, e2);
     }

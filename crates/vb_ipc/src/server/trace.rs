@@ -177,6 +177,7 @@ mod tests {
         let event = TraceEvent::SlotWritten {
             run: run_id(4),
             slot: SlotIdx::ZERO,
+            value: Vec::new(),
         };
         let kind = trace_event_kind(&event);
         assert_eq!(
@@ -184,6 +185,7 @@ mod tests {
             IpcTraceEventKind::SlotWritten {
                 run: run_id(4),
                 slot: SlotIdx::ZERO,
+                value: Vec::new(),
             }
         );
     }

@@ -16,13 +16,14 @@ use crate::admission::check_capability;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
 /// Backward-compatible execute_do.
+#[allow(clippy::too_many_arguments)]
 pub fn execute_do(
     run: &RunFrame,
     step: StepIdx,
     action: ActionId,
     input: SlotIdx,
     seq: SeqNo,
-    contract: &ActionContract,
+    _contract: &ActionContract,
     registry_contracts: &[ActionContract],
     granted: &CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
@@ -38,11 +39,16 @@ pub fn execute_do(
     }
 
     for required in resolved.required_capabilities.iter() {
-        if let Err(e) = check_capability(action, required, granted) {
+        if let Err(crate::admission::AdmissionError::CapabilityDenied {
+            required: req,
+            granted: grant,
+            ..
+        }) = check_capability(action, required, granted)
+        {
             return Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
                 action,
-                required: e.required,
-                granted: e.granted,
+                required: req,
+                granted: grant,
             }));
         }
     }
@@ -56,6 +62,7 @@ pub fn execute_do(
         action,
         attempt: 1,
         idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
+        capacity: 1,
     };
 
     if output_taint == Taint::Clean && input_taint != Taint::Clean {
@@ -81,6 +88,7 @@ pub fn execute_do_without_contract(
         action,
         attempt: 1,
         idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
+        capacity: 1,
     };
     Ok(RuntimeSignal::AwaitingAction(ticket))
 }
@@ -154,6 +162,7 @@ pub fn resume_action_outcome(
                     action: original_ticket.action,
                     attempt: next_attempt,
                     idempotency_key,
+                    capacity: original_ticket.capacity,
                 }))
             } else {
                 Err(RuntimeEngineError::Core(
@@ -199,6 +208,7 @@ pub fn resolve_contract(
 mod tests {
     use super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+    use vb_core::capability::Capability;
     use vb_core::ids::{RunId, SeqNo};
 
     // =====================================================================
@@ -476,7 +486,7 @@ mod tests {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::ReadOnly,
+            side_effect: SideEffect::None,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([cap]),
         }
@@ -484,7 +494,8 @@ mod tests {
 
     #[test]
     fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
-        let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);
@@ -508,7 +519,8 @@ mod tests {
 
     #[test]
     fn execute_do_succeeds_when_required_capability_is_granted() {
-        let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);

@@ -538,6 +538,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     fn finish_kind() -> CompiledNodeKind {
         CompiledNodeKind::Finish {
             result: SlotIdx::new(0),

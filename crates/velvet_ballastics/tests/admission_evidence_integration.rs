@@ -378,6 +378,7 @@ fn evidence_chain_after_execution() {
         action: ActionId::new(7),
         attempt: 1,
         idempotency_key: 0,
+        capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),

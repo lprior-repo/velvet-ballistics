@@ -788,6 +788,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         let (signal, _journal) = resume_action_completion(
@@ -851,6 +852,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: 0,
+            capacity: 1,
         };
 
         let (signal, _journal) = resume_action_failure(
@@ -878,6 +880,7 @@ mod tests {
             action: ActionId::new(5),
             attempt: 1,
             idempotency_key: 12345,
+            capacity: 1,
         };
         let event = journal_action_suspended(
             ticket,

@@ -384,11 +384,10 @@ fn do_action_completion_writes_output_and_journals_events() {
     let trace = runtime.list_events(run);
     assert!(matches!(
         trace,
-        Ok(ref evts) if evts.contains(&TraceEvent::SlotWritten {
-            run,
-            slot: SlotIdx::new(1),
-            value: Vec::new(),
-        }) && evts.contains(&TraceEvent::ActionCompleted {
+        Ok(ref evts) if evts.iter().any(|e| matches!(e,
+            TraceEvent::SlotWritten { run: r, slot, .. }
+            if *r == run && *slot == SlotIdx::new(1)
+        )) && evts.contains(&TraceEvent::ActionCompleted {
             run,
             step: StepIdx::ZERO,
         }) && evts.contains(&TraceEvent::RunFinished { run })

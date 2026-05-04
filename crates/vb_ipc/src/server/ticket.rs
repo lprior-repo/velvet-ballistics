@@ -20,6 +20,7 @@ pub fn action_ticket_from_wire(run_id: RunId, ticket: u64) -> Option<ActionTicke
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
+        capacity: 1,
     })
 }
 

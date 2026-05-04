@@ -151,6 +151,7 @@ mod tests {
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: key,
+            capacity: 1,
         }
     }
 
