@@ -738,4 +738,427 @@ mod tests {
         assert_eq!(diff.changes.len(), 1);
         assert!(diff.taint_deltas.is_empty());
     }
+
+    // =========================================================================
+    // NEW TESTS
+    // =========================================================================
+
+    // -- 1. Multi-step rollback diffs --
+    // Simulate state going forward (slots added/modified) then rolling back
+    // (slots removed/reverted) to verify the diff engine handles reverse
+    // transitions correctly.
+
+    #[test]
+    fn multi_step_rollback_produces_removed_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        // Forward: step 0 -> step 1 adds slot 10 with [0xAA].
+        let snap_0 = make_snapshot(0, Vec::new(), Vec::new());
+        let snap_1 = make_snapshot(1, vec![(10u32, vec![0xAAu8])], Vec::new());
+        let diff_forward = engine.diff_snapshots(&snap_0, &snap_1);
+        assert_eq!(diff_forward.changes.len(), 1);
+        let Some(change_fwd) = diff_forward.changes.first() else {
+            return;
+        };
+        assert_eq!(change_fwd.change_type, ChangeType::Added);
+        assert_eq!(change_fwd.slot, 10);
+
+        // Rollback: step 1 -> step 0 removes slot 10.
+        let diff_back = engine.diff_snapshots(&snap_1, &snap_0);
+        assert_eq!(diff_back.changes.len(), 1);
+        let Some(change_back) = diff_back.changes.first() else {
+            return;
+        };
+        assert_eq!(change_back.change_type, ChangeType::Removed);
+        assert_eq!(change_back.slot, 10);
+        assert_eq!(change_back.before, vec![0xAAu8]);
+        assert!(change_back.after.is_empty());
+    }
+
+    #[test]
+    fn multi_step_rollback_reverts_modified_slot() {
+        let engine = ReplayDiffEngine::new();
+
+        // Step 0: slot 5 = [1, 2, 3]
+        let snap_0 = make_snapshot(0, vec![(5u32, vec![1u8, 2, 3])], Vec::new());
+        // Step 1: slot 5 modified to [9, 9, 9]
+        let snap_1 = make_snapshot(1, vec![(5u32, vec![9u8, 9, 9])], Vec::new());
+        // Step 2: rollback, slot 5 back to [1, 2, 3]
+        let snap_2 = make_snapshot(2, vec![(5u32, vec![1u8, 2, 3])], Vec::new());
+
+        let diff_forward = engine.diff_snapshots(&snap_0, &snap_1);
+        let Some(cf) = diff_forward.changes.first() else {
+            return;
+        };
+        assert_eq!(cf.change_type, ChangeType::Modified);
+        assert_eq!(cf.after, vec![9u8, 9, 9]);
+
+        let diff_back = engine.diff_snapshots(&snap_1, &snap_2);
+        let Some(cb) = diff_back.changes.first() else {
+            return;
+        };
+        assert_eq!(cb.change_type, ChangeType::Modified);
+        assert_eq!(cb.before, vec![9u8, 9, 9]);
+        assert_eq!(cb.after, vec![1u8, 2, 3]);
+    }
+
+    #[test]
+    fn multi_step_rollback_taint_state_reverts() {
+        let engine = ReplayDiffEngine::new();
+
+        let snap_0 = make_snapshot(0, Vec::new(), Vec::new());
+        let snap_1 = make_snapshot(1, Vec::new(), vec![0x01u8, 0x02]);
+        let snap_2 = make_snapshot(2, Vec::new(), Vec::new());
+
+        let diff_forward = engine.diff_snapshots(&snap_0, &snap_1);
+        assert_eq!(diff_forward.taint_deltas.len(), 1);
+
+        let diff_back = engine.diff_snapshots(&snap_1, &snap_2);
+        assert_eq!(diff_back.taint_deltas.len(), 1);
+        let Some(delta) = diff_back.taint_deltas.first() else {
+            return;
+        };
+        assert!(delta.kind_change.contains("2 bytes -> 0 bytes"));
+    }
+
+    // -- 2. Cross-slot taint-propagation diffs --
+    // Verify that when taint_state changes while multiple slots are also
+    // changing, the diff engine correctly reports both slot changes and
+    // taint deltas together.
+
+    #[test]
+    fn cross_slot_taint_with_multiple_slot_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(
+            0,
+            vec![
+                (1u32, vec![0x10u8]),
+                (2u32, vec![0x20u8]),
+            ],
+            vec![0x00u8],
+        );
+        let after = make_snapshot(
+            1,
+            vec![
+                (1u32, vec![0x11u8]), // modified
+                (2u32, vec![0x20u8]), // unchanged
+                (3u32, vec![0x30u8]), // added
+            ],
+            vec![0x01u8, 0x02],
+        );
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert!(diff.has_changes());
+        assert_eq!(diff.changes.len(), 3);
+        assert_eq!(diff.taint_deltas.len(), 1);
+
+        // Total change_count = 2 non-unchanged slots + 1 taint delta = 3
+        assert_eq!(diff.change_count(), 3);
+    }
+
+    #[test]
+    fn cross_slot_taint_propagation_delta_description() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(0, vec![(10u32, vec![1u8])], vec![0u8, 0, 0]);
+        let after = make_snapshot(1, vec![(10u32, vec![2u8])], vec![0u8, 1, 0]);
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert_eq!(diff.taint_deltas.len(), 1);
+        let Some(delta) = diff.taint_deltas.first() else {
+            return;
+        };
+        assert!(delta.kind_change.contains("3 bytes -> 3 bytes"));
+        assert_eq!(delta.color, NEON_CYAN);
+    }
+
+    // -- 3. Slot-type-change diffs --
+    // The diff engine compares raw bytes; when a slot's byte representation
+    // changes length or content entirely, it should classify as Modified.
+
+    #[test]
+    fn slot_type_change_shorter_bytes() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(0, vec![(7u32, vec![1u8, 2, 3, 4])], Vec::new());
+        let after = make_snapshot(1, vec![(7u32, vec![0xFFu8])], Vec::new());
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert_eq!(diff.changes.len(), 1);
+        let Some(change) = diff.changes.first() else {
+            return;
+        };
+        assert_eq!(change.change_type, ChangeType::Modified);
+        assert_eq!(change.before, vec![1u8, 2, 3, 4]);
+        assert_eq!(change.after, vec![0xFFu8]);
+        assert_eq!(change.color, NEON_CYAN);
+    }
+
+    #[test]
+    fn slot_type_change_longer_bytes() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(0, vec![(3u32, vec![0u8])], Vec::new());
+        let after = make_snapshot(
+            1,
+            vec![(3u32, vec![0u8, 0, 0, 0, 0, 0, 0, 0])],
+            Vec::new(),
+        );
+
+        let diff = engine.diff_snapshots(&before, &after);
+        let Some(change) = diff.changes.first() else {
+            return;
+        };
+        assert_eq!(change.change_type, ChangeType::Modified);
+        assert_eq!(change.before.len(), 1);
+        assert_eq!(change.after.len(), 8);
+    }
+
+    #[test]
+    fn slot_type_change_empty_to_nonempty_is_modified_not_added() {
+        // When a slot id is present in both before and after, it is Modified
+        // or Unchanged -- never Added or Removed -- even if bytes are empty.
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(0, vec![(99u32, Vec::new())], Vec::new());
+        let after = make_snapshot(1, vec![(99u32, vec![0xDEu8, 0xAD])], Vec::new());
+
+        let diff = engine.diff_snapshots(&before, &after);
+        let Some(change) = diff.changes.first() else {
+            return;
+        };
+        assert_eq!(change.change_type, ChangeType::Modified);
+    }
+
+    // -- 4. Empty diff between identical frames --
+
+    #[test]
+    fn identical_frames_empty_slots_no_taint_no_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        let frame_a = make_snapshot(10, Vec::new(), Vec::new());
+        let frame_b = make_snapshot(11, Vec::new(), Vec::new());
+
+        let diff = engine.diff_snapshots(&frame_a, &frame_b);
+        assert!(!diff.has_changes());
+        assert_eq!(diff.change_count(), 0);
+        assert!(diff.changes.is_empty());
+        assert!(diff.taint_deltas.is_empty());
+        assert_eq!(diff.step, 11);
+    }
+
+    #[test]
+    fn identical_frames_with_slots_and_taint_no_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        let frame = make_snapshot(
+            5,
+            vec![
+                (1u32, vec![10u8, 20]),
+                (2u32, vec![30u8]),
+                (3u32, vec![40u8, 50, 60]),
+            ],
+            vec![0u8, 1, 2],
+        );
+        // Same frame used as both before and after.
+        let diff = engine.diff_snapshots(&frame, &frame);
+
+        assert!(!diff.has_changes());
+        assert_eq!(diff.change_count(), 0);
+        assert_eq!(diff.changes.len(), 3); // slots are recorded as Unchanged
+        assert!(diff.taint_deltas.is_empty());
+
+        for change in &diff.changes {
+            assert_eq!(change.change_type, ChangeType::Unchanged);
+            assert_eq!(change.color, TEXT_DIM);
+        }
+    }
+
+    // -- 5. Diff with only step-state changes (no slot changes) --
+    // Step index changes but slot layout is identical.
+
+    #[test]
+    fn only_step_index_changes_no_slot_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(3, vec![(1u32, vec![42u8])], Vec::new());
+        let after = make_snapshot(99, vec![(1u32, vec![42u8])], Vec::new());
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert_eq!(diff.step, 99);
+        assert!(!diff.has_changes());
+        assert_eq!(diff.change_count(), 0);
+        assert_eq!(diff.changes.len(), 1);
+        assert!(diff.taint_deltas.is_empty());
+    }
+
+    #[test]
+    fn only_taint_changes_no_slot_changes() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(0, vec![(5u32, vec![1u8])], vec![0u8]);
+        let after = make_snapshot(1, vec![(5u32, vec![1u8])], vec![1u8]);
+
+        let diff = engine.diff_snapshots(&before, &after);
+        // Slot 5 is unchanged, but taint changed.
+        assert!(diff.has_changes());
+        assert_eq!(diff.change_count(), 1);
+        assert_eq!(diff.changes.len(), 1);
+        assert_eq!(diff.changes[0].change_type, ChangeType::Unchanged);
+        assert_eq!(diff.taint_deltas.len(), 1);
+    }
+
+    // -- 6. Diff with only slot changes (no step-state changes) --
+    // Step index is the same, taint is the same, but slot bytes change.
+
+    #[test]
+    fn only_slot_changes_same_step_same_taint() {
+        let engine = ReplayDiffEngine::new();
+
+        let before = make_snapshot(4, vec![(8u32, vec![0u8])], vec![0xAAu8]);
+        let after = make_snapshot(4, vec![(8u32, vec![1u8])], vec![0xAAu8]);
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert!(diff.has_changes());
+        assert_eq!(diff.change_count(), 1);
+        assert!(diff.taint_deltas.is_empty());
+        assert_eq!(diff.step, 4);
+
+        let Some(change) = diff.changes.first() else {
+            return;
+        };
+        assert_eq!(change.change_type, ChangeType::Modified);
+    }
+
+    #[test]
+    fn only_slot_added_no_taint_change() {
+        let engine = ReplayDiffEngine::new();
+
+        let taint = vec![0xF0u8];
+        let before = make_snapshot(0, Vec::new(), taint.clone());
+        let after = make_snapshot(0, vec![(20u32, vec![7u8])], taint);
+
+        let diff = engine.diff_snapshots(&before, &after);
+        assert!(diff.has_changes());
+        assert_eq!(diff.change_count(), 1);
+        assert!(diff.taint_deltas.is_empty());
+    }
+
+    // -- 8. Consecutive diffs applied in sequence --
+
+    #[test]
+    fn consecutive_diffs_applied_in_sequence_via_diff_events() {
+        let engine = ReplayDiffEngine::new();
+
+        // Step 0: slot 1 = [0x01]
+        let snap_0 = make_snapshot(0, vec![(1u32, vec![0x01u8])], Vec::new());
+        // Step 1: slot 1 = [0x02], slot 2 = [0x03] added
+        let snap_1 = make_snapshot(
+            1,
+            vec![(1u32, vec![0x02u8]), (2u32, vec![0x03u8])],
+            vec![0x01u8],
+        );
+        // Step 2: slot 1 = [0x02] (unchanged), slot 2 removed, taint changes
+        let snap_2 = make_snapshot(2, vec![(1u32, vec![0x02u8])], vec![0x02u8]);
+        // Step 3: slot 1 removed
+        let snap_3 = make_snapshot(3, Vec::new(), vec![0x02u8]);
+
+        let events = vec![
+            make_event_with_snapshot(snap_0),
+            make_event_with_snapshot(snap_1),
+            make_event_with_snapshot(snap_2),
+            make_event_with_snapshot(snap_3),
+        ];
+
+        let diffs = engine.diff_events(&events);
+        assert_eq!(diffs.len(), 3);
+
+        // Diff 0->1: slot 1 modified, slot 2 added, taint added
+        assert_eq!(diffs[0].step, 1);
+        assert_eq!(diffs[0].changes.len(), 2);
+        assert_eq!(diffs[0].taint_deltas.len(), 1);
+        assert_eq!(diffs[0].change_count(), 3);
+
+        // Diff 1->2: slot 1 unchanged, slot 2 removed, taint modified
+        assert_eq!(diffs[1].step, 2);
+        assert_eq!(diffs[1].changes.len(), 2);
+        assert_eq!(diffs[1].taint_deltas.len(), 1);
+        assert_eq!(diffs[1].change_count(), 2); // unchanged slot excluded
+
+        // Diff 2->3: slot 1 removed, no taint change
+        assert_eq!(diffs[2].step, 3);
+        assert_eq!(diffs[2].changes.len(), 1);
+        assert!(diffs[2].taint_deltas.is_empty());
+        assert_eq!(diffs[2].change_count(), 1);
+    }
+
+    #[test]
+    fn consecutive_diffs_chain_from_empty_to_full_state() {
+        let engine = ReplayDiffEngine::new();
+
+        // Start completely empty.
+        let snap_0 = make_snapshot(0, Vec::new(), Vec::new());
+        // Add 3 slots.
+        let snap_1 = make_snapshot(
+            1,
+            vec![
+                (10u32, vec![1u8]),
+                (20u32, vec![2u8]),
+                (30u32, vec![3u8]),
+            ],
+            vec![0u8],
+        );
+        // Modify all 3 slots.
+        let snap_2 = make_snapshot(
+            2,
+            vec![
+                (10u32, vec![0x10u8]),
+                (20u32, vec![0x20u8]),
+                (30u32, vec![0x30u8]),
+            ],
+            vec![0u8, 1],
+        );
+        // Remove all slots (back to empty).
+        let snap_3 = make_snapshot(3, Vec::new(), vec![0u8, 1]);
+
+        let diffs = engine.diff_events(&events_from_snapshots(&[
+            snap_0, snap_1, snap_2, snap_3,
+        ]));
+
+        assert_eq!(diffs.len(), 3);
+
+        // All 3 added in first transition.
+        let added = diffs[0]
+            .changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Added)
+            .count();
+        assert_eq!(added, 3);
+
+        // All 3 modified in second transition.
+        let modified = diffs[1]
+            .changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Modified)
+            .count();
+        assert_eq!(modified, 3);
+
+        // All 3 removed in third transition.
+        let removed = diffs[2]
+            .changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Removed)
+            .count();
+        assert_eq!(removed, 3);
+    }
+
+    // -- Helper for consecutive diff test --
+
+    fn events_from_snapshots(snaps: &[ReplaySnapshot]) -> Vec<ReplayEvent> {
+        snaps
+            .iter()
+            .map(|s| make_event_with_snapshot(s.clone()))
+            .collect()
+    }
 }

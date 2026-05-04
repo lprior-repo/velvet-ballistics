@@ -185,7 +185,7 @@ fn compute_strict_eligibility(
 mod tests {
     use super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
-    use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
     /// Helper: build a minimal WorkflowParts with the given node kinds.
@@ -663,5 +663,475 @@ mod tests {
     fn policy_issue_equality() {
         assert_eq!(PolicyIssue::MissingTimeout, PolicyIssue::MissingTimeout);
         assert_ne!(PolicyIssue::MissingTimeout, PolicyIssue::UnsafeRetry);
+    }
+
+    // =========================================================================
+    // Additional coverage: timeout gaps, capability detection, strict-mode
+    // edge cases, policy panel completeness, retry-safety interaction.
+    // =========================================================================
+
+    // Test 22: Timeout coverage gap -- one Do node has a timeout, another does not.
+    // Verifies the panel correctly identifies which action has the gap.
+    #[test]
+    fn timeout_coverage_gap_mixed_do_nodes() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(2),
+                input: SlotIdx::new(1),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![
+            make_contract(1, 5000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(2, 0, Idempotency::DeterministicPure, RetrySafety::Safe),
+        ];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 2);
+
+        // Action 1 has timeout, no gap.
+        let r1 = reports.get(0);
+        assert!(r1.is_some());
+        let Some(r1) = r1 else { return };
+        assert!(r1.has_timeout);
+        assert!(!r1.issues.contains(&PolicyIssue::MissingTimeout));
+
+        // Action 2 has no timeout -- gap detected.
+        let r2 = reports.get(1);
+        assert!(r2.is_some());
+        let Some(r2) = r2 else { return };
+        assert!(!r2.has_timeout);
+        assert!(r2.issues.contains(&PolicyIssue::MissingTimeout));
+    }
+
+    // Test 23: Missing-capability detection -- Do node whose contract has no match.
+    // An action without a contract in the slice receives Unknown classification,
+    // which means capability information is unavailable and MissingIdempotency is flagged.
+    #[test]
+    fn missing_capability_detection_for_orphan_do_node() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(99),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        // Contract exists for action 1 but NOT for action 99.
+        let contracts = vec![make_contract(
+            1,
+            1000,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].action_id, 99);
+        assert_eq!(reports[0].idempotency_class, IdempotencyClass::Unknown);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        // No retry safety info available -- UnsafeRetry is NOT flagged (no contract to check).
+        assert!(!reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+    }
+
+    // Test 24: Strict-mode eligibility -- AtLeastOnceExternal with timeout and Safe retry
+    // is still NOT strict-eligible because idempotency class is not DeterministicPure.
+    #[test]
+    fn strict_eligible_at_least_once_with_safe_retry_still_rejected() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(7),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            7,
+            3000,
+            Idempotency::AtLeastOnceExternal,
+            RetrySafety::Safe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].has_timeout);
+        assert_eq!(reports[0].idempotency_class, IdempotencyClass::AtLeastOnce);
+        assert!(reports[0].issues.is_empty());
+        // Still not strict-eligible because not DeterministicPure.
+        assert!(!reports[0].strict_eligible);
+    }
+
+    // Test 25: Policy panel with all Do nodes fully covered -- every action has a complete
+    // contract with DeterministicPure, timeout, and Safe retry.
+    #[test]
+    fn policy_panel_all_do_nodes_covered_clean() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(10),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(20),
+                input: SlotIdx::new(1),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(30),
+                input: SlotIdx::new(2),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![
+            make_contract(10, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(20, 2000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(30, 3000, Idempotency::DeterministicPure, RetrySafety::Safe),
+        ];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 3);
+
+        let mut all_clean = true;
+        let mut all_strict = true;
+        for report in &reports {
+            if !report.issues.is_empty() {
+                all_clean = false;
+            }
+            if !report.strict_eligible {
+                all_strict = false;
+            }
+        }
+        assert!(all_clean, "all reports should have zero issues");
+        assert!(all_strict, "all reports should be strict-eligible");
+    }
+
+    // Test 26: Policy panel with some uncovered Do nodes -- mixing covered and uncovered
+    // actions in the same workflow.
+    #[test]
+    fn policy_panel_partial_coverage_flags_uncovered_nodes() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(2),
+                input: SlotIdx::new(1),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(3),
+                input: SlotIdx::new(2),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        // Only actions 1 and 3 have contracts; action 2 is uncovered.
+        let contracts = vec![
+            make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(3, 3000, Idempotency::DeterministicPure, RetrySafety::Safe),
+        ];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 3);
+
+        // Action 1: covered, clean.
+        let r1 = reports.get(0);
+        assert!(r1.is_some());
+        let Some(r1) = r1 else { return };
+        assert!(r1.issues.is_empty());
+        assert!(r1.strict_eligible);
+
+        // Action 2: uncovered, two issues.
+        let r2 = reports.get(1);
+        assert!(r2.is_some());
+        let Some(r2) = r2 else { return };
+        assert!(r2.issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(r2.issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(!r2.strict_eligible);
+
+        // Action 3: covered, clean.
+        let r3 = reports.get(2);
+        assert!(r3.is_some());
+        let Some(r3) = r3 else { return };
+        assert!(r3.issues.is_empty());
+        assert!(r3.strict_eligible);
+    }
+
+    // Test 27: Empty workflow with only Nop and Finish produces a clean (empty) policy panel.
+    #[test]
+    fn empty_workflow_with_nop_and_finish_is_clean() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert!(reports.is_empty());
+    }
+
+    // Test 28: Multiple Do nodes with different policies -- mix of DeterministicPure,
+    // IdempotentExternal, and AtLeastOnceExternal, verifying each gets its own class.
+    #[test]
+    fn multiple_do_nodes_with_distinct_idempotency_classes() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(2),
+                input: SlotIdx::new(1),
+            },
+            CompiledNodeKind::Do {
+                action: ActionId::new(3),
+                input: SlotIdx::new(2),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![
+            make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(2, 2000, Idempotency::IdempotentExternal, RetrySafety::KeyRequired),
+            make_contract(3, 3000, Idempotency::AtLeastOnceExternal, RetrySafety::Unsafe),
+        ];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 3);
+
+        // Action 1: DeterministicPure, Safe -> strict eligible, no issues.
+        let r1 = reports.get(0);
+        assert!(r1.is_some());
+        let Some(r1) = r1 else { return };
+        assert_eq!(r1.idempotency_class, IdempotencyClass::DeterministicPure);
+        assert!(r1.strict_eligible);
+        assert!(r1.issues.is_empty());
+
+        // Action 2: AtLeastOnce (mapped from IdempotentExternal), KeyRequired -> no UnsafeRetry.
+        let r2 = reports.get(1);
+        assert!(r2.is_some());
+        let Some(r2) = r2 else { return };
+        assert_eq!(r2.idempotency_class, IdempotencyClass::AtLeastOnce);
+        assert!(!r2.strict_eligible);
+        assert!(!r2.issues.contains(&PolicyIssue::UnsafeRetry));
+
+        // Action 3: AtLeastOnce (mapped from AtLeastOnceExternal), Unsafe -> has UnsafeRetry.
+        let r3 = reports.get(2);
+        assert!(r3.is_some());
+        let Some(r3) = r3 else { return };
+        assert_eq!(r3.idempotency_class, IdempotencyClass::AtLeastOnce);
+        assert!(!r3.strict_eligible);
+        assert!(r3.issues.contains(&PolicyIssue::UnsafeRetry));
+    }
+
+    // Test 29: RetrySafety::KeyRequired does NOT trigger UnsafeRetry issue.
+    // Only RetrySafety::Unsafe triggers that issue.
+    #[test]
+    fn key_required_retry_does_not_flag_unsafe_retry() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(55),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            55,
+            5000,
+            Idempotency::IdempotentExternal,
+            RetrySafety::KeyRequired,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(!reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+        // Not strict eligible because AtLeastOnce, not DeterministicPure.
+        assert!(!reports[0].strict_eligible);
+    }
+
+    // Test 30: RetrySafety::Unsafe with AtLeastOnceExternal produces UnsafeRetry + not strict.
+    // Also, no MissingTimeout because timeout is configured.
+    #[test]
+    fn unsafe_retry_with_timeout_has_only_unsafe_retry_issue() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(66),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            66,
+            5000,
+            Idempotency::AtLeastOnceExternal,
+            RetrySafety::Unsafe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].has_timeout);
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+        assert!(!reports[0].strict_eligible);
+    }
+
+    // Test 31: DeterministicPure with Safe retry and zero timeout is NOT strict eligible.
+    // The only issue is MissingTimeout.
+    #[test]
+    fn deterministic_pure_safe_retry_zero_timeout_not_strict_eligible() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(77),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            77,
+            0,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(
+            reports[0].idempotency_class,
+            IdempotencyClass::DeterministicPure
+        );
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(!reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+        assert!(!reports[0].strict_eligible);
+    }
+
+    // Test 32: RetrySafety interaction -- Unsafe retry always blocks strict eligibility
+    // even when idempotency is DeterministicPure and timeout is present.
+    #[test]
+    fn unsafe_retry_blocks_strict_eligibility_even_with_deterministic_pure() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(88),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            88,
+            10000,
+            Idempotency::DeterministicPure,
+            RetrySafety::Unsafe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].has_timeout);
+        assert_eq!(
+            reports[0].idempotency_class,
+            IdempotencyClass::DeterministicPure
+        );
+        assert!(reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+        assert!(!reports[0].strict_eligible);
+        // UnsafeRetry is the sole issue -- timeout and idempotency are fine.
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+    }
+
+    // Test 33: Workflow with only non-Do nodes (SetConst, Copy, Nop, Finish)
+    // produces zero reports regardless of contracts provided.
+    #[test]
+    fn workflow_with_only_non_do_nodes_produces_no_reports() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+            CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            1,
+            1000,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert!(reports.is_empty());
+    }
+
+    // Test 34: build_report for action with no contract returns Unknown
+    // with exactly MissingTimeout and MissingIdempotency issues (not UnsafeRetry).
+    #[test]
+    fn build_report_no_contract_has_exact_two_issues() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(200),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].issues.len(), 2);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+    }
+
+    // Test 35: find_contract finds the first matching contract when duplicates exist.
+    #[test]
+    fn find_contract_returns_first_match_with_duplicate_ids() {
+        let contracts = vec![
+            make_contract(5, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(5, 2000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired),
+        ];
+        let found = find_contract(ActionId::new(5), &contracts);
+        assert!(found.is_some());
+        let Some(found) = found else { return };
+        assert_eq!(found.timeout_ms, 1000);
+        assert_eq!(found.idempotency, Idempotency::DeterministicPure);
+    }
+
+    // Test 36: AtLeastOnceExternal with zero timeout gets both MissingTimeout
+    // and is not strict eligible (but no MissingIdempotency since class is AtLeastOnce).
+    #[test]
+    fn at_least_once_zero_timeout_has_missing_timeout_only() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(33),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(
+            33,
+            0,
+            Idempotency::AtLeastOnceExternal,
+            RetrySafety::Safe,
+        )];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(!reports[0].has_timeout);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(!reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(!reports[0].strict_eligible);
     }
 }

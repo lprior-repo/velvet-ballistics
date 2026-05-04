@@ -444,4 +444,201 @@ mod tests {
         // total_avg = 325 + 110 + 12500 + 3250000 + 225 = 3263160 us
         assert_eq!(p.total_avg_us(), 3_263_160);
     }
+
+    // -------------------------------------------------------------------------
+    // Additional tests for broader coverage
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn p50_p95_p99_computation_on_known_distribution() {
+        // 1..=100 gives a uniform distribution.
+        let mut ring = SampleRing::new(200);
+        for v in 1..=100u64 {
+            ring.push(v);
+        }
+        let mut scratch = Vec::new();
+        let sorted = ring.as_sorted_slice(&mut scratch);
+
+        // p50: nearest-rank = ceil(50/100 * 100) - 1 = 49 -> sorted[49] = 50
+        assert_eq!(percentile(sorted, 50), 50);
+        // p95: nearest-rank = ceil(95/100 * 100) - 1 = 94 -> sorted[94] = 95
+        assert_eq!(percentile(sorted, 95), 95);
+        // p99: nearest-rank = ceil(99/100 * 100) - 1 = 98 -> sorted[98] = 99
+        assert_eq!(percentile(sorted, 99), 99);
+    }
+
+    #[test]
+    fn submit_to_admit_phase_breakdown() {
+        let mut p = LatencyProfile::new();
+        // 10 samples: 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+        // p50: rank = 50*10/100 = 5, idx = 4 -> sorted[4] = 500
+        for v in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] {
+            p.record("submit -> admit", v);
+        }
+
+        let segs = p.segments();
+        assert_eq!(segs.len(), 1);
+        let s = &segs[0];
+        assert_eq!(s.label, "submit -> admit");
+        assert_eq!(s.min_us, 100);
+        assert_eq!(s.max_us, 1000);
+        // avg = 5500 / 10 = 550
+        assert_eq!(s.avg_us, 550);
+        assert_eq!(s.p50_us, 500);
+        assert_eq!(s.sample_count, 10);
+    }
+
+    #[test]
+    fn admit_to_first_step_phase() {
+        let mut p = LatencyProfile::new();
+        // 10 samples: 50, 60, 70, 80, 90, 100, 110, 120, 130, 140
+        // p50: rank = 50*10/100 = 5, idx = 4 -> sorted[4] = 90
+        for v in [50, 60, 70, 80, 90, 100, 110, 120, 130, 140] {
+            p.record("admit -> first step", v);
+        }
+
+        let segs = p.segments();
+        let s = segs.iter().find(|s| s.label == "admit -> first step");
+        let Some(s) = s else { return };
+        assert_eq!(s.min_us, 50);
+        assert_eq!(s.max_us, 140);
+        // avg = 950 / 10 = 95
+        assert_eq!(s.avg_us, 95);
+        assert_eq!(s.p50_us, 90);
+        assert_eq!(s.sample_count, 10);
+    }
+
+    #[test]
+    fn action_scheduled_to_completed_phase() {
+        let mut p = LatencyProfile::new();
+        // 10 samples from 500_000 to 5_000_000 in 500_000 increments
+        // sorted: [500k, 1000k, 1500k, 2000k, 2500k, 3000k, 3500k, 4000k, 4500k, 5000k]
+        // p50: rank = 50*10/100 = 5, idx = 4 -> sorted[4] = 2_500_000
+        for v in [
+            1_000_000,
+            500_000,
+            1_500_000,
+            2_000_000,
+            2_500_000,
+            3_000_000,
+            3_500_000,
+            4_000_000,
+            4_500_000,
+            5_000_000,
+        ] {
+            p.record("action scheduled -> completed", v);
+        }
+
+        let segs = p.segments();
+        let s = segs
+            .iter()
+            .find(|s| s.label == "action scheduled -> completed");
+        let Some(s) = s else { return };
+        assert_eq!(s.min_us, 500_000);
+        assert_eq!(s.max_us, 5_000_000);
+        // avg = 27_500_000 / 10 = 2_750_000
+        assert_eq!(s.avg_us, 2_750_000);
+        assert_eq!(s.p50_us, 2_500_000);
+        assert_eq!(s.sample_count, 10);
+    }
+
+    #[test]
+    fn empty_latency_data_returns_zeros() {
+        let p = LatencyProfile::new();
+        assert!(p.segments().is_empty());
+        assert!(p.slowest_segment().is_none());
+        assert_eq!(p.total_avg_us(), 0);
+    }
+
+    #[test]
+    fn single_sample_edge_case_all_stats_equal() {
+        let mut p = LatencyProfile::new();
+        p.record("single", 999);
+        let segs = p.segments();
+        assert_eq!(segs.len(), 1);
+        let s = &segs[0];
+        assert_eq!(s.min_us, 999);
+        assert_eq!(s.max_us, 999);
+        assert_eq!(s.avg_us, 999);
+        assert_eq!(s.p50_us, 999);
+        assert_eq!(s.p99_us, 999);
+        assert_eq!(s.sample_count, 1);
+    }
+
+    #[test]
+    fn percentile_with_many_samples_stress() {
+        // 1..=1000 uniform distribution.
+        let mut ring = SampleRing::new(2000);
+        for v in 1..=1000u64 {
+            ring.push(v);
+        }
+        let mut scratch = Vec::new();
+        let sorted = ring.as_sorted_slice(&mut scratch);
+        assert_eq!(sorted.len(), 1000);
+
+        // p50: ceil(50/100 * 1000) - 1 = 499 -> sorted[499] = 500
+        assert_eq!(percentile(sorted, 50), 500);
+        // p95: ceil(95/100 * 1000) - 1 = 949 -> sorted[949] = 950
+        assert_eq!(percentile(sorted, 95), 950);
+        // p99: ceil(99/100 * 1000) - 1 = 989 -> sorted[989] = 990
+        assert_eq!(percentile(sorted, 99), 990);
+        // p100: ceil(100/100 * 1000) - 1 = 999 -> sorted[999] = 1000
+        assert_eq!(percentile(sorted, 100), 1000);
+    }
+
+    #[test]
+    fn ring_eviction_percentiles_use_only_retained_samples() {
+        let mut ring = SampleRing::new(10);
+        // Push 20 values: 1..=20. Ring retains only 11..=20.
+        for v in 1..=20u64 {
+            ring.push(v);
+        }
+        let mut scratch = Vec::new();
+        let sorted = ring.as_sorted_slice(&mut scratch);
+        assert_eq!(sorted.len(), 10);
+        // All retained values should be 11..=20.
+        let Some(&first) = sorted.first() else { return };
+        let Some(&last) = sorted.last() else { return };
+        assert_eq!(first, 11);
+        assert_eq!(last, 20);
+
+        // p50 of 11..=20: ceil(50/100 * 10) - 1 = 4 -> sorted[4] = 15
+        assert_eq!(percentile(sorted, 50), 15);
+    }
+
+    #[test]
+    fn multi_segment_total_avg_reflects_pipeline_end_to_end() {
+        let mut p = LatencyProfile::new();
+        p.record("submit -> admit", 300);
+        p.record("admit -> first step", 100);
+        p.record("first step -> action scheduled", 10_000);
+        p.record("action scheduled -> completed", 2_000_000);
+        p.record("completed -> finish", 200);
+
+        // Each segment has one sample, so avg == the sample itself.
+        // total = 300 + 100 + 10000 + 2000000 + 200 = 2010600
+        assert_eq!(p.total_avg_us(), 2_010_600);
+
+        let slowest = p.slowest_segment();
+        let Some(s) = slowest else { return };
+        assert_eq!(s.label, "action scheduled -> completed");
+    }
+
+    #[test]
+    fn record_same_label_accumulates_correctly() {
+        let mut p = LatencyProfile::new();
+        // 10 samples of value 1000.
+        for _ in 0..10 {
+            p.record("steady", 1000);
+        }
+        let segs = p.segments();
+        assert_eq!(segs.len(), 1);
+        let s = &segs[0];
+        assert_eq!(s.min_us, 1000);
+        assert_eq!(s.max_us, 1000);
+        assert_eq!(s.avg_us, 1000);
+        assert_eq!(s.p50_us, 1000);
+        assert_eq!(s.p99_us, 1000);
+        assert_eq!(s.sample_count, 10);
+    }
 }
