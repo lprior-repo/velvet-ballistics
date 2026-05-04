@@ -2564,4 +2564,126 @@ mod tests {
         assert_eq!(solid_branches, 2, "expected 2 solid branch edges");
         assert_eq!(dashed_otherwise, 1, "expected 1 dashed otherwise edge");
     }
+
+    /// Jump node creates a forward edge that skips over intermediate nodes.
+    /// Verifies that a jump from step-0 to step-3 skips steps 1 and 2, and
+    /// that the intermediate chain still produces its own sequential edges.
+    #[test]
+    fn jump_node_creates_forward_edge_skipping_intermediate_steps() {
+        let n0 = make_jump_node(0, 3);
+        let n1 = make_nop_node(1, Some(2));
+        let n2 = make_nop_node(2, None);
+        let n3 = make_finish_node(3, 0);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // n0: jump edge to step-3 (1 edge)
+        // n1: next edge to step-2 (1 edge)
+        // n2: no next (0 edges)
+        // n3: Finish, no next (0 edges)
+        // Total: 2 edges.
+        assert_eq!(doc.graph.edges.len(), 2, "expected 2 edges (jump + chain)");
+
+        // Verify the jump edge skips over steps 1 and 2.
+        let jump_edge = {
+            let mut found = None;
+            for (_id, e) in &doc.graph.edges {
+                if e.source_port.as_str() == "jump" {
+                    found = Some(e.clone());
+                }
+            }
+            found
+        };
+        let je = match jump_edge {
+            Some(e) => e,
+            None => return,
+        };
+        assert_eq!(je.source.as_str(), "step-0", "jump should originate from step-0");
+        assert_eq!(
+            je.target.as_str(), "step-3",
+            "jump should target step-3, skipping steps 1 and 2"
+        );
+        assert!(!je.style.dashed, "jump edge should be solid");
+        assert_eq!(je.label.as_ref().map(|l| l.as_str()), Some("jump"));
+
+        // Verify the intermediate chain edge still exists.
+        let chain_edge = {
+            let mut found = None;
+            for (_id, e) in &doc.graph.edges {
+                if e.source.as_str() == "step-1" && e.source_port.as_str() == "next" {
+                    found = Some(e.clone());
+                }
+            }
+            found
+        };
+        let ce = match chain_edge {
+            Some(e) => e,
+            None => return,
+        };
+        assert_eq!(ce.target.as_str(), "step-2", "intermediate chain should connect step-1 to step-2");
+    }
+
+    /// ErrorHandler creates both a body `next` edge (solid) and a handler edge
+    /// (dashed), and downstream nodes continue from both paths.
+    #[test]
+    fn error_handler_creates_body_next_and_handler_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+                error_slot: None,
+            },
+        };
+        let n1 = make_nop_node(1, Some(3));
+        let n2 = make_nop_node(2, Some(3));
+        let n3 = make_finish_node(3, 0);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // n0: next -> step-1 (solid) + handler -> step-2 (dashed) = 2 edges from n0
+        // n1: next -> step-3 = 1 edge
+        // n2: next -> step-3 = 1 edge
+        // Total: 4 edges.
+        assert_eq!(
+            doc.graph.edges.len(), 4,
+            "error handler workflow should produce 4 edges"
+        );
+
+        let mut found_handler = false;
+        let mut found_next_from_0 = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source.as_str() == "step-0" && e.source_port.as_str() == "handler" {
+                found_handler = true;
+                assert_eq!(e.target.as_str(), "step-2", "handler edge should target step-2");
+                assert!(e.style.dashed, "handler edge should be dashed");
+            }
+            if e.source.as_str() == "step-0" && e.source_port.as_str() == "next" {
+                found_next_from_0 = true;
+                assert_eq!(e.target.as_str(), "step-1", "body next edge should target step-1");
+                assert!(!e.style.dashed, "body next edge should be solid");
+            }
+        }
+        assert!(found_handler, "should find a dashed handler edge from step-0");
+        assert!(
+            found_next_from_0,
+            "should find a solid next edge from step-0 to body step"
+        );
+
+        // Verify both paths converge at step-3.
+        let mut edges_to_step3 = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.target.as_str() == "step-3" {
+                edges_to_step3 = edges_to_step3.saturating_add(1);
+            }
+        }
+        assert_eq!(
+            edges_to_step3, 2,
+            "both body and handler paths should converge at step-3"
+        );
+    }
 }

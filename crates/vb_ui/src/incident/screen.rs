@@ -863,4 +863,77 @@ mod tests {
         let result = screen.filter_by_severity(IncidentSeverity::Minor);
         assert_eq!(result.len(), 1);
     }
+
+    // ---------------------------------------------------------------------------
+    // Additional tests: defaults, empty list, ordering, severity
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_new_defaults_empty_and_no_selection() {
+        let screen = IncidentScreen::new();
+        assert!(screen.incidents().is_empty(), "new screen should have no incidents");
+        assert_eq!(screen.active_count(), 0, "active_count should be 0");
+        assert_eq!(screen.critical_count(), 0, "critical_count should be 0");
+        assert!(screen.selected().is_none(), "no incident should be selected");
+        assert!(screen.selected_suggestions().is_empty(), "no suggestions without selection");
+    }
+
+    #[test]
+    fn test_default_trait_matches_new() {
+        let from_new = IncidentScreen::new();
+        let from_default = IncidentScreen::default();
+        assert_eq!(from_new.active_count(), from_default.active_count());
+        assert_eq!(from_new.critical_count(), from_default.critical_count());
+        assert!(from_default.incidents().is_empty());
+        assert!(from_default.selected().is_none());
+    }
+
+    #[test]
+    fn test_empty_list_repair_suggestions_returns_empty() {
+        let screen = IncidentScreen::new();
+        assert!(screen.repair_suggestions(0).is_empty());
+        assert!(screen.repair_suggestions(1).is_empty());
+    }
+
+    #[test]
+    fn test_empty_list_dismiss_is_noop() {
+        let mut screen = IncidentScreen::new();
+        screen.dismiss(0);
+        screen.dismiss(100);
+        assert_eq!(screen.active_count(), 0);
+    }
+
+    #[test]
+    fn test_empty_list_select_does_not_panic() {
+        let mut screen = IncidentScreen::new();
+        screen.select(0);
+        screen.select(999);
+        assert!(screen.selected().is_none());
+    }
+
+    #[test]
+    fn test_severity_ordering_via_color_dominance() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "critical");
+        screen.process_run_failure(2, None, FailureCode::ActionTimeout, "major");
+        screen.process_run_failure(3, None, FailureCode::ValidationError("v".into()), "minor");
+
+        let incidents = screen.incidents();
+        let [crit_r, ..] = incidents[0].severity.severity_color();
+        let [major_r, ..] = incidents[1].severity.severity_color();
+        let [minor_r, ..] = incidents[2].severity.severity_color();
+        assert!(crit_r >= major_r, "Critical red should dominate Major red");
+        assert!(major_r > minor_r, "Major red should dominate Minor red");
+    }
+
+    #[test]
+    fn test_incidents_preserve_insertion_order() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(10, None, FailureCode::ActionTimeout, "a");
+        screen.process_run_failure(20, None, FailureCode::TaintLeak, "b");
+        screen.process_run_failure(30, None, FailureCode::BudgetExceeded, "c");
+
+        let run_ids: Vec<u64> = screen.incidents().iter().map(|i| i.run_id).collect();
+        assert_eq!(run_ids, vec![10, 20, 30], "incidents should maintain insertion order");
+    }
 }
