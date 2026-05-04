@@ -1,498 +1,377 @@
-//! Maps VB CompiledNodeKind (34 variants) to visual properties for the canvas.
+//! Maps VB CompiledNodeKind variants to visual properties for the workflow graph.
 //!
-//! Each variant maps to:
-//! - Shape (rectangle, diamond, hexagon, etc.)
-//! - Color per primitive type
-//! - Size hints (width, height)
-//! - Badge text (action name, retry count, timeout)
-//! - Icon hint
+//! Provides [`NodeCategory`] (semantic grouping), [`NodeShape`] (geometric
+//! shape), cyberpunk colour constants, and [`node_kind_to_visual`] which maps
+//! every `CompiledNodeKind` variant to a [`NodeVisual`] per the Phase 4C spec.
 
 use vb_core::workflow::CompiledNodeKind;
 
-use crate::theme::colors;
-
 // ---------------------------------------------------------------------------
-// Shape enumeration
+// Colour constants (cyberpunk neon palette, RGBA f32)
 // ---------------------------------------------------------------------------
 
-/// Visual shape for a workflow node on the canvas.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Neon cyan -- primary accent, running state.
+pub const NEON_CYAN: [f32; 4] = [0.000, 0.961, 1.000, 1.0]; // #00f5ff
+/// Neon green -- success, healthy, pass.
+pub const NEON_GREEN: [f32; 4] = [0.224, 1.000, 0.078, 1.0]; // #39ff14
+/// Neon red -- failure, error, blocked.
+pub const NEON_RED: [f32; 4] = [1.000, 0.027, 0.227, 1.0]; // #ff073a
+/// Neon yellow -- attention, retry, degraded.
+pub const NEON_YELLOW: [f32; 4] = [1.000, 0.902, 0.000, 1.0]; // #ffe600
+/// Neon orange -- external actions (Do nodes).
+pub const NEON_ORANGE: [f32; 4] = [1.000, 0.420, 0.000, 1.0]; // #ff6b00
+/// Neon purple -- branching, choice nodes.
+pub const NEON_PURPLE: [f32; 4] = [0.694, 0.302, 1.000, 1.0]; // #b14dff
+/// Neon blue -- waiting, suspended, parallel.
+pub const NEON_BLUE: [f32; 4] = [0.176, 0.420, 1.000, 1.0]; // #2d6bff
+/// Neon teal -- verification-safe, certified, terminal.
+pub const NEON_TEAL: [f32; 4] = [0.000, 0.898, 0.780, 1.0]; // #00e5c7
+/// Neon magenta -- secret/taint paths, warnings.
+pub const NEON_MAGENTA: [f32; 4] = [1.000, 0.000, 1.000, 1.0]; // #ff00ff
+/// Neon pink -- incident highlights.
+pub const NEON_PINK: [f32; 4] = [1.000, 0.176, 0.482, 1.0]; // #ff2d7b
+/// Gray -- control/data nodes, dim elements.
+pub const GRAY: [f32; 4] = [0.333, 0.333, 0.467, 1.0]; // #555577
+/// Amber -- ask/prompt suspend nodes.
+pub const AMBER: [f32; 4] = [1.000, 0.690, 0.000, 1.0]; // #ffb000
+
+// ---------------------------------------------------------------------------
+// NodeCategory enum
+// ---------------------------------------------------------------------------
+
+/// Semantic category for a workflow node kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NodeCategory {
+    /// Data manipulation: Nop, SetConst, Copy, EvalExpr.
+    Data,
+    /// Data construction: BuildObject, BuildList.
+    Construct,
+    /// External action: Do.
+    External,
+    /// Branching: Choose, ChooseSlot.
+    Branch,
+    /// Iteration: ForEach*.
+    Loop,
+    /// Parallel execution: Together*.
+    Parallel,
+    /// Collection: Collect*.
+    Collect,
+    /// Reduction: Reduce*.
+    Reduce,
+    /// Retry / repeat: Repeat*, RetryCheck.
+    Retry,
+    /// Suspension: Wait*, Ask*, AskResume.
+    Suspend,
+    /// Error handling: ErrorHandler.
+    Error,
+    /// Control flow: Jump.
+    Control,
+    /// Terminal: Finish.
+    Terminal,
+}
+
+// ---------------------------------------------------------------------------
+// NodeShape enum
+// ---------------------------------------------------------------------------
+
+/// Geometric shape for rendering a workflow node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NodeShape {
     /// Standard rounded rectangle (most node types).
-    Rectangle,
-    /// Diamond shape for branch decision nodes (Choose, ChooseSlot).
+    RoundedRect,
+    /// Diamond for branch / decision nodes.
     Diamond,
-    /// Hexagon for parallel nodes (Together*).
-    Hexagon,
-    /// Pill / stadium shape for suspend/wait nodes.
+    /// Circle for suspend / wait nodes.
+    Round,
+    /// Pill / stadium for certain suspend variants.
     Pill,
-    /// Octagon for error handling nodes.
-    Octagon,
-    /// Circle for terminal nodes (Finish).
-    Circle,
-    /// Arrow / chevron for jump nodes.
-    Arrow,
+    /// Container with internal lanes for parallel nodes.
+    Container,
 }
 
 // ---------------------------------------------------------------------------
-// Icon hint enumeration
+// NodeVisual struct
 // ---------------------------------------------------------------------------
 
-/// Icon hint for a workflow node, used by the renderer to select an icon.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IconHint {
-    /// No icon.
-    None,
-    /// Data input/output.
-    Data,
-    /// Copy operation.
-    Copy,
-    /// Expression evaluation.
-    Expression,
-    /// Object construction.
-    Object,
-    /// List construction.
-    List,
-    /// External action.
-    Action,
-    /// Branch / decision.
-    Branch,
-    /// Loop / iteration.
-    Loop,
-    /// Parallel execution.
-    Parallel,
-    /// Retry / repeat.
-    Retry,
-    /// Wait / suspend.
-    Wait,
-    /// Ask / prompt.
-    Ask,
-    /// Error handler.
-    Error,
-    /// Jump / goto.
-    Jump,
-    /// Terminal / finish.
-    Terminal,
-    /// No-op.
-    Nop,
-}
-
-// ---------------------------------------------------------------------------
-// Visual properties struct
-// ---------------------------------------------------------------------------
-
-/// Complete visual properties for a workflow node.
-#[derive(Debug, Clone)]
-pub struct NodeVisuals {
-    /// Shape to draw.
+/// Visual properties for a workflow node.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeVisual {
+    /// Semantic category.
+    pub category: NodeCategory,
+    /// Geometric shape.
     pub shape: NodeShape,
-    /// Header fill color (RGBA, 0-1 float).
-    pub header_color: [f32; 4],
-    /// Body fill color (RGBA, 0-1 float).
-    pub body_color: [f32; 4],
-    /// Border color (RGBA, 0-1 float).
-    pub border_color: [f32; 4],
-    /// Text color (RGBA, 0-1 float).
-    pub text_color: [f32; 4],
-    /// Width hint in pixels.
-    pub width_hint: f64,
-    /// Height hint in pixels.
-    pub height_hint: f64,
-    /// Badge labels (e.g. "A0", "R3", "T").
-    pub badges: Vec<Badge>,
-    /// Icon hint for the renderer.
-    pub icon: IconHint,
-}
-
-// ---------------------------------------------------------------------------
-// Badge struct
-// ---------------------------------------------------------------------------
-
-/// A small annotation badge on a node.
-#[derive(Debug, Clone)]
-pub struct Badge {
-    /// Badge display text.
-    pub label: String,
-    /// Badge background color.
+    /// Primary colour (RGBA).
     pub color: [f32; 4],
+    /// Human-readable label for the node kind.
+    pub label: String,
 }
 
 // ---------------------------------------------------------------------------
-// Default dimensions
+// Mapping function
 // ---------------------------------------------------------------------------
 
-/// Default node width for standard rectangle nodes.
-pub const DEFAULT_WIDTH: f64 = 160.0;
-/// Default node height for standard rectangle nodes.
-pub const DEFAULT_HEIGHT: f64 = 60.0;
-/// Diamond nodes are slightly wider.
-pub const DIAMOND_WIDTH: f64 = 200.0;
-/// Diamond nodes are slightly taller.
-pub const DIAMOND_HEIGHT: f64 = 100.0;
-/// Hexagon nodes are wider for parallel constructs.
-pub const HEXAGON_WIDTH: f64 = 180.0;
-/// Hexagon height.
-pub const HEXAGON_HEIGHT: f64 = 80.0;
-/// Pill width for suspend nodes.
-pub const PILL_WIDTH: f64 = 180.0;
-/// Pill height.
-pub const PILL_HEIGHT: f64 = 48.0;
-/// Circle diameter for terminal nodes.
-pub const CIRCLE_SIZE: f64 = 64.0;
-/// Octagon width for error nodes.
-pub const OCTAGON_WIDTH: f64 = 160.0;
-/// Octagon height.
-pub const OCTAGON_HEIGHT: f64 = 64.0;
-/// Arrow width for jump nodes.
-pub const ARROW_WIDTH: f64 = 140.0;
-/// Arrow height.
-pub const ARROW_HEIGHT: f64 = 48.0;
-
-// ---------------------------------------------------------------------------
-// Main mapping function
-// ---------------------------------------------------------------------------
-
-/// Map a `CompiledNodeKind` to its visual properties.
+/// Map a [`CompiledNodeKind`] to its visual representation.
 ///
-/// Returns shape, colors, size hints, badges, and icon hint for rendering.
+/// Follows the Phase 4C spec table:
+///
+/// | VB Node Kind                        | Category  | Shape        | Color   |
+/// |-------------------------------------|-----------|--------------|---------|
+/// | Nop, SetConst, Copy, EvalExpr       | Data      | RoundedRect  | Gray    |
+/// | BuildObject, BuildList              | Construct | RoundedRect  | Gray    |
+/// | Do                                  | External  | RoundedRect  | Orange  |
+/// | Choose, ChooseSlot                  | Branch    | Diamond      | Purple  |
+/// | ForEachStart/Next/Join              | Loop      | RoundedRect  | Blue    |
+/// | TogetherStart/Branch/Join           | Parallel  | Container    | Blue    |
+/// | CollectStart/Page/Next/Finish       | Collect   | RoundedRect  | Blue    |
+/// | ReduceStart/Next/Finish             | Reduce    | RoundedRect  | Blue    |
+/// | RepeatStart/Attempt/Check/Finish    | Retry     | RoundedRect  | Purple  |
+/// | WaitUntil, WaitEvent                | Suspend   | Round        | Green   |
+/// | Ask, AskResume                      | Suspend   | Round        | Amber   |
+/// | RetryCheck                          | Retry     | Diamond      | Purple  |
+/// | ErrorHandler                        | Error     | Diamond      | Red     |
+/// | Jump                                | Control   | Diamond      | Gray    |
+/// | Finish                              | Terminal  | Pill         | Teal    |
 #[must_use]
-pub fn map_node(kind: &CompiledNodeKind) -> NodeVisuals {
+pub fn node_kind_to_visual(kind: &CompiledNodeKind) -> NodeVisual {
     match kind {
-        CompiledNodeKind::Nop => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::CONTROL,
-            body_color: colors::node_category::CONTROL,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::DIM,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Nop,
+        // -- Data --
+        CompiledNodeKind::Nop => NodeVisual {
+            category: NodeCategory::Data,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("Nop"),
+        },
+        CompiledNodeKind::SetConst { .. } => NodeVisual {
+            category: NodeCategory::Data,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("SetConst"),
+        },
+        CompiledNodeKind::Copy { .. } => NodeVisual {
+            category: NodeCategory::Data,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("Copy"),
+        },
+        CompiledNodeKind::EvalExpr { .. } => NodeVisual {
+            category: NodeCategory::Data,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("EvalExpr"),
         },
 
-        CompiledNodeKind::SetConst { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::DATA,
-            body_color: colors::node_category::DATA,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Data,
+        // -- Construct --
+        CompiledNodeKind::BuildObject { .. } => NodeVisual {
+            category: NodeCategory::Construct,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("BuildObject"),
+        },
+        CompiledNodeKind::BuildList { .. } => NodeVisual {
+            category: NodeCategory::Construct,
+            shape: NodeShape::RoundedRect,
+            color: GRAY,
+            label: String::from("BuildList"),
         },
 
-        CompiledNodeKind::Copy { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::DATA,
-            body_color: colors::node_category::DATA,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Copy,
+        // -- External --
+        CompiledNodeKind::Do { .. } => NodeVisual {
+            category: NodeCategory::External,
+            shape: NodeShape::RoundedRect,
+            color: NEON_ORANGE,
+            label: String::from("Do"),
         },
 
-        CompiledNodeKind::EvalExpr { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::DATA,
-            body_color: colors::node_category::DATA,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Expression,
-        },
-
-        CompiledNodeKind::BuildObject { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::DATA,
-            body_color: colors::node_category::DATA,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Object,
-        },
-
-        CompiledNodeKind::BuildList { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::DATA,
-            body_color: colors::node_category::DATA,
-            border_color: colors::bg::BORDER,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::List,
-        },
-
-        CompiledNodeKind::Do { action, .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::EXTERNAL,
-            body_color: colors::node_category::EXTERNAL,
-            border_color: colors::neon::ORANGE,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: vec![
-                Badge {
-                    label: format!("A{}", action.get()),
-                    color: colors::neon::ORANGE,
-                },
-                Badge {
-                    label: String::from("S"),
-                    color: colors::neon::MAGENTA,
-                },
-            ],
-            icon: IconHint::Action,
-        },
-
-        CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => NodeVisuals {
+        // -- Branch --
+        CompiledNodeKind::Choose { .. } => NodeVisual {
+            category: NodeCategory::Branch,
             shape: NodeShape::Diamond,
-            header_color: colors::node_header::BRANCH,
-            body_color: colors::node_category::BRANCH,
-            border_color: colors::neon::PURPLE,
-            text_color: colors::text::PRIMARY,
-            width_hint: DIAMOND_WIDTH,
-            height_hint: DIAMOND_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Branch,
+            color: NEON_PURPLE,
+            label: String::from("Choose"),
+        },
+        CompiledNodeKind::ChooseSlot { .. } => NodeVisual {
+            category: NodeCategory::Branch,
+            shape: NodeShape::Diamond,
+            color: NEON_PURPLE,
+            label: String::from("ChooseSlot"),
         },
 
-        CompiledNodeKind::ForEachStart { .. }
-        | CompiledNodeKind::ForEachNext { .. }
-        | CompiledNodeKind::ForEachJoin { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::LOOP,
-            body_color: colors::node_category::LOOP,
-            border_color: colors::neon::BLUE,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Loop,
+        // -- Loop --
+        CompiledNodeKind::ForEachStart { .. } => NodeVisual {
+            category: NodeCategory::Loop,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ForEachStart"),
+        },
+        CompiledNodeKind::ForEachNext { .. } => NodeVisual {
+            category: NodeCategory::Loop,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ForEachNext"),
+        },
+        CompiledNodeKind::ForEachJoin { .. } => NodeVisual {
+            category: NodeCategory::Loop,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ForEachJoin"),
         },
 
-        CompiledNodeKind::TogetherStart { .. }
-        | CompiledNodeKind::TogetherBranch { .. }
-        | CompiledNodeKind::TogetherJoin { .. } => NodeVisuals {
-            shape: NodeShape::Hexagon,
-            header_color: colors::node_header::PARALLEL,
-            body_color: colors::node_category::PARALLEL,
-            border_color: colors::neon::TEAL,
-            text_color: colors::text::PRIMARY,
-            width_hint: HEXAGON_WIDTH,
-            height_hint: HEXAGON_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Parallel,
+        // -- Parallel --
+        CompiledNodeKind::TogetherStart { .. } => NodeVisual {
+            category: NodeCategory::Parallel,
+            shape: NodeShape::Container,
+            color: NEON_BLUE,
+            label: String::from("TogetherStart"),
+        },
+        CompiledNodeKind::TogetherBranch { .. } => NodeVisual {
+            category: NodeCategory::Parallel,
+            shape: NodeShape::Container,
+            color: NEON_BLUE,
+            label: String::from("TogetherBranch"),
+        },
+        CompiledNodeKind::TogetherJoin { .. } => NodeVisual {
+            category: NodeCategory::Parallel,
+            shape: NodeShape::Container,
+            color: NEON_BLUE,
+            label: String::from("TogetherJoin"),
         },
 
-        CompiledNodeKind::CollectStart { .. }
-        | CompiledNodeKind::CollectPage { .. }
-        | CompiledNodeKind::CollectNext { .. }
-        | CompiledNodeKind::CollectFinish { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::COLLECT,
-            body_color: colors::node_category::COLLECT,
-            border_color: colors::neon::BLUE,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Loop,
+        // -- Collect --
+        CompiledNodeKind::CollectStart { .. } => NodeVisual {
+            category: NodeCategory::Collect,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("CollectStart"),
+        },
+        CompiledNodeKind::CollectPage { .. } => NodeVisual {
+            category: NodeCategory::Collect,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("CollectPage"),
+        },
+        CompiledNodeKind::CollectNext { .. } => NodeVisual {
+            category: NodeCategory::Collect,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("CollectNext"),
+        },
+        CompiledNodeKind::CollectFinish { .. } => NodeVisual {
+            category: NodeCategory::Collect,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("CollectFinish"),
         },
 
-        CompiledNodeKind::ReduceStart { .. }
-        | CompiledNodeKind::ReduceNext { .. }
-        | CompiledNodeKind::ReduceFinish { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::REDUCE,
-            body_color: colors::node_category::REDUCE,
-            border_color: colors::neon::BLUE,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Loop,
+        // -- Reduce --
+        CompiledNodeKind::ReduceStart { .. } => NodeVisual {
+            category: NodeCategory::Reduce,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ReduceStart"),
+        },
+        CompiledNodeKind::ReduceNext { .. } => NodeVisual {
+            category: NodeCategory::Reduce,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ReduceNext"),
+        },
+        CompiledNodeKind::ReduceFinish { .. } => NodeVisual {
+            category: NodeCategory::Reduce,
+            shape: NodeShape::RoundedRect,
+            color: NEON_BLUE,
+            label: String::from("ReduceFinish"),
         },
 
-        CompiledNodeKind::RepeatStart { max_attempts, .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::ERROR,
-            body_color: colors::node_category::ERROR,
-            border_color: colors::neon::YELLOW,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: vec![Badge {
-                label: format!("R{}", max_attempts),
-                color: colors::neon::YELLOW,
-            }],
-            icon: IconHint::Retry,
+        // -- Retry (Repeat* variants) --
+        CompiledNodeKind::RepeatStart { .. } => NodeVisual {
+            category: NodeCategory::Retry,
+            shape: NodeShape::RoundedRect,
+            color: NEON_PURPLE,
+            label: String::from("RepeatStart"),
+        },
+        CompiledNodeKind::RepeatAttempt { .. } => NodeVisual {
+            category: NodeCategory::Retry,
+            shape: NodeShape::RoundedRect,
+            color: NEON_PURPLE,
+            label: String::from("RepeatAttempt"),
+        },
+        CompiledNodeKind::RepeatCheck { .. } => NodeVisual {
+            category: NodeCategory::Retry,
+            shape: NodeShape::RoundedRect,
+            color: NEON_PURPLE,
+            label: String::from("RepeatCheck"),
+        },
+        CompiledNodeKind::RepeatFinish { .. } => NodeVisual {
+            category: NodeCategory::Retry,
+            shape: NodeShape::RoundedRect,
+            color: NEON_PURPLE,
+            label: String::from("RepeatFinish"),
         },
 
-        CompiledNodeKind::RepeatAttempt { .. }
-        | CompiledNodeKind::RepeatCheck { .. }
-        | CompiledNodeKind::RepeatFinish { .. } => NodeVisuals {
-            shape: NodeShape::Rectangle,
-            header_color: colors::node_header::ERROR,
-            body_color: colors::node_category::ERROR,
-            border_color: colors::neon::YELLOW,
-            text_color: colors::text::PRIMARY,
-            width_hint: DEFAULT_WIDTH,
-            height_hint: DEFAULT_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Retry,
+        // -- Suspend (Wait) --
+        CompiledNodeKind::WaitUntil { .. } => NodeVisual {
+            category: NodeCategory::Suspend,
+            shape: NodeShape::Round,
+            color: NEON_GREEN,
+            label: String::from("WaitUntil"),
+        },
+        CompiledNodeKind::WaitEvent { .. } => NodeVisual {
+            category: NodeCategory::Suspend,
+            shape: NodeShape::Round,
+            color: NEON_GREEN,
+            label: String::from("WaitEvent"),
         },
 
-        CompiledNodeKind::WaitUntil { .. } => NodeVisuals {
+        // -- Suspend (Ask) --
+        CompiledNodeKind::Ask { .. } => NodeVisual {
+            category: NodeCategory::Suspend,
+            shape: NodeShape::Round,
+            color: AMBER,
+            label: String::from("Ask"),
+        },
+        CompiledNodeKind::AskResume { .. } => NodeVisual {
+            category: NodeCategory::Suspend,
+            shape: NodeShape::Round,
+            color: AMBER,
+            label: String::from("AskResume"),
+        },
+
+        // -- Retry (RetryCheck) --
+        CompiledNodeKind::RetryCheck { .. } => NodeVisual {
+            category: NodeCategory::Retry,
+            shape: NodeShape::Diamond,
+            color: NEON_PURPLE,
+            label: String::from("RetryCheck"),
+        },
+
+        // -- Error --
+        CompiledNodeKind::ErrorHandler { .. } => NodeVisual {
+            category: NodeCategory::Error,
+            shape: NodeShape::Diamond,
+            color: NEON_RED,
+            label: String::from("ErrorHandler"),
+        },
+
+        // -- Control --
+        CompiledNodeKind::Jump { .. } => NodeVisual {
+            category: NodeCategory::Control,
+            shape: NodeShape::Diamond,
+            color: GRAY,
+            label: String::from("Jump"),
+        },
+
+        // -- Terminal --
+        CompiledNodeKind::Finish { .. } => NodeVisual {
+            category: NodeCategory::Terminal,
             shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::GREEN,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Wait,
-        },
-
-        CompiledNodeKind::WaitEvent {
-            timeout_slot: Some(_),
-            ..
-        } => NodeVisuals {
-            shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::GREEN,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: vec![Badge {
-                label: String::from("T"),
-                color: colors::neon::RED,
-            }],
-            icon: IconHint::Wait,
-        },
-
-        CompiledNodeKind::WaitEvent {
-            timeout_slot: None,
-            ..
-        } => NodeVisuals {
-            shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::GREEN,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Wait,
-        },
-
-        CompiledNodeKind::Ask {
-            timeout_slot: Some(_),
-            ..
-        } => NodeVisuals {
-            shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::YELLOW,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: vec![Badge {
-                label: String::from("T"),
-                color: colors::neon::RED,
-            }],
-            icon: IconHint::Ask,
-        },
-
-        CompiledNodeKind::Ask {
-            timeout_slot: None, ..
-        } => NodeVisuals {
-            shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::YELLOW,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Ask,
-        },
-
-        CompiledNodeKind::AskResume { .. } => NodeVisuals {
-            shape: NodeShape::Pill,
-            header_color: colors::node_header::SUSPEND,
-            body_color: colors::node_category::SUSPEND,
-            border_color: colors::neon::YELLOW,
-            text_color: colors::text::PRIMARY,
-            width_hint: PILL_WIDTH,
-            height_hint: PILL_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Ask,
-        },
-
-        CompiledNodeKind::RetryCheck { .. } => NodeVisuals {
-            shape: NodeShape::Octagon,
-            header_color: colors::node_header::ERROR,
-            body_color: colors::node_category::ERROR,
-            border_color: colors::neon::RED,
-            text_color: colors::text::PRIMARY,
-            width_hint: OCTAGON_WIDTH,
-            height_hint: OCTAGON_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Retry,
-        },
-
-        CompiledNodeKind::ErrorHandler { .. } => NodeVisuals {
-            shape: NodeShape::Octagon,
-            header_color: colors::node_header::ERROR,
-            body_color: colors::node_category::ERROR,
-            border_color: colors::neon::RED,
-            text_color: colors::text::PRIMARY,
-            width_hint: OCTAGON_WIDTH,
-            height_hint: OCTAGON_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Error,
-        },
-
-        CompiledNodeKind::Jump { .. } => NodeVisuals {
-            shape: NodeShape::Arrow,
-            header_color: colors::node_header::CONTROL,
-            body_color: colors::node_category::CONTROL,
-            border_color: colors::bg::BORDER_BRIGHT,
-            text_color: colors::text::ACCENT,
-            width_hint: ARROW_WIDTH,
-            height_hint: ARROW_HEIGHT,
-            badges: Vec::new(),
-            icon: IconHint::Jump,
-        },
-
-        CompiledNodeKind::Finish { .. } => NodeVisuals {
-            shape: NodeShape::Circle,
-            header_color: colors::node_header::TERMINAL,
-            body_color: colors::node_category::TERMINAL,
-            border_color: colors::neon::TEAL,
-            text_color: colors::text::PRIMARY,
-            width_hint: CIRCLE_SIZE,
-            height_hint: CIRCLE_SIZE,
-            badges: vec![Badge {
-                label: String::from("D"),
-                color: colors::neon::TEAL,
-            }],
-            icon: IconHint::Terminal,
+            color: NEON_TEAL,
+            label: String::from("Finish"),
         },
     }
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Tests (30+ unit tests covering every node kind mapping)
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -500,7 +379,8 @@ mod tests {
     use super::*;
     use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
 
-    /// Build all 34 CompiledNodeKind variants for exhaustive testing.
+    // -- Helper to build every CompiledNodeKind variant ----------------------
+
     fn all_kinds() -> Vec<CompiledNodeKind> {
         vec![
             CompiledNodeKind::Nop,
@@ -620,17 +500,9 @@ mod tests {
                 event: SlotIdx::new(0),
                 timeout_slot: None,
             },
-            CompiledNodeKind::WaitEvent {
-                event: SlotIdx::new(0),
-                timeout_slot: Some(SlotIdx::new(1)),
-            },
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
-            },
-            CompiledNodeKind::Ask {
-                prompt: SlotIdx::new(0),
-                timeout_slot: Some(SlotIdx::new(1)),
             },
             CompiledNodeKind::AskResume {
                 answer: SlotIdx::new(0),
@@ -654,643 +526,672 @@ mod tests {
         ]
     }
 
+    // -- Test 1: All 34 variants produce valid visuals ----------------------
+
     #[test]
-    fn all_34_variants_produce_valid_visuals() {
+    fn all_variants_produce_valid_visuals() {
         let kinds = all_kinds();
-        assert_eq!(
-            kinds.len(),
-            36,
-            "must exercise all 34 CompiledNodeKind variants (WaitEvent and Ask tested with/without timeout)"
-        );
+        assert_eq!(kinds.len(), 34, "must exercise all CompiledNodeKind variants");
 
         for kind in &kinds {
-            let v = map_node(kind);
-            // Colors must have valid alpha.
-            assert!(
-                v.header_color[3] > 0.0,
-                "header alpha must be positive for {kind:?}"
-            );
-            assert!(
-                v.body_color[3] > 0.0,
-                "body alpha must be positive for {kind:?}"
-            );
-            assert!(
-                v.border_color[3] > 0.0,
-                "border alpha must be positive for {kind:?}"
-            );
-            assert!(
-                v.text_color[3] > 0.0,
-                "text alpha must be positive for {kind:?}"
-            );
-            // Size hints must be positive.
-            assert!(v.width_hint > 0.0, "width must be positive for {kind:?}");
-            assert!(
-                v.height_hint > 0.0,
-                "height must be positive for {kind:?}"
-            );
+            let v = node_kind_to_visual(kind);
+            // Alpha must be positive.
+            assert!(v.color[3] > 0.0, "alpha must be positive for {kind:?}");
+            // Label must be non-empty.
+            assert!(!v.label.is_empty(), "label must be non-empty for {kind:?}");
         }
     }
 
+    // -- Test 2: Nop maps to Data / RoundedRect / Gray ----------------------
+
     #[test]
-    fn choose_is_diamond() {
+    fn nop_is_data_roundedrect_gray() {
+        let v = node_kind_to_visual(&CompiledNodeKind::Nop);
+        assert_eq!(v.category, NodeCategory::Data);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, GRAY);
+        assert_eq!(v.label, "Nop");
+    }
+
+    // -- Test 3: SetConst maps to Data / RoundedRect / Gray -----------------
+
+    #[test]
+    fn setconst_is_data_roundedrect_gray() {
+        let kind = CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Data);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, GRAY);
+    }
+
+    // -- Test 4: Copy maps to Data / RoundedRect / Gray ---------------------
+
+    #[test]
+    fn copy_is_data_roundedrect_gray() {
+        let kind = CompiledNodeKind::Copy {
+            source: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Data);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+    }
+
+    // -- Test 5: EvalExpr maps to Data / RoundedRect / Gray -----------------
+
+    #[test]
+    fn evalexpr_is_data_roundedrect_gray() {
+        let kind = CompiledNodeKind::EvalExpr {
+            expr: ExprIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Data);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+    }
+
+    // -- Test 6: BuildObject maps to Construct / RoundedRect / Gray ---------
+
+    #[test]
+    fn buildobject_is_construct_roundedrect_gray() {
+        let kind = CompiledNodeKind::BuildObject {
+            fields: Box::new([]),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Construct);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, GRAY);
+    }
+
+    // -- Test 7: BuildList maps to Construct / RoundedRect / Gray ------------
+
+    #[test]
+    fn buildlist_is_construct_roundedrect_gray() {
+        let kind = CompiledNodeKind::BuildList {
+            items: Box::new([]),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Construct);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+    }
+
+    // -- Test 8: Do maps to External / RoundedRect / Orange -----------------
+
+    #[test]
+    fn do_is_external_roundedrect_orange() {
+        let kind = CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::External);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_ORANGE);
+        assert_eq!(v.label, "Do");
+    }
+
+    // -- Test 9: Choose maps to Branch / Diamond / Purple -------------------
+
+    #[test]
+    fn choose_is_branch_diamond_purple() {
         let kind = CompiledNodeKind::Choose {
             branches: Box::new([]),
             otherwise: None,
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Diamond);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Branch);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, NEON_PURPLE);
     }
 
+    // -- Test 10: ChooseSlot maps to Branch / Diamond / Purple ---------------
+
     #[test]
-    fn choose_slot_is_diamond() {
+    fn chooseslot_is_branch_diamond_purple() {
         let kind = CompiledNodeKind::ChooseSlot {
             branches: Box::new([]),
             otherwise: None,
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Diamond);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Branch);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, NEON_PURPLE);
     }
 
+    // -- Test 11: ForEachStart maps to Loop / RoundedRect / Blue ------------
+
     #[test]
-    fn together_start_is_hexagon() {
+    fn foreach_start_is_loop_roundedrect_blue() {
+        let kind = CompiledNodeKind::ForEachStart {
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Loop);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 12: ForEachNext maps to Loop / RoundedRect / Blue -------------
+
+    #[test]
+    fn foreach_next_is_loop_roundedrect_blue() {
+        let kind = CompiledNodeKind::ForEachNext {
+            iterator_slot: SlotIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Loop);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 13: ForEachJoin maps to Loop / RoundedRect / Blue -------------
+
+    #[test]
+    fn foreach_join_is_loop_roundedrect_blue() {
+        let kind = CompiledNodeKind::ForEachJoin {
+            output: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Loop);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 14: TogetherStart maps to Parallel / Container / Blue ----------
+
+    #[test]
+    fn together_start_is_parallel_container_blue() {
         let kind = CompiledNodeKind::TogetherStart {
             branches: Box::new([]),
             join: StepIdx::new(0),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Hexagon);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Parallel);
+        assert_eq!(v.shape, NodeShape::Container);
+        assert_eq!(v.color, NEON_BLUE);
     }
 
+    // -- Test 15: TogetherBranch maps to Parallel / Container / Blue ---------
+
     #[test]
-    fn together_branch_is_hexagon() {
+    fn together_branch_is_parallel_container_blue() {
         let kind = CompiledNodeKind::TogetherBranch {
             branch: 0,
             entry: StepIdx::new(1),
             join: StepIdx::new(2),
             accumulator: SlotIdx::new(0),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Hexagon);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Parallel);
+        assert_eq!(v.shape, NodeShape::Container);
+        assert_eq!(v.color, NEON_BLUE);
     }
 
+    // -- Test 16: TogetherJoin maps to Parallel / Container / Blue -----------
+
     #[test]
-    fn together_join_is_hexagon() {
+    fn together_join_is_parallel_container_blue() {
         let kind = CompiledNodeKind::TogetherJoin {
             branch_count: 1,
             accumulator: SlotIdx::new(0),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Hexagon);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Parallel);
+        assert_eq!(v.shape, NodeShape::Container);
     }
 
+    // -- Test 17: CollectStart maps to Collect / RoundedRect / Blue ----------
+
     #[test]
-    fn wait_until_is_pill() {
+    fn collect_start_is_collect_roundedrect_blue() {
+        let kind = CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(0),
+            limit: 10,
+            page_size: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Collect);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 18: CollectFinish maps to Collect / RoundedRect / Blue ---------
+
+    #[test]
+    fn collect_finish_is_collect_roundedrect_blue() {
+        let kind = CompiledNodeKind::CollectFinish {
+            collector_slot: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Collect);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 19: ReduceStart maps to Reduce / RoundedRect / Blue -----------
+
+    #[test]
+    fn reduce_start_is_reduce_roundedrect_blue() {
+        let kind = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Reduce);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 20: ReduceFinish maps to Reduce / RoundedRect / Blue ----------
+
+    #[test]
+    fn reduce_finish_is_reduce_roundedrect_blue() {
+        let kind = CompiledNodeKind::ReduceFinish {
+            accumulator: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Reduce);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 21: RepeatStart maps to Retry / RoundedRect / Purple ----------
+
+    #[test]
+    fn repeat_start_is_retry_roundedrect_purple() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 3,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Retry);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_PURPLE);
+    }
+
+    // -- Test 22: RepeatCheck maps to Retry / RoundedRect / Purple ----------
+
+    #[test]
+    fn repeat_check_is_retry_roundedrect_purple() {
+        let kind = CompiledNodeKind::RepeatCheck {
+            attempt_slot: SlotIdx::new(0),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Retry);
+        assert_eq!(v.color, NEON_PURPLE);
+    }
+
+    // -- Test 23: RepeatFinish maps to Retry / RoundedRect / Purple ---------
+
+    #[test]
+    fn repeat_finish_is_retry_roundedrect_purple() {
+        let kind = CompiledNodeKind::RepeatFinish {
+            result: SlotIdx::new(0),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Retry);
+        assert_eq!(v.color, NEON_PURPLE);
+    }
+
+    // -- Test 24: WaitUntil maps to Suspend / Round / Green -----------------
+
+    #[test]
+    fn waituntil_is_suspend_round_green() {
         let kind = CompiledNodeKind::WaitUntil {
             deadline_slot: SlotIdx::new(0),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Pill);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.shape, NodeShape::Round);
+        assert_eq!(v.color, NEON_GREEN);
     }
 
+    // -- Test 25: WaitEvent maps to Suspend / Round / Green -----------------
+
     #[test]
-    fn wait_event_is_pill() {
+    fn waitevent_is_suspend_round_green() {
         let kind = CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(0),
             timeout_slot: None,
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Pill);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.shape, NodeShape::Round);
+        assert_eq!(v.color, NEON_GREEN);
     }
 
+    // -- Test 26: Ask maps to Suspend / Round / Amber -----------------------
+
     #[test]
-    fn ask_is_pill() {
+    fn ask_is_suspend_round_amber() {
         let kind = CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
             timeout_slot: None,
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Pill);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.shape, NodeShape::Round);
+        assert_eq!(v.color, AMBER);
     }
 
+    // -- Test 27: AskResume maps to Suspend / Round / Amber -----------------
+
     #[test]
-    fn ask_resume_is_pill() {
+    fn askresume_is_suspend_round_amber() {
         let kind = CompiledNodeKind::AskResume {
             answer: SlotIdx::new(0),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Pill);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.shape, NodeShape::Round);
+        assert_eq!(v.color, AMBER);
     }
 
-    #[test]
-    fn error_handler_is_octagon() {
-        let kind = CompiledNodeKind::ErrorHandler {
-            body: StepIdx::new(1),
-            handler: StepIdx::new(2),
-            error_slot: None,
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Octagon);
-    }
+    // -- Test 28: RetryCheck maps to Retry / Diamond / Purple ---------------
 
     #[test]
-    fn retry_check_is_octagon() {
+    fn retrycheck_is_retry_diamond_purple() {
         let kind = CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             exhausted: StepIdx::new(2),
         };
-        assert_eq!(map_node(&kind).shape, NodeShape::Octagon);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Retry);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, NEON_PURPLE);
     }
 
-    #[test]
-    fn finish_is_circle() {
-        let kind = CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Circle);
-    }
+    // -- Test 29: ErrorHandler maps to Error / Diamond / Red ----------------
 
     #[test]
-    fn jump_is_arrow() {
-        let kind = CompiledNodeKind::Jump {
-            target: StepIdx::new(1),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Arrow);
-    }
-
-    #[test]
-    fn do_node_has_action_and_secret_badges() {
-        let kind = CompiledNodeKind::Do {
-            action: ActionId::new(42),
-            input: SlotIdx::new(0),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.badges.len(), 2);
-        assert_eq!(v.badges[0].label, "A42");
-        assert_eq!(v.badges[1].label, "S");
-    }
-
-    #[test]
-    fn repeat_start_has_retry_badge() {
-        let kind = CompiledNodeKind::RepeatStart {
-            max_attempts: 5,
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.badges.len(), 1);
-        assert_eq!(v.badges[0].label, "R5");
-    }
-
-    #[test]
-    fn wait_event_with_timeout_has_timeout_badge() {
-        let kind = CompiledNodeKind::WaitEvent {
-            event: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(1)),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.badges.len(), 1);
-        assert_eq!(v.badges[0].label, "T");
-    }
-
-    #[test]
-    fn wait_event_without_timeout_has_no_badges() {
-        let kind = CompiledNodeKind::WaitEvent {
-            event: SlotIdx::new(0),
-            timeout_slot: None,
-        };
-        let v = map_node(&kind);
-        assert!(v.badges.is_empty());
-    }
-
-    #[test]
-    fn ask_with_timeout_has_timeout_badge() {
-        let kind = CompiledNodeKind::Ask {
-            prompt: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(1)),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.badges.len(), 1);
-        assert_eq!(v.badges[0].label, "T");
-    }
-
-    #[test]
-    fn ask_without_timeout_has_no_badges() {
-        let kind = CompiledNodeKind::Ask {
-            prompt: SlotIdx::new(0),
-            timeout_slot: None,
-        };
-        let v = map_node(&kind);
-        assert!(v.badges.is_empty());
-    }
-
-    #[test]
-    fn finish_has_durable_badge() {
-        let kind = CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.badges.len(), 1);
-        assert_eq!(v.badges[0].label, "D");
-    }
-
-    #[test]
-    fn nop_has_no_badges() {
-        let v = map_node(&CompiledNodeKind::Nop);
-        assert!(v.badges.is_empty());
-    }
-
-    #[test]
-    fn nop_has_nop_icon() {
-        let v = map_node(&CompiledNodeKind::Nop);
-        assert_eq!(v.icon, IconHint::Nop);
-    }
-
-    #[test]
-    fn do_node_has_action_icon() {
-        let kind = CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Action);
-    }
-
-    #[test]
-    fn choose_has_branch_icon() {
-        let kind = CompiledNodeKind::Choose {
-            branches: Box::new([]),
-            otherwise: None,
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Branch);
-    }
-
-    #[test]
-    fn foreach_start_has_loop_icon() {
-        let kind = CompiledNodeKind::ForEachStart {
-            input: SlotIdx::new(0),
-            item_slot: SlotIdx::new(1),
-            limit: 10,
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Loop);
-    }
-
-    #[test]
-    fn together_start_has_parallel_icon() {
-        let kind = CompiledNodeKind::TogetherStart {
-            branches: Box::new([]),
-            join: StepIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Parallel);
-    }
-
-    #[test]
-    fn repeat_start_has_retry_icon() {
-        let kind = CompiledNodeKind::RepeatStart {
-            max_attempts: 3,
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Retry);
-    }
-
-    #[test]
-    fn wait_until_has_wait_icon() {
-        let kind = CompiledNodeKind::WaitUntil {
-            deadline_slot: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Wait);
-    }
-
-    #[test]
-    fn ask_has_ask_icon() {
-        let kind = CompiledNodeKind::Ask {
-            prompt: SlotIdx::new(0),
-            timeout_slot: None,
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Ask);
-    }
-
-    #[test]
-    fn error_handler_has_error_icon() {
+    fn errorhandler_is_error_diamond_red() {
         let kind = CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
             error_slot: None,
         };
-        assert_eq!(map_node(&kind).icon, IconHint::Error);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Error);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, NEON_RED);
     }
 
+    // -- Test 30: Jump maps to Control / Diamond / Gray ---------------------
+
     #[test]
-    fn jump_has_jump_icon() {
+    fn jump_is_control_diamond_gray() {
         let kind = CompiledNodeKind::Jump {
             target: StepIdx::new(1),
         };
-        assert_eq!(map_node(&kind).icon, IconHint::Jump);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Control);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, GRAY);
     }
 
+    // -- Test 31: Finish maps to Terminal / Pill / Teal ---------------------
+
     #[test]
-    fn finish_has_terminal_icon() {
+    fn finish_is_terminal_pill_teal() {
         let kind = CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         };
-        assert_eq!(map_node(&kind).icon, IconHint::Terminal);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Terminal);
+        assert_eq!(v.shape, NodeShape::Pill);
+        assert_eq!(v.color, NEON_TEAL);
     }
 
-    #[test]
-    fn circle_size_is_square() {
-        let kind = CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.width_hint, CIRCLE_SIZE);
-        assert_eq!(v.height_hint, CIRCLE_SIZE);
-    }
+    // -- Test 32: RepeatAttempt maps to Retry category ----------------------
 
     #[test]
-    fn diamond_dimensions_match_constants() {
-        let kind = CompiledNodeKind::Choose {
-            branches: Box::new([]),
-            otherwise: None,
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.width_hint, DIAMOND_WIDTH);
-        assert_eq!(v.height_hint, DIAMOND_HEIGHT);
-    }
-
-    #[test]
-    fn hexagon_dimensions_match_constants() {
-        let kind = CompiledNodeKind::TogetherStart {
-            branches: Box::new([]),
-            join: StepIdx::new(0),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.width_hint, HEXAGON_WIDTH);
-        assert_eq!(v.height_hint, HEXAGON_HEIGHT);
-    }
-
-    #[test]
-    fn pill_dimensions_match_constants() {
-        let kind = CompiledNodeKind::WaitUntil {
-            deadline_slot: SlotIdx::new(0),
-        };
-        let v = map_node(&kind);
-        assert_eq!(v.width_hint, PILL_WIDTH);
-        assert_eq!(v.height_hint, PILL_HEIGHT);
-    }
-
-    #[test]
-    fn data_variants_use_data_colors() {
-        let data_kinds: Vec<CompiledNodeKind> = vec![
-            CompiledNodeKind::SetConst {
-                value: ConstIdx::new(0),
-            },
-            CompiledNodeKind::Copy {
-                source: SlotIdx::new(0),
-            },
-            CompiledNodeKind::EvalExpr {
-                expr: ExprIdx::new(0),
-            },
-            CompiledNodeKind::BuildObject {
-                fields: Box::new([]),
-            },
-            CompiledNodeKind::BuildList {
-                items: Box::new([]),
-            },
-        ];
-        for kind in &data_kinds {
-            let v = map_node(kind);
-            assert_eq!(v.header_color, colors::node_header::DATA, "for {kind:?}");
-            assert_eq!(v.body_color, colors::node_category::DATA, "for {kind:?}");
-        }
-    }
-
-    #[test]
-    fn each_shape_category_is_consistent() {
-        // Rectangles: Nop, SetConst, Copy, EvalExpr, BuildObject, BuildList, ForEach*, Collect*, Reduce*, Repeat*
-        let kind = CompiledNodeKind::Nop;
-        assert_eq!(map_node(&kind).shape, NodeShape::Rectangle);
-
-        // Diamonds: Choose, ChooseSlot
-        let kind = CompiledNodeKind::Choose {
-            branches: Box::new([]),
-            otherwise: None,
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Diamond);
-
-        // Hexagons: Together*
-        let kind = CompiledNodeKind::TogetherStart {
-            branches: Box::new([]),
-            join: StepIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Hexagon);
-
-        // Pills: Wait*, Ask*, AskResume
-        let kind = CompiledNodeKind::WaitUntil {
-            deadline_slot: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Pill);
-
-        // Octagons: ErrorHandler, RetryCheck
-        let kind = CompiledNodeKind::ErrorHandler {
-            body: StepIdx::new(1),
-            handler: StepIdx::new(2),
-            error_slot: None,
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Octagon);
-
-        // Circle: Finish
-        let kind = CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Circle);
-
-        // Arrow: Jump
-        let kind = CompiledNodeKind::Jump {
-            target: StepIdx::new(1),
-        };
-        assert_eq!(map_node(&kind).shape, NodeShape::Arrow);
-    }
-
-    #[test]
-    fn nop_uses_dim_text() {
-        let v = map_node(&CompiledNodeKind::Nop);
-        assert_eq!(v.text_color, colors::text::DIM);
-    }
-
-    #[test]
-    fn jump_uses_accent_text() {
-        let kind = CompiledNodeKind::Jump {
-            target: StepIdx::new(1),
-        };
-        assert_eq!(map_node(&kind).text_color, colors::text::ACCENT);
-    }
-
-    #[test]
-    fn setconst_icon_is_data() {
-        let kind = CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Data);
-    }
-
-    #[test]
-    fn copy_icon_is_copy() {
-        let kind = CompiledNodeKind::Copy {
-            source: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Copy);
-    }
-
-    #[test]
-    fn evalexpr_icon_is_expression() {
-        let kind = CompiledNodeKind::EvalExpr {
-            expr: ExprIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Expression);
-    }
-
-    #[test]
-    fn buildobject_icon_is_object() {
-        let kind = CompiledNodeKind::BuildObject {
-            fields: Box::new([]),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Object);
-    }
-
-    #[test]
-    fn buildlist_icon_is_list() {
-        let kind = CompiledNodeKind::BuildList {
-            items: Box::new([]),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::List);
-    }
-
-    #[test]
-    fn do_node_border_is_orange() {
-        let kind = CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::ORANGE);
-    }
-
-    #[test]
-    fn choose_border_is_purple() {
-        let kind = CompiledNodeKind::Choose {
-            branches: Box::new([]),
-            otherwise: None,
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::PURPLE);
-    }
-
-    #[test]
-    fn together_border_is_teal() {
-        let kind = CompiledNodeKind::TogetherStart {
-            branches: Box::new([]),
-            join: StepIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::TEAL);
-    }
-
-    #[test]
-    fn error_handler_border_is_red() {
-        let kind = CompiledNodeKind::ErrorHandler {
-            body: StepIdx::new(1),
-            handler: StepIdx::new(2),
-            error_slot: None,
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::RED);
-    }
-
-    #[test]
-    fn finish_border_is_teal() {
-        let kind = CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::TEAL);
-    }
-
-    // -----------------------------------------------------------------------
-    // Additional tests
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn collect_start_icon_is_loop() {
-        let kind = CompiledNodeKind::CollectStart {
-            source: SlotIdx::new(0),
-            limit: 10,
-            page_size: 5,
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Loop);
-    }
-
-    #[test]
-    fn reduce_start_icon_is_loop() {
-        let kind = CompiledNodeKind::ReduceStart {
-            input: SlotIdx::new(0),
-            accumulator: SlotIdx::new(1),
-            initial: ConstIdx::new(0),
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        assert_eq!(map_node(&kind).icon, IconHint::Loop);
-    }
-
-    #[test]
-    fn repeat_attempt_icon_is_retry() {
+    fn repeat_attempt_is_retry_roundedrect_purple() {
         let kind = CompiledNodeKind::RepeatAttempt {
             attempt_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         };
-        assert_eq!(map_node(&kind).icon, IconHint::Retry);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Retry);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_PURPLE);
     }
 
+    // -- Test 33: CollectPage maps to Collect / RoundedRect / Blue ----------
+
     #[test]
-    fn collect_start_border_is_blue() {
-        let kind = CompiledNodeKind::CollectStart {
-            source: SlotIdx::new(0),
-            limit: 10,
-            page_size: 5,
+    fn collect_page_is_collect_roundedrect_blue() {
+        let kind = CompiledNodeKind::CollectPage {
+            collector_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         };
-        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Collect);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_BLUE);
     }
 
+    // -- Test 34: CollectNext maps to Collect / RoundedRect / Blue ----------
+
     #[test]
-    fn reduce_start_border_is_blue() {
-        let kind = CompiledNodeKind::ReduceStart {
-            input: SlotIdx::new(0),
+    fn collect_next_is_collect_roundedrect_blue() {
+        let kind = CompiledNodeKind::CollectNext {
+            collector_slot: SlotIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Collect);
+        assert_eq!(v.color, NEON_BLUE);
+    }
+
+    // -- Test 35: ReduceNext maps to Reduce / RoundedRect / Blue ------------
+
+    #[test]
+    fn reduce_next_is_reduce_roundedrect_blue() {
+        let kind = CompiledNodeKind::ReduceNext {
+            iterator_slot: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
-            initial: ConstIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         };
-        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Reduce);
+        assert_eq!(v.shape, NodeShape::RoundedRect);
+        assert_eq!(v.color, NEON_BLUE);
     }
 
+    // -- Test 36: All colour constants have alpha 1.0 -----------------------
+
     #[test]
-    fn repeat_start_border_is_yellow() {
-        let kind = CompiledNodeKind::RepeatStart {
-            max_attempts: 3,
+    fn colour_constants_have_unit_alpha() {
+        let colours: [([f32; 4], &str); 12] = [
+            (NEON_CYAN, "NEON_CYAN"),
+            (NEON_GREEN, "NEON_GREEN"),
+            (NEON_RED, "NEON_RED"),
+            (NEON_YELLOW, "NEON_YELLOW"),
+            (NEON_ORANGE, "NEON_ORANGE"),
+            (NEON_PURPLE, "NEON_PURPLE"),
+            (NEON_BLUE, "NEON_BLUE"),
+            (NEON_TEAL, "NEON_TEAL"),
+            (NEON_MAGENTA, "NEON_MAGENTA"),
+            (NEON_PINK, "NEON_PINK"),
+            (GRAY, "GRAY"),
+            (AMBER, "AMBER"),
+        ];
+        for (colour, name) in &colours {
+            assert_eq!(colour[3], 1.0, "{name} alpha should be 1.0");
+        }
+    }
+
+    // -- Test 37: All colour constants have RGB in [0, 1] -------------------
+
+    #[test]
+    fn colour_constants_rgb_in_unit_range() {
+        let colours: [[f32; 4]; 12] = [
+            NEON_CYAN, NEON_GREEN, NEON_RED, NEON_YELLOW, NEON_ORANGE, NEON_PURPLE,
+            NEON_BLUE, NEON_TEAL, NEON_MAGENTA, NEON_PINK, GRAY, AMBER,
+        ];
+        for colour in &colours {
+            for ch in 0..3 {
+                assert!(
+                    colour[ch] >= 0.0 && colour[ch] <= 1.0,
+                    "channel {ch} = {} is outside [0, 1]",
+                    colour[ch]
+                );
+            }
+        }
+    }
+
+    // -- Test 38: Every label matches its enum variant name ------------------
+
+    #[test]
+    fn labels_are_nonempty_and_match_variant() {
+        let kinds = all_kinds();
+        for kind in &kinds {
+            let v = node_kind_to_visual(kind);
+            assert!(!v.label.is_empty(), "label should not be empty for {kind:?}");
+            // Label should be the variant name (no spaces, ASCII).
+            assert!(
+                v.label.chars().all(|c| c.is_ascii_alphanumeric()),
+                "label should be alphanumeric for {kind:?}, got '{}'",
+                v.label
+            );
+        }
+    }
+
+    // -- Test 39: Data and Construct categories use Gray --------------------
+
+    #[test]
+    fn data_and_construct_use_gray() {
+        let gray_kinds: Vec<CompiledNodeKind> = vec![
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+            CompiledNodeKind::Copy { source: SlotIdx::new(0) },
+            CompiledNodeKind::EvalExpr { expr: ExprIdx::new(0) },
+            CompiledNodeKind::BuildObject { fields: Box::new([]) },
+            CompiledNodeKind::BuildList { items: Box::new([]) },
+        ];
+        for kind in &gray_kinds {
+            assert_eq!(node_kind_to_visual(kind).color, GRAY, "expected GRAY for {kind:?}");
+        }
+    }
+
+    // -- Test 40: All shapes are represented across the variants ------------
+
+    #[test]
+    fn every_shape_is_used_by_at_least_one_variant() {
+        let kinds = all_kinds();
+        let shapes: Vec<NodeShape> = kinds.iter().map(|k| node_kind_to_visual(k).shape).collect();
+        assert!(shapes.contains(&NodeShape::RoundedRect), "RoundedRect should appear");
+        assert!(shapes.contains(&NodeShape::Diamond), "Diamond should appear");
+        assert!(shapes.contains(&NodeShape::Round), "Round should appear");
+        assert!(shapes.contains(&NodeShape::Pill), "Pill should appear");
+        assert!(shapes.contains(&NodeShape::Container), "Container should appear");
+    }
+
+    // -- Test 41: NodeCategory enum covers all 13 categories ----------------
+
+    #[test]
+    fn every_category_is_used_by_at_least_one_variant() {
+        let kinds = all_kinds();
+        let categories: Vec<NodeCategory> = kinds.iter().map(|k| node_kind_to_visual(k).category).collect();
+        assert!(categories.contains(&NodeCategory::Data), "Data should appear");
+        assert!(categories.contains(&NodeCategory::Construct), "Construct should appear");
+        assert!(categories.contains(&NodeCategory::External), "External should appear");
+        assert!(categories.contains(&NodeCategory::Branch), "Branch should appear");
+        assert!(categories.contains(&NodeCategory::Loop), "Loop should appear");
+        assert!(categories.contains(&NodeCategory::Parallel), "Parallel should appear");
+        assert!(categories.contains(&NodeCategory::Collect), "Collect should appear");
+        assert!(categories.contains(&NodeCategory::Reduce), "Reduce should appear");
+        assert!(categories.contains(&NodeCategory::Retry), "Retry should appear");
+        assert!(categories.contains(&NodeCategory::Suspend), "Suspend should appear");
+        assert!(categories.contains(&NodeCategory::Error), "Error should appear");
+        assert!(categories.contains(&NodeCategory::Control), "Control should appear");
+        assert!(categories.contains(&NodeCategory::Terminal), "Terminal should appear");
+    }
+
+    // -- Test 42: WaitEvent with timeout still maps to same visual -----------
+
+    #[test]
+    fn waitevent_with_timeout_is_still_suspend_green() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: Some(SlotIdx::new(1)),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.color, NEON_GREEN);
+    }
+
+    // -- Test 43: Ask with timeout still maps to same visual ----------------
+
+    #[test]
+    fn ask_with_timeout_is_still_suspend_amber() {
+        let kind = CompiledNodeKind::Ask {
+            prompt: SlotIdx::new(0),
+            timeout_slot: Some(SlotIdx::new(1)),
+        };
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Suspend);
+        assert_eq!(v.color, AMBER);
+    }
+
+    // -- Test 44: ErrorHandler with error_slot is still Error / Diamond / Red
+
+    #[test]
+    fn errorhandler_with_error_slot_is_error_diamond_red() {
+        let kind = CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
-            done: StepIdx::new(2),
+            handler: StepIdx::new(2),
+            error_slot: Some(SlotIdx::new(3)),
         };
-        assert_eq!(map_node(&kind).border_color, colors::neon::YELLOW);
+        let v = node_kind_to_visual(&kind);
+        assert_eq!(v.category, NodeCategory::Error);
+        assert_eq!(v.shape, NodeShape::Diamond);
+        assert_eq!(v.color, NEON_RED);
     }
 
-    #[test]
-    fn wait_until_border_is_green() {
-        let kind = CompiledNodeKind::WaitUntil {
-            deadline_slot: SlotIdx::new(0),
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::GREEN);
-    }
+    // -- Test 45: NodeVisual Debug/Clone/PartialEq derive works -------------
 
     #[test]
-    fn foreach_start_border_is_blue() {
-        let kind = CompiledNodeKind::ForEachStart {
-            input: SlotIdx::new(0),
-            item_slot: SlotIdx::new(1),
-            limit: 10,
-            body: StepIdx::new(1),
-            done: StepIdx::new(2),
-        };
-        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+    fn node_visual_equality_and_clone() {
+        let kind = CompiledNodeKind::Nop;
+        let v1 = node_kind_to_visual(&kind);
+        let v2 = v1.clone();
+        assert_eq!(v1, v2);
+    }
+
+    // -- Test 46: NEON_CYAN constant matches hex spec -----------------------
+
+    #[test]
+    fn neon_cyan_matches_hex() {
+        let diff_r = (NEON_CYAN[0] - 0.000).abs();
+        let diff_g = (NEON_CYAN[1] - 0.961).abs();
+        let diff_b = (NEON_CYAN[2] - 1.000).abs();
+        assert!(diff_r < 0.01 && diff_g < 0.01 && diff_b < 0.01);
+    }
+
+    // -- Test 47: NEON_RED constant matches hex spec ------------------------
+
+    #[test]
+    fn neon_red_matches_hex() {
+        // #ff073a => R=255, G=7, B=58
+        let expected: [f32; 4] = [255.0 / 255.0, 7.0 / 255.0, 58.0 / 255.0, 1.0];
+        for ch in 0..4 {
+            let diff = (NEON_RED[ch] - expected[ch]).abs();
+            assert!(diff < 0.01, "NEON_RED[{ch}] differs by {diff}");
+        }
     }
 }

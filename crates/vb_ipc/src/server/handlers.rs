@@ -1227,7 +1227,9 @@ mod tests {
 
     #[test]
     fn all_successors_returns_empty_for_finish() {
-        let kind = vb_core::workflow::CompiledNodeKind::Finish { slot: vb_core::ids::SlotIdx::ZERO };
+        let kind = vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::ZERO,
+        };
         let succs = all_successors(&kind);
         assert!(succs.is_empty(), "Finish has no structural successors");
     }
@@ -1236,9 +1238,16 @@ mod tests {
     fn all_successors_includes_branch_targets_for_choose() {
         let kind = vb_core::workflow::CompiledNodeKind::Choose {
             branches: vec![
-                vb_core::workflow::BranchTarget { target: vb_core::ids::StepIdx::new(10) },
-                vb_core::workflow::BranchTarget { target: vb_core::ids::StepIdx::new(20) },
-            ],
+                vb_core::workflow::ExprBranch {
+                    condition: vb_core::ids::ExprIdx::new(0),
+                    target: vb_core::ids::StepIdx::new(10),
+                },
+                vb_core::workflow::ExprBranch {
+                    condition: vb_core::ids::ExprIdx::new(1),
+                    target: vb_core::ids::StepIdx::new(20),
+                },
+            ]
+            .into_boxed_slice(),
             otherwise: Some(vb_core::ids::StepIdx::new(30)),
         };
         let succs = all_successors(&kind);
@@ -1251,7 +1260,9 @@ mod tests {
     #[test]
     fn all_successors_includes_body_and_done_for_foreach_start() {
         let kind = vb_core::workflow::CompiledNodeKind::ForEachStart {
-            slot: vb_core::ids::SlotIdx::ZERO,
+            input: vb_core::ids::SlotIdx::ZERO,
+            item_slot: vb_core::ids::SlotIdx::new(1),
+            limit: 10,
             body: vb_core::ids::StepIdx::new(5),
             done: vb_core::ids::StepIdx::new(15),
         };
@@ -1266,7 +1277,7 @@ mod tests {
         let kind = vb_core::workflow::CompiledNodeKind::ErrorHandler {
             body: vb_core::ids::StepIdx::new(3),
             handler: vb_core::ids::StepIdx::new(7),
-            slots: Vec::new(),
+            error_slot: None,
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&3), "should contain body target");
@@ -1290,9 +1301,9 @@ mod tests {
             branches: vec![
                 vb_core::ids::StepIdx::new(2),
                 vb_core::ids::StepIdx::new(4),
-            ],
+            ]
+            .into_boxed_slice(),
             join: vb_core::ids::StepIdx::new(6),
-            slots: Vec::new(),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&2), "should contain branch 0");

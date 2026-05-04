@@ -12,4 +12,4 @@ pub mod canvas;
 pub mod node_mapping;
 
 pub use canvas::{EdgePath, ViewportRect, WorkflowCanvas};
-pub use node_mapping::{Badge, IconHint, NodeShape, NodeVisuals};
+pub use node_mapping::{NodeCategory, NodeShape, NodeVisual, node_kind_to_visual};

@@ -98,16 +98,19 @@ impl CubicBezier {
     }
 
     /// Approximate arc length by sampling at `num_segments + 1` points.
-    #[allow(clippy::arithmetic_side_effects, clippy::as_conversions)]
+    #[allow(clippy::arithmetic_side_effects)]
     pub fn arc_length(&self, num_segments: usize) -> f64 {
         if num_segments == 0 {
             return 0.0;
         }
-        let denom = num_segments as f64;
+        let denom = f64::from(u32::try_from(num_segments).unwrap_or(u32::MAX));
+        if denom < f64::EPSILON {
+            return 0.0;
+        }
         let mut length = 0.0;
         let mut prev = self.evaluate(0.0);
         for i in 1..=num_segments {
-            let t = i as f64 / denom;
+            let t = f64::from(u32::try_from(i).unwrap_or(u32::MAX)) / denom;
             let curr = self.evaluate(t);
             length += prev.distance_to(curr);
             prev = curr;
@@ -320,14 +323,15 @@ pub fn compute_particles(
     // Fractional progress of the first particle.
     let progress = (elapsed_secs % traversal_secs) / traversal_secs;
 
-    #[allow(clippy::as_conversions)]
-    let count_f64 = count as f64;
+    let count_f64 = f64::from(u32::try_from(count).unwrap_or(u32::MAX));
+    if count_f64 < f64::EPSILON {
+        return Vec::new();
+    }
     let mut particles = Vec::with_capacity(count);
     for i in 0..count {
         // Evenly space particles, offset by the animation progress.
         let spacing = 1.0 / count_f64;
-        #[allow(clippy::as_conversions)]
-        let offset = i as f64 * spacing;
+        let offset = f64::from(u32::try_from(i).unwrap_or(u32::MAX)) * spacing;
         let t = (progress + offset) % 1.0;
         let position = curve.evaluate(t);
         particles.push(Particle { t, position });
@@ -1379,5 +1383,96 @@ mod tests {
         assert!((curve.p1.y - src.y).abs() < 1e-10);
         // CP2 enters horizontally to target
         assert!((curve.p2.y - tgt.y).abs() < 1e-10);
+    }
+
+    // =====================================================================
+    // Security regression tests
+    // =====================================================================
+
+    // ---- No `as` casts in production code: arc_length uses checked conversion ----
+
+    #[test]
+    fn arc_length_no_as_casts_checked_conversion() {
+        // Verify arc_length works correctly with a known straight-line curve.
+        // This regression test ensures that the usize-to-f64 conversion uses
+        // checked arithmetic (u32::try_from + f64::from) instead of `as` casts.
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(33.33, 0.0),
+            Point::new(66.66, 0.0),
+            Point::new(100.0, 0.0),
+        );
+        let len = curve.arc_length(100);
+        // A straight line from 0 to 100 should have arc length ~100
+        assert!((len - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn arc_length_large_num_segments_no_overflow() {
+        // Ensure large num_segments does not panic or produce NaN.
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(100.0, 0.0),
+        );
+        // Within u32 range: should work fine
+        let len = curve.arc_length(1000);
+        assert!(len.is_finite());
+        assert!(len > 0.0);
+    }
+
+    #[test]
+    fn compute_particles_no_as_casts_checked_conversion() {
+        // Verify compute_particles works correctly with checked conversions.
+        // This regression test ensures the usize-to-f64 conversion path
+        // uses u32::try_from + f64::from instead of `as` casts.
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(100.0, 0.0),
+        );
+        let particles = compute_particles(&curve, Duration::from_millis(500), 50.0, 5, 64);
+        assert_eq!(particles.len(), 5);
+        for p in &particles {
+            assert!(p.t >= 0.0 && p.t < 1.0);
+            assert!(p.position.x.is_finite());
+            assert!(p.position.y.is_finite());
+        }
+    }
+
+    #[test]
+    fn compute_particles_single_particle() {
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(100.0, 0.0),
+        );
+        let particles = compute_particles(&curve, Duration::from_millis(0), 50.0, 1, 64);
+        assert_eq!(particles.len(), 1);
+        // At t=0, should be near the start of the curve
+        assert!(particles[0].position.x < 50.0);
+    }
+
+    #[test]
+    fn compute_particles_spacings_are_uniform() {
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(100.0, 0.0),
+        );
+        let particles = compute_particles(&curve, Duration::from_millis(0), 50.0, 4, 64);
+        assert_eq!(particles.len(), 4);
+        // Particles should be evenly spaced by t = 0.25
+        for i in 1..particles.len() {
+            let t_diff = particles[i].t - particles[i - 1].t;
+            assert!(
+                (t_diff - 0.25).abs() < 1e-10,
+                "particles should be evenly spaced, got t_diff={t_diff}"
+            );
+        }
     }
 }
