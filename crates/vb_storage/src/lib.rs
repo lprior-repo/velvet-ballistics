@@ -36,6 +36,7 @@ pub mod process_lock;
 pub mod recovery;
 pub mod snapshots;
 pub mod tests;
+pub mod trimming;
 pub mod types;
 
 // ============================================================================
@@ -63,6 +64,9 @@ pub use queue::JournalWriterQueue;
 
 // Types
 pub use types::JournalWriterFlushReport;
+
+// Trimming
+pub use trimming::{TrimError, TrimPolicy, TrimResult, TrimStatus, TrimmedRunResult};
 
 // Codec
 pub use codec::{
