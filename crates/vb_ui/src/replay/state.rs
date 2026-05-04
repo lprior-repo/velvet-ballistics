@@ -1421,4 +1421,84 @@ mod tests {
         s.toggle_play();
         assert!(!s.is_playing());
     }
+
+    // =====================================================================
+    // Terminal state guard: late-arriving events are rejected
+    // =====================================================================
+
+    #[test]
+    fn terminal_guard_rejects_step_started_after_cancelled() {
+        let init = ReplayState::initial();
+        let terminal = init.apply_event(&run_cancelled(1));
+        let after = terminal.apply_event(&step_started(0, 2));
+        // at_seq must NOT change -- the event was rejected.
+        assert_eq!(
+            after.at_seq.get(),
+            terminal.at_seq.get(),
+            "late event must not update at_seq after terminal state"
+        );
+        assert!(
+            after.step_states.is_empty(),
+            "late StepStarted must not insert into step_states"
+        );
+    }
+
+    #[test]
+    fn terminal_guard_rejects_action_scheduled_after_finished() {
+        let init = ReplayState::initial();
+        let terminal = init.apply_event(&run_finished(0, 1));
+        let after = terminal.apply_event(&action_scheduled(0, 0, 2));
+        assert_eq!(
+            after.actions_dispatched, 0,
+            "late ActionScheduled must not increment actions_dispatched"
+        );
+        assert_eq!(
+            after.at_seq.get(), 1,
+            "late event must not update at_seq"
+        );
+    }
+
+    #[test]
+    fn terminal_guard_rejects_step_succeeded_after_failed() {
+        let init = ReplayState::initial();
+        let terminal = init.apply_event(&run_failed(1));
+        let after = terminal.apply_event(&step_succeeded(0, 0, 2));
+        assert_eq!(
+            after.steps_completed, 0,
+            "late StepSucceeded must not increment steps_completed"
+        );
+        assert_eq!(
+            after.at_seq.get(), 1,
+            "late event must not update at_seq"
+        );
+    }
+
+    #[test]
+    fn terminal_guard_rejects_multiple_late_events() {
+        let init = ReplayState::initial();
+        let terminal = init.apply_event(&run_cancelled(1));
+        let s2 = terminal.apply_event(&action_scheduled(0, 0, 2));
+        let s3 = s2.apply_event(&action_completed(0, 0, 3));
+        let s4 = s3.apply_event(&step_started(0, 4));
+        // All late events must be ignored -- state stays identical to terminal.
+        assert_eq!(s4.at_seq.get(), terminal.at_seq.get());
+        assert_eq!(s4.actions_dispatched, terminal.actions_dispatched);
+        assert_eq!(s4.actions_completed, terminal.actions_completed);
+        assert_eq!(s4.step_states, terminal.step_states);
+        assert_eq!(s4.is_terminal, terminal.is_terminal);
+        assert_eq!(s4.terminal_kind, terminal.terminal_kind);
+    }
+
+    #[test]
+    fn terminal_guard_non_terminal_state_still_applies_events() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&run_accepted(1));
+        // Not terminal, so events must still apply normally.
+        let s2 = s1.apply_event(&step_started(0, 2));
+        assert_eq!(s2.at_seq.get(), 2);
+        assert_eq!(
+            s2.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Running)
+        );
+    }
 }
