@@ -1,8 +1,7 @@
 //! Pure workflow analysis logic for graph and simulate commands.
 
-use vb_core::compiled_workflow::CompiledWorkflow;
 use vb_core::ids::StepIdx;
-use vb_core::CompiledNodeKind;
+use vb_core::{CompiledNodeKind, CompiledWorkflow};
 
 // ---------------------------------------------------------------------------
 // DOT graph generation
