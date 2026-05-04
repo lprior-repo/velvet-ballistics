@@ -1478,6 +1478,10 @@ pub struct VbApp {
     app_state: AppState,
     #[rust]
     ipc_wiring: IpcAppWiring,
+    /// Counts consecutive clean IPC poll cycles. Used to delay clearing
+    /// `last_ipc_error` so the user has time to read the message.
+    #[rust]
+    ipc_clean_cycles: u8,
 }
 
 impl MatchEvent for VbApp {
@@ -1491,8 +1495,9 @@ impl MatchEvent for VbApp {
         // Connection failures, IPC errors, and "not implemented" warnings
         // were previously silently discarded. Store the first error so the
         // System Overview screen can display it.
-        let has_errors = !wiring_events.errors.is_empty();
+        let mut has_errors = !wiring_events.errors.is_empty();
         if has_errors {
+            self.ipc_clean_cycles = 0;
             if let Some(err) = wiring_events.errors.first() {
                 let msg = match err {
                     WiringError::ConnectionFailed(detail) => {
@@ -1505,8 +1510,15 @@ impl MatchEvent for VbApp {
                 self.app_state.last_ipc_error = Some(msg);
             }
         } else if self.app_state.last_ipc_error.is_some() {
-            // Clear stale error when a clean poll cycle arrives.
-            self.app_state.last_ipc_error = None;
+            // Only clear after 3 consecutive clean cycles so the user
+            // can actually read the error message before it vanishes.
+            self.ipc_clean_cycles = self.ipc_clean_cycles.saturating_add(1);
+            if self.ipc_clean_cycles >= 3 {
+                self.app_state.last_ipc_error = None;
+                self.ipc_clean_cycles = 0;
+                // Force a redraw to hide the ipc_error Label.
+                has_errors = true;
+            }
         }
 
         if wiring_events.metrics_updated || wiring_events.connection_changed || wiring_events.health_checked || has_errors {
