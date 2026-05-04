@@ -2084,11 +2084,12 @@ mod tests {
             Err(ValidationError::LimitRequired { .. }) => {
                 // Another zero limit may be hit first
             }
-            Ok(()) => {
-                panic!("blackhat: expected LimitExceeded for max_slots, got Ok");
-            }
-            Err(other) => {
-                panic!("blackhat: unexpected error: {other:?}");
+            other => {
+                // blackhat: expected LimitExceeded or LimitRequired for max_slots
+                assert!(
+                    matches!(other, Err(ValidationError::LimitExceeded { .. } | ValidationError::LimitRequired { .. })),
+                    "blackhat: expected LimitExceeded or LimitRequired for max_slots, got {other:?}"
+                );
             }
         }
     }
@@ -2183,22 +2184,19 @@ mod tests {
         };
         let hard = ResourceLimits::default();
 
-        match validate_resource_limits(&wf, &hard) {
-            Err(ValidationError::LimitRequired { resource }) => {
-                assert_eq!(
-                    resource, "max_input_bytes",
-                    "blackhat: zero declared limit should be rejected"
-                );
-            }
-            Err(other) => {
-                assert!(
-                    matches!(other, ValidationError::LimitRequired { .. }),
-                    "blackhat: expected LimitRequired, got {other:?}"
-                );
-            }
-            Ok(()) => {
-                panic!("blackhat: zero declared limit should be rejected");
-            }
+        let result = validate_resource_limits(&wf, &hard);
+        assert!(
+            matches!(
+                result,
+                Err(ValidationError::LimitRequired { .. })
+            ),
+            "blackhat: zero declared limit should be rejected, got {result:?}"
+        );
+        if let Err(ValidationError::LimitRequired { resource }) = result {
+            assert_eq!(
+                resource, "max_input_bytes",
+                "blackhat: zero declared limit should be rejected"
+            );
         }
     }
 

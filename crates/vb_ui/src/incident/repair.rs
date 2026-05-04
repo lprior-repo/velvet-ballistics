@@ -1,5 +1,20 @@
 use super::types::{FailureCode, Incident, IncidentRecord, SideEffectCertainty};
 
+// ---------------------------------------------------------------------------
+// Cyberpunk color palette (Phase 5B display constants)
+// ---------------------------------------------------------------------------
+
+/// Neon cyan (#00f5ff) — primary accent, applied/active state.
+pub const NEON_CYAN: [f32; 4] = [0.0_f32, 0.961_f32, 1.0_f32, 1.0_f32];
+/// Neon green (#39ff14) — success, applied confirmation.
+pub const NEON_GREEN: [f32; 4] = [0.224_f32, 1.0_f32, 0.078_f32, 1.0_f32];
+/// Neon red (#ff073a) — failure, dismissed/error state.
+pub const NEON_RED: [f32; 4] = [1.0_f32, 0.027_f32, 0.227_f32, 1.0_f32];
+/// Neon yellow (#ffe600) — pending/attention state.
+pub const NEON_YELLOW: [f32; 4] = [1.0_f32, 0.902_f32, 0.0_f32, 1.0_f32];
+/// Neon orange (#ff6b00) — warning/external action state.
+pub const NEON_ORANGE: [f32; 4] = [1.0_f32, 0.420_f32, 0.0_f32, 1.0_f32];
+
 /// Primary repair kind as specified by the Phase 5A contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RepairKind {
@@ -293,6 +308,225 @@ pub fn suggest_repairs_for_record(record: &IncidentRecord) -> Vec<RepairSuggesti
     }
 
     results
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5B: RepairActionState — per-suggestion applied/dismissed tracking
+// ---------------------------------------------------------------------------
+
+/// Tracks the resolution state of a single [`RepairSuggestion`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepairActionState {
+    /// The suggestion has not been acted upon yet.
+    Pending,
+    /// The operator has applied the suggestion.
+    Applied,
+    /// The operator has dismissed the suggestion.
+    Dismissed,
+}
+
+impl RepairActionState {
+    /// Return a static display label for this state.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Applied => "Applied",
+            Self::Dismissed => "Dismissed",
+        }
+    }
+
+    /// Return the cyberpunk display color for this state.
+    pub fn display_color(&self) -> [f32; 4] {
+        match self {
+            Self::Pending => NEON_YELLOW,
+            Self::Applied => NEON_GREEN,
+            Self::Dismissed => NEON_RED,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5B: RepairPanel — manages a collection of repair suggestions
+// ---------------------------------------------------------------------------
+
+/// An entry in the repair panel, pairing a suggestion with its resolution state.
+#[derive(Debug, Clone)]
+pub struct RepairEntry {
+    /// The repair suggestion.
+    pub suggestion: RepairSuggestion,
+    /// Whether the suggestion has been applied, dismissed, or is still pending.
+    pub state: RepairActionState,
+}
+
+/// A panel of repair suggestions for a single incident. Each suggestion tracks
+/// whether the operator has applied it, dismissed it, or left it pending.
+#[derive(Debug, Clone)]
+pub struct RepairPanel {
+    entries: Vec<RepairEntry>,
+}
+
+impl Default for RepairPanel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RepairPanel {
+    /// Create a new, empty repair panel.
+    pub fn new() -> Self {
+        Self {
+            entries: Vec::new(),
+        }
+    }
+
+    /// Create a repair panel pre-populated with suggestions for the given incident.
+    pub fn from_incident(incident: &Incident) -> Self {
+        let suggestions = suggest_repairs(incident);
+        Self::from_suggestions(suggestions)
+    }
+
+    /// Create a repair panel pre-populated with suggestions for the given record.
+    pub fn from_record(record: &IncidentRecord) -> Self {
+        let suggestions = suggest_repairs_for_record(record);
+        Self::from_suggestions(suggestions)
+    }
+
+    /// Build a panel from an existing list of suggestions, all starting as Pending.
+    pub fn from_suggestions(suggestions: Vec<RepairSuggestion>) -> Self {
+        let entries = suggestions
+            .into_iter()
+            .map(|suggestion| RepairEntry {
+                suggestion,
+                state: RepairActionState::Pending,
+            })
+            .collect();
+        Self { entries }
+    }
+
+    /// Add a single repair suggestion to the panel (starts as Pending).
+    pub fn add_suggestion(&mut self, suggestion: RepairSuggestion) {
+        self.entries.push(RepairEntry {
+            suggestion,
+            state: RepairActionState::Pending,
+        });
+    }
+
+    /// Mark the suggestion at the given index as dismissed.
+    /// Returns true if the index was valid and the entry was pending.
+    /// Returns false if the index is out of bounds or the entry was already
+    /// resolved.
+    pub fn dismiss(&mut self, index: usize) -> bool {
+        let entry = match self.entries.get(index) {
+            Some(e) => e,
+            None => return false,
+        };
+        if entry.state != RepairActionState::Pending {
+            return false;
+        }
+        // Safe: index is valid and we just verified the entry exists.
+        if let Some(e) = self.entries.get_mut(index) {
+            e.state = RepairActionState::Dismissed;
+        }
+        true
+    }
+
+    /// Mark the suggestion at the given index as applied.
+    /// Returns true if the index was valid and the entry was pending.
+    /// Returns false if the index is out of bounds or the entry was already
+    /// resolved.
+    pub fn apply(&mut self, index: usize) -> bool {
+        let entry = match self.entries.get(index) {
+            Some(e) => e,
+            None => return false,
+        };
+        if entry.state != RepairActionState::Pending {
+            return false;
+        }
+        if let Some(e) = self.entries.get_mut(index) {
+            e.state = RepairActionState::Applied;
+        }
+        true
+    }
+
+    /// Mark all pending suggestions as applied.
+    /// Returns the number of suggestions that were transitioned from Pending to Applied.
+    pub fn apply_all(&mut self) -> usize {
+        let mut count: usize = 0;
+        for entry in &mut self.entries {
+            if entry.state == RepairActionState::Pending {
+                entry.state = RepairActionState::Applied;
+                count = count.saturating_add(1);
+            }
+        }
+        count
+    }
+
+    /// Return the number of pending suggestions.
+    pub fn pending_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|e| e.state == RepairActionState::Pending)
+            .count()
+    }
+
+    /// Return the number of applied suggestions.
+    pub fn applied_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|e| e.state == RepairActionState::Applied)
+            .count()
+    }
+
+    /// Return the number of dismissed suggestions.
+    pub fn dismissed_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|e| e.state == RepairActionState::Dismissed)
+            .count()
+    }
+
+    /// Return the total number of suggestions.
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Return true if the panel has no suggestions.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Return a reference to all entries.
+    pub fn entries(&self) -> &[RepairEntry] {
+        &self.entries
+    }
+
+    /// Return the entry at the given index, if it exists.
+    pub fn get(&self, index: usize) -> Option<&RepairEntry> {
+        self.entries.get(index)
+    }
+
+    /// Return true if all suggestions are in a resolved state (Applied or Dismissed).
+    pub fn is_resolved(&self) -> bool {
+        self.entries
+            .iter()
+            .all(|e| e.state != RepairActionState::Pending)
+    }
+
+    /// Return the highlight color for the panel based on its overall state.
+    /// Returns NEON_GREEN if all resolved, NEON_YELLOW if pending items remain,
+    /// or NEON_RED if all were dismissed.
+    pub fn panel_color(&self) -> [f32; 4] {
+        if self.is_empty() {
+            return NEON_CYAN;
+        }
+        if self.pending_count() > 0 {
+            return NEON_YELLOW;
+        }
+        if self.applied_count() > 0 {
+            return NEON_GREEN;
+        }
+        NEON_RED
+    }
 }
 
 #[cfg(test)]
@@ -1331,5 +1565,563 @@ mod tests {
         assert!(pin_unknown.is_some());
         assert!(pin_unsafe.is_some());
         assert_eq!(pin_unknown.map(|s| s.confidence), pin_unsafe.map(|s| s.confidence));
+    }
+
+    // =========================================================================
+    // Phase 5B: RepairActionState tests
+    // =========================================================================
+
+    #[test]
+    fn test_repair_action_state_variants_are_distinct() {
+        let variants = [
+            RepairActionState::Pending,
+            RepairActionState::Applied,
+            RepairActionState::Dismissed,
+        ];
+        for i in 0..variants.len() {
+            for j in (i + 1)..variants.len() {
+                assert_ne!(variants[i], variants[j]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_repair_action_state_as_str() {
+        assert_eq!(RepairActionState::Pending.as_str(), "Pending");
+        assert_eq!(RepairActionState::Applied.as_str(), "Applied");
+        assert_eq!(RepairActionState::Dismissed.as_str(), "Dismissed");
+    }
+
+    #[test]
+    fn test_repair_action_state_display_color_pending_is_yellow() {
+        let color = RepairActionState::Pending.display_color();
+        assert_eq!(color, NEON_YELLOW);
+    }
+
+    #[test]
+    fn test_repair_action_state_display_color_applied_is_green() {
+        let color = RepairActionState::Applied.display_color();
+        assert_eq!(color, NEON_GREEN);
+    }
+
+    #[test]
+    fn test_repair_action_state_display_color_dismissed_is_red() {
+        let color = RepairActionState::Dismissed.display_color();
+        assert_eq!(color, NEON_RED);
+    }
+
+    #[test]
+    fn test_repair_action_state_copy_trait() {
+        let state = RepairActionState::Applied;
+        let copied = state;
+        assert_eq!(state, copied);
+    }
+
+    // =========================================================================
+    // Phase 5B: Cyberpunk color constants tests
+    // =========================================================================
+
+    #[test]
+    fn test_neon_cyan_values() {
+        let [r, g, b, a] = NEON_CYAN;
+        assert!((0.0_f32..=1.0_f32).contains(&r));
+        assert!(g > 0.9_f32);
+        assert!(b > 0.9_f32);
+        let diff = (a - 1.0_f32).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_neon_green_values() {
+        let [r, g, b, a] = NEON_GREEN;
+        assert!(r > 0.1_f32);
+        assert!(g > 0.9_f32);
+        assert!((0.0_f32..=1.0_f32).contains(&b));
+        let diff = (a - 1.0_f32).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_neon_red_values() {
+        let [r, g, b, a] = NEON_RED;
+        assert!(r > 0.9_f32);
+        assert!(g < 0.1_f32);
+        assert!((0.0_f32..=1.0_f32).contains(&b));
+        let diff = (a - 1.0_f32).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_neon_yellow_values() {
+        let [r, g, b, a] = NEON_YELLOW;
+        assert!(r > 0.9_f32);
+        assert!(g > 0.8_f32);
+        assert!(b < 0.1_f32);
+        let diff = (a - 1.0_f32).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_neon_orange_values() {
+        let [r, g, b, a] = NEON_ORANGE;
+        assert!(r > 0.9_f32);
+        assert!(g > 0.3_f32 && g < 0.6_f32);
+        assert!(b < 0.1_f32);
+        let diff = (a - 1.0_f32).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_all_neon_colors_have_full_alpha() {
+        let colors = [NEON_CYAN, NEON_GREEN, NEON_RED, NEON_YELLOW, NEON_ORANGE];
+        for (i, color) in colors.iter().enumerate() {
+            let diff = (color[3] - 1.0_f32).abs();
+            assert!(diff < f32::EPSILON, "color at index {i} must have alpha=1.0");
+        }
+    }
+
+    // =========================================================================
+    // Phase 5B: RepairPanel tests
+    // =========================================================================
+
+    fn make_suggestion(kind: RepairKind, action: RepairAction) -> RepairSuggestion {
+        RepairSuggestion {
+            kind,
+            description: String::from("test suggestion"),
+            action,
+            confidence: 0.5,
+            confidence_level: RepairConfidence::Medium,
+            rationale: String::from("test rationale"),
+        }
+    }
+
+    #[test]
+    fn test_repair_panel_new_is_empty() {
+        let panel = RepairPanel::new();
+        assert!(panel.is_empty());
+        assert_eq!(panel.len(), 0);
+        assert_eq!(panel.pending_count(), 0);
+        assert_eq!(panel.applied_count(), 0);
+        assert_eq!(panel.dismissed_count(), 0);
+        assert!(panel.entries().is_empty());
+        assert!(panel.is_resolved(), "empty panel should be considered resolved");
+    }
+
+    #[test]
+    fn test_repair_panel_default_matches_new() {
+        let from_new = RepairPanel::new();
+        let from_default = RepairPanel::default();
+        assert_eq!(from_new.len(), from_default.len());
+        assert!(from_default.is_empty());
+    }
+
+    #[test]
+    fn test_repair_panel_add_suggestion_increments_len() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert_eq!(panel.len(), 1);
+        assert_eq!(panel.pending_count(), 1);
+        assert!(!panel.is_empty());
+
+        panel.add_suggestion(make_suggestion(
+            RepairKind::FixSecretLeak,
+            RepairAction::FixSecretLeak,
+        ));
+        assert_eq!(panel.len(), 2);
+        assert_eq!(panel.pending_count(), 2);
+    }
+
+    #[test]
+    fn test_repair_panel_add_suggestion_starts_as_pending() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::PinIdempotency,
+            RepairAction::PinIdempotency,
+        ));
+        let entry = panel.get(0);
+        assert!(entry.is_some());
+        assert_eq!(entry.map(|e| e.state), Some(RepairActionState::Pending));
+    }
+
+    #[test]
+    fn test_repair_panel_dismiss_pending() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert!(panel.dismiss(0));
+        assert_eq!(panel.pending_count(), 0);
+        assert_eq!(panel.dismissed_count(), 1);
+        assert_eq!(panel.applied_count(), 0);
+        assert!(panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_dismiss_out_of_bounds_returns_false() {
+        let mut panel = RepairPanel::new();
+        assert!(!panel.dismiss(0));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert!(!panel.dismiss(5));
+        assert_eq!(panel.pending_count(), 1, "out-of-bounds dismiss should not change state");
+    }
+
+    #[test]
+    fn test_repair_panel_dismiss_already_applied_returns_false() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert!(panel.apply(0));
+        assert!(!panel.dismiss(0), "cannot dismiss an already-applied suggestion");
+        assert_eq!(panel.applied_count(), 1);
+        assert_eq!(panel.dismissed_count(), 0);
+    }
+
+    #[test]
+    fn test_repair_panel_dismiss_already_dismissed_returns_false() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert!(panel.dismiss(0));
+        assert!(!panel.dismiss(0), "cannot dismiss an already-dismissed suggestion");
+    }
+
+    #[test]
+    fn test_repair_panel_apply_pending() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        assert!(panel.apply(0));
+        assert_eq!(panel.pending_count(), 0);
+        assert_eq!(panel.applied_count(), 1);
+        assert!(panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_apply_out_of_bounds_returns_false() {
+        let mut panel = RepairPanel::new();
+        assert!(!panel.apply(0));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        assert!(!panel.apply(99));
+    }
+
+    #[test]
+    fn test_repair_panel_apply_already_applied_returns_false() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        assert!(panel.apply(0));
+        assert!(!panel.apply(0), "cannot apply an already-applied suggestion");
+    }
+
+    #[test]
+    fn test_repair_panel_apply_already_dismissed_returns_false() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        assert!(panel.dismiss(0));
+        assert!(!panel.apply(0), "cannot apply a dismissed suggestion");
+    }
+
+    #[test]
+    fn test_repair_panel_apply_all() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::AddRetryBackoff,
+            RepairAction::AddRetryBackoff,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        let applied = panel.apply_all();
+        assert_eq!(applied, 3);
+        assert_eq!(panel.pending_count(), 0);
+        assert_eq!(panel.applied_count(), 3);
+        assert!(panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_apply_all_skips_resolved() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::AddRetryBackoff,
+            RepairAction::AddRetryBackoff,
+        ));
+        // Dismiss the first one
+        assert!(panel.dismiss(0));
+        // apply_all should only apply the remaining pending one
+        let applied = panel.apply_all();
+        assert_eq!(applied, 1);
+        assert_eq!(panel.dismissed_count(), 1);
+        assert_eq!(panel.applied_count(), 1);
+        assert_eq!(panel.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_repair_panel_apply_all_empty_returns_zero() {
+        let mut panel = RepairPanel::new();
+        let applied = panel.apply_all();
+        assert_eq!(applied, 0);
+    }
+
+    #[test]
+    fn test_repair_panel_pending_count_mixed_states() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::AddRetryBackoff,
+            RepairAction::AddRetryBackoff,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::ReducePayload,
+            RepairAction::ReducePayload,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::FixSecretLeak,
+            RepairAction::FixSecretLeak,
+        ));
+        // Apply 0, dismiss 1, leave 2 and 3 pending
+        assert!(panel.apply(0));
+        assert!(panel.dismiss(1));
+        assert_eq!(panel.pending_count(), 2);
+        assert_eq!(panel.applied_count(), 1);
+        assert_eq!(panel.dismissed_count(), 1);
+        assert!(!panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_from_incident() {
+        let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
+        let panel = RepairPanel::from_incident(&incident);
+        // ActionTimeout produces 2 suggestions
+        assert_eq!(panel.len(), 2);
+        assert_eq!(panel.pending_count(), 2);
+        assert!(panel.entries().iter().all(|e| e.state == RepairActionState::Pending));
+    }
+
+    #[test]
+    fn test_repair_panel_from_record() {
+        let record = make_record(1, 1, FailureCode::TaintLeak, ReplaySafety::Safe);
+        let panel = RepairPanel::from_record(&record);
+        assert_eq!(panel.len(), 1);
+        assert_eq!(panel.pending_count(), 1);
+        assert_eq!(
+            panel.get(0).map(|e| e.suggestion.kind),
+            Some(RepairKind::FixSecretLeak)
+        );
+    }
+
+    #[test]
+    fn test_repair_panel_from_record_unsafe_replay() {
+        let record = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect);
+        let panel = RepairPanel::from_record(&record);
+        assert_eq!(panel.len(), 2, "unsafe replay adds PinIdempotency");
+        assert_eq!(panel.pending_count(), 2);
+    }
+
+    #[test]
+    fn test_repair_panel_from_suggestions() {
+        let suggestions = vec![
+            make_suggestion(RepairKind::IncreaseTimeout, RepairAction::IncreaseTimeout),
+            make_suggestion(RepairKind::FixSecretLeak, RepairAction::FixSecretLeak),
+        ];
+        let panel = RepairPanel::from_suggestions(suggestions);
+        assert_eq!(panel.len(), 2);
+        assert_eq!(panel.pending_count(), 2);
+    }
+
+    #[test]
+    fn test_repair_panel_from_suggestions_empty() {
+        let panel = RepairPanel::from_suggestions(Vec::new());
+        assert!(panel.is_empty());
+        assert_eq!(panel.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_repair_panel_get_valid_index() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        let entry = panel.get(0);
+        assert!(entry.is_some());
+        assert_eq!(entry.map(|e| e.suggestion.kind), Some(RepairKind::IncreaseTimeout));
+    }
+
+    #[test]
+    fn test_repair_panel_get_invalid_index_returns_none() {
+        let panel = RepairPanel::new();
+        assert!(panel.get(0).is_none());
+    }
+
+    #[test]
+    fn test_repair_panel_is_resolved_false_with_pending() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert!(!panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_is_resolved_true_after_apply_all() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::FixSecretLeak,
+            RepairAction::FixSecretLeak,
+        ));
+        panel.apply_all();
+        assert!(panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_is_resolved_true_after_dismiss_all() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.dismiss(0);
+        assert!(panel.is_resolved());
+    }
+
+    #[test]
+    fn test_repair_panel_panel_color_empty_is_cyan() {
+        let panel = RepairPanel::new();
+        assert_eq!(panel.panel_color(), NEON_CYAN);
+    }
+
+    #[test]
+    fn test_repair_panel_panel_color_pending_is_yellow() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        assert_eq!(panel.panel_color(), NEON_YELLOW);
+    }
+
+    #[test]
+    fn test_repair_panel_panel_color_applied_is_green() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.apply(0);
+        assert_eq!(panel.panel_color(), NEON_GREEN);
+    }
+
+    #[test]
+    fn test_repair_panel_panel_color_all_dismissed_is_red() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.dismiss(0);
+        assert_eq!(panel.panel_color(), NEON_RED);
+    }
+
+    #[test]
+    fn test_repair_panel_panel_color_mixed_applied_and_dismissed_is_green() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.add_suggestion(make_suggestion(
+            RepairKind::FixSecretLeak,
+            RepairAction::FixSecretLeak,
+        ));
+        panel.apply(0);
+        panel.dismiss(1);
+        // Has at least one applied, so green
+        assert_eq!(panel.panel_color(), NEON_GREEN);
+    }
+
+    #[test]
+    fn test_repair_panel_clone() {
+        let mut panel = RepairPanel::new();
+        panel.add_suggestion(make_suggestion(
+            RepairKind::IncreaseTimeout,
+            RepairAction::IncreaseTimeout,
+        ));
+        panel.apply(0);
+        let cloned = panel.clone();
+        assert_eq!(cloned.len(), panel.len());
+        assert_eq!(cloned.applied_count(), panel.applied_count());
+        assert_eq!(cloned.pending_count(), panel.pending_count());
+    }
+
+    #[test]
+    fn test_repair_entry_clone() {
+        let entry = RepairEntry {
+            suggestion: make_suggestion(RepairKind::FixSecretLeak, RepairAction::FixSecretLeak),
+            state: RepairActionState::Applied,
+        };
+        let cloned = entry.clone();
+        assert_eq!(cloned.state, entry.state);
+        assert_eq!(cloned.suggestion.kind, entry.suggestion.kind);
+        assert_eq!(cloned.suggestion.action, entry.suggestion.action);
+    }
+
+    #[test]
+    fn test_repair_panel_large_number_of_suggestions() {
+        let mut panel = RepairPanel::new();
+        for i in 0..100usize {
+            panel.add_suggestion(RepairSuggestion {
+                kind: RepairKind::ManualInvestigation,
+                description: format!("suggestion {i}"),
+                action: RepairAction::ManualIntervention,
+                confidence: 0.5,
+                confidence_level: RepairConfidence::Medium,
+                rationale: String::from("test"),
+            });
+        }
+        assert_eq!(panel.len(), 100);
+        assert_eq!(panel.pending_count(), 100);
+        let applied = panel.apply_all();
+        assert_eq!(applied, 100);
+        assert_eq!(panel.pending_count(), 0);
+        assert_eq!(panel.applied_count(), 100);
+        assert!(panel.is_resolved());
     }
 }

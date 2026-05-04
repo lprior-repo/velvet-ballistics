@@ -761,3 +761,480 @@ impl std::fmt::Display for CompileErrors {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::ActionId;
+
+    fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
+        if condition {
+            Ok(())
+        } else {
+            Err(message.to_owned())
+        }
+    }
+
+    // -- Diagnostic code coverage for every CompileError variant --
+
+    #[test]
+    fn code_source_too_large() -> Result<(), String> {
+        let error = CompileError::SourceTooLarge { actual: 200, limit: 100 };
+        ensure(error.code() == "PAYLOAD_TOO_LARGE", "SourceTooLarge code")
+    }
+
+    #[test]
+    fn code_empty_source() -> Result<(), String> {
+        let error = CompileError::EmptySource;
+        ensure(error.code() == "MISSING_REQUIRED_FIELD", "EmptySource code")
+    }
+
+    #[test]
+    fn code_top_level_not_mapping() -> Result<(), String> {
+        let error = CompileError::TopLevelNotMapping;
+        ensure(error.code() == "TYPE_MISMATCH", "TopLevelNotMapping code")
+    }
+
+    #[test]
+    fn code_duplicate_key() -> Result<(), String> {
+        let error = CompileError::DuplicateKey {
+            key: Box::from("x"),
+            mark: SourceMark::unavailable(),
+        };
+        ensure(error.code() == "DUPLICATE_KEY", "DuplicateKey code")
+    }
+
+    #[test]
+    fn code_depth_limit() -> Result<(), String> {
+        let error = CompileError::DepthLimit { depth: 100, limit: 64 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "DepthLimit code")
+    }
+
+    #[test]
+    fn code_node_limit() -> Result<(), String> {
+        let error = CompileError::NodeLimit { limit: 100_000 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "NodeLimit code")
+    }
+
+    #[test]
+    fn code_sequence_limit() -> Result<(), String> {
+        let error = CompileError::SequenceLimit { actual: 20000, limit: 10000 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "SequenceLimit code")
+    }
+
+    #[test]
+    fn code_mapping_limit() -> Result<(), String> {
+        let error = CompileError::MappingLimit { actual: 2000, limit: 1024 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "MappingLimit code")
+    }
+
+    #[test]
+    fn code_scalar_limit() -> Result<(), String> {
+        let error = CompileError::ScalarLimit { actual: 70000, limit: 65536 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "ScalarLimit code")
+    }
+
+    #[test]
+    fn code_unknown_top_level_field() -> Result<(), String> {
+        let error = CompileError::UnknownTopLevelField { field: Box::from("bogus") };
+        ensure(error.code() == "UNKNOWN_TOP_LEVEL_FIELD", "UnknownTopLevelField code")
+    }
+
+    #[test]
+    fn code_invalid_version() -> Result<(), String> {
+        let error = CompileError::InvalidVersion { actual: Box::from("v2") };
+        ensure(error.code() == "INVALID_VERSION", "InvalidVersion code")
+    }
+
+    #[test]
+    fn code_invalid_trigger_count() -> Result<(), String> {
+        let error = CompileError::InvalidTriggerCount { count: 3 };
+        ensure(error.code() == "UNSUPPORTED_TRIGGER", "InvalidTriggerCount code")
+    }
+
+    #[test]
+    fn code_unknown_trigger_kind() -> Result<(), String> {
+        let error = CompileError::UnknownTriggerKind { trigger: Box::from("cron") };
+        ensure(error.code() == "UNSUPPORTED_TRIGGER", "UnknownTriggerKind code")
+    }
+
+    #[test]
+    fn code_empty_steps() -> Result<(), String> {
+        let error = CompileError::EmptySteps;
+        ensure(error.code() == "MISSING_STEP_PRIMITIVE", "EmptySteps code")
+    }
+
+    #[test]
+    fn code_invalid_name_reserved() -> Result<(), String> {
+        let error = CompileError::InvalidName {
+            field: "step.id",
+            value: Box::from("finish"),
+        };
+        ensure(error.code() == "RESERVED_ID", "reserved name should produce RESERVED_ID")
+    }
+
+    #[test]
+    fn code_invalid_name_bad_chars() -> Result<(), String> {
+        let error = CompileError::InvalidName {
+            field: "step.id",
+            value: Box::from("my-step!"),
+        };
+        ensure(error.code() == "INVALID_ID", "invalid name should produce INVALID_ID")
+    }
+
+    #[test]
+    fn code_duplicate_step_id() -> Result<(), String> {
+        let error = CompileError::DuplicateStepId { id: Box::from("dup") };
+        ensure(error.code() == "DUPLICATE_ID", "DuplicateStepId code")
+    }
+
+    #[test]
+    fn code_unsupported_step_primitive() -> Result<(), String> {
+        for (primitive, code) in [
+            ("for_each", "INVALID_FOR_EACH"),
+            ("together", "INVALID_TOGETHER"),
+            ("collect", "INVALID_COLLECT"),
+            ("gather", "INVALID_COLLECT"),
+            ("reduce", "INVALID_REDUCE"),
+            ("summarize", "INVALID_REDUCE"),
+            ("repeat", "INVALID_REPEAT"),
+            ("wait", "INVALID_WAIT"),
+            ("ask", "INVALID_ASK"),
+            ("try_again", "INVALID_RETRY"),
+            ("on_error", "INVALID_ON_ERROR"),
+            ("finish", "INVALID_FINISH"),
+            ("choose", "INVALID_CHOOSE"),
+        ] {
+            let error = CompileError::UnsupportedStepPrimitive {
+                step: 0,
+                primitive,
+            };
+            ensure(error.code() == code, "primitive code mismatch")?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn code_unsupported_step_control_field() -> Result<(), String> {
+        let error = CompileError::UnsupportedStepControlField {
+            step: 0,
+            field: Box::from("then"),
+        };
+        ensure(error.code() == "INVALID_THEN_TARGET", "then control field code")?;
+        let error = CompileError::UnsupportedStepControlField {
+            step: 0,
+            field: Box::from("unknown"),
+        };
+        ensure(error.code() == "UNKNOWN_STEP_FIELD", "unknown control field code")
+    }
+
+    #[test]
+    fn code_step_field_shape() -> Result<(), String> {
+        let error = CompileError::StepFieldShape {
+            step: 0,
+            field: "choose",
+            expected: "a mapping",
+        };
+        ensure(error.code() == "INVALID_CHOOSE", "choose shape code")?;
+        let error = CompileError::StepFieldShape {
+            step: 0,
+            field: "for_each",
+            expected: "a mapping",
+        };
+        ensure(error.code() == "INVALID_FOR_EACH", "for_each shape code")?;
+        let error = CompileError::StepFieldShape {
+            step: 0,
+            field: "together",
+            expected: "a mapping",
+        };
+        ensure(error.code() == "INVALID_TOGETHER", "together shape code")?;
+        let error = CompileError::StepFieldShape {
+            step: 0,
+            field: "finish",
+            expected: "a mapping",
+        };
+        ensure(error.code() == "INVALID_FINISH", "finish shape code")
+    }
+
+    #[test]
+    fn code_backward_branch_target() -> Result<(), String> {
+        let error = CompileError::BackwardBranchTarget { step: 2, target: 1 };
+        ensure(error.code() == "INVALID_THEN_TARGET", "BackwardBranchTarget code")
+    }
+
+    #[test]
+    fn code_unknown_step_target() -> Result<(), String> {
+        let error = CompileError::UnknownStepTarget { step: 0, target: 99 };
+        ensure(error.code() == "INVALID_THEN_TARGET", "UnknownStepTarget code")
+    }
+
+    #[test]
+    fn code_unreachable_step() -> Result<(), String> {
+        let error = CompileError::UnreachableStep { step: 3 };
+        ensure(error.code() == "UNREACHABLE_STEP", "UnreachableStep code")
+    }
+
+    #[test]
+    fn code_secret_taint_leak() -> Result<(), String> {
+        let error = CompileError::SecretTaintLeak { field: "finish.result" };
+        ensure(error.code() == "SECRET_RESULT_LEAK", "SecretTaintLeak code")
+    }
+
+    #[test]
+    fn code_expression_errors() -> Result<(), String> {
+        for error in &[
+            CompileError::ExpressionUnexpectedChar {
+                expression: Box::from("a @ b"),
+                index: 2,
+                found: '@',
+            },
+            CompileError::ExpressionUnterminatedString {
+                expression: Box::from("\"hello"),
+                index: 0,
+            },
+            CompileError::ExpressionIntegerOutOfRange {
+                expression: Box::from("99999999999999999999"),
+                index: 0,
+            },
+            CompileError::ExpressionLimitExceeded {
+                expression: Box::from("a"),
+                limit: "depth",
+                max: 64,
+            },
+            CompileError::ExpressionUnexpectedToken {
+                expression: Box::from("a"),
+                index: 1,
+                expected: "end of expression",
+            },
+            CompileError::ExpressionUnknownIdentifier {
+                expression: Box::from("foo"),
+                index: 0,
+                identifier: Box::from("foo"),
+            },
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "text constants",
+            },
+            CompileError::ExpressionHelperArity {
+                helper: "contains",
+                expected: 2,
+                actual: 1,
+            },
+        ] {
+            ensure(error.code() == "INVALID_EXPRESSION", "expression code mismatch")?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn code_illegal_reference() -> Result<(), String> {
+        let error = CompileError::IllegalReference {
+            reference: Box::from("$runtime.now"),
+        };
+        ensure(error.code() == "DIRECT_RUNTIME_REFERENCE", "IllegalReference code")
+    }
+
+    #[test]
+    fn code_unknown_reference_root() -> Result<(), String> {
+        let error = CompileError::UnknownReferenceRoot {
+            reference: Box::from("$unknown.x"),
+            root: Box::from("unknown"),
+        };
+        ensure(error.code() == "UNKNOWN_REFERENCE", "UnknownReferenceRoot code")
+    }
+
+    #[test]
+    fn code_unknown_reference_name_secret() -> Result<(), String> {
+        let error = CompileError::UnknownReferenceName {
+            kind: "secrets",
+            reference: Box::from("$secrets.key"),
+            name: Box::from("key"),
+        };
+        ensure(error.code() == "SECRET_NOT_DECLARED", "secret reference code")
+    }
+
+    #[test]
+    fn code_unknown_reference_name_other() -> Result<(), String> {
+        let error = CompileError::UnknownReferenceName {
+            kind: "input",
+            reference: Box::from("$input.missing"),
+            name: Box::from("missing"),
+        };
+        ensure(error.code() == "UNKNOWN_REFERENCE", "input reference code")
+    }
+
+    #[test]
+    fn code_unsupported_accessor_reference() -> Result<(), String> {
+        let error = CompileError::UnsupportedAccessorReference {
+            reference: Box::from("$slot.1.name"),
+            root: Box::from("slot.1"),
+            path: Box::from("name"),
+        };
+        ensure(error.code() == "UNSUPPORTED_ACCESSOR_REFERENCE", "UnsupportedAccessorReference code")
+    }
+
+    #[test]
+    fn code_idempotency_violation() -> Result<(), String> {
+        let error = CompileError::IdempotencyViolation {
+            action: ActionId::new(1),
+            side_effect: vb_core::SideEffect::ExternalWrite,
+            reason: Box::from("unsafe retry"),
+        };
+        ensure(error.code() == "IDEMPOTENCY_VIOLATION", "IdempotencyViolation code")
+    }
+
+    #[test]
+    fn code_step_index_out_of_range() -> Result<(), String> {
+        let error = CompileError::StepIndexOutOfRange { value: 70000 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "StepIndexOutOfRange code")
+    }
+
+    #[test]
+    fn code_slot_index_out_of_range() -> Result<(), String> {
+        let error = CompileError::SlotIndexOutOfRange { value: -1 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "SlotIndexOutOfRange code")
+    }
+
+    #[test]
+    fn code_branch_target_out_of_range() -> Result<(), String> {
+        let error = CompileError::BranchTargetOutOfRange { value: 70000 };
+        ensure(error.code() == "LIMIT_EXCEEDED", "BranchTargetOutOfRange code")
+    }
+
+    #[test]
+    fn code_primitive_lowering_limit_exceeded() -> Result<(), String> {
+        let error = CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: 70000,
+            limit: 65535,
+        };
+        ensure(error.code() == "LIMIT_EXCEEDED", "PrimitiveLoweringLimitExceeded code")
+    }
+
+    #[test]
+    fn code_last_step_must_finish() -> Result<(), String> {
+        let error = CompileError::LastStepMustFinish;
+        ensure(error.code() == "INVALID_FINISH", "LastStepMustFinish code")
+    }
+
+    #[test]
+    fn code_unsupported_top_level_result() -> Result<(), String> {
+        let error = CompileError::UnsupportedTopLevelResult;
+        ensure(error.code() == "INVALID_FINISH", "UnsupportedTopLevelResult code")
+    }
+
+    #[test]
+    fn code_unsupported_constant_value() -> Result<(), String> {
+        let error = CompileError::UnsupportedConstantValue { step: 0 };
+        ensure(error.code() == "TYPE_MISMATCH", "UnsupportedConstantValue code")
+    }
+
+    #[test]
+    fn code_unknown_input_schema_field() -> Result<(), String> {
+        let error = CompileError::UnknownInputSchemaField { field: Box::from("bogus") };
+        ensure(error.code() == "UNKNOWN_INPUT_SCHEMA_FIELD", "UnknownInputSchemaField code")
+    }
+
+    #[test]
+    fn code_trigger_shape() -> Result<(), String> {
+        let error = CompileError::TriggerShape {
+            trigger: Box::from("webhook"),
+            expected: "a mapping",
+        };
+        ensure(error.code() == "UNSUPPORTED_TRIGGER", "TriggerShape code")
+    }
+
+    #[test]
+    fn code_unknown_trigger_field() -> Result<(), String> {
+        let error = CompileError::UnknownTriggerField {
+            trigger: "webhook",
+            field: Box::from("bogus"),
+        };
+        ensure(error.code() == "UNSUPPORTED_TRIGGER", "UnknownTriggerField code")
+    }
+
+    #[test]
+    fn code_missing_trigger_field() -> Result<(), String> {
+        let error = CompileError::MissingTriggerField {
+            trigger: "webhook",
+            field: "path",
+        };
+        ensure(error.code() == "MISSING_REQUIRED_FIELD", "MissingTriggerField code")
+    }
+
+    #[test]
+    fn code_invalid_trigger_field() -> Result<(), String> {
+        let error = CompileError::InvalidTriggerField {
+            trigger: "webhook",
+            field: "method",
+            expected: "one of GET, POST, PUT, PATCH, DELETE",
+        };
+        ensure(error.code() == "UNSUPPORTED_TRIGGER", "InvalidTriggerField code")
+    }
+
+    #[test]
+    fn diagnostic_code_aliases_code() -> Result<(), String> {
+        let error = CompileError::EmptySource;
+        ensure(
+            error.diagnostic_code() == error.code(),
+            "diagnostic_code should alias code",
+        )
+    }
+
+    // -- CompileErrors wrapper tests --
+
+    #[test]
+    fn compile_errors_first_returns_first() -> Result<(), String> {
+        let errors = CompileErrors(vec![
+            CompileError::EmptySource,
+            CompileError::EmptySteps,
+        ]);
+        let first = errors.first().ok_or("expected Some")?;
+        ensure(
+            matches!(first, CompileError::EmptySource),
+            "first should be EmptySource",
+        )
+    }
+
+    #[test]
+    fn compile_errors_len_and_is_empty() -> Result<(), String> {
+        let empty = CompileErrors(vec![]);
+        ensure(empty.is_empty(), "should be empty")?;
+        ensure(empty.len() == 0, "len should be 0")?;
+        let two = CompileErrors(vec![
+            CompileError::EmptySource,
+            CompileError::EmptySteps,
+        ]);
+        ensure(!two.is_empty(), "should not be empty")?;
+        ensure(two.len() == 2, "len should be 2")
+    }
+
+    #[test]
+    fn compile_errors_iter_yields_in_order() -> Result<(), String> {
+        let errors = CompileErrors(vec![
+            CompileError::EmptySource,
+            CompileError::EmptySteps,
+        ]);
+        let codes: Vec<&'static str> = errors.diagnostic_codes().collect();
+        ensure(codes.len() == 2, "should have 2 codes")?;
+        ensure(codes[0] == "MISSING_REQUIRED_FIELD", "first code")?;
+        ensure(codes[1] == "MISSING_STEP_PRIMITIVE", "second code")
+    }
+
+    #[test]
+    fn compile_errors_as_slice() -> Result<(), String> {
+        let errors = CompileErrors(vec![CompileError::EmptySource]);
+        ensure(errors.as_slice().len() == 1, "as_slice should return 1 element")
+    }
+
+    #[test]
+    fn compile_errors_display_formats_indexed() -> Result<(), String> {
+        let errors = CompileErrors(vec![
+            CompileError::EmptySource,
+            CompileError::EmptySteps,
+        ]);
+        let text = format!("{errors}");
+        ensure(text.contains("[0]"), "should contain [0]")?;
+        ensure(text.contains("[1]"), "should contain [1]")
+    }
+}

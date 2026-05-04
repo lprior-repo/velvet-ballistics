@@ -111,18 +111,20 @@ fn push_count(_op: &ExprOp) -> u8 {
 }
 
 /// Returns the net stack effect of a single expression opcode.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::as_conversions
-)]
+///
+/// Uses `u8::into()` for safe widening conversion to i16 (infallible), then
+/// computes the net effect. Since push is always 1 and pop is 0..=3, the
+/// result is always in i8 range (-2..=1).
 fn stack_effect(_op: &ExprOp) -> i8 {
-    // pop_count and push_count return small u8 values (max 3).
-    // We know push <= 1 and pop <= 3, so the result is always in i8 range.
-    let pop = pop_count(_op);
-    let push = push_count(_op);
-    // push is always 1, pop is 0..=3, so net is 1..=-2
-    (push as i8).saturating_sub(pop as i8)
+    let pop: i16 = i16::from(pop_count(_op));
+    let push: i16 = i16::from(push_count(_op));
+    // push is always 1, pop is 0..=3, so net is 1..=-2 (always fits in i8).
+    let net = push.saturating_sub(pop);
+    // Convert back to i8: net is in [-2, 1], always fits.
+    match i8::try_from(net) {
+        Ok(value) => value,
+        Err(_) => 0, // unreachable: net is always in i8 range [-2, 1]
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2086,5 +2088,223 @@ mod tests {
     fn gate_11_accepts_single_node_workflow() {
         let parts = make_parts(vec![finish_node(0, 0)], 1);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
+    }
+
+    // =========================================================================
+    // BLACKHAT security regression tests
+    // =========================================================================
+
+    /// BLACKHAT: stack_effect must not use `as` casts (engineering rule).
+    ///
+    /// SEVERITY: MEDIUM (engineering rule violation -- `as` casts can silently
+    /// truncate or wrap, violating the "no `as` casts" rule)
+    /// DESCRIPTION: The `stack_effect` helper previously used `push as i8` and
+    /// `pop as i8` with `#[allow(clippy::as_conversions)]`. This was replaced
+    /// with safe `i16::from()` widening conversion and `i8::try_from()`.
+    /// This test verifies the function produces correct values for all op
+    /// categories: load (net +1), unary (net 0), binary (net -1), ternary
+    /// (net -2).
+    #[test]
+    fn blackhat_stack_effect_no_as_casts_correct_values() {
+        // LoadSlot: pop 0, push 1 => net +1
+        assert_eq!(stack_effect(&ExprOp::LoadSlot(SlotIdx::new(0))), 1);
+        // LoadConst: pop 0, push 1 => net +1
+        assert_eq!(stack_effect(&ExprOp::LoadConst(ConstIdx::new(0))), 1);
+        // LoadAccessor: pop 0, push 1 => net +1
+        assert_eq!(stack_effect(&ExprOp::LoadAccessor(AccessorIdx::new(0))), 1);
+        // Not: pop 1, push 1 => net 0
+        assert_eq!(stack_effect(&ExprOp::Not), 0);
+        // Exists: pop 1, push 1 => net 0
+        assert_eq!(stack_effect(&ExprOp::Exists), 0);
+        // Length: pop 1, push 1 => net 0
+        assert_eq!(stack_effect(&ExprOp::Length), 0);
+        // Eq: pop 2, push 1 => net -1
+        assert_eq!(stack_effect(&ExprOp::Eq), -1);
+        // Add: pop 2, push 1 => net -1
+        assert_eq!(stack_effect(&ExprOp::Add), -1);
+        // AppendIf: pop 3, push 1 => net -2
+        assert_eq!(stack_effect(&ExprOp::AppendIf), -2);
+    }
+
+    /// BLACKHAT: compute_stack_depth correctly detects stack underflow.
+    ///
+    /// SEVERITY: HIGH (could allow malformed expression programs to pass
+    /// validation, leading to runtime stack corruption)
+    /// DESCRIPTION: A binary op on an empty stack should cause underflow
+    /// detection. This verifies that `checked_sub` correctly catches the
+    /// underflow and returns an error instead of wrapping.
+    #[test]
+    fn blackhat_compute_stack_depth_rejects_underflow_from_binary_op() {
+        let ops = vec![ExprOp::Eq];
+        let result = compute_stack_depth(&ops);
+        assert!(
+            matches!(result, Err(ValidationError::ExpressionStackExceeded { .. })),
+            "blackhat: binary op on empty stack must cause stack underflow error"
+        );
+    }
+
+    /// BLACKHAT: compute_stack_depth rejects ternary op (AppendIf) with
+    /// insufficient stack depth.
+    ///
+    /// SEVERITY: HIGH
+    /// DESCRIPTION: AppendIf pops 3 values; with only 1 on the stack, it should
+    /// fail with underflow.
+    #[test]
+    fn blackhat_compute_stack_depth_rejects_append_if_underflow() {
+        let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::AppendIf];
+        let result = compute_stack_depth(&ops);
+        assert!(
+            matches!(result, Err(ValidationError::ExpressionStackExceeded { .. })),
+            "blackhat: AppendIf with only 1 value on stack must cause underflow"
+        );
+    }
+
+    /// BLACKHAT: compute_stack_depth accepts valid expression with max depth.
+    ///
+    /// SEVERITY: INFO (correctness verification)
+    #[test]
+    fn blackhat_compute_stack_depth_accepts_valid_expression() {
+        let ops = vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::LoadSlot(SlotIdx::new(2)),
+            ExprOp::Eq,
+            ExprOp::Not,
+        ];
+        // Stack: 1, 2, 3 -> Eq pops 2 pushes 1 => 2 -> Not pops 1 pushes 1 => 2
+        // Max depth = 3
+        let result = compute_stack_depth(&ops);
+        assert_eq!(result, Ok(3));
+    }
+
+    /// BLACKHAT: Gate 10 rejects Do node with sentinel action_id.
+    ///
+    /// SEVERITY: HIGH (sentinel action_id could bypass action contract
+    /// validation)
+    /// DESCRIPTION: A Do node with action_id set to u16::MAX (sentinel) must
+    /// be rejected by gate 10.
+    #[test]
+    fn blackhat_gate_10_rejects_sentinel_action_id() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(u16::MAX),
+                input: SlotIdx::new(0),
+            },
+        };
+        let mut parts = make_parts(vec![node], 1);
+        parts.constants = Box::new([vb_core::value::ConstValue::Null]);
+        let result = validate_gate_10_node_kind_specific(&parts);
+        assert!(
+            matches!(result, Err(ValidationError::NodeKindConstraintViolation { .. })),
+            "blackhat: sentinel action_id must be rejected"
+        );
+    }
+
+    /// BLACKHAT: Gate 14 detects slot type inconsistency (I64 vs Bool).
+    ///
+    /// SEVERITY: MEDIUM (type inconsistency in slots could cause runtime
+    /// type errors or memory safety issues)
+    /// DESCRIPTION: When two SetConst nodes write incompatible types (I64 vs
+    /// Bool) to the same slot, gate 14 must detect the inconsistency.
+    #[test]
+    fn blackhat_gate_14_rejects_incompatible_const_types() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0), // I64
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(1), // Bool
+                },
+            },
+        ];
+        let mut parts = make_parts(nodes, 1);
+        parts.constants = Box::new([
+            vb_core::value::ConstValue::I64(42),
+            vb_core::value::ConstValue::Bool(true),
+        ]);
+        let result = validate_gate_14_slot_type_consistency(&parts);
+        assert!(
+            matches!(result, Err(ValidationError::SlotTypeInconsistency { slot: 0 })),
+            "blackhat: I64 and Bool writers to same slot must be rejected"
+        );
+    }
+
+    /// BLACKHAT: Gate 15 rejects consecutive non-deterministic nodes.
+    ///
+    /// SEVERITY: HIGH (consecutive non-deterministic nodes could violate
+    /// journal replay determinism)
+    /// DESCRIPTION: Two Do nodes chained together via `next` must be rejected
+    /// by the determinism proof gate.
+    #[test]
+    fn blackhat_gate_15_rejects_consecutive_do_nodes() {
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(2),
+                    input: SlotIdx::new(1),
+                },
+            },
+            finish_node(2, 1),
+        ];
+        let parts = make_parts(nodes, 2);
+        let result = validate_gate_15_determinism_proof(&parts);
+        assert!(
+            matches!(result, Err(ValidationError::NonDeterministicPath { from_node: 0, to_node: 1 })),
+            "blackhat: consecutive Do nodes must be rejected as non-deterministic path"
+        );
+    }
+
+    /// BLACKHAT: Gate 12 rejects orphan action contracts (contract with no Do node).
+    ///
+    /// SEVERITY: MEDIUM (orphan contracts indicate compilation errors or
+    /// potential dead code that could mask security issues)
+    #[test]
+    fn blackhat_gate_12_rejects_orphan_contract() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts(nodes, 1);
+        let contracts = vec![vb_core::action::ActionContract {
+            id: ActionId::new(99),
+            input_schema: Box::new([]),
+            output_schema: None,
+        }];
+        let result = validate_gate_12_action_contract_completeness(&parts, &contracts);
+        assert!(
+            matches!(result, Err(ValidationError::ActionContractOrphan { action_id: 99 })),
+            "blackhat: orphan contract with no Do node must be rejected"
+        );
     }
 }

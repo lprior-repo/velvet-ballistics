@@ -1413,4 +1413,582 @@ mod tests {
         // Output port at right edge: x = 0 + 100 = 100
         assert!((ports[0].x - 100.0).abs() < f64::EPSILON);
     }
+
+    // =====================================================================
+    // Additional comprehensive coverage tests
+    // =====================================================================
+
+    // ---- NodeShape derive tests ----
+
+    #[test]
+    fn node_shape_equality() {
+        assert_eq!(NodeShape::Rectangle, NodeShape::Rectangle);
+        assert_ne!(NodeShape::Rectangle, NodeShape::Diamond);
+        assert_ne!(NodeShape::Hexagon, NodeShape::Pill);
+        assert_ne!(NodeShape::Octagon, NodeShape::Circle);
+        assert_ne!(NodeShape::Arrow, NodeShape::Rectangle);
+    }
+
+    #[test]
+    fn node_shape_debug_format() {
+        let shapes = [
+            NodeShape::Rectangle,
+            NodeShape::Diamond,
+            NodeShape::Hexagon,
+            NodeShape::Pill,
+            NodeShape::Octagon,
+            NodeShape::Circle,
+            NodeShape::Arrow,
+        ];
+        for shape in &shapes {
+            let debug = format!("{shape:?}");
+            assert!(!debug.is_empty(), "NodeShape {:?} debug should not be empty", shape);
+        }
+    }
+
+    #[test]
+    fn node_shape_clone_copy() {
+        let s1 = NodeShape::Diamond;
+        let s2 = s1; // Copy
+        let s3 = s1; // Copy again
+        assert_eq!(s1, s2);
+        assert_eq!(s1, s3);
+    }
+
+    // ---- IconHint derive tests ----
+
+    #[test]
+    fn icon_hint_equality() {
+        assert_eq!(IconHint::None, IconHint::None);
+        assert_ne!(IconHint::Data, IconHint::Action);
+        assert_ne!(IconHint::Branch, IconHint::Loop);
+    }
+
+    #[test]
+    fn icon_hint_all_variants_are_distinct() {
+        let hints = [
+            IconHint::None,
+            IconHint::Data,
+            IconHint::Copy,
+            IconHint::Expression,
+            IconHint::Object,
+            IconHint::List,
+            IconHint::Action,
+            IconHint::Branch,
+            IconHint::Loop,
+            IconHint::Parallel,
+            IconHint::Retry,
+            IconHint::Wait,
+            IconHint::Ask,
+            IconHint::Error,
+            IconHint::Jump,
+            IconHint::Terminal,
+            IconHint::Nop,
+        ];
+        for i in 0..hints.len() {
+            for j in (i.saturating_add(1))..hints.len() {
+                assert_ne!(
+                    hints[i], hints[j],
+                    "IconHint variants at index {i} and {j} should be distinct"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn icon_hint_debug_format() {
+        let debug = format!("{:?}", IconHint::Retry);
+        assert!(debug.contains("Retry"));
+    }
+
+    // ---- NodeCategory derive tests ----
+
+    #[test]
+    fn node_category_all_variants_are_distinct() {
+        let cats = [
+            NodeCategory::Data,
+            NodeCategory::External,
+            NodeCategory::Branch,
+            NodeCategory::Loop,
+            NodeCategory::Parallel,
+            NodeCategory::Suspend,
+            NodeCategory::Error,
+            NodeCategory::Terminal,
+            NodeCategory::Control,
+            NodeCategory::Unknown,
+        ];
+        for i in 0..cats.len() {
+            for j in (i.saturating_add(1))..cats.len() {
+                assert_ne!(
+                    cats[i], cats[j],
+                    "NodeCategory variants at index {i} and {j} should be distinct"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn node_category_debug_format() {
+        let debug = format!("{:?}", NodeCategory::Parallel);
+        assert!(debug.contains("Parallel"));
+    }
+
+    // ---- StepState derive tests ----
+
+    #[test]
+    fn step_state_equality() {
+        assert_eq!(StepState::Running, StepState::Running);
+        assert_ne!(StepState::Running, StepState::Succeeded);
+    }
+
+    #[test]
+    fn step_state_debug_format() {
+        let debug = format!("{:?}", StepState::Asking);
+        assert!(debug.contains("Asking"));
+    }
+
+    #[test]
+    fn step_state_all_variants_color_is_valid() {
+        let states = [
+            StepState::Pending,
+            StepState::Running,
+            StepState::Succeeded,
+            StepState::Failed,
+            StepState::Waiting,
+            StepState::Asking,
+            StepState::Cancelled,
+            StepState::Secret,
+        ];
+        for state in &states {
+            let c = state.color();
+            assert!(
+                c[0] >= 0.0 && c[0] <= 1.0,
+                "step state {:?} red out of range: {}",
+                state, c[0]
+            );
+            assert!(
+                c[1] >= 0.0 && c[1] <= 1.0,
+                "step state {:?} green out of range: {}",
+                state, c[1]
+            );
+            assert!(
+                c[2] >= 0.0 && c[2] <= 1.0,
+                "step state {:?} blue out of range: {}",
+                state, c[2]
+            );
+            assert!(
+                c[3] > 0.0 && c[3] <= 1.0,
+                "step state {:?} alpha out of range: {}",
+                state, c[3]
+            );
+        }
+    }
+
+    // ---- Badge derive tests ----
+
+    #[test]
+    fn badge_equality() {
+        let b1 = Badge {
+            label: String::from("A1"),
+            color: theme::colors::NEON_ORANGE,
+        };
+        let b2 = Badge {
+            label: String::from("A1"),
+            color: theme::colors::NEON_ORANGE,
+        };
+        assert_eq!(b1, b2);
+    }
+
+    #[test]
+    fn badge_inequality_different_label() {
+        let b1 = Badge {
+            label: String::from("A1"),
+            color: theme::colors::NEON_ORANGE,
+        };
+        let b2 = Badge {
+            label: String::from("A2"),
+            color: theme::colors::NEON_ORANGE,
+        };
+        assert_ne!(b1, b2);
+    }
+
+    #[test]
+    fn badge_inequality_different_color() {
+        let b1 = Badge {
+            label: String::from("A1"),
+            color: theme::colors::NEON_ORANGE,
+        };
+        let b2 = Badge {
+            label: String::from("A1"),
+            color: theme::colors::NEON_CYAN,
+        };
+        assert_ne!(b1, b2);
+    }
+
+    #[test]
+    fn badge_debug_format() {
+        let badge = Badge {
+            label: String::from("T"),
+            color: theme::colors::NEON_RED,
+        };
+        let debug = format!("{badge:?}");
+        assert!(debug.contains("Badge"));
+    }
+
+    #[test]
+    fn badge_clone() {
+        let badge = Badge {
+            label: String::from("R3"),
+            color: theme::colors::NEON_YELLOW,
+        };
+        let cloned = badge.clone();
+        assert_eq!(badge, cloned);
+    }
+
+    // ---- PortPosition derive tests ----
+
+    #[test]
+    fn port_position_equality() {
+        let p1 = PortPosition {
+            id: pid("in0"),
+            x: 10.0,
+            y: 20.0,
+            is_input: true,
+            is_output: false,
+        };
+        let p2 = PortPosition {
+            id: pid("in0"),
+            x: 10.0,
+            y: 20.0,
+            is_input: true,
+            is_output: false,
+        };
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn port_position_inequality() {
+        let p1 = PortPosition {
+            id: pid("in0"),
+            x: 10.0,
+            y: 20.0,
+            is_input: true,
+            is_output: false,
+        };
+        let p2 = PortPosition {
+            id: pid("out0"),
+            x: 10.0,
+            y: 20.0,
+            is_input: false,
+            is_output: true,
+        };
+        assert_ne!(p1, p2);
+    }
+
+    #[test]
+    fn port_position_debug_format() {
+        let pp = PortPosition {
+            id: pid("test"),
+            x: 1.0,
+            y: 2.0,
+            is_input: true,
+            is_output: false,
+        };
+        let debug = format!("{pp:?}");
+        assert!(debug.contains("PortPosition"));
+    }
+
+    // ---- NodeRenderData derive tests ----
+
+    #[test]
+    fn node_render_data_equality_same() {
+        let node = make_node("n1", "Do");
+        let d1 = NodeRenderer::new().render(&node);
+        let d2 = NodeRenderer::new().render(&node);
+        assert_eq!(d1, d2);
+    }
+
+    #[test]
+    fn node_render_data_debug_format() {
+        let node = make_node("n1", "Do");
+        let data = NodeRenderer::new().render(&node);
+        let debug = format!("{data:?}");
+        assert!(debug.contains("NodeRenderData"));
+    }
+
+    #[test]
+    fn node_render_data_clone() {
+        let node = make_node("n1", "Do");
+        let data = NodeRenderer::new().render(&node);
+        let cloned = data.clone();
+        assert_eq!(data, cloned);
+    }
+
+    // ---- refine_shape_for_kind tests ----
+
+    #[test]
+    fn refine_shape_jump_is_arrow() {
+        assert_eq!(
+            NodeRenderer::refine_shape_for_kind(NodeShape::Rectangle, "Jump"),
+            NodeShape::Arrow
+        );
+    }
+
+    #[test]
+    fn refine_shape_jump_lowercase_is_arrow() {
+        assert_eq!(
+            NodeRenderer::refine_shape_for_kind(NodeShape::Rectangle, "jump"),
+            NodeShape::Arrow
+        );
+    }
+
+    #[test]
+    fn refine_shape_non_jump_preserves_shape() {
+        assert_eq!(
+            NodeRenderer::refine_shape_for_kind(NodeShape::Diamond, "Choose"),
+            NodeShape::Diamond
+        );
+    }
+
+    #[test]
+    fn refine_shape_nop_preserves_rectangle() {
+        assert_eq!(
+            NodeRenderer::refine_shape_for_kind(NodeShape::Rectangle, "Nop"),
+            NodeShape::Rectangle
+        );
+    }
+
+    #[test]
+    fn refine_shape_unknown_preserves_shape() {
+        assert_eq!(
+            NodeRenderer::refine_shape_for_kind(NodeShape::Hexagon, "Something"),
+            NodeShape::Hexagon
+        );
+    }
+
+    // ---- classify_kind additional lowercase and variant tests ----
+
+    #[test]
+    fn classify_all_lowercase_variants() {
+        assert_eq!(classify_kind("set_const"), NodeCategory::Data);
+        assert_eq!(classify_kind("copy"), NodeCategory::Data);
+        assert_eq!(classify_kind("eval_expr"), NodeCategory::Data);
+        assert_eq!(classify_kind("build_object"), NodeCategory::Data);
+        assert_eq!(classify_kind("build_list"), NodeCategory::Data);
+        assert_eq!(classify_kind("data"), NodeCategory::Data);
+        assert_eq!(classify_kind("choose_slot"), NodeCategory::Branch);
+        assert_eq!(classify_kind("branch"), NodeCategory::Branch);
+        assert_eq!(classify_kind("foreach_start"), NodeCategory::Loop);
+        assert_eq!(classify_kind("foreach_next"), NodeCategory::Loop);
+        assert_eq!(classify_kind("foreach_join"), NodeCategory::Loop);
+        assert_eq!(classify_kind("collect_start"), NodeCategory::Loop);
+        assert_eq!(classify_kind("collect_page"), NodeCategory::Loop);
+        assert_eq!(classify_kind("collect_next"), NodeCategory::Loop);
+        assert_eq!(classify_kind("collect_finish"), NodeCategory::Loop);
+        assert_eq!(classify_kind("reduce_start"), NodeCategory::Loop);
+        assert_eq!(classify_kind("reduce_next"), NodeCategory::Loop);
+        assert_eq!(classify_kind("reduce_finish"), NodeCategory::Loop);
+        assert_eq!(classify_kind("loop"), NodeCategory::Loop);
+        assert_eq!(classify_kind("together_start"), NodeCategory::Parallel);
+        assert_eq!(classify_kind("together_branch"), NodeCategory::Parallel);
+        assert_eq!(classify_kind("together_join"), NodeCategory::Parallel);
+        assert_eq!(classify_kind("parallel"), NodeCategory::Parallel);
+        assert_eq!(classify_kind("wait_until"), NodeCategory::Suspend);
+        assert_eq!(classify_kind("wait_event"), NodeCategory::Suspend);
+        assert_eq!(classify_kind("ask_resume"), NodeCategory::Suspend);
+        assert_eq!(classify_kind("suspend"), NodeCategory::Suspend);
+        assert_eq!(classify_kind("wait"), NodeCategory::Suspend);
+        assert_eq!(classify_kind("error_handler"), NodeCategory::Error);
+        assert_eq!(classify_kind("error"), NodeCategory::Error);
+        assert_eq!(classify_kind("retry_check"), NodeCategory::Error);
+        assert_eq!(classify_kind("repeat_start"), NodeCategory::Error);
+        assert_eq!(classify_kind("repeat_attempt"), NodeCategory::Error);
+        assert_eq!(classify_kind("repeat_check"), NodeCategory::Error);
+        assert_eq!(classify_kind("repeat_finish"), NodeCategory::Error);
+        assert_eq!(classify_kind("finish"), NodeCategory::Terminal);
+        assert_eq!(classify_kind("terminal"), NodeCategory::Terminal);
+        assert_eq!(classify_kind("jump"), NodeCategory::Control);
+        assert_eq!(classify_kind("nop"), NodeCategory::Control);
+        assert_eq!(classify_kind("control"), NodeCategory::Control);
+    }
+
+    // ---- extract_action_badge edge cases ----
+
+    #[test]
+    fn action_badge_with_string_action_id_returns_none() {
+        let data_val = serde_json::json!({"action_id": "not_a_number"});
+        let node = make_node_with_data("n1", "Do", data_val);
+        let data = NodeRenderer::new().render(&node);
+        // Only the "S" badge since action_id is not a u64
+        assert_eq!(data.badges.len(), 1);
+        assert_eq!(data.badges[0].label, "S");
+    }
+
+    #[test]
+    fn action_badge_with_zero_action_id() {
+        let data_val = serde_json::json!({"action_id": 0});
+        let node = make_node_with_data("n1", "Do", data_val);
+        let data = NodeRenderer::new().render(&node);
+        assert_eq!(data.badges.len(), 2);
+        assert_eq!(data.badges[0].label, "A0");
+    }
+
+    // ---- extract_retry_badge edge cases ----
+
+    #[test]
+    fn retry_badge_with_string_max_attempts_returns_none() {
+        let data_val = serde_json::json!({"max_attempts": "three"});
+        let node = make_node_with_data("n1", "RepeatStart", data_val);
+        let data = NodeRenderer::new().render(&node);
+        assert!(data.badges.is_empty());
+    }
+
+    #[test]
+    fn retry_badge_with_large_attempts() {
+        let data_val = serde_json::json!({"max_attempts": 999});
+        let node = make_node_with_data("n1", "RepeatStart", data_val);
+        let data = NodeRenderer::new().render(&node);
+        assert_eq!(data.badges[0].label, "R999");
+    }
+
+    // ---- has_timeout edge cases ----
+
+    #[test]
+    fn has_timeout_with_null_timeout_slot() {
+        let data_val = serde_json::json!({"timeout_slot": null});
+        let node = make_node_with_data("n1", "WaitEvent", data_val);
+        let data = NodeRenderer::new().render(&node);
+        assert!(data.badges.is_empty());
+    }
+
+    #[test]
+    fn has_timeout_with_false_has_timeout() {
+        let data_val = serde_json::json!({"has_timeout": false});
+        let node = make_node_with_data("n1", "Ask", data_val);
+        let data = NodeRenderer::new().render(&node);
+        assert!(data.badges.is_empty());
+    }
+
+    #[test]
+    fn has_timeout_with_both_fields_set() {
+        let data_val = serde_json::json!({"timeout_slot": "slot_1", "has_timeout": true});
+        let node = make_node_with_data("n1", "WaitUntil", data_val);
+        let data = NodeRenderer::new().render(&node);
+        // Should have exactly one timeout badge (not two)
+        assert_eq!(data.badges.len(), 1);
+        assert_eq!(data.badges[0].label, "T");
+    }
+
+    // ---- Port position: bottom side ----
+
+    #[test]
+    fn port_positions_bottom_side_uses_center_x() {
+        let port = make_port("bot0", PortSide::Bottom, PortRole::Target, 0);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        // Bottom port: x = node.x + node.width / 2 = 100 + 80 = 180
+        assert!((ports[0].x - 180.0).abs() < f64::EPSILON);
+    }
+
+    // ---- Port position: input on right side ----
+
+    #[test]
+    fn port_positions_right_side_input() {
+        let port = make_port("in_r", PortSide::Right, PortRole::Target, 0);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        // PortSide::Right overrides: x = node.x + node.width = 260
+        assert!((ports[0].x - 260.0).abs() < f64::EPSILON);
+        assert!(ports[0].is_input);
+        assert!(!ports[0].is_output);
+    }
+
+    // ---- Dimension constants are positive ----
+
+    #[test]
+    fn all_dimension_constants_are_positive() {
+        assert!(DEFAULT_WIDTH > 0.0);
+        assert!(DEFAULT_HEIGHT > 0.0);
+        assert!(DIAMOND_WIDTH > 0.0);
+        assert!(DIAMOND_HEIGHT > 0.0);
+        assert!(HEXAGON_WIDTH > 0.0);
+        assert!(HEXAGON_HEIGHT > 0.0);
+        assert!(PILL_WIDTH > 0.0);
+        assert!(PILL_HEIGHT > 0.0);
+        assert!(CIRCLE_SIZE > 0.0);
+        assert!(OCTAGON_WIDTH > 0.0);
+        assert!(OCTAGON_HEIGHT > 0.0);
+        assert!(ARROW_WIDTH > 0.0);
+        assert!(ARROW_HEIGHT > 0.0);
+    }
+
+    // ---- NodeRenderer with_state ----
+
+    #[test]
+    fn renderer_with_state_debug() {
+        let renderer = NodeRenderer::with_state(StepState::Running);
+        let debug = format!("{renderer:?}");
+        assert!(debug.contains("NodeRenderer"));
+    }
+
+    #[test]
+    fn renderer_clone() {
+        let renderer = NodeRenderer::with_state(StepState::Waiting);
+        let cloned = renderer.clone();
+        assert_eq!(cloned.state, Some(StepState::Waiting));
+    }
+
+    // ---- All category colors: body is always CARD_BG ----
+
+    #[test]
+    fn all_category_body_colors_are_card_bg() {
+        let categories = [
+            NodeCategory::Data,
+            NodeCategory::External,
+            NodeCategory::Branch,
+            NodeCategory::Loop,
+            NodeCategory::Parallel,
+            NodeCategory::Suspend,
+            NodeCategory::Error,
+            NodeCategory::Terminal,
+            NodeCategory::Control,
+            NodeCategory::Unknown,
+        ];
+        for cat in &categories {
+            let (_, body, _, _) = NodeRenderer::resolve_colors(cat);
+            assert_eq!(
+                body,
+                theme::colors::CARD_BG,
+                "body color for {cat:?} should be CARD_BG"
+            );
+        }
+    }
+
+    // ---- All category colors: text is primary except control and data ----
+
+    #[test]
+    fn control_category_text_is_dim() {
+        let (_, _, _, txt) = NodeRenderer::resolve_colors(&NodeCategory::Control);
+        assert_eq!(txt, theme::colors::TEXT_DIM);
+    }
+
+    // ---- NodeRenderer render respects node size for port positions ----
+
+    #[test]
+    fn port_positions_respects_custom_node_size() {
+        let port = make_port("out0", PortSide::Right, PortRole::Source, 0);
+        let mut node = make_node_with_ports("n1", "Do", vec![port]);
+        node.size = [300.0, 100.0];
+        let ports = NodeRenderer::port_positions(&node);
+        // Right edge: 100 + 300 = 400
+        assert!((ports[0].x - 400.0).abs() < f64::EPSILON);
+    }
+
+    // ---- Arrow dimensions test ----
+
+    #[test]
+    fn arrow_width_and_height_positive() {
+        assert!(ARROW_WIDTH > 0.0);
+        assert!(ARROW_HEIGHT > 0.0);
+    }
 }

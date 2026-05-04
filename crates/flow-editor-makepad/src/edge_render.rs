@@ -1036,4 +1036,349 @@ mod tests {
         let results = renderer.render_edges(&graph, Duration::ZERO);
         assert!(results[0].arrow_head.is_none());
     }
+
+    // =====================================================================
+    // Additional comprehensive coverage tests
+    // =====================================================================
+
+    // ---- EdgeDashStyle derive tests ----
+
+    #[test]
+    fn edge_dash_style_equality() {
+        assert_eq!(EdgeDashStyle::Solid, EdgeDashStyle::Solid);
+        assert_eq!(EdgeDashStyle::Dashed, EdgeDashStyle::Dashed);
+        assert_eq!(EdgeDashStyle::Dotted, EdgeDashStyle::Dotted);
+        assert_ne!(EdgeDashStyle::Solid, EdgeDashStyle::Dashed);
+        assert_ne!(EdgeDashStyle::Dashed, EdgeDashStyle::Dotted);
+    }
+
+    #[test]
+    fn edge_dash_style_debug_format() {
+        let debug = format!("{:?}", EdgeDashStyle::Dotted);
+        assert!(debug.contains("Dotted"));
+    }
+
+    #[test]
+    fn edge_dash_style_clone_copy() {
+        let s1 = EdgeDashStyle::Dashed;
+        let s2 = s1; // Copy
+        assert_eq!(s1, s2);
+    }
+
+    // ---- EdgeVisualStyle derive tests ----
+
+    #[test]
+    fn edge_visual_style_debug_format() {
+        let style = EdgeVisualStyle {
+            color: theme::colors::NEON_CYAN,
+            width: 2.0,
+            dash: EdgeDashStyle::Solid,
+            animated: false,
+            marker: EdgeMarker::Arrow,
+        };
+        let debug = format!("{style:?}");
+        assert!(debug.contains("EdgeVisualStyle"));
+    }
+
+    #[test]
+    fn edge_visual_style_clone() {
+        let style = EdgeVisualStyle {
+            color: theme::colors::NEON_CYAN,
+            width: 3.0,
+            dash: EdgeDashStyle::Dashed,
+            animated: true,
+            marker: EdgeMarker::ArrowFilled,
+        };
+        let cloned = style.clone();
+        let diff_width = (cloned.width - style.width).abs();
+        assert!(diff_width < f32::EPSILON);
+        assert_eq!(cloned.dash, style.dash);
+        assert_eq!(cloned.animated, style.animated);
+    }
+
+    // ---- EdgeRenderData derive tests ----
+
+    #[test]
+    fn edge_render_data_debug_format() {
+        let mut graph = build_two_node_graph();
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let renderer = EdgeRenderer::new();
+        let results = renderer.render_edges(&graph, Duration::ZERO);
+        let debug = format!("{:?}", results[0]);
+        assert!(debug.contains("EdgeRenderData"));
+    }
+
+    #[test]
+    fn edge_render_data_clone() {
+        let mut graph = build_two_node_graph();
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let renderer = EdgeRenderer::new();
+        let results = renderer.render_edges(&graph, Duration::ZERO);
+        let cloned = results[0].clone();
+        assert_eq!(cloned.edge_id, results[0].edge_id);
+    }
+
+    // ---- ARROW_HEAD_SIZE constant ----
+
+    #[test]
+    fn arrow_head_size_is_positive() {
+        assert!(ARROW_HEAD_SIZE > 0.0);
+    }
+
+    #[test]
+    fn arrow_head_size_is_reasonable() {
+        // Should be larger than particle size but smaller than a typical node
+        assert!(ARROW_HEAD_SIZE > draw::edge::PARTICLE_SIZE);
+        assert!(ARROW_HEAD_SIZE < draw::node::MIN_WIDTH);
+    }
+
+    // ---- Point derive tests ----
+
+    #[test]
+    fn point_clone_copy() {
+        let p1 = Point::new(5.0, 10.0);
+        let p2 = p1; // Copy
+        let p3 = p1; // Copy again
+        assert_eq!(p2, p3);
+    }
+
+    // ---- CubicBezier derive tests ----
+
+    #[test]
+    fn cubic_bezier_clone_copy() {
+        let c1 = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(1.0, 2.0),
+            Point::new(3.0, 4.0),
+            Point::new(5.0, 6.0),
+        );
+        let c2 = c1; // Copy
+        assert_eq!(c1, c2);
+    }
+
+    #[test]
+    fn cubic_bezier_debug_format() {
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(1.0, 1.0),
+            Point::new(2.0, 2.0),
+            Point::new(3.0, 3.0),
+        );
+        let debug = format!("{curve:?}");
+        assert!(debug.contains("CubicBezier"));
+    }
+
+    // ---- ArrowHead derive tests ----
+
+    #[test]
+    fn arrow_head_equality() {
+        let ah1 = ArrowHead {
+            tip: Point::new(10.0, 20.0),
+            left: Point::new(5.0, 25.0),
+            right: Point::new(5.0, 15.0),
+        };
+        let ah2 = ArrowHead {
+            tip: Point::new(10.0, 20.0),
+            left: Point::new(5.0, 25.0),
+            right: Point::new(5.0, 15.0),
+        };
+        assert_eq!(ah1, ah2);
+    }
+
+    #[test]
+    fn arrow_head_inequality() {
+        let ah1 = ArrowHead {
+            tip: Point::new(10.0, 20.0),
+            left: Point::new(5.0, 25.0),
+            right: Point::new(5.0, 15.0),
+        };
+        let ah2 = ArrowHead {
+            tip: Point::new(11.0, 20.0),
+            left: Point::new(5.0, 25.0),
+            right: Point::new(5.0, 15.0),
+        };
+        assert_ne!(ah1, ah2);
+    }
+
+    #[test]
+    fn arrow_head_debug_format() {
+        let ah = ArrowHead {
+            tip: Point::new(10.0, 20.0),
+            left: Point::new(5.0, 25.0),
+            right: Point::new(5.0, 15.0),
+        };
+        let debug = format!("{ah:?}");
+        assert!(debug.contains("ArrowHead"));
+    }
+
+    // ---- Arrow head with diagonal tangent ----
+
+    #[test]
+    fn arrow_head_diagonal_tangent() {
+        let tip = Point::new(100.0, 100.0);
+        let tangent = Point::new(1.0, 1.0);
+        let arrow = ArrowHead::from_tangent(tip, tangent, 10.0).unwrap();
+        assert_eq!(arrow.tip, tip);
+        // Both left and right should be behind the tip (closer to origin)
+        assert!(arrow.left.x < tip.x || arrow.left.y < tip.y);
+        assert!(arrow.right.x < tip.x || arrow.right.y < tip.y);
+    }
+
+    // ---- Arrow head with negative coordinates ----
+
+    #[test]
+    fn arrow_head_negative_coordinates() {
+        let tip = Point::new(-50.0, -50.0);
+        let tangent = Point::new(1.0, 0.0);
+        let arrow = ArrowHead::from_tangent(tip, tangent, 10.0).unwrap();
+        assert_eq!(arrow.tip, tip);
+        // Base center is behind the tip (tip - direction*size), so left/right.x < tip.x.
+        assert!(arrow.left.x < tip.x);
+        assert!(arrow.right.x < tip.x);
+    }
+
+    // ---- EdgeRenderer custom configuration ----
+
+    #[test]
+    fn renderer_custom_arrow_size() {
+        let mut renderer = EdgeRenderer::new();
+        renderer.arrow_size = 20.0;
+        let mut graph = build_two_node_graph();
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let results = renderer.render_edges(&graph, Duration::ZERO);
+        // Arrow should be computed with the custom size (20.0)
+        let arrow = results[0].arrow_head.unwrap();
+        // Distance from tip to base center should be proportional to size
+        let dist = arrow.tip.distance_to(
+            Point::new(
+                (arrow.left.x + arrow.right.x) / 2.0,
+                (arrow.left.y + arrow.right.y) / 2.0,
+            ),
+        );
+        assert!((dist - 20.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn renderer_custom_particle_count() {
+        let mut renderer = EdgeRenderer::new();
+        renderer.particle_count = 7;
+        let mut graph = build_two_node_graph();
+        graph.edges.insert(eid("e1"), make_animated_edge("e1", "a", "b"));
+        let results = renderer.render_edges(&graph, Duration::from_millis(100));
+        assert_eq!(results[0].particles.len(), 7);
+    }
+
+    // ---- resolve_edge_style with dashed ----
+
+    #[test]
+    fn resolve_style_dashed_edge() {
+        let mut style = EdgeStyle::default();
+        style.line_style = LineStyle::Dashed;
+        let edge = make_edge_with_style("e1", "a", "b", style);
+        let resolved = resolve_edge_style(&edge);
+        assert_eq!(resolved.dash, EdgeDashStyle::Dashed);
+        assert_eq!(resolved.color, theme::colors::STATE_FAILED);
+    }
+
+    // ---- resolve_edge_style with dotted ----
+
+    #[test]
+    fn resolve_style_dotted_edge() {
+        let mut style = EdgeStyle::default();
+        style.line_style = LineStyle::Dotted;
+        let edge = make_edge_with_style("e1", "a", "b", style);
+        let resolved = resolve_edge_style(&edge);
+        assert_eq!(resolved.dash, EdgeDashStyle::Dotted);
+        assert_eq!(resolved.color, theme::colors::STATE_ASKING);
+    }
+
+    // ---- Particle debug format ----
+
+    #[test]
+    fn particle_debug_format() {
+        let particle = Particle {
+            t: 0.5,
+            position: Point::new(50.0, 50.0),
+        };
+        let debug = format!("{particle:?}");
+        assert!(debug.contains("Particle"));
+    }
+
+    // ---- Particle clone ----
+
+    #[test]
+    fn particle_clone() {
+        let particle = Particle {
+            t: 0.3,
+            position: Point::new(10.0, 20.0),
+        };
+        let cloned = particle.clone();
+        let diff_t = (cloned.t - particle.t).abs();
+        assert!(diff_t < f64::EPSILON);
+        assert_eq!(cloned.position, particle.position);
+    }
+
+    // ---- Bezier tangent at end ----
+
+    #[test]
+    fn bezier_tangent_at_one_is_final_direction() {
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 0.0),
+            Point::new(300.0, 0.0),
+        );
+        let tan = curve.tangent(1.0);
+        // Tangent at t=1 is 3*(p3 - p2) = (900, 0)
+        assert!((tan.x - 900.0).abs() < 1e-10);
+        assert!(tan.y.abs() < 1e-10);
+    }
+
+    // ---- Bezier arc_length with many segments ----
+
+    #[test]
+    fn bezier_arc_length_converges() {
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 100.0),
+            Point::new(50.0, -100.0),
+            Point::new(100.0, 0.0),
+        );
+        let len_16 = curve.arc_length(16);
+        let len_64 = curve.arc_length(64);
+        let len_256 = curve.arc_length(256);
+        // More samples should give more accurate (and converging) results
+        assert!(len_64 > 0.0);
+        assert!(len_256 > 0.0);
+        // Higher resolution should be close to lower resolution
+        let diff = (len_256 - len_64).abs();
+        assert!(diff < (len_64 * 0.1), "arc length should converge: diff={diff}");
+    }
+
+    // ---- compute_port_world_pos with default port order ----
+
+    #[test]
+    fn port_world_pos_missing_port_uses_order_zero() {
+        let node = make_node_at("n", 0.0, 0.0);
+        // "nonexistent" port is not in the node's port list, so order defaults to 0
+        let pos = compute_port_world_pos(&node, &pid("nonexistent"), true);
+        // Should use order=0, so y should be header + padding + port_height/2
+        let expected_y = 32.0 + 12.0 + 10.0;
+        assert!((pos.y - expected_y).abs() < 1e-10);
+    }
+
+    // ---- Control points for backward edge (source right of target) ----
+
+    #[test]
+    fn control_points_backward_edge() {
+        let src = Point::new(200.0, 50.0);
+        let tgt = Point::new(0.0, 50.0);
+        let curve = compute_control_points(src, tgt);
+        assert_eq!(curve.p0, src);
+        assert_eq!(curve.p3, tgt);
+        // CP1 exits horizontally from source
+        assert!((curve.p1.y - src.y).abs() < 1e-10);
+        // CP2 enters horizontally to target
+        assert!((curve.p2.y - tgt.y).abs() < 1e-10);
+    }
 }
