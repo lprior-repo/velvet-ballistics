@@ -308,6 +308,174 @@ impl LaneSegmentBuilder {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Activity heatmap -- time-bucketed activity grid
+// ---------------------------------------------------------------------------
+
+/// Time-bucketed activity grid for visualising event density over time.
+///
+/// Each bucket covers a fixed duration (`bucket_duration_ms` milliseconds).
+/// Events are recorded via [`ActivityHeatmap::record_event`] and the correct
+/// bucket is incremented using saturating arithmetic. The cached
+/// [`max_bucket`](ActivityHeatmap::max_bucket) field enables efficient
+/// normalisation via [`ActivityHeatmap::intensity`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivityHeatmap {
+    /// Activity count per time bucket.
+    buckets: Box<[u32]>,
+    /// Number of buckets in this heatmap.
+    bucket_count: u32,
+    /// Duration covered by each bucket, in milliseconds.
+    bucket_duration_ms: u32,
+    /// Cached maximum value across all buckets (for normalisation).
+    max_bucket: u32,
+}
+
+impl ActivityHeatmap {
+    /// Create a new heatmap with the given bucket count and per-bucket duration.
+    ///
+    /// Returns `None` if `bucket_count` is zero or `bucket_duration_ms` is zero.
+    #[must_use]
+    pub fn new(bucket_count: u32, bucket_duration_ms: u32) -> Option<Self> {
+        if bucket_count == 0 || bucket_duration_ms == 0 {
+            return None;
+        }
+        let count = match usize::try_from(bucket_count) {
+            Ok(c) => c,
+            Err(_) => return None,
+        };
+        let buckets = vec![0u32; count].into_boxed_slice();
+        Some(Self {
+            buckets,
+            bucket_count,
+            bucket_duration_ms,
+            max_bucket: 0,
+        })
+    }
+
+    /// Record an event at the given timestamp (in milliseconds).
+    ///
+    /// The correct bucket is determined by dividing `time_ms` by
+    /// `bucket_duration_ms`, clamped to the valid bucket range. The bucket's
+    /// count is incremented using saturating add, and `max_bucket` is updated
+    /// if necessary.
+    pub fn record_event(&mut self, time_ms: u64) {
+        let total_duration_ms =
+            u64::from(self.bucket_count).saturating_mul(u64::from(self.bucket_duration_ms));
+        let time_clamped = if time_ms >= total_duration_ms {
+            total_duration_ms.saturating_sub(1)
+        } else {
+            time_ms
+        };
+        let duration = u64::from(self.bucket_duration_ms);
+        let Some(bucket_idx) = time_clamped.checked_div(duration) else {
+            return;
+        };
+        let idx = match usize::try_from(bucket_idx) {
+            Ok(i) if i < self.buckets.len() => i,
+            _ => return,
+        };
+        let Some(count) = self.buckets.get_mut(idx) else {
+            return;
+        };
+        *count = count.saturating_add(1);
+        if *count > self.max_bucket {
+            self.max_bucket = *count;
+        }
+    }
+
+    /// Return the normalised intensity (0.0 -- 1.0) for the given bucket index.
+    ///
+    /// Returns 0.0 if the bucket index is out of range or if `max_bucket` is
+    /// zero (no events recorded).
+    #[must_use]
+    pub fn intensity(&self, bucket: u32) -> f32 {
+        let idx = match usize::try_from(bucket) {
+            Ok(i) if i < self.buckets.len() => i,
+            _ => return 0.0,
+        };
+        let Some(&count) = self.buckets.get(idx) else {
+            return 0.0;
+        };
+        if self.max_bucket == 0 {
+            return 0.0;
+        }
+        f64_to_f32(f64::from(count) / f64::from(self.max_bucket))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Lane health classification
+// ---------------------------------------------------------------------------
+
+/// Health classification for a shard lane, derived from throughput, latency,
+/// and failure counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LaneHealth {
+    /// Lane is healthy: good throughput, low latency, no failures.
+    Green,
+    /// Lane is degraded: low throughput or elevated latency.
+    Yellow,
+    /// Lane is critical: failures combined with poor throughput or high latency.
+    Red,
+}
+
+// ---------------------------------------------------------------------------
+// Shard lane summary -- aggregated per-shard statistics
+// ---------------------------------------------------------------------------
+
+/// Aggregated per-shard statistics used for health reporting.
+///
+/// Combines active, waiting, and failed run counts with throughput and latency
+/// metrics to produce a [`LaneHealth`] classification.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShardLaneSummary {
+    /// Number of currently active runs.
+    pub active_runs: u32,
+    /// Number of runs waiting to be scheduled.
+    pub waiting_runs: u32,
+    /// Number of runs that have failed.
+    pub failed_runs: u32,
+    /// Throughput in operations per second.
+    pub throughput_per_sec: f32,
+    /// Average latency in milliseconds.
+    pub avg_latency_ms: u64,
+}
+
+impl ShardLaneSummary {
+    /// Create a summary with all fields set to zero.
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            active_runs: 0,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 0.0,
+            avg_latency_ms: 0,
+        }
+    }
+
+    /// Classify the lane's health based on its current statistics.
+    ///
+    /// - **Red**: `failed_runs > 0` AND (`throughput_per_sec <= 1.0` OR
+    ///   `avg_latency_ms > 2000`).
+    /// - **Yellow**: `throughput_per_sec <= 10.0` with `active_runs > 0`, OR
+    ///   `avg_latency_ms > 500`.
+    /// - **Green**: everything else.
+    #[must_use]
+    pub fn health(&self) -> LaneHealth {
+        if self.failed_runs > 0
+            && (self.throughput_per_sec <= 1.0 || self.avg_latency_ms > 2000)
+        {
+            return LaneHealth::Red;
+        }
+        if (self.throughput_per_sec <= 10.0 && self.active_runs > 0) || self.avg_latency_ms > 500 {
+            return LaneHealth::Yellow;
+        }
+        LaneHealth::Green
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1908,5 +2076,348 @@ mod tests {
         };
         let debug = format!("{seg:?}");
         assert!(debug.contains("run_id") || debug.contains("42"));
+    }
+
+    // =========================================================================
+    // ActivityHeatmap tests
+    // =========================================================================
+
+    #[test]
+    fn heatmap_new_returns_none_for_zero_bucket_count() {
+        assert!(ActivityHeatmap::new(0, 100).is_none());
+    }
+
+    #[test]
+    fn heatmap_new_returns_none_for_zero_bucket_duration() {
+        assert!(ActivityHeatmap::new(10, 0).is_none());
+    }
+
+    #[test]
+    fn heatmap_new_returns_none_for_both_zero() {
+        assert!(ActivityHeatmap::new(0, 0).is_none());
+    }
+
+    #[test]
+    fn heatmap_new_succeeds_with_valid_args() {
+        let hm = ActivityHeatmap::new(5, 1000);
+        assert!(hm.is_some());
+        let hm = hm.expect("valid heatmap");
+        assert_eq!(hm.bucket_count, 5);
+        assert_eq!(hm.bucket_duration_ms, 1000);
+        assert_eq!(hm.max_bucket, 0);
+    }
+
+    #[test]
+    fn heatmap_record_event_increments_correct_bucket() {
+        let mut hm = ActivityHeatmap::new(4, 100).expect("valid");
+        hm.record_event(50);
+        assert_eq!(hm.max_bucket, 1);
+        assert!((hm.intensity(0) - 1.0).abs() < 0.001);
+        assert!(hm.intensity(1).abs() < 0.001);
+        assert!(hm.intensity(2).abs() < 0.001);
+        assert!(hm.intensity(3).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_record_event_multiple_in_same_bucket() {
+        let mut hm = ActivityHeatmap::new(3, 100).expect("valid");
+        hm.record_event(10);
+        hm.record_event(20);
+        hm.record_event(30);
+        assert_eq!(hm.max_bucket, 3);
+        assert!((hm.intensity(0) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_record_event_across_multiple_buckets() {
+        let mut hm = ActivityHeatmap::new(4, 100).expect("valid");
+        hm.record_event(50);
+        hm.record_event(150);
+        hm.record_event(250);
+        hm.record_event(350);
+        assert_eq!(hm.max_bucket, 1);
+        for i in 0..4u32 {
+            assert!(
+                (hm.intensity(i) - 1.0).abs() < 0.001,
+                "bucket {} should have intensity 1.0",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn heatmap_intensity_zero_when_no_events() {
+        let hm = ActivityHeatmap::new(5, 100).expect("valid");
+        assert!(hm.intensity(0).abs() < 0.001);
+        assert!(hm.intensity(4).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_intensity_zero_for_out_of_range_bucket() {
+        let mut hm = ActivityHeatmap::new(3, 100).expect("valid");
+        hm.record_event(50);
+        assert!(hm.intensity(100).abs() < 0.001);
+        assert!(hm.intensity(u32::MAX).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_normalisation_with_uneven_distribution() {
+        let mut hm = ActivityHeatmap::new(3, 100).expect("valid");
+        for _ in 0..5 {
+            hm.record_event(10);
+        }
+        hm.record_event(150);
+        assert_eq!(hm.max_bucket, 5);
+        assert!((hm.intensity(0) - 1.0).abs() < 0.001);
+        assert!((hm.intensity(1) - 0.2).abs() < 0.001);
+        assert!(hm.intensity(2).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_record_event_clamps_to_last_bucket() {
+        let mut hm = ActivityHeatmap::new(3, 100).expect("valid");
+        hm.record_event(500);
+        assert_eq!(hm.max_bucket, 1);
+        assert!((hm.intensity(2) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_record_event_at_exact_boundary() {
+        let mut hm = ActivityHeatmap::new(4, 100).expect("valid");
+        hm.record_event(100);
+        assert_eq!(hm.max_bucket, 1);
+        assert!(hm.intensity(0).abs() < 0.001);
+        assert!((hm.intensity(1) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn heatmap_record_event_saturating_add() {
+        let mut hm = ActivityHeatmap::new(1, 100).expect("valid");
+        hm.buckets = vec![u32::MAX].into_boxed_slice();
+        hm.max_bucket = u32::MAX;
+        hm.record_event(50);
+        assert_eq!(hm.max_bucket, u32::MAX);
+    }
+
+    #[test]
+    fn heatmap_debug_format() {
+        let hm = ActivityHeatmap::new(3, 100).expect("valid");
+        let debug = format!("{hm:?}");
+        assert!(debug.contains("ActivityHeatmap") || debug.contains("buckets"));
+    }
+
+    #[test]
+    fn heatmap_equality() {
+        let a = ActivityHeatmap::new(3, 100);
+        let b = ActivityHeatmap::new(3, 100);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn heatmap_inequality_different_bucket_count() {
+        let a = ActivityHeatmap::new(3, 100);
+        let b = ActivityHeatmap::new(5, 100);
+        assert_ne!(a, b);
+    }
+
+    // =========================================================================
+    // LaneHealth tests
+    // =========================================================================
+
+    #[test]
+    fn lane_health_copy_and_equality() {
+        let green = LaneHealth::Green;
+        let copied = green;
+        assert_eq!(green, copied);
+        assert_ne!(green, LaneHealth::Red);
+    }
+
+    #[test]
+    fn lane_health_debug_format() {
+        assert!(format!("{:?}", LaneHealth::Green).contains("Green"));
+        assert!(format!("{:?}", LaneHealth::Yellow).contains("Yellow"));
+        assert!(format!("{:?}", LaneHealth::Red).contains("Red"));
+    }
+
+    // =========================================================================
+    // ShardLaneSummary tests
+    // =========================================================================
+
+    #[test]
+    fn summary_empty_has_all_zeros() {
+        let s = ShardLaneSummary::empty();
+        assert_eq!(s.active_runs, 0);
+        assert_eq!(s.waiting_runs, 0);
+        assert_eq!(s.failed_runs, 0);
+        assert!(s.throughput_per_sec.abs() < 0.001);
+        assert_eq!(s.avg_latency_ms, 0);
+    }
+
+    #[test]
+    fn summary_health_green_when_healthy() {
+        let s = ShardLaneSummary {
+            active_runs: 10,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 50.0,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Green);
+    }
+
+    #[test]
+    fn summary_health_red_with_failures_and_low_throughput() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 2,
+            failed_runs: 3,
+            throughput_per_sec: 0.5,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Red);
+    }
+
+    #[test]
+    fn summary_health_red_with_failures_and_high_latency() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 0,
+            failed_runs: 1,
+            throughput_per_sec: 50.0,
+            avg_latency_ms: 3000,
+        };
+        assert_eq!(s.health(), LaneHealth::Red);
+    }
+
+    #[test]
+    fn summary_health_not_red_if_failures_but_throughput_ok_and_latency_ok() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 0,
+            failed_runs: 1,
+            throughput_per_sec: 50.0,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Green);
+    }
+
+    #[test]
+    fn summary_health_yellow_with_low_throughput_and_active_runs() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 5.0,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Yellow);
+    }
+
+    #[test]
+    fn summary_health_yellow_with_elevated_latency() {
+        let s = ShardLaneSummary {
+            active_runs: 0,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 100.0,
+            avg_latency_ms: 600,
+        };
+        assert_eq!(s.health(), LaneHealth::Yellow);
+    }
+
+    #[test]
+    fn summary_health_not_yellow_with_zero_active_runs_and_normal_latency() {
+        let s = ShardLaneSummary {
+            active_runs: 0,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 5.0,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Green);
+    }
+
+    #[test]
+    fn summary_health_red_takes_precedence_over_yellow() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 0,
+            failed_runs: 1,
+            throughput_per_sec: 0.5,
+            avg_latency_ms: 3000,
+        };
+        assert_eq!(s.health(), LaneHealth::Red);
+    }
+
+    #[test]
+    fn summary_debug_format() {
+        let s = ShardLaneSummary::empty();
+        let debug = format!("{s:?}");
+        assert!(debug.contains("ShardLaneSummary") || debug.contains("active_runs"));
+    }
+
+    #[test]
+    fn summary_equality() {
+        let a = ShardLaneSummary::empty();
+        let b = ShardLaneSummary::empty();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn summary_inequality() {
+        let a = ShardLaneSummary::empty();
+        let b = ShardLaneSummary {
+            active_runs: 1,
+            ..ShardLaneSummary::empty()
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn summary_health_red_at_exact_throughput_boundary() {
+        let s = ShardLaneSummary {
+            active_runs: 1,
+            waiting_runs: 0,
+            failed_runs: 1,
+            throughput_per_sec: 1.0,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Red);
+    }
+
+    #[test]
+    fn summary_health_yellow_at_exact_latency_boundary() {
+        let s = ShardLaneSummary {
+            active_runs: 5,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 5.0,
+            avg_latency_ms: 500,
+        };
+        assert_eq!(s.health(), LaneHealth::Yellow);
+    }
+
+    #[test]
+    fn summary_health_green_at_throughput_just_above_ten() {
+        let s = ShardLaneSummary {
+            active_runs: 3,
+            waiting_runs: 0,
+            failed_runs: 0,
+            throughput_per_sec: 10.5,
+            avg_latency_ms: 100,
+        };
+        assert_eq!(s.health(), LaneHealth::Green);
+    }
+
+    #[test]
+    fn summary_health_yellow_with_failures_and_moderate_throughput() {
+        let s = ShardLaneSummary {
+            active_runs: 2,
+            waiting_runs: 0,
+            failed_runs: 1,
+            throughput_per_sec: 2.0,
+            avg_latency_ms: 200,
+        };
+        assert_eq!(s.health(), LaneHealth::Yellow);
     }
 }
