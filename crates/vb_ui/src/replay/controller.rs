@@ -4,8 +4,10 @@
 //! state, and provides a `poll()` method that should be called from the
 //! Makepad render loop (e.g. `handle_next_frame`).
 
+use std::collections::HashSet;
 use std::time::Instant;
 
+use vb_core::ids::StepIdx;
 use vb_core::WorkflowDigest;
 use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_ipc::server::IpcResponse;
@@ -390,11 +392,9 @@ impl ReplayController {
             }
         };
 
-        // Convert IPC trace events to journal events.
-        let journal_events: Vec<JournalEvent> = trace_events
-            .into_iter()
-            .filter_map(trace_to_journal)
-            .collect();
+        // Convert IPC trace events to journal events using context-aware
+        // mapping so that StepEnded is not unconditionally treated as success.
+        let journal_events = convert_trace_events(&trace_events);
 
         self.pending_events.extend(journal_events);
 
@@ -456,6 +456,14 @@ pub enum ControllerEvent {
 /// Some fields required by `JournalEvent` are not present in the IPC trace
 /// event and are filled with placeholder defaults. The core state-machine
 /// fields (run, seq, step, slot) are preserved faithfully.
+///
+/// # Known limitation
+///
+/// The IPC trace layer does not distinguish between `StepEnded` (success) and
+/// `StepEnded` (failure). A `StepEnded` event is emitted regardless of outcome.
+/// This function always maps `StepEnded` to `StepSucceeded`. For context-aware
+/// disambiguation, use [`convert_trace_events`] which inspects surrounding
+/// events to suppress spurious `StepSucceeded` for failed steps.
 pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
     let seq = EventSeq::new(trace.sequence);
     match trace.kind {
@@ -514,6 +522,53 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
         IpcTraceEventKind::RunFailed { run } => Some(JournalEvent::RunFailedEvent { run, seq }),
         IpcTraceEventKind::RunCancelled { run } => Some(JournalEvent::RunCancelled { run, seq }),
     }
+}
+
+/// Context-aware conversion from a slice of `IpcTraceEvent`s to `JournalEvent`s.
+///
+/// This function addresses a gap in the IPC trace protocol: the `StepEnded`
+/// event is emitted for both successful and failed step completions. A step is
+/// considered to have failed if an `ActionFailed` event for the same
+/// `(run, step)` pair appears anywhere in the trace stream.
+///
+/// When a failed `StepEnded` is detected, it is suppressed rather than being
+/// incorrectly mapped to `StepSucceeded`. The failure itself is already
+/// faithfully captured by the preceding `ActionFailed` event.
+///
+/// TODO(k1p7): Once `JournalEvent` gains a `StepFailed` variant, failed
+/// `StepEnded` events should map to it instead of being suppressed.
+pub fn convert_trace_events(traces: &[IpcTraceEvent]) -> Vec<JournalEvent> {
+    // Build a set of (run, step) pairs that experienced an action failure.
+    // A StepEnded for one of these pairs indicates the step ended in failure,
+    // not success.
+    let mut failed_steps: HashSet<(RunId, StepIdx)> = HashSet::new();
+    for trace in traces {
+        if let IpcTraceEventKind::ActionFailed { run, step, .. } = &trace.kind {
+            failed_steps.insert((*run, *step));
+        }
+    }
+
+    let mut journal_events = Vec::with_capacity(traces.len());
+    for trace in traces {
+        match &trace.kind {
+            IpcTraceEventKind::StepEnded { run, step, .. }
+                if failed_steps.contains(&(*run, *step)) =>
+            {
+                // The step ended after an action failure. The failure is
+                // already recorded via ActionFailed. Mapping this to
+                // StepSucceeded would be incorrect, so we suppress it.
+                //
+                // When JournalEvent::StepFailed becomes available, emit that
+                // here instead of skipping.
+            }
+            _ => {
+                if let Some(event) = trace_to_journal(trace.clone()) {
+                    journal_events.push(event);
+                }
+            }
+        }
+    }
+    journal_events
 }
 
 #[cfg(test)]
@@ -586,7 +641,7 @@ mod tests {
         assert_eq!(ctrl.current_position(), 0);
     }
 
-    // -- trace_to_journal conversion --
+    // -- trace_to_journal conversion (single-event, no context) --
 
     #[test]
     fn trace_run_submitted_converts_to_run_accepted() {
@@ -620,7 +675,10 @@ mod tests {
     }
 
     #[test]
-    fn trace_step_ended_converts_to_step_succeeded() {
+    fn trace_step_ended_converts_to_step_succeeded_in_isolation() {
+        // When no surrounding context is available, trace_to_journal maps
+        // StepEnded to StepSucceeded. Context-aware disambiguation is handled
+        // by convert_trace_events.
         let trace = IpcTraceEvent {
             sequence: 3,
             kind: IpcTraceEventKind::StepEnded {
@@ -747,6 +805,151 @@ mod tests {
         };
         let journal = trace_to_journal(trace);
         assert!(matches!(journal, Some(JournalEvent::RunCancelled { .. })));
+    }
+
+    // -- convert_trace_events: context-aware StepEnded handling --
+
+    #[test]
+    fn convert_step_ended_succeeds_when_no_action_failed() {
+        // A step that completes without any ActionFailed should produce
+        // StepSucceeded.
+        let traces = vec![
+            IpcTraceEvent {
+                sequence: 0,
+                kind: IpcTraceEventKind::StepStarted {
+                    run: RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 1,
+                kind: IpcTraceEventKind::StepEnded {
+                    run: RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+        ];
+        let journal = convert_trace_events(&traces);
+        assert_eq!(journal.len(), 2);
+        assert!(matches!(journal[0], JournalEvent::StepStarted { .. }));
+        assert!(matches!(journal[1], JournalEvent::StepSucceeded { .. }));
+    }
+
+    #[test]
+    fn convert_step_ended_suppressed_after_action_failed() {
+        // BLACK HAT regression test: StepEnded must NOT be mapped to
+        // StepSucceeded when the step experienced an ActionFailed.
+        use vb_core::action::ActionFailureCode;
+        let run = RunId::new(1);
+        let step = StepIdx::new(0);
+        let traces = vec![
+            IpcTraceEvent {
+                sequence: 0,
+                kind: IpcTraceEventKind::StepStarted { run, step },
+            },
+            IpcTraceEvent {
+                sequence: 1,
+                kind: IpcTraceEventKind::ActionFailed {
+                    run,
+                    step,
+                    code: ActionFailureCode::Timeout,
+                },
+            },
+            IpcTraceEvent {
+                sequence: 2,
+                kind: IpcTraceEventKind::StepEnded { run, step },
+            },
+            IpcTraceEvent {
+                sequence: 3,
+                kind: IpcTraceEventKind::RunFailed { run },
+            },
+        ];
+        let journal = convert_trace_events(&traces);
+
+        // Should have: StepStarted, ActionFailed, RunFailed.
+        // StepEnded must be suppressed (not StepSucceeded).
+        assert_eq!(
+            journal.len(),
+            3,
+            "StepEnded should be suppressed after ActionFailed"
+        );
+        assert!(matches!(journal[0], JournalEvent::StepStarted { .. }));
+        assert!(matches!(journal[1], JournalEvent::ActionFailedEvent { .. }));
+        assert!(matches!(journal[2], JournalEvent::RunFailedEvent { .. }));
+
+        // Verify no StepSucceeded appeared for the failed step.
+        for event in &journal {
+            assert!(
+                !matches!(event, JournalEvent::StepSucceeded { step: s, .. } if *s == step),
+                "StepSucceeded must not appear for a failed step"
+            );
+        }
+    }
+
+    #[test]
+    fn convert_step_ended_only_suppresses_matching_run_step() {
+        // ActionFailed for step 0 should not suppress StepEnded for step 1.
+        use vb_core::action::ActionFailureCode;
+        let run = RunId::new(1);
+        let traces = vec![
+            IpcTraceEvent {
+                sequence: 0,
+                kind: IpcTraceEventKind::StepStarted {
+                    run,
+                    step: StepIdx::new(0),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 1,
+                kind: IpcTraceEventKind::ActionFailed {
+                    run,
+                    step: StepIdx::new(0),
+                    code: ActionFailureCode::Timeout,
+                },
+            },
+            IpcTraceEvent {
+                sequence: 2,
+                kind: IpcTraceEventKind::StepEnded {
+                    run,
+                    step: StepIdx::new(0),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 3,
+                kind: IpcTraceEventKind::StepStarted {
+                    run,
+                    step: StepIdx::new(1),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 4,
+                kind: IpcTraceEventKind::StepEnded {
+                    run,
+                    step: StepIdx::new(1),
+                },
+            },
+        ];
+        let journal = convert_trace_events(&traces);
+
+        // Step 0: StepStarted, ActionFailed (StepEnded suppressed)
+        // Step 1: StepStarted, StepSucceeded
+        assert_eq!(journal.len(), 4);
+        assert!(matches!(
+            journal[0],
+            JournalEvent::StepStarted { step, .. } if step == StepIdx::new(0)
+        ));
+        assert!(matches!(
+            journal[1],
+            JournalEvent::ActionFailedEvent { step, .. } if step == StepIdx::new(0)
+        ));
+        assert!(matches!(
+            journal[2],
+            JournalEvent::StepStarted { step, .. } if step == StepIdx::new(1)
+        ));
+        assert!(matches!(
+            journal[3],
+            JournalEvent::StepSucceeded { step, .. } if step == StepIdx::new(1)
+        ));
     }
 
     // -- Controller with an engine injected directly -------------------------

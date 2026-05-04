@@ -136,38 +136,24 @@ pub struct CatchPolicy {
 mod tests {
     use super::*;
 
-    fn test_ok<T: std::fmt::Debug>(r: Result<T, Box<dyn std::error::Error>>) -> T {
-        match r {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("test error: {e}");
-                // SAFETY: This branch is unreachable because test_ok is only
-                // called with results that are expected to succeed in tests.
-                // The eprintln! above provides the diagnostic output that
-                // a panic! would have produced.
-                unsafe { std::hint::unreachable_unchecked() }
-            }
-        }
-    }
-
     // -- StepMachineMeta --
 
     #[test]
-    fn step_machine_meta_serialization_roundtrip() {
+    fn step_machine_meta_serialization_roundtrip() -> Result<(), serde_json::Error> {
         let meta = StepMachineMeta {
             start_at: SmolStr::from("StartState"),
             comment: Some("test machine".into()),
             timeout_seconds: Some(300),
         };
-        let json = test_ok(serde_json::to_string(&meta));
+        let json = serde_json::to_string(&meta)?;
         assert!(json.contains("StartState"));
         assert!(json.contains("test machine"));
 
-        let back: StepMachineMeta =
-            test_ok(serde_json::from_str(&json));
+        let back: StepMachineMeta = serde_json::from_str(&json)?;
         assert_eq!(back.start_at.as_str(), "StartState");
         assert_eq!(back.comment.as_deref(), Some("test machine"));
         assert_eq!(back.timeout_seconds, Some(300));
+        Ok(())
     }
 
     #[test]

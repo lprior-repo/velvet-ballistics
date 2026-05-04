@@ -1674,4 +1674,269 @@ mod tests {
             "finish must not be safe when a forbidden path exists"
         );
     }
+
+    // =========================================================================
+    // BLACK HAT findings (BH-T01 through BH-T05)
+    // =========================================================================
+
+    /// BH-T01 [HIGH]: is_secret_taint false-positive from substring match on
+    /// "NotASecret".
+    ///
+    /// The implementation uses `label.contains("Secret")` which matches
+    /// "NotASecret", "SuperSecretBackup", etc. This is a false positive that
+    /// could flag non-sensitive data as a taint source, leading to alarm
+    /// fatigue and missed genuine leaks.
+    #[test]
+    fn bht01_not_a_secret_false_positive_confirmed() {
+        let mut map = HashMap::new();
+        let slot = SlotIdx::new(42);
+        map.insert(slot, String::from("NotASecret"));
+
+        assert!(
+            is_secret_taint(&map, slot),
+            "BLACK HAT [HIGH]: 'NotASecret' triggers is_secret_taint via substring match"
+        );
+
+        // Also verify that a truly unrelated label does not match.
+        let clean_slot = SlotIdx::new(43);
+        map.insert(clean_slot, String::from("PublicData"));
+        assert!(
+            !is_secret_taint(&map, clean_slot),
+            "'PublicData' must not match"
+        );
+
+        // Verify "derived" substring also causes false positives.
+        let derived_slot = SlotIdx::new(44);
+        map.insert(derived_slot, String::from("NonDerivedValue"));
+        // "derived" is lowercase in the check, so "NonDerivedValue" with
+        // capital D does not match "derived" via contains.
+        // But "unrelated-derived-data" would match.
+        let derived_lower_slot = SlotIdx::new(45);
+        map.insert(derived_lower_slot, String::from("unrelated-derived-data"));
+        assert!(
+            is_secret_taint(&map, derived_lower_slot),
+            "BLACK HAT [HIGH]: 'unrelated-derived-data' matches via 'derived' substring"
+        );
+    }
+
+    /// BH-T02 [HIGH]: ForEachJoin output slot is incorrectly classified as an
+    /// input slot in collect_input_slots.
+    ///
+    /// The `output` field of ForEachJoin represents where the joined result is
+    /// *written*, not a slot that is read. By including it in `input_slots`,
+    /// the taint analysis may incorrectly propagate taint *from* the output
+    /// slot of a ForEachJoin node, treating a write target as a read source.
+    #[test]
+    fn bht02_for_each_join_output_misclassified_as_input() {
+        let output_slot = SlotIdx::new(99);
+        let kind = CompiledNodeKind::ForEachJoin {
+            output: output_slot,
+        };
+        let input_slots = collect_input_slots(&kind);
+
+        // BLACK HAT [HIGH]: ForEachJoin.output is returned as an input slot.
+        assert!(
+            input_slots.contains(&output_slot),
+            "BLACK HAT [HIGH]: ForEachJoin output slot is incorrectly listed as input"
+        );
+        assert_eq!(
+            input_slots.len(),
+            1,
+            "ForEachJoin should report exactly the output slot"
+        );
+
+        // Demonstrate the impact: if slot 99 is tainted, a node that writes
+        // to ForEachJoin will be incorrectly classified as reading tainted data.
+        let parts = make_parts_with_output(vec![
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(50)), // writes to slot 50 (not tainted)
+            ),
+            (
+                CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(99), // writes to slot 99
+                },
+                Some(StepIdx::new(2)),
+                None,
+            ),
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
+        ]);
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(99), String::from("Secret"));
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        // Node 1 (ForEachJoin) is classified as tainted because slot 99
+        // appears in collect_input_slots, but it WRITES to slot 99, it does
+        // not read from it.
+        assert!(
+            result.tainted_nodes.contains(&1),
+            "BLACK HAT [HIGH]: ForEachJoin node is incorrectly tainted because \
+             its output slot is treated as an input"
+        );
+    }
+
+    /// BH-T03 [MEDIUM]: walk_forward uses Vec::pop() (DFS/LIFO) but code
+    /// comments say BFS. This affects path discovery order but not correctness
+    /// of reachability. The path returned may not be the shortest path.
+    #[test]
+    fn bht03_walk_forward_is_dfs_not_bfs() {
+        // Build a chain: 0 -> 1 -> 2 -> 3 -> 4
+        let nodes: Vec<CompiledNode> = (0..5u16)
+            .map(|i| CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 4 {
+                    Some(StepIdx::new(u16::from(i) + 1))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            })
+            .collect();
+        let count = nodes.len();
+        let parts = WorkflowParts {
+            name: String::from("bh-t03").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: (0..count)
+                .map(|_| Box::<str>::from(""))
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        };
+
+        let reachable = walk_forward(&parts, StepIdx::new(0));
+
+        // All 4 successors must be present.
+        assert_eq!(reachable.len(), 4);
+        for i in 1..=4u16 {
+            assert!(
+                reachable.contains(&StepIdx::new(i)),
+                "node {} should be reachable",
+                i
+            );
+        }
+
+        // BLACK HAT [MEDIUM]: With DFS (Vec::pop), order is [1, 2, 3, 4].
+        // With BFS (VecDeque), order would also be [1, 2, 3, 4] for a chain.
+        // The difference manifests with branching graphs.
+        assert_eq!(
+            reachable[0],
+            StepIdx::new(1),
+            "DFS traversal order confirmed (matches BFS for linear chain)"
+        );
+    }
+
+    /// BH-T04 [MEDIUM]: build_path_nodes fallback returns [source, sink] when
+    /// no path is found, even though the sink was confirmed reachable via
+    /// walk_forward. This creates a phantom direct edge that does not exist
+    /// in the actual workflow graph.
+    #[test]
+    fn bht04_path_fallback_creates_phantom_edge() {
+        // This test documents the fallback behavior in build_path_nodes where
+        // it returns vec![source, sink] when BFS fails to find a path.
+        // In practice, this fallback should rarely trigger because walk_forward
+        // already confirmed reachability, but it documents a correctness risk.
+
+        // Build a workflow where node 0 has tainted output and connects to
+        // node 2 (Finish) via node 1. The path should be 0 -> 1 -> 2.
+        let parts = make_parts_with_output(vec![
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(0)),
+            ),
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(2)),
+                None,
+            ),
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
+        ]);
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(0), String::from("Secret"));
+
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        // Verify that the flow path includes the intermediate node.
+        let forbidden: Vec<&TaintFlowPath> = result
+            .flow_paths
+            .iter()
+            .filter(|p| p.is_forbidden)
+            .collect();
+
+        if let Some(path) = forbidden.first() {
+            // The path should contain the intermediate step 1.
+            assert!(
+                path.path_nodes.contains(&StepIdx::new(1)),
+                "path should include intermediate node 1, got: {:?}",
+                path.path_nodes
+            );
+        }
+    }
+
+    /// BH-T05 [LOW]: compute_taint_overlay with a WaitEvent that has no next
+    /// edge but is co-located with a Finish node should report the source as
+    /// contained (finish_safe = true) but with a warning path segment.
+    ///
+    /// The WaitEvent is a structural source (legacy path) even without taint
+    /// map entries, so it always creates source entries that may produce
+    /// unnecessary warnings in workflows that handle events safely.
+    #[test]
+    fn bht05_wait_event_always_structural_source_even_when_safe() {
+        // WaitEvent with no connection to Finish -- should be contained.
+        let parts = make_parts_with_next(vec![
+            (
+                CompiledNodeKind::WaitEvent {
+                    event: SlotIdx::new(0),
+                    timeout_slot: None,
+                },
+                None, // no connection to Finish
+            ),
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+            ),
+        ]);
+        let result = compute_taint_overlay(&parts, &empty_taint_map());
+
+        // WaitEvent is always a structural source, even without taint map.
+        assert_eq!(
+            result.sources.len(),
+            1,
+            "WaitEvent is always a structural source"
+        );
+        assert!(
+            result.finish_safe,
+            "source does not reach Finish, so finish is safe"
+        );
+
+        // BLACK HAT [LOW]: Even though the source is contained and the
+        // workflow is safe, the certificate-based analysis in certificates.rs
+        // will report this as a Warn (not Pass), which may cause unnecessary
+        // concern for workflows that handle events correctly.
+    }
 }

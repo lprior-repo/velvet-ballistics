@@ -1492,8 +1492,8 @@ mod tests {
     }
 
     #[test]
-    fn check_time_limit_ok_when_not_exceeded() {
-        let now = millis_since_epoch();
+    fn check_time_limit_ok_when_not_exceeded() -> Result<(), EngineError> {
+        let now = millis_since_epoch()?;
         let state = CollectPaginationState {
             run_id: RunId::new(1),
             collector_slot: SlotIdx::new(0),
@@ -1507,6 +1507,7 @@ mod tests {
             start_millis: now,
         };
         assert_eq!(check_time_limit(&state), Ok(()));
+        Ok(())
     }
 
     #[test]

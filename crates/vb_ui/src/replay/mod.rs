@@ -13,7 +13,7 @@ pub mod ticket_panel;
 pub mod timeline;
 pub mod types;
 
-pub use controller::{ControllerEvent, PlaybackState, ReplayController, trace_to_journal};
+pub use controller::{ControllerEvent, PlaybackState, ReplayController, convert_trace_events, trace_to_journal};
 pub use engine::ReplayEngine;
 pub use graph_overlay::{GraphOverlay, NodeOverlay, NodeOverlayState, OverlayBadge, OverlayConfig};
 pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};

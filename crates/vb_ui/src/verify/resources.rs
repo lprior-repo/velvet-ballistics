@@ -1222,4 +1222,267 @@ mod tests {
         assert_eq!(nm.contract_value, 0);
         assert_eq!(nm.status, ResourceStatus::ExceedsLimit);
     }
+
+    // =========================================================================
+    // BLACK HAT findings (BH-R01 through BH-R05)
+    // =========================================================================
+
+    /// BH-R01 [HIGH]: Payload estimation always reports AtLimit for any
+    /// workflow with exactly 1 Do node.
+    ///
+    /// The metric compares `do_node_count * max_ipc_payload_bytes` against
+    /// `max_ipc_payload_bytes`. When do_node_count == 1, computed equals
+    /// the contract limit exactly, producing AtLimit rather than WithinBounds.
+    /// This means a perfectly healthy single-action workflow always shows up
+    /// as "at limit" for payload, which is misleading -- a single payload of
+    /// the contracted size should be WithinBounds.
+    #[test]
+    fn bhr01_single_do_node_payload_always_at_limit() {
+        let contract = ResourceContract {
+            max_ipc_payload_bytes: 1024,
+            ..ResourceContract::DEFAULT
+        };
+        let bounds = ResourceBounds {
+            slot_count: 2,
+            node_count: 2,
+            do_node_count: 1,
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: 3,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+
+        let payload_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_action_payload / max_ipc_payload_bytes");
+        let Some(metric) = payload_metric else { return };
+
+        // BLACK HAT [HIGH]: 1 * 1024 = 1024 == 1024 => AtLimit.
+        // A single Do node with payload at the contracted limit should arguably
+        // be WithinBounds since it's the expected usage pattern.
+        assert_eq!(
+            metric.computed_value, 1024,
+            "computed should be 1 * 1024 = 1024"
+        );
+        assert_eq!(
+            metric.contract_value, 1024,
+            "contract limit is 1024"
+        );
+        assert_eq!(
+            metric.status,
+            ResourceStatus::AtLimit,
+            "BLACK HAT [HIGH]: single Do node payload is always AtLimit, never WithinBounds"
+        );
+
+        // Verify the same for result size metric.
+        let result_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_result_size / max_output_bytes");
+        let Some(result_m) = result_metric else { return };
+        assert_eq!(
+            result_m.status,
+            ResourceStatus::AtLimit,
+            "BLACK HAT [HIGH]: single Do node result size is also always AtLimit"
+        );
+    }
+
+    /// BH-R02 [MEDIUM]: retry_budget overflow via saturating_mul.
+    ///
+    /// With a large number of Do nodes and high max_retry_attempts, the
+    /// retry_budget uses saturating_mul which silently clamps to u32::MAX.
+    /// This means the reported retry budget may undercount the actual budget
+    /// by an unknown amount, and the panel comparison against
+    /// max_step_budget_per_tick may be inaccurate.
+    #[test]
+    fn bhr02_retry_budget_saturation_clamps_silently() {
+        let contract = ResourceContract {
+            max_retry_attempts: 10,
+            max_step_budget_per_tick: u64::MAX,
+            ..ResourceContract::DEFAULT
+        };
+        // Simulate a large do_node_count that would overflow u32.
+        let bounds = ResourceBounds {
+            slot_count: 4,
+            node_count: 100,
+            do_node_count: u32::MAX, // maximally large
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: u32::MAX.saturating_mul(10), // saturates to u32::MAX
+            estimated_peak_frames: 1,
+        };
+
+        // The retry_budget saturates at u32::MAX.
+        assert_eq!(
+            bounds.retry_budget, u32::MAX,
+            "BLACK HAT [MEDIUM]: retry_budget saturates silently at u32::MAX"
+        );
+
+        // The panel comparison still works but the value is not accurate.
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let retry_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "retry_budget");
+        let Some(metric) = retry_metric else { return };
+
+        // The saturated u32::MAX as u64 vs u64::MAX => WithinBounds,
+        // but the real budget would be astronomically larger.
+        assert_eq!(
+            metric.computed_value,
+            u64::from(u32::MAX),
+            "saturated value is u32::MAX as u64"
+        );
+        assert_eq!(
+            metric.contract_value,
+            u64::MAX,
+            "contract allows u64::MAX"
+        );
+        assert_eq!(
+            metric.status,
+            ResourceStatus::WithinBounds,
+            "saturated budget appears within bounds even though real budget is unknown"
+        );
+    }
+
+    /// BH-R03 [MEDIUM]: Peak frames overestimation from additive counting.
+    ///
+    /// The peak_frames calculation adds +1 for each loop/parallel node AND
+    /// separately adds the iteration count from ForEachStart. This
+    /// double-counts because the base +1 for ForEachStart/ForEachNext/
+    /// ForEachJoin already represents the structural presence of those nodes,
+    /// and then the iteration limit is added on top as if all iterations run
+    /// simultaneously in parallel frames. This produces an inflated estimate
+    /// that may cause false resource violations.
+    #[test]
+    fn bhr03_peak_frames_overestimates_with_nested_loops() {
+        // A single ForEachStart with limit=1000 adds:
+        // +1 for ForEachStart, +1 for ForEachNext, +1 for ForEachJoin = +3
+        // +1000 for the iteration limit
+        // = base 1 + 3 + 1000 = 1004
+        // But in reality, only one iteration runs at a time, so peak frames
+        // should be much lower.
+        let parts = make_parts(vec![
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 1000,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::new(2),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(3),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+
+        // BLACK HAT [MEDIUM]: peak_frames = 1 + 3 + 1000 = 1004.
+        // This is an overestimate; real peak frames are much lower.
+        assert_eq!(
+            bounds.estimated_peak_frames, 1004,
+            "BLACK HAT [MEDIUM]: peak_frames overestimates by counting iteration limit as parallel frames"
+        );
+
+        // With a tight queue depth, this overestimate causes a false violation.
+        let contract = ResourceContract {
+            max_queue_depth: 500,
+            ..ResourceContract::DEFAULT
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let peak_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_peak_frames / max_queue_depth");
+        let Some(metric) = peak_metric else { return };
+
+        assert_eq!(
+            metric.status,
+            ResourceStatus::ExceedsLimit,
+            "BLACK HAT [MEDIUM]: overestimated peak_frames causes false resource violation"
+        );
+    }
+
+    /// BH-R04 [LOW]: classify(0, 0) returns AtLimit but zero-vs-zero could
+    /// reasonably be WithinBounds (nothing allocated, nothing allowed).
+    /// This is an edge case where the semantics are debatable.
+    #[test]
+    fn bhr04_zero_vs_zero_classified_as_at_limit() {
+        assert_eq!(
+            classify(0, 0),
+            ResourceStatus::AtLimit,
+            "BLACK HAT [LOW]: zero computed vs zero limit is AtLimit, not WithinBounds"
+        );
+    }
+
+    /// BH-R05 [LOW]: TogetherStart with many branches inflates peak_frames.
+    ///
+    /// A TogetherStart with N branches adds +1 for TogetherStart, +1 for
+    /// TogetherJoin, +1 per TogetherBranch, AND +N for fanout. This is a
+    /// 2N+2 count when the true peak is approximately N+2.
+    #[test]
+    fn bhr05_together_branches_inflate_peak_frames() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([
+                    StepIdx::new(1),
+                    StepIdx::new(2),
+                    StepIdx::new(3),
+                    StepIdx::new(4),
+                    StepIdx::new(5),
+                ]),
+                join: StepIdx::new(6),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(1),
+                join: StepIdx::new(6),
+                accumulator: SlotIdx::new(10),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 1,
+                entry: StepIdx::new(2),
+                join: StepIdx::new(6),
+                accumulator: SlotIdx::new(10),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 2,
+                entry: StepIdx::new(3),
+                join: StepIdx::new(6),
+                accumulator: SlotIdx::new(10),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 3,
+                entry: StepIdx::new(4),
+                join: StepIdx::new(6),
+                accumulator: SlotIdx::new(10),
+            },
+            CompiledNodeKind::TogetherBranch {
+                branch: 4,
+                entry: StepIdx::new(5),
+                join: StepIdx::new(6),
+                accumulator: SlotIdx::new(10),
+            },
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 5,
+                accumulator: SlotIdx::new(10),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+
+        // Base 1 + 1(TogetherStart) + 5(TogetherBranch) + 1(TogetherJoin) = 8
+        // + 5 fanout = 13
+        // True peak should be closer to 5+2 = 7 (branches run in parallel,
+        // plus start and join).
+        assert_eq!(
+            bounds.estimated_peak_frames, 13,
+            "BLACK HAT [LOW]: peak_frames counts branch nodes AND fanout separately, double-counting"
+        );
+    }
 }

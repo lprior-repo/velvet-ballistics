@@ -301,7 +301,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_run_accepted() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_journal_event_run_accepted() -> Result<(), JournalError> {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(42),
             seq: EventSeq::new(0),
@@ -323,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_step_started() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_journal_event_step_started() -> Result<(), JournalError> {
         let event = JournalEvent::StepStarted {
             run: RunId::new(100),
             seq: EventSeq::new(1),
@@ -342,7 +342,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_run_finished() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_journal_event_run_finished() -> Result<(), JournalError> {
         let event = JournalEvent::RunFinished {
             run: RunId::new(7),
             seq: EventSeq::new(99),
@@ -361,9 +361,8 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_slot_written_with_value() -> Result<(), &'static str> {
-        let slot_bytes = postcard::to_allocvec(&vb_core::SlotValue::Bool(true))
-            .map_err(|_| "slot serialization failed")?;
+    fn encode_decode_roundtrip_journal_event_slot_written_with_value() -> Result<(), JournalError> {
+        let slot_bytes = postcard::to_allocvec(&vb_core::SlotValue::Bool(true))?;
         let event = JournalEvent::SlotWrittenEvent {
             run: RunId::new(10),
             seq: EventSeq::new(3),
@@ -383,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_run_cancelled() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_journal_event_run_cancelled() -> Result<(), JournalError> {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(55),
             seq: EventSeq::new(2),
@@ -401,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_journal_event_action_failed() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_journal_event_action_failed() -> Result<(), JournalError> {
         let event = JournalEvent::ActionFailedEvent {
             run: RunId::new(200),
             seq: EventSeq::new(15),
@@ -421,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_workflow_source_record() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_workflow_source_record() -> Result<(), JournalError> {
         let source = b"workflow: test".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let record = WorkflowSourceRecord {
@@ -443,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_compiled_ir_record() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_compiled_ir_record() -> Result<(), JournalError> {
         let ir = b"compiled-ir-bytes".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
         let record = CompiledIrRecord { digest, ir };
@@ -460,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_decode_roundtrip_blob_record() -> Result<(), &'static str> {
+    fn encode_decode_roundtrip_blob_record() -> Result<(), JournalError> {
         let payload = vec![0xDE, 0xAD, 0xBE, 0xEF];
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
         let record = BlobRecord {
@@ -505,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn decode_rejects_wrong_magic() -> Result<(), &'static str> {
+    fn decode_rejects_wrong_magic() -> Result<(), JournalError> {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -519,15 +518,18 @@ mod tests {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
         let result = decode_record::<JournalEvent>(&bytes, MAGIC_BLOB, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-        let Err(JournalError::BadMagic { found }) = result else {
-            return Err("wrong magic must yield BadMagic");
-        };
-        assert_eq!(found, MAGIC_JOURNAL_EVENT);
+        assert!(
+            matches!(result, Err(JournalError::BadMagic { .. })),
+            "wrong magic must yield BadMagic, got {result:?}"
+        );
+        if let Err(JournalError::BadMagic { found }) = result {
+            assert_eq!(found, MAGIC_JOURNAL_EVENT);
+        }
         Ok(())
     }
 
     #[test]
-    fn decode_rejects_corrupted_header_crc() -> Result<(), &'static str> {
+    fn decode_rejects_corrupted_header_crc() -> Result<(), JournalError> {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -554,7 +556,7 @@ mod tests {
     }
 
     #[test]
-    fn decode_rejects_corrupted_payload() -> Result<(), &'static str> {
+    fn decode_rejects_corrupted_payload() -> Result<(), JournalError> {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -581,7 +583,7 @@ mod tests {
     }
 
     #[test]
-    fn decode_rejects_truncated_payload_bytes() -> Result<(), &'static str> {
+    fn decode_rejects_truncated_payload_bytes() -> Result<(), JournalError> {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -611,7 +613,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn encode_rejects_payload_exceeding_max() -> Result<(), &'static str> {
+    fn encode_rejects_payload_exceeding_max() -> Result<(), JournalError> {
         let large_source = vec![0xFF; 200];
         let record = WorkflowSourceRecord {
             digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
@@ -624,16 +626,19 @@ mod tests {
             &record,
             10,
         );
-        let Err(JournalError::PayloadTooLarge { len, max }) = result else {
-            return Err("oversized payload must yield PayloadTooLarge");
-        };
-        assert_eq!(max, 10);
-        assert!(len > 10, "reported length should exceed max");
+        assert!(
+            matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+            "oversized payload must yield PayloadTooLarge, got {result:?}"
+        );
+        if let Err(JournalError::PayloadTooLarge { len, max }) = result {
+            assert_eq!(max, 10);
+            assert!(len > 10, "reported length should exceed max");
+        }
         Ok(())
     }
 
     #[test]
-    fn encode_accepts_payload_at_exact_max_boundary() -> Result<(), &'static str> {
+    fn encode_accepts_payload_at_exact_max_boundary() -> Result<(), JournalError> {
         // Build a tiny serializable payload that fits exactly in a small max
         let event = JournalEvent::RunCancelled {
             run: RunId::new(0),
@@ -666,7 +671,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn header_encode_decode_roundtrip() -> Result<(), &'static str> {
+    fn header_encode_decode_roundtrip() -> Result<(), JournalError> {
         let payload = b"test payload data";
         let header = encode_record_header(
             MAGIC_JOURNAL_EVENT,
@@ -714,7 +719,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn encode_rejects_kind_family_mismatch() -> Result<(), &'static str> {
+    fn encode_rejects_kind_family_mismatch() -> Result<(), JournalError> {
         let record = WorkflowSourceRecord {
             digest: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
             source: vec![1],
@@ -726,11 +731,14 @@ mod tests {
             &record,
             128,
         );
-        let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
-            return Err("kind family mismatch should be rejected");
-        };
-        assert_eq!(magic, MAGIC_JOURNAL_EVENT);
-        assert_eq!(kind, RecordKind::WorkflowSource.id());
+        assert!(
+            matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+            "kind family mismatch should be rejected, got {result:?}"
+        );
+        if let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result {
+            assert_eq!(magic, MAGIC_JOURNAL_EVENT);
+            assert_eq!(kind, RecordKind::WorkflowSource.id());
+        }
         Ok(())
     }
 
@@ -739,7 +747,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn decode_rejects_future_schema_version() -> Result<(), &'static str> {
+    fn decode_rejects_future_schema_version() -> Result<(), JournalError> {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -777,7 +785,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn next_seq_increments_correctly() -> Result<(), &'static str> {
+    fn next_seq_increments_correctly() -> Result<(), JournalError> {
         let seq = EventSeq::new(5);
         let next = next_seq(seq)?;
         assert_eq!(next.get(), 6);
@@ -845,7 +853,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn encoded_output_length_equals_header_plus_payload() -> Result<(), &'static str> {
+    fn encoded_output_length_equals_header_plus_payload() -> Result<(), JournalError> {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
