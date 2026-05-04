@@ -50,3 +50,335 @@ pub mod node_colors {
     pub const TERMINAL: [f32; 4] = colors::NEON_TEAL; // Finish
     pub const CONTROL: [f32; 4] = colors::TEXT_SECONDARY; // Jump/Nop
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- color validity helpers ----
+
+    fn assert_valid_color(c: [f32; 4], name: &str) {
+        assert!(c[0] >= 0.0 && c[0] <= 1.0, "{name} red out of range: {}", c[0]);
+        assert!(c[1] >= 0.0 && c[1] <= 1.0, "{name} green out of range: {}", c[1]);
+        assert!(c[2] >= 0.0 && c[2] <= 1.0, "{name} blue out of range: {}", c[2]);
+        assert!(c[3] >= 0.0 && c[3] <= 1.0, "{name} alpha out of range: {}", c[3]);
+    }
+
+    fn assert_opaque(c: [f32; 4], name: &str) {
+        assert!((c[3] - 1.0).abs() < f32::EPSILON, "{name} should be opaque, alpha = {}", c[3]);
+    }
+
+    // ---- background layer colors ----
+
+    #[test]
+    fn canvas_bg_is_dark() {
+        assert_valid_color(colors::CANVAS_BG, "CANVAS_BG");
+        assert_opaque(colors::CANVAS_BG, "CANVAS_BG");
+        assert!(colors::CANVAS_BG[0] < 0.1);
+        assert!(colors::CANVAS_BG[1] < 0.1);
+        assert!(colors::CANVAS_BG[2] < 0.1);
+    }
+
+    #[test]
+    fn panel_bg_is_dark() {
+        assert_valid_color(colors::PANEL_BG, "PANEL_BG");
+        assert_opaque(colors::PANEL_BG, "PANEL_BG");
+    }
+
+    #[test]
+    fn panel_bg_alt_darker_than_panel_bg() {
+        assert_valid_color(colors::PANEL_BG_ALT, "PANEL_BG_ALT");
+        assert!(colors::PANEL_BG_ALT[0] > colors::PANEL_BG[0]);
+    }
+
+    #[test]
+    fn card_bg_between_panel_and_alt() {
+        assert_valid_color(colors::CARD_BG, "CARD_BG");
+        assert!(colors::CARD_BG[0] >= colors::PANEL_BG[0]);
+    }
+
+    #[test]
+    fn border_is_visible() {
+        assert_valid_color(colors::BORDER, "BORDER");
+        assert_opaque(colors::BORDER, "BORDER");
+        // Border should be brighter than canvas background
+        assert!(colors::BORDER[0] > colors::CANVAS_BG[0]);
+    }
+
+    #[test]
+    fn grid_line_darker_than_border() {
+        assert_valid_color(colors::GRID_LINE, "GRID_LINE");
+        assert!(colors::GRID_LINE[0] < colors::BORDER[0]);
+    }
+
+    // ---- neon accent colors ----
+
+    #[test]
+    fn neon_cyan_is_bright() {
+        assert_valid_color(colors::NEON_CYAN, "NEON_CYAN");
+        assert_opaque(colors::NEON_CYAN, "NEON_CYAN");
+        assert!(colors::NEON_CYAN[1] > 0.9);
+        assert!(colors::NEON_CYAN[2] > 0.9);
+    }
+
+    #[test]
+    fn neon_magenta_is_bright() {
+        assert_valid_color(colors::NEON_MAGENTA, "NEON_MAGENTA");
+        assert_opaque(colors::NEON_MAGENTA, "NEON_MAGENTA");
+        assert!(colors::NEON_MAGENTA[0] > 0.9);
+        assert!(colors::NEON_MAGENTA[2] > 0.9);
+    }
+
+    #[test]
+    fn neon_yellow_is_bright() {
+        assert_valid_color(colors::NEON_YELLOW, "NEON_YELLOW");
+        assert_opaque(colors::NEON_YELLOW, "NEON_YELLOW");
+        assert!(colors::NEON_YELLOW[0] > 0.9);
+    }
+
+    #[test]
+    fn neon_green_is_bright() {
+        assert_valid_color(colors::NEON_GREEN, "NEON_GREEN");
+        assert_opaque(colors::NEON_GREEN, "NEON_GREEN");
+        assert!(colors::NEON_GREEN[1] > 0.9);
+    }
+
+    #[test]
+    fn neon_red_is_bright() {
+        assert_valid_color(colors::NEON_RED, "NEON_RED");
+        assert_opaque(colors::NEON_RED, "NEON_RED");
+        assert!(colors::NEON_RED[0] > 0.9);
+    }
+
+    #[test]
+    fn neon_purple_is_bright() {
+        assert_valid_color(colors::NEON_PURPLE, "NEON_PURPLE");
+        assert_opaque(colors::NEON_PURPLE, "NEON_PURPLE");
+        assert!(colors::NEON_PURPLE[2] > 0.9);
+    }
+
+    #[test]
+    fn neon_orange_is_bright() {
+        assert_valid_color(colors::NEON_ORANGE, "NEON_ORANGE");
+        assert_opaque(colors::NEON_ORANGE, "NEON_ORANGE");
+        assert!(colors::NEON_ORANGE[0] > 0.9);
+    }
+
+    #[test]
+    fn neon_teal_is_bright() {
+        assert_valid_color(colors::NEON_TEAL, "NEON_TEAL");
+        assert_opaque(colors::NEON_TEAL, "NEON_TEAL");
+        assert!(colors::NEON_TEAL[1] > 0.8);
+    }
+
+    #[test]
+    fn neon_pink_is_bright() {
+        assert_valid_color(colors::NEON_PINK, "NEON_PINK");
+        assert_opaque(colors::NEON_PINK, "NEON_PINK");
+        assert!(colors::NEON_PINK[0] > 0.9);
+    }
+
+    #[test]
+    fn neon_blue_is_bright() {
+        assert_valid_color(colors::NEON_BLUE, "NEON_BLUE");
+        assert_opaque(colors::NEON_BLUE, "NEON_BLUE");
+        assert!(colors::NEON_BLUE[2] > 0.9);
+    }
+
+    // ---- all neon colors are distinct ----
+
+    #[test]
+    fn all_neon_colors_are_distinct() {
+        let neons = [
+            colors::NEON_CYAN,
+            colors::NEON_MAGENTA,
+            colors::NEON_YELLOW,
+            colors::NEON_GREEN,
+            colors::NEON_RED,
+            colors::NEON_PURPLE,
+            colors::NEON_ORANGE,
+            colors::NEON_TEAL,
+            colors::NEON_PINK,
+            colors::NEON_BLUE,
+        ];
+        for i in 0..neons.len() {
+            for j in (i.saturating_add(1))..neons.len() {
+                assert_ne!(
+                    neons[i], neons[j],
+                    "neon colors at index {i} and {j} should be distinct"
+                );
+            }
+        }
+    }
+
+    // ---- text colors ----
+
+    #[test]
+    fn text_primary_is_bright() {
+        assert_valid_color(colors::TEXT_PRIMARY, "TEXT_PRIMARY");
+        assert_opaque(colors::TEXT_PRIMARY, "TEXT_PRIMARY");
+        assert!(colors::TEXT_PRIMARY[0] > 0.8);
+    }
+
+    #[test]
+    fn text_secondary_dimmer_than_primary() {
+        assert_valid_color(colors::TEXT_SECONDARY, "TEXT_SECONDARY");
+        assert!(colors::TEXT_SECONDARY[0] < colors::TEXT_PRIMARY[0]);
+    }
+
+    #[test]
+    fn text_dim_dimmer_than_secondary() {
+        assert_valid_color(colors::TEXT_DIM, "TEXT_DIM");
+        assert!(colors::TEXT_DIM[0] < colors::TEXT_SECONDARY[0]);
+    }
+
+    // ---- state colors are aliased correctly ----
+
+    #[test]
+    fn state_succeeded_is_green() {
+        assert_eq!(colors::STATE_SUCCEEDED, colors::NEON_GREEN);
+    }
+
+    #[test]
+    fn state_running_is_cyan() {
+        assert_eq!(colors::STATE_RUNNING, colors::NEON_CYAN);
+    }
+
+    #[test]
+    fn state_failed_is_red() {
+        assert_eq!(colors::STATE_FAILED, colors::NEON_RED);
+    }
+
+    #[test]
+    fn state_waiting_is_blue() {
+        assert_eq!(colors::STATE_WAITING, colors::NEON_BLUE);
+    }
+
+    #[test]
+    fn state_asking_is_yellow() {
+        assert_eq!(colors::STATE_ASKING, colors::NEON_YELLOW);
+    }
+
+    #[test]
+    fn state_pending_is_border() {
+        assert_eq!(colors::STATE_PENDING, colors::BORDER);
+    }
+
+    #[test]
+    fn state_cancelled_is_dim() {
+        assert_eq!(colors::STATE_CANCELLED, colors::TEXT_DIM);
+    }
+
+    #[test]
+    fn state_secret_is_magenta() {
+        assert_eq!(colors::STATE_SECRET, colors::NEON_MAGENTA);
+    }
+
+    // ---- all colors have valid RGBA ----
+
+    #[test]
+    fn all_colors_valid_rgba() {
+        let all_colors: [(&str, [f32; 4]); 19] = [
+            ("CANVAS_BG", colors::CANVAS_BG),
+            ("PANEL_BG", colors::PANEL_BG),
+            ("PANEL_BG_ALT", colors::PANEL_BG_ALT),
+            ("CARD_BG", colors::CARD_BG),
+            ("BORDER", colors::BORDER),
+            ("GRID_LINE", colors::GRID_LINE),
+            ("NEON_CYAN", colors::NEON_CYAN),
+            ("NEON_MAGENTA", colors::NEON_MAGENTA),
+            ("NEON_YELLOW", colors::NEON_YELLOW),
+            ("NEON_GREEN", colors::NEON_GREEN),
+            ("NEON_RED", colors::NEON_RED),
+            ("NEON_PURPLE", colors::NEON_PURPLE),
+            ("NEON_ORANGE", colors::NEON_ORANGE),
+            ("NEON_TEAL", colors::NEON_TEAL),
+            ("NEON_PINK", colors::NEON_PINK),
+            ("NEON_BLUE", colors::NEON_BLUE),
+            ("TEXT_PRIMARY", colors::TEXT_PRIMARY),
+            ("TEXT_SECONDARY", colors::TEXT_SECONDARY),
+            ("TEXT_DIM", colors::TEXT_DIM),
+            // STATE_PENDING is an alias for BORDER which is already checked
+        ];
+        for (name, c) in &all_colors {
+            assert_valid_color(*c, name);
+        }
+    }
+
+    // ---- node_colors tests ----
+
+    #[test]
+    fn node_color_data_is_secondary() {
+        assert_eq!(node_colors::DATA, colors::TEXT_SECONDARY);
+    }
+
+    #[test]
+    fn node_color_external_is_orange() {
+        assert_eq!(node_colors::EXTERNAL, colors::NEON_ORANGE);
+    }
+
+    #[test]
+    fn node_color_branch_is_purple() {
+        assert_eq!(node_colors::BRANCH, colors::NEON_PURPLE);
+    }
+
+    #[test]
+    fn node_color_loop_is_blue() {
+        assert_eq!(node_colors::LOOP, colors::NEON_BLUE);
+    }
+
+    #[test]
+    fn node_color_parallel_is_blue() {
+        assert_eq!(node_colors::PARALLEL, colors::NEON_BLUE);
+    }
+
+    #[test]
+    fn node_color_suspend_is_green() {
+        assert_eq!(node_colors::SUSPEND, colors::NEON_GREEN);
+    }
+
+    #[test]
+    fn node_color_error_is_red() {
+        assert_eq!(node_colors::ERROR, colors::NEON_RED);
+    }
+
+    #[test]
+    fn node_color_terminal_is_teal() {
+        assert_eq!(node_colors::TERMINAL, colors::NEON_TEAL);
+    }
+
+    #[test]
+    fn node_color_control_is_secondary() {
+        assert_eq!(node_colors::CONTROL, colors::TEXT_SECONDARY);
+    }
+
+    #[test]
+    fn all_node_colors_are_valid() {
+        let node_cols: [(&str, [f32; 4]); 9] = [
+            ("DATA", node_colors::DATA),
+            ("EXTERNAL", node_colors::EXTERNAL),
+            ("BRANCH", node_colors::BRANCH),
+            ("LOOP", node_colors::LOOP),
+            ("PARALLEL", node_colors::PARALLEL),
+            ("SUSPEND", node_colors::SUSPEND),
+            ("ERROR", node_colors::ERROR),
+            ("TERMINAL", node_colors::TERMINAL),
+            ("CONTROL", node_colors::CONTROL),
+        ];
+        for (name, c) in &node_cols {
+            assert_valid_color(*c, name);
+        }
+    }
+
+    #[test]
+    fn node_colors_loop_and_parallel_match() {
+        // Loop and Parallel are both blue
+        assert_eq!(node_colors::LOOP, node_colors::PARALLEL);
+    }
+
+    #[test]
+    fn node_colors_data_and_control_match() {
+        // Data and Control are both secondary text color
+        assert_eq!(node_colors::DATA, node_colors::CONTROL);
+    }
+}

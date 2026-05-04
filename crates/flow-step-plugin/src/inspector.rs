@@ -108,4 +108,100 @@ mod tests {
             panic!("expected Select variant");
         }
     }
+
+    // ========================================================================
+    // BLACKHAT security review tests
+    // ========================================================================
+
+    /// BH-INSP-01 (MEDIUM): fields_for_kind returns an empty Vec for ALL
+    /// inputs, including valid ASL state kinds. This means the inspector
+    /// provides zero validation or type-safety feedback for any state kind.
+    /// If a caller relies on fields_for_kind to determine what fields a
+    /// state should have, they get no information and may accept arbitrary
+    /// field values, bypassing all schema validation.
+    #[test]
+    fn blackhat_fields_for_kind_provides_zero_validation_surface() {
+        let known_kinds = [
+            "Task", "Choice", "Wait", "Pass", "Succeed", "Fail", "Parallel", "Map",
+        ];
+        for kind in &known_kinds {
+            let fields = fields_for_kind(kind);
+            // BUG: No fields returned for known state kinds. Callers cannot
+            // validate state configurations through the inspector.
+            assert!(
+                fields.is_empty(),
+                "fields_for_kind provides zero fields for known kind {kind:?}, \
+                 providing no validation surface"
+            );
+        }
+    }
+
+    /// BH-INSP-02 (LOW): InspectorField.id and label are unvalidated Strings.
+    /// Empty strings, very long strings, and strings with special characters
+    /// are accepted. If field IDs are used as keys in serialization or map
+    /// lookups, empty or duplicate IDs cause silent data loss or collision.
+    #[test]
+    fn blackhat_inspector_field_accepts_empty_and_long_strings() {
+        let field = InspectorField {
+            id: String::new(),
+            label: String::new(),
+            field_type: FieldType::Text,
+            required: true,
+        };
+        // BUG: Empty id and label accepted without validation.
+        assert!(field.id.is_empty());
+        assert!(field.label.is_empty());
+
+        let long_field = InspectorField {
+            id: "x".repeat(1_000_000),
+            label: "y".repeat(1_000_000),
+            field_type: FieldType::Text,
+            required: false,
+        };
+        // BUG: Million-character id accepted. Could cause OOM in downstream
+        // code that indexes by field id.
+        assert_eq!(long_field.id.len(), 1_000_000);
+    }
+
+    /// BH-INSP-03 (INFO): FieldType::Select with an empty options Vec is
+    /// valid. A select field with no options cannot be filled in, creating
+    /// a dead-end in form validation. The required flag can still be true,
+    /// creating an impossible-to-satisfy constraint.
+    #[test]
+    fn blackhat_select_field_with_empty_options_and_required_true() {
+        let field = InspectorField {
+            id: "choice".into(),
+            label: "Pick one".into(),
+            field_type: FieldType::Select(vec![]),
+            required: true,
+        };
+        // BUG: required=true with empty Select options is contradictory.
+        // No value can satisfy this field, but validation would require one.
+        assert!(field.required);
+        if let FieldType::Select(opts) = &field.field_type {
+            assert!(opts.is_empty(), "Select has no options but is required");
+        } else {
+            panic!("expected Select variant");
+        }
+    }
+
+    /// BH-INSP-04 (INFO): FieldType::SecretRef carries no encryption or
+    /// access-control metadata. Any code handling a SecretRef field has no
+    /// information about what security level the secret requires or how
+    /// it should be stored/transmitted.
+    #[test]
+    fn blackhat_secret_ref_has_no_security_metadata() {
+        let field = InspectorField {
+            id: "api_key".into(),
+            label: "API Key".into(),
+            field_type: FieldType::SecretRef,
+            required: true,
+        };
+        // SecretRef variant exists but carries no metadata about:
+        // - encryption at rest
+        // - access control requirements
+        // - masking in logs
+        // - rotation policy
+        assert!(matches!(field.field_type, FieldType::SecretRef));
+    }
 }

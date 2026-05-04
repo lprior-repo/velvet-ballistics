@@ -4,9 +4,9 @@ use std::fmt::Write;
 use crate::{CodegenResult, fmt_err};
 use crate::emit::action::emit_action_boundary;
 use crate::helpers::{emit_unsupported_step, write_next_or_error};
-use vb_core::{CompiledNode, CompiledNodeKind, ConstIdx, ExprBranch, ExprOp, SlotBranch, SlotIdx, StepIdx};
+use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprBranch, ExprOp, SlotBranch, SlotIdx, StepIdx};
 
-pub fn emit_step_function(
+pub(crate) fn emit_step_function(
     out: &mut String,
     node: &CompiledNode,
     _workflow: &CompiledWorkflow,
@@ -518,4 +518,4 @@ fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> Code
     emit_unsupported_step(out, name)
 }
 
-/// Generate an expression evaluator function.
+// Generate an expression evaluator function.

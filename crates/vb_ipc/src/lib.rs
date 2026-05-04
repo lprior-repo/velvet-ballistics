@@ -3185,3 +3185,1302 @@ mod proptests {
         }
     }
 }
+
+// ══ Serialization roundtrip tests for wire types ══════════════════════════════
+
+#[cfg(test)]
+mod wire_type_tests {
+    use super::*;
+    use vb_core::ids::{SlotIdx, StepIdx};
+
+    // ── IpcPayload new variant roundtrips ──
+
+    #[test]
+    fn payload_roundtrip_list_runs_no_filter() {
+        let payload = IpcPayload::ListRuns {
+            limit: 50,
+            workflow: None,
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_list_runs_with_workflow_filter() {
+        let payload = IpcPayload::ListRuns {
+            limit: 10,
+            workflow: Some(WorkflowDigest::from_bytes([0xAB; 32])),
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_list_runs_with_zero_limit() {
+        let payload = IpcPayload::ListRuns {
+            limit: 0,
+            workflow: None,
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_list_runs_with_max_limit() {
+        let payload = IpcPayload::ListRuns {
+            limit: u32::MAX,
+            workflow: None,
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_get_metrics() {
+        let payload = IpcPayload::GetMetrics;
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_get_taint_report() {
+        let payload = IpcPayload::GetTaintReport {
+            digest: WorkflowDigest::from_bytes([0xCC; 32]),
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_get_taint_report_with_zero_digest() {
+        let payload = IpcPayload::GetTaintReport {
+            digest: WorkflowDigest::from_bytes([0; 32]),
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_get_workflow_graph() {
+        let payload = IpcPayload::GetWorkflowGraph {
+            digest: WorkflowDigest::from_bytes([0xDD; 32]),
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    #[test]
+    fn payload_roundtrip_verify_workflow() {
+        let payload = IpcPayload::VerifyWorkflow {
+            digest: WorkflowDigest::from_bytes([0xEE; 32]),
+        };
+        let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "payload should encode");
+        let Ok(encoded) = encoded else { return };
+        assert_eq!(decode_payload(&encoded), Ok(payload));
+    }
+
+    // ── RunListState roundtrips ──
+
+    #[test]
+    fn run_list_state_active_roundtrip() {
+        let state = RunListState::Active;
+        let Ok(encoded) = postcard::to_allocvec(&state) else { return };
+        let decoded: RunListState = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn run_list_state_finished_roundtrip() {
+        let state = RunListState::Finished;
+        let Ok(encoded) = postcard::to_allocvec(&state) else { return };
+        let decoded: RunListState = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn run_list_state_failed_roundtrip() {
+        let state = RunListState::Failed;
+        let Ok(encoded) = postcard::to_allocvec(&state) else { return };
+        let decoded: RunListState = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn run_list_state_cancelled_roundtrip() {
+        let state = RunListState::Cancelled;
+        let Ok(encoded) = postcard::to_allocvec(&state) else { return };
+        let decoded: RunListState = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn run_list_state_all_variants_are_distinct() {
+        let states = [RunListState::Active, RunListState::Finished, RunListState::Failed, RunListState::Cancelled];
+        let Ok(encoded) = postcard::to_allocvec(&states) else { return };
+        let decoded: [RunListState; 4] = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, states);
+    }
+
+    // ── RunSummary roundtrip ──
+
+    #[test]
+    fn run_summary_roundtrip_full() {
+        let summary = RunSummary {
+            run_id: RunId::new(42),
+            workflow: WorkflowDigest::from_bytes([0x11; 32]),
+            state: RunListState::Active,
+            submitted_seq: 100,
+            finished_seq: Some(200),
+            step_count: 10,
+            steps_completed: 5,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&summary) else { return };
+        let decoded: RunSummary = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, summary);
+    }
+
+    #[test]
+    fn run_summary_roundtrip_no_finished_seq() {
+        let summary = RunSummary {
+            run_id: RunId::new(1),
+            workflow: WorkflowDigest::from_bytes([0; 32]),
+            state: RunListState::Failed,
+            submitted_seq: 0,
+            finished_seq: None,
+            step_count: 0,
+            steps_completed: 0,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&summary) else { return };
+        let decoded: RunSummary = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded.finished_seq, None);
+        assert_eq!(decoded, summary);
+    }
+
+    #[test]
+    fn run_summary_roundtrip_boundary_values() {
+        let summary = RunSummary {
+            run_id: RunId::new(u64::MAX),
+            workflow: WorkflowDigest::from_bytes([0xFF; 32]),
+            state: RunListState::Cancelled,
+            submitted_seq: u64::MAX,
+            finished_seq: Some(u64::MAX),
+            step_count: u16::MAX,
+            steps_completed: u16::MAX,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&summary) else { return };
+        let decoded: RunSummary = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, summary);
+    }
+
+    // ── VerificationResult / CertificateWire roundtrip ──
+
+    #[test]
+    fn verification_result_roundtrip_empty_certificates() {
+        let result = VerificationResult {
+            certificates: Vec::new(),
+            total_checks: 0,
+            pass_count: 0,
+            fail_count: 0,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&result) else { return };
+        let decoded: VerificationResult = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, result);
+    }
+
+    #[test]
+    fn verification_result_roundtrip_with_pass_and_fail() {
+        let result = VerificationResult {
+            certificates: vec![
+                CertificateWire {
+                    kind: String::from("gate_07_expression_stack_depth"),
+                    status: String::from("Pass"),
+                    details: String::new(),
+                },
+                CertificateWire {
+                    kind: String::from("gate_13_no_slot_cycles"),
+                    status: String::from("Fail"),
+                    details: String::from("cycle detected between slots 3 and 7"),
+                },
+            ],
+            total_checks: 2,
+            pass_count: 1,
+            fail_count: 1,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&result) else { return };
+        let decoded: VerificationResult = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded.certificates.len(), 2);
+        assert_eq!(decoded, result);
+    }
+
+    #[test]
+    fn certificate_wire_equality() {
+        let a = CertificateWire {
+            kind: String::from("gate_07"),
+            status: String::from("Pass"),
+            details: String::new(),
+        };
+        let b = CertificateWire {
+            kind: String::from("gate_07"),
+            status: String::from("Pass"),
+            details: String::new(),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn certificate_wire_inequality_different_status() {
+        let a = CertificateWire {
+            kind: String::from("gate_07"),
+            status: String::from("Pass"),
+            details: String::new(),
+        };
+        let b = CertificateWire {
+            kind: String::from("gate_07"),
+            status: String::from("Fail"),
+            details: String::new(),
+        };
+        assert_ne!(a, b);
+    }
+
+    // ── TaintPathWire roundtrip ──
+
+    #[test]
+    fn taint_path_wire_roundtrip() {
+        let path = TaintPathWire {
+            from: 5,
+            to: 10,
+            status: String::from("dangerous"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&path) else { return };
+        let decoded: TaintPathWire = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, path);
+    }
+
+    #[test]
+    fn taint_path_wire_roundtrip_warning() {
+        let path = TaintPathWire {
+            from: 0,
+            to: 3,
+            status: String::from("warning"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&path) else { return };
+        let decoded: TaintPathWire = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, path);
+    }
+
+    #[test]
+    fn taint_path_wire_equality() {
+        let a = TaintPathWire {
+            from: 1,
+            to: 2,
+            status: String::from("dangerous"),
+        };
+        let b = TaintPathWire {
+            from: 1,
+            to: 2,
+            status: String::from("dangerous"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn taint_path_wire_inequality_different_to() {
+        let a = TaintPathWire {
+            from: 1,
+            to: 2,
+            status: String::from("dangerous"),
+        };
+        let b = TaintPathWire {
+            from: 1,
+            to: 3,
+            status: String::from("dangerous"),
+        };
+        assert_ne!(a, b);
+    }
+
+    // ── NodeDescriptor roundtrip ──
+
+    #[test]
+    fn node_descriptor_roundtrip_with_next() {
+        let node = NodeDescriptor {
+            step_idx: 0,
+            kind: String::from("Do"),
+            next: Some(1),
+            title: String::from("step_zero"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&node) else { return };
+        let decoded: NodeDescriptor = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, node);
+    }
+
+    #[test]
+    fn node_descriptor_roundtrip_no_next() {
+        let node = NodeDescriptor {
+            step_idx: 10,
+            kind: String::from("Finish"),
+            next: None,
+            title: String::from("final_step"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&node) else { return };
+        let decoded: NodeDescriptor = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, node);
+    }
+
+    // ── EdgeDescriptor roundtrip ──
+
+    #[test]
+    fn edge_descriptor_roundtrip_with_label() {
+        let edge = EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: Some(String::from("branch_0")),
+            edge_type: String::from("branch"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&edge) else { return };
+        let decoded: EdgeDescriptor = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, edge);
+    }
+
+    #[test]
+    fn edge_descriptor_roundtrip_no_label() {
+        let edge = EdgeDescriptor {
+            from: 3,
+            to: 4,
+            label: None,
+            edge_type: String::from("fallthrough"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&edge) else { return };
+        let decoded: EdgeDescriptor = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, edge);
+    }
+
+    #[test]
+    fn edge_descriptor_equality() {
+        let a = EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: Some(String::from("body")),
+            edge_type: String::from("loop_body"),
+        };
+        let b = EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: Some(String::from("body")),
+            edge_type: String::from("loop_body"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn edge_descriptor_inequality_different_from() {
+        let a = EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: None,
+            edge_type: String::from("fallthrough"),
+        };
+        let b = EdgeDescriptor {
+            from: 2,
+            to: 1,
+            label: None,
+            edge_type: String::from("fallthrough"),
+        };
+        assert_ne!(a, b);
+    }
+
+    // ── IpcTraceEvent roundtrip ──
+
+    #[test]
+    fn ipc_trace_event_step_started_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 0,
+            kind: IpcTraceEventKind::StepStarted {
+                run: RunId::new(1),
+                step: StepIdx::new(5),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_step_ended_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 1,
+            kind: IpcTraceEventKind::StepEnded {
+                run: RunId::new(2),
+                step: StepIdx::new(3),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_slot_written_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 2,
+            kind: IpcTraceEventKind::SlotWritten {
+                run: RunId::new(4),
+                slot: SlotIdx::ZERO,
+                value: Vec::from(&b"\x01\x02\x03"[..]),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_action_scheduled_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 3,
+            kind: IpcTraceEventKind::ActionScheduled {
+                run: RunId::new(7),
+                step: StepIdx::new(1),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_action_completed_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 4,
+            kind: IpcTraceEventKind::ActionCompleted {
+                run: RunId::new(8),
+                step: StepIdx::new(2),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_action_failed_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 5,
+            kind: IpcTraceEventKind::ActionFailed {
+                run: RunId::new(9),
+                step: StepIdx::new(3),
+                code: vb_core::action::ActionFailureCode::Unknown,
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_ask_answered_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 6,
+            kind: IpcTraceEventKind::AskAnswered {
+                run: RunId::new(10),
+                step: StepIdx::new(4),
+                slot: SlotIdx::new(7),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_run_submitted_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 7,
+            kind: IpcTraceEventKind::RunSubmitted {
+                run: RunId::new(11),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_run_finished_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 8,
+            kind: IpcTraceEventKind::RunFinished {
+                run: RunId::new(12),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_run_failed_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 9,
+            kind: IpcTraceEventKind::RunFailed {
+                run: RunId::new(13),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_run_cancelled_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: 10,
+            kind: IpcTraceEventKind::RunCancelled {
+                run: RunId::new(14),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn ipc_trace_event_vector_roundtrip() {
+        let events = vec![
+            IpcTraceEvent {
+                sequence: 0,
+                kind: IpcTraceEventKind::RunSubmitted {
+                    run: RunId::new(1),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 1,
+                kind: IpcTraceEventKind::StepStarted {
+                    run: RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+            IpcTraceEvent {
+                sequence: 2,
+                kind: IpcTraceEventKind::RunFinished {
+                    run: RunId::new(1),
+                },
+            },
+        ];
+        let Ok(encoded) = postcard::to_allocvec(&events) else { return };
+        let decoded: Vec<IpcTraceEvent> = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded.len(), 3);
+        assert_eq!(decoded, events);
+    }
+
+    #[test]
+    fn ipc_trace_event_max_sequence_roundtrip() {
+        let event = IpcTraceEvent {
+            sequence: u64::MAX,
+            kind: IpcTraceEventKind::RunSubmitted {
+                run: RunId::new(u64::MAX),
+            },
+        };
+        let Ok(encoded) = postcard::to_allocvec(&event) else { return };
+        let decoded: IpcTraceEvent = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded.sequence, u64::MAX);
+    }
+
+    // ── IpcActionOutputPayload roundtrip ──
+
+    #[test]
+    fn ipc_action_output_payload_null_roundtrip() {
+        let payload = IpcActionOutputPayload {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        };
+        let encoded = encode_payload(&IpcPayload::CompleteAction {
+            run_id: RunId::new(1),
+            ticket: 0,
+            output: match postcard::to_allocvec(&payload) {
+                Ok(v) => v,
+                Err(_) => {
+                    assert!(false, "encoding should succeed");
+                    return;
+                }
+            },
+        }, MaxPayloadBytes::DEFAULT);
+        assert!(encoded.is_ok(), "complete action payload should encode");
+    }
+
+    // ── WorkflowResolutionError display tests ──
+
+    #[test]
+    fn workflow_resolution_error_required_display() {
+        use crate::server::WorkflowResolutionError;
+        let err = WorkflowResolutionError::Required;
+        let msg = err.to_string();
+        assert!(msg.contains("required"), "expected 'required' in '{msg}'");
+    }
+
+    #[test]
+    fn workflow_resolution_error_not_found_display() {
+        use crate::server::WorkflowResolutionError;
+        let err = WorkflowResolutionError::NotFound;
+        let msg = err.to_string();
+        assert!(msg.contains("not found"), "expected 'not found' in '{msg}'");
+    }
+
+    #[test]
+    fn workflow_resolution_error_invalid_artifact_display() {
+        use crate::server::WorkflowResolutionError;
+        let err = WorkflowResolutionError::InvalidArtifact;
+        let msg = err.to_string();
+        assert!(msg.contains("invalid"), "expected 'invalid' in '{msg}'");
+    }
+
+    #[test]
+    fn workflow_resolution_error_equality() {
+        use crate::server::WorkflowResolutionError;
+        assert_eq!(WorkflowResolutionError::Required, WorkflowResolutionError::Required);
+        assert_eq!(WorkflowResolutionError::NotFound, WorkflowResolutionError::NotFound);
+        assert_eq!(WorkflowResolutionError::InvalidArtifact, WorkflowResolutionError::InvalidArtifact);
+        assert_ne!(WorkflowResolutionError::Required, WorkflowResolutionError::NotFound);
+        assert_ne!(WorkflowResolutionError::NotFound, WorkflowResolutionError::InvalidArtifact);
+    }
+
+    // ── IpcResponse serialization roundtrips ──
+
+    #[test]
+    fn ipc_response_accepted_run_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::AcceptedRun { run_id: 42 };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_healthy_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::Healthy;
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_shutting_down_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::ShuttingDown;
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_trace_count_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::TraceCount { count: 42 };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_bad_request_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::BadRequest;
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_payload_error_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::PayloadError {
+            diagnostic: 0x300D,
+            message: String::from("decode failed"),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_command_payload_mismatch_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::CommandPayloadMismatch;
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_workflow_resolution_required_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::WorkflowResolutionRequired;
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_count_out_of_range_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::CountOutOfRange {
+            actual: 99999,
+            limit: u32::MAX,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_run_list_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::RunList {
+            runs: vec![
+                RunSummary {
+                    run_id: RunId::new(1),
+                    workflow: WorkflowDigest::from_bytes([0; 32]),
+                    state: RunListState::Active,
+                    submitted_seq: 0,
+                    finished_seq: None,
+                    step_count: 5,
+                    steps_completed: 2,
+                },
+            ],
+        };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_events_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::Events {
+            events: vec![
+                IpcTraceEvent {
+                    sequence: 0,
+                    kind: IpcTraceEventKind::RunSubmitted {
+                        run: RunId::new(1),
+                    },
+                },
+            ],
+        };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
+    fn ipc_response_inspected_roundtrip() {
+        use crate::server::IpcResponse;
+        let response = IpcResponse::Inspected { run_id: 77 };
+        let Ok(encoded) = postcard::to_allocvec(&response) else { return };
+        let decoded: IpcResponse = match postcard::from_bytes(&encoded) {
+            Ok(d) => d,
+            Err(_) => {
+                assert!(false, "decoding should succeed");
+                return;
+            }
+        };
+        assert_eq!(decoded, response);
+    }
+
+    // ── IpcCommand roundtrip for new commands ──
+
+    #[test]
+    fn ipc_command_list_runs_roundtrip() {
+        assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
+        assert_eq!(IpcCommand::ListRuns.as_u16(), 12);
+    }
+
+    #[test]
+    fn ipc_command_get_metrics_roundtrip() {
+        assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::GetMetrics));
+        assert_eq!(IpcCommand::GetMetrics.as_u16(), 13);
+    }
+
+    #[test]
+    fn ipc_command_get_workflow_graph_roundtrip() {
+        assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::GetWorkflowGraph));
+        assert_eq!(IpcCommand::GetWorkflowGraph.as_u16(), 14);
+    }
+
+    #[test]
+    fn ipc_command_get_taint_report_roundtrip() {
+        assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::GetTaintReport));
+        assert_eq!(IpcCommand::GetTaintReport.as_u16(), 15);
+    }
+
+    #[test]
+    fn ipc_command_verify_workflow_roundtrip() {
+        assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::VerifyWorkflow));
+        assert_eq!(IpcCommand::VerifyWorkflow.as_u16(), 16);
+    }
+
+    #[test]
+    fn ipc_command_17_is_unknown() {
+        assert_eq!(IpcCommand::from_u16(17), Err(IpcError::UnknownCommand(17)));
+    }
+
+    #[test]
+    fn ipc_command_u16_max_is_unknown() {
+        assert_eq!(IpcCommand::from_u16(u16::MAX), Err(IpcError::UnknownCommand(u16::MAX)));
+    }
+
+    // ── IpcError Display for all variants ──
+
+    #[test]
+    fn ipc_error_disconnected_display() {
+        let err = IpcError::Disconnected;
+        assert!(err.to_string().contains("disconnected"));
+    }
+
+    #[test]
+    fn ipc_error_invalid_magic_display_shows_hex() {
+        let err = IpcError::InvalidMagic { actual: 0xDEAD_BEEF };
+        let msg = err.to_string();
+        assert!(msg.contains("magic"));
+        assert!(msg.contains("dead"));
+    }
+
+    #[test]
+    fn ipc_error_unsupported_version_display() {
+        let err = IpcError::UnsupportedVersion { actual: 5 };
+        let msg = err.to_string();
+        assert!(msg.contains("version"));
+        assert!(msg.contains("5"));
+    }
+
+    #[test]
+    fn ipc_error_payload_length_mismatch_display() {
+        let err = IpcError::PayloadLengthMismatch { header: 100, actual: 50 };
+        let msg = err.to_string();
+        assert!(msg.contains("100"));
+        assert!(msg.contains("50"));
+    }
+
+    #[test]
+    fn ipc_error_payload_length_out_of_range_display() {
+        let err = IpcError::PayloadLengthOutOfRange { actual: 999 };
+        let msg = err.to_string();
+        assert!(msg.contains("999"));
+    }
+
+    #[test]
+    fn ipc_error_response_decode_failed_display() {
+        let err = IpcError::ResponseDecodeFailed;
+        let msg = err.to_string();
+        assert!(msg.contains("response"));
+    }
+
+    // ── IpcResponse IpcCommand frame roundtrips for new commands ──
+
+    #[test]
+    fn frame_roundtrip_list_runs_command() {
+        let header = IpcFrameHeader::new(IpcCommand::ListRuns, 0, 1, 0);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else { return };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+        assert!(decoded.is_ok(), "header should decode");
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::ListRuns);
+    }
+
+    #[test]
+    fn frame_roundtrip_get_metrics_command() {
+        let header = IpcFrameHeader::new(IpcCommand::GetMetrics, 0, 1, 0);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else { return };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+        assert!(decoded.is_ok(), "header should decode");
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetMetrics);
+    }
+
+    #[test]
+    fn frame_roundtrip_get_workflow_graph_command() {
+        let header = IpcFrameHeader::new(IpcCommand::GetWorkflowGraph, 0, 1, 0);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else { return };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+        assert!(decoded.is_ok(), "header should decode");
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetWorkflowGraph);
+    }
+
+    #[test]
+    fn frame_roundtrip_get_taint_report_command() {
+        let header = IpcFrameHeader::new(IpcCommand::GetTaintReport, 0, 1, 0);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else { return };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+        assert!(decoded.is_ok(), "header should decode");
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetTaintReport);
+    }
+
+    #[test]
+    fn frame_roundtrip_verify_workflow_command() {
+        let header = IpcFrameHeader::new(IpcCommand::VerifyWorkflow, 0, 1, 0);
+        let encoded = header.encode();
+        assert!(encoded.is_ok(), "header should encode");
+        let Ok(encoded) = encoded else { return };
+        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+        assert!(decoded.is_ok(), "header should decode");
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::VerifyWorkflow);
+    }
+
+    // ── BoundedPayload edge cases ──
+
+    #[test]
+    fn bounded_payload_empty_bytes_accepted() {
+        let data = Bytes::new();
+        let result = BoundedPayload::new(data, MaxPayloadBytes::DEFAULT);
+        assert!(result.is_ok(), "empty bytes should be accepted");
+        let Ok(bounded) = result else { return };
+        assert_eq!(bounded.bytes().len(), 0);
+    }
+
+    #[test]
+    fn bounded_payload_bytes_content_preserved() {
+        let data = Bytes::from_static(b"test content 123");
+        let result = BoundedPayload::new(data.clone(), MaxPayloadBytes::DEFAULT);
+        assert!(result.is_ok());
+        let Ok(bounded) = result else { return };
+        assert_eq!(bounded.bytes(), &data);
+    }
+
+    // ── IngressFrame edge cases ──
+
+    #[test]
+    fn ingress_frame_equality_same_values() {
+        let frame1 = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([2; 32]),
+            Bytes::from_static(b"abc"),
+            MaxPayloadBytes::DEFAULT,
+        );
+        let frame2 = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([2; 32]),
+            Bytes::from_static(b"abc"),
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert!(frame1.is_ok());
+        assert!(frame2.is_ok());
+        let Ok(f1) = frame1 else { return };
+        let Ok(f2) = frame2 else { return };
+        assert_eq!(f1, f2);
+    }
+
+    #[test]
+    fn ingress_frame_inequality_different_run_id() {
+        let frame1 = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([2; 32]),
+            Bytes::from_static(b"abc"),
+            MaxPayloadBytes::DEFAULT,
+        );
+        let frame2 = IngressFrame::new(
+            RunId::new(2),
+            WorkflowDigest::from_bytes([2; 32]),
+            Bytes::from_static(b"abc"),
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert!(frame1.is_ok());
+        assert!(frame2.is_ok());
+        let Ok(f1) = frame1 else { return };
+        let Ok(f2) = frame2 else { return };
+        assert_ne!(f1, f2);
+    }
+
+    // ── IpcFrame edge cases ──
+
+    #[test]
+    fn ipc_frame_accessors_return_correct_values() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0x1234, 9999, 3);
+        let payload = Bytes::from_static(b"abc");
+        let frame = IpcFrame::new(header, payload, MaxPayloadBytes::DEFAULT);
+        assert!(frame.is_ok(), "frame should construct");
+        let Ok(frame) = frame else { return };
+        assert_eq!(frame.header().command, IpcCommand::Health);
+        assert_eq!(frame.header().flags, 0x1234);
+        assert_eq!(frame.header().correlation, 9999);
+        assert_eq!(frame.header().payload_len, 3);
+        assert_eq!(frame.payload().bytes().as_ref(), b"abc");
+    }
+
+    #[test]
+    fn ipc_frame_zero_payload_len_with_empty_bytes() {
+        let header = IpcFrameHeader::new(IpcCommand::Shutdown, 0, 1, 0);
+        let payload = Bytes::new();
+        let frame = IpcFrame::new(header, payload, MaxPayloadBytes::DEFAULT);
+        assert!(frame.is_ok());
+        let Ok(frame) = frame else { return };
+        assert_eq!(frame.payload().bytes().len(), 0);
+    }
+}

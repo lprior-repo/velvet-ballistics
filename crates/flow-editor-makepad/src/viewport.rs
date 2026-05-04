@@ -1665,4 +1665,741 @@ mod tests {
         assert!((group.bounds[0] - 10.0).abs() < f64::EPSILON);
         assert!((group.bounds[2] - 300.0).abs() < f64::EPSILON);
     }
+
+    // =====================================================================
+    // Additional tests for gaps in coverage
+    // =====================================================================
+
+    // ---- WorldRect ----
+
+    #[test]
+    fn world_rect_default_is_zero() {
+        let r = WorldRect::default();
+        assert!((r.x).abs() < f64::EPSILON);
+        assert!((r.y).abs() < f64::EPSILON);
+        assert!((r.w).abs() < f64::EPSILON);
+        assert!((r.h).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn world_rect_debug_format() {
+        let r = WorldRect { x: 1.0, y: 2.0, w: 3.0, h: 4.0 };
+        let debug = format!("{r:?}");
+        assert!(debug.contains("WorldRect"));
+    }
+
+    #[test]
+    fn world_rect_clone_copy() {
+        let r = WorldRect { x: 1.0, y: 2.0, w: 3.0, h: 4.0 };
+        let r2 = r; // Copy
+        let r3 = r; // Copy again
+        assert!((r2.x - 1.0).abs() < f64::EPSILON);
+        assert!((r3.w - 3.0).abs() < f64::EPSILON);
+    }
+
+    // ---- ViewportTransform edge cases ----
+
+    #[test]
+    fn transform_debug_format() {
+        let vt = ViewportTransform::identity();
+        let debug = format!("{vt:?}");
+        assert!(debug.contains("ViewportTransform"));
+    }
+
+    #[test]
+    fn transform_clone_copy() {
+        let vt = ViewportTransform { pan_x: 1.0, pan_y: 2.0, zoom: 3.0 };
+        let vt2 = vt; // Copy
+        let vt3 = vt; // Copy again
+        assert!((vt2.pan_x - 1.0).abs() < f64::EPSILON);
+        assert!((vt3.zoom - 3.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn transform_with_nonzero_rect_origin() {
+        let vt = ViewportTransform::identity();
+        let (sx, sy) = vt.world_to_screen(50.0, 50.0, 100.0, 200.0);
+        // With identity transform: sx = (50 - 0) * 1 + 100 = 150
+        assert!((sx - 150.0).abs() < f64::EPSILON);
+        assert!((sy - 250.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn transform_screen_to_world_with_origin() {
+        let vt = ViewportTransform::identity();
+        let (wx, wy) = vt.screen_to_world(150.0, 250.0, 100.0, 200.0);
+        // (150 - 100) / 1 + 0 = 50
+        assert!((wx - 50.0).abs() < f64::EPSILON);
+        assert!((wy - 50.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn transform_roundtrip_with_origin() {
+        let vt = ViewportTransform {
+            pan_x: 25.0,
+            pan_y: 35.0,
+            zoom: 0.5,
+        };
+        let origin_x = 100.0;
+        let origin_y = 200.0;
+        let (sx, sy) = vt.world_to_screen(50.0, 75.0, origin_x, origin_y);
+        let (wx, wy) = vt.screen_to_world(sx, sy, origin_x, origin_y);
+        assert!((wx - 50.0).abs() < 1e-10);
+        assert!((wy - 75.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn transform_zoom_less_than_one_shrinks() {
+        let vt = ViewportTransform {
+            pan_x: 0.0,
+            pan_y: 0.0,
+            zoom: 0.5,
+        };
+        let (sx, sy) = vt.world_to_screen(100.0, 100.0, 0.0, 0.0);
+        // 0.5x zoom: world 100 maps to screen 50
+        assert!((sx - 50.0).abs() < f64::EPSILON);
+        assert!((sy - 50.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn transform_negative_pan_shifts() {
+        let vt = ViewportTransform {
+            pan_x: -100.0,
+            pan_y: -100.0,
+            zoom: 1.0,
+        };
+        let (sx, sy) = vt.world_to_screen(0.0, 0.0, 0.0, 0.0);
+        // (0 - (-100)) * 1 + 0 = 100
+        assert!((sx - 100.0).abs() < f64::EPSILON);
+        assert!((sy - 100.0).abs() < f64::EPSILON);
+    }
+
+    // ---- fit_view additional edge cases ----
+
+    #[test]
+    fn fit_view_negative_height_returns_none() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 200.0,
+            h: -50.0,
+        };
+        assert!(fit_view(bounds, 800.0, 600.0, 0.0).is_none());
+    }
+
+    #[test]
+    fn fit_view_zero_canvas_height_returns_none() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 200.0,
+            h: 100.0,
+        };
+        assert!(fit_view(bounds, 800.0, 0.0, 0.0).is_none());
+    }
+
+    #[test]
+    fn fit_view_negative_canvas_returns_none() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 200.0,
+            h: 100.0,
+        };
+        assert!(fit_view(bounds, -100.0, 600.0, 0.0).is_none());
+    }
+
+    #[test]
+    fn fit_view_square_world_square_canvas() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 400.0,
+            h: 400.0,
+        };
+        let vt = fit_view(bounds, 800.0, 800.0, 0.0).unwrap();
+        // 400 * zoom = 800 => zoom = 2.0
+        assert!((vt.zoom - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn fit_view_centering_with_offset_bounds() {
+        let bounds = WorldRect {
+            x: 100.0,
+            y: 200.0,
+            w: 200.0,
+            h: 100.0,
+        };
+        let vt = fit_view(bounds, 800.0, 600.0, 0.0).unwrap();
+        // Center of bounds: (200, 250)
+        // pan should center the world in the canvas
+        let center_sx = (200.0 - vt.pan_x) * vt.zoom;
+        let center_sy = (250.0 - vt.pan_y) * vt.zoom;
+        assert!((center_sx - 400.0).abs() < 1e-6);
+        assert!((center_sy - 300.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn fit_view_no_padding() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 800.0,
+            h: 600.0,
+        };
+        let vt = fit_view(bounds, 800.0, 600.0, 0.0).unwrap();
+        assert!((vt.zoom - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn fit_view_wide_world_portrait_canvas() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 400.0,
+            h: 100.0,
+        };
+        let vt = fit_view(bounds, 300.0, 600.0, 0.0).unwrap();
+        // Width constraint: 400 * zoom = 300 => zoom = 0.75
+        assert!((vt.zoom - 0.75).abs() < 1e-10);
+    }
+
+    // ---- compute_graph_bounds additional ----
+
+    #[test]
+    fn graph_bounds_single_node_at_origin() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        let bounds = compute_graph_bounds(&graph).unwrap();
+        assert!((bounds.x).abs() < f64::EPSILON);
+        assert!((bounds.y).abs() < f64::EPSILON);
+        assert!((bounds.w - 100.0).abs() < f64::EPSILON);
+        assert!((bounds.h - 50.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn graph_bounds_negative_coordinates() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", -200.0, -100.0));
+        let bounds = compute_graph_bounds(&graph).unwrap();
+        assert!((bounds.x - (-200.0)).abs() < f64::EPSILON);
+        assert!((bounds.y - (-100.0)).abs() < f64::EPSILON);
+        // w = (-200 + 100) - (-200) = 100
+        assert!((bounds.w - 100.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn graph_bounds_overlapping_nodes() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 50.0, 25.0));
+        let bounds = compute_graph_bounds(&graph).unwrap();
+        // Leftmost x = 0, topmost y = 0
+        // Rightmost = max(0+100, 50+100) = 150
+        // Bottom = max(0+50, 25+50) = 75
+        assert!((bounds.w - 150.0).abs() < f64::EPSILON);
+        assert!((bounds.h - 75.0).abs() < f64::EPSILON);
+    }
+
+    // ---- hit_test_nodes additional ----
+
+    #[test]
+    fn hit_test_nodes_corner_top_left() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 10.0, 10.0));
+        let result = hit_test_nodes(&graph, 10.0, 10.0);
+        assert!(matches!(result, HitResult::Node(_)));
+    }
+
+    #[test]
+    fn hit_test_nodes_just_outside_left() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 10.0, 10.0));
+        let result = hit_test_nodes(&graph, 9.99, 25.0);
+        assert!(matches!(result, HitResult::Nothing));
+    }
+
+    #[test]
+    fn hit_test_nodes_multiple_same_z() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at_z("a", 0.0, 0.0, 0));
+        graph.nodes.insert(nid("b"), make_node_at_z("b", 0.0, 0.0, 0));
+        let result = hit_test_nodes(&graph, 50.0, 25.0);
+        // Should hit one of them (both at same z-index, overlapping)
+        assert!(matches!(result, HitResult::Node(ref id) if id == &nid("a") || id == &nid("b")));
+    }
+
+    #[test]
+    fn hit_test_nodes_negative_coords() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", -200.0, -100.0));
+        let result = hit_test_nodes(&graph, -150.0, -75.0);
+        assert!(matches!(result, HitResult::Node(ref id) if id == &nid("a")));
+    }
+
+    // ---- hit_test_edges additional ----
+
+    #[test]
+    fn hit_test_edges_negative_tolerance() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let result = hit_test_edges(&graph, 100.0, 0.0, -5.0, 20);
+        assert!(matches!(result, HitResult::Nothing));
+    }
+
+    #[test]
+    fn hit_test_edges_actually_hits_edge() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        // The edge goes from right side of "a" (x=100, y~54) to left side of "b" (x=200, y~54)
+        // Midpoint of the edge should be around x=150
+        let result = hit_test_edges(&graph, 150.0, 54.0, 20.0, 50);
+        assert!(matches!(result, HitResult::Edge(ref id) if id == &eid("e1")));
+    }
+
+    #[test]
+    fn hit_test_edges_misses_edge() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let result = hit_test_edges(&graph, 150.0, 500.0, 10.0, 50);
+        assert!(matches!(result, HitResult::Nothing));
+    }
+
+    // ---- HitResult debug format ----
+
+    #[test]
+    fn hit_result_nothing_debug() {
+        let result = HitResult::Nothing;
+        let debug = format!("{result:?}");
+        assert!(debug.contains("Nothing"));
+    }
+
+    #[test]
+    fn hit_result_node_debug() {
+        let result = HitResult::Node(nid("test_node"));
+        let debug = format!("{result:?}");
+        assert!(debug.contains("Node"));
+    }
+
+    #[test]
+    fn hit_result_edge_debug() {
+        let result = HitResult::Edge(eid("test_edge"));
+        let debug = format!("{result:?}");
+        assert!(debug.contains("Edge"));
+    }
+
+    // ---- Selection additional ----
+
+    #[test]
+    fn selection_select_edge_clears_previous() {
+        let mut sel = Selection::new();
+        sel.select_edge(eid("e1"));
+        sel.select_edge(eid("e2"));
+        assert!(!sel.is_edge_selected(&eid("e1")));
+        assert!(sel.is_edge_selected(&eid("e2")));
+        assert_eq!(sel.edge_count(), 1);
+    }
+
+    #[test]
+    fn selection_select_group_clears_previous() {
+        let mut sel = Selection::new();
+        sel.select_group(gid("g1"));
+        sel.select_group(gid("g2"));
+        assert!(!sel.is_group_selected(&gid("g1")));
+        assert!(sel.is_group_selected(&gid("g2")));
+        assert_eq!(sel.group_count(), 1);
+    }
+
+    #[test]
+    fn selection_select_node_clears_edges_and_groups() {
+        let mut sel = Selection::new();
+        sel.add_edge(eid("e1"));
+        sel.select_group(gid("g1"));
+        sel.select_node(nid("n1"));
+        assert!(sel.is_node_selected(&nid("n1")));
+        assert!(!sel.is_edge_selected(&eid("e1")));
+        assert!(!sel.is_group_selected(&gid("g1")));
+    }
+
+    #[test]
+    fn selection_select_edge_clears_nodes_and_groups() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("n1"));
+        sel.select_group(gid("g1"));
+        sel.select_edge(eid("e1"));
+        assert!(sel.is_edge_selected(&eid("e1")));
+        assert!(!sel.is_node_selected(&nid("n1")));
+        assert!(!sel.is_group_selected(&gid("g1")));
+    }
+
+    #[test]
+    fn selection_add_edge() {
+        let mut sel = Selection::new();
+        sel.add_edge(eid("e1"));
+        sel.add_edge(eid("e2"));
+        assert!(sel.is_edge_selected(&eid("e1")));
+        assert!(sel.is_edge_selected(&eid("e2")));
+        assert_eq!(sel.edge_count(), 2);
+    }
+
+    #[test]
+    fn selection_toggle_group_not_available() {
+        // Groups only have select_group, not toggle_group -- test add/clear pattern
+        let mut sel = Selection::new();
+        sel.select_group(gid("g1"));
+        assert!(sel.is_group_selected(&gid("g1")));
+        sel.clear();
+        assert!(!sel.is_group_selected(&gid("g1")));
+    }
+
+    #[test]
+    fn selection_total_count_mixed() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("n1"));
+        sel.add_node(nid("n2"));
+        sel.add_edge(eid("e1"));
+        // Use add pattern: select_group clears all, so use add approach
+        // by adding via the state round-trip
+        let state = SelectionState {
+            selected_nodes: vec![nid("n1"), nid("n2")],
+            selected_edges: vec![eid("e1")],
+            selected_groups: vec![gid("g1")],
+        };
+        sel = Selection::from_selection_state(&state);
+        assert_eq!(sel.total_count(), 4);
+    }
+
+    #[test]
+    fn selection_any_selected_true_with_group() {
+        let mut sel = Selection::new();
+        sel.select_group(gid("g1"));
+        assert!(sel.any_selected());
+    }
+
+    #[test]
+    fn selection_from_state_roundtrip() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("n1"));
+        sel.add_edge(eid("e1"));
+        // Build selection with group via from_selection_state to avoid clear
+        let state = SelectionState {
+            selected_nodes: vec![nid("n1")],
+            selected_edges: vec![eid("e1")],
+            selected_groups: vec![gid("g1")],
+        };
+        sel = Selection::from_selection_state(&state);
+        let state2 = sel.to_selection_state();
+        let sel2 = Selection::from_selection_state(&state2);
+        assert!(sel2.is_node_selected(&nid("n1")));
+        assert!(sel2.is_edge_selected(&eid("e1")));
+        assert!(sel2.is_group_selected(&gid("g1")));
+        assert_eq!(sel2.total_count(), 3);
+    }
+
+    #[test]
+    fn selection_select_all_includes_groups() {
+        // select_all does not select groups -- only nodes and edges
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let mut sel = Selection::new();
+        sel.select_all(&graph);
+        assert!(sel.is_node_selected(&nid("a")));
+        assert!(sel.is_edge_selected(&eid("e1")));
+        assert_eq!(sel.group_count(), 0);
+    }
+
+    #[test]
+    fn selection_debug_format() {
+        let sel = Selection::new();
+        let debug = format!("{sel:?}");
+        assert!(debug.contains("Selection"));
+    }
+
+    #[test]
+    fn selection_clone() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("a"));
+        let sel2 = sel.clone();
+        assert!(sel2.is_node_selected(&nid("a")));
+    }
+
+    // ---- compute_port_world_pos ----
+
+    #[test]
+    fn port_world_pos_output_on_right_edge() {
+        let node = make_node_at("n", 100.0, 200.0);
+        let (px, _py) = compute_port_world_pos(&node, &pid("out"), true);
+        assert!((px - 200.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn port_world_pos_input_on_left_edge() {
+        let node = make_node_at("n", 100.0, 200.0);
+        let (px, _py) = compute_port_world_pos(&node, &pid("in"), false);
+        assert!((px - 100.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn port_world_pos_y_includes_header_and_padding() {
+        let node = make_node_at("n", 0.0, 0.0);
+        let (_px, py) = compute_port_world_pos(&node, &pid("any"), true);
+        // Expected: 0 + 32 + 12 + 0*20 + 10 = 54
+        let expected = 32.0 + 12.0 + 10.0;
+        assert!((py - expected).abs() < 1e-10);
+    }
+
+    // ---- i_to_f64 ----
+
+    #[test]
+    fn i_to_f64_start() {
+        assert!((i_to_f64(10, 0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn i_to_f64_end() {
+        assert!((i_to_f64(10, 10) - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn i_to_f64_midpoint() {
+        assert!((i_to_f64(10, 5) - 0.5).abs() < 1e-10);
+    }
+
+    // ---- apply_patch additional edge cases ----
+
+    #[test]
+    fn patch_update_edge_style() {
+        let mut doc = FlowDocument::default();
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let changes = flow_core::patch::EdgeChangeSet {
+            style: Some(EdgeStyle {
+                line_style: flow_core::doc::LineStyle::Dashed,
+                ..EdgeStyle::default()
+            }),
+            ..flow_core::patch::EdgeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        assert!(changed);
+        assert_eq!(
+            doc.graph.edges.get(&eid("e1")).unwrap().style.line_style,
+            flow_core::doc::LineStyle::Dashed
+        );
+    }
+
+    #[test]
+    fn patch_update_edge_data() {
+        let mut doc = FlowDocument::default();
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let changes = flow_core::patch::EdgeChangeSet {
+            data: Some(serde_json::json!({"key": "value"})),
+            ..flow_core::patch::EdgeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        assert!(changed);
+        assert_eq!(
+            doc.graph.edges.get(&eid("e1")).unwrap().data["key"],
+            "value"
+        );
+    }
+
+    #[test]
+    fn patch_update_nonexistent_edge() {
+        let mut doc = FlowDocument::default();
+        let changes = flow_core::patch::EdgeChangeSet {
+            label: Some(Some(SmolStr::from("test"))),
+            ..flow_core::patch::EdgeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("ghost"), changes });
+        assert!(!changed);
+    }
+
+    #[test]
+    fn patch_remove_nonexistent_edge() {
+        let mut doc = FlowDocument::default();
+        let changed = apply_patch(&mut doc, FlowPatch::RemoveEdge { id: eid("ghost") });
+        assert!(!changed);
+    }
+
+    #[test]
+    fn patch_update_nonexistent_group() {
+        let mut doc = FlowDocument::default();
+        let changes = flow_core::patch::GroupChangeSet {
+            title: Some(SmolStr::from("test")),
+            ..flow_core::patch::GroupChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("ghost"), changes });
+        assert!(!changed);
+    }
+
+    #[test]
+    fn patch_remove_nonexistent_group() {
+        let mut doc = FlowDocument::default();
+        let changed = apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("ghost") });
+        assert!(!changed);
+    }
+
+    #[test]
+    fn patch_remove_node_cascades_multiple_edges() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        doc.graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        doc.graph.nodes.insert(nid("c"), make_node_at("c", 400.0, 0.0));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        doc.graph.edges.insert(eid("e2"), make_edge("e2", "a", "c"));
+        doc.graph.edges.insert(eid("e3"), make_edge("e3", "b", "c"));
+
+        apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("a") });
+        // e1 and e2 should be removed (connected to a), e3 should remain
+        assert!(!doc.graph.edges.contains_key(&eid("e1")));
+        assert!(!doc.graph.edges.contains_key(&eid("e2")));
+        assert!(doc.graph.edges.contains_key(&eid("e3")));
+    }
+
+    #[test]
+    fn patch_set_entry_node_to_none() {
+        let mut doc = FlowDocument::default();
+        doc.graph.entry_node = Some(nid("n1"));
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::SetEntryNode { node: None },
+        );
+        assert!(changed);
+        assert!(doc.graph.entry_node.is_none());
+    }
+
+    #[test]
+    fn patch_update_node_kind() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        let changes = flow_core::patch::NodeChangeSet {
+            kind: Some(SmolStr::from("Choose")),
+            ..flow_core::patch::NodeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        assert!(changed);
+        assert_eq!(
+            doc.graph.nodes.get(&nid("n1")).unwrap().kind.as_str(),
+            "Choose"
+        );
+    }
+
+    #[test]
+    fn patch_update_node_size() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        let changes = flow_core::patch::NodeChangeSet {
+            size: Some([200.0, 150.0]),
+            ..flow_core::patch::NodeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        assert!(changed);
+        let node = doc.graph.nodes.get(&nid("n1")).unwrap();
+        assert!((node.size[0] - 200.0).abs() < f64::EPSILON);
+        assert!((node.size[1] - 150.0).abs() < f64::EPSILON);
+    }
+
+    // ---- apply_patches additional ----
+
+    #[test]
+    fn apply_patches_empty_vec() {
+        let mut doc = FlowDocument::default();
+        let count = apply_patches(&mut doc, Vec::new());
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn apply_patches_all_succeed() {
+        let mut doc = FlowDocument::default();
+        let patches = vec![
+            FlowPatch::InsertNode { node: make_node_at("a", 0.0, 0.0) },
+            FlowPatch::InsertNode { node: make_node_at("b", 100.0, 0.0) },
+        ];
+        let count = apply_patches(&mut doc, patches);
+        assert_eq!(count, 2);
+        assert_eq!(doc.graph.nodes.len(), 2);
+    }
+
+    // ---- cubic_bezier_point additional ----
+
+    #[test]
+    fn bezier_symmetry_check() {
+        // For a symmetric curve, t and 1-t should give mirrored points
+        let curve = CubicBezier {
+            p0: Point { x: 0.0, y: 0.0 },
+            p1: Point { x: 50.0, y: 100.0 },
+            p2: Point { x: 50.0, y: -100.0 },
+            p3: Point { x: 100.0, y: 0.0 },
+        };
+        let pt_low = cubic_bezier_point(0.25, &curve);
+        let pt_high = cubic_bezier_point(0.75, &curve);
+        // x should be mirrored around 50
+        let diff_x = (pt_low.x + pt_high.x - 100.0).abs();
+        assert!(diff_x < 1e-10);
+        // y should be negated
+        let diff_y = (pt_low.y + pt_high.y).abs();
+        assert!(diff_y < 1e-10);
+    }
+
+    // ---- min_distance_to_cubic_bezier additional ----
+
+    #[test]
+    fn min_dist_to_bezier_at_end() {
+        let curve = CubicBezier {
+            p0: Point { x: 0.0, y: 0.0 },
+            p1: Point { x: 50.0, y: 0.0 },
+            p2: Point { x: 50.0, y: 100.0 },
+            p3: Point { x: 100.0, y: 100.0 },
+        };
+        let d = min_distance_to_cubic_bezier(
+            Point { x: 100.0, y: 100.0 },
+            &curve,
+            100,
+        );
+        assert!(d < 1e-10);
+    }
+
+    #[test]
+    fn min_dist_to_bezier_at_midpoint() {
+        let curve = CubicBezier {
+            p0: Point { x: 0.0, y: 0.0 },
+            p1: Point { x: 50.0, y: 0.0 },
+            p2: Point { x: 50.0, y: 0.0 },
+            p3: Point { x: 100.0, y: 0.0 },
+        };
+        // Linear curve, midpoint at (50, 0)
+        let d = min_distance_to_cubic_bezier(
+            Point { x: 50.0, y: 0.0 },
+            &curve,
+            100,
+        );
+        assert!(d < 1e-10);
+    }
+
+    #[test]
+    fn min_dist_to_bezier_increases_with_offset() {
+        let curve = CubicBezier {
+            p0: Point { x: 0.0, y: 0.0 },
+            p1: Point { x: 50.0, y: 0.0 },
+            p2: Point { x: 50.0, y: 0.0 },
+            p3: Point { x: 100.0, y: 0.0 },
+        };
+        let d5 = min_distance_to_cubic_bezier(
+            Point { x: 50.0, y: 5.0 },
+            &curve,
+            100,
+        );
+        let d10 = min_distance_to_cubic_bezier(
+            Point { x: 50.0, y: 10.0 },
+            &curve,
+            100,
+        );
+        assert!(d10 > d5);
+    }
 }

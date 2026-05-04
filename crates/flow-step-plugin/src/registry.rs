@@ -628,4 +628,201 @@ mod tests {
         assert_eq!(cloned.inputs.len(), 1);
         assert!(cloned.outputs.is_empty());
     }
+
+    // ========================================================================
+    // BLACKHAT security review tests
+    // ========================================================================
+
+    /// BH-REG-01 (HIGH): NodeKindRegistry allows duplicate registrations of
+    /// the same kind. `get()` returns only the first match via linear scan,
+    /// silently masking any later registration. An attacker who can register
+    /// a kind before the legitimate one will shadow the legitimate entry.
+    /// This is a type-confusion vector: code expecting the legitimate
+    /// descriptor receives the attacker's descriptor with different shape,
+    /// ports, or terminal flags.
+    #[test]
+    fn blackhat_registry_duplicate_registration_shadows_original() {
+        let mut reg = NodeKindRegistry::new();
+        // Register a legitimate "task" kind
+        reg.register(NodeKindDescriptor {
+            kind: SmolStr::from("task"),
+            label: SmolStr::from("Task"),
+            category: SmolStr::from("action"),
+            default_shape: NodeShape::RoundedRect,
+            default_ports: DefaultPorts {
+                inputs: vec![PortDescriptor {
+                    id: SmolStr::from("in"),
+                    label: SmolStr::from("Input"),
+                    cardinality: PortCardinality::One,
+                }],
+                outputs: vec![PortDescriptor {
+                    id: SmolStr::from("out"),
+                    label: SmolStr::from("Output"),
+                    cardinality: PortCardinality::One,
+                }],
+            },
+            is_terminal: false,
+            is_container: false,
+        });
+        // Register a malicious "task" kind that is terminal with no outputs
+        reg.register(NodeKindDescriptor {
+            kind: SmolStr::from("task"),
+            label: SmolStr::from("MaliciousTask"),
+            category: SmolStr::from("exploit"),
+            default_shape: NodeShape::Pill,
+            default_ports: DefaultPorts {
+                inputs: vec![],
+                outputs: vec![],
+            },
+            is_terminal: true,
+            is_container: false,
+        });
+        // BUG: get() returns the FIRST match, so the attacker cannot shadow
+        // by registering AFTER. But if an attacker registers BEFORE (e.g.,
+        // via plugin loading order), the legitimate entry is hidden.
+        // Either way, the registry silently stores duplicates with no
+        // warning or error.
+        assert_eq!(reg.all().len(), 2, "both entries stored");
+        let found = reg.get("task");
+        assert!(found.is_some());
+        let desc = found.unwrap_or_else(|| panic!("expected descriptor"));
+        // First registration is returned (not the malicious one)
+        assert_eq!(desc.label.as_str(), "Task");
+        assert!(!desc.is_terminal);
+        // But the second registration is silently lurking in the registry
+    }
+
+    /// BH-REG-02 (HIGH): register_vb_kinds is not idempotent. Calling it
+    /// twice registers every kind twice, doubling the registry size. Code
+    /// that iterates `all()` to populate UI or build menus will show
+    /// duplicate entries. Code that relies on `all().len()` for counting
+    /// unique kinds will get incorrect counts.
+    #[test]
+    fn blackhat_register_vb_kinds_not_idempotent() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+        let count_after_first = reg.all().len();
+        // Call again -- should be a no-op, but it is not.
+        register_vb_kinds(&mut reg);
+        let count_after_second = reg.all().len();
+        // BUG: Registry doubled in size. No duplicate detection.
+        assert_eq!(
+            count_after_second,
+            count_after_first.saturating_mul(2),
+            "calling register_vb_kinds twice doubles the registry size"
+        );
+        // get() still returns first match, so lookups work, but iteration
+        // over all() produces duplicates.
+    }
+
+    /// BH-REG-03 (MEDIUM): NodeKindRegistry::get uses a linear scan over
+    /// all registered kinds. With O(n) lookup time, a registry bloated
+    /// by duplicate registrations or many kinds enables O(n) denial-of-
+    /// service on every lookup. Combined with BH-REG-02, repeated calls
+    /// to register_vb_kinds cause quadratic degradation.
+    #[test]
+    fn blackhat_registry_get_is_linear_scan() {
+        let mut reg = NodeKindRegistry::new();
+        // Register 1000 kinds
+        for i in 0..1000 {
+            reg.register(NodeKindDescriptor {
+                kind: SmolStr::from(format!("kind_{i}")),
+                label: SmolStr::from(format!("Kind {i}")),
+                category: SmolStr::from("test"),
+                default_shape: NodeShape::RoundedRect,
+                default_ports: DefaultPorts {
+                    inputs: vec![],
+                    outputs: vec![],
+                },
+                is_terminal: false,
+                is_container: false,
+            });
+        }
+        // Lookup the LAST registered kind -- linear scan must traverse all.
+        let found = reg.get("kind_999");
+        assert!(found.is_some());
+        // Lookup a missing kind -- must scan all 1000 entries.
+        let missing = reg.get("nonexistent");
+        assert!(missing.is_none());
+        // This is O(n) per lookup with no index. No bug in correctness,
+        // but a performance issue that can be exploited by registering
+        // many kinds to slow down lookups.
+    }
+
+    /// BH-REG-04 (MEDIUM): NodeKindDescriptor fields are entirely
+    /// unvalidated. Empty strings for kind, label, category, and port
+    /// IDs are accepted. This can cause issues downstream where code
+    /// assumes non-empty identifiers.
+    #[test]
+    fn blackhat_descriptor_accepts_empty_strings() {
+        let desc = NodeKindDescriptor {
+            kind: SmolStr::from(""),
+            label: SmolStr::from(""),
+            category: SmolStr::from(""),
+            default_shape: NodeShape::RoundedRect,
+            default_ports: DefaultPorts {
+                inputs: vec![PortDescriptor {
+                    id: SmolStr::from(""),
+                    label: SmolStr::from(""),
+                    cardinality: PortCardinality::One,
+                }],
+                outputs: vec![],
+            },
+            is_terminal: false,
+            is_container: false,
+        };
+        let mut reg = NodeKindRegistry::new();
+        reg.register(desc);
+        // BUG: Empty kind string registered. get("") now returns something.
+        let found = reg.get("");
+        assert!(found.is_some(), "empty string kind registered successfully");
+        let d = found.unwrap_or_else(|| panic!("expected descriptor"));
+        assert_eq!(d.kind.as_str(), "");
+        assert_eq!(d.default_ports.inputs[0].id.as_str(), "");
+    }
+
+    /// BH-REG-05 (LOW): NodeKindRegistry has no method to unregister or
+    /// clear kinds. Combined with the append-only design and duplicate
+    /// tolerance, there is no way to recover from accidental or malicious
+    /// registration of incorrect kinds short of dropping the entire
+    /// registry.
+    #[test]
+    fn blackhat_registry_has_no_unregistration_mechanism() {
+        let mut reg = NodeKindRegistry::new();
+        reg.register(make_descriptor("temp", "Temp", "test"));
+        // No remove(), no clear(), no way to undo this registration.
+        assert_eq!(reg.all().len(), 1);
+        // The only recovery is to create a new registry.
+        let reg2 = NodeKindRegistry::new();
+        assert!(reg2.all().is_empty());
+    }
+
+    /// BH-REG-06 (INFO): PortDescriptor.cardinality is a Copy enum with
+    /// no associated constraints. PortCardinality::Many on an output port
+    /// may not be semantically meaningful but is accepted, potentially
+    /// causing confusion in downstream rendering or validation.
+    #[test]
+    fn blackhat_many_cardinality_on_output_port_accepted() {
+        let desc = NodeKindDescriptor {
+            kind: SmolStr::from("test"),
+            label: SmolStr::from("Test"),
+            category: SmolStr::from("test"),
+            default_shape: NodeShape::RoundedRect,
+            default_ports: DefaultPorts {
+                inputs: vec![],
+                outputs: vec![PortDescriptor {
+                    id: SmolStr::from("out"),
+                    label: SmolStr::from("Out"),
+                    cardinality: PortCardinality::Many,
+                }],
+            },
+            is_terminal: false,
+            is_container: false,
+        };
+        // No validation error -- Many cardinality on output is accepted.
+        assert!(matches!(
+            desc.default_ports.outputs[0].cardinality,
+            PortCardinality::Many
+        ));
+    }
 }

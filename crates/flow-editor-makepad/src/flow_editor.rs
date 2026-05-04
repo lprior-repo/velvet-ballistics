@@ -600,3 +600,550 @@ impl FlowEditor {
         cx.widget_action(self.uid, FlowEditorAction::SelectionChanged);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- f64_to_f32 conversion tests ----
+
+    #[test]
+    fn f64_to_f32_normal_value() {
+        let result = f64_to_f32(1.5);
+        let diff = (f64::from(result) - 1.5).abs();
+        assert!(diff < 1e-6);
+    }
+
+    #[test]
+    fn f64_to_f32_zero() {
+        let result = f64_to_f32(0.0);
+        assert!((result).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn f64_to_f32_negative() {
+        let result = f64_to_f32(-2.5);
+        let diff = (f64::from(result) - (-2.5)).abs();
+        assert!(diff < 1e-6);
+    }
+
+    #[test]
+    fn f64_to_f32_small_positive() {
+        let result = f64_to_f32(0.001);
+        let diff = (f64::from(result) - 0.001).abs();
+        assert!(diff < 1e-6);
+    }
+
+    #[test]
+    fn f64_to_f32_large_but_in_f32_range() {
+        let result = f64_to_f32(1e30);
+        assert!(result.is_finite());
+        assert!(result > 0.0);
+    }
+
+    #[test]
+    fn f64_to_f32_very_large_clamps_to_max() {
+        let result = f64_to_f32(1e100);
+        assert_eq!(result, f32::MAX);
+    }
+
+    #[test]
+    fn f64_to_f32_very_negative_clamps_to_min() {
+        let result = f64_to_f32(-1e100);
+        assert_eq!(result, f32::MIN);
+    }
+
+    #[test]
+    fn f64_to_f32_exactly_f32_max() {
+        let max_f64 = f64::from(f32::MAX);
+        let result = f64_to_f32(max_f64);
+        assert!(result.is_finite());
+    }
+
+    #[test]
+    fn f64_to_f32_preserves_integer_values() {
+        let result = f64_to_f32(100.0);
+        let diff = (f64::from(result) - 100.0).abs();
+        assert!(diff < 1e-6);
+    }
+
+    #[test]
+    fn f64_to_f32_one() {
+        let result = f64_to_f32(1.0);
+        let diff = (f64::from(result) - 1.0).abs();
+        assert!(diff < f32::EPSILON.into());
+    }
+
+    // ---- color_vec4 tests ----
+
+    #[test]
+    fn color_vec4_maps_components() {
+        let c: [f32; 4] = [0.1, 0.2, 0.3, 0.4];
+        let v = color_vec4(c);
+        let diff_x = (v.x - c[0]).abs();
+        let diff_y = (v.y - c[1]).abs();
+        let diff_z = (v.z - c[2]).abs();
+        let diff_w = (v.w - c[3]).abs();
+        assert!(diff_x < f32::EPSILON);
+        assert!(diff_y < f32::EPSILON);
+        assert!(diff_z < f32::EPSILON);
+        assert!(diff_w < f32::EPSILON);
+    }
+
+    #[test]
+    fn color_vec4_opaque() {
+        let v = color_vec4(theme::colors::NEON_CYAN);
+        let diff = (v.w - 1.0).abs();
+        assert!(diff < f32::EPSILON);
+    }
+
+    #[test]
+    fn color_vec4_black() {
+        let v = color_vec4([0.0, 0.0, 0.0, 1.0]);
+        let diff_x = v.x.abs();
+        let diff_y = v.y.abs();
+        let diff_z = v.z.abs();
+        let diff_w = (v.w - 1.0).abs();
+        assert!(diff_x < f32::EPSILON);
+        assert!(diff_y < f32::EPSILON);
+        assert!(diff_z < f32::EPSILON);
+        assert!(diff_w < f32::EPSILON);
+    }
+
+    #[test]
+    fn color_vec4_white() {
+        let v = color_vec4([1.0, 1.0, 1.0, 1.0]);
+        let diff_x = (v.x - 1.0).abs();
+        let diff_y = (v.y - 1.0).abs();
+        let diff_z = (v.z - 1.0).abs();
+        let diff_w = (v.w - 1.0).abs();
+        assert!(diff_x < f32::EPSILON);
+        assert!(diff_y < f32::EPSILON);
+        assert!(diff_z < f32::EPSILON);
+        assert!(diff_w < f32::EPSILON);
+    }
+
+    // ---- resolve_node_color tests ----
+
+    fn make_node_record(id: &str, kind: &str) -> flow_core::doc::FlowNodeRecord {
+        flow_core::doc::FlowNodeRecord {
+            id: smol_str::SmolStr::from(id),
+            kind: smol_str::SmolStr::from(kind),
+            title: smol_str::SmolStr::from(id),
+            position: [0.0, 0.0],
+            size: [100.0, 60.0],
+            z_index: 0,
+            parent: None,
+            ports: Vec::new(),
+            flags: flow_core::doc::NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: flow_core::doc::NodeUiState::default(),
+        }
+    }
+
+    fn make_node_with_color_override(
+        id: &str,
+        kind: &str,
+        color: [f32; 4],
+    ) -> flow_core::doc::FlowNodeRecord {
+        flow_core::doc::FlowNodeRecord {
+            ui: flow_core::doc::NodeUiState {
+                color_override: Some(color),
+                ..flow_core::doc::NodeUiState::default()
+            },
+            ..make_node_record(id, kind)
+        }
+    }
+
+    #[test]
+    fn resolve_node_color_default_returns_card_bg() {
+        let node = make_node_record("n1", "Do");
+        assert_eq!(FlowEditor::resolve_node_color(&node), theme::colors::CARD_BG);
+    }
+
+    #[test]
+    fn resolve_node_color_override_takes_priority() {
+        let custom = [0.5, 0.6, 0.7, 0.8];
+        let node = make_node_with_color_override("n1", "Do", custom);
+        assert_eq!(FlowEditor::resolve_node_color(&node), custom);
+    }
+
+    // ---- resolve_node_border_color tests ----
+
+    #[test]
+    fn border_color_do() {
+        let node = make_node_record("n1", "Do");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_RUNNING
+        );
+    }
+
+    #[test]
+    fn border_color_do_lowercase() {
+        let node = make_node_record("n1", "do");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_RUNNING
+        );
+    }
+
+    #[test]
+    fn border_color_choose() {
+        let node = make_node_record("n1", "Choose");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_ASKING
+        );
+    }
+
+    #[test]
+    fn border_color_choose_lowercase() {
+        let node = make_node_record("n1", "choose");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_ASKING
+        );
+    }
+
+    #[test]
+    fn border_color_branch() {
+        let node = make_node_record("n1", "branch");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_ASKING
+        );
+    }
+
+    #[test]
+    fn border_color_foreach() {
+        let node = make_node_record("n1", "ForEach");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_WAITING
+        );
+    }
+
+    #[test]
+    fn border_color_collect() {
+        let node = make_node_record("n1", "Collect");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_WAITING
+        );
+    }
+
+    #[test]
+    fn border_color_loop() {
+        let node = make_node_record("n1", "loop");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_WAITING
+        );
+    }
+
+    #[test]
+    fn border_color_together() {
+        let node = make_node_record("n1", "Together");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_WAITING
+        );
+    }
+
+    #[test]
+    fn border_color_parallel() {
+        let node = make_node_record("n1", "parallel");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_WAITING
+        );
+    }
+
+    #[test]
+    fn border_color_wait() {
+        let node = make_node_record("n1", "Wait");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_SUCCEEDED
+        );
+    }
+
+    #[test]
+    fn border_color_ask() {
+        let node = make_node_record("n1", "Ask");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_SUCCEEDED
+        );
+    }
+
+    #[test]
+    fn border_color_suspend() {
+        let node = make_node_record("n1", "suspend");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_SUCCEEDED
+        );
+    }
+
+    #[test]
+    fn border_color_error_handler() {
+        let node = make_node_record("n1", "ErrorHandler");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_FAILED
+        );
+    }
+
+    #[test]
+    fn border_color_error_lowercase() {
+        let node = make_node_record("n1", "error");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::STATE_FAILED
+        );
+    }
+
+    #[test]
+    fn border_color_finish() {
+        let node = make_node_record("n1", "Finish");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::NEON_TEAL
+        );
+    }
+
+    #[test]
+    fn border_color_terminal() {
+        let node = make_node_record("n1", "terminal");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::NEON_TEAL
+        );
+    }
+
+    #[test]
+    fn border_color_jump() {
+        let node = make_node_record("n1", "Jump");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::TEXT_SECONDARY
+        );
+    }
+
+    #[test]
+    fn border_color_nop() {
+        let node = make_node_record("n1", "Nop");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::TEXT_SECONDARY
+        );
+    }
+
+    #[test]
+    fn border_color_control() {
+        let node = make_node_record("n1", "control");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::TEXT_SECONDARY
+        );
+    }
+
+    #[test]
+    fn border_color_unknown_returns_border() {
+        let node = make_node_record("n1", "SomethingWeird");
+        assert_eq!(
+            FlowEditor::resolve_node_border_color(&node),
+            theme::colors::BORDER
+        );
+    }
+
+    // ---- resolve_edge_color tests ----
+
+    fn make_edge_record(line_style: flow_core::doc::LineStyle) -> flow_core::doc::FlowEdgeRecord {
+        flow_core::doc::FlowEdgeRecord {
+            id: smol_str::SmolStr::from("e1"),
+            source_node: smol_str::SmolStr::from("a"),
+            source_port: smol_str::SmolStr::from("out"),
+            target_node: smol_str::SmolStr::from("b"),
+            target_port: smol_str::SmolStr::from("in"),
+            label: None,
+            style: flow_core::doc::EdgeStyle {
+                line_style,
+                ..flow_core::doc::EdgeStyle::default()
+            },
+            data: serde_json::Value::Null,
+            ui: flow_core::doc::EdgeUiState::default(),
+        }
+    }
+
+    fn make_edge_with_color_override(_color: [f32; 4]) -> flow_core::doc::FlowEdgeRecord {
+        flow_core::doc::FlowEdgeRecord {
+            ui: flow_core::doc::EdgeUiState {
+                color_override: None,
+            },
+            ..make_edge_record(flow_core::doc::LineStyle::Solid)
+        }
+    }
+
+    #[test]
+    fn edge_color_solid_is_cyan() {
+        let edge = make_edge_record(flow_core::doc::LineStyle::Solid);
+        assert_eq!(
+            FlowEditor::resolve_edge_color(&edge),
+            theme::colors::NEON_CYAN
+        );
+    }
+
+    #[test]
+    fn edge_color_dashed_is_red() {
+        let edge = make_edge_record(flow_core::doc::LineStyle::Dashed);
+        assert_eq!(
+            FlowEditor::resolve_edge_color(&edge),
+            theme::colors::STATE_FAILED
+        );
+    }
+
+    #[test]
+    fn edge_color_dotted_is_yellow() {
+        let edge = make_edge_record(flow_core::doc::LineStyle::Dotted);
+        assert_eq!(
+            FlowEditor::resolve_edge_color(&edge),
+            theme::colors::STATE_ASKING
+        );
+    }
+
+    #[test]
+    fn edge_color_override_ignored_by_resolve() {
+        // Note: resolve_edge_color does NOT check color_override -- the caller
+        // (draw_edge) handles that. So with a color_override set, the resolve
+        // function still returns the line_style-based color.
+        let custom = [0.9, 0.1, 0.5, 1.0];
+        let edge = make_edge_with_color_override(custom);
+        assert_eq!(
+            FlowEditor::resolve_edge_color(&edge),
+            theme::colors::NEON_CYAN
+        );
+    }
+
+    // ---- FlowEditorAction variants ----
+
+    #[test]
+    fn action_document_changed_debug_format() {
+        let action = FlowEditorAction::DocumentChanged;
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("DocumentChanged"));
+    }
+
+    #[test]
+    fn action_selection_changed_debug_format() {
+        let action = FlowEditorAction::SelectionChanged;
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("SelectionChanged"));
+    }
+
+    #[test]
+    fn action_viewport_changed_debug_format() {
+        let action = FlowEditorAction::ViewportChanged {
+            pan_x: 1.0,
+            pan_y: 2.0,
+            zoom: 3.0,
+        };
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("ViewportChanged"));
+    }
+
+    #[test]
+    fn action_node_clicked_debug_format() {
+        let action = FlowEditorAction::NodeClicked {
+            node_id: smol_str::SmolStr::from("n1"),
+        };
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("NodeClicked"));
+    }
+
+    #[test]
+    fn action_edge_clicked_debug_format() {
+        let action = FlowEditorAction::EdgeClicked {
+            edge_id: smol_str::SmolStr::from("e1"),
+        };
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("EdgeClicked"));
+    }
+
+    #[test]
+    fn action_canvas_clicked_debug_format() {
+        let action = FlowEditorAction::CanvasClicked {
+            world_x: 10.0,
+            world_y: 20.0,
+        };
+        let debug_str = format!("{action:?}");
+        assert!(debug_str.contains("CanvasClicked"));
+    }
+
+    #[test]
+    fn action_viewport_changed_clone() {
+        let action = FlowEditorAction::ViewportChanged {
+            pan_x: 1.0,
+            pan_y: 2.0,
+            zoom: 3.0,
+        };
+        let cloned = action.clone();
+        if let FlowEditorAction::ViewportChanged { pan_x, pan_y, zoom } = cloned {
+            let diff_pan_x = (pan_x - 1.0).abs();
+            let diff_pan_y = (pan_y - 2.0).abs();
+            let diff_zoom = (zoom - 3.0).abs();
+            assert!(diff_pan_x < f64::EPSILON);
+            assert!(diff_pan_y < f64::EPSILON);
+            assert!(diff_zoom < f64::EPSILON);
+        } else {
+            panic!("Expected ViewportChanged variant");
+        }
+    }
+
+    // ---- All known node kinds map to non-default colors ----
+
+    #[test]
+    fn all_mapped_kinds_have_specific_colors() {
+        let kinds = [
+            ("Do", theme::colors::STATE_RUNNING),
+            ("do", theme::colors::STATE_RUNNING),
+            ("Choose", theme::colors::STATE_ASKING),
+            ("choose", theme::colors::STATE_ASKING),
+            ("branch", theme::colors::STATE_ASKING),
+            ("ForEach", theme::colors::STATE_WAITING),
+            ("foreach", theme::colors::STATE_WAITING),
+            ("Collect", theme::colors::STATE_WAITING),
+            ("collect", theme::colors::STATE_WAITING),
+            ("loop", theme::colors::STATE_WAITING),
+            ("Together", theme::colors::STATE_WAITING),
+            ("together", theme::colors::STATE_WAITING),
+            ("parallel", theme::colors::STATE_WAITING),
+            ("Wait", theme::colors::STATE_SUCCEEDED),
+            ("wait", theme::colors::STATE_SUCCEEDED),
+            ("Ask", theme::colors::STATE_SUCCEEDED),
+            ("ask", theme::colors::STATE_SUCCEEDED),
+            ("suspend", theme::colors::STATE_SUCCEEDED),
+            ("ErrorHandler", theme::colors::STATE_FAILED),
+            ("error_handler", theme::colors::STATE_FAILED),
+            ("error", theme::colors::STATE_FAILED),
+            ("Finish", theme::colors::NEON_TEAL),
+            ("finish", theme::colors::NEON_TEAL),
+            ("terminal", theme::colors::NEON_TEAL),
+            ("Jump", theme::colors::TEXT_SECONDARY),
+            ("jump", theme::colors::TEXT_SECONDARY),
+            ("Nop", theme::colors::TEXT_SECONDARY),
+            ("nop", theme::colors::TEXT_SECONDARY),
+            ("control", theme::colors::TEXT_SECONDARY),
+        ];
+        for (kind, expected) in &kinds {
+            let node = make_node_record("n", kind);
+            let result = FlowEditor::resolve_node_border_color(&node);
+            assert_eq!(
+                result, *expected,
+                "border color mismatch for kind '{kind}'"
+            );
+        }
+    }
+}

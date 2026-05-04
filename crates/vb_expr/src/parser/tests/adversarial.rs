@@ -137,3 +137,99 @@ fn parse_expr_rejects_helper_with_too_many_args() -> crate::ExprResult<()> {
     );
     Ok(())
 }
+
+// =========================================================================
+// BLACKHAT security regression tests -- parser
+// =========================================================================
+
+/// BH-PA-001: Deep nesting does not cause stack overflow in the parser.
+#[test]
+fn blackhat_pa_001_deep_nesting_no_crash() {
+    let depth = usize::from(crate::parser::MAX_DEPTH).saturating_add(2);
+    let open = "(".repeat(depth);
+    let close = ")".repeat(depth);
+    let source = format!("{open}true{close}");
+    let result = parse(&source);
+    assert!(
+        matches!(result, Err(ExprError::ParseDepthExceeded { .. })),
+        "BH-PA-001: deeply nested parens must hit depth limit"
+    );
+}
+
+/// BH-PA-002: Unknown identifier without parens is rejected.
+#[test]
+fn blackhat_pa_002_unknown_identifier_rejected() -> crate::ExprResult<()> {
+    let result = parse("foo");
+    let Err(ExprError::UnexpectedToken { token }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected UnexpectedToken".into(),
+        });
+    };
+    assert!(token.contains("unknown identifier"), "got: {token}");
+    Ok(())
+}
+
+/// BH-PA-003: Helper arity mismatch produces typed error.
+#[test]
+fn blackhat_pa_003_helper_arity_mismatch() -> crate::ExprResult<()> {
+    let result = parse("contains(1)");
+    let Err(ExprError::HelperArityMismatch { helper, expected, actual }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected HelperArityMismatch".into(),
+        });
+    };
+    assert_eq!(helper, "contains");
+    assert_eq!(expected, 2);
+    assert_eq!(actual, 1);
+    Ok(())
+}
+
+/// BH-PA-004: Trailing operator produces error.
+#[test]
+fn blackhat_pa_004_trailing_operator() {
+    let result = parse("1 +");
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { .. })),
+        "BH-PA-004: trailing operator should error"
+    );
+}
+
+/// BH-PA-005: Empty parentheses rejected.
+#[test]
+fn blackhat_pa_005_empty_parens_rejected() {
+    let result = parse("()");
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { .. })),
+        "BH-PA-005: empty parens should error"
+    );
+}
+
+/// BH-PA-006: Double operator rejected.
+#[test]
+fn blackhat_pa_006_double_operator_rejected() {
+    let result = parse("1 + * 2");
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { .. })),
+        "BH-PA-006: double operator should error"
+    );
+}
+
+/// BH-PA-007: Extra right paren rejected.
+#[test]
+fn blackhat_pa_007_extra_rparen_rejected() {
+    let result = parse("1)");
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { .. })),
+        "BH-PA-007: extra right paren should error"
+    );
+}
+
+/// BH-PA-008: Missing right paren rejected.
+#[test]
+fn blackhat_pa_008_missing_rparen_rejected() {
+    let result = parse("(1 + 2");
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { .. })),
+        "BH-PA-008: missing right paren should error"
+    );
+}

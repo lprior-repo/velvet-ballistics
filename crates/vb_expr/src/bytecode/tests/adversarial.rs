@@ -146,3 +146,118 @@ fn compile_expr_to_bytecode_produces_correct_negation_ops() -> crate::ExprResult
     assert_eq!(constants, vec![ConstValue::I64(0), ConstValue::I64(5)]);
     Ok(())
 }
+
+// =========================================================================
+// BLACKHAT security regression tests -- bytecode
+// =========================================================================
+
+/// BH-BC-001: Constant folding rejects overflow in addition.
+#[test]
+fn blackhat_bc_001_fold_rejects_overflow_add() -> crate::ExprResult<()> {
+    let tokens = lex_expr("9223372036854775807 + 1")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BH-BC-001: overflow should not fold");
+    Ok(())
+}
+
+/// BH-BC-002: Constant folding rejects overflow in multiplication.
+#[test]
+fn blackhat_bc_002_fold_rejects_overflow_mul() -> crate::ExprResult<()> {
+    let tokens = lex_expr("9223372036854775807 * 2")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BH-BC-002: overflow should not fold");
+    Ok(())
+}
+
+/// BH-BC-003: Constant folding rejects division by zero.
+#[test]
+fn blackhat_bc_003_fold_rejects_div_by_zero() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1 / 0")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BH-BC-003: div by zero should not fold");
+    Ok(())
+}
+
+/// BH-BC-004: Constant folding accepts valid division.
+#[test]
+fn blackhat_bc_004_fold_accepts_valid_div() -> crate::ExprResult<()> {
+    let tokens = lex_expr("10 / 2")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::I64(5)));
+    Ok(())
+}
+
+/// BH-BC-005: Constant folding rejects negation of i64::MIN.
+///
+/// SECURITY NOTE: Constant folding uses `checked_neg` which correctly
+/// returns None for i64::MIN. However, note that `--5` (double negation)
+/// folds correctly through the binary subtraction path as `0 - (0 - 5)`.
+#[test]
+fn blackhat_bc_005_fold_rejects_neg_i64_min() -> crate::ExprResult<()> {
+    let ast = crate::parser::ExprAst::Unary {
+        op: crate::lexer::UnaryOp::Neg,
+        expr: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(i64::MIN),
+        )),
+    };
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BH-BC-005: -i64::MIN should not fold");
+    Ok(())
+}
+
+/// BH-BC-006: Constant pool overflow at max boundary.
+#[test]
+fn blackhat_bc_006_constant_pool_overflow() -> crate::ExprResult<()> {
+    let mut constants: Vec<ConstValue> = Vec::new();
+    for i in 0u16..65_535 {
+        constants.push(ConstValue::I64(i64::from(i)));
+    }
+    let r = push_constant(ConstValue::I64(0), &mut constants);
+    assert!(
+        matches!(r, Err(crate::ExprError::ConstantPoolOverflow)),
+        "BH-BC-006: constant pool overflow at 65535"
+    );
+    Ok(())
+}
+
+/// BH-BC-007: Stack bound validation rejects empty ops.
+#[test]
+fn blackhat_bc_007_stack_bound_rejects_empty() -> crate::ExprResult<()> {
+    let ops: Vec<ExprOp> = vec![];
+    let r = check_expr_stack_bound(&ops);
+    assert!(r.is_err(), "BH-BC-007: empty ops should fail stack validation");
+    Ok(())
+}
+
+/// BH-BC-008: Unresolved reference produces typed error.
+#[test]
+fn blackhat_bc_008_unresolved_reference() -> crate::ExprResult<()> {
+    fn reject_all(_s: &str) -> Option<vb_core::SlotIdx> {
+        None
+    }
+    let r = compile_expr("$missing", &reject_all);
+    let Err(crate::ExprError::InvalidReference { reference }) = r else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "BH-BC-008: expected InvalidReference".into(),
+        });
+    };
+    assert_eq!(reference, "$missing");
+    Ok(())
+}
+
+/// BH-BC-009: Text literals rejected in bytecode compilation.
+#[test]
+fn blackhat_bc_009_text_literal_rejected() -> crate::ExprResult<()> {
+    let r = compile_expr("\"hello\"", &|_| None);
+    let Err(crate::ExprError::UnsupportedLiteral { literal }) = r else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "BH-BC-009: expected UnsupportedLiteral".into(),
+        });
+    };
+    assert_eq!(literal, "text");
+    Ok(())
+}
