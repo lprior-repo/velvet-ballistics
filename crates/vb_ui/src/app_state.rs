@@ -384,7 +384,7 @@ impl VerificationData {
         self.pass_count = pass;
         self.fail_count = fail;
         self.warn_count = 0;
-        self.all_clean = fail == 0 && pass > 0;
+        self.all_clean = fail == 0 && (pass > 0 || total_count == 0);
     }
 
     /// Returns a human-readable summary string for the verification badge.
@@ -788,6 +788,22 @@ mod tests {
         let from_default = VerificationData::default();
         assert_eq!(from_new.total_checks, from_default.total_checks);
         assert_eq!(from_new.all_clean, from_default.all_clean);
+    }
+
+    // -----------------------------------------------------------------------
+    // VerificationData::populate_cert_cards — empty certs edge case
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn populate_cert_cards_empty_certs_is_all_clean() {
+        // Black hat fix #6: empty certs must not flip all_clean to false.
+        // Nothing failed, so the state should remain clean.
+        let mut vd = VerificationData::new();
+        vd.populate_cert_cards(&[]);
+        assert!(vd.all_clean, "empty certs should produce all_clean=true");
+        assert_eq!(vd.total_checks, 0);
+        assert_eq!(vd.pass_count, 0);
+        assert_eq!(vd.fail_count, 0);
     }
 
     // -----------------------------------------------------------------------

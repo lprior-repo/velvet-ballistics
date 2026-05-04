@@ -525,4 +525,54 @@ mod tests {
         assert!(suggestions.iter().all(|s| !s.rationale.is_empty()));
         assert!(suggestions.iter().all(|s| !s.confidence_level.display_str().is_empty()));
     }
+
+    // ---------------------------------------------------------------------------
+    // Additional tests: RepairKind::as_str, legacy variants, RepairConfidence
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_repair_kind_as_str_all_variants() {
+        assert_eq!(RepairKind::IncreaseTimeout.as_str(), "IncreaseTimeout");
+        assert_eq!(RepairKind::AddRetryBackoff.as_str(), "AddRetryBackoff");
+        assert_eq!(RepairKind::ReducePayload.as_str(), "ReducePayload");
+        assert_eq!(RepairKind::PinIdempotency.as_str(), "PinIdempotency");
+        assert_eq!(RepairKind::FixSecretLeak.as_str(), "FixSecretLeak");
+        assert_eq!(RepairKind::ManualInvestigation.as_str(), "ManualInvestigation");
+    }
+
+    #[test]
+    fn test_suggest_repairs_budget_exceeded() {
+        let incident = make_incident(FailureCode::BudgetExceeded, SideEffectCertainty::Certain);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::AdjustBudget));
+    }
+
+    #[test]
+    fn test_suggest_repairs_step_panicked() {
+        let incident = make_incident(FailureCode::StepPanicked, SideEffectCertainty::Unknown);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::ManualInvestigation));
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+        // StepPanicked maps to Unknown certainty, so PinIdempotency should also appear
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
+    }
+
+    #[test]
+    fn test_suggest_repairs_replay_divergence() {
+        let incident = make_incident(FailureCode::ReplayDivergence, SideEffectCertainty::Certain);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+    }
+
+    #[test]
+    fn test_repair_confidence_all_variants_are_distinct() {
+        let variants = [RepairConfidence::High, RepairConfidence::Medium, RepairConfidence::Low];
+        for i in 0..variants.len() {
+            for j in (i + 1)..variants.len() {
+                assert_ne!(variants[i], variants[j]);
+            }
+        }
+    }
 }

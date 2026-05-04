@@ -513,4 +513,83 @@ mod tests {
         assert!(console.has_unsafe_replay());
         assert_eq!(console.incidents_by_severity(IncidentSeverity::Warning).len(), 1);
     }
+
+    // ---------------------------------------------------------------------------
+    // Additional tests: dismiss index adjustment, select edge cases, with_max_display
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_dismiss_before_selected_adjusts_index() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        // Select index 2 (the third incident)
+        console.select(2);
+        assert_eq!(console.selected().map(|i| i.id), Some(3));
+        // Dismiss index 0 (before the selected one); selected should shift to 1
+        console.dismiss(0);
+        assert_eq!(console.active_count(), 2);
+        assert_eq!(console.selected().map(|i| i.id), Some(3));
+    }
+
+    #[test]
+    fn test_dismiss_after_selected_keeps_index() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        // Select index 0
+        console.select(0);
+        assert_eq!(console.selected().map(|i| i.id), Some(1));
+        // Dismiss index 2 (after selected); selected index stays at 0
+        console.dismiss(2);
+        assert_eq!(console.active_count(), 2);
+        assert_eq!(console.selected().map(|i| i.id), Some(1));
+    }
+
+    #[test]
+    fn test_select_out_of_bounds_is_noop() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.select(5);
+        assert!(console.selected().is_none(), "selecting out of bounds should not set selection");
+    }
+
+    #[test]
+    fn test_with_max_display_custom_value() {
+        let console = IncidentConsole::with_max_display(50);
+        assert_eq!(console.max_display, 50);
+    }
+
+    #[test]
+    fn test_default_trait_matches_new() {
+        let from_new = IncidentConsole::new();
+        let from_default = IncidentConsole::default();
+        assert!(from_default.legacy_incidents().is_empty());
+        assert!(from_default.active_incidents().is_empty());
+        assert_eq!(from_new.active_count(), from_default.active_count());
+        assert!(from_default.selected().is_none());
+    }
+
+    #[test]
+    fn test_add_incident_returns_sequential_indices() {
+        let mut console = IncidentConsole::new();
+        let i0 = console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        let i1 = console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::BudgetExceeded));
+        let i2 = console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        assert_eq!(i0, 0);
+        assert_eq!(i1, 1);
+        assert_eq!(i2, 2);
+    }
+
+    #[test]
+    fn test_legacy_critical_count_mixed() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(2, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(3, IncidentSeverity::Major, FailureCode::BudgetExceeded));
+        console.add_incident(make_incident(4, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        assert_eq!(console.legacy_critical_count(), 2);
+    }
 }
