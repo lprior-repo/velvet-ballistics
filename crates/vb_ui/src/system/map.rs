@@ -1,0 +1,509 @@
+// System Map / Topology module for Phase 3A.
+// Provides topology snapshot data for the System Overview screen,
+// including shard node status, system-wide aggregates, and grid layout
+// computation for rendering.
+
+// --- Float/int conversion helpers (isolated for auditability) ---
+
+/// Convert a usize to f32, isolated for auditability.
+/// Lossless for layout-sized values (< 2^24).
+#[allow(clippy::cast_precision_loss, clippy::as_conversions)]
+fn int_to_f32(v: usize) -> f32 {
+    v as f32
+}
+
+/// Convert a non-negative f32 to u32, clamping to [0, u32::MAX].
+/// Isolated for auditability.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::as_conversions)]
+fn f32_to_u32(v: f32) -> u32 {
+    if v <= 0.0 {
+        0
+    } else if v >= 16_777_216.0 {
+        // f32 can't represent values > 2^24 precisely, clamp to safe range
+        u32::MAX
+    } else {
+        v.round() as u32
+    }
+}
+
+/// Color constants as linear RGBA (suitable for GPU/shader consumption).
+#[allow(dead_code)]
+mod colors {
+    /// neon_cyan #00f5ff — running / active
+    pub(super) const NEON_CYAN: [f32; 4] = [0.0, 0.961, 1.0, 1.0];
+    /// neon_green #39ff14 — healthy / idle
+    pub(super) const NEON_GREEN: [f32; 4] = [0.224, 1.0, 0.078, 1.0];
+    /// neon_red #ff073a — failed / overloaded
+    pub(super) const NEON_RED: [f32; 4] = [1.0, 0.027, 0.227, 1.0];
+    /// neon_blue #2d6bff — waiting
+    pub(super) const NEON_BLUE: [f32; 4] = [0.176, 0.420, 1.0, 1.0];
+    /// neon_orange #ff6b00 — action
+    pub(super) const NEON_ORANGE: [f32; 4] = [1.0, 0.420, 0.0, 1.0];
+}
+
+/// Status of a single shard within the system topology.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShardStatus {
+    /// Shard is actively processing runs.
+    Active,
+    /// Shard has no active runs and is waiting for work.
+    Idle,
+    /// Shard is overloaded (active_runs >= max_runs or queues backed up).
+    Overloaded,
+}
+
+impl ShardStatus {
+    /// Returns the display color associated with this shard status.
+    #[must_use]
+    pub const fn status_color(self) -> [f32; 4] {
+        match self {
+            Self::Active => colors::NEON_CYAN,
+            Self::Idle => colors::NEON_GREEN,
+            Self::Overloaded => colors::NEON_RED,
+        }
+    }
+
+    /// Ordering severity: Overloaded > Active > Idle.
+    /// Returns `true` if `self` is strictly worse than `other`.
+    const fn is_worse_than(self, other: Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Overloaded, Self::Active)
+                | (Self::Overloaded, Self::Idle)
+                | (Self::Active, Self::Idle)
+        )
+    }
+}
+
+/// A single shard node in the system topology.
+#[derive(Debug, Clone)]
+pub struct ShardNode {
+    pub shard_id: u32,
+    pub active_runs: u32,
+    pub max_runs: u32,
+    pub status: ShardStatus,
+    pub ready_depth: u32,
+    pub action_depth: u32,
+}
+
+impl ShardNode {
+    /// Constructs a new `ShardNode`, computing status from active_runs and max_runs.
+    #[must_use]
+    pub fn new(
+        shard_id: u32,
+        active_runs: u32,
+        max_runs: u32,
+        ready_depth: u32,
+        action_depth: u32,
+    ) -> Self {
+        let status = if max_runs > 0 && active_runs >= max_runs {
+            ShardStatus::Overloaded
+        } else if active_runs == 0 {
+            ShardStatus::Idle
+        } else {
+            ShardStatus::Active
+        };
+
+        Self {
+            shard_id,
+            active_runs,
+            max_runs,
+            status,
+            ready_depth,
+            action_depth,
+        }
+    }
+}
+
+/// Aggregated system-wide topology snapshot.
+#[derive(Debug, Clone)]
+pub struct SystemTopology {
+    pub shards: Vec<ShardNode>,
+}
+
+impl SystemTopology {
+    /// Returns the worst shard status across all shards.
+    ///
+    /// Severity order: Overloaded > Active > Idle.
+    /// Returns `Idle` for an empty topology (no shards means nothing is wrong).
+    #[must_use]
+    pub fn worst_status(&self) -> ShardStatus {
+        self.shards
+            .iter()
+            .fold(ShardStatus::Idle, |worst, shard| {
+                if shard.status.is_worse_than(worst) {
+                    shard.status
+                } else {
+                    worst
+                }
+            })
+    }
+
+    /// Sums `active_runs` across all shards.
+    #[must_use]
+    pub fn total_active_runs(&self) -> u32 {
+        self.shards
+            .iter()
+            .fold(0u32, |acc, s| acc.saturating_add(s.active_runs))
+    }
+
+    /// Sums `ready_depth + action_depth` across all shards.
+    #[must_use]
+    pub fn total_pending_actions(&self) -> u32 {
+        self.shards.iter().fold(0u32, |acc, s| {
+            let pending = s.ready_depth.saturating_add(s.action_depth);
+            acc.saturating_add(pending)
+        })
+    }
+}
+
+/// A positioned rectangle for a single shard in the layout.
+#[derive(Debug, Clone, Copy)]
+pub struct ShardRect {
+    pub shard_id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub color: [f32; 4],
+}
+
+/// Layout engine for the system map grid.
+///
+/// Positions shard nodes in an auto-sized grid within the given bounds.
+/// Grid columns are chosen to keep tiles roughly square.
+pub struct SystemMapLayout;
+
+impl SystemMapLayout {
+    /// Computes the grid layout for the given topology within the specified bounds.
+    ///
+    /// Returns a `ShardRect` per shard, arranged in a row-major grid.
+    /// Returns an empty vec for an empty topology.
+    /// Returns an empty vec if width or height is non-positive.
+    #[must_use]
+    pub fn compute_layout(topology: &SystemTopology, width: f32, height: f32) -> Vec<ShardRect> {
+        if width <= 0.0 || height <= 0.0 {
+            return Vec::new();
+        }
+
+        let count = topology.shards.len();
+        if count == 0 {
+            return Vec::new();
+        }
+
+        let cols = Self::optimal_columns(count, width, height);
+        let rows = Self::rows_for(count, cols);
+
+        let cols_f = int_to_f32(cols).max(1.0);
+        let rows_f = int_to_f32(rows).max(1.0);
+        let cell_w = width / cols_f;
+        let cell_h = height / rows_f;
+
+        topology
+            .shards
+            .iter()
+            .enumerate()
+            .map(|(i, shard)| {
+                let col = i.checked_rem(cols).unwrap_or(0);
+                let row = i.checked_div(cols).unwrap_or(0);
+                let x = int_to_f32(col) * cell_w;
+                let y = int_to_f32(row) * cell_h;
+                ShardRect {
+                    shard_id: shard.shard_id,
+                    x,
+                    y,
+                    w: cell_w,
+                    h: cell_h,
+                    color: shard.status.status_color(),
+                }
+            })
+            .collect()
+    }
+
+    /// Pick column count so tiles stay roughly square.
+    /// Formula: cols = ceil(sqrt(count * (w/h)))
+    fn optimal_columns(count: usize, width: f32, height: f32) -> usize {
+        if count == 0 || height <= 0.0 {
+            return 1;
+        }
+        let count_f = int_to_f32(count);
+        let ratio = width / height;
+        let raw = count_f.sqrt() * ratio.sqrt();
+        let ceiled = raw.ceil().max(1.0);
+        let cols_u32 = f32_to_u32(ceiled).max(1);
+        let cols = usize::try_from(cols_u32).unwrap_or(1);
+        cols.min(count)
+    }
+
+    /// Number of rows needed for `count` items in `cols` columns.
+    fn rows_for(count: usize, cols: usize) -> usize {
+        if cols == 0 {
+            return 1;
+        }
+        let r = count.checked_div(cols).unwrap_or(0);
+        if count.is_multiple_of(cols) {
+            r
+        } else {
+            r.saturating_add(1)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- ShardStatus color tests --
+
+    #[test]
+    fn shard_status_active_color_is_neon_cyan() {
+        let [r, g, b, a] = ShardStatus::Active.status_color();
+        assert!((r - 0.0).abs() < f32::EPSILON);
+        assert!((g - 0.961).abs() < 0.002);
+        assert!((b - 1.0).abs() < f32::EPSILON);
+        assert!((a - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn shard_status_idle_color_is_neon_green() {
+        let [r, g, b, a] = ShardStatus::Idle.status_color();
+        assert!((r - 0.224).abs() < 0.002);
+        assert!((g - 1.0).abs() < f32::EPSILON);
+        assert!((b - 0.078).abs() < 0.002);
+        assert!((a - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn shard_status_overloaded_color_is_neon_red() {
+        let [r, g, b, a] = ShardStatus::Overloaded.status_color();
+        assert!((r - 1.0).abs() < f32::EPSILON);
+        assert!((g - 0.027).abs() < 0.002);
+        assert!((b - 0.227).abs() < 0.002);
+        assert!((a - 1.0).abs() < f32::EPSILON);
+    }
+
+    // -- ShardNode::new status derivation tests --
+
+    #[test]
+    fn shard_node_new_idle_when_no_runs() {
+        let node = ShardNode::new(0, 0, 10, 0, 0);
+        assert_eq!(node.status, ShardStatus::Idle);
+    }
+
+    #[test]
+    fn shard_node_new_active_when_some_runs_below_max() {
+        let node = ShardNode::new(1, 5, 10, 2, 3);
+        assert_eq!(node.status, ShardStatus::Active);
+        assert_eq!(node.active_runs, 5);
+        assert_eq!(node.ready_depth, 2);
+        assert_eq!(node.action_depth, 3);
+    }
+
+    #[test]
+    fn shard_node_new_overloaded_when_runs_equal_max() {
+        let node = ShardNode::new(2, 10, 10, 0, 0);
+        assert_eq!(node.status, ShardStatus::Overloaded);
+    }
+
+    #[test]
+    fn shard_node_new_overloaded_when_runs_exceed_max() {
+        let node = ShardNode::new(3, 15, 10, 5, 2);
+        assert_eq!(node.status, ShardStatus::Overloaded);
+        assert_eq!(node.active_runs, 15);
+    }
+
+    #[test]
+    fn shard_node_new_idle_when_max_runs_is_zero() {
+        // max_runs == 0 means no capacity defined, not overloaded
+        let node = ShardNode::new(4, 0, 0, 0, 0);
+        assert_eq!(node.status, ShardStatus::Idle);
+    }
+
+    // -- SystemTopology aggregate tests --
+
+    #[test]
+    fn topology_total_active_runs_sums_across_shards() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 3, 10, 0, 0),
+                ShardNode::new(1, 7, 10, 0, 0),
+                ShardNode::new(2, 1, 10, 0, 0),
+            ],
+        };
+        assert_eq!(topo.total_active_runs(), 11);
+    }
+
+    #[test]
+    fn topology_total_pending_actions_sums_ready_and_action() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 1, 10, 5, 3),
+                ShardNode::new(1, 2, 10, 10, 7),
+            ],
+        };
+        assert_eq!(topo.total_pending_actions(), 25);
+    }
+
+    #[test]
+    fn topology_worst_status_overloaded_propagates() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 0, 10, 0, 0),  // Idle
+                ShardNode::new(1, 5, 10, 0, 0),  // Active
+                ShardNode::new(2, 10, 10, 0, 0), // Overloaded
+            ],
+        };
+        assert_eq!(topo.worst_status(), ShardStatus::Overloaded);
+    }
+
+    #[test]
+    fn topology_worst_status_active_without_overloaded() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 0, 10, 0, 0), // Idle
+                ShardNode::new(1, 5, 10, 0, 0), // Active
+            ],
+        };
+        assert_eq!(topo.worst_status(), ShardStatus::Active);
+    }
+
+    #[test]
+    fn topology_worst_status_idle_when_all_idle() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 0, 10, 0, 0),
+                ShardNode::new(1, 0, 10, 0, 0),
+            ],
+        };
+        assert_eq!(topo.worst_status(), ShardStatus::Idle);
+    }
+
+    #[test]
+    fn topology_worst_status_idle_when_empty() {
+        let topo = SystemTopology {
+            shards: Vec::new(),
+        };
+        assert_eq!(topo.worst_status(), ShardStatus::Idle);
+    }
+
+    #[test]
+    fn topology_totals_zero_when_empty() {
+        let topo = SystemTopology {
+            shards: Vec::new(),
+        };
+        assert_eq!(topo.total_active_runs(), 0);
+        assert_eq!(topo.total_pending_actions(), 0);
+    }
+
+    // -- Layout tests --
+
+    #[test]
+    fn layout_returns_empty_for_zero_shards() {
+        let topo = SystemTopology {
+            shards: Vec::new(),
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 800.0, 600.0);
+        assert!(rects.is_empty());
+    }
+
+    #[test]
+    fn layout_single_shard_fills_bounds() {
+        let topo = SystemTopology {
+            shards: vec![ShardNode::new(0, 5, 10, 0, 0)],
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 800.0, 600.0);
+        assert_eq!(rects.len(), 1);
+        assert_eq!(rects[0].shard_id, 0);
+        assert!((rects[0].x - 0.0).abs() < f32::EPSILON);
+        assert!((rects[0].y - 0.0).abs() < f32::EPSILON);
+        assert!((rects[0].w - 800.0).abs() < 0.01);
+        assert!((rects[0].h - 600.0).abs() < 0.01);
+        assert_eq!(rects[0].color, ShardStatus::Active.status_color());
+    }
+
+    #[test]
+    fn layout_many_shards_grid_positions() {
+        let topo = SystemTopology {
+            shards: (0..6).map(|i| ShardNode::new(i, 1, 10, 0, 0)).collect(),
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 600.0, 400.0);
+        assert_eq!(rects.len(), 6);
+
+        // All rects should have positive width and height
+        for r in &rects {
+            assert!(r.w > 0.0);
+            assert!(r.h > 0.0);
+        }
+
+        // Shard IDs preserved in order
+        for (i, r) in rects.iter().enumerate() {
+            assert_eq!(r.shard_id, u32::try_from(i).unwrap_or(u32::MAX));
+        }
+    }
+
+    #[test]
+    fn layout_returns_empty_for_negative_dimensions() {
+        let topo = SystemTopology {
+            shards: vec![ShardNode::new(0, 5, 10, 0, 0)],
+        };
+        assert!(SystemMapLayout::compute_layout(&topo, -100.0, 600.0).is_empty());
+        assert!(SystemMapLayout::compute_layout(&topo, 800.0, -100.0).is_empty());
+        assert!(SystemMapLayout::compute_layout(&topo, 0.0, 600.0).is_empty());
+        assert!(SystemMapLayout::compute_layout(&topo, 800.0, 0.0).is_empty());
+    }
+
+    #[test]
+    fn layout_rects_color_matches_shard_status() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 0, 10, 0, 0),  // Idle
+                ShardNode::new(1, 5, 10, 0, 0),  // Active
+                ShardNode::new(2, 10, 10, 0, 0), // Overloaded
+            ],
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 900.0, 300.0);
+        assert_eq!(rects[0].color, ShardStatus::Idle.status_color());
+        assert_eq!(rects[1].color, ShardStatus::Active.status_color());
+        assert_eq!(rects[2].color, ShardStatus::Overloaded.status_color());
+    }
+
+    #[test]
+    fn layout_overloaded_detection_in_topology() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 3, 10, 0, 0),
+                ShardNode::new(1, 10, 10, 0, 0),
+                ShardNode::new(2, 7, 10, 0, 0),
+            ],
+        };
+        assert_eq!(topo.worst_status(), ShardStatus::Overloaded);
+        assert_eq!(topo.total_active_runs(), 20);
+    }
+
+    #[test]
+    fn topology_saturating_arithmetic_on_huge_counts() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode {
+                    shard_id: 0,
+                    active_runs: u32::MAX,
+                    max_runs: u32::MAX,
+                    status: ShardStatus::Overloaded,
+                    ready_depth: u32::MAX,
+                    action_depth: u32::MAX,
+                },
+                ShardNode {
+                    shard_id: 1,
+                    active_runs: 1,
+                    max_runs: 10,
+                    status: ShardStatus::Active,
+                    ready_depth: 1,
+                    action_depth: 1,
+                },
+            ],
+        };
+        // Saturating add should not overflow
+        assert_eq!(topo.total_active_runs(), u32::MAX);
+        assert_eq!(topo.total_pending_actions(), u32::MAX);
+    }
+}

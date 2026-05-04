@@ -195,7 +195,7 @@ impl IncidentScreen {
 
     /// Retrieve structured failure detail for the incident at the given index.
     pub fn get_failure_detail(&self, incident_index: usize) -> Option<FailureDetail> {
-        let incidents = self.console.active_incidents();
+        let incidents = self.console.legacy_incidents();
         let incident = incidents.get(incident_index)?;
         Some(FailureDetail {
             error_code: format_failure_code(&incident.failure_code),
@@ -209,7 +209,7 @@ impl IncidentScreen {
 
     /// Get repair suggestions for the incident at the given index.
     pub fn repair_suggestions(&self, incident_index: usize) -> Vec<RepairSuggestion> {
-        let incidents = self.console.active_incidents();
+        let incidents = self.console.legacy_incidents();
         match incidents.get(incident_index) {
             Some(incident) => suggest_repairs(incident),
             None => Vec::new(),
@@ -217,7 +217,7 @@ impl IncidentScreen {
     }
 
     /// Return the list of all active incidents.
-    pub fn incidents(&self) -> &[Incident] { self.console.active_incidents() }
+    pub fn incidents(&self) -> &[Incident] { self.console.legacy_incidents() }
 
     /// Select an incident by index.
     pub fn select(&mut self, index: usize) { self.console.select(index); }
@@ -229,7 +229,7 @@ impl IncidentScreen {
     pub fn active_count(&self) -> usize { self.console.active_count() }
 
     /// Return the number of critical incidents.
-    pub fn critical_count(&self) -> usize { self.console.critical_count() }
+    pub fn critical_count(&self) -> usize { self.console.legacy_critical_count() }
 
     /// Return the currently selected incident, if any.
     pub fn selected(&self) -> Option<&Incident> { self.console.selected() }
