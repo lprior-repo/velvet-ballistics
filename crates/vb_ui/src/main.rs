@@ -1636,6 +1636,22 @@ fn f32_to_u8_color(channel: f32) -> u8 {
     result
 }
 
+/// Convert a `depth / capacity` ratio to `f32` in `[0.0, 1.0]`.
+///
+/// Uses `f64` intermediate for the division to avoid precision loss, then
+/// clamps the result to `[0.0, 1.0]`.
+fn f32_from_ratio(depth: u32, capacity: u32) -> f32 {
+    if capacity == 0 {
+        return 0.0;
+    }
+    let ratio = f64::from(depth) / f64::from(capacity);
+    let clamped = ratio.clamp(0.0, 1.0);
+    // clamped is in [0.0, 1.0] which fits losslessly in f32.
+    #[allow(clippy::cast_precision_loss, clippy::as_conversions)]
+    let result = clamped as f32;
+    if result > 1.0 { 1.0f32 } else { result }
+}
+
 // ---------------------------------------------------------------------------
 // Dynamic state binding methods
 // ---------------------------------------------------------------------------
@@ -1750,6 +1766,163 @@ impl VbApp {
         } else {
             script_apply_eval!(cx, self.ui, {
                 su5v.draw_text.color: #39ff14
+            });
+        }
+
+        // -- Per-certificate card detail pushing --
+        // Clone all card data out of app_state before any further self borrow.
+        let cs = self.app_state.verification.cert_structure.clone();
+        let cb = self.app_state.verification.cert_bounded.clone();
+        let cr = self.app_state.verification.cert_resources.clone();
+        let ct = self.app_state.verification.cert_taint.clone();
+        let ca = self.app_state.verification.cert_action.clone();
+        let cd = self.app_state.verification.cert_durability.clone();
+
+        // Panel 1: Structure (4 fields)
+        {
+            let bt = cs.badge_text.clone();
+            let bc = cs.badge_color().to_string();
+            let fc0 = cs.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let fc3 = fc0.clone();
+            let f1 = cs.field1.clone();
+            let f2 = cs.field2.clone();
+            let f3 = cs.field3.clone();
+            let f4 = cs.field4.clone();
+            script_apply_eval!(cx, self.ui, {
+                cs_badge.text: #(bt)
+                cs_badge.draw_text.color: #(bc)
+                cs1v.text: #(f1)
+                cs1v.draw_text.color: #(fc0)
+                cs2v.text: #(f2)
+                cs2v.draw_text.color: #(fc1)
+                cs3v.text: #(f3)
+                cs3v.draw_text.color: #(fc2)
+                cs4v.text: #(f4)
+                cs4v.draw_text.color: #(fc3)
+            });
+        }
+
+        // Panel 2: Boundedness (4 fields)
+        {
+            let bt = cb.badge_text.clone();
+            let bc = cb.badge_color().to_string();
+            let fc0 = cb.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let fc3 = fc0.clone();
+            let f1 = cb.field1.clone();
+            let f2 = cb.field2.clone();
+            let f3 = cb.field3.clone();
+            let f4 = cb.field4.clone();
+            script_apply_eval!(cx, self.ui, {
+                cb_badge.text: #(bt)
+                cb_badge.draw_text.color: #(bc)
+                cb1v.text: #(f1)
+                cb1v.draw_text.color: #(fc0)
+                cb2v.text: #(f2)
+                cb2v.draw_text.color: #(fc1)
+                cb3v.text: #(f3)
+                cb3v.draw_text.color: #(fc2)
+                cb4v.text: #(f4)
+                cb4v.draw_text.color: #(fc3)
+            });
+        }
+
+        // Panel 3: Resources (3 fields)
+        {
+            let bt = cr.badge_text.clone();
+            let bc = cr.badge_color().to_string();
+            let fc0 = cr.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let f1 = cr.field1.clone();
+            let f2 = cr.field2.clone();
+            let f3 = cr.field3.clone();
+            script_apply_eval!(cx, self.ui, {
+                cr_badge.text: #(bt)
+                cr_badge.draw_text.color: #(bc)
+                cr1v.text: #(f1)
+                cr1v.draw_text.color: #(fc0)
+                cr2v.text: #(f2)
+                cr2v.draw_text.color: #(fc1)
+                cr3v.text: #(f3)
+                cr3v.draw_text.color: #(fc2)
+            });
+        }
+
+        // Panel 4: Taint / Secret Flow (4 fields)
+        {
+            let bt = ct.badge_text.clone();
+            let bc = ct.badge_color().to_string();
+            let fc0 = ct.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let fc3 = fc0.clone();
+            let f1 = ct.field1.clone();
+            let f2 = ct.field2.clone();
+            let f3 = ct.field3.clone();
+            let f4 = ct.field4.clone();
+            script_apply_eval!(cx, self.ui, {
+                ct_badge.text: #(bt)
+                ct_badge.draw_text.color: #(bc)
+                ct1v.text: #(f1)
+                ct1v.draw_text.color: #(fc0)
+                ct2v.text: #(f2)
+                ct2v.draw_text.color: #(fc1)
+                ct3v.text: #(f3)
+                ct3v.draw_text.color: #(fc2)
+                ct4v.text: #(f4)
+                ct4v.draw_text.color: #(fc3)
+            });
+        }
+
+        // Panel 5: Action Policy (3 fields)
+        {
+            let bt = ca.badge_text.clone();
+            let bc = ca.badge_color().to_string();
+            let fc0 = ca.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let f1 = ca.field1.clone();
+            let f2 = ca.field2.clone();
+            let f3 = ca.field3.clone();
+            script_apply_eval!(cx, self.ui, {
+                ca_badge.text: #(bt)
+                ca_badge.draw_text.color: #(bc)
+                ca1v.text: #(f1)
+                ca1v.draw_text.color: #(fc0)
+                ca2v.text: #(f2)
+                ca2v.draw_text.color: #(fc1)
+                ca3v.text: #(f3)
+                ca3v.draw_text.color: #(fc2)
+            });
+        }
+
+        // Panel 6: Replay / Durability (4 fields)
+        {
+            let bt = cd.badge_text.clone();
+            let bc = cd.badge_color().to_string();
+            let fc0 = cd.field_color().to_string();
+            let fc1 = fc0.clone();
+            let fc2 = fc0.clone();
+            let fc3 = fc0.clone();
+            let f1 = cd.field1.clone();
+            let f2 = cd.field2.clone();
+            let f3 = cd.field3.clone();
+            let f4 = cd.field4.clone();
+            script_apply_eval!(cx, self.ui, {
+                cd_badge.text: #(bt)
+                cd_badge.draw_text.color: #(bc)
+                cd1v.text: #(f1)
+                cd1v.draw_text.color: #(fc0)
+                cd2v.text: #(f2)
+                cd2v.draw_text.color: #(fc1)
+                cd3v.text: #(f3)
+                cd3v.draw_text.color: #(fc2)
+                cd4v.text: #(f4)
+                cd4v.draw_text.color: #(fc3)
             });
         }
     }
@@ -1884,7 +2057,9 @@ impl VbApp {
             let alert = frame.alerts.lines.get(idx);
             let Some(alert) = alert else { continue };
             let msg = alert.message.clone();
+            let sev = alert.severity_label.clone();
             let src = alert.source.clone();
+            let detail = format!("{sev} | {src}");
             let dot_color = rgba_to_hex(alert.color);
             let title_color = dot_color.clone();
             match idx {
@@ -1893,7 +2068,7 @@ impl VbApp {
                         alert_1.alert_dot.draw_text.color: #(dot_color)
                         alert_1.alert_title.text: #(msg)
                         alert_1.alert_title.draw_text.color: #(title_color)
-                        alert_1.alert_detail.text: #(src)
+                        alert_1.alert_detail.text: #(detail)
                     });
                 }
                 1 => {
@@ -1901,7 +2076,7 @@ impl VbApp {
                         alert_2.alert_dot.draw_text.color: #(dot_color)
                         alert_2.alert_title.text: #(msg)
                         alert_2.alert_title.draw_text.color: #(title_color)
-                        alert_2.alert_detail.text: #(src)
+                        alert_2.alert_detail.text: #(detail)
                     });
                 }
                 2 => {
@@ -1909,7 +2084,7 @@ impl VbApp {
                         alert_3.alert_dot.draw_text.color: #(dot_color)
                         alert_3.alert_title.text: #(msg)
                         alert_3.alert_title.draw_text.color: #(title_color)
-                        alert_3.alert_detail.text: #(src)
+                        alert_3.alert_detail.text: #(detail)
                     });
                 }
                 3 => {
@@ -1917,7 +2092,7 @@ impl VbApp {
                         alert_4.alert_dot.draw_text.color: #(dot_color)
                         alert_4.alert_title.text: #(msg)
                         alert_4.alert_title.draw_text.color: #(title_color)
-                        alert_4.alert_detail.text: #(src)
+                        alert_4.alert_detail.text: #(detail)
                     });
                 }
                 _ => {}
@@ -1967,6 +2142,85 @@ impl VbApp {
                 _ => {}
             }
         }
+
+        // -- Queue monitor bars: push ready/action fill widths and pressure colors --
+        // Uses the cyberpunk palette gradient: cyan (Normal) -> yellow (Pressured) -> red (Critical).
+        let queue_panel = &frame.queue;
+        let max_bar_width: f32 = 200.0;
+
+        for idx in 0..4usize {
+            let bar = queue_panel.bars.get(idx);
+            let Some(bar) = bar else { continue };
+
+            // Compute ready and action fill widths (clamped to [0, max_bar_width]).
+            let ready_fill = if bar.capacity > 0 {
+                let ratio = f32_from_ratio(bar.ready_depth, bar.capacity);
+                let scaled = ratio * max_bar_width;
+                if scaled > max_bar_width { max_bar_width } else { scaled }
+            } else {
+                0.0
+            };
+            let action_fill = if bar.capacity > 0 {
+                let ratio = f32_from_ratio(bar.action_depth, bar.capacity);
+                let scaled = ratio * max_bar_width;
+                if scaled > max_bar_width { max_bar_width } else { scaled }
+            } else {
+                0.0
+            };
+
+            // Pressure color derived from queue status: cyan -> yellow -> red.
+            let pressure_color = rgba_to_hex(bar.color);
+            let pc = pressure_color.clone();
+
+            match idx {
+                0 => {
+                    script_apply_eval!(cx, self.ui, {
+                        l0s1.width: #(ready_fill)
+                        l0s1.draw_bg.color: #(pressure_color)
+                        l0s2.width: #(action_fill)
+                        l0s2.draw_bg.color: #(pc)
+                    });
+                }
+                1 => {
+                    script_apply_eval!(cx, self.ui, {
+                        l1s1.width: #(ready_fill)
+                        l1s1.draw_bg.color: #(pressure_color)
+                        l1s2.width: #(action_fill)
+                        l1s2.draw_bg.color: #(pc)
+                    });
+                }
+                2 => {
+                    script_apply_eval!(cx, self.ui, {
+                        l2s1.width: #(ready_fill)
+                        l2s1.draw_bg.color: #(pressure_color)
+                        l2s2.width: #(action_fill)
+                        l2s2.draw_bg.color: #(pc)
+                    });
+                }
+                3 => {
+                    script_apply_eval!(cx, self.ui, {
+                        l3s1.width: #(ready_fill)
+                        l3s1.draw_bg.color: #(pressure_color)
+                        l3s2.width: #(action_fill)
+                        l3s2.draw_bg.color: #(pc)
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        // -- Queue summary: update alerts panel header with aggregate queue status --
+        let queue_summary = format!(
+            "QUEUE  ready:{} action:{} worst:{:?}",
+            queue_panel.total_ready,
+            queue_panel.total_action,
+            queue_panel.worst_status,
+        );
+        let queue_header_color = rgba_to_hex(queue_panel.worst_status.color());
+        script_apply_eval!(cx, self.ui, {
+            sys_alerts_title.text: #(queue_summary)
+            sys_alerts_title.draw_text.color: #(queue_header_color)
+        });
     }
 
     /// Synchronizes Workflow Graph screen state to UI labels.
