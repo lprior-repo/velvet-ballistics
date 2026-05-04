@@ -198,166 +198,104 @@ fn cmd_verify(
         }
     };
 
-    // Phase 1: strict YAML parse
-    match vb_yaml::parse_workflow_source(text) {
-        Ok(_) => {}
-        Err(e) => {
+    match commands_verify::run_verification(text, &bytes, profile) {
+        Ok(result) => {
             if output != OutputFormat::Text {
-                json_error(
+                let warning_strs: Vec<&str> = result.warnings.iter().map(String::as_str).collect();
+                json_out(
                     &serde_json::json!({
-                        "success": false,
+                        "success": true,
                         "profile": profile.as_str(),
-                        "error": format!("YAML parse error: {e}")
+                        "digest": result.digest_hex,
+                        "checks": result.checks,
+                        "warnings": warning_strs
                     }),
                     output,
                 );
             } else {
-                errln!("YAML parse error: {e}");
-            }
-            return CliExitCode::ValidationFailed.into();
-        }
-    }
-
-    // Phase 2: compilation pipeline (schema, references, control flow, type/taint)
-    let compiled = match vb_compile::compile_workflow(&bytes) {
-        Ok(c) => c,
-        Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "profile": profile.as_str(),
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
-                    output,
-                );
-            } else {
-                for err in &errors.0 {
-                    errln!("compile error: {err}");
+                outln!("verification certificate");
+                outln!("  digest:  {}", result.digest_hex);
+                outln!("  profile: {}", profile.as_str());
+                outln!("  checks:  {}", result.checks.len());
+                for check in &result.checks {
+                    outln!("    - {check}");
                 }
-            }
-            return CliExitCode::ValidationFailed.into();
-        }
-    };
-
-    let digest = compiled.digest();
-    let digest_hex: String = digest.as_bytes().iter().map(|b| format!("{b:02x}")).collect();
-    let mut checks: Vec<&'static str> = Vec::new();
-    let mut warnings: Vec<String> = Vec::new();
-
-    // Check: YAML parse
-    checks.push("yaml_parse");
-
-    // Check: compilation
-    checks.push("compilation");
-
-    // Check: IR validation gates
-    let parts = compiled.to_parts();
-    match vb_validate::shared::validate(&parts) {
-        Ok(()) => {
-            checks.push("ir_validation");
-        }
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "profile": profile.as_str(),
-                        "digest": digest_hex,
-                        "error": format!("IR validation failed: {e}")
-                    }),
-                    output,
-                );
-            } else {
-                errln!("IR validation failed: {e}");
-            }
-            return CliExitCode::ValidationFailed.into();
-        }
-    }
-
-    // Profile-dependent checks: budget and boundedness (standard and full only)
-    if profile == VerifyProfile::Standard || profile == VerifyProfile::Full {
-        let entry = compiled.entry();
-        let nodes: Vec<vb_core::CompiledNode> = {
-            let mut result = Vec::new();
-            for i in 0..compiled.node_count() {
-                let step = vb_core::StepIdx::new(i);
-                if let Some(node) = compiled.node(step) {
-                    result.push(node.clone());
-                }
-            }
-            result
-        };
-        let contract = compiled.resource_contract();
-        match vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract) {
-            Ok(_budget) => {
-                checks.push("budget_computation");
-                let policy = vb_core::budget::BoundednessPolicy::DEFAULT;
-                match policy.validate(&_budget) {
-                    Ok(()) => {
-                        checks.push("boundedness_policy");
+                if !result.warnings.is_empty() {
+                    outln!("  warnings: {}", result.warnings.len());
+                    for warning in &result.warnings {
+                        outln!("    - {warning}");
                     }
-                    Err(e) => {
-                        if profile == VerifyProfile::Full {
-                            if output != OutputFormat::Text {
-                                json_error(
-                                    &serde_json::json!({
-                                        "success": false,
-                                        "profile": profile.as_str(),
-                                        "digest": digest_hex,
-                                        "error": format!("budget policy violation: {e}")
-                                    }),
-                                    output,
-                                );
-                            } else {
-                                errln!("budget policy violation: {e}");
-                            }
-                            return CliExitCode::ValidationFailed.into();
+                }
+                outln!("verified");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            let code = commands_verify::exit_code_for_error(&err);
+            match &err {
+                commands_verify::VerifyError::YamlParse(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("{msg}");
+                    }
+                }
+                commands_verify::VerifyError::Compile(errors) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": "compilation failed",
+                                "errors": errors
+                            }),
+                            output,
+                        );
+                    } else {
+                        for e in errors {
+                            errln!("compile error: {e}");
                         }
-                        warnings.push(format!("budget policy warning: {e}"));
-                        checks.push("boundedness_policy_check");
+                    }
+                }
+                commands_verify::VerifyError::IrValidation(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("{msg}");
+                    }
+                }
+                commands_verify::VerifyError::BudgetPolicy(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("{msg}");
                     }
                 }
             }
-            Err(e) => {
-                warnings.push(format!("budget computation note: {e}"));
-            }
+            code.into()
         }
     }
-
-    // Emit certificate
-    if output != OutputFormat::Text {
-        let warning_strs: Vec<&str> = warnings.iter().map(String::as_str).collect();
-        json_out(
-            &serde_json::json!({
-                "success": true,
-                "profile": profile.as_str(),
-                "digest": digest_hex,
-                "checks": checks,
-                "warnings": warning_strs
-            }),
-            output,
-        );
-    } else {
-        outln!("verification certificate");
-        outln!("  digest:  {digest_hex}");
-        outln!("  profile: {}", profile.as_str());
-        outln!("  checks:  {}", checks.len());
-        for check in &checks {
-            outln!("    - {check}");
-        }
-        if !warnings.is_empty() {
-            outln!("  warnings: {}", warnings.len());
-            for warning in &warnings {
-                outln!("    - {warning}");
-            }
-        }
-        outln!("verified");
-    }
-
-    ExitCode::SUCCESS
 }
 
 fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
@@ -1805,7 +1743,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
         Ok(events) => {
             let terminal_name =
-                vb_storage::recovery::extract_terminal(&events).map(|e| event_name(e).to_string());
+                vb_storage::recovery::extract_terminal(&events).map(|e| commands_diff::event_name(e).to_string());
 
             match output {
                 OutputFormat::Json => {
@@ -1839,7 +1777,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                     }
                     match vb_storage::recovery::extract_terminal(&events) {
                         Some(terminal) => {
-                            outln!("terminal: {}", event_name(terminal));
+                            outln!("terminal: {}", commands_diff::event_name(terminal));
                         }
                         None => {
                             outln!("terminal: none");
@@ -1873,268 +1811,58 @@ fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
         Ok(id) => id,
         Err(code) => return code,
     };
-
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
+        Err(e) => { report_storage_open_error(&e, db, output); return CliExitCode::StorageError.into(); }
+    };
+    let events = match journal.events_for_run(rid) {
+        Ok(ev) => ev,
         Err(e) => {
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error opening journal at {}: {e}", db.display());
-            }
+                json_error(&serde_json::json!({ "success": false, "error": format!("error reading trace for run {run_id}: {e}") }), output);
+            } else { errln!("error reading trace for run {run_id}: {e}"); }
             return CliExitCode::StorageError.into();
         }
     };
-
-    match journal.events_for_run(rid) {
-        Ok(events) => {
-            if events.is_empty() {
-                if output != OutputFormat::Text {
-                    json_out(
-                        &serde_json::json!({
-                            "run_id": run_id,
-                            "trace": [],
-                            "total": 0
-                        }),
-                        output,
-                    );
-                } else {
-                    outln!("no events found for run {run_id}");
-                }
-            } else {
-                match output {
-                    OutputFormat::Json => {
-                        let trace_entries: Vec<serde_json::Value> =
-                            events.iter().map(trace_entry_to_json).collect();
-                        json_out(
-                            &serde_json::json!({
-                                "run_id": run_id,
-                                "trace": trace_entries,
-                                "total": events.len()
-                            }),
-                            output,
-                        );
-                    }
-                    OutputFormat::Jsonl => {
-                        for event in &events {
-                            let json_val = trace_entry_to_json(event);
-                            outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
-                        }
-                        outln!("{{\"total\": {}}}", events.len());
-                    }
-                    OutputFormat::Text => {
-                        outln!("execution trace for run {run_id}");
-                        for (idx, event) in events.iter().enumerate() {
-                            print_trace_entry(idx, event);
-                        }
-                        outln!("{} event(s) total", events.len());
-                    }
-                }
-            }
+    let trace = commands_journal::build_trace(&events);
+    if trace.is_empty() {
+        if output != OutputFormat::Text {
+            json_out(&serde_json::json!({ "run_id": run_id, "trace": [], "total": 0 }), output);
+        } else { outln!("no events found for run {run_id}"); }
+        return CliExitCode::Success.into();
+    }
+    match output {
+        OutputFormat::Json => {
+            let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
+            json_out(&serde_json::json!({ "run_id": run_id, "trace": entries, "total": trace.len() }), output);
         }
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error reading trace for run {run_id}: {e}")
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error reading trace for run {run_id}: {e}");
+        OutputFormat::Jsonl => {
+            for entry in &trace { outln!("{}", serde_json::to_string(&trace_entry_to_json(entry)).unwrap_or_default()); }
+            outln!("{{\"total\": {}}}", trace.len());
+        }
+        OutputFormat::Text => {
+            outln!("execution trace for run {run_id}");
+            for e in &trace {
+                let step_str = e.step.map(|s| format!(" step {s}")).unwrap_or_default();
+                outln!("  [{}] {}{step_str} (seq {})", e.index, e.event_type, e.seq);
             }
-            return CliExitCode::StorageError.into();
+            outln!("{} event(s) total", trace.len());
         }
     }
-
     CliExitCode::Success.into()
 }
 
-fn print_trace_entry(idx: usize, event: &vb_storage::JournalEvent) {
-    match event {
-        vb_storage::JournalEvent::RunAccepted { seq, .. } => {
-            outln!("  [{}] RunAccepted at seq {}", idx, seq.get());
-        }
-        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
-            outln!("  [{}] StepStarted at step {} (seq {})", idx, step.get(), seq.get());
-        }
-        vb_storage::JournalEvent::StepSucceeded { seq, step, output, .. } => {
-            outln!(
-                "  [{}] StepSucceeded at step {} output={} (seq {})",
-                idx,
-                step.get(),
-                output.get(),
-                seq.get()
-            );
-        }
-        vb_storage::JournalEvent::ActionScheduled { seq, step, action, .. } => {
-            outln!(
-                "  [{}] ActionScheduled at step {} action={} (seq {})",
-                idx,
-                step.get(),
-                action.get(),
-                seq.get()
-            );
-        }
-        vb_storage::JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
-            outln!(
-                "  [{}] ActionCompleted at step {} action={} (seq {})",
-                idx,
-                step.get(),
-                action.get(),
-                seq.get()
-            );
-        }
-        vb_storage::JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
-            outln!(
-                "  [{}] ActionFailed at step {} action={} (seq {})",
-                idx,
-                step.get(),
-                action.get(),
-                seq.get()
-            );
-        }
-        vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            outln!("  [{}] SlotWritten slot={} (seq {})", idx, slot.get(), seq.get());
-        }
-        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            outln!("  [{}] WaitScheduled at step {} (seq {})", idx, step.get(), seq.get());
-        }
-        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            outln!("  [{}] AskScheduled at step {} (seq {})", idx, step.get(), seq.get());
-        }
-        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            outln!("  [{}] AskAnswered at step {} (seq {})", idx, step.get(), seq.get());
-        }
-        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            outln!("  [{}] RetryScheduled at step {} (seq {})", idx, step.get(), seq.get());
-        }
-        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
-            outln!("  [{}] RunCancelled (seq {})", idx, seq.get());
-        }
-        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
-            outln!("  [{}] RunFinished result={} (seq {})", idx, result.get(), seq.get());
-        }
-        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
-            outln!("  [{}] RunFailed (seq {})", idx, seq.get());
-        }
-    }
+/// Convert a structured trace entry to its JSON representation.
+fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    map.insert("seq".into(), serde_json::Value::from(entry.seq));
+    map.insert("type".into(), serde_json::Value::from(entry.event_type));
+    if let Some(step) = entry.step { map.insert("step".into(), serde_json::Value::from(step)); }
+    for (k, v) in &entry.extra_json { map.insert((*k).into(), v.clone()); }
+    serde_json::Value::Object(map)
 }
 
-/// Convert a journal event to a structured trace JSON entry.
-fn trace_entry_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
-    match event {
-        vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "RunAccepted",
-                "run": run.get(),
-                "workflow": format!("{:?}", workflow)
-            })
-        }
-        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "StepStarted",
-                "step": step.get()
-            })
-        }
-        vb_storage::JournalEvent::StepSucceeded { seq, step, output, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "StepSucceeded",
-                "step": step.get(),
-                "output": output.get()
-            })
-        }
-        vb_storage::JournalEvent::ActionScheduled { seq, step, action, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "ActionScheduled",
-                "step": step.get(),
-                "action": action.get()
-            })
-        }
-        vb_storage::JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "ActionCompleted",
-                "step": step.get(),
-                "action": action.get()
-            })
-        }
-        vb_storage::JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "ActionFailed",
-                "step": step.get(),
-                "action": action.get()
-            })
-        }
-        vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "SlotWritten",
-                "slot": slot.get()
-            })
-        }
-        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "WaitScheduled",
-                "step": step.get()
-            })
-        }
-        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "AskScheduled",
-                "step": step.get()
-            })
-        }
-        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "AskAnswered",
-                "step": step.get()
-            })
-        }
-        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "RetryScheduled",
-                "step": step.get()
-            })
-        }
-        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "RunCancelled"
-            })
-        }
-        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "RunFinished",
-                "result": result.get()
-            })
-        }
-        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
-            serde_json::json!({
-                "seq": seq.get(),
-                "type": "RunFailed"
-            })
-        }
-    }
-}
-
+fn cmd_retry
 fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
@@ -2484,82 +2212,40 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
         return CliExitCode::StorageError.into();
     }
 
-    // Collect data from events: find failure, track completed actions, find failed step.
-    let mut failure_found = false;
-    let mut failure_code = String::new();
-    let mut failed_at_step: Option<u16> = None;
-    let mut side_effects: Vec<serde_json::Value> = Vec::new();
-    let mut last_step_started: Option<u16> = None;
-
-    for event in &events {
-        match event {
-            vb_storage::JournalEvent::StepStarted { step, .. } => {
-                last_step_started = Some(step.get());
-            }
-            vb_storage::JournalEvent::ActionCompletedEvent { step, action, .. } => {
-                side_effects.push(serde_json::json!({
-                    "step": step.get(),
-                    "action": action.get(),
-                    "certainty": "confirmed"
-                }));
-            }
-            vb_storage::JournalEvent::ActionFailedEvent { step, action, .. } => {
-                side_effects.push(serde_json::json!({
-                    "step": step.get(),
-                    "action": action.get(),
-                    "certainty": "failed"
-                }));
-            }
-            vb_storage::JournalEvent::RunFailedEvent { .. } => {
-                failure_found = true;
-                failure_code = "RunFailed".to_string();
-                failed_at_step = last_step_started;
-            }
-            vb_storage::JournalEvent::RunCancelled { .. } => {
-                failure_found = true;
-                failure_code = "RunCancelled".to_string();
-                failed_at_step = last_step_started;
-            }
-            _ => {}
-        }
-    }
-
-    // Build repair hints based on failure type.
-    let repair_hints = build_repair_hints(&failure_code, &side_effects, failed_at_step);
-
-    let failed_step_val = failed_at_step
+    let report = commands_incident::build_incident_report(run_id, &events);
+    let failed_step_val = report.failed_at_step
         .map(|s| serde_json::Value::Number(serde_json::Number::from(s)))
         .unwrap_or(serde_json::Value::Null);
 
-    let report = serde_json::json!({
-        "run_id": run_id,
-        "failure_code": failure_code,
+    let json_report = serde_json::json!({
+        "run_id": report.run_id,
+        "failure_code": report.failure_code,
         "failed_at_step": failed_step_val,
-        "side_effects": side_effects,
-        "repair_hints": repair_hints,
+        "side_effects": report.side_effects,
+        "repair_hints": report.repair_hints,
     });
 
     match output {
         OutputFormat::Json => {
-            let json_str = serde_json::to_string_pretty(&report).unwrap_or_default();
+            let json_str = serde_json::to_string_pretty(&json_report).unwrap_or_default();
             outln!("{json_str}");
         }
         OutputFormat::Jsonl => {
-            let json_str = serde_json::to_string(&report).unwrap_or_default();
+            let json_str = serde_json::to_string(&json_report).unwrap_or_default();
             outln!("{json_str}");
         }
         OutputFormat::Text => {
             outln!("incident report for run {run_id}");
-            outln!("  failure_code:  {failure_code}");
-            match failed_at_step {
+            outln!("  failure_code:  {}", report.failure_code);
+            match report.failed_at_step {
                 Some(step) => outln!("  failed_at_step: {step}"),
                 None => outln!("  failed_at_step: unknown"),
             }
             outln!("  side_effects:");
-            if side_effects.is_empty() {
+            if report.side_effects.is_empty() {
                 outln!("    (none)");
             } else {
-                for se in &side_effects {
+                for se in &report.side_effects {
                     let step = se["step"];
                     let action = se["action"];
                     let certainty = se["certainty"].as_str().unwrap_or("unknown");
@@ -2567,14 +2253,14 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
                 }
             }
             outln!("  repair_hints:");
-            for hint in &repair_hints {
+            for hint in &report.repair_hints {
                 let hint_str = hint.as_str().unwrap_or("unknown");
                 outln!("    - {hint_str}");
             }
         }
     }
 
-    if failure_found {
+    if report.failure_found {
         CliExitCode::Success.into()
     } else {
         if output != OutputFormat::Text {
@@ -2590,47 +2276,6 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
         }
         CliExitCode::StorageError.into()
     }
-}
-
-/// Build repair hints based on the failure code, side effects, and failed step.
-fn build_repair_hints(
-    failure_code: &str,
-    side_effects: &[serde_json::Value],
-    failed_at_step: Option<u16>,
-) -> Vec<serde_json::Value> {
-    let mut hints: Vec<serde_json::Value> = Vec::new();
-
-    match failure_code {
-        "RunFailed" => {
-            hints.push(serde_json::Value::String(
-                "investigate step output and engine logs for the failed step".to_string(),
-            ));
-            if !side_effects.is_empty() {
-                hints.push(serde_json::Value::String(
-                    "review side effects that completed before failure for compensating actions"
-                        .to_string(),
-                ));
-            }
-            if let Some(step) = failed_at_step {
-                hints.push(serde_json::Value::String(format!(
-                    "consider retry from step {step} using the retry command"
-                )));
-            }
-        }
-        "RunCancelled" => {
-            hints.push(serde_json::Value::String(
-                "run was cancelled; check if cancellation was intentional".to_string(),
-            ));
-            if !side_effects.is_empty() {
-                hints.push(serde_json::Value::String(
-                    "review completed side effects for partial cleanup needs".to_string(),
-                ));
-            }
-        }
-        _ => {}
-    }
-
-    hints
 }
 
 fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
@@ -2688,108 +2333,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
         }
     };
 
-    let mut diffs: Vec<serde_json::Value> = Vec::new();
-    let len_a = events_a.len();
-    let len_b = events_b.len();
-    let max_len = len_a.max(len_b);
-
-    for idx in 0..max_len {
-        let ev_a = events_a.get(idx);
-        let ev_b = events_b.get(idx);
-        match (ev_a, ev_b) {
-            (Some(a), None) => {
-                diffs.push(serde_json::json!({
-                    "index": idx,
-                    "kind": "only_in_a",
-                    "event_a": diff_event_summary(a)
-                }));
-            }
-            (None, Some(b)) => {
-                diffs.push(serde_json::json!({
-                    "index": idx,
-                    "kind": "only_in_b",
-                    "event_b": diff_event_summary(b)
-                }));
-            }
-            (Some(a), Some(b)) => {
-                if events_differ(a, b) {
-                    diffs.push(serde_json::json!({
-                        "index": idx,
-                        "kind": "changed",
-                        "event_a": diff_event_summary(a),
-                        "event_b": diff_event_summary(b)
-                    }));
-                }
-            }
-            (None, None) => {}
-        }
-    }
-
-    let steps_a = collect_step_outcomes(&events_a);
-    let steps_b = collect_step_outcomes(&events_b);
-    for (step, outcome) in &steps_a {
-        match steps_b.get(step) {
-            None => {
-                diffs.push(serde_json::json!({
-                    "kind": "step_missing_in_b",
-                    "step": step,
-                    "outcome_a": outcome
-                }));
-            }
-            Some(bo) => {
-                if outcome != bo {
-                    diffs.push(serde_json::json!({
-                        "kind": "step_outcome_differs",
-                        "step": step,
-                        "outcome_a": outcome,
-                        "outcome_b": bo
-                    }));
-                }
-            }
-        }
-    }
-    for (step, outcome) in &steps_b {
-        if !steps_a.contains_key(step) {
-            diffs.push(serde_json::json!({
-                "kind": "step_missing_in_a",
-                "step": step,
-                "outcome_b": outcome
-            }));
-        }
-    }
-
-    let slots_a = collect_slot_values(&events_a);
-    let slots_b = collect_slot_values(&events_b);
-    for (slot, va) in &slots_a {
-        match slots_b.get(slot) {
-            None => {
-                diffs.push(serde_json::json!({
-                    "kind": "slot_missing_in_b",
-                    "slot": slot,
-                    "value_a": va
-                }));
-            }
-            Some(vb) => {
-                if va != vb {
-                    diffs.push(serde_json::json!({
-                        "kind": "slot_value_differs",
-                        "slot": slot,
-                        "value_a": va,
-                        "value_b": vb
-                    }));
-                }
-            }
-        }
-    }
-    for (slot, vb) in &slots_b {
-        if !slots_a.contains_key(slot) {
-            diffs.push(serde_json::json!({
-                "kind": "slot_missing_in_a",
-                "slot": slot,
-                "value_b": vb
-            }));
-        }
-    }
+    let result = commands_diff::compute_diff(&events_a, &events_b);
 
     match output {
         OutputFormat::Json => {
@@ -2797,187 +2341,34 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
                 &serde_json::json!({
                     "run_a": run_a,
                     "run_b": run_b,
-                    "events_a": len_a,
-                    "events_b": len_b,
-                    "diffs": diffs,
-                    "total_differences": diffs.len()
+                    "events_a": result.events_a,
+                    "events_b": result.events_b,
+                    "diffs": result.diffs,
+                    "total_differences": result.diffs.len()
                 }),
                 output,
             );
         }
         OutputFormat::Jsonl => {
-            for diff in &diffs {
+            for diff in &result.diffs {
                 outln!("{}", serde_json::to_string(diff).unwrap_or_default());
             }
-            outln!("{{\"total_differences\": {}}}", diffs.len());
+            outln!("{{"total_differences": {}}}", result.diffs.len());
         }
         OutputFormat::Text => {
             outln!("diff: run {run_a} vs run {run_b}");
-            outln!("  events: {} vs {}", len_a, len_b);
-            if diffs.is_empty() {
+            outln!("  events: {} vs {}", result.events_a, result.events_b);
+            if result.diffs.is_empty() {
                 outln!("  no differences found");
             } else {
-                for diff in &diffs {
+                for diff in &result.diffs {
                     print_diff_entry(diff);
                 }
-                outln!("  {} difference(s) total", diffs.len());
+                outln!("  {} difference(s) total", result.diffs.len());
             }
         }
     }
     CliExitCode::Success.into()
-}
-
-fn diff_event_summary(event: &vb_storage::JournalEvent) -> serde_json::Value {
-    match event {
-        vb_storage::JournalEvent::RunAccepted { seq, .. } => {
-            serde_json::json!({"type": "RunAccepted", "seq": seq.get()})
-        }
-        vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
-            serde_json::json!({"type": "StepStarted", "seq": seq.get(), "step": step.get()})
-        }
-        vb_storage::JournalEvent::StepSucceeded {
-            seq, step, output, ..
-        } => serde_json::json!({
-            "type": "StepSucceeded",
-            "seq": seq.get(),
-            "step": step.get(),
-            "output": output.get()
-        }),
-        vb_storage::JournalEvent::ActionScheduled {
-            seq, step, action, ..
-        } => serde_json::json!({
-            "type": "ActionScheduled",
-            "seq": seq.get(),
-            "step": step.get(),
-            "action": action.get()
-        }),
-        vb_storage::JournalEvent::ActionCompletedEvent {
-            seq, step, action, ..
-        } => serde_json::json!({
-            "type": "ActionCompleted",
-            "seq": seq.get(),
-            "step": step.get(),
-            "action": action.get()
-        }),
-        vb_storage::JournalEvent::ActionFailedEvent {
-            seq, step, action, ..
-        } => serde_json::json!({
-            "type": "ActionFailed",
-            "seq": seq.get(),
-            "step": step.get(),
-            "action": action.get()
-        }),
-        vb_storage::JournalEvent::SlotWrittenEvent {
-            seq, slot, value, ..
-        } => serde_json::json!({
-            "type": "SlotWritten",
-            "seq": seq.get(),
-            "slot": slot.get(),
-            "has_value": value.is_some()
-        }),
-        vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            serde_json::json!({"type": "WaitScheduled", "seq": seq.get(), "step": step.get()})
-        }
-        vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            serde_json::json!({"type": "AskScheduled", "seq": seq.get(), "step": step.get()})
-        }
-        vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            serde_json::json!({"type": "AskAnswered", "seq": seq.get(), "step": step.get()})
-        }
-        vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            serde_json::json!({"type": "RetryScheduled", "seq": seq.get(), "step": step.get()})
-        }
-        vb_storage::JournalEvent::RunCancelled { seq, .. } => {
-            serde_json::json!({"type": "RunCancelled", "seq": seq.get()})
-        }
-        vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
-            serde_json::json!({"type": "RunFinished", "seq": seq.get(), "result": result.get()})
-        }
-        vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
-            serde_json::json!({"type": "RunFailed", "seq": seq.get()})
-        }
-    }
-}
-
-fn events_differ(a: &vb_storage::JournalEvent, b: &vb_storage::JournalEvent) -> bool {
-    match (a, b) {
-        (
-            vb_storage::JournalEvent::StepSucceeded { step: sa, output: oa, .. },
-            vb_storage::JournalEvent::StepSucceeded { step: sb, output: ob, .. },
-        ) => sa != sb || oa != ob,
-        (
-            vb_storage::JournalEvent::StepStarted { step: sa, .. },
-            vb_storage::JournalEvent::StepStarted { step: sb, .. },
-        ) => sa != sb,
-        (
-            vb_storage::JournalEvent::ActionScheduled { step: sa, action: aa, .. },
-            vb_storage::JournalEvent::ActionScheduled { step: sb, action: ab, .. },
-        ) => sa != sb || aa != ab,
-        (
-            vb_storage::JournalEvent::ActionCompletedEvent { step: sa, action: aa, .. },
-            vb_storage::JournalEvent::ActionCompletedEvent { step: sb, action: ab, .. },
-        ) => sa != sb || aa != ab,
-        (
-            vb_storage::JournalEvent::ActionFailedEvent { step: sa, action: aa, .. },
-            vb_storage::JournalEvent::ActionFailedEvent { step: sb, action: ab, .. },
-        ) => sa != sb || aa != ab,
-        (
-            vb_storage::JournalEvent::SlotWrittenEvent { slot: sa, value: va, .. },
-            vb_storage::JournalEvent::SlotWrittenEvent { slot: sb, value: vb, .. },
-        ) => sa != sb || va != vb,
-        (
-            vb_storage::JournalEvent::RunFinished { result: ra, .. },
-            vb_storage::JournalEvent::RunFinished { result: rb, .. },
-        ) => ra != rb,
-        _ => event_name(a) != event_name(b),
-    }
-}
-
-fn collect_step_outcomes(
-    events: &[vb_storage::JournalEvent],
-) -> std::collections::HashMap<u16, String> {
-    let mut outcomes = std::collections::HashMap::new();
-    for event in events {
-        match event {
-            vb_storage::JournalEvent::StepSucceeded { step, output, .. } => {
-                outcomes.insert(step.get(), format!("succeeded(output={})", output.get()));
-            }
-            vb_storage::JournalEvent::ActionFailedEvent { step, action, .. } => {
-                outcomes.insert(step.get(), format!("failed(action={})", action.get()));
-            }
-            vb_storage::JournalEvent::ActionCompletedEvent { step, action, .. } => {
-                outcomes.insert(
-                    step.get(),
-                    format!("action_completed(action={})", action.get()),
-                );
-            }
-            _ => {}
-        }
-    }
-    outcomes
-}
-
-fn collect_slot_values(
-    events: &[vb_storage::JournalEvent],
-) -> std::collections::HashMap<u16, String> {
-    let mut slots = std::collections::HashMap::new();
-    for event in events {
-        if let vb_storage::JournalEvent::SlotWrittenEvent { slot, value, .. } = event {
-            let display = match value {
-                Some(bytes) => {
-                    let decoded: Option<vb_core::SlotValue> =
-                        postcard::from_bytes(bytes).ok();
-                    match decoded {
-                        Some(v) => format!("{v}"),
-                        None => format!("[{} bytes]", bytes.len()),
-                    }
-                }
-                None => String::from("none"),
-            };
-            slots.insert(slot.get(), display);
-        }
-    }
-    slots
 }
 
 fn print_diff_entry(diff: &serde_json::Value) {
@@ -3570,6 +2961,50 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         Err(code) => return code,
     };
 
+    let compiled = match compile_bytes_json(&bytes, output) {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+
+    let result = commands_workflow::simulate_workflow(&compiled);
+
+    if output != OutputFormat::Text {
+        let trace: Vec<serde_json::Value> = result
+            .steps
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "step": s.index,
+                    "kind": s.kind_label,
+                    "description": s.description,
+                })
+            })
+            .collect();
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "total_steps": result.total_steps,
+                "total_actions": result.action_count,
+                "total_branches": result.branch_count,
+                "trace": trace
+            }),
+            output,
+        );
+    } else {
+        for step in &result.steps {
+            outln!("Step {}: {}", step.index, step.description);
+        }
+        outln!("");
+        outln!("simulation summary");
+        outln!("  steps:    {}", result.total_steps);
+        outln!("  actions:  {}", result.action_count);
+        outln!("  branches: {}", result.branch_count);
+        outln!("dry-run complete");
+    }
+
+    CliExitCode::Success.into()
+}
+
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
@@ -4150,25 +3585,6 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
         outln!("doctor: all checks passed");
     }
     ExitCode::SUCCESS
-}
-
-fn event_name(event: &vb_storage::JournalEvent) -> &'static str {
-    match event {
-        vb_storage::JournalEvent::RunAccepted { .. } => "RunAccepted",
-        vb_storage::JournalEvent::StepStarted { .. } => "StepStarted",
-        vb_storage::JournalEvent::StepSucceeded { .. } => "StepSucceeded",
-        vb_storage::JournalEvent::ActionScheduled { .. } => "ActionScheduled",
-        vb_storage::JournalEvent::ActionCompletedEvent { .. } => "ActionCompleted",
-        vb_storage::JournalEvent::ActionFailedEvent { .. } => "ActionFailed",
-        vb_storage::JournalEvent::SlotWrittenEvent { .. } => "SlotWritten",
-        vb_storage::JournalEvent::WaitScheduledEvent { .. } => "WaitScheduled",
-        vb_storage::JournalEvent::AskScheduledEvent { .. } => "AskScheduled",
-        vb_storage::JournalEvent::AskAnsweredEvent { .. } => "AskAnswered",
-        vb_storage::JournalEvent::RetryScheduledEvent { .. } => "RetryScheduled",
-        vb_storage::JournalEvent::RunCancelled { .. } => "RunCancelled",
-        vb_storage::JournalEvent::RunFinished { .. } => "RunFinished",
-        vb_storage::JournalEvent::RunFailedEvent { .. } => "RunFailed",
-    }
 }
 
 fn unique_doctor_run_id() -> u64 {
