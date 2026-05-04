@@ -3,6 +3,7 @@ pub mod graph_builder;
 pub mod graph_renderer;
 pub mod incident;
 pub mod ipc_bridge;
+pub mod ipc_wiring;
 pub mod layout;
 pub mod replay;
 pub mod system;

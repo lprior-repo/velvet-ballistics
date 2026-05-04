@@ -150,8 +150,13 @@ impl StorageRuntimeJournal {
             crate::RuntimeJournalEvent::AskAnswered { run, step, .. } => {
                 Some(JournalEvent::AskAnsweredEvent { run, seq, step })
             }
-            crate::RuntimeJournalEvent::SlotWritten { run, slot } => {
-                Some(JournalEvent::SlotWrittenEvent { run, seq, slot })
+            crate::RuntimeJournalEvent::SlotWritten { run, slot, value } => {
+                Some(JournalEvent::SlotWrittenEvent {
+                    run,
+                    seq,
+                    slot,
+                    value: Some(value),
+                })
             }
             crate::RuntimeJournalEvent::RunSubmitted { .. }
             | crate::RuntimeJournalEvent::RunFinished { .. }
