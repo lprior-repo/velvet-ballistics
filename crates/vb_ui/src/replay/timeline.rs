@@ -1038,4 +1038,62 @@ mod tests {
         assert_eq!(cursor_chip.seq, 2);
         assert_eq!(cursor_chip.step, Some(0));
     }
+
+    // =========================================================================
+    // extend_from_journal deduplication tests
+    // =========================================================================
+
+    #[test]
+    fn extend_from_journal_dedupes_duplicate_seq() {
+        let mut strip = TimelineStrip::new();
+        strip.extend_from_journal(&[je_run_accepted(1), je_step_started(2, 0)]);
+        assert_eq!(strip.events().len(), 2);
+        // Extend with overlapping seq=1 and new seq=3.
+        strip.extend_from_journal(&[je_run_accepted(1), je_action_scheduled(3, 0)]);
+        assert_eq!(
+            strip.events().len(),
+            3,
+            "duplicate seq=1 must be dropped, only seq=3 appended"
+        );
+        assert_eq!(strip.events().get(0).map(|e| e.seq), Some(1));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(2));
+        assert_eq!(strip.events().get(2).map(|e| e.seq), Some(3));
+    }
+
+    #[test]
+    fn extend_from_journal_dedupes_all_duplicates() {
+        let mut strip = TimelineStrip::new();
+        strip.extend_from_journal(&[je_run_accepted(1), je_step_started(2, 0)]);
+        // Re-send same events.
+        strip.extend_from_journal(&[je_run_accepted(1), je_step_started(2, 0)]);
+        assert_eq!(
+            strip.events().len(),
+            2,
+            "all duplicates must be dropped"
+        );
+    }
+
+    #[test]
+    fn extend_from_journal_dedupes_preserves_ordering() {
+        let mut strip = TimelineStrip::new();
+        strip.extend_from_journal(&[je_run_accepted(1), je_run_finished(5)]);
+        // Insert seq=3 in between -- should be inserted at correct position.
+        strip.extend_from_journal(&[je_action_scheduled(3, 0)]);
+        assert_eq!(strip.events().len(), 3);
+        assert_eq!(strip.events().get(0).map(|e| e.seq), Some(1));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(3));
+        assert_eq!(strip.events().get(2).map(|e| e.seq), Some(5));
+    }
+
+    #[test]
+    fn extend_from_journal_dedup_no_duplicates_works_normally() {
+        let mut strip = TimelineStrip::new();
+        strip.extend_from_journal(&[je_run_accepted(1)]);
+        strip.extend_from_journal(&[je_step_started(2, 0)]);
+        strip.extend_from_journal(&[je_run_finished(3)]);
+        assert_eq!(strip.events().len(), 3);
+        assert_eq!(strip.events().get(0).map(|e| e.seq), Some(1));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(2));
+        assert_eq!(strip.events().get(2).map(|e| e.seq), Some(3));
+    }
 }
