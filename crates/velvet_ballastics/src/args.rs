@@ -143,6 +143,10 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Simulate {
+        workflow: PathBuf,
+        output: OutputFormat,
+    },
     Submit {
         workflow: PathBuf,
         input_bin: PathBuf,
@@ -214,6 +218,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "graph" => parse_graph(args),
         "diff" => parse_diff(args),
         "incident" => parse_incident(args),
+        "simulate" => parse_simulate(args),
         "submit" => parse_submit(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
@@ -476,6 +481,12 @@ fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
         db: PathBuf::from(db),
         output,
     })
+}
+
+fn parse_simulate(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let output = parse_output_format(args);
+    Ok(Command::Simulate { workflow, output })
 }
 
 fn parse_submit(args: &[OsString]) -> Result<Command, ParseError> {
@@ -989,5 +1000,52 @@ mod tests {
             matches!(parsed, Err(ParseError::MissingArgument("--db"))),
             "unexpected: {parsed:?}"
         );
+    }
+
+    #[test]
+    fn parse_simulate_defaults_to_text_output() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "simulate", "workflow.yaml"]));
+        assert!(
+            matches!(parsed, Ok(Command::Simulate { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Simulate { workflow, output }) = parsed {
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_simulate_accepts_json_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "simulate",
+            "workflow.yaml",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Simulate { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Simulate { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_simulate_accepts_jsonl_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "simulate",
+            "workflow.yaml",
+            "--jsonl",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Simulate { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Simulate { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Jsonl);
+        }
     }
 }

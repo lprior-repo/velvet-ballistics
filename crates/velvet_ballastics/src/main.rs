@@ -60,6 +60,8 @@ commands:
   graph      <workflow.yaml> [--json|--jsonl]          Output control flow graph in DOT format
   diff       <run_a> <run_b> --db <path> [--json|--jsonl]  Compare two runs
   incident   <run_id> --db <path> [--json|--jsonl]     Black-box failure report
+  submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--json|--jsonl]  Submit workflow run
+  simulate   <workflow.yaml> [--json|--jsonl]     Dry-run workflow without executing actions
   help                                                Print this message
   version                                             Print version
 
@@ -137,10 +139,14 @@ fn main() -> ExitCode {
             output,
         }) => cmd_diff(&run_a, &run_b, &db, output),
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
-        Ok(Command::Submit { .. }) => {
-            errln!("submit command not yet implemented");
-            CliExitCode::RuntimeFailed.into()
-        }
+        Ok(Command::Submit {
+            workflow,
+            input_bin,
+            db,
+            durability,
+            output,
+        }) => cmd_submit(&workflow, &input_bin, &db, durability, output),
+        Ok(Command::Simulate { workflow, output }) => cmd_simulate(&workflow, output),
         Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
     }
 }
@@ -675,6 +681,183 @@ fn cmd_run(
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
+fn cmd_submit(
+    workflow: &std::path::Path,
+    input_bin: &std::path::Path,
+    db: &std::path::Path,
+    durability: DurabilityMode,
+    output: OutputFormat,
+) -> ExitCode {
+    let _input_data = match read_file(input_bin) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    let digest = compiled.digest();
+    let digest_hex: String = digest.as_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    let step_count = compiled.node_count();
+
+    // Generate run_id from timestamp
+    let run_id_num = generate_submit_run_id();
+    let run_id = vb_core::RunId::new(run_id_num);
+
+    // Open storage journal and record workflow source + run header
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    // Store the workflow source
+    let source_record = vb_storage::WorkflowSourceRecord {
+        digest,
+        source: bytes,
+    };
+    if let Err(e) = vb_storage::put_workflow_source(&journal, &source_record) {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("workflow source write error: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("workflow source write error: {e}");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
+    // Record the run header
+    let accepted_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_millis().try_into().unwrap_or(0),
+        Err(_) => 0,
+    };
+    let header = vb_storage::RunHeaderRecord {
+        run: run_id,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: digest,
+        status: 0,
+        accepted_at_ms,
+    };
+    if let Err(e) = vb_storage::put_run_header(&journal, &header) {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("run header write error: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("run header write error: {e}");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
+    // Also record submission via runtime journal for durability-aware runbooks
+    if durability != DurabilityMode::None {
+        let runtime_journal = match runtime_journal_for_mode(durability, Some(db)) {
+            Ok(j) => j,
+            Err(code) => return code,
+        };
+        let event = vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+            run: run_id,
+            workflow: digest,
+        };
+        if let Err(e) = runtime_journal.append(event) {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("journal append error: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("journal append error: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "run_id": run_id.get(),
+                "digest": digest_hex,
+                "status": "submitted",
+                "step_count": step_count
+            }),
+            output,
+        );
+    } else {
+        outln!("submitted run {}", run_id.get());
+        outln!("  digest:     {digest_hex}");
+        outln!("  steps:      {step_count}");
+        outln!("  durability: {}", durability_as_str(durability));
+        outln!("  status:     submitted");
+    }
+
+    CliExitCode::Success.into()
+}
+
+fn durability_as_str(mode: DurabilityMode) -> &'static str {
+    match mode {
+        DurabilityMode::Strict => "strict",
+        DurabilityMode::Journaled => "journaled",
+        DurabilityMode::None => "none",
+    }
+}
+
+fn generate_submit_run_id() -> u64 {
+    let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return u64::MAX;
+    };
+    match u64::try_from(now.as_nanos()) {
+        Ok(value) => value,
+        Err(_) => now.as_secs(),
+    }
+}
 
 /// Executes a single step in isolation using `step_once`.
 fn cmd_run_step(
@@ -3459,6 +3642,171 @@ fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 
     CliExitCode::Success.into()
 }
+
+fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let bytes = match read_file(workflow) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    let node_count = compiled.node_count();
+    let mut total_actions: usize = 0;
+    let mut total_branches: usize = 0;
+    let mut trace_lines: Vec<serde_json::Value> = Vec::new();
+
+    for i in 0..node_count {
+        let step = vb_core::StepIdx::new(i);
+        let node = match compiled.node(step) {
+            Some(n) => n,
+            None => continue,
+        };
+
+        let step_name = compiled
+            .step_name(step)
+            .map(String::from)
+            .or_else(|| node.next.map(|n| format!("Step {}", n.get())));
+
+        let description = describe_node_for_simulate(&node.kind, &mut total_actions, &mut total_branches);
+
+        let next_info = match (node.next, &step_name) {
+            (Some(nxt), _) => format!(" -> Step {}", nxt.get()),
+            (None, Some(name)) => format!(" ({name})"),
+            (None, None) => String::new(),
+        };
+
+        if output == OutputFormat::Text {
+            outln!("Step {i}: {description}{next_info}");
+        }
+
+        trace_lines.push(serde_json::json!({
+            "step": i,
+            "kind": node_kind_label(&node.kind),
+            "description": description,
+        }));
+    }
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "total_steps": node_count,
+                "total_actions": total_actions,
+                "total_branches": total_branches,
+                "trace": trace_lines
+            }),
+            output,
+        );
+    } else {
+        outln!("");
+        outln!("simulation summary");
+        outln!("  steps:    {node_count}");
+        outln!("  actions:  {total_actions}");
+        outln!("  branches: {total_branches}");
+        outln!("dry-run complete");
+    }
+
+    CliExitCode::Success.into()
+}
+
+fn describe_node_for_simulate(
+    kind: &vb_core::CompiledNodeKind,
+    action_count: &mut usize,
+    branch_count: &mut usize,
+) -> String {
+    match kind {
+        vb_core::CompiledNodeKind::Nop => "Entry".to_string(),
+        vb_core::CompiledNodeKind::SetConst { .. } => "Set constant value".to_string(),
+        vb_core::CompiledNodeKind::Copy { .. } => "Copy slot".to_string(),
+        vb_core::CompiledNodeKind::EvalExpr { .. } => "Evaluate expression".to_string(),
+        vb_core::CompiledNodeKind::BuildObject { fields } => {
+            format!("Build object ({} fields)", fields.len())
+        }
+        vb_core::CompiledNodeKind::BuildList { items } => {
+            format!("Build list ({} items)", items.len())
+        }
+        vb_core::CompiledNodeKind::Do { action, .. } => {
+            *action_count = match action_count.checked_add(1) {
+                Some(c) => c,
+                None => *action_count,
+            };
+            format!("Do action {} -- would execute action", action.get())
+        }
+        vb_core::CompiledNodeKind::Choose { branches, .. } => {
+            let count = branches.len();
+            *branch_count = match branch_count.checked_add(count) {
+                Some(c) => c,
+                None => *branch_count,
+            };
+            format!("Choose ({count} branches)")
+        }
+        vb_core::CompiledNodeKind::ChooseSlot { branches, .. } => {
+            let count = branches.len();
+            *branch_count = match branch_count.checked_add(count) {
+                Some(c) => c,
+                None => *branch_count,
+            };
+            format!("ChooseSlot ({count} branches)")
+        }
+        vb_core::CompiledNodeKind::ForEachStart { limit, .. } => {
+            format!("ForEach (limit {limit})")
+        }
+        vb_core::CompiledNodeKind::ForEachNext { .. } => "ForEach advance".to_string(),
+        vb_core::CompiledNodeKind::ForEachJoin { .. } => "ForEach join".to_string(),
+        vb_core::CompiledNodeKind::TogetherStart { branches, .. } => {
+            format!("Together ({} branches)", branches.len())
+        }
+        vb_core::CompiledNodeKind::TogetherBranch { branch, .. } => {
+            format!("Together branch {branch}")
+        }
+        vb_core::CompiledNodeKind::TogetherJoin { .. } => "Together join".to_string(),
+        vb_core::CompiledNodeKind::CollectStart { limit, .. } => {
+            format!("Collect (limit {limit})")
+        }
+        vb_core::CompiledNodeKind::CollectPage { .. } => "Collect page".to_string(),
+        vb_core::CompiledNodeKind::CollectNext { .. } => "Collect next".to_string(),
+        vb_core::CompiledNodeKind::CollectFinish { .. } => "Collect finish".to_string(),
+        vb_core::CompiledNodeKind::ReduceStart { .. } => "Reduce start".to_string(),
+        vb_core::CompiledNodeKind::ReduceNext { .. } => "Reduce advance".to_string(),
+        vb_core::CompiledNodeKind::ReduceFinish { .. } => "Reduce finish".to_string(),
+        vb_core::CompiledNodeKind::RepeatStart { max_attempts, .. } => {
+            format!("Repeat (max {max_attempts} attempts)")
+        }
+        vb_core::CompiledNodeKind::RepeatAttempt { .. } => "Repeat attempt".to_string(),
+        vb_core::CompiledNodeKind::RepeatCheck { .. } => "Repeat check".to_string(),
+        vb_core::CompiledNodeKind::RepeatFinish { .. } => "Repeat finish".to_string(),
+        vb_core::CompiledNodeKind::WaitUntil { .. } => "WaitUntil -- would suspend".to_string(),
+        vb_core::CompiledNodeKind::WaitEvent { .. } => "WaitEvent -- would suspend".to_string(),
+        vb_core::CompiledNodeKind::Ask { .. } => "Ask -- would suspend for input".to_string(),
+        vb_core::CompiledNodeKind::AskResume { .. } => "AskResume".to_string(),
+        vb_core::CompiledNodeKind::RetryCheck { .. } => "RetryCheck".to_string(),
+        vb_core::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler".to_string(),
+        vb_core::CompiledNodeKind::Jump { .. } => "Jump".to_string(),
+        vb_core::CompiledNodeKind::Finish { .. } => "Finish -- would complete run".to_string(),
+    }
+}
+
 fn node_kind_label(kind: &vb_core::CompiledNodeKind) -> &'static str {
     match kind {
         vb_core::CompiledNodeKind::Nop => "nop",
