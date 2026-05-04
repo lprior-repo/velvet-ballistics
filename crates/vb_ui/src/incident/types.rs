@@ -49,6 +49,13 @@ impl IncidentSeverity {
             Self::Minor => [0.533_f32, 0.533_f32, 0.533_f32, 1.0_f32],
         }
     }
+
+    /// Return true if this severity requires immediate operator action.
+    /// Critical and Error (Major) are actionable; Minor, Warning, and Info
+    /// are informational.
+    pub fn is_actionable(&self) -> bool {
+        matches!(self, Self::Critical | Self::Major)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +82,18 @@ impl FailureCode {
             Self::TaintLeak => "TaintViolation",
             Self::ReplayDivergence => "ReplayDivergence",
             Self::Unknown(_) => "InternalError",
+        }
+    }
+
+    /// Return a category string for grouping related failure codes.
+    pub fn category(&self) -> &'static str {
+        match self {
+            Self::ActionTimeout | Self::ActionFailed(_) => "action",
+            Self::BudgetExceeded | Self::StepPanicked => "execution",
+            Self::ValidationError(_) => "validation",
+            Self::TaintLeak => "security",
+            Self::ReplayDivergence => "replay",
+            Self::Unknown(_) => "internal",
         }
     }
 }
@@ -559,5 +578,78 @@ mod tests {
         assert_eq!(record.timestamp_us, 0);
         assert!(record.detail.is_empty());
         assert!(!record.replay_safety.is_safe());
+    }
+
+    // ---------------------------------------------------------------------------
+    // F. IncidentSeverity::is_actionable() — 5 tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn is_actionable_critical() {
+        assert!(IncidentSeverity::Critical.is_actionable());
+    }
+
+    #[test]
+    fn is_actionable_major() {
+        assert!(IncidentSeverity::Major.is_actionable());
+    }
+
+    #[test]
+    fn is_actionable_minor_not_actionable() {
+        assert!(!IncidentSeverity::Minor.is_actionable());
+    }
+
+    #[test]
+    fn is_actionable_warning_not_actionable() {
+        assert!(!IncidentSeverity::Warning.is_actionable());
+    }
+
+    #[test]
+    fn is_actionable_info_not_actionable() {
+        assert!(!IncidentSeverity::Info.is_actionable());
+    }
+
+    // ---------------------------------------------------------------------------
+    // G. FailureCode::category() — 8 tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn category_action_timeout() {
+        assert_eq!(FailureCode::ActionTimeout.category(), "action");
+    }
+
+    #[test]
+    fn category_action_failed() {
+        assert_eq!(FailureCode::ActionFailed(String::from("boom")).category(), "action");
+    }
+
+    #[test]
+    fn category_budget_exceeded() {
+        assert_eq!(FailureCode::BudgetExceeded.category(), "execution");
+    }
+
+    #[test]
+    fn category_step_panicked() {
+        assert_eq!(FailureCode::StepPanicked.category(), "execution");
+    }
+
+    #[test]
+    fn category_validation_error() {
+        assert_eq!(FailureCode::ValidationError(String::from("bad")).category(), "validation");
+    }
+
+    #[test]
+    fn category_taint_leak() {
+        assert_eq!(FailureCode::TaintLeak.category(), "security");
+    }
+
+    #[test]
+    fn category_replay_divergence() {
+        assert_eq!(FailureCode::ReplayDivergence.category(), "replay");
+    }
+
+    #[test]
+    fn category_unknown() {
+        assert_eq!(FailureCode::Unknown(String::from("?")).category(), "internal");
     }
 }

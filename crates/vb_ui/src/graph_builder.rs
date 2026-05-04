@@ -2001,4 +2001,567 @@ mod tests {
         assert_eq!(outputs[1].id.as_str(), "done");
         assert_eq!(outputs[1].role, PortRole::Done);
     }
+
+    // -----------------------------------------------------------------------
+    // Additional tests: edge generation for CollectEnd/ReduceEnd,
+    // multi-branch Choose, TogetherEnd merge, RepeatAttempt loop-back,
+    // nested loop-inside-parallel, empty workflow single Finish node.
+    // -----------------------------------------------------------------------
+
+    /// CollectFinish (the "CollectEnd" node) produces no kind-specific edges
+    /// beyond `next`. This test verifies that a CollectStart -> body ->
+    /// CollectFinish chain produces exactly the expected edges.
+    #[test]
+    fn collect_finish_produces_no_extra_kind_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: vb_core::ids::SlotIdx::new(0),
+                limit: 50,
+                page_size: 10,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: vb_core::ids::SlotIdx::new(1),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2], 0);
+        let doc = build_document(&parts);
+
+        // CollectStart emits body + done edges (2). CollectFinish emits no
+        // kind-specific edges. Nop (n1) has no next so no next edge.
+        // Total = 2.
+        assert_eq!(doc.graph.edges.len(), 2, "expected 2 edges from CollectStart only");
+
+        // Verify the body edge targets step-1 and done edge targets step-2.
+        let mut found_body = false;
+        let mut found_done = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str() == "body" {
+                found_body = true;
+                assert_eq!(e.target.as_str(), "step-1");
+                assert!(!e.style.dashed, "body edge should be solid");
+            }
+            if e.source_port.as_str() == "done" {
+                found_done = true;
+                assert_eq!(e.target.as_str(), "step-2");
+                assert!(e.style.dashed, "done edge should be dashed");
+            }
+        }
+        assert!(found_body, "should find body edge");
+        assert!(found_done, "should find done edge");
+    }
+
+    /// ReduceStart -> body -> ReduceNext -> body -> ReduceFinish chain.
+    /// ReduceFinish produces no kind-specific edges. Verify edge count and
+    /// that ReduceStart and ReduceNext each produce body + done edges.
+    #[test]
+    fn reduce_start_and_next_produce_body_done_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ReduceStart {
+                input: vb_core::ids::SlotIdx::new(0),
+                accumulator: vb_core::ids::SlotIdx::new(1),
+                initial: vb_core::ids::ConstIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ReduceNext {
+                iterator_slot: vb_core::ids::SlotIdx::new(2),
+                accumulator: vb_core::ids::SlotIdx::new(1),
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+        };
+        let n3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ReduceFinish {
+                accumulator: vb_core::ids::SlotIdx::new(1),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // ReduceStart: body + done (2 edges)
+        // ReduceNext: body + done (2 edges)
+        // Total kind-specific edges = 4.
+        assert_eq!(doc.graph.edges.len(), 4, "expected 4 edges from ReduceStart + ReduceNext");
+
+        // Verify the done edges both target step-3.
+        let mut done_count = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str() == "done" {
+                done_count = done_count.saturating_add(1);
+                assert_eq!(e.target.as_str(), "step-3");
+                assert!(e.style.dashed, "done edges should be dashed");
+            }
+        }
+        assert_eq!(done_count, 2, "should find 2 done edges");
+    }
+
+    /// Choose with three branches and an otherwise target produces 4 edges total.
+    #[test]
+    fn choose_with_three_branches_produces_four_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([
+                    vb_core::workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    vb_core::workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                    vb_core::workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(2),
+                        target: StepIdx::new(3),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(4)),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = make_nop_node(2, None);
+        let n3 = make_nop_node(3, None);
+        let n4 = make_finish_node(4, 0);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3, n4], 0);
+        let doc = build_document(&parts);
+
+        // 3 branch edges + 1 otherwise edge = 4 total.
+        assert_eq!(doc.graph.edges.len(), 4, "expected 3 branch + 1 otherwise edges");
+
+        let mut branch_count = 0usize;
+        let mut otherwise_count = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str().starts_with("branch-") {
+                branch_count = branch_count.saturating_add(1);
+                assert!(!e.style.dashed, "branch edges should be solid");
+            }
+            if e.source_port.as_str() == "otherwise" {
+                otherwise_count = otherwise_count.saturating_add(1);
+                assert!(e.style.dashed, "otherwise edge should be dashed");
+                assert_eq!(e.target.as_str(), "step-4");
+            }
+        }
+        assert_eq!(branch_count, 3, "expected 3 branch edges");
+        assert_eq!(otherwise_count, 1, "expected 1 otherwise edge");
+    }
+
+    /// TogetherStart -> TogetherBranch -> TogetherJoin produces branch edges from
+    /// TogetherStart and entry/join edges from TogetherBranch, and the
+    /// TogetherJoin node has no kind-specific edges, acting as the single merge
+    /// output.
+    #[test]
+    fn together_end_merges_back_to_single_output() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+        };
+        let n1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(4),
+                join: StepIdx::new(3),
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 1,
+                entry: StepIdx::new(5),
+                join: StepIdx::new(3),
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n4 = make_nop_node(4, None);
+        let n5 = make_nop_node(5, None);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3, n4, n5], 0);
+        let doc = build_document(&parts);
+
+        // TogetherStart: 2 branch edges + 1 join edge = 3
+        // TogetherBranch (n1): entry + join = 2
+        // TogetherBranch (n2): entry + join = 2
+        // TogetherJoin (n3): 0 kind-specific edges
+        // Total = 7.
+        assert_eq!(doc.graph.edges.len(), 7, "expected 7 edges total");
+
+        // All join edges should target step-3 (TogetherJoin).
+        let mut join_edge_count = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str() == "join" {
+                join_edge_count = join_edge_count.saturating_add(1);
+                assert_eq!(
+                    e.target.as_str(), "step-3",
+                    "all join edges should target TogetherJoin at step-3"
+                );
+                assert!(e.style.dashed, "join edges should be dashed");
+            }
+        }
+        assert_eq!(join_edge_count, 3, "expected 3 join edges (1 from start, 2 from branches)");
+    }
+
+    /// RepeatAttempt creates a body edge that loops back to an earlier step,
+    /// plus a done edge that exits the loop. This test verifies the loop-back
+    /// edge targets an earlier step index.
+    #[test]
+    fn repeat_attempt_creates_loop_back_edge() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+        };
+        // RepeatAttempt loops body back to itself (step 1) for retry.
+        let n1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatAttempt {
+                attempt_slot: vb_core::ids::SlotIdx::new(0),
+                body: StepIdx::new(1), // loop back to self
+                done: StepIdx::new(2),
+            },
+        };
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatCheck {
+                attempt_slot: vb_core::ids::SlotIdx::new(0),
+                done: StepIdx::new(3),
+            },
+        };
+        let n3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatFinish {
+                result: vb_core::ids::SlotIdx::new(1),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // RepeatStart: body + done = 2
+        // RepeatAttempt: body + done = 2
+        // RepeatCheck: done = 1
+        // RepeatFinish: 0
+        // Total = 5 edges.
+        assert_eq!(doc.graph.edges.len(), 5, "expected 5 edges total");
+
+        // Find the loop-back body edge from step-1 targeting step-1.
+        let mut found_loop_back = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source.as_str() == "step-1" && e.source_port.as_str() == "body" {
+                found_loop_back = true;
+                assert_eq!(
+                    e.target.as_str(), "step-1",
+                    "RepeatAttempt body should loop back to itself"
+                );
+                assert!(!e.style.dashed, "body loop-back edge should be solid");
+            }
+        }
+        assert!(found_loop_back, "should find a loop-back body edge from RepeatAttempt");
+
+        // Verify RepeatAttempt's done edge exits to step-2.
+        let mut found_done_exit = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source.as_str() == "step-1" && e.source_port.as_str() == "done" {
+                found_done_exit = true;
+                assert_eq!(e.target.as_str(), "step-2");
+                assert!(e.style.dashed, "done edge should be dashed");
+            }
+        }
+        assert!(found_done_exit, "should find a done exit edge from RepeatAttempt");
+
+        // Verify group was created for the repeat loop.
+        let group = match doc.graph.groups.get("group-repeat-0") {
+            Some(g) => g,
+            None => return,
+        };
+        assert_eq!(group.kind, GroupKind::BranchContainer);
+        assert_eq!(group.children.len(), 4, "repeat group should span steps 0-3");
+    }
+
+    /// Nested structure: a RepeatStart loop containing a TogetherStart/TogetherJoin
+    /// parallel block inside it. Verifies that both groups are created and that
+    /// edges from inner parallel construct are present alongside loop edges.
+    #[test]
+    fn nested_repeat_containing_together_produces_both_groups() {
+        // Layout:
+        // 0: RepeatStart(body=1, done=5)
+        // 1: TogetherStart(branches=[2,3], join=4)
+        // 2: TogetherBranch(entry=..., join=4)
+        // 3: TogetherBranch(entry=..., join=4)
+        // 4: TogetherJoin
+        // 5: RepeatFinish
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                max_attempts: 2,
+                body: StepIdx::new(1),
+                done: StepIdx::new(5),
+            },
+        };
+        let n1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(2), StepIdx::new(3)]),
+                join: StepIdx::new(4),
+            },
+        };
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(4),
+                join: StepIdx::new(4),
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 1,
+                entry: StepIdx::new(4),
+                join: StepIdx::new(4),
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n4 = CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let n5 = CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatFinish {
+                result: vb_core::ids::SlotIdx::new(1),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2, n3, n4, n5], 0);
+        let doc = build_document(&parts);
+
+        // Verify both groups are present.
+        let repeat_group = match doc.graph.groups.get("group-repeat-0") {
+            Some(g) => g,
+            None => return,
+        };
+        assert_eq!(repeat_group.kind, GroupKind::BranchContainer);
+        // Repeat spans steps 0-5 inclusive.
+        assert_eq!(repeat_group.children.len(), 6);
+
+        let together_group = match doc.graph.groups.get("group-together-1") {
+            Some(g) => g,
+            None => return,
+        };
+        assert_eq!(together_group.kind, GroupKind::Swimlane);
+        // Together spans steps 1-4 inclusive.
+        assert_eq!(together_group.children.len(), 4);
+
+        // RepeatStart: body + done = 2
+        // TogetherStart: 2 branch + 1 join = 3
+        // TogetherBranch (n2): entry + join = 2
+        // TogetherBranch (n3): entry + join = 2
+        // TogetherJoin (n4): 0
+        // RepeatFinish (n5): 0
+        // Total = 9
+        assert_eq!(doc.graph.edges.len(), 9, "expected 9 edges from nested structure");
+
+        // Verify RepeatStart body edge targets step-1 (TogetherStart).
+        let mut found_repeat_body = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source.as_str() == "step-0" && e.source_port.as_str() == "body" {
+                found_repeat_body = true;
+                assert_eq!(e.target.as_str(), "step-1");
+            }
+        }
+        assert!(found_repeat_body, "should find RepeatStart body edge targeting TogetherStart");
+    }
+
+    /// A workflow consisting only of a single Finish node produces exactly one
+    /// node, zero edges, and zero groups. The node must have the terminal flag
+    /// set and be the entry node.
+    #[test]
+    fn single_finish_node_only_workflow() {
+        let n = make_finish_node(0, 0);
+        let parts = make_simple_parts(vec![n], 0);
+        let doc = build_document(&parts);
+
+        // Exactly one node.
+        assert_eq!(doc.graph.nodes.len(), 1, "single Finish should produce exactly 1 node");
+
+        // Zero edges (Finish has no next or kind-specific edges).
+        assert_eq!(doc.graph.edges.len(), 0, "single Finish should produce 0 edges");
+
+        // Zero groups (no loops or parallel constructs).
+        assert!(doc.graph.groups.is_empty(), "single Finish should produce 0 groups");
+
+        // The single node should be both terminal and entry.
+        let node_rec = match doc.graph.nodes.get("step-0") {
+            Some(n) => n,
+            None => return,
+        };
+        assert!(node_rec.flags.terminal, "Finish node should be terminal");
+        assert!(node_rec.flags.entry, "Finish node should be the entry node");
+
+        // Entry node in the graph metadata should be step-0.
+        let entry = match &doc.graph.entry_node {
+            Some(e) => e,
+            None => return,
+        };
+        assert_eq!(entry.as_str(), "step-0");
+    }
+
+    /// ChooseSlot with two branches and an otherwise target produces 3 edges
+    /// total, using SlotBranch instead of ExprBranch.
+    #[test]
+    fn choose_slot_with_branches_produces_correct_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: Box::new([
+                    vb_core::workflow::SlotBranch {
+                        condition: vb_core::ids::SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    vb_core::workflow::SlotBranch {
+                        condition: vb_core::ids::SlotIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(3)),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = make_nop_node(2, None);
+        let n3 = make_finish_node(3, 0);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // 2 branch edges + 1 otherwise edge = 3 total.
+        assert_eq!(doc.graph.edges.len(), 3, "expected 3 edges from ChooseSlot");
+
+        // Verify branch edges are solid and otherwise is dashed.
+        let mut solid_branches = 0usize;
+        let mut dashed_otherwise = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str().starts_with("branch-") {
+                solid_branches = solid_branches.saturating_add(1);
+                assert!(!e.style.dashed, "branch edges should be solid");
+            }
+            if e.source_port.as_str() == "otherwise" {
+                dashed_otherwise = dashed_otherwise.saturating_add(1);
+                assert!(e.style.dashed, "otherwise should be dashed");
+                assert_eq!(e.target.as_str(), "step-3");
+            }
+        }
+        assert_eq!(solid_branches, 2, "expected 2 solid branch edges");
+        assert_eq!(dashed_otherwise, 1, "expected 1 dashed otherwise edge");
+    }
 }

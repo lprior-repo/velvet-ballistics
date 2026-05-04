@@ -236,6 +236,62 @@ impl IncidentScreen {
 
     /// Return repair suggestions for the currently selected incident.
     pub fn selected_suggestions(&self) -> Vec<RepairSuggestion> { self.console.selected_suggestions() }
+
+    /// Return a human-readable summary of all incidents, e.g.
+    /// "3 incidents: 1 Critical, 1 Error, 1 Warning".
+    pub fn summary_text(&self) -> String {
+        let incidents = self.console.legacy_incidents();
+        let total = incidents.len();
+        if total == 0 {
+            return String::from("0 incidents");
+        }
+        let mut critical: usize = 0;
+        let mut major: usize = 0;
+        let mut minor: usize = 0;
+        let mut warning: usize = 0;
+        let mut info: usize = 0;
+        for inc in incidents {
+            match inc.severity {
+                IncidentSeverity::Critical => critical = critical.saturating_add(1),
+                IncidentSeverity::Major => major = major.saturating_add(1),
+                IncidentSeverity::Minor => minor = minor.saturating_add(1),
+                IncidentSeverity::Warning => warning = warning.saturating_add(1),
+                IncidentSeverity::Info => info = info.saturating_add(1),
+            }
+        }
+        let mut parts: Vec<String> = Vec::new();
+        if critical > 0 {
+            parts.push(format!("{} Critical", critical));
+        }
+        if major > 0 {
+            parts.push(format!("{} Error", major));
+        }
+        if minor > 0 {
+            parts.push(format!("{} Minor", minor));
+        }
+        if warning > 0 {
+            parts.push(format!("{} Warning", warning));
+        }
+        if info > 0 {
+            parts.push(format!("{} Info", info));
+        }
+        format!("{} incidents: {}", total, parts.join(", "))
+    }
+
+    /// Return true if any incident has Critical severity.
+    pub fn has_critical(&self) -> bool {
+        self.console.legacy_incidents()
+            .iter()
+            .any(|inc| inc.severity == IncidentSeverity::Critical)
+    }
+
+    /// Return references to all incidents matching the given severity.
+    pub fn filter_by_severity(&self, severity: IncidentSeverity) -> Vec<&Incident> {
+        self.console.legacy_incidents()
+            .iter()
+            .filter(|inc| inc.severity == severity)
+            .collect()
+    }
 }
 
 fn format_failure_code(code: &FailureCode) -> String {
