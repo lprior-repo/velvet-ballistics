@@ -985,4 +985,215 @@ mod tests {
         assert_eq!(counts_after.strict, 1, "should have 1 strict remaining");
         assert_eq!(counts_after.journaled, 1, "should have 1 journaled remaining");
     }
+
+    // =========================================================================
+    // Additional edge-case tests
+    // =========================================================================
+
+    #[test]
+    fn batch_builder_default_trait_yields_empty() {
+        let builder = BatchBuilder::default();
+        assert!(builder.is_empty(), "default BatchBuilder should be empty");
+        assert_eq!(builder.len(), 0, "default BatchBuilder len should be 0");
+        assert!(
+            builder.as_slice().is_empty(),
+            "default BatchBuilder as_slice should be empty"
+        );
+    }
+
+    #[test]
+    fn batch_builder_as_slice_returns_event_order() {
+        let mut builder = BatchBuilder::new();
+        let e0 = make_event(RunId::new(200), 0);
+        let e1 = make_event(RunId::new(201), 0);
+        builder.push(e0.clone());
+        builder.push(e1.clone());
+        let slice = builder.as_slice();
+        assert_eq!(slice.len(), 2);
+        assert_eq!(slice[0], e0, "first element should be e0");
+        assert_eq!(slice[1], e1, "second element should be e1");
+    }
+
+    #[test]
+    fn queue_with_capacity_one_accepts_single_event() {
+        let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(210);
+        queue.enqueue_journaled(make_event(run, 0)).expect("single enqueue should succeed");
+        let counts = queue.pending_profile_counts().expect("counts should succeed");
+        assert_eq!(counts.journaled, 1);
+    }
+
+    #[test]
+    fn queue_with_capacity_one_rejects_second_event() {
+        let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(211);
+        queue.enqueue_journaled(make_event(run, 0)).expect("first enqueue");
+        let result = queue.enqueue_journaled(make_event(run, 1));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "second enqueue on capacity-1 queue must yield QueueFull, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn flush_batch_single_event_with_large_batch_size() {
+        let (_temp, journal) = temp_journal();
+        // batch_size=10 but only 1 event enqueued
+        let queue = JournalWriterQueue::new(10, 10, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(220);
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 1, "should drain the single event");
+        assert_eq!(report.written, 1, "should write the single event");
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 1, "journal should have 1 event");
+    }
+
+    #[test]
+    fn drain_all_on_empty_queue_returns_zero() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
+        assert_eq!(report.drained, 0, "empty drain_all should drain 0");
+        assert_eq!(report.written, 0, "empty drain_all should write 0");
+    }
+
+    #[test]
+    fn flush_then_enqueue_then_flush_again() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(230);
+
+        // First round: enqueue 2 events and flush
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue 1");
+        let r1 = queue.flush_batch(&journal).expect("first flush");
+        assert_eq!(r1.drained, 2);
+        assert_eq!(r1.written, 2);
+
+        // Second round: enqueue 2 more events and flush
+        queue.enqueue_journaled(make_event(run, 2)).expect("enqueue 2");
+        queue.enqueue_journaled(make_event(run, 3)).expect("enqueue 3");
+        let r2 = queue.flush_batch(&journal).expect("second flush");
+        assert_eq!(r2.drained, 2);
+        assert_eq!(r2.written, 2);
+
+        // All 4 events should be in journal
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 4, "journal should have all 4 events");
+        for (i, ev) in events.iter().enumerate() {
+            assert_eq!(
+                ev.seq().get(),
+                i as u64,
+                "event at index {} should have seq {}",
+                i, i
+            );
+        }
+    }
+
+    #[test]
+    fn flush_batch_size_equals_queue_size_drains_all() {
+        let (_temp, journal) = temp_journal();
+        // batch_size=5, capacity=5, enqueue 5 events
+        let queue = JournalWriterQueue::new(5, 5, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(240);
+        for i in 0..5u64 {
+            queue.enqueue_journaled(make_event(run, i)).unwrap_or_else(|_| {
+                panic!("enqueue {} should succeed", i)
+            });
+        }
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 5, "should drain all 5 events in one flush");
+        assert_eq!(report.written, 5);
+
+        let counts = queue.pending_profile_counts().expect("counts should succeed");
+        assert_eq!(counts.journaled, 0, "queue should be empty after flush");
+    }
+
+    #[test]
+    fn pending_profile_counts_reflects_partial_drain() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(250);
+
+        // Enqueue 4 journaled, 2 strict
+        for i in 0..4u64 {
+            queue.enqueue_journaled(make_event(run, i)).expect("journaled enqueue");
+        }
+        queue.enqueue_strict(make_event(run, 4)).expect("strict 4");
+        queue.enqueue_strict(make_event(run, 5)).expect("strict 5");
+
+        let counts_before = queue.pending_profile_counts().expect("counts before");
+        assert_eq!(counts_before.journaled, 4);
+        assert_eq!(counts_before.strict, 2);
+
+        // batch_size=2, first 2 are journaled (no strict in this batch)
+        let _ = queue.flush_batch(&journal).expect("flush");
+
+        let counts_after = queue.pending_profile_counts().expect("counts after");
+        assert_eq!(counts_after.journaled, 2, "should have 2 journaled remaining");
+        assert_eq!(counts_after.strict, 2, "should have 2 strict remaining (not yet flushed)");
+    }
+
+    #[test]
+    fn shutdown_on_previously_flushed_queue_still_works() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(260);
+
+        // Enqueue and flush some events
+        queue.enqueue_journaled(make_event(run, 0)).expect("enqueue 0");
+        queue.enqueue_journaled(make_event(run, 1)).expect("enqueue 1");
+        let _ = queue.flush_batch(&journal).expect("flush");
+
+        // Add more events then shutdown
+        queue.enqueue_strict(make_event(run, 2)).expect("enqueue 2");
+        queue.enqueue_journaled(make_event(run, 3)).expect("enqueue 3");
+
+        let report = queue.shutdown(&journal).expect("shutdown should succeed");
+        assert_eq!(report.drained, 2, "shutdown should drain remaining 2 events");
+        assert_eq!(report.written, 2);
+
+        // Verify all 4 events in journal
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(events.len(), 4);
+    }
+
+    #[test]
+    fn queue_holds_exact_capacity_without_overflow() {
+        let queue = JournalWriterQueue::new(3, 3, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(270);
+
+        // Fill to exact capacity
+        for i in 0..3u64 {
+            queue.enqueue_journaled(make_event(run, i)).unwrap_or_else(|_| {
+                panic!("enqueue {} should succeed", i)
+            });
+        }
+
+        let counts = queue.pending_profile_counts().expect("counts should succeed");
+        assert_eq!(counts.journaled, 3);
+
+        // Next enqueue must fail
+        let result = queue.enqueue_journaled(make_event(run, 3));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "enqueue beyond exact capacity must fail, got {:?}",
+            result
+        );
+    }
 }
