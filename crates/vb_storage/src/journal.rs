@@ -64,7 +64,7 @@ pub struct FjallJournal {
 impl FjallJournal {
     /// Opens or creates the journal at `path`.
     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
-        let config = config.unwrap_or_else(FjallConfig::default);
+        let config = config.unwrap_or_default();
         let path_ref = path.as_ref();
         let database = fjall::Database::builder(path_ref)
             .cache_size(config.cache_size_bytes)
@@ -272,7 +272,7 @@ impl FjallJournal {
             .latest_snapshot_seq(run)
             .ok()
             .flatten()
-            .unwrap_or_else(EventSeq::new);
+            .unwrap_or(EventSeq::new(0));
         self.events_for_run_from(run, start_seq)
     }
 
