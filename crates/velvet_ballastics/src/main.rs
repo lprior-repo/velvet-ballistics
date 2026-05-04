@@ -4,6 +4,11 @@
 #![allow(clippy::too_many_lines)]
 
 mod args;
+mod commands_diff;
+mod commands_incident;
+mod commands_journal;
+mod commands_verify;
+mod commands_workflow;
 mod exit_code;
 
 use std::ffi::OsString;
@@ -3535,109 +3540,25 @@ fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         Err(code) => return code,
     };
 
-    let compiled = match vb_compile::compile_workflow(&bytes) {
+    let compiled = match compile_bytes_json(&bytes, output) {
         Ok(c) => c,
-        Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
-                    output,
-                );
-            } else {
-                for err in &errors.0 {
-                    errln!("compile error: {err}");
-                }
-            }
-            return CliExitCode::CompileFailed.into();
-        }
+        Err(code) => return code,
     };
 
-    let mut dot_lines: Vec<String> = Vec::new();
-    dot_lines.push("digraph workflow {".to_string());
-    dot_lines.push("    node [shape=box];".to_string());
-
-    let node_count = compiled.node_count();
-    let mut edge_count: usize = 0;
-
-    // Declare all nodes
-    for i in 0..node_count {
-        let step = vb_core::StepIdx::new(i);
-        let label = match compiled.step_name(step) {
-            Some(name) => format!("{i}: {name}"),
-            None => {
-                let node = match compiled.node(step) {
-                    Some(n) => n,
-                    None => continue,
-                };
-                let kind_label = node_kind_label(&node.kind);
-                format!("{i}: {kind_label}")
-            }
-        };
-        let escaped = label.replace('"', "\\\"");
-        dot_lines.push(format!("    node_{i} [label=\"{escaped}\"];"));
-    }
-
-    // Add edges
-    for i in 0..node_count {
-        let step = vb_core::StepIdx::new(i);
-        let node = match compiled.node(step) {
-            Some(n) => n,
-            None => continue,
-        };
-
-        if let Some(next) = node.next {
-            dot_lines.push(format!("    node_{i} -> node_{};", next.get()));
-            edge_count = match edge_count.checked_add(1) {
-                Some(c) => c,
-                None => edge_count,
-            };
-        }
-        if let Some(on_error) = node.on_error {
-            dot_lines.push(format!(
-                "    node_{i} -> node_{} [style=dashed,color=red,label=\"on_error\"];",
-                on_error.get()
-            ));
-            edge_count = match edge_count.checked_add(1) {
-                Some(c) => c,
-                None => edge_count,
-            };
-        }
-        let extra_edges = collect_kind_edges(i, &node.kind);
-        for (from, to, label) in &extra_edges {
-            let edge_decl = if label.is_empty() {
-                format!("    node_{from} -> node_{to};")
-            } else {
-                let escaped = label.replace('"', "\\\"");
-                format!("    node_{from} -> node_{to} [label=\"{escaped}\"];")
-            };
-            dot_lines.push(edge_decl);
-            edge_count = match edge_count.checked_add(1) {
-                Some(c) => c,
-                None => edge_count,
-            };
-        }
-    }
-
-    dot_lines.push("}".to_string());
-    let dot_string = dot_lines.join("\n");
+    let graph = commands_workflow::generate_dot(&compiled);
 
     if output != OutputFormat::Text {
         json_out(
             &serde_json::json!({
                 "format": "dot",
-                "nodes": node_count,
-                "edges": edge_count,
-                "dot": dot_string
+                "nodes": graph.node_count,
+                "edges": graph.edge_count,
+                "dot": graph.dot
             }),
             output,
         );
     } else {
-        outln!("{dot_string}");
+        outln!("{}", graph.dot);
     }
 
     CliExitCode::Success.into()
@@ -4285,8 +4206,8 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     match error {
-        ParseError::InvalidSlot(slot) => {
-            writeln!(handle, "invalid slot: {slot}\n\n{HELP}")
+        ParseError::InvalidStep(step) => {
+            writeln!(handle, "invalid step: {step}\n\n{HELP}")
         }
         ParseError::MissingArgument(name) => {
             writeln!(handle, "missing argument: {name}\n\n{HELP}")

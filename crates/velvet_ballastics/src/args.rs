@@ -187,7 +187,7 @@ pub(crate) enum ParseError {
     UnknownProfile(String),
     UnknownCommand(String),
     NoCommand,
-    InvalidSlot(String),
+    InvalidStep(String),
 }
 
 pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
@@ -353,14 +353,8 @@ fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Inspect {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Inspect { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 /// Common arguments for commands that operate on a run database entry.
@@ -426,7 +420,7 @@ fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
     let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
     let step = step_raw
         .parse::<u16>()
-        .map_err(|_| ParseError::InvalidSlot(step_raw))?;
+        .map_err(|_| ParseError::InvalidStep(step_raw))?;
     let value_file =
         named_flag(args, "--value-file").ok_or(ParseError::MissingArgument("--value-file"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -565,7 +559,7 @@ impl std::fmt::Display for ParseError {
             }
             Self::UnknownCommand(cmd) => write!(formatter, "unknown command: {cmd}"),
             Self::NoCommand => write!(formatter, "no command provided"),
-            Self::InvalidSlot(slot) => write!(formatter, "invalid slot: {slot}"),
+            Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
         }
     }
 }
