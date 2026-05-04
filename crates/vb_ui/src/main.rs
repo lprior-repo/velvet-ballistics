@@ -4,6 +4,7 @@ pub use makepad_widgets;
 
 use makepad_widgets::*;
 use vb_ui::app_state::{AppState, ReplayData, Screen};
+use vb_ui::ipc_wiring::IpcAppWiring;
 
 app_main!(VbApp);
 
@@ -1469,10 +1470,34 @@ pub struct VbApp {
     ui: WidgetRef,
     #[rust]
     app_state: AppState,
+    #[rust]
+    ipc_wiring: IpcAppWiring,
 }
 
 impl MatchEvent for VbApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        // ── Frame-poll the IPC wiring ─────────────────────────────
+        // Drain pending IPC replies into AppState and dispatch UI
+        // sync calls for the affected subsystems.
+        let wiring_events = self.ipc_wiring.poll(&mut self.app_state);
+
+        if wiring_events.metrics_updated || wiring_events.connection_changed {
+            self.sync_system_state(cx);
+        }
+        if wiring_events.verification_updated || wiring_events.taint_report_updated {
+            self.sync_verify_state(cx);
+        }
+        if wiring_events.run_accepted
+            || wiring_events.run_cancelled
+            || wiring_events.events_arrived
+            || wiring_events.trace_drained
+        {
+            self.sync_replay_state(cx);
+        }
+        if wiring_events.workflow_graph_updated {
+            self.sync_workflow_state(cx);
+        }
+
         // Screen navigation — switches PageFlip active_page
         if self.ui.button(cx, ids!(nav_replay)).clicked(actions) {
             self.app_state
@@ -1986,5 +2011,172 @@ impl AppMain for VbApp {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         self.match_event(cx, event);
         self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests for colour helpers and system rendering wiring
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- f32_to_u8_color tests -----------------------------------------------
+
+    #[test]
+    fn f32_to_u8_color_zero_channel_is_zero() {
+        assert_eq!(f32_to_u8_color(0.0), 0);
+    }
+
+    #[test]
+    fn f32_to_u8_color_one_channel_is_255() {
+        assert_eq!(f32_to_u8_color(1.0), 255);
+    }
+
+    #[test]
+    fn f32_to_u8_color_half_channel_is_128() {
+        // 0.5 * 255 = 127.5, rounds to 128
+        assert_eq!(f32_to_u8_color(0.5), 128);
+    }
+
+    #[test]
+    fn f32_to_u8_color_clamps_negative_to_zero() {
+        assert_eq!(f32_to_u8_color(-1.0), 0);
+        assert_eq!(f32_to_u8_color(-0.001), 0);
+    }
+
+    #[test]
+    fn f32_to_u8_color_clamps_above_one_to_255() {
+        assert_eq!(f32_to_u8_color(1.5), 255);
+        assert_eq!(f32_to_u8_color(2.0), 255);
+    }
+
+    #[test]
+    fn f32_to_u8_color_quarter_channel_is_64() {
+        // 0.25 * 255 = 63.75, rounds to 64
+        assert_eq!(f32_to_u8_color(0.25), 64);
+    }
+
+    // -- rgba_to_hex tests ---------------------------------------------------
+
+    #[test]
+    fn rgba_to_hex_black() {
+        assert_eq!(rgba_to_hex([0.0, 0.0, 0.0, 1.0]), "#000000");
+    }
+
+    #[test]
+    fn rgba_to_hex_white() {
+        assert_eq!(rgba_to_hex([1.0, 1.0, 1.0, 1.0]), "#ffffff");
+    }
+
+    #[test]
+    fn rgba_to_hex_neon_cyan() {
+        // Neon cyan: [0.0, 0.961, 1.0, 1.0]
+        // 0.961 * 255 ~ 245 -> 0xf5, 1.0 * 255 = 255 -> 0xff
+        let hex = rgba_to_hex([0.0, 0.961, 1.0, 1.0]);
+        assert_eq!(hex, "#00f5ff");
+    }
+
+    #[test]
+    fn rgba_to_hex_ignores_alpha_channel() {
+        assert_eq!(rgba_to_hex([1.0, 0.0, 0.0, 0.5]), "#ff0000");
+    }
+
+    // -- status_badge_hex tests ----------------------------------------------
+
+    #[test]
+    fn status_badge_healthy_is_neon_cyan() {
+        let hex = status_badge_hex(vb_ui::system::renderer::StatusBadge::Healthy);
+        assert_eq!(hex, "#00f5ff");
+    }
+
+    #[test]
+    fn status_badge_degraded_is_neon_yellow() {
+        // Neon yellow: [1.0, 0.902, 0.0, 1.0] -> 0.902*255 ~ 230 -> 0xe6
+        let hex = status_badge_hex(vb_ui::system::renderer::StatusBadge::Degraded);
+        assert_eq!(hex, "#ffe600");
+    }
+
+    #[test]
+    fn status_badge_critical_is_neon_red() {
+        // Neon red: [1.0, 0.027, 0.227, 1.0]
+        // 0.027*255 ~ 7 -> 0x07, 0.227*255 ~ 58 -> 0x3a
+        let hex = status_badge_hex(vb_ui::system::renderer::StatusBadge::Critical);
+        assert_eq!(hex, "#ff073a");
+    }
+
+    // -- app_state sync_system_from_screen tests ----------------------------
+
+    #[test]
+    fn app_state_sync_system_from_screen_defaults() {
+        let mut state = vb_ui::app_state::AppState::new();
+        state.sync_system_from_screen();
+        assert_eq!(state.system.shard_count, 0);
+        assert_eq!(state.system.total_active_runs, 0);
+        assert_eq!(state.system.total_queue_depth, 0);
+        assert_eq!(
+            state.system.overall_health,
+            vb_ui::app_state::HealthLevel::Healthy
+        );
+    }
+
+    #[test]
+    fn app_state_sync_system_from_screen_with_metrics() {
+        use vb_ipc::ShardMetrics;
+
+        let mut state = vb_ui::app_state::AppState::new();
+
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 3,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        state.system_screen.update_from_metrics(&m);
+
+        state.sync_system_from_screen();
+        assert_eq!(state.system.shard_count, 1);
+        assert_eq!(state.system.total_active_runs, 5);
+        assert_eq!(state.system.total_queue_depth, 13);
+        assert_eq!(
+            state.system.overall_health,
+            vb_ui::app_state::HealthLevel::Healthy
+        );
+    }
+
+    #[test]
+    fn app_state_sync_system_from_screen_critical_health() {
+        use vb_ipc::ShardMetrics;
+
+        let mut state = vb_ui::app_state::AppState::new();
+
+        // Pool nearly empty -> Critical
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 50,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 5,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 85.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        state.system_screen.update_from_metrics(&m);
+
+        state.sync_system_from_screen();
+        assert_eq!(state.system.shard_count, 1);
+        assert_eq!(
+            state.system.overall_health,
+            vb_ui::app_state::HealthLevel::Critical
+        );
     }
 }

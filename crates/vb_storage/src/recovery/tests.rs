@@ -1168,4 +1168,167 @@ mod tests {
         let terminal = extract_terminal(&events);
         assert!(terminal.is_none());
     }
+
+    // --- Recovery frame seed divergence and edge case tests ---
+
+    /// Multi-run divergence: `summarize_recovery_events` with events for different RunIds
+    /// should return ReplayDivergence error.
+    #[test]
+    fn summarize_recovery_events_rejects_multi_run_divergence() {
+        let run_a = RunId::new(500);
+        let run_b = RunId::new(501);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run: run_a,
+                seq: EventSeq::new(0),
+                workflow: test_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run: run_a,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run: run_b,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+            },
+        ];
+
+        let result = summarize_recovery_events(&events);
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence for multi-run events, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert!(detail.contains("multiple runs"));
+    }
+
+    /// Multi-run divergence: `recover_runtime_frame_seed_from_events` with mixed RunIds
+    /// should return ReplayDivergence error.
+    #[test]
+    fn frame_seed_rejects_multi_run_divergence() {
+        let run_a = RunId::new(600);
+        let run_b = RunId::new(601);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run: run_a,
+                seq: EventSeq::new(0),
+                workflow: test_digest(2),
+            },
+            JournalEvent::StepSucceeded {
+                run: run_a,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run: run_b,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(1),
+            },
+        ];
+
+        let result = recover_runtime_frame_seed_from_events(&events);
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence for mixed-run frame seed, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert!(detail.contains("multiple runs"));
+    }
+
+    /// Empty events: both `summarize_recovery_events` and
+    /// `recover_runtime_frame_seed_from_events` should return NoRecoveryData.
+    #[test]
+    fn empty_events_returns_no_recovery_data() {
+        let events: Vec<JournalEvent> = vec![];
+
+        let summary_result = summarize_recovery_events(&events);
+        let Err(RecoveryError::NoRecoveryData { .. }) = summary_result else {
+            panic!(
+                "summarize_recovery_events: expected NoRecoveryData, got {:?}",
+                summary_result
+            );
+        };
+
+        let seed_result = recover_runtime_frame_seed_from_events(&events);
+        let Err(RecoveryError::NoRecoveryData { .. }) = seed_result else {
+            panic!(
+                "recover_runtime_frame_seed_from_events: expected NoRecoveryData, got {:?}",
+                seed_result
+            );
+        };
+    }
+
+    /// When no steps have started, `first_step` should default to `StepIdx::ZERO`.
+    /// A run with only SlotWritten events (no StepStarted/StepSucceeded) exercises this path.
+    #[test]
+    fn frame_seed_first_step_defaults_to_zero_when_no_steps_started() {
+        let run = RunId::new(700);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(3),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot: SlotIdx::new(5),
+                value: None,
+            },
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(2),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover from slot-only events");
+        assert_eq!(seed.first_step, StepIdx::ZERO);
+        assert_eq!(seed.step_count, 0);
+        assert!(seed.steps.is_empty());
+        assert_eq!(seed.pc, StepIdx::ZERO);
+    }
+
+    /// SlotWrittenEvent slot-dimension tracking without StepSucceeded:
+    /// `max_slot` should update from SlotWritten events alone.
+    #[test]
+    fn slot_written_events_track_max_slot_without_step_succeeded() {
+        let run = RunId::new(800);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: test_digest(4),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot: SlotIdx::new(3),
+                value: None,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(7),
+                value: None,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(3),
+                slot: SlotIdx::new(2),
+                value: None,
+            },
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(4),
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .expect("seed should recover from SlotWritten-only events");
+        // max_slot is 7, so slot_count should be 7 + 1 = 8
+        assert_eq!(seed.slot_count, 8);
+        assert_eq!(seed.summary.slots_written, 3);
+    }
 }

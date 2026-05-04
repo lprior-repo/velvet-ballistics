@@ -1960,4 +1960,81 @@ mod tests {
         wf.secrets.push("unused_secret".to_owned());
         assert_eq!(validate_taint(&wf), Ok(()));
     }
+
+    // ---------------------------------------------------------------------------
+    // Deep slot chain and mixed-read isolation tests
+    // ---------------------------------------------------------------------------
+
+    /// Taint propagates through a deep chain of slot relays (5 intermediaries).
+    /// Secret -> slot0 -> slot1 -> slot2 -> slot3 -> slot4 -> finish(slot5)
+    /// verifies full transitive closure across enough intermediaries to catch
+    /// any short-circuit or fixed-depth propagation bug.
+    #[test]
+    fn taint_propagates_through_deep_slot_chain() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.db_password".into())),
+            save_step("s1", TypedValue::Slot(0)),
+            save_step("s2", TypedValue::Slot(1)),
+            save_step("s3", TypedValue::Slot(2)),
+            save_step("s4", TypedValue::Slot(3)),
+            save_step("s5", TypedValue::Slot(4)),
+            finish_step("done", TypedValue::Slot(5)),
+        ]);
+        wf.secrets.push("db_password".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
+
+    /// A deep slot chain of clean relays does not produce a false positive.
+    /// Clean literal -> slot0 -> slot1 -> slot2 -> slot3 -> finish(slot4)
+    /// should pass taint validation.
+    #[test]
+    fn clean_deep_slot_chain_passes() {
+        let wf = make_workflow(vec![
+            save_step("s0", TypedValue::Literal(ValueType::Number)),
+            save_step("s1", TypedValue::Slot(0)),
+            save_step("s2", TypedValue::Slot(1)),
+            save_step("s3", TypedValue::Slot(2)),
+            save_step("s4", TypedValue::Slot(3)),
+            finish_step("done", TypedValue::Slot(4)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Multi-slot read with mixed taint: a workflow that saves both a tainted
+    /// slot and a clean slot. Finishing from the clean path passes, while
+    /// finishing from the tainted path fails. This verifies that tainted and
+    /// clean slots remain isolated even when they coexist in the same workflow.
+    #[test]
+    fn taint_mixed_slots_isolated_independent_reads() {
+        let mut wf = make_workflow(vec![
+            // slot 0: tainted
+            save_step("tainted", TypedValue::Reference("$secrets.api_key".into())),
+            // slot 1: clean
+            save_step("clean", TypedValue::Literal(ValueType::Text)),
+            // slot 2: clean relay of slot 1 (still clean)
+            save_step("clean_relay", TypedValue::Slot(1)),
+            // finish from the clean relay -- should pass
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("api_key".to_owned());
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Same setup as `taint_mixed_slots_isolated_independent_reads` but the
+    /// finish reads the tainted slot instead. Must be rejected.
+    #[test]
+    fn taint_mixed_slots_isolated_tainted_read_rejected() {
+        let mut wf = make_workflow(vec![
+            // slot 0: tainted
+            save_step("tainted", TypedValue::Reference("$secrets.api_key".into())),
+            // slot 1: clean
+            save_step("clean", TypedValue::Literal(ValueType::Text)),
+            // slot 2: clean relay of slot 1 (still clean)
+            save_step("clean_relay", TypedValue::Slot(1)),
+            // finish from the tainted slot -- must be rejected
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("api_key".to_owned());
+        assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
+    }
 }
