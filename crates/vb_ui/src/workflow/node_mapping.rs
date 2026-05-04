@@ -1201,4 +1201,96 @@ mod tests {
         };
         assert_eq!(map_node(&kind).border_color, colors::neon::TEAL);
     }
+
+    // -----------------------------------------------------------------------
+    // Additional tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn collect_start_icon_is_loop() {
+        let kind = CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(0),
+            limit: 10,
+            page_size: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).icon, IconHint::Loop);
+    }
+
+    #[test]
+    fn reduce_start_icon_is_loop() {
+        let kind = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).icon, IconHint::Loop);
+    }
+
+    #[test]
+    fn repeat_attempt_icon_is_retry() {
+        let kind = CompiledNodeKind::RepeatAttempt {
+            attempt_slot: SlotIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).icon, IconHint::Retry);
+    }
+
+    #[test]
+    fn collect_start_border_is_blue() {
+        let kind = CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(0),
+            limit: 10,
+            page_size: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+    }
+
+    #[test]
+    fn reduce_start_border_is_blue() {
+        let kind = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+    }
+
+    #[test]
+    fn repeat_start_border_is_yellow() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 3,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).border_color, colors::neon::YELLOW);
+    }
+
+    #[test]
+    fn wait_until_border_is_green() {
+        let kind = CompiledNodeKind::WaitUntil {
+            deadline_slot: SlotIdx::new(0),
+        };
+        assert_eq!(map_node(&kind).border_color, colors::neon::GREEN);
+    }
+
+    #[test]
+    fn foreach_start_border_is_blue() {
+        let kind = CompiledNodeKind::ForEachStart {
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(map_node(&kind).border_color, colors::neon::BLUE);
+    }
 }

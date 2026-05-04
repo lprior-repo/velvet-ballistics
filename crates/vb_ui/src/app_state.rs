@@ -323,7 +323,7 @@ impl VerificationData {
     /// - Bounded:   gate_07
     /// - Resources:  gate_08
     /// - Taint:      gate_13
-    /// - Action:     gate_14
+    /// - Action:     gate_12, gate_14
     /// - Durability: gate_11, gate_15
     pub fn populate_cert_cards(&mut self, certs: &[vb_ipc::CertificateWire]) {
         let total_count = u32::try_from(certs.len()).unwrap_or(u32::MAX);
@@ -367,7 +367,7 @@ impl VerificationData {
         self.cert_bounded = build_card(certs, &["gate_07"]);
         self.cert_resources = build_card(certs, &["gate_08"]);
         self.cert_taint = build_card(certs, &["gate_13"]);
-        self.cert_action = build_card(certs, &["gate_14"]);
+        self.cert_action = build_card(certs, &["gate_12", "gate_14"]);
         self.cert_durability = build_card(certs, &["gate_11", "gate_15"]);
 
         // Derive aggregate counters from the full certificate list.

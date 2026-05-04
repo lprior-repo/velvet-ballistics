@@ -677,4 +677,104 @@ mod tests {
         let canvas = WorkflowCanvas::new(doc);
         assert_eq!(canvas.node_count(), 3);
     }
+
+    // -----------------------------------------------------------------------
+    // Additional tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn viewport_at_min_zoom_covers_large_area() {
+        let doc = make_empty_document();
+        let mut canvas = WorkflowCanvas::new(doc);
+        canvas.set_zoom(MIN_ZOOM); // 0.1
+
+        let screen_w = 800.0;
+        let screen_h = 600.0;
+        let vr = canvas.viewport_rect(screen_w, screen_h);
+
+        // inv_zoom = 1 / 0.1 = 10.0, so world coverage is 8000 x 6000.
+        assert!((vr.width - 8000.0).abs() < f64::EPSILON);
+        assert!((vr.height - 6000.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn focus_jump_with_zoom_accounts_for_inv_zoom() {
+        let doc = make_chain_document();
+        let mut canvas = WorkflowCanvas::new(doc);
+
+        // Zoom in so inv_zoom = 2.0.
+        canvas.set_zoom(0.5);
+
+        let positions = canvas.test_positions();
+        let Some(target_pos) = positions.get(&1).copied() else {
+            return;
+        };
+
+        let ok = canvas.focus_jump(1, 800.0, 600.0);
+        assert!(ok);
+
+        // inv_zoom = 1 / 0.5 = 2.0
+        let inv_zoom = 1.0 / canvas.zoom();
+        let expected_x = target_pos[0] - 800.0 * inv_zoom / 2.0;
+        let expected_y = target_pos[1] - 600.0 * inv_zoom / 2.0;
+        assert!((canvas.pan().0 - expected_x).abs() < 0.01);
+        assert!((canvas.pan().1 - expected_y).abs() < 0.01);
+    }
+
+    #[test]
+    fn edge_count_for_single_node_document_is_zero() {
+        let doc = make_empty_document();
+        let canvas = WorkflowCanvas::new(doc);
+        assert_eq!(canvas.edge_count(), 0);
+    }
+
+    #[test]
+    fn negative_pan_values_are_valid() {
+        let doc = make_empty_document();
+        let mut canvas = WorkflowCanvas::new(doc);
+        canvas.set_pan(-500.0, -300.0);
+        let (px, py) = canvas.pan();
+        assert!((px - (-500.0)).abs() < f64::EPSILON);
+        assert!((py - (-300.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn empty_document_has_zero_edge_paths() {
+        let doc = make_empty_document();
+        let canvas = WorkflowCanvas::new(doc);
+        let paths = canvas.compute_edge_paths();
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn viewport_intersects_edge_touching_rect() {
+        // Two rects that touch at exactly the boundary edge should NOT
+        // intersect (the `<=` means touching edges are excluded).
+        let vr = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
+        // Right edge of other starts exactly at right edge of viewport.
+        assert!(!vr.intersects(100.0, 0.0, 50.0, 50.0));
+    }
+
+    #[test]
+    fn focus_jump_on_single_node_succeeds() {
+        let doc = make_empty_document();
+        let mut canvas = WorkflowCanvas::new(doc);
+        let ok = canvas.focus_jump(0, 800.0, 600.0);
+        assert!(ok);
+        // Pan should have moved from (0, 0) to center the node.
+        let (px, py) = canvas.pan();
+        // Just verify pan actually changed (node position is non-zero in layout).
+        let positions = canvas.test_positions();
+        let Some(pos) = positions.get(&0).copied() else {
+            return;
+        };
+        let inv_zoom = 1.0 / canvas.zoom();
+        assert!((px - (pos[0] - 400.0 * inv_zoom)).abs() < 0.01);
+        assert!((py - (pos[1] - 300.0 * inv_zoom)).abs() < 0.01);
+    }
 }
