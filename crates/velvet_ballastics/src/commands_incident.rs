@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 //! Pure incident report computation logic, separated from I/O and formatting.
 
 use vb_storage::events::JournalEvent;

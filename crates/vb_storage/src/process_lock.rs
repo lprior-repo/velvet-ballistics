@@ -52,7 +52,9 @@ impl ProcessLock {
                 // can report who holds the lock.
                 let pid = std::process::id();
                 // Best-effort PID recording — lock already held, write failure is non-critical.
+                #[allow(clippy::let_underscore_must_use)]
                 let _ = file.set_len(0);
+                #[allow(clippy::let_underscore_must_use)]
                 let _ = write!(file, "{pid}");
 
                 Ok(Self {
@@ -93,7 +95,9 @@ fn read_holder_pid(file: &File) -> Option<u32> {
     let mut buf = String::new();
     // Shadow to obtain &mut for Read+Seek traits (File does not impl Copy).
     let mut file = file;
+    #[allow(clippy::let_underscore_must_use)]
     let _ = file.rewind();
+    #[allow(clippy::let_underscore_must_use)]
     let _ = file.read_to_string(&mut buf);
     buf.trim().parse::<u32>().ok()
 }

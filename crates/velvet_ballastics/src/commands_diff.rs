@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 //! Pure diff computation logic, separated from I/O and formatting.
 
 use std::collections::HashMap;

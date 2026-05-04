@@ -156,9 +156,13 @@ pub fn recover_runtime_frame_seed_from_events(
                 }
             }
             JournalEvent::StepSucceeded { step, output, .. } => {
-                step_states.insert(*step, RecoveredStepState::Succeeded);
-                if *step > pc {
-                    pc = *step;
+                let idx = *step;
+                if max_step_idx.is_none_or(|m| idx > m) {
+                    max_step_idx = Some(idx);
+                }
+                step_states.insert(idx, RecoveredStepState::Succeeded);
+                if idx > pc {
+                    pc = idx;
                 }
                 if max_slot_idx.is_none_or(|m| output > &m) {
                     max_slot_idx = Some(*output);
@@ -166,27 +170,35 @@ pub fn recover_runtime_frame_seed_from_events(
             }
             JournalEvent::RunFailedEvent { .. } => {}
             JournalEvent::WaitScheduledEvent { step, .. } => {
+                if max_step_idx.is_none_or(|m| *step > m) {
+                    max_step_idx = Some(*step);
+                }
                 step_states.insert(*step, RecoveredStepState::Waiting);
                 if *step > pc {
                     pc = *step;
                 }
             }
             JournalEvent::AskScheduledEvent { step, .. } => {
+                if max_step_idx.is_none_or(|m| *step > m) {
+                    max_step_idx = Some(*step);
+                }
                 step_states.insert(*step, RecoveredStepState::Asking);
                 if *step > pc {
                     pc = *step;
                 }
             }
-            JournalEvent::SlotWrittenEvent { slot, .. } => {
-                if max_slot_idx.is_none_or(|m| slot > &m) {
-                    max_slot_idx = Some(*slot);
-                }
+            JournalEvent::SlotWrittenEvent { slot, .. }
+                if max_slot_idx.is_none_or(|m| slot > &m) =>
+            {
+                max_slot_idx = Some(*slot);
             }
-            JournalEvent::RunFinished { result, .. } => {
-                if max_slot_idx.is_none_or(|m| result > &m) {
-                    max_slot_idx = Some(*result);
-                }
+            JournalEvent::SlotWrittenEvent { .. } => {}
+            JournalEvent::RunFinished { result, .. }
+                if max_slot_idx.is_none_or(|m| result > &m) =>
+            {
+                max_slot_idx = Some(*result);
             }
+            JournalEvent::RunFinished { .. } => {}
             _ => {}
         }
     }

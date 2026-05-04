@@ -199,7 +199,7 @@ fn read_journal_events(
 ) -> Result<Vec<vb_storage::JournalEvent>, ExitCode> {
     let rid = parse_run_id(run_id)?;
     let journal = vb_storage::FjallJournal::open(db, None)
-        .map_err(|e| { report_storage_open_error(&e, db, output); CliExitCode::StorageError.into() })?;
+        .map_err(|e| -> ExitCode { report_storage_open_error(&e, db, output); CliExitCode::StorageError.into() })?;
     journal.events_for_run(rid).map_err(|e| {
         if output != OutputFormat::Text {
             json_error(&serde_json::json!({ "success": false, "error": format!("error reading run {run_id}: {e}") }), output);
@@ -2091,8 +2091,8 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
                 outln!("    (none)");
             } else {
                 for se in &report.side_effects {
-                    let step = se["step"];
-                    let action = se["action"];
+                    let step = &se["step"];
+                    let action = &se["action"];
                     let certainty = se["certainty"].as_str().unwrap_or("unknown");
                     outln!("    step={step} action={action} certainty={certainty}");
                 }
@@ -2198,7 +2198,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
             for diff in &result.diffs {
                 outln!("{}", serde_json::to_string(diff).unwrap_or_default());
             }
-            outln!("{{"total_differences": {}}}", result.diffs.len());
+            outln!("{}", format!("{{\"total_differences\": {}}}", result.diffs.len()));
         }
         OutputFormat::Text => {
             outln!("diff: run {run_a} vs run {run_b}");
