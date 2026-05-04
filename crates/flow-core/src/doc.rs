@@ -705,4 +705,369 @@ mod tests {
             );
         }
     }
+
+    // =========================================================================
+    // Edge-case tests
+    // =========================================================================
+
+    /// 1. Document constructed with nodes but no edges or groups.
+    #[test]
+    fn document_with_nodes_no_edges_or_groups() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        doc.graph.nodes.insert(SmolStr::from("n2"), make_node("n2"));
+        doc.graph.nodes.insert(SmolStr::from("n3"), make_node("n3"));
+        assert_eq!(doc.graph.nodes.len(), 3);
+        assert!(doc.graph.edges.is_empty());
+        assert!(doc.graph.groups.is_empty());
+    }
+
+    /// 2. Document constructed with edges but the nodes map is also populated
+    ///    (edges reference existing nodes).
+    #[test]
+    fn document_with_edges_and_nodes() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        doc.graph.nodes.insert(SmolStr::from("n2"), make_node("n2"));
+        doc.graph.edges.insert(
+            SmolStr::from("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        doc.graph.edges.insert(
+            SmolStr::from("e2"),
+            make_edge("e2", "n2", "out", "n1", "in"),
+        );
+        assert_eq!(doc.graph.edges.len(), 2);
+        assert_eq!(doc.graph.nodes.len(), 2);
+    }
+
+    /// 3. Duplicate node ID insertion: inserting a node with the same ID replaces
+    ///    the previous entry in the IndexMap.
+    #[test]
+    fn duplicate_node_id_replaces_entry() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(SmolStr::from("dup"), make_node("dup"));
+        let mut replacement = make_node("dup");
+        replacement.title = SmolStr::from("replaced");
+        graph.nodes.insert(SmolStr::from("dup"), replacement);
+        assert_eq!(graph.nodes.len(), 1);
+        let node = graph.nodes.get(&SmolStr::from("dup"));
+        assert!(node.is_some_and(|n| n.title.as_str() == "replaced"));
+    }
+
+    /// 4. Duplicate edge ID insertion: inserting an edge with the same ID replaces
+    ///    the previous entry.
+    #[test]
+    fn duplicate_edge_id_replaces_entry() {
+        let mut graph = FlowGraph::default();
+        graph.edges.insert(
+            SmolStr::from("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        let replacement = make_edge("e1", "n3", "out", "n4", "in");
+        graph.edges.insert(SmolStr::from("e1"), replacement);
+        assert_eq!(graph.edges.len(), 1);
+        let edge = graph.edges.get(&SmolStr::from("e1"));
+        assert!(edge.is_some_and(|e| e.source_node.as_str() == "n3"));
+    }
+
+    /// 5. Get node by ID returns None for non-existent node.
+    #[test]
+    fn get_node_by_id_nonexistent_returns_none() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        assert!(graph.nodes.get(&SmolStr::from("n1")).is_some());
+        assert!(graph.nodes.get(&SmolStr::from("ghost")).is_none());
+    }
+
+    /// 6. Edge referencing non-existent source and target nodes: the data
+    ///    structure allows it; verify the edge is stored as-is.
+    #[test]
+    fn edge_references_nonexistent_nodes_still_stored() {
+        let mut graph = FlowGraph::default();
+        graph.edges.insert(
+            SmolStr::from("e1"),
+            make_edge("e1", "ghost_src", "out", "ghost_tgt", "in"),
+        );
+        assert_eq!(graph.edges.len(), 1);
+        let edge = graph.edges.get(&SmolStr::from("e1"));
+        assert!(edge.is_some_and(|e| e.source_node.as_str() == "ghost_src"));
+        assert!(edge.is_some_and(|e| e.target_node.as_str() == "ghost_tgt"));
+    }
+
+    /// 7. Remove node that does not exist: shift_remove returns None, graph
+    ///    remains unchanged.
+    #[test]
+    fn remove_nonexistent_node_returns_none() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        let result = graph.nodes.shift_remove(&SmolStr::from("ghost"));
+        assert!(result.is_none());
+        assert_eq!(graph.nodes.len(), 1);
+    }
+
+    /// 8. Create group, add member nodes, verify parent references.
+    #[test]
+    fn group_with_member_nodes() {
+        let mut graph = FlowGraph::default();
+        graph.groups.insert(SmolStr::from("g1"), make_group("g1"));
+        let mut n1 = make_node("n1");
+        n1.parent = Some(SmolStr::from("g1"));
+        graph.nodes.insert(SmolStr::from("n1"), n1);
+        let mut n2 = make_node("n2");
+        n2.parent = Some(SmolStr::from("g1"));
+        graph.nodes.insert(SmolStr::from("n2"), n2);
+        assert_eq!(graph.nodes.len(), 2);
+        assert_eq!(graph.groups.len(), 1);
+        assert!(
+            graph
+                .nodes
+                .get(&SmolStr::from("n1"))
+                .is_some_and(|n| n.parent.is_some())
+        );
+        assert!(
+            graph
+                .nodes
+                .get(&SmolStr::from("n2"))
+                .is_some_and(|n| n.parent.is_some())
+        );
+        // Count members
+        let member_count = graph
+            .nodes
+            .values()
+            .filter(|n| n.parent.as_ref() == Some(&SmolStr::from("g1")))
+            .count();
+        assert_eq!(member_count, 2);
+    }
+
+    /// 9. Remove a member from a group by clearing its parent reference.
+    #[test]
+    fn remove_member_from_group() {
+        let mut graph = FlowGraph::default();
+        graph.groups.insert(SmolStr::from("g1"), make_group("g1"));
+        let mut n1 = make_node("n1");
+        n1.parent = Some(SmolStr::from("g1"));
+        graph.nodes.insert(SmolStr::from("n1"), n1);
+        // Remove n1 from the group
+        if let Some(node) = graph.nodes.get_mut(&SmolStr::from("n1")) {
+            node.parent = None;
+        }
+        assert!(
+            graph
+                .nodes
+                .get(&SmolStr::from("n1"))
+                .is_some_and(|n| n.parent.is_none())
+        );
+    }
+
+    /// 10. Empty group: a group with no member nodes.
+    #[test]
+    fn empty_group_has_no_members() {
+        let mut graph = FlowGraph::default();
+        graph.groups.insert(SmolStr::from("g_empty"), make_group("g_empty"));
+        graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        assert_eq!(graph.groups.len(), 1);
+        let member_count = graph
+            .nodes
+            .values()
+            .filter(|n| n.parent.as_ref() == Some(&SmolStr::from("g_empty")))
+            .count();
+        assert_eq!(member_count, 0);
+    }
+
+    /// 11. Duplicate group ID insertion replaces the previous entry.
+    #[test]
+    fn duplicate_group_id_replaces_entry() {
+        let mut graph = FlowGraph::default();
+        graph.groups.insert(SmolStr::from("g1"), make_group("g1"));
+        let mut replacement = make_group("g1");
+        replacement.title = SmolStr::from("replaced-group");
+        graph.groups.insert(SmolStr::from("g1"), replacement);
+        assert_eq!(graph.groups.len(), 1);
+        assert!(
+            graph
+                .groups
+                .get(&SmolStr::from("g1"))
+                .is_some_and(|g| g.title.as_str() == "replaced-group")
+        );
+    }
+
+    /// 12. Self-referential edge: source_node == target_node with different ports.
+    #[test]
+    fn self_referential_edge_stored() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
+        graph.edges.insert(
+            SmolStr::from("e1"),
+            make_edge("e1", "n1", "out", "n1", "in"),
+        );
+        assert_eq!(graph.edges.len(), 1);
+        let edge = graph.edges.get(&SmolStr::from("e1"));
+        assert!(edge.is_some_and(|e| e.source_node == e.target_node));
+        assert!(edge.is_some_and(|e| e.source_port != e.target_port));
+    }
+
+    /// 13. Node with all flag combinations.
+    #[test]
+    fn node_all_flags_set_individually() {
+        let combos: Vec<NodeFlags> = vec![
+            NodeFlags {
+                locked: true,
+                ..NodeFlags::default()
+            },
+            NodeFlags {
+                hidden: true,
+                ..NodeFlags::default()
+            },
+            NodeFlags {
+                terminal: true,
+                ..NodeFlags::default()
+            },
+            NodeFlags {
+                entry: true,
+                ..NodeFlags::default()
+            },
+        ];
+        assert!(combos.get(0).is_some_and(|f| f.locked && !f.hidden));
+        assert!(combos.get(1).is_some_and(|f| f.hidden && !f.locked));
+        assert!(combos.get(2).is_some_and(|f| f.terminal && !f.entry));
+        assert!(combos.get(3).is_some_and(|f| f.entry && !f.terminal));
+    }
+
+    /// 14. Multiple groups, some overlapping bounds.
+    #[test]
+    fn multiple_groups_with_bounds() {
+        let mut graph = FlowGraph::default();
+        let g1 = FlowGroupRecord {
+            id: SmolStr::from("g1"),
+            kind: GroupKind::Generic,
+            title: SmolStr::from("group-1"),
+            bounds: [0.0, 0.0, 200.0, 200.0],
+            data: serde_json::Value::Null,
+        };
+        let g2 = FlowGroupRecord {
+            id: SmolStr::from("g2"),
+            kind: GroupKind::Swimlane,
+            title: SmolStr::from("group-2"),
+            bounds: [100.0, 100.0, 300.0, 300.0],
+            data: serde_json::Value::Null,
+        };
+        let g3 = FlowGroupRecord {
+            id: SmolStr::from("g3"),
+            kind: GroupKind::Subflow,
+            title: SmolStr::from("group-3"),
+            bounds: [500.0, 500.0, 100.0, 100.0],
+            data: serde_json::Value::Null,
+        };
+        graph.groups.insert(SmolStr::from("g1"), g1);
+        graph.groups.insert(SmolStr::from("g2"), g2);
+        graph.groups.insert(SmolStr::from("g3"), g3);
+        assert_eq!(graph.groups.len(), 3);
+        assert!(
+            graph
+                .groups
+                .get(&SmolStr::from("g2"))
+                .is_some_and(|g| g.kind == GroupKind::Swimlane)
+        );
+        assert!(
+            graph
+                .groups
+                .get(&SmolStr::from("g3"))
+                .is_some_and(|g| g.kind == GroupKind::Subflow)
+        );
+    }
+
+    /// 15. Edge with all style variants applied.
+    #[test]
+    fn edge_style_all_variants() {
+        let styles: Vec<EdgeStyle> = vec![
+            EdgeStyle {
+                line_style: LineStyle::Solid,
+                width: 1.0,
+                animated: false,
+                marker: EdgeMarker::None,
+            },
+            EdgeStyle {
+                line_style: LineStyle::Dashed,
+                width: 3.0,
+                animated: true,
+                marker: EdgeMarker::ArrowFilled,
+            },
+            EdgeStyle {
+                line_style: LineStyle::Dotted,
+                width: 2.0,
+                animated: false,
+                marker: EdgeMarker::Circle,
+            },
+        ];
+        assert!(styles.get(0).is_some_and(|s| s.line_style == LineStyle::Solid));
+        assert!(styles.get(1).is_some_and(|s| s.animated));
+        assert!(styles.get(2).is_some_and(|s| s.marker == EdgeMarker::Circle));
+    }
+
+    /// 16. Node with multiple ports and different port roles/sides.
+    #[test]
+    fn node_with_mixed_ports() {
+        let mut node = make_node("multi-port");
+        node.ports.push(make_port("in-0", PortSide::Left, PortRole::Target));
+        node.ports.push(make_port("in-1", PortSide::Left, PortRole::Target));
+        node.ports.push(make_port("out-0", PortSide::Right, PortRole::Source));
+        node.ports.push(make_port("bidir", PortSide::Top, PortRole::Bidirectional));
+        assert_eq!(node.ports.len(), 4);
+        let target_count = node
+            .ports
+            .iter()
+            .filter(|p| p.role == PortRole::Target)
+            .count();
+        assert_eq!(target_count, 2);
+        let source_count = node
+            .ports
+            .iter()
+            .filter(|p| p.role == PortRole::Source)
+            .count();
+        assert_eq!(source_count, 1);
+        let bidir_count = node
+            .ports
+            .iter()
+            .filter(|p| p.role == PortRole::Bidirectional)
+            .count();
+        assert_eq!(bidir_count, 1);
+    }
+
+    /// 17. Document plugin_state operations.
+    #[test]
+    fn document_plugin_state_insert_and_lookup() {
+        let mut doc = FlowDocument::default();
+        doc.plugin_state
+            .insert(SmolStr::from("renderer"), serde_json::json!({"enabled": true}));
+        doc.plugin_state
+            .insert(SmolStr::from("analytics"), serde_json::json!({"version": 2}));
+        assert_eq!(doc.plugin_state.len(), 2);
+        assert!(
+            doc.plugin_state
+                .get(&SmolStr::from("renderer"))
+                .is_some_and(|v| v.is_object())
+        );
+        assert!(
+            doc.plugin_state
+                .get(&SmolStr::from("analytics"))
+                .is_some_and(|v| v.is_object())
+        );
+        assert!(doc.plugin_state.get(&SmolStr::from("nonexistent")).is_none());
+    }
+
+    /// 18. Edge with label and custom data.
+    #[test]
+    fn edge_with_label_and_custom_data() {
+        let mut edge = make_edge("e1", "n1", "out", "n2", "in");
+        edge.label = Some(SmolStr::from("data-flow"));
+        edge.data = serde_json::json!({"priority": 1, "weight": 0.75});
+        assert!(edge.label.is_some());
+        assert!(edge.data.is_object());
+        assert!(
+            edge.label
+                .as_ref()
+                .is_some_and(|l| l.as_str() == "data-flow")
+        );
+    }
 }
