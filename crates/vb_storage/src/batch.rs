@@ -42,10 +42,13 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a workflow source record into the batch.
+    ///
+    /// The source bytes are verified against the claimed digest before staging.
     pub fn put_workflow_source(
         &mut self,
         record: &WorkflowSourceRecord,
     ) -> Result<(), JournalError> {
+        crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())?;
         let key = workflow_source_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
@@ -101,7 +104,10 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a blob record into the batch.
+    ///
+    /// The blob bytes are verified against the claimed digest before staging.
     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
+        crate::journal::verify_content_digest(&record.bytes, &record.digest)?;
         let key = blob_key(record.digest)?;
         let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
         self.inner.insert(&self.journal.blob, key, value);

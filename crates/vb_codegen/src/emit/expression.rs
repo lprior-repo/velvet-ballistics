@@ -2,9 +2,10 @@
 
 use std::fmt::Write;
 use crate::{CodegenResult, fmt_err};
-use vb_core::{CompiledWorkflow, ExprIdx};
+use crate::helpers::{emit_accessor_eval, emit_unsupported_expr};
+use vb_core::{CompiledWorkflow, ExprOp};
 
-pub fn emit_expr_function(
+pub(crate) fn emit_expr_function(
     out: &mut String,
     expr_idx: vb_core::ExprIdx,
     workflow: &CompiledWorkflow,
@@ -148,4 +149,4 @@ pub fn emit_expr_function(
     Ok(())
 }
 
-/// Generate action dispatch boundaries for external action nodes.
+// Generate action dispatch boundaries for external action nodes.

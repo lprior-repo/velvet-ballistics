@@ -4,7 +4,7 @@ use std::fmt::Write;
 use crate::{CodegenResult, fmt_err};
 use vb_core::ResourceContract;
 
-pub fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> CodegenResult<()> {
+pub(crate) fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> CodegenResult<()> {
     writeln!(out, "// --- Resource contract ---").map_err(fmt_err)?;
     writeln!(
         out,
@@ -106,4 +106,4 @@ pub fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> C
     Ok(())
 }
 
-/// Emit a trybuild compile-fail test fixture for the generated code.
+// Emit a trybuild compile-fail test fixture for the generated code.

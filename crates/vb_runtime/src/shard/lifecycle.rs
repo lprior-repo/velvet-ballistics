@@ -395,3 +395,1100 @@ impl Shard {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use vb_core::action::{
+        ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket,
+        RetryPolicy as VbRetryPolicy,
+    };
+    use vb_core::capability::CapabilitySet;
+    use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::value::{ConstValue, SlotValue, Taint};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
+    };
+
+    use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
+    use crate::trace::TraceEvent;
+    use crate::RuntimeError;
+
+    use super::super::types::{AskAnswer, AskTicket, InspectResponse, Shard, ShardCommand, ShardConfig};
+
+    fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("suspended"),
+            digest: WorkflowDigest::from_bytes([1; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_const = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("finished"),
+            digest: WorkflowDigest::from_bytes([2; 32]),
+            nodes: Box::from([set_const, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::Bool(true)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let guard = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+                error_slot: None,
+            },
+        };
+        let action = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        };
+        let handler = CompiledNode {
+            id: StepIdx::new(2),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish_node = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("error_handler"),
+            digest: WorkflowDigest::from_bytes([3; 32]),
+            nodes: Box::from([guard, action, handler, finish_node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::Bool(false)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_deadline = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let wait = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO,
+            },
+        };
+        let finish_node = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("wait_then_finish"),
+            digest: WorkflowDigest::from_bytes([4; 32]),
+            nodes: Box::from([set_deadline, wait, finish_node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::I64(10)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_prompt = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let set_timeout = CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
+            },
+        };
+        let ask = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: Some(SlotIdx::new(1)),
+            },
+        };
+        let resume = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(2),
+            },
+        };
+        let finish_node = CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("ask_then_finish"),
+            digest: WorkflowDigest::from_bytes([5; 32]),
+            nodes: Box::from([set_prompt, set_timeout, ask, resume, finish_node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([
+                ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
+                ConstValue::I64(10),
+            ]),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn small_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        }
+    }
+
+    fn make_ticket(run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
+        ActionTicket {
+            run,
+            step,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(0),
+            attempt,
+            idempotency_key: 0,
+            capacity: 1,
+        }
+    }
+
+    fn non_retryable_failure() -> ActionFailure {
+        ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: VbRetryPolicy::NonRetryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        }
+    }
+
+    #[test]
+    fn submit_finished_workflow_completes_immediately() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.active_run_count(), 0);
+    }
+
+    #[test]
+    fn submit_suspended_workflow_suspends_on_action() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(2);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 1);
+        assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    }
+
+    #[test]
+    fn submit_duplicate_run_returns_run_already_exists() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(10);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf.clone(),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    }
+
+    #[test]
+    fn submit_at_capacity_returns_active_run_capacity_exceeded() {
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+        let Some(wf1) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(1),
+                workflow: wf1,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let Some(wf2) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(2),
+                workflow: wf2,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
+        );
+    }
+
+    #[test]
+    fn submit_with_inputs_seeds_slots_before_driving() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(20);
+        assert_eq!(
+            shard.enqueue(ShardCommand::SubmitWithInputs {
+                run,
+                workflow: wf,
+                inputs: Box::from([(SlotIdx::new(0), SlotValue::I64(99))]),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 1);
+    }
+
+    #[test]
+    fn submit_with_inputs_rejects_duplicate() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(21);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf.clone(),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::SubmitWithInputs {
+                run,
+                workflow: wf,
+                inputs: Box::from([(SlotIdx::new(0), SlotValue::I64(1))]),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    }
+
+    #[test]
+    fn resume_on_suspended_run_re_drives() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(30);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 1);
+    }
+
+    #[test]
+    fn resume_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(
+            shard.enqueue(ShardCommand::Resume {
+                run: RunId::new(9999),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn action_completed_typed_writes_slot_and_advances() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(40);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let ticket = make_ticket(run, StepIdx::ZERO, 1);
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let events = shard.trace_ring_mut().drain();
+        let found = events.iter().any(|e| {
+            *e == TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::ZERO,
+            }
+        });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn action_completed_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(1),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn legacy_action_completed_on_suspended_run_succeeds() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(50);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompletedLegacy {
+                run,
+                step: StepIdx::ZERO,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let found = shard.trace_ring_mut().drain().iter().any(|e| {
+            *e == TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::ZERO,
+            }
+        });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn legacy_action_completed_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompletedLegacy {
+                run: RunId::new(9999),
+                step: StepIdx::ZERO,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn action_failure_without_handler_fails_run() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(60);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let ticket = make_ticket(run, StepIdx::ZERO, 1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: non_retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        assert_eq!(shard.active_run_count(), 0);
+    }
+
+    #[test]
+    fn action_failure_routes_to_error_handler() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = error_handler_workflow() else {
+            return;
+        };
+        let run = RunId::new(61);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let ticket = make_ticket(run, StepIdx::new(1), 1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: non_retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    }
+
+    #[test]
+    fn action_failure_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: non_retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn ask_answer_completes_ask_workflow() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = ask_workflow() else {
+            return;
+        };
+        let run = RunId::new(70);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        let answer = AskAnswer {
+            ticket: AskTicket {
+                run,
+                ask_step: StepIdx::new(2),
+                resume_step: StepIdx::new(3),
+            },
+            answer_slot: SlotIdx::new(2),
+            value: SlotValue::I64(77),
+            taint: Taint::Clean,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::AskAnswered { answer }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn ask_answer_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        let answer = AskAnswer {
+            ticket: AskTicket {
+                run: RunId::new(9999),
+                ask_step: StepIdx::ZERO,
+                resume_step: StepIdx::new(1),
+            },
+            answer_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(0),
+            taint: Taint::Clean,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::AskAnswered { answer }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn timer_fire_advances_wait_to_completion() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = wait_workflow() else {
+            return;
+        };
+        let run = RunId::new(80);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.pending_timer_count(), 0);
+    }
+
+    #[test]
+    fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(81);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    }
+
+    #[test]
+    fn timer_fire_unknown_run_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(
+            shard.enqueue(ShardCommand::TimerFired {
+                run: RunId::new(9999),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn cancel_removes_active_run_and_increments_failed() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(90);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 0);
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    }
+
+    #[test]
+    fn cancel_nonexistent_run_succeeds_without_counter_change() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel {
+                run: RunId::new(9999),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    }
+
+    #[test]
+    fn cancel_clears_pending_timer() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = wait_workflow() else {
+            return;
+        };
+        let run = RunId::new(91);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 0);
+    }
+
+    #[test]
+    fn inspect_active_run_returns_found() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(100);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: 42,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        match shard.take_inspect_response() {
+            Some(InspectResponse::Found(snap)) => {
+                assert_eq!(snap.run, run);
+                assert_eq!(snap.correlation, 42);
+            }
+            other => {
+                let _ = other;
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn inspect_unknown_run_returns_not_found() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: RunId::new(9999),
+                correlation: 1,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.take_inspect_response(),
+            Some(InspectResponse::NotFound {
+                run: RunId::new(9999),
+                correlation: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn submit_produces_run_submitted_trace() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(110);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let found = shard
+            .trace_ring_mut()
+            .drain()
+            .iter()
+            .any(|e| *e == TraceEvent::RunSubmitted { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn cancel_produces_run_cancelled_trace() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(111);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        let found = shard
+            .trace_ring_mut()
+            .drain()
+            .iter()
+            .any(|e| *e == TraceEvent::RunCancelled { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn cancel_emits_run_cancelled_journal_event() {
+        let journal =
+            std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(112);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        let events = journal.snapshot().ok();
+        assert!(matches!(events, Some(e) if e.contains(&RuntimeJournalEvent::RunCancelled { run })));
+    }
+
+    #[test]
+    fn finish_produces_run_finished_trace() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(113);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let found = shard
+            .trace_ring_mut()
+            .drain()
+            .iter()
+            .any(|e| *e == TraceEvent::RunFinished { run });
+        assert_eq!(found, true);
+    }
+
+    #[test]
+    fn resubmit_after_cancel_succeeds() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(300);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf.clone(),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.active_run_count(), 1);
+    }
+
+    #[test]
+    fn timer_fire_after_cancel_returns_run_not_found() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = wait_workflow() else {
+            return;
+        };
+        let run = RunId::new(400);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn ask_timer_fire_fails_run_when_no_answer() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = ask_workflow() else {
+            return;
+        };
+        let run = RunId::new(500);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        assert_eq!(shard.pending_timer_count(), 0);
+    }
+
+    #[test]
+    fn multiple_submits_fill_to_capacity_then_reject() {
+        let config = ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 2,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+        for i in 0u64..2 {
+            let Some(wf) = suspended_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow: wf,
+                    caps: CapabilitySet::empty(),
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        assert_eq!(shard.active_run_count(), 2);
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(99),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
+        );
+    }
+}

@@ -1108,7 +1108,7 @@ mod tests {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(42, None, FailureCode::ActionTimeout, "t");
         let first_run_id = screen.select_incident(0).map(|i| i.run_id);
-        drop(first_run_id);
+        let _ = first_run_id;
         let second_run_id = screen.select_incident(0).map(|i| i.run_id);
         assert!(second_run_id.is_some());
     }

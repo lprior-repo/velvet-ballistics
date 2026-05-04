@@ -10407,4 +10407,605 @@ steps:
         }
     }
 
+    // ========================================================================
+    // Additional lowering edge-case and boundary-condition tests
+    // ========================================================================
+
+    /// lower_set preserves the step id exactly.
+    #[test]
+    fn lower_set_preserves_step_id() {
+        let n = lower_set(StepIdx::new(42), SlotIdx::new(0), ConstIdx::new(1), None);
+        assert_eq!(n.id, StepIdx::new(42));
+    }
+
+    /// lower_set preserves the const value index.
+    #[test]
+    fn lower_set_preserves_const_idx() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(99), None);
+        match n.kind {
+            CompiledNodeKind::SetConst { value } => assert_eq!(value.get(), 99),
+            other => panic!("expected SetConst, got {other:?}"),
+        }
+    }
+
+    /// lower_set with next=Some should carry the next pointer.
+    #[test]
+    fn lower_set_with_next_carries_chain() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), Some(StepIdx::new(5)));
+        assert_eq!(n.next, Some(StepIdx::new(5)));
+    }
+
+    /// lower_set output is always Some.
+    #[test]
+    fn lower_set_output_always_some() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(10), ConstIdx::new(0), None);
+        assert_eq!(n.output, Some(SlotIdx::new(10)));
+    }
+
+    /// lower_set error_slot and on_error are always None.
+    #[test]
+    fn lower_set_no_error_fields() {
+        let n = lower_set(StepIdx::new(0), SlotIdx::new(0), ConstIdx::new(0), None);
+        assert!(n.error_slot.is_none());
+        assert!(n.on_error.is_none());
+    }
+
+    /// lower_do preserves action id and input slot.
+    #[test]
+    fn lower_do_preserves_action_and_input() {
+        let mut b = SlotCompiler::new();
+        let n = lower_do(StepIdx::new(3), ActionId::new(7), SlotIdx::new(11), None, None, &mut b);
+        match n.kind {
+            CompiledNodeKind::Do { action, input } => {
+                assert_eq!(action.get(), 7);
+                assert_eq!(input.get(), 11);
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+        assert_eq!(n.id, StepIdx::new(3));
+    }
+
+    /// lower_do with output=Some carries the output slot.
+    #[test]
+    fn lower_do_with_output() {
+        let mut b = SlotCompiler::new();
+        let n = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), Some(SlotIdx::new(4)), Some(StepIdx::new(1)), &mut b);
+        assert_eq!(n.output, Some(SlotIdx::new(4)));
+    }
+
+    /// lower_do with output=None carries None.
+    #[test]
+    fn lower_do_without_output() {
+        let mut b = SlotCompiler::new();
+        let n = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(0), None, None, &mut b);
+        assert!(n.output.is_none());
+    }
+
+    /// lower_do records the input slot for slot count tracking.
+    #[test]
+    fn lower_do_tracks_high_slot_index() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_do(StepIdx::new(0), ActionId::new(1), SlotIdx::new(100), None, None, &mut b);
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 101 {
+            return Err(format!("expected 101, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_choose records condition slots from all branches.
+    #[test]
+    fn lower_choose_records_all_condition_slots() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let br = vec![
+            SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
+            SlotBranch { condition: SlotIdx::new(5), target: StepIdx::new(2) },
+            SlotBranch { condition: SlotIdx::new(10), target: StepIdx::new(3) },
+        ];
+        let _ = lower_choose(StepIdx::new(0), br, None, &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 11 {
+            return Err(format!("expected 11, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_choose always has output None.
+    #[test]
+    fn lower_choose_output_none() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(0), vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) }], None, &mut b).map_err(|e| format!("{e:?}"))?;
+        assert!(n.output.is_none());
+        Ok(())
+    }
+
+    /// lower_choose always has next None (branch routing is internal).
+    #[test]
+    fn lower_choose_next_none() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let n = lower_choose(StepIdx::new(0), vec![SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) }], None, &mut b).map_err(|e| format!("{e:?}"))?;
+        assert!(n.next.is_none());
+        Ok(())
+    }
+
+    /// lower_for_each records input and item_slot.
+    #[test]
+    fn lower_for_each_records_slots() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_for_each(StepIdx::new(0), SlotIdx::new(3), SlotIdx::new(7), 10, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 8 {
+            return Err(format!("expected 8, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_for_each second node has ForEachNext kind.
+    #[test]
+    fn lower_for_each_second_node_kind() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_for_each(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), 100, StepIdx::new(3), StepIdx::new(4), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::ForEachNext { iterator_slot, body, done } => {
+                if iterator_slot.get() != 2 {
+                    return Err(format!("expected iterator_slot=2, got {}", iterator_slot.get()));
+                }
+                if *body != StepIdx::new(3) {
+                    return Err(format!("expected body=3, got {}", body.get()));
+                }
+                if *done != StepIdx::new(4) {
+                    return Err(format!("expected done=4, got {}", done.get()));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ForEachNext, got {other:?}")),
+        }
+    }
+
+    /// lower_for_each ForEachStart preserves limit.
+    #[test]
+    fn lower_for_each_start_preserves_limit() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_for_each(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), 999, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::ForEachStart { limit, .. } => {
+                if *limit != 999 {
+                    return Err(format!("expected limit=999, got {limit}"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ForEachStart, got {other:?}")),
+        }
+    }
+
+    /// lower_for_each zero limit should be accepted (boundary).
+    #[test]
+    fn lower_for_each_zero_limit() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_for_each(StepIdx::new(0), SlotIdx::new(0), SlotIdx::new(1), 0, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::ForEachStart { limit, .. } if *limit == 0 => Ok(()),
+            other => Err(format!("expected ForEachStart with limit=0, got {other:?}")),
+        }
+    }
+
+    /// lower_together allocates an accumulator slot.
+    #[test]
+    fn lower_together_allocates_accumulator() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1)], StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 1 {
+            return Err(format!("expected 1 (accumulator), got {count}"));
+        }
+        if ns[0].output != Some(SlotIdx::new(0)) {
+            return Err("start node output should be accumulator".to_owned());
+        }
+        if ns[1].output != Some(SlotIdx::new(0)) {
+            return Err("join node output should be accumulator".to_owned());
+        }
+        Ok(())
+    }
+
+    /// lower_together TogetherJoin carries correct branch_count.
+    #[test]
+    fn lower_together_join_branch_count() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1), StepIdx::new(2), StepIdx::new(3)], StepIdx::new(4), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::TogetherJoin { branch_count, accumulator } => {
+                if *branch_count != 3 {
+                    return Err(format!("expected branch_count=3, got {branch_count}"));
+                }
+                if accumulator.get() != 0 {
+                    return Err(format!("expected accumulator=0, got {}", accumulator.get()));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected TogetherJoin, got {other:?}")),
+        }
+    }
+
+    /// lower_together with a single branch (minimum valid).
+    #[test]
+    fn lower_together_single_branch() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1)], StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::TogetherStart { branches, .. } if branches.len() == 1 => Ok(()),
+            other => Err(format!("expected TogetherStart with 1 branch, got {other:?}")),
+        }
+    }
+
+    /// lower_together rejects too many branches (overflow u16).
+    #[test]
+    fn lower_together_rejects_branch_overflow() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let too_many: Vec<StepIdx> = (0..=u16::MAX).map(StepIdx::new).collect();
+        match lower_together(StepIdx::new(0), too_many, StepIdx::new(1), &mut b) {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { primitive, field, .. }) => {
+                if primitive != "together" || field != "branches" {
+                    return Err(format!("wrong error fields: {primitive}/{field}"));
+                }
+                Ok(())
+            }
+            Ok(_) => Err("should reject branch overflow".to_owned()),
+            Err(e) => Err(format!("wrong error: {e:?}")),
+        }
+    }
+
+    /// lower_collect CollectPage and CollectFinish carry the right fields.
+    #[test]
+    fn lower_collect_page_and_finish() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(0), SlotIdx::new(1), 50, 10, StepIdx::new(2), StepIdx::new(3), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::CollectPage { collector_slot, body, done } => {
+                if collector_slot.get() != 1 { return Err(format!("expected collector=1, got {}", collector_slot.get())); }
+                if *body != StepIdx::new(2) { return Err("body mismatch".to_owned()); }
+                if *done != StepIdx::new(3) { return Err("done mismatch".to_owned()); }
+            }
+            other => return Err(format!("expected CollectPage, got {other:?}")),
+        }
+        match &ns[2].kind {
+            CompiledNodeKind::CollectFinish { collector_slot } => {
+                if collector_slot.get() != 1 { return Err(format!("expected collector=1, got {}", collector_slot.get())); }
+            }
+            other => return Err(format!("expected CollectFinish, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    /// lower_collect with zero limit and page_size (boundary).
+    #[test]
+    fn lower_collect_zero_limit_page_size() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(0), SlotIdx::new(0), 0, 0, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::CollectStart { limit, page_size, .. } => {
+                if *limit != 0 || *page_size != 0 {
+                    return Err(format!("expected (0,0), got ({limit},{page_size})"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected CollectStart, got {other:?}")),
+        }
+    }
+
+    /// lower_collect records the source slot.
+    #[test]
+    fn lower_collect_records_source_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_collect(StepIdx::new(0), SlotIdx::new(5), 10, 5, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 6 {
+            return Err(format!("expected 6, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_reduce records both input and accumulator slots.
+    #[test]
+    fn lower_reduce_records_both_slots() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_reduce(StepIdx::new(0), SlotIdx::new(3), SlotIdx::new(7), ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 8 {
+            return Err(format!("expected 8, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_reduce ReduceNext and ReduceFinish carry correct fields.
+    #[test]
+    fn lower_reduce_next_and_finish() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let mut cb = SlotCompiler::new();
+        let init = cb.push_constant(ConstValue::I64(0)).map_err(|e| format!("{e:?}"))?;
+        let ns = lower_reduce(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), init, StepIdx::new(3), StepIdx::new(4), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::ReduceNext { iterator_slot, accumulator, body, done } => {
+                if iterator_slot.get() != 2 { return Err(format!("expected iterator=2, got {}", iterator_slot.get())); }
+                if accumulator.get() != 2 { return Err(format!("expected accumulator=2, got {}", accumulator.get())); }
+                if *body != StepIdx::new(3) { return Err("body mismatch".to_owned()); }
+                if *done != StepIdx::new(4) { return Err("done mismatch".to_owned()); }
+            }
+            other => return Err(format!("expected ReduceNext, got {other:?}")),
+        }
+        match &ns[2].kind {
+            CompiledNodeKind::ReduceFinish { accumulator } => {
+                if accumulator.get() != 2 { return Err(format!("expected accumulator=2, got {}", accumulator.get())); }
+            }
+            other => return Err(format!("expected ReduceFinish, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    /// lower_reduce preserves the initial const index in ReduceStart.
+    #[test]
+    fn lower_reduce_preserves_initial() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let mut cb = SlotCompiler::new();
+        let init = cb.push_constant(ConstValue::I64(42)).map_err(|e| format!("{e:?}"))?;
+        let ns = lower_reduce(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(2), init, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::ReduceStart { initial, .. } => {
+                if initial.get() != init.get() {
+                    return Err(format!("expected initial={}, got {}", init.get(), initial.get()));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ReduceStart, got {other:?}")),
+        }
+    }
+
+    /// lower_repeat body node has output=Some(attempt_slot).
+    #[test]
+    fn lower_repeat_body_output() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(5), 3, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[1].output.is_none() {
+            return Err("repeat body output should be Some(attempt_slot)".to_owned());
+        }
+        Ok(())
+    }
+
+    /// lower_repeat attempt_slot = step_id + 1.
+    #[test]
+    fn lower_repeat_attempt_slot_calculation() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(9), 1, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::RepeatAttempt { attempt_slot, .. } => {
+                if attempt_slot.get() != 10 {
+                    return Err(format!("expected attempt_slot=10, got {}", attempt_slot.get()));
+                }
+            }
+            other => return Err(format!("expected RepeatAttempt, got {other:?}")),
+        }
+        match &ns[2].kind {
+            CompiledNodeKind::RepeatFinish { result } => {
+                if result.get() != 10 {
+                    return Err(format!("expected result=10, got {}", result.get()));
+                }
+            }
+            other => return Err(format!("expected RepeatFinish, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    /// lower_repeat with max_attempts=0 (boundary).
+    #[test]
+    fn lower_repeat_zero_attempts() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(0), 0, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::RepeatStart { max_attempts, .. } if *max_attempts == 0 => Ok(()),
+            other => Err(format!("expected RepeatStart with max_attempts=0, got {other:?}")),
+        }
+    }
+
+    /// lower_repeat with max_attempts=u16::MAX (boundary).
+    #[test]
+    fn lower_repeat_max_attempts_boundary() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(0), u16::MAX, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::RepeatStart { max_attempts, .. } if *max_attempts == u16::MAX => Ok(()),
+            other => Err(format!("expected RepeatStart with max_attempts=u16::MAX, got {other:?}")),
+        }
+    }
+
+    /// lower_wait records the event slot even without a timeout.
+    #[test]
+    fn lower_wait_event_records_slot() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_wait(StepIdx::new(0), WaitKind::Event { event: SlotIdx::new(7), timeout: None }, &mut b);
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 8 {
+            return Err(format!("expected 8, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_wait output is always None for both variants.
+    #[test]
+    fn lower_wait_output_none() {
+        let mut b = SlotCompiler::new();
+        let n_until = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(0) }, &mut b);
+        assert!(n_until.output.is_none());
+        let n_event = lower_wait(StepIdx::new(1), WaitKind::Event { event: SlotIdx::new(0), timeout: None }, &mut b);
+        assert!(n_event.output.is_none());
+    }
+
+    /// lower_wait next is always None.
+    #[test]
+    fn lower_wait_next_none() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(0), WaitKind::Until { deadline: SlotIdx::new(0) }, &mut b);
+        assert!(n.next.is_none());
+    }
+
+    /// lower_ask records prompt and answer slots.
+    #[test]
+    fn lower_ask_records_prompt_and_answer() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let _ = lower_ask(StepIdx::new(0), SlotIdx::new(3), SlotIdx::new(7), None, &mut b).map_err(|e| format!("{e:?}"))?;
+        let count = b.slot_count().map_err(|e| format!("{e:?}"))?;
+        if count != 8 {
+            return Err(format!("expected 8, got {count}"));
+        }
+        Ok(())
+    }
+
+    /// lower_ask resume node carries the answer slot as output.
+    #[test]
+    fn lower_ask_resume_output() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_ask(StepIdx::new(0), SlotIdx::new(1), SlotIdx::new(5), None, &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[1].output != Some(SlotIdx::new(5)) {
+            return Err("resume output should be answer slot".to_owned());
+        }
+        Ok(())
+    }
+
+    /// lower_finish preserves the result slot.
+    #[test]
+    fn lower_finish_preserves_result() {
+        let mut b = SlotCompiler::new();
+        let n = lower_finish(StepIdx::new(0), SlotIdx::new(42), &mut b);
+        match n.kind {
+            CompiledNodeKind::Finish { result } => assert_eq!(result.get(), 42),
+            other => panic!("expected Finish, got {other:?}"),
+        }
+    }
+
+    /// lower_finish has no next, no output, no error fields.
+    #[test]
+    fn lower_finish_terminal_fields() {
+        let mut b = SlotCompiler::new();
+        let n = lower_finish(StepIdx::new(0), SlotIdx::new(0), &mut b);
+        assert!(n.next.is_none());
+        assert!(n.output.is_none());
+        assert!(n.error_slot.is_none());
+        assert!(n.on_error.is_none());
+    }
+
+    /// lower_together TogetherStart preserves join target.
+    #[test]
+    fn lower_together_start_preserves_join() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1), StepIdx::new(2)], StepIdx::new(99), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[0].kind {
+            CompiledNodeKind::TogetherStart { join, .. } => {
+                if *join != StepIdx::new(99) {
+                    return Err(format!("expected join=99, got {}", join.get()));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected TogetherStart, got {other:?}")),
+        }
+    }
+
+    /// lower_together join node id matches the join target.
+    #[test]
+    fn lower_together_join_node_id() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_together(StepIdx::new(0), vec![StepIdx::new(1)], StepIdx::new(5), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[1].id != StepIdx::new(5) {
+            return Err(format!("expected join node id=5, got {}", ns[1].id.get()));
+        }
+        Ok(())
+    }
+
+    /// lower_collect start node id is the provided id.
+    #[test]
+    fn lower_collect_start_id() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(7), SlotIdx::new(0), 10, 5, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[0].id != StepIdx::new(7) {
+            return Err(format!("expected id=7, got {}", ns[0].id.get()));
+        }
+        Ok(())
+    }
+
+    /// lower_collect body and done node ids match arguments.
+    #[test]
+    fn lower_collect_body_done_ids() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_collect(StepIdx::new(0), SlotIdx::new(0), 10, 5, StepIdx::new(3), StepIdx::new(4), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[1].id != StepIdx::new(3) {
+            return Err(format!("expected body id=3, got {}", ns[1].id.get()));
+        }
+        if ns[2].id != StepIdx::new(4) {
+            return Err(format!("expected done id=4, got {}", ns[2].id.get()));
+        }
+        Ok(())
+    }
+
+    /// lower_reduce start/body/done node ids match arguments.
+    #[test]
+    fn lower_reduce_node_ids() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let mut cb = SlotCompiler::new();
+        let init = cb.push_constant(ConstValue::I64(0)).map_err(|e| format!("{e:?}"))?;
+        let ns = lower_reduce(StepIdx::new(10), SlotIdx::new(1), SlotIdx::new(2), init, StepIdx::new(20), StepIdx::new(30), &mut b).map_err(|e| format!("{e:?}"))?;
+        if ns[0].id != StepIdx::new(10) { return Err(format!("expected start id=10, got {}", ns[0].id.get())); }
+        if ns[1].id != StepIdx::new(20) { return Err(format!("expected body id=20, got {}", ns[1].id.get())); }
+        if ns[2].id != StepIdx::new(30) { return Err(format!("expected done id=30, got {}", ns[2].id.get())); }
+        Ok(())
+    }
+
+    /// lower_repeat at step 0 computes attempt_slot=1.
+    #[test]
+    fn lower_repeat_attempt_slot_step_zero() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        let ns = lower_repeat(StepIdx::new(0), 3, StepIdx::new(1), StepIdx::new(2), &mut b).map_err(|e| format!("{e:?}"))?;
+        match &ns[1].kind {
+            CompiledNodeKind::RepeatAttempt { attempt_slot, .. } => {
+                if attempt_slot.get() != 1 {
+                    return Err(format!("expected attempt_slot=1, got {}", attempt_slot.get()));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected RepeatAttempt, got {other:?}")),
+        }
+    }
+
+    /// lower_wait preserves step id.
+    #[test]
+    fn lower_wait_preserves_step_id() {
+        let mut b = SlotCompiler::new();
+        let n = lower_wait(StepIdx::new(42), WaitKind::Until { deadline: SlotIdx::new(0) }, &mut b);
+        assert_eq!(n.id, StepIdx::new(42));
+    }
+
+    /// lower_ask rejects step id u16::MAX (resume would overflow).
+    #[test]
+    fn lower_ask_rejects_max_step() -> Result<(), String> {
+        let mut b = SlotCompiler::new();
+        match lower_ask(StepIdx::new(u16::MAX), SlotIdx::new(1), SlotIdx::new(2), None, &mut b) {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { primitive, .. }) => {
+                if primitive != "ask" {
+                    return Err(format!("expected primitive=ask, got {primitive}"));
+                }
+                Ok(())
+            }
+            Ok(_) => Err("should fail at u16::MAX step".to_owned()),
+            Err(e) => Err(format!("wrong error: {e:?}")),
+        }
+    }
+
+    /// lower_steps_to_ir rejects empty node list.
+    #[test]
+    fn lower_steps_to_ir_empty_nodes() -> Result<(), String> {
+        let result = lower_steps_to_ir(
+            Vec::new(), Vec::new(), Vec::new(), Vec::new(),
+            0, 0, "test", compute_compiled_digest(b"test"),
+        );
+        match result {
+            Err(_) => Ok(()),
+            Ok(_) => Err("empty nodes should be rejected".to_owned()),
+        }
+    }
 }

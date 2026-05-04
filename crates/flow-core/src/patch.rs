@@ -179,12 +179,341 @@ pub enum DiagnosticSeverity {
     Info,
 }
 
+// ---------------------------------------------------------------------------
+// Patch engine - applies patches to a FlowDocument with undo/redo support
+// ---------------------------------------------------------------------------
+
+/// Error returned when a patch cannot be applied.
+#[derive(Clone, Debug)]
+pub struct PatchError {
+    pub message: String,
+}
+
+/// Patch engine that tracks undo history.
+#[derive(Clone, Debug)]
+pub struct PatchEngine {
+    undo_stack: Vec<Vec<FlowPatch>>,
+    redo_stack: Vec<Vec<FlowPatch>>,
+}
+
+impl Default for PatchEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PatchEngine {
+    pub fn new() -> Self {
+        Self {
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+        }
+    }
+
+    /// Apply a single patch to the document. Returns the inverse patch on success.
+    pub fn apply_patch(
+        &mut self,
+        doc: &mut FlowDocument,
+        patch: FlowPatch,
+    ) -> Result<Option<FlowPatch>, PatchError> {
+        let inverse = apply_single(doc, &patch)?;
+        if let Some(inv) = inverse.as_ref()
+            && let Some(last) = self.undo_stack.last_mut()
+        {
+            last.push(inv.clone());
+        }
+        Ok(inverse)
+    }
+
+    /// Begin recording patches for a new undo frame.
+    pub fn begin_undo_frame(&mut self) {
+        self.undo_stack.push(Vec::new());
+        self.redo_stack.clear();
+    }
+
+    /// Apply a full transaction (begin frame, apply patches, finalize).
+    pub fn apply_transaction(
+        &mut self,
+        doc: &mut FlowDocument,
+        txn: &FlowTransaction,
+    ) -> Result<TransactionSummary, PatchError> {
+        self.begin_undo_frame();
+        let mut summary = TransactionSummary::default();
+        for patch in &txn.patches {
+            apply_single(doc, patch)?;
+            match patch {
+                FlowPatch::InsertNode { .. } => {
+                    summary.nodes_added = summary.nodes_added.saturating_add(1);
+                }
+                FlowPatch::RemoveNode { .. } => {
+                    summary.nodes_removed = summary.nodes_removed.saturating_add(1);
+                }
+                FlowPatch::UpdateNode { .. } => {
+                    summary.nodes_updated = summary.nodes_updated.saturating_add(1);
+                }
+                FlowPatch::InsertEdge { .. } => {
+                    summary.edges_added = summary.edges_added.saturating_add(1);
+                }
+                FlowPatch::RemoveEdge { .. } => {
+                    summary.edges_removed = summary.edges_removed.saturating_add(1);
+                }
+                FlowPatch::UpdateEdge { .. } => {
+                    summary.edges_updated = summary.edges_updated.saturating_add(1);
+                }
+                _ => {}
+            }
+        }
+        Ok(summary)
+    }
+
+    /// Undo the last transaction frame. Returns the inverted patches, or None if
+    /// the undo stack is empty.
+    pub fn undo(&mut self, doc: &mut FlowDocument) -> Option<Vec<FlowPatch>> {
+        let frame = self.undo_stack.pop()?;
+        let mut redo_frame: Vec<FlowPatch> = Vec::new();
+        let mut inverses: Vec<FlowPatch> = frame.into_iter().rev().collect();
+        for inv_patch in &inverses {
+            let redo_patch = apply_single(doc, inv_patch).ok().flatten();
+            if let Some(rp) = redo_patch {
+                redo_frame.push(rp);
+            }
+        }
+        let result = core::mem::take(&mut inverses);
+        self.redo_stack.push(redo_frame);
+        Some(result)
+    }
+
+    /// Redo the last undone transaction frame.
+    pub fn redo(&mut self, doc: &mut FlowDocument) -> Option<Vec<FlowPatch>> {
+        let frame = self.redo_stack.pop()?;
+        let mut undo_frame: Vec<FlowPatch> = Vec::new();
+        let mut redos: Vec<FlowPatch> = frame.into_iter().rev().collect();
+        for redo_patch in &redos {
+            let undo_patch = apply_single(doc, redo_patch).ok().flatten();
+            if let Some(up) = undo_patch {
+                undo_frame.push(up);
+            }
+        }
+        let result = core::mem::take(&mut redos);
+        self.undo_stack.push(undo_frame);
+        Some(result)
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
+
+    pub fn undo_depth(&self) -> usize {
+        self.undo_stack.len()
+    }
+
+    pub fn redo_depth(&self) -> usize {
+        self.redo_stack.len()
+    }
+}
+
+/// Apply a single patch to the document, returning the inverse patch if applicable.
+fn apply_single(
+    doc: &mut FlowDocument,
+    patch: &FlowPatch,
+) -> Result<Option<FlowPatch>, PatchError> {
+    match patch {
+        FlowPatch::InsertNode { node } => {
+            if doc.graph.nodes.contains_key(&node.id) {
+                return Err(PatchError {
+                    message: format!("node '{}' already exists", node.id),
+                });
+            }
+            let id = node.id.clone();
+            doc.graph.nodes.insert(id, node.clone());
+            Ok(Some(FlowPatch::RemoveNode {
+                id: node.id.clone(),
+            }))
+        }
+
+        FlowPatch::UpdateNode { id, changes } => {
+            let node = doc.graph.nodes.get_mut(id).ok_or_else(|| PatchError {
+                message: format!("node '{}' not found for update", id),
+            })?;
+            apply_node_changes(node, changes);
+            Ok(None)
+        }
+
+        FlowPatch::RemoveNode { id } => {
+            let removed = doc
+                .graph
+                .nodes
+                .shift_remove(id)
+                .ok_or_else(|| PatchError {
+                    message: format!("node '{}' not found for removal", id),
+                })?;
+            let connected: Vec<EdgeId> = doc
+                .graph
+                .edges
+                .iter()
+                .filter(|(_, e)| e.source_node == *id || e.target_node == *id)
+                .map(|(eid, _)| eid.clone())
+                .collect();
+            for edge_id in connected {
+                doc.graph.edges.shift_remove(&edge_id);
+            }
+            Ok(Some(FlowPatch::InsertNode { node: removed }))
+        }
+
+        FlowPatch::InsertEdge { edge } => {
+            if doc.graph.edges.contains_key(&edge.id) {
+                return Err(PatchError {
+                    message: format!("edge '{}' already exists", edge.id),
+                });
+            }
+            let id = edge.id.clone();
+            doc.graph.edges.insert(id, edge.clone());
+            Ok(Some(FlowPatch::RemoveEdge {
+                id: edge.id.clone(),
+            }))
+        }
+
+        FlowPatch::UpdateEdge { id, changes } => {
+            let edge = doc.graph.edges.get_mut(id).ok_or_else(|| PatchError {
+                message: format!("edge '{}' not found for update", id),
+            })?;
+            apply_edge_changes(edge, changes);
+            Ok(None)
+        }
+
+        FlowPatch::RemoveEdge { id } => {
+            let removed = doc
+                .graph
+                .edges
+                .shift_remove(id)
+                .ok_or_else(|| PatchError {
+                    message: format!("edge '{}' not found for removal", id),
+                })?;
+            Ok(Some(FlowPatch::InsertEdge { edge: removed }))
+        }
+
+        FlowPatch::InsertGroup { group } => {
+            if doc.graph.groups.contains_key(&group.id) {
+                return Err(PatchError {
+                    message: format!("group '{}' already exists", group.id),
+                });
+            }
+            let id = group.id.clone();
+            doc.graph.groups.insert(id, group.clone());
+            Ok(Some(FlowPatch::RemoveGroup {
+                id: group.id.clone(),
+            }))
+        }
+
+        FlowPatch::UpdateGroup { id, changes } => {
+            let group = doc.graph.groups.get_mut(id).ok_or_else(|| PatchError {
+                message: format!("group '{}' not found for update", id),
+            })?;
+            apply_group_changes(group, changes);
+            Ok(None)
+        }
+
+        FlowPatch::RemoveGroup { id } => {
+            let removed = doc
+                .graph
+                .groups
+                .shift_remove(id)
+                .ok_or_else(|| PatchError {
+                    message: format!("group '{}' not found for removal", id),
+                })?;
+            for node in doc.graph.nodes.values_mut() {
+                if node.parent.as_ref() == Some(id) {
+                    node.parent = None;
+                }
+            }
+            Ok(Some(FlowPatch::InsertGroup { group: removed }))
+        }
+
+        FlowPatch::SetViewport { viewport } => {
+            let old = doc.editor.viewport.clone();
+            doc.editor.viewport = viewport.clone();
+            Ok(Some(FlowPatch::SetViewport { viewport: old }))
+        }
+
+        FlowPatch::SetEntryNode { node } => {
+            let old = doc.graph.entry_node.clone();
+            doc.graph.entry_node = node.clone();
+            Ok(Some(FlowPatch::SetEntryNode { node: old }))
+        }
+
+        FlowPatch::ReparentNodes {
+            node_ids,
+            new_parent,
+        } => {
+            for nid in node_ids {
+                let node = doc.graph.nodes.get_mut(nid).ok_or_else(|| PatchError {
+                    message: format!("node '{}' not found for reparent", nid),
+                })?;
+                node.parent = new_parent.clone();
+            }
+            Ok(None)
+        }
+    }
+}
+
+fn apply_node_changes(node: &mut FlowNodeRecord, changes: &NodeChangeSet) {
+    if let Some(pos) = changes.position {
+        node.position = pos;
+    }
+    if let Some(size) = changes.size {
+        node.size = size;
+    }
+    if let Some(ref title) = changes.title {
+        node.title = title.clone();
+    }
+    if let Some(ref kind) = changes.kind {
+        node.kind = kind.clone();
+    }
+    if let Some(ref data) = changes.data {
+        node.data = data.clone();
+    }
+    if let Some(ref flags) = changes.flags {
+        node.flags = flags.clone();
+    }
+    if let Some(ref ui) = changes.ui {
+        node.ui = ui.clone();
+    }
+}
+
+fn apply_edge_changes(edge: &mut FlowEdgeRecord, changes: &EdgeChangeSet) {
+    if let Some(ref label) = changes.label {
+        edge.label = label.clone();
+    }
+    if let Some(ref style) = changes.style {
+        edge.style = style.clone();
+    }
+    if let Some(ref data) = changes.data {
+        edge.data = data.clone();
+    }
+}
+
+fn apply_group_changes(group: &mut FlowGroupRecord, changes: &GroupChangeSet) {
+    if let Some(ref title) = changes.title {
+        group.title = title.clone();
+    }
+    if let Some(bounds) = changes.bounds {
+        group.bounds = bounds;
+    }
+    if let Some(ref data) = changes.data {
+        group.data = data.clone();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::doc::{
-        EdgeStyle, FlowEdgeRecord, FlowGroupRecord, FlowNodeRecord, GroupKind, NodeFlags,
-        NodeUiState, SelectionState, ViewportState,
+        EdgeMarker, EdgeStyle, FlowEdgeRecord, FlowGroupRecord, FlowNodeRecord, GroupKind,
+        LineStyle, NodeFlags, NodeUiState, SelectionState, ViewportState,
     };
     use crate::ids::{EdgeId, GroupId, NodeId};
     use smol_str::SmolStr;
@@ -540,7 +869,6 @@ mod tests {
 
     #[test]
     fn command_variants_exist() {
-        // Just verify all command variants compile
         let _ = FlowCommand::Undo;
         let _ = FlowCommand::Redo;
         let _ = FlowCommand::CopySelection;
@@ -755,7 +1083,6 @@ mod tests {
             label: Some(None),
             ..EdgeChangeSet::default()
         };
-        // Some(None) = clear the label, not "no change"
         assert!(cs.label.is_some());
         assert!(cs.label.as_ref().is_some_and(|l| l.is_none()));
     }
@@ -767,5 +1094,1090 @@ mod tests {
             ..EdgeChangeSet::default()
         };
         assert!(cs.label.as_ref().is_some_and(|l| l.is_some()));
+    }
+
+    // =========================================================================
+    // NEW: PatchEngine - apply, undo, redo tests
+    // =========================================================================
+
+    // ---- PatchEngine basic construction ----
+
+    #[test]
+    fn engine_new_is_empty() {
+        let engine = PatchEngine::new();
+        assert!(!engine.can_undo());
+        assert!(!engine.can_redo());
+        assert_eq!(engine.undo_depth(), 0);
+        assert_eq!(engine.redo_depth(), 0);
+    }
+
+    #[test]
+    fn engine_default_is_new() {
+        let engine = PatchEngine::default();
+        assert!(!engine.can_undo());
+        assert!(!engine.can_redo());
+    }
+
+    // ---- InsertNode via engine ----
+
+    #[test]
+    fn engine_apply_insert_node() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        assert!(result.is_ok());
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+        assert_eq!(doc.graph.nodes.len(), 1);
+    }
+
+    #[test]
+    fn engine_apply_insert_duplicate_node_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- RemoveNode via engine ----
+
+    #[test]
+    fn engine_apply_remove_node() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveNode { id: nid("n1") },
+        );
+        assert!(result.is_ok());
+        assert!(!doc.graph.nodes.contains_key(&nid("n1")));
+    }
+
+    #[test]
+    fn engine_apply_remove_nonexistent_node_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveNode { id: nid("ghost") },
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn engine_remove_node_also_removes_connected_edges() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph.edges.insert(eid("e2"), make_edge("e2", "n2", "n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveNode { id: nid("n1") },
+        );
+        assert!(!doc.graph.edges.contains_key(&eid("e1")));
+        assert!(!doc.graph.edges.contains_key(&eid("e2")));
+        assert_eq!(doc.graph.edges.len(), 0);
+    }
+
+    // ---- UpdateNode via engine ----
+
+    #[test]
+    fn engine_apply_update_node_position() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([50.0, 100.0]),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| (n.position[0] - 50.0).abs() < f64::EPSILON));
+        assert!(node.is_some_and(|n| (n.position[1] - 100.0).abs() < f64::EPSILON));
+    }
+
+    #[test]
+    fn engine_apply_update_node_title() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    title: Some(SmolStr::from("renamed")),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| n.title.as_str() == "renamed"));
+    }
+
+    #[test]
+    fn engine_apply_update_node_flags() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    flags: Some(NodeFlags {
+                        locked: true,
+                        hidden: true,
+                        ..NodeFlags::default()
+                    }),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| n.flags.locked));
+        assert!(node.is_some_and(|n| n.flags.hidden));
+    }
+
+    #[test]
+    fn engine_apply_update_nonexistent_node_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("ghost"),
+                changes: NodeChangeSet::default(),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn engine_apply_update_node_partial_changes() {
+        let mut doc = FlowDocument::default();
+        let mut node = make_node("n1");
+        node.position = [10.0, 20.0];
+        node.title = SmolStr::from("original");
+        doc.graph.nodes.insert(nid("n1"), node);
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([99.0, 88.0]),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let n = doc.graph.nodes.get(&nid("n1"));
+        assert!(n.is_some_and(|n| (n.position[0] - 99.0).abs() < f64::EPSILON));
+        assert!(n.is_some_and(|n| n.title.as_str() == "original"));
+    }
+
+    // ---- InsertEdge via engine ----
+
+    #[test]
+    fn engine_apply_insert_edge() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertEdge {
+                edge: make_edge("e1", "n1", "n2"),
+            },
+        );
+        assert!(result.is_ok());
+        assert!(doc.graph.edges.contains_key(&eid("e1")));
+    }
+
+    #[test]
+    fn engine_apply_insert_duplicate_edge_fails() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertEdge {
+                edge: make_edge("e1", "n1", "n2"),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- RemoveEdge via engine ----
+
+    #[test]
+    fn engine_apply_remove_edge() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveEdge { id: eid("e1") },
+        );
+        assert!(result.is_ok());
+        assert!(!doc.graph.edges.contains_key(&eid("e1")));
+    }
+
+    #[test]
+    fn engine_apply_remove_nonexistent_edge_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveEdge { id: eid("ghost") },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- UpdateEdge via engine ----
+
+    #[test]
+    fn engine_apply_update_edge_label() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes: EdgeChangeSet {
+                    label: Some(Some(SmolStr::from("new-label"))),
+                    ..EdgeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let edge = doc.graph.edges.get(&eid("e1"));
+        assert!(
+            edge.is_some_and(|e| e
+                .label
+                .as_ref()
+                .is_some_and(|l| l.as_str() == "new-label"))
+        );
+    }
+
+    #[test]
+    fn engine_apply_update_edge_clear_label() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        let mut edge = make_edge("e1", "n1", "n2");
+        edge.label = Some(SmolStr::from("old"));
+        doc.graph.edges.insert(eid("e1"), edge);
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes: EdgeChangeSet {
+                    label: Some(None),
+                    ..EdgeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let edge = doc.graph.edges.get(&eid("e1"));
+        assert!(edge.is_some_and(|e| e.label.is_none()));
+    }
+
+    #[test]
+    fn engine_apply_update_nonexistent_edge_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("ghost"),
+                changes: EdgeChangeSet::default(),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- InsertGroup via engine ----
+
+    #[test]
+    fn engine_apply_insert_group() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertGroup {
+                group: make_group("g1"),
+            },
+        );
+        assert!(result.is_ok());
+        assert!(doc.graph.groups.contains_key(&gid("g1")));
+    }
+
+    #[test]
+    fn engine_apply_insert_duplicate_group_fails() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertGroup {
+                group: make_group("g1"),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- RemoveGroup via engine ----
+
+    #[test]
+    fn engine_apply_remove_group() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveGroup { id: gid("g1") },
+        );
+        assert!(result.is_ok());
+        assert!(!doc.graph.groups.contains_key(&gid("g1")));
+    }
+
+    #[test]
+    fn engine_remove_group_clears_child_parent_refs() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut n1 = make_node("n1");
+        n1.parent = Some(gid("g1"));
+        doc.graph.nodes.insert(nid("n1"), n1);
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveGroup { id: gid("g1") },
+        );
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| n.parent.is_none()));
+    }
+
+    // ---- UpdateGroup via engine ----
+
+    #[test]
+    fn engine_apply_update_group_title() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes: GroupChangeSet {
+                    title: Some(SmolStr::from("renamed-group")),
+                    ..GroupChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let group = doc.graph.groups.get(&gid("g1"));
+        assert!(group.is_some_and(|g| g.title.as_str() == "renamed-group"));
+    }
+
+    #[test]
+    fn engine_apply_update_group_bounds() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes: GroupChangeSet {
+                    bounds: Some([10.0, 20.0, 300.0, 400.0]),
+                    ..GroupChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let group = doc.graph.groups.get(&gid("g1"));
+        assert!(group.is_some_and(|g| (g.bounds[0] - 10.0).abs() < f64::EPSILON));
+        assert!(group.is_some_and(|g| (g.bounds[2] - 300.0).abs() < f64::EPSILON));
+    }
+
+    // ---- SetViewport via engine ----
+
+    #[test]
+    fn engine_apply_set_viewport() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let new_vp = ViewportState {
+            pan_x: 50.0,
+            pan_y: -25.0,
+            zoom: 3.0,
+        };
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetViewport {
+                viewport: new_vp,
+            },
+        );
+        assert!(result.is_ok());
+        assert!((doc.editor.viewport.pan_x - 50.0).abs() < f64::EPSILON);
+        assert!((doc.editor.viewport.zoom - 3.0).abs() < f64::EPSILON);
+    }
+
+    // ---- SetEntryNode via engine ----
+
+    #[test]
+    fn engine_apply_set_entry_node() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetEntryNode {
+                node: Some(nid("start")),
+            },
+        );
+        assert!(result.is_ok());
+        assert!(doc.graph.entry_node.is_some());
+        assert!(
+            doc.graph
+                .entry_node
+                .as_ref()
+                .is_some_and(|n| n == &nid("start"))
+        );
+    }
+
+    #[test]
+    fn engine_apply_clear_entry_node() {
+        let mut doc = FlowDocument::default();
+        doc.graph.entry_node = Some(nid("old"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetEntryNode { node: None },
+        );
+        assert!(result.is_ok());
+        assert!(doc.graph.entry_node.is_none());
+    }
+
+    // ---- ReparentNodes via engine ----
+
+    #[test]
+    fn engine_apply_reparent_nodes() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("n1"), nid("n2")],
+                new_parent: Some(gid("g1")),
+            },
+        );
+        assert!(result.is_ok());
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent == Some(gid("g1")))
+        );
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n2"))
+                .is_some_and(|n| n.parent == Some(gid("g1")))
+        );
+    }
+
+    #[test]
+    fn engine_apply_reparent_nodes_remove_parent() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut n1 = make_node("n1");
+        n1.parent = Some(gid("g1"));
+        doc.graph.nodes.insert(nid("n1"), n1);
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("n1")],
+                new_parent: None,
+            },
+        );
+        assert!(result.is_ok());
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent.is_none())
+        );
+    }
+
+    #[test]
+    fn engine_apply_reparent_nonexistent_node_fails() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("ghost")],
+                new_parent: None,
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    // ---- Transaction application ----
+
+    #[test]
+    fn engine_apply_transaction_insert_nodes_and_edges() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        let txn = FlowTransaction {
+            id: 1,
+            label: SmolStr::from("setup"),
+            patches: vec![
+                FlowPatch::InsertNode {
+                    node: make_node("n1"),
+                },
+                FlowPatch::InsertNode {
+                    node: make_node("n2"),
+                },
+                FlowPatch::InsertEdge {
+                    edge: make_edge("e1", "n1", "n2"),
+                },
+            ],
+            origin: ChangeOrigin::User,
+            merge_key: None,
+        };
+        let result = engine.apply_transaction(&mut doc, &txn);
+        assert!(result.is_ok());
+        if let Ok(summary) = result {
+            assert_eq!(summary.nodes_added, 2);
+            assert_eq!(summary.edges_added, 1);
+        }
+        assert_eq!(doc.graph.nodes.len(), 2);
+        assert_eq!(doc.graph.edges.len(), 1);
+        assert!(engine.can_undo());
+    }
+
+    #[test]
+    fn engine_apply_transaction_fails_partially() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        let txn = FlowTransaction {
+            id: 1,
+            label: SmolStr::from("bad"),
+            patches: vec![
+                FlowPatch::InsertNode {
+                    node: make_node("n1"),
+                },
+                FlowPatch::UpdateNode {
+                    id: nid("ghost"),
+                    changes: NodeChangeSet::default(),
+                },
+            ],
+            origin: ChangeOrigin::User,
+            merge_key: None,
+        };
+        let result = engine.apply_transaction(&mut doc, &txn);
+        assert!(result.is_err());
+        // n1 was already inserted before the failure -- partial application
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+    }
+
+    // ---- Undo ----
+
+    #[test]
+    fn engine_undo_insert_node() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+        assert!(engine.can_undo());
+
+        let undone = engine.undo(&mut doc);
+        assert!(undone.is_some());
+        assert!(!doc.graph.nodes.contains_key(&nid("n1")));
+        assert!(!engine.can_undo());
+        assert!(engine.can_redo());
+    }
+
+    #[test]
+    fn engine_undo_remove_node_restores_it() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::RemoveNode { id: nid("n1") },
+        );
+        assert!(!doc.graph.nodes.contains_key(&nid("n1")));
+
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+    }
+
+    #[test]
+    fn engine_undo_set_entry_node() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetEntryNode {
+                node: Some(nid("start")),
+            },
+        );
+        assert!(doc.graph.entry_node.is_some());
+
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.entry_node.is_none());
+    }
+
+    #[test]
+    fn engine_undo_set_viewport() {
+        let mut doc = FlowDocument::default();
+        let original_zoom = doc.editor.viewport.zoom;
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetViewport {
+                viewport: ViewportState {
+                    pan_x: 100.0,
+                    pan_y: 200.0,
+                    zoom: 5.0,
+                },
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        assert!((doc.editor.viewport.zoom - original_zoom).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn engine_undo_empty_returns_none() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        assert!(engine.undo(&mut doc).is_none());
+    }
+
+    // ---- Redo ----
+
+    #[test]
+    fn engine_redo_after_undo() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        assert!(!doc.graph.nodes.contains_key(&nid("n1")));
+
+        let _ = engine.redo(&mut doc);
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+        assert!(!engine.can_redo());
+    }
+
+    #[test]
+    fn engine_redo_empty_returns_none() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        assert!(engine.redo(&mut doc).is_none());
+    }
+
+    #[test]
+    fn engine_redo_clears_on_new_frame() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        assert!(engine.can_redo());
+
+        // Beginning a new frame should clear the redo stack
+        engine.begin_undo_frame();
+        assert!(!engine.can_redo());
+    }
+
+    // ---- Multiple undo/redo levels ----
+
+    #[test]
+    fn engine_multiple_undo_levels() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+
+        // Frame 1: insert n1
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+
+        // Frame 2: insert n2
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n2"),
+            },
+        );
+
+        assert_eq!(engine.undo_depth(), 2);
+
+        // Undo frame 2
+        let _ = engine.undo(&mut doc);
+        assert_eq!(doc.graph.nodes.len(), 1);
+        assert!(doc.graph.nodes.contains_key(&nid("n1")));
+
+        // Undo frame 1
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.is_empty());
+    }
+
+    // ---- Edge update style changes ----
+
+    #[test]
+    fn engine_apply_update_edge_style() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let new_style = EdgeStyle {
+            line_style: LineStyle::Dashed,
+            width: 4.0,
+            animated: true,
+            marker: EdgeMarker::Circle,
+        };
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes: EdgeChangeSet {
+                    style: Some(new_style),
+                    ..EdgeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let edge = doc.graph.edges.get(&eid("e1"));
+        assert!(edge.is_some_and(|e| e.style.line_style == LineStyle::Dashed));
+        assert!(edge.is_some_and(|e| e.style.animated));
+        assert!(edge.is_some_and(|e| e.style.marker == EdgeMarker::Circle));
+    }
+
+    // ---- PatchError ----
+
+    #[test]
+    fn patch_error_has_message() {
+        let err = PatchError {
+            message: String::from("something failed"),
+        };
+        assert_eq!(err.message, "something failed");
+    }
+
+    // ---- Serialization of all patch variants ----
+
+    #[test]
+    fn all_patch_variants_serialize_roundtrip() {
+        let patches: Vec<FlowPatch> = vec![
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([1.0, 2.0]),
+                    ..NodeChangeSet::default()
+                },
+            },
+            FlowPatch::RemoveNode { id: nid("n1") },
+            FlowPatch::InsertEdge {
+                edge: make_edge("e1", "n1", "n2"),
+            },
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes: EdgeChangeSet {
+                    label: Some(Some(SmolStr::from("label"))),
+                    ..EdgeChangeSet::default()
+                },
+            },
+            FlowPatch::RemoveEdge { id: eid("e1") },
+            FlowPatch::InsertGroup {
+                group: make_group("g1"),
+            },
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes: GroupChangeSet {
+                    title: Some(SmolStr::from("new")),
+                    ..GroupChangeSet::default()
+                },
+            },
+            FlowPatch::RemoveGroup { id: gid("g1") },
+            FlowPatch::SetViewport {
+                viewport: ViewportState {
+                    pan_x: 1.0,
+                    pan_y: 2.0,
+                    zoom: 3.0,
+                },
+            },
+            FlowPatch::SetEntryNode {
+                node: Some(nid("n1")),
+            },
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("n1")],
+                new_parent: Some(gid("g1")),
+            },
+        ];
+        for patch in patches {
+            let json = serde_json::to_string(&patch).ok();
+            assert!(json.is_some());
+            let back: Option<FlowPatch> = json.and_then(|j| serde_json::from_str(&j).ok());
+            assert!(back.is_some());
+        }
+    }
+
+    // ---- Transaction summary counting ----
+
+    #[test]
+    fn transaction_summary_mixed_operations() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        let txn = FlowTransaction {
+            id: 1,
+            label: SmolStr::from("mixed"),
+            patches: vec![
+                FlowPatch::InsertNode {
+                    node: make_node("n2"),
+                },
+                FlowPatch::UpdateNode {
+                    id: nid("n1"),
+                    changes: NodeChangeSet {
+                        title: Some(SmolStr::from("updated")),
+                        ..NodeChangeSet::default()
+                    },
+                },
+                FlowPatch::InsertEdge {
+                    edge: make_edge("e1", "n1", "n2"),
+                },
+            ],
+            origin: ChangeOrigin::User,
+            merge_key: None,
+        };
+        let result = engine.apply_transaction(&mut doc, &txn);
+        if let Ok(summary) = result {
+            assert_eq!(summary.nodes_added, 1);
+            assert_eq!(summary.nodes_updated, 1);
+            assert_eq!(summary.edges_added, 1);
+            assert_eq!(summary.nodes_removed, 0);
+        }
+    }
+
+    // ---- Complex undo/redo round trip ----
+
+    #[test]
+    fn engine_undo_redo_roundtrip_preserves_document() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+
+        // Build up a document
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n2"),
+            },
+        );
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertEdge {
+                edge: make_edge("e1", "n1", "n2"),
+            },
+        );
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::SetEntryNode {
+                node: Some(nid("n1")),
+            },
+        );
+
+        // Snapshot state
+        assert_eq!(doc.graph.nodes.len(), 2);
+        assert_eq!(doc.graph.edges.len(), 1);
+        let entry_before = doc.graph.entry_node.clone();
+
+        // Undo everything
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.entry_node.is_none());
+
+        // Redo everything
+        let _ = engine.redo(&mut doc);
+        assert_eq!(doc.graph.nodes.len(), 2);
+        assert_eq!(doc.graph.edges.len(), 1);
+        assert_eq!(doc.graph.entry_node, entry_before);
+    }
+
+    // ---- Engine with empty transaction ----
+
+    #[test]
+    fn engine_apply_empty_transaction() {
+        let mut doc = FlowDocument::default();
+        let mut engine = PatchEngine::new();
+        let txn = FlowTransaction {
+            id: 1,
+            label: SmolStr::from("empty"),
+            patches: Vec::new(),
+            origin: ChangeOrigin::User,
+            merge_key: None,
+        };
+        let result = engine.apply_transaction(&mut doc, &txn);
+        assert!(result.is_ok());
+        if let Ok(summary) = result {
+            assert_eq!(summary.nodes_added, 0);
+            assert_eq!(summary.edges_added, 0);
+        }
+    }
+
+    // ---- UpdateNode with all fields ----
+
+    #[test]
+    fn engine_apply_update_node_all_fields() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([11.0, 22.0]),
+                    size: Some([200.0, 150.0]),
+                    title: Some(SmolStr::from("all-fields")),
+                    kind: Some(SmolStr::from("transform")),
+                    data: Some(serde_json::Value::Bool(true)),
+                    flags: Some(NodeFlags {
+                        locked: true,
+                        entry: true,
+                        ..NodeFlags::default()
+                    }),
+                    ui: Some(NodeUiState {
+                        collapsed: true,
+                        color_override: Some([1.0, 0.0, 0.0, 1.0]),
+                    }),
+                },
+            },
+        );
+        assert!(result.is_ok());
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| (n.position[0] - 11.0).abs() < f64::EPSILON));
+        assert!(node.is_some_and(|n| (n.size[0] - 200.0).abs() < f64::EPSILON));
+        assert!(node.is_some_and(|n| n.title.as_str() == "all-fields"));
+        assert!(node.is_some_and(|n| n.kind.as_str() == "transform"));
+        assert!(node.is_some_and(|n| n.flags.locked));
+        assert!(node.is_some_and(|n| n.flags.entry));
+        assert!(node.is_some_and(|n| n.ui.collapsed));
+    }
+
+    // ---- Engine clone ----
+
+    #[test]
+    fn engine_clone_preserves_state() {
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        assert_eq!(engine.undo_depth(), 1);
+        let cloned = engine.clone();
+        assert_eq!(cloned.undo_depth(), 1);
     }
 }

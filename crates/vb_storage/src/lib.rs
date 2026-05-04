@@ -34,6 +34,7 @@ pub mod queue;
 pub mod records;
 pub mod process_lock;
 pub mod recovery;
+pub mod security_tests;
 pub mod snapshots;
 pub mod tests;
 pub mod trimming;

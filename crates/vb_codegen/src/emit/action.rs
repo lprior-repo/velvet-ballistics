@@ -2,9 +2,9 @@
 
 use std::fmt::Write;
 use crate::{CodegenResult, fmt_err};
-use vb_core::{ActionId, SlotIdx};
+use vb_core::{ActionId, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
 
-pub fn emit_action_boundary(
+pub(crate) fn emit_action_boundary(
     out: &mut String,
     action: ActionId,
     input: SlotIdx,
@@ -32,15 +32,15 @@ pub fn emit_action_boundary(
     Ok(())
 }
 
-/// Generate result extraction code for the workflow.
-pub fn emit_finish(out: &mut String, _workflow: &CompiledWorkflow) -> CodegenResult<()> {
+// Generate result extraction code for the workflow.
+pub(crate) fn emit_finish(out: &mut String, _workflow: &CompiledWorkflow) -> CodegenResult<()> {
     writeln!(out, "// --- Result extraction ---").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
 
-/// Generate the match-on-ActionId dispatch for all action nodes in the workflow.
-pub fn emit_action_match_dispatch(
+// Generate the match-on-ActionId dispatch for all action nodes in the workflow.
+pub(crate) fn emit_action_match_dispatch(
     out: &mut String,
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
@@ -66,4 +66,4 @@ pub fn emit_action_match_dispatch(
     Ok(())
 }
 
-/// Emit the resource contract struct as generated Rust constants.
+// Emit the resource contract struct as generated Rust constants.

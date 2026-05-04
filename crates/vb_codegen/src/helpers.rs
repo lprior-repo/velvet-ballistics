@@ -4,7 +4,7 @@ use std::fmt::Write;
 use crate::{fmt_err, CodegenResult};
 use vb_core::CompiledWorkflow;
 
-pub fn write_header(out: &mut String) -> CodegenResult<()> {
+pub(crate) fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "#![forbid(unsafe_code)]").map_err(fmt_err)?;
     writeln!(out, "#![deny(unused_must_use)]").map_err(fmt_err)?;
     writeln!(out, "#![deny(unreachable_pub)]").map_err(fmt_err)?;
@@ -92,7 +92,7 @@ pub fn write_header(out: &mut String) -> CodegenResult<()> {
     Ok(())
 }
 
-pub fn write_next_or_error(out: &mut String, next: Option<vb_core::StepIdx>) -> CodegenResult<()> {
+pub(crate) fn write_next_or_error(out: &mut String, next: Option<vb_core::StepIdx>) -> CodegenResult<()> {
     match next {
         Some(target) => {
             writeln!(out, "    Ok(StepOutcome::Continue({}))", target.get()).map_err(fmt_err)
@@ -101,7 +101,7 @@ pub fn write_next_or_error(out: &mut String, next: Option<vb_core::StepIdx>) -> 
     }
 }
 
-pub fn emit_unsupported_step(out: &mut String, primitive: &'static str) -> CodegenResult<()> {
+pub(crate) fn emit_unsupported_step(out: &mut String, primitive: &'static str) -> CodegenResult<()> {
     writeln!(
         out,
         "    Err(DriveError::UnsupportedPrimitive {{ primitive: \"{primitive}\" }})"
@@ -109,7 +109,7 @@ pub fn emit_unsupported_step(out: &mut String, primitive: &'static str) -> Codeg
     .map_err(fmt_err)
 }
 
-pub fn emit_unsupported_expr(out: &mut String, op: &'static str) -> CodegenResult<()> {
+pub(crate) fn emit_unsupported_expr(out: &mut String, op: &'static str) -> CodegenResult<()> {
     writeln!(
         out,
         "    return Err(DriveError::UnsupportedExpressionOp {{ op: \"{op}\" }});"
@@ -120,7 +120,7 @@ pub fn emit_unsupported_expr(out: &mut String, op: &'static str) -> CodegenResul
 /// Emit code to evaluate an accessor by reading the root slot.
 /// For empty-path accessors, this simply reads the root slot value.
 /// For non-empty paths, this emits a typed error matching the runtime engine behavior.
-pub fn emit_accessor_eval(
+pub(crate) fn emit_accessor_eval(
     out: &mut String,
     accessor_idx: vb_core::AccessorIdx,
     workflow: &CompiledWorkflow,

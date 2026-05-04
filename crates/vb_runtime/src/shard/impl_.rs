@@ -335,3 +335,351 @@ impl ShardConfig {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use vb_core::capability::CapabilitySet;
+    use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::value::ConstValue;
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
+    };
+
+    use crate::RuntimeError;
+
+    use super::{Shard, ShardCommand, ShardConfig, MAX_COMMAND_QUEUE_CAPACITY};
+
+    fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_const = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("finished"),
+            digest: WorkflowDigest::from_bytes([2; 32]),
+            nodes: Box::from([set_const, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::Bool(true)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn small_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        }
+    }
+
+    // =======================================================================
+    // ShardConfig::new validation
+    // =======================================================================
+
+    #[test]
+    fn config_new_accepts_min_valid_capacity() {
+        let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+        assert!(result.is_ok());
+        let config = result.ok();
+        assert_eq!(config.map(|c| c.command_queue_capacity), Some(1));
+    }
+
+    #[test]
+    fn config_new_rejects_zero_capacity() {
+        let result = ShardConfig::new(0, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+        assert_eq!(
+            result,
+            Err(RuntimeError::CommandQueueCapacityExceeded {
+                capacity: 0,
+                max: MAX_COMMAND_QUEUE_CAPACITY,
+            })
+        );
+    }
+
+    #[test]
+    fn config_new_rejects_capacity_exceeding_max() {
+        let too_large = MAX_COMMAND_QUEUE_CAPACITY.saturating_add(1);
+        let result = ShardConfig::new(too_large, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+        assert_eq!(
+            result,
+            Err(RuntimeError::CommandQueueCapacityExceeded {
+                capacity: too_large,
+                max: MAX_COMMAND_QUEUE_CAPACITY,
+            })
+        );
+    }
+
+    #[test]
+    fn config_new_rejects_zero_max_active_runs() {
+        let result = ShardConfig::new(1, 1, 1, 0, vb_core::policy::RuntimePolicy::Relaxed);
+        assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
+    }
+
+    #[test]
+    fn config_new_accepts_max_command_queue_capacity() {
+        let result = ShardConfig::new(
+            MAX_COMMAND_QUEUE_CAPACITY,
+            1,
+            1,
+            1,
+            vb_core::policy::RuntimePolicy::Relaxed,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn config_new_preserves_all_fields() {
+        let config =
+            ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed).ok();
+        assert_eq!(config.map(|c| c.command_queue_capacity), Some(64));
+        assert_eq!(config.map(|c| c.trace_capacity), Some(128));
+        assert_eq!(config.map(|c| c.step_budget_per_tick), Some(256));
+        assert_eq!(config.map(|c| c.max_active_runs), Some(32));
+    }
+
+    // =======================================================================
+    // Shard construction
+    // =======================================================================
+
+    #[test]
+    fn shard_new_creates_empty_shard() {
+        let shard = Shard::new(small_config());
+        assert_eq!(shard.active_run_count(), 0);
+        assert_eq!(shard.pending_timer_count(), 0);
+        assert_eq!(shard.command_queue_len(), 0);
+        assert_eq!(shard.is_shutting_down(), false);
+    }
+
+    // =======================================================================
+    // Queue operations
+    // =======================================================================
+
+    #[test]
+    fn enqueue_and_capacity_tracking() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let shard = Shard::new(config);
+        assert_eq!(shard.command_queue_capacity(), 4);
+        assert_eq!(shard.remaining_capacity(), 4);
+        assert_eq!(shard.is_queue_full(), false);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.command_queue_len(), 1);
+        assert_eq!(shard.remaining_capacity(), 3);
+    }
+
+    #[test]
+    fn queue_full_at_capacity_boundary() {
+        let config = ShardConfig {
+            command_queue_capacity: 2,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let shard = Shard::new(config);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.is_queue_full(), true);
+        assert_eq!(shard.remaining_capacity(), 0);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Err(RuntimeError::QueueFull));
+    }
+
+    // =======================================================================
+    // Tick processing
+    // =======================================================================
+
+    #[test]
+    fn tick_on_empty_queue_returns_true() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    #[test]
+    fn tick_processes_shutdown_returns_false() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.is_shutting_down(), true);
+    }
+
+    #[test]
+    fn tick_after_shutdown_always_returns_false() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.tick(), Ok(false));
+    }
+
+    // =======================================================================
+    // drain_for_shutdown
+    // =======================================================================
+
+    #[test]
+    fn drain_for_shutdown_processes_pending_commands() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(1),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.drain_for_shutdown(), Ok(()));
+        assert_eq!(shard.is_shutting_down(), true);
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
+        let config = ShardConfig {
+            command_queue_capacity: 2,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+        assert_eq!(shard.drain_for_shutdown(), Err(RuntimeError::ShutdownInProgress));
+    }
+
+    // =======================================================================
+    // snapshot_run (direct, non-queued)
+    // =======================================================================
+
+    #[test]
+    fn snapshot_run_returns_not_found_for_missing_run() {
+        let shard = Shard::new(small_config());
+        let response = shard.snapshot_run(RunId::new(999), 42);
+        match response {
+            super::InspectResponse::NotFound { run, correlation } => {
+                assert_eq!(run, RunId::new(999));
+                assert_eq!(correlation, 42);
+            }
+            other => {
+                // Wrong variant
+                let _ = other;
+                assert!(false);
+            }
+        }
+    }
+
+    // =======================================================================
+    // Frame pool metrics
+    // =======================================================================
+
+    #[test]
+    fn frame_pool_metrics_zero_initially() {
+        let shard = Shard::new(small_config());
+        let (free, total) = shard.frame_pool_metrics();
+        assert_eq!(free, 0);
+        assert_eq!(total, 0);
+    }
+
+    // =======================================================================
+    // Boundary conditions
+    // =======================================================================
+
+    #[test]
+    fn shard_with_run_id_zero() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(0),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn shard_with_max_run_id() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(u64::MAX),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn shard_handles_multiple_sequential_finished_runs() {
+        let mut shard = Shard::new(small_config());
+        for i in 0u64..4 {
+            let Some(wf) = finished_workflow() else {
+                return;
+            };
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(i),
+                    workflow: wf,
+                    caps: CapabilitySet::empty(),
+                }),
+                Ok(())
+            );
+            assert_eq!(shard.tick(), Ok(true));
+        }
+        assert_eq!(shard.counters().snapshot().runs_completed, 4);
+        assert_eq!(shard.counters().snapshot().runs_submitted, 4);
+    }
+
+    #[test]
+    fn take_inspect_response_returns_none_when_none_pending() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(shard.take_inspect_response(), None);
+    }
+}

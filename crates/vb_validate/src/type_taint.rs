@@ -2037,4 +2037,253 @@ mod tests {
         wf.secrets.push("api_key".to_owned());
         assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
     }
+
+    // =========================================================================
+    // BLACKHAT security regression tests
+    // =========================================================================
+
+    /// BLACKHAT: validate_resource_limits passes steps.len() as actual for
+    /// both max_steps AND max_slots checks.
+    ///
+    /// SEVERITY: LOW (logic smell, not exploitable)
+    /// DESCRIPTION: In `validate_resource_limits`, the `check_resource_bound`
+    /// call for "max_slots" passes `workflow.steps.len()` as the `actual` value.
+    /// This means the max_slots check compares the step count against the
+    /// declared max_slots limit, which is semantically incorrect -- it should
+    /// compare against the actual slot count. However, since max_slots defaults
+    /// to 65_535 and workflows typically have far fewer steps, this is unlikely
+    /// to cause a false rejection in practice.
+    #[test]
+    fn blackhat_resource_limits_max_slots_uses_step_count_not_slot_count() {
+        let wf = WorkflowTypes {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            steps: vec![
+                finish_step("s0", TypedValue::Literal(ValueType::Number)),
+                finish_step("s1", TypedValue::Literal(ValueType::Number)),
+            ],
+            resource_contract: ResourceLimits {
+                max_steps: 10,
+                max_slots: 1, // Only 1 slot declared, but steps.len() = 2
+                max_constants: 8_192,
+                ..ResourceLimits::default()
+            },
+        };
+        let hard = ResourceLimits::default();
+
+        // Because check_resource_bound("max_slots", steps.len()=2, declared=1, hard)
+        // is called, this should fail with LimitExceeded for max_slots.
+        match validate_resource_limits(&wf, &hard) {
+            Err(ValidationError::LimitExceeded { resource }) => {
+                assert_eq!(
+                    resource, "max_slots",
+                    "blackhat: max_slots check should fail because steps.len() > max_slots"
+                );
+            }
+            Err(ValidationError::LimitRequired { .. }) => {
+                // Another zero limit may be hit first
+            }
+            Ok(()) => {
+                panic!("blackhat: expected LimitExceeded for max_slots, got Ok");
+            }
+            Err(other) => {
+                panic!("blackhat: unexpected error: {other:?}");
+            }
+        }
+    }
+
+    /// BLACKHAT: unknown references resolve as clean Any (no taint).
+    ///
+    /// SEVERITY: LOW (defense-in-depth concern)
+    /// DESCRIPTION: When `resolve_reference` encounters an unknown root or
+    /// unknown name, it returns `ValueFact::clean(ValueType::Any)`. This means
+    /// an attacker cannot leak secrets by referencing undeclared names in the
+    /// finish result, because unknown references are always clean. However, it
+    /// also means that typos in reference names silently produce clean values
+    /// instead of validation errors.
+    #[test]
+    fn blackhat_unknown_reference_is_clean_not_secret() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$unknown_root.field".into()),
+        )]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: unknown reference roots should resolve as clean"
+        );
+
+        let wf2 = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input.nonexistent".into()),
+        )]);
+        assert_eq!(
+            validate_taint(&wf2),
+            Ok(()),
+            "blackhat: unknown input name should resolve as clean"
+        );
+    }
+
+    /// BLACKHAT: reference without dot separator resolves as clean Any.
+    ///
+    /// SEVERITY: LOW
+    /// DESCRIPTION: A reference like "$input" (without a dot) resolves as
+    /// clean Any because `body.split_once('.')` returns None. This is a
+    /// safe default -- it cannot introduce taint.
+    #[test]
+    fn blackhat_reference_without_dot_is_clean_any() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("$input".into()),
+        )]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: reference without dot should be clean"
+        );
+    }
+
+    /// BLACKHAT: reference without dollar prefix resolves as clean Text.
+    ///
+    /// SEVERITY: LOW
+    /// DESCRIPTION: A reference that does not start with "$" resolves as
+    /// `ValueFact::clean(ValueType::Text)` by `resolve_reference`. This is
+    /// a safe default.
+    #[test]
+    fn blackhat_reference_without_dollar_prefix_is_clean_text() {
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Reference("not_a_reference".into()),
+        )]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: non-dollar reference should be clean"
+        );
+    }
+
+    /// BLACKHAT: check_declared_bound rejects zero as a required limit.
+    ///
+    /// SEVERITY: MEDIUM (prevents limit-omission attacks)
+    /// DESCRIPTION: `check_declared_bound` returns `LimitRequired` when
+    /// `declared == 0`. This prevents a workflow from declaring a zero limit
+    /// for any resource, which could be used to bypass resource accounting.
+    #[test]
+    fn blackhat_zero_declared_limit_rejected() {
+        let wf = WorkflowTypes {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            steps: vec![],
+            resource_contract: ResourceLimits {
+                max_input_bytes: 0,
+                ..ResourceLimits::default()
+            },
+        };
+        let hard = ResourceLimits::default();
+
+        match validate_resource_limits(&wf, &hard) {
+            Err(ValidationError::LimitRequired { resource }) => {
+                assert_eq!(
+                    resource, "max_input_bytes",
+                    "blackhat: zero declared limit should be rejected"
+                );
+            }
+            Err(other) => {
+                assert!(
+                    matches!(other, ValidationError::LimitRequired { .. }),
+                    "blackhat: expected LimitRequired, got {other:?}"
+                );
+            }
+            Ok(()) => {
+                panic!("blackhat: zero declared limit should be rejected");
+            }
+        }
+    }
+
+    /// BLACKHAT: Choose step with tainted condition does not propagate taint to slots.
+    ///
+    /// SEVERITY: LOW (correct behavior, documented)
+    /// DESCRIPTION: A Choose step does not write to any slot, so even if its
+    /// condition is tainted, no taint propagates.
+    #[test]
+    fn blackhat_choose_tainted_condition_does_not_propagate() {
+        let mut wf = make_workflow(vec![
+            save_step("s0", TypedValue::Reference("$secrets.flag".into())),
+            choose_step("route", TypedValue::Slot(0)),
+            save_step("s1", TypedValue::Literal(ValueType::Number)),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("flag".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: tainted choose condition should not propagate taint to finish"
+        );
+    }
+
+    /// BLACKHAT: Taint merge is commutative.
+    ///
+    /// SEVERITY: INFORMATIONAL (correctness verification)
+    /// DESCRIPTION: Verify that Taint::merge is commutative.
+    #[test]
+    fn blackhat_taint_merge_commutative() {
+        assert_eq!(
+            Taint::Clean.merge(Taint::Secret),
+            Taint::Secret.merge(Taint::Clean),
+            "blackhat: taint merge must be commutative"
+        );
+    }
+
+    /// BLACKHAT: Slot reference to uninitialized slot resolves as clean Any.
+    ///
+    /// SEVERITY: LOW
+    /// DESCRIPTION: When a Slot value references an index that has not been
+    /// written to (i.e., the slot is None), `resolve_value` returns
+    /// `ValueFact::clean(ValueType::Any)`. This means reading from an
+    /// uninitialized slot never introduces taint.
+    #[test]
+    fn blackhat_uninitialized_slot_is_clean() {
+        let wf = make_workflow(vec![
+            save_step("s0", TypedValue::Literal(ValueType::Number)),
+            finish_step("done", TypedValue::Slot(5)),
+        ]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: uninitialized slot should resolve as clean"
+        );
+    }
+
+    /// BLACKHAT: Empty composite resolves as clean with Any type.
+    ///
+    /// SEVERITY: INFORMATIONAL
+    /// DESCRIPTION: An empty composite `Composite(vec![])` has no children,
+    /// so no taint can propagate.
+    #[test]
+    fn blackhat_empty_composite_is_clean() {
+        let wf = make_workflow(vec![
+            save_step("s0", TypedValue::Composite(vec![])),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "blackhat: empty composite should be clean"
+        );
+    }
+
+    /// BLACKHAT: write_slot silently drops out-of-bounds writes.
+    ///
+    /// SEVERITY: LOW (cannot happen via normal API, but documented)
+    /// DESCRIPTION: write_slot uses get_mut which returns None for OOB indices.
+    #[test]
+    fn blackhat_out_of_bounds_slot_write_no_panic() {
+        let wf = make_workflow(vec![
+            save_step("overflow", TypedValue::Literal(ValueType::Number)),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
 }

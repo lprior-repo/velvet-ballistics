@@ -649,4 +649,184 @@ mod tests {
         assert!(reachable.contains(&nid("b")));
         assert!(reachable.contains(&nid("d")));
     }
+
+    // =========================================================================
+    // NEW: Additional edge-case traversal tests
+    // =========================================================================
+
+    // ---- Multiple edges between same nodes ----
+
+    #[test]
+    fn incomers_multiple_edges_same_pair() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "a", "b"));
+        let inc = g.incomers(&nid("b"));
+        assert_eq!(inc.len(), 2);
+    }
+
+    #[test]
+    fn outgoers_multiple_edges_same_pair() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "a", "b"));
+        let out = g.outgoers(&nid("a"));
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn connected_edges_multiple_edges_same_pair() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "a", "b"));
+        let edges = g.connected_edges(&nid("a"));
+        assert_eq!(edges.len(), 2);
+    }
+
+    // ---- Topological sort with multiple roots ----
+
+    #[test]
+    fn topo_sort_multiple_roots() {
+        // Two separate chains: a->b and c->d (all in one graph)
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.nodes.insert(nid("d"), make_node("d"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "c", "d"));
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert_eq!(order.len(), 4);
+            // a must come before b
+            let pa = order.iter().position(|x| *x == nid("a"));
+            let pb = order.iter().position(|x| *x == nid("b"));
+            assert!(pa.is_some_and(|a| pb.is_some_and(|b| a < b)));
+            // c must come before d
+            let pc = order.iter().position(|x| *x == nid("c"));
+            let pd = order.iter().position(|x| *x == nid("d"));
+            assert!(pc.is_some_and(|c| pd.is_some_and(|d| c < d)));
+        }
+    }
+
+    // ---- Reachable with dangling edges ----
+
+    #[test]
+    fn reachable_ignores_edges_to_nonexistent_nodes() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.edges.insert(
+            eid("e1"),
+            FlowEdgeRecord {
+                id: eid("e1"),
+                source_node: nid("a"),
+                source_port: SmolStr::from("out"),
+                target_node: nid("ghost"),
+                target_port: SmolStr::from("in"),
+                label: None,
+                style: EdgeStyle::default(),
+                data: serde_json::Value::Null,
+                ui: EdgeUiState::default(),
+            },
+        );
+        let reachable = g.reachable_from(&nid("a"));
+        assert_eq!(reachable.len(), 1);
+        assert!(reachable.contains(&nid("a")));
+    }
+
+    // ---- Find cycles with complex graph ----
+
+    #[test]
+    fn find_cycles_complex_with_partial_cycle() {
+        // a -> b -> c -> b (cycle between b and c), d is disconnected
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.nodes.insert(nid("d"), make_node("d"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "b", "c"));
+        g.edges.insert(eid("e3"), make_edge("e3", "c", "b"));
+        let cycles = g.find_cycles();
+        assert!(!cycles.is_empty());
+    }
+
+    // ---- Connected edges for node with both incoming and outgoing ----
+
+    #[test]
+    fn connected_edges_hub_node() {
+        // Node b has edges from a and to c, d
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("a"), make_node("a"));
+        g.nodes.insert(nid("b"), make_node("b"));
+        g.nodes.insert(nid("c"), make_node("c"));
+        g.nodes.insert(nid("d"), make_node("d"));
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        g.edges.insert(eid("e2"), make_edge("e2", "b", "c"));
+        g.edges.insert(eid("e3"), make_edge("e3", "b", "d"));
+        let edges_b = g.connected_edges(&nid("b"));
+        assert_eq!(edges_b.len(), 3);
+    }
+
+    // ---- Reachable from self-loop node ----
+
+    #[test]
+    fn reachable_from_self_loop_node() {
+        let g = self_loop_graph();
+        let reachable = g.reachable_from(&nid("a"));
+        assert_eq!(reachable.len(), 1);
+        assert!(reachable.contains(&nid("a")));
+    }
+
+    // ---- Topological sort preserves insertion order for independent nodes ----
+
+    #[test]
+    fn topo_sort_all_independent_nodes_included() {
+        let mut g = FlowGraph::default();
+        g.nodes.insert(nid("x"), make_node("x"));
+        g.nodes.insert(nid("y"), make_node("y"));
+        g.nodes.insert(nid("z"), make_node("z"));
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert_eq!(order.len(), 3);
+            assert!(order.contains(&nid("x")));
+            assert!(order.contains(&nid("y")));
+            assert!(order.contains(&nid("z")));
+        }
+    }
+
+    // ---- Diamond graph: verify incomers and outgoers symmetry ----
+
+    #[test]
+    fn diamond_incomers_outgoers_symmetry() {
+        let g = diamond_dag_graph();
+        // b has 1 incomer (from a) and 1 outgoer (to d)
+        assert_eq!(g.incomers(&nid("b")).len(), 1);
+        assert_eq!(g.outgoers(&nid("b")).len(), 1);
+        // d has 2 incomers (from b and c) and 0 outgoers
+        assert_eq!(g.incomers(&nid("d")).len(), 2);
+        assert_eq!(g.outgoers(&nid("d")).len(), 0);
+    }
+
+    // ---- Topological sort with only edges and no nodes ----
+
+    #[test]
+    fn topo_sort_edges_only() {
+        let mut g = FlowGraph::default();
+        // No nodes, just an edge referencing nonexistent nodes
+        g.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let result = g.topological_sort();
+        assert!(result.is_some());
+        if let Some(order) = result {
+            assert!(order.is_empty());
+        }
+    }
 }

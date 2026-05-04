@@ -578,4 +578,225 @@ mod tests {
             .find(|d| d.code.as_str() == "edge-source-missing");
         assert!(src_diag.is_some_and(|d| d.edge.as_ref().is_some_and(|e| e == &eid("e1"))));
     }
+
+    // =========================================================================
+    // NEW: Additional validation edge-case tests
+    // =========================================================================
+
+    // ---- Multiple self-loops produce multiple warnings ----
+
+    #[test]
+    fn multiple_self_loops_produce_multiple_warnings() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-io"]));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge_with_ports("e1", "n1", "p-io", "n1", "p-io"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge_with_ports("e2", "n1", "p-io", "n1", "p-io"),
+        );
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let self_loop_count = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "self-loop-same-port")
+            .count();
+        assert_eq!(self_loop_count, 2);
+    }
+
+    // ---- Multiple missing entry nodes produce only one error ----
+
+    #[test]
+    fn single_entry_node_missing_error() {
+        let mut doc = FlowDocument::default();
+        doc.graph.entry_node = Some(nid("ghost"));
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let entry_errors = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "entry-node-missing")
+            .count();
+        assert_eq!(entry_errors, 1);
+    }
+
+    // ---- Multiple edges with missing endpoints ----
+
+    #[test]
+    fn multiple_edges_with_missing_endpoints() {
+        let mut doc = FlowDocument::default();
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge_with_ports("e1", "ghost1", "p-out", "ghost2", "p-in"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge_with_ports("e2", "ghost3", "p-out", "ghost4", "p-in"),
+        );
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let source_missing = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "edge-source-missing")
+            .count();
+        let target_missing = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "edge-target-missing")
+            .count();
+        assert_eq!(source_missing, 2);
+        assert_eq!(target_missing, 2);
+    }
+
+    // ---- Nodes with and without parents in same document ----
+
+    #[test]
+    fn mixed_parent_refs() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        // Node n1 has valid parent
+        let mut n1 = make_node_with_ports("n1", &[]);
+        n1.parent = Some(gid("g1"));
+        doc.graph.nodes.insert(nid("n1"), n1);
+        // Node n2 has invalid parent
+        let mut n2 = make_node_with_ports("n2", &[]);
+        n2.parent = Some(gid("ghost"));
+        doc.graph.nodes.insert(nid("n2"), n2);
+        // Node n3 has no parent
+        doc.graph.nodes.insert(nid("n3"), make_node_with_ports("n3", &[]));
+
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let parent_errors: Vec<_> = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "node-parent-group-missing")
+            .collect();
+        assert_eq!(parent_errors.len(), 1);
+        assert!(parent_errors
+            .first()
+            .is_some_and(|d| d.node.as_ref().is_some_and(|n| n == &nid("n2"))));
+    }
+
+    // ---- Document with many nodes and edges passes validation ----
+
+    #[test]
+    fn large_valid_document() {
+        let mut doc = FlowDocument::default();
+        // Create 10 nodes, each with an in and out port
+        for i in 0..10 {
+            let port_name_out = format!("p-out-{i}");
+            let port_name_in = format!("p-in-{i}");
+            let ports = vec![
+                FlowPortRecord {
+                    id: pid(&port_name_out),
+                    side: PortSide::Right,
+                    role: PortRole::Source,
+                    label: SmolStr::from(&port_name_out),
+                    order: 0,
+                    cardinality: Cardinality::One,
+                    data_type: None,
+                },
+                FlowPortRecord {
+                    id: pid(&port_name_in),
+                    side: PortSide::Left,
+                    role: PortRole::Target,
+                    label: SmolStr::from(&port_name_in),
+                    order: 1,
+                    cardinality: Cardinality::One,
+                    data_type: None,
+                },
+            ];
+            let node = FlowNodeRecord {
+                id: nid(&format!("n{i}")),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from(format!("n{i}")),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports,
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            };
+            doc.graph.nodes.insert(nid(&format!("n{i}")), node);
+        }
+        // Chain edges: n0 -> n1 -> n2 -> ... -> n9
+        for i in 0usize..9 {
+            let next = i.saturating_add(1);
+            let edge = FlowEdgeRecord {
+                id: eid(&format!("e{i}")),
+                source_node: nid(&format!("n{i}")),
+                source_port: pid(&format!("p-out-{i}")),
+                target_node: nid(&format!("n{next}")),
+                target_port: pid(&format!("p-in-{next}")),
+                label: None,
+                style: EdgeStyle::default(),
+                data: serde_json::Value::Null,
+                ui: EdgeUiState::default(),
+            };
+            doc.graph
+                .edges
+                .insert(eid(&format!("e{i}")), edge);
+        }
+        doc.graph.entry_node = Some(nid("n0"));
+
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags.is_empty());
+    }
+
+    // ---- Self-loop with different ports is not flagged ----
+
+    #[test]
+    fn self_loop_different_ports_no_warning() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-out", "p-in"]));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge_with_ports("e1", "n1", "p-out", "n1", "p-in"),
+        );
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let has_self_loop_warning = diags
+            .iter()
+            .any(|d| d.code.as_str() == "self-loop-same-port");
+        assert!(!has_self_loop_warning);
+    }
+
+    // ---- Validation diagnostic severity is correct for warnings ----
+
+    #[test]
+    fn self_loop_warning_has_correct_severity() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_with_ports("n1", &["p-io"]));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge_with_ports("e1", "n1", "p-io", "n1", "p-io"),
+        );
+        let validator = StructuralValidator;
+        let diags = validator.validate(&doc);
+        let self_loop_diag = diags
+            .iter()
+            .find(|d| d.code.as_str() == "self-loop-same-port");
+        assert!(
+            self_loop_diag.is_some_and(|d| d.severity == DiagnosticSeverity::Warning)
+        );
+    }
+
+    // ---- FlowValidator trait object ----
+
+    #[test]
+    fn validator_trait_object_works() {
+        let validator: Box<dyn FlowValidator> = Box::new(StructuralValidator);
+        let doc = FlowDocument::default();
+        let diags = validator.validate(&doc);
+        assert!(diags.is_empty());
+    }
 }

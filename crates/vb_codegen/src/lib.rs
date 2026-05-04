@@ -1473,5 +1473,9 @@ fn fmt_err(_: std::fmt::Error) -> CodegenError {
     CodegenError::FormatBufferOverflow
 }
 
+#[cfg(test)]
+mod emit;
+#[cfg(test)]
+mod helpers;
 mod proptests;
 mod tests;
