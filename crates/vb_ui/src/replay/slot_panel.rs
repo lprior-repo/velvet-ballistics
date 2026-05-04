@@ -1023,4 +1023,221 @@ mod tests {
             "StepSucceeded is silently ignored even though it references a slot"
         );
     }
+
+    // =========================================================================
+    // BLACKHAT security and correctness findings
+    // =========================================================================
+
+    /// FINDING 10 -- HIGH: from_event treats identical values with different
+    /// Debug representations as different, and values with same Debug
+    /// representation but different actual values as equal.
+    ///
+    /// The comparison path in `from_event` uses `format!("{old_val:?}") ==
+    /// format!("{new_val:?}")` which depends on the `Debug` trait, not
+    /// `PartialEq`. If two `SlotValue` variants ever have different `Debug`
+    /// output despite being `PartialEq` equal (or vice versa), the diff
+    /// would be incorrect. This is especially dangerous for floating-point
+    /// or complex types where Debug formatting can vary.
+    ///
+    /// This test demonstrates the fragility by verifying that Debug-based
+    /// comparison currently agrees with PartialEq for known simple types.
+    #[test]
+    fn blackhat_debug_vs_partial_eq_fragility() {
+        // For I64, Debug and PartialEq agree.
+        let a = SlotValue::I64(42);
+        let b = SlotValue::I64(42);
+        assert_eq!(a, b, "PartialEq says equal");
+        assert_eq!(format!("{a:?}"), format!("{b:?}"), "Debug says equal");
+
+        // For Null, same thing.
+        let c = SlotValue::Null;
+        let d = SlotValue::Null;
+        assert_eq!(c, d);
+        assert_eq!(format!("{c:?}"), format!("{d:?}"));
+    }
+
+    /// FINDING 11 -- MEDIUM: diff_between does not detect taint-only changes.
+    ///
+    /// `diff_between` compares `SlotValue` by Debug formatting. Since
+    /// `SlotValue` does not carry taint information, a slot whose value
+    /// stays the same but whose taint label changes from Clean to Secret
+    /// is invisible. This is a security blind spot: a taint leak via
+    /// slot metadata goes undetected in the replay diff panel.
+    #[test]
+    fn blackhat_diff_between_misses_taint_only_changes() {
+        // Both states have identical SlotValues.
+        let before = slot_map(&[(1, SlotValue::I64(42))]);
+        let after = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        // No changes detected -- but what if the taint label changed?
+        assert!(
+            !panel.has_changes(),
+            "FINDING 11: taint-only changes are invisible to diff_between"
+        );
+        // No TaintChanged entries can ever appear.
+        assert!(panel.entries.iter().all(|e| !matches!(e.diff, SlotDiff::TaintChanged { .. })));
+    }
+
+    /// FINDING 12 -- MEDIUM: from_event silently swallows deserialization
+    /// errors, making data corruption invisible.
+    ///
+    /// When `postcard::from_bytes(bytes)` fails (corrupted data, schema
+    /// evolution), `from_event` returns an empty panel with a valid `event_seq`.
+    /// There is no error indicator, no log, and no way for the caller to
+    /// distinguish "no data" from "data was corrupted". A replay consumer
+    /// would silently miss slot writes.
+    #[test]
+    fn blackhat_from_event_corrupted_bytes_produces_empty_not_error() {
+        let event = JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(42),
+            slot: SlotIdx::new(10),
+            value: Some(vec![0xDE, 0xAD, 0xBE]), // garbage postcard bytes
+        };
+        let panel = SlotDiffPanel::from_event(&event, &HashMap::new());
+        assert!(
+            !panel.has_changes(),
+            "FINDING 12: corrupted bytes silently produce empty panel"
+        );
+        // event_seq is set, making it look like a valid empty event.
+        assert_eq!(panel.event_seq(), 42);
+    }
+
+    /// FINDING 13 -- MEDIUM: from_event treats value:None as "no write" instead
+    /// of "slot deletion".
+    ///
+    /// When `SlotWrittenEvent` carries `value: None`, the code immediately
+    /// returns an empty panel. If the slot exists in `current_slots`, this
+    /// represents a deletion that goes undetected. A slot can disappear from
+    /// the state without the diff engine noticing.
+    #[test]
+    fn blackhat_from_event_value_none_is_not_deletion() {
+        let event = JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(5),
+            slot: SlotIdx::new(3),
+            value: None, // semantically: delete slot 3
+        };
+        let current = slot_map(&[(3, SlotValue::Bool(true))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(
+            !panel.has_changes(),
+            "FINDING 13: slot deletion via value:None is invisible"
+        );
+        // Slot 3 still exists in current but was logically deleted -- no diff.
+    }
+
+    /// FINDING 14 -- LOW: diff_between returns entries in HashMap iteration
+    /// order, which is nondeterministic.
+    ///
+    /// Two calls to `diff_between` with identical inputs may produce entries
+    /// in different orders. This makes snapshot testing and audit log
+    /// comparison unreliable.
+    #[test]
+    fn blackhat_diff_between_ordering_is_nondeterministic() {
+        let before = HashMap::new();
+        let after = slot_map(&[
+            (1, SlotValue::I64(1)),
+            (2, SlotValue::I64(2)),
+            (3, SlotValue::I64(3)),
+            (4, SlotValue::I64(4)),
+            (5, SlotValue::I64(5)),
+            (6, SlotValue::I64(6)),
+            (7, SlotValue::I64(7)),
+            (8, SlotValue::I64(8)),
+        ]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        // All entries present.
+        assert_eq!(panel.entries().len(), 8);
+        // Check set of slot indices.
+        let slots: std::collections::HashSet<u16> = panel
+            .entries()
+            .iter()
+            .map(|e| e.slot.get())
+            .collect();
+        assert_eq!(slots.len(), 8);
+        // FINDING 14: The order is undefined (HashMap iteration order).
+    }
+
+    /// FINDING 15 -- LOW: seq truncation to u32::MAX collapses distinct events.
+    ///
+    /// `EventSeq` is a `u64` internally. When it exceeds `u32::MAX`, the
+    /// `u32::try_from(...).unwrap_or(u32::MAX)` silently saturates. Two events
+    /// with seq `u32::MAX + 1` and `u32::MAX + 2` would both have
+    /// `event_seq: u32::MAX`, making them indistinguishable in the panel.
+    #[test]
+    fn blackhat_seq_truncation_collapses_events() {
+        let over_a = u64::from(u32::MAX) + 1;
+        let over_b = u64::from(u32::MAX) + 2;
+
+        let event_a = make_slot_written_event(1, SlotValue::I64(1), over_a);
+        let event_b = make_slot_written_event(2, SlotValue::I64(2), over_b);
+
+        let panel_a = SlotDiffPanel::from_event(&event_a, &HashMap::new());
+        let panel_b = SlotDiffPanel::from_event(&event_b, &HashMap::new());
+
+        // Both panels report the same event_seq.
+        assert_eq!(panel_a.event_seq(), u32::MAX);
+        assert_eq!(panel_b.event_seq(), u32::MAX);
+        assert_eq!(
+            panel_a.event_seq(), panel_b.event_seq(),
+            "FINDING 15: distinct u64 seqs collapse to same u32::MAX"
+        );
+    }
+
+    /// FINDING 16 -- LOW: format_entry allocates a new string for every call,
+    /// and creates the slot_label via format! every time. This is not a bug but
+    /// a performance consideration for hot paths with many entries.
+    #[test]
+    fn blackhat_format_entry_all_variants_no_panic() {
+        let entries = vec![
+            DiffEntry {
+                slot: SlotIdx::new(0),
+                diff: SlotDiff::Created(String::from("Null")),
+            },
+            DiffEntry {
+                slot: SlotIdx::new(1),
+                diff: SlotDiff::Modified {
+                    old: String::from("I64(1)"),
+                    new: String::from("I64(2)"),
+                },
+            },
+            DiffEntry {
+                slot: SlotIdx::new(2),
+                diff: SlotDiff::Deleted(String::from("Bool(true)")),
+            },
+            DiffEntry {
+                slot: SlotIdx::new(3),
+                diff: SlotDiff::TaintChanged {
+                    old: String::from("Clean"),
+                    new: String::from("Secret"),
+                },
+            },
+        ];
+        for entry in &entries {
+            let formatted = SlotDiffPanel::format_entry(entry);
+            assert!(
+                !formatted.is_empty(),
+                "FINDING 16: format_entry produced empty string for {:?}",
+                entry.diff
+            );
+        }
+    }
+
+    /// FINDING 17 -- LOW: from_event returns default (empty, seq=0) for
+    /// non-SlotWrittenEvent variants, losing the event's seq number.
+    ///
+    /// When a non-slot event (e.g. StepStarted) is passed to `from_event`,
+    /// the method returns `Self::new()` which has `event_seq: 0`. The
+    /// event's actual seq number is discarded. This makes it impossible
+    /// to correlate the empty panel with the original event.
+    #[test]
+    fn blackhat_from_event_non_slot_event_loses_seq() {
+        let event = make_step_started_event(42);
+        let panel = SlotDiffPanel::from_event(&event, &HashMap::new());
+        assert_eq!(
+            panel.event_seq(), 0,
+            "FINDING 17: non-slot event seq (42) is lost, reported as 0"
+        );
+    }
 }

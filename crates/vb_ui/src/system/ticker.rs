@@ -517,4 +517,94 @@ mod tests {
             }
         }
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: EventTicker::push uses VecDeque::pop_front() for eviction
+    /// which is O(1), but VecDeque::push_back may reallocate if the deque
+    /// exceeds its capacity. With capacity set very large, a rapid burst of
+    /// events could cause a large allocation spike. More importantly, if
+    /// capacity is set to usize::MAX, the push never evicts and memory grows
+    /// without bound. There is no upper bound on the capacity parameter.
+    #[test]
+    fn blackhat_huge_capacity_allows_unbounded_growth() {
+        let mut ticker = EventTicker::new(usize::MAX);
+        // Push many events -- none are evicted.
+        for i in 0..1000u64 {
+            ticker.push(make_event(i, 0, TickerEventKind::StepStarted));
+        }
+        assert_eq!(ticker.events().len(), 1000);
+        // This demonstrates that a misconfigured capacity allows unbounded
+        // memory growth. The API has no guard against this.
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: TickerFilters stores a HashSet<TickerEventKind> which is
+    /// heap-allocated. Each set_kind_filter call replaces the entire set.
+    /// If called frequently with large sets, this creates allocation pressure.
+    /// Additionally, the kinds HashSet grows on each insert and is never
+    /// shrunk, potentially holding excess capacity.
+    #[test]
+    fn blackhat_kind_filter_allocation_pattern() {
+        let mut ticker = EventTicker::new(10);
+        // Set and reset filters repeatedly.
+        for _ in 0..100 {
+            let mut kinds = HashSet::new();
+            kinds.insert(TickerEventKind::RunFailed);
+            kinds.insert(TickerEventKind::ActionFailed);
+            ticker.set_kind_filter(kinds);
+            ticker.clear_filters();
+        }
+        // Verify filters are cleared after the loop.
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        assert_eq!(ticker.filtered_events().len(), 1);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: TickerEvent::seq is u64 but is never validated or used
+    /// for ordering. Events with non-monotonic seq values (e.g., seq going
+    /// backwards) are accepted without warning. The seq field is purely
+    /// informational and carries no ordering guarantee within the buffer.
+    #[test]
+    fn blackhat_non_monotonic_seq_accepted_without_warning() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(TickerEvent {
+            seq: 100,
+            shard: 0,
+            run_id: None,
+            kind: TickerEventKind::RunAccepted,
+            summary: "future".to_string(),
+        });
+        ticker.push(TickerEvent {
+            seq: 50,
+            shard: 0,
+            run_id: None,
+            kind: TickerEventKind::StepStarted,
+            summary: "past".to_string(),
+        });
+        // Both accepted; no ordering enforcement.
+        assert_eq!(ticker.events().len(), 2);
+        assert_eq!(ticker.events()[0].seq, 100);
+        assert_eq!(ticker.events()[1].seq, 50);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: filtered_events() allocates a Vec of references every call.
+    /// For high-frequency polling (e.g., per-frame at 60fps), this creates
+    /// continuous allocation pressure. The returned Vec is short-lived but
+    /// causes heap churn.
+    #[test]
+    fn blackhat_filtered_events_allocates_each_call() {
+        let mut ticker = EventTicker::new(100);
+        for i in 0..50 {
+            ticker.push(make_event(i, u32::try_from(i % 3).unwrap_or(u32::MAX), TickerEventKind::StepStarted));
+        }
+        // Call filtered_events multiple times -- each allocates a new Vec.
+        let f1 = ticker.filtered_events();
+        let f2 = ticker.filtered_events();
+        assert_eq!(f1.len(), f2.len());
+    }
 }

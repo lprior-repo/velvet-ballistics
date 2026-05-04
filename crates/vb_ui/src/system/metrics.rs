@@ -352,4 +352,154 @@ mod tests {
         assert_eq!(metrics.total_action_queue_depth, 0);
         assert_eq!(metrics.overall_health, HealthStatus::Healthy);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: HIGH
+    /// DESCRIPTION: SystemMetrics::recompute() uses Iterator::sum() to
+    /// accumulate u32 shard totals (lines 114-116). The default Sum<u32>
+    /// implementation uses wrapping arithmetic on overflow. With two shards
+    /// each having active_runs = u32::MAX / 2 + 1, the sum wraps to a small
+    /// value instead of saturating. This silently produces wrong totals,
+    /// potentially hiding system overload from operators.
+    #[test]
+    fn blackhat_recompute_u32_sum_wraps_on_overflow() {
+        let half = u32::MAX / 2 + 1; // 2_147_483_648
+        let mut metrics = SystemMetrics {
+            shards: vec![
+                ShardDisplay {
+                    shard_id: 0,
+                    active_runs: half,
+                    ready_queue_depth: half,
+                    action_queue_depth: half,
+                    timer_count: 0,
+                    frame_pool_free: 100,
+                    frame_pool_total: 100,
+                    trace_ring_fill_pct: 0.0,
+                    steps_per_sec: 0.0,
+                    tick_duration_p95: Duration::ZERO,
+                    health: HealthStatus::Healthy,
+                },
+                ShardDisplay {
+                    shard_id: 1,
+                    active_runs: half,
+                    ready_queue_depth: half,
+                    action_queue_depth: half,
+                    timer_count: 0,
+                    frame_pool_free: 100,
+                    frame_pool_total: 100,
+                    trace_ring_fill_pct: 0.0,
+                    steps_per_sec: 0.0,
+                    tick_duration_p95: Duration::ZERO,
+                    health: HealthStatus::Healthy,
+                },
+            ],
+            total_active_runs: 0,
+            total_ready_queue_depth: 0,
+            total_action_queue_depth: 0,
+            overall_health: HealthStatus::Healthy,
+        };
+        metrics.recompute();
+        // BUG: sum wraps! half + half = 2^32 which wraps to 0 in debug
+        // and is UB-adjacent in release (though Rust defines it as wrapping).
+        // The total should be ~u32::MAX but actually wraps.
+        let expected_total = half.saturating_add(half); // = u32::MAX
+        // NOTE: This test DOCUMENTS the wrapping behavior. The sum() call
+        // wraps to 0 instead of saturating to u32::MAX.
+        assert_ne!(
+            metrics.total_active_runs, expected_total,
+            "recompute uses wrapping sum -- this test documents the bug"
+        );
+        // The actual wrapped value:
+        assert_eq!(
+            metrics.total_active_runs, 0,
+            "wrapping: {} + {} = {} (should be {})",
+            half, half, metrics.total_active_runs, expected_total
+        );
+    }
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: ShardDisplay::from(&ShardMetrics) computes pool_used_ratio
+    /// as (total - free) / total using f64. If frame_pool_free > frame_pool_total
+    /// (inconsistent data from IPC), the subtraction saturates to 0, hiding the
+    /// anomaly. The health classification silently returns Healthy even though
+    /// the data is corrupt.
+    #[test]
+    fn blackhat_shard_display_free_exceeds_total_silently_healthy() {
+        let ipc_shard = ShardMetrics {
+            shard_id: 0,
+            active_runs: 50,
+            ready_queue_depth: 100,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 200, // MORE than total!
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 50.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let display = ShardDisplay::from(&ipc_shard);
+        // saturating_sub: 100 - 200 = 0, ratio = 0.0 -> Healthy
+        // But this is clearly an invalid state (free > total).
+        assert_eq!(
+            display.health,
+            HealthStatus::Healthy,
+            "corrupt free > total data is silently classified as Healthy"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: queue_health uses f64::from(depth) / f64::from(max) for
+    /// ratio computation. While f64 can exactly represent all u32 values, the
+    /// threshold comparison `ratio >= 0.8` uses floating-point. For most values
+    /// this is fine, but the boundary cases should be exact. Testing shows that
+    /// 4/5 = 0.8 is exact in f64, so the boundary is correct for small values.
+    #[test]
+    fn blackhat_queue_health_exact_boundary_check() {
+        // depth=4, max=5 -> ratio = 0.8 exactly -> Critical
+        assert_eq!(queue_health(4, 5), HealthStatus::Critical);
+        // depth=3, max=5 -> ratio = 0.6 -> Degraded
+        assert_eq!(queue_health(3, 5), HealthStatus::Degraded);
+        // depth=2, max=5 -> ratio = 0.4 -> Healthy
+        assert_eq!(queue_health(2, 5), HealthStatus::Healthy);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: SystemMetrics::recompute health check uses iter().any()
+    /// which is correct but doesn't account for the interaction between the
+    /// shard-level health (from ShardDisplay::from) and the recompute-level
+    /// health. If a shard's health is stale (set before new queue data arrived),
+    /// recompute propagates the stale health to overall_health without
+    /// recalculating per-shard health from current queue depths.
+    #[test]
+    fn blackhat_recompute_propagates_stale_shard_health() {
+        let mut metrics = SystemMetrics {
+            shards: vec![ShardDisplay {
+                shard_id: 0,
+                active_runs: 0,
+                ready_queue_depth: 0,
+                action_queue_depth: 0,
+                timer_count: 0,
+                frame_pool_free: 100,
+                frame_pool_total: 100,
+                trace_ring_fill_pct: 0.0,
+                steps_per_sec: 0.0,
+                tick_duration_p95: Duration::ZERO,
+                health: HealthStatus::Critical, // Stale: set externally
+            }],
+            total_active_runs: 0,
+            total_ready_queue_depth: 0,
+            total_action_queue_depth: 0,
+            overall_health: HealthStatus::Healthy,
+        };
+        metrics.recompute();
+        // recompute doesn't recalculate per-shard health, just propagates it.
+        assert_eq!(
+            metrics.overall_health,
+            HealthStatus::Critical,
+            "stale Critical health propagates to overall without recalculation"
+        );
+    }
 }

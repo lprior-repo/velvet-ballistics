@@ -2093,4 +2093,211 @@ mod tests {
         };
         assert_eq!(unsafe_panel.replay_risk_level(), ReplayRisk::Unsafe);
     }
+
+    // =========================================================================
+    // BLACKHAT security-focused tests
+    // =========================================================================
+
+    /// BLACKHAT_durability_step_id_vs_array_index [MEDIUM]:
+    /// collect_do_node_indices collects array indices, but
+    /// check_reconciliation_risk compares node.id (StepIdx) against
+    /// retry_targets (which contain StepIdx values from RetryCheck.body).
+    /// These are different: array index vs step ID. When step IDs are
+    /// non-sequential or out of order, the mapping is incorrect.
+    #[test]
+    fn blackhat_durability_step_id_not_array_index() {
+        let nodes = vec![
+            // Array index 0: RetryCheck targeting step 5
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(5),
+                    exhausted: StepIdx::new(10),
+                },
+            ),
+            // Array index 1: Do node with step ID 1 (NOT targeted)
+            make_do_node(1, 10, 0),
+            // Array index 2: Do node with step ID 5 (targeted by RetryCheck)
+            make_do_node(5, 20, 1),
+            make_node(
+                10,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        let Some(recon) = recon else { return };
+        // Only the Do node with step ID 5 should be flagged (not step ID 1).
+        assert!(!recon.passed, "step 5 should be flagged");
+        assert!(
+            recon.detail.contains("step(s) 5"),
+            "got: {:?}",
+            recon.detail
+        );
+        assert!(
+            !recon.detail.contains("step(s) 1"),
+            "step 1 should NOT be flagged, got: {:?}",
+            recon.detail
+        );
+    }
+
+    /// BLACKHAT_durability_journal_completion_identical [MEDIUM]:
+    /// check_journal_before_dispatch and check_completion_before_mutation
+    /// perform the exact same check (on_error.is_none() on Do nodes).
+    /// This means they always produce the same pass/fail result, making
+    /// LowRisk unreachable from real workflows (fail_count is always 0 or >=2).
+    #[test]
+    fn blackhat_durability_journal_and_completion_always_agree() {
+        // Case 1: No on_error handlers -> both fail.
+        let unsafe_nodes = vec![
+            make_do_node(0, 1, 0),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&unsafe_nodes);
+        let journal = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        let completion = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "completion_before_mutation");
+        let Some(j) = journal else { return };
+        let Some(c) = completion else { return };
+        assert_eq!(j.passed, c.passed, "journal and completion should always agree (case 1)");
+
+        // Case 2: All on_error handlers -> both pass.
+        let safe_nodes = vec![
+            make_do_node_with_error_handler(0, 1, 0, 5),
+            make_node(5, CompiledNodeKind::Nop),
+        ];
+        let safe_panel = DurabilityPanel::from_workflow(&safe_nodes);
+        let j2 = safe_panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        let c2 = safe_panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "completion_before_mutation");
+        let Some(j2) = j2 else { return };
+        let Some(c2) = c2 else { return };
+        assert_eq!(j2.passed, c2.passed, "journal and completion should always agree (case 2)");
+    }
+
+    /// BLACKHAT_durability_timeout_coverage_no_on_error_in_error_handler_body [LOW]:
+    /// A Do node that is the body of an ErrorHandler but has no on_error handler
+    /// should still pass timeout_coverage (ErrorHandler provides the coverage).
+    /// This test verifies the ErrorHandler body check works.
+    #[test]
+    fn blackhat_durability_error_handler_body_passes_timeout() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::ErrorHandler {
+                    body: StepIdx::new(1),
+                    handler: StepIdx::new(2),
+                    error_slot: None,
+                },
+            ),
+            make_do_node(1, 10, 0), // No on_error, but inside ErrorHandler body
+            make_node(2, CompiledNodeKind::Nop),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let timeout = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "timeout_coverage");
+        let Some(t) = timeout else { return };
+        assert!(
+            t.passed,
+            "Do inside ErrorHandler body should pass timeout coverage"
+        );
+    }
+
+    /// BLACKHAT_durability_from_workflow_distinguishes_empty_from_no_do [LOW]:
+    /// Both an empty workflow and a workflow with no Do nodes produce passing
+    /// panels, but with different detail messages. This test verifies the
+    /// distinction is maintained.
+    #[test]
+    fn blackhat_durability_empty_vs_no_do_nodes_different_details() {
+        let empty_panel = DurabilityPanel::from_workflow(&[]);
+        let no_do_nodes = vec![
+            make_node(0, CompiledNodeKind::Nop),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let no_do_panel = DurabilityPanel::from_workflow(&no_do_nodes);
+
+        // Empty panel should reference "empty workflow".
+        let empty_journal = empty_panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        let Some(ej) = empty_journal else { return };
+        assert!(ej.detail.contains("empty workflow"));
+
+        // No-Do panel should reference "no Do nodes".
+        let no_do_journal = no_do_panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        let Some(nj) = no_do_journal else { return };
+        assert!(nj.detail.contains("no Do nodes"));
+    }
+
+    /// BLACKHAT_durability_retry_check_target_not_a_do_node [LOW]:
+    /// A RetryCheck targeting a non-Do node (e.g., Nop) should not flag
+    /// reconciliation_risk because only Do nodes are checked.
+    #[test]
+    fn blackhat_durability_retry_check_on_nop_no_risk() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1), // targets Nop, not Do
+                    exhausted: StepIdx::new(2),
+                },
+            ),
+            make_node(1, CompiledNodeKind::Nop),
+            make_node(
+                2,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        let Some(r) = recon else { return };
+        assert!(
+            r.passed,
+            "RetryCheck targeting Nop should not flag reconciliation risk"
+        );
+    }
 }

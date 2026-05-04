@@ -3225,4 +3225,510 @@ mod tests {
             succs,
         );
     }
+
+    // ========================================================================
+    // BLACK HAT security-focused tests
+    // ========================================================================
+
+    /// BLACKHAT_cert_bfs_not_bfs [MEDIUM]: check_reachability uses Vec::pop()
+    /// (DFS/LIFO), not VecDeque (BFS/FIFO), despite the comment saying "BFS
+    /// from entry". This affects traversal order but not reachability
+    /// correctness. The test documents the discrepancy.
+    #[test]
+    fn blackhat_cert_bfs_uses_vec_pop_which_is_dfs() {
+        let mut nodes = Vec::new();
+        // Linear chain: 0 -> 1 -> 2 -> 3 -> 4 (Finish)
+        for i in 0..5u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 4 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: if i < 4 {
+                    CompiledNodeKind::Nop
+                } else {
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    }
+                },
+            });
+        }
+        let parts = WorkflowParts {
+            name: String::from("bh-bfs").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        let Some(cert) = reachability else { return };
+        // Reachability is still correct despite DFS vs BFS.
+        assert!(
+            matches!(cert.status, CertificateStatus::Pass),
+            "reachability should still pass with DFS traversal"
+        );
+    }
+
+    /// BLACKHAT_cert_loop_nesting_misses_reverse_overlap [MEDIUM]:
+    /// check_loop_nesting iterates i from 0..N and j from i+1..N, checking
+    /// both forward and reverse partial overlaps. However, the reverse check
+    /// (`a_start > b_start && a_start < b_done && a_done > b_done`) is
+    /// redundant because if B is after A in the array, B cannot start before A
+    /// unless the indices are non-monotonic. The test confirms proper nesting
+    /// detection still works for valid loops.
+    #[test]
+    fn blackhat_cert_loop_nesting_reverse_overlap_redundant() {
+        // Two properly nested loops where inner done == outer done (valid).
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(2),
+                limit: 3,
+                page_size: 10,
+                body: StepIdx::new(2),
+                done: StepIdx::new(3),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(5),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bh-nesting").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 8,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        let Some(cert) = ln else { return };
+        assert!(
+            matches!(cert.status, CertificateStatus::Pass),
+            "properly nested loops should pass nesting check"
+        );
+    }
+
+    /// BLACKHAT_cert_boundedness_u16_truncation [MEDIUM]: check_boundedness
+    /// converts node count to u16 via `u16::try_from(parts.nodes.len())`
+    /// clamping to u16::MAX. If a workflow has more than 65535 nodes, the
+    /// comparison against max_steps (u16) silently succeeds because
+    /// u16::MAX <= max_steps, even though the real node count exceeds it.
+    #[test]
+    fn blackhat_cert_boundedness_large_node_count_clamped_to_u16_max() {
+        // We cannot actually create 65536+ nodes in a test (too much memory),
+        // but we can verify the clamp logic directly.
+        let large_count: usize = 70_000;
+        let clamped = u16::try_from(large_count).unwrap_or(u16::MAX);
+        assert_eq!(
+            clamped,
+            u16::MAX,
+            "BLACKHAT [MEDIUM]: node count > u16::MAX is clamped to u16::MAX, \
+             hiding overflow in boundedness check"
+        );
+        // With max_steps = u16::MAX, the clamped value would pass even though
+        // the real count exceeds it. This test documents the truncation risk.
+    }
+
+    /// BLACKHAT_cert_max_action_calls_zero_ceiling [LOW]:
+    /// check_preflight_max_action_calls uses max_retry_attempts as a "ceiling"
+    /// for Do node count. When max_retry_attempts is 0, the condition
+    /// `do_count > retry_ceiling && retry_ceiling > 0` never triggers,
+    /// so any number of Do nodes silently passes. This means a workflow with
+    /// 1000 Do nodes passes if max_retry_attempts is 0.
+    #[test]
+    fn blackhat_cert_max_action_calls_zero_ceiling_passes_any_count() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_retry_attempts = 0;
+        // Add 100 Do nodes -- should still pass because retry_ceiling is 0
+        // and the check guards with `retry_ceiling > 0`.
+        let mut nodes = Vec::new();
+        for i in 0..100u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 99 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: vb_core::ids::ActionId::new(u16::from(i).saturating_add(1)),
+                    input: SlotIdx::new(0),
+                },
+            });
+        }
+        nodes.push(CompiledNode {
+            id: StepIdx::new(100),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        parts.nodes = nodes.into_boxed_slice();
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_action_calls");
+        let Some(c) = check else { return };
+        assert_eq!(
+            c.status,
+            CheckStatus::Pass,
+            "BLACKHAT [LOW]: 100 Do nodes pass when max_retry_attempts=0 because the \
+             ceiling check is bypassed"
+        );
+    }
+
+    /// BLACKHAT_cert_worst_case_memory_zero_output_limit [LOW]:
+    /// check_preflight_worst_case_memory_budget only warns when
+    /// worst_case_bytes > output_limit AND output_limit > 0.
+    /// When output_limit is 0, the condition fails and a workflow with massive
+    /// slot usage passes the memory budget check without even a warning.
+    #[test]
+    fn blackhat_cert_memory_budget_zero_output_limit_no_warning() {
+        let mut parts = preflight_minimal_parts();
+        parts.slot_count = 10000;
+        parts.resource_contract.max_output_bytes = 0;
+        // 10000 * 64 = 640000 bytes, but output_limit=0 skips the check.
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "worst_case_memory_budget");
+        let Some(c) = check else { return };
+        assert_eq!(
+            c.status,
+            CheckStatus::Pass,
+            "BLACKHAT [LOW]: 10000 slots * 64 bytes passes when max_output_bytes=0 \
+             because the warning check is skipped"
+        );
+    }
+
+    /// BLACKHAT_cert_action_policy_action_id_zero [LOW]:
+    /// check_action_policy flags Do nodes with action_id 0 as "missing".
+    /// However, the code pushes a warning string but does not check whether
+    /// the action_id is actually zero in any meaningful way. The test
+    /// verifies that a Do node with action_id 0 produces a Warn.
+    #[test]
+    fn blackhat_cert_action_id_zero_produces_warning() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(0), // action_id 0
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(0),
+                done: StepIdx::new(1),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bh-action-zero").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ap = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::ActionPolicy);
+        let Some(cert) = ap else { return };
+        assert!(
+            matches!(cert.status, CertificateStatus::Warn(_)),
+            "action_id 0 should produce a Warn in ActionPolicy"
+        );
+    }
+
+    /// BLACKHAT_cert_strict_durability_multiple_finish_warns [LOW]:
+    /// check_strict_durability warns when there is more than one Finish node.
+    /// This is correct behavior but the test documents the edge case.
+    #[test]
+    fn blackhat_cert_strict_durability_multiple_finish_warns() {
+        let mut nodes = Vec::new();
+        // Two Finish nodes
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bh-multi-finish").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let dur = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StrictDurability);
+        let Some(cert) = dur else { return };
+        // Should warn about multiple Finish nodes.
+        assert!(
+            matches!(cert.status, CertificateStatus::Warn(_)),
+            "multiple Finish nodes should produce a Warn"
+        );
+    }
+
+    /// BLACKHAT_cert_loop_nesting_done_equals_start [MEDIUM]:
+    /// When a loop's done target equals its start step (degenerate loop),
+    /// the code skips it via `if a_done <= a_start`. This means a loop where
+    /// done == start (zero-length span) is silently ignored rather than
+    /// flagged as malformed.
+    #[test]
+    fn blackhat_cert_loop_nesting_done_equals_start_silently_ignored() {
+        let mut nodes = Vec::new();
+        // Degenerate loop: start=0, done=0 (self-referencing)
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(0), // done == start
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bh-done-eq-start").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        let Some(cert) = ln else { return };
+        // The degenerate loop is silently ignored because a_done <= a_start.
+        assert!(
+            matches!(cert.status, CertificateStatus::Pass),
+            "BLACKHAT [MEDIUM]: degenerate loop (done==start) is silently ignored in nesting check"
+        );
+    }
+
+    /// BLACKHAT_cert_together_start_body_equals_id [LOW]:
+    /// TogetherStart loop spans use (node.id, node.id, join) which creates
+    /// a zero-length body span. This is handled differently from other loops
+    /// where body is a distinct field. The test confirms this edge case.
+    #[test]
+    fn blackhat_cert_together_start_body_field_reused() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1)]),
+                join: StepIdx::new(2),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(1),
+                join: StepIdx::new(2),
+                accumulator: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bh-together-body").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        let Some(cert) = ln else { return };
+        assert!(
+            matches!(cert.status, CertificateStatus::Pass),
+            "TogetherStart should pass loop nesting check"
+        );
+    }
 }

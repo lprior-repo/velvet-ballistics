@@ -794,4 +794,189 @@ mod tests {
         let slots = graph.tainted_slots();
         assert_eq!(slots, vec![5u32]);
     }
+
+    // =========================================================================
+    // BLACKHAT security-focused tests
+    // =========================================================================
+
+    /// BLACKHAT_taint_propagation_cycle_no_infinite_loop [CONFIRMED-SAFE]:
+    /// A propagation cycle (A -> B -> A) should not cause infinite iteration
+    /// because BFS uses a HashSet for visited tracking.
+    #[test]
+    fn blackhat_taint_propagation_cycle_no_infinite_loop() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 1,
+            via_step: 1,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 1,
+            to_slot: 0, // cycle back to source
+            via_step: 2,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(
+            slots,
+            vec![0u32, 1u32],
+            "cycle should terminate and include both slots"
+        );
+    }
+
+    /// BLACKHAT_taint_propagation_path_to_nonexistent_slot [LOW]:
+    /// propagation_path_to for a slot that exists as a to_slot target but
+    /// has no path back to a source returns an empty vec. The test documents
+    /// this edge case.
+    #[test]
+    fn blackhat_taint_propagation_path_to_unreachable_target() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 5, // not tainted -- no source at slot 5
+            to_slot: 10,
+            via_step: 1,
+        });
+        let path = graph.propagation_path_to(10);
+        assert!(
+            path.is_empty(),
+            "slot 10 is not reachable from any source, path should be empty"
+        );
+    }
+
+    /// BLACKHAT_taint_custom_kind_has_lowest_severity [CONFIRMED-SAFE]:
+    /// Custom taint kinds always have severity 0, lower than all built-in
+    /// kinds. This means they never dominate in highest_severity.
+    #[test]
+    fn blackhat_taint_custom_kind_always_lowest() {
+        let custom = TaintKind::Custom(String::from("important"));
+        assert_eq!(custom.severity_rank(), 0);
+        assert!(
+            custom.severity_rank() < TaintKind::Authentication.severity_rank(),
+            "Custom must be lower than Authentication (rank 1)"
+        );
+    }
+
+    /// BLACKHAT_taint_highest_severity_multiple_same_kind [CONFIRMED-SAFE]:
+    /// When multiple sources have the same highest severity, highest_severity
+    /// returns that kind (the first one found by max_by_key).
+    #[test]
+    fn blackhat_taint_highest_severity_duplicate_kinds() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_source(TaintSource {
+            slot: 1,
+            step: 1,
+            kind: TaintKind::Secret,
+        });
+        graph.add_source(TaintSource {
+            slot: 2,
+            step: 2,
+            kind: TaintKind::Pii,
+        });
+        assert_eq!(graph.highest_severity(), Some(TaintKind::Secret));
+    }
+
+    /// BLACKHAT_taint_propagation_path_to_source_with_no_edges [CONFIRMED-SAFE]:
+    /// A source slot with no outgoing propagation edges returns an empty path
+    /// from propagation_path_to (it is a source, not a propagated target).
+    #[test]
+    fn blackhat_taint_source_with_no_edges_empty_path() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 42,
+            step: 0,
+            kind: TaintKind::Financial,
+        });
+        let path = graph.propagation_path_to(42);
+        assert!(
+            path.is_empty(),
+            "source slot with no propagation edges should return empty path"
+        );
+    }
+
+    /// BLACKHAT_taint_propagation_diamond_same_slot_reachable_twice [LOW]:
+    /// In a diamond where two different source slots propagate to the same
+    /// target slot, propagation_path_to returns the shortest path from one
+    /// of the sources. The test documents that only one path is returned.
+    #[test]
+    fn blackhat_taint_diamond_same_target_from_two_sources() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 0,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_source(TaintSource {
+            slot: 10,
+            step: 1,
+            kind: TaintKind::Pii,
+        });
+        // Both propagate to slot 5.
+        graph.add_propagation(TaintPropagation {
+            from_slot: 0,
+            to_slot: 5,
+            via_step: 2,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 10,
+            to_slot: 5,
+            via_step: 3,
+        });
+        let path = graph.propagation_path_to(5);
+        // Should return a single-edge path from one of the sources.
+        assert_eq!(path.len(), 1);
+        // The path should come from one of the two sources.
+        assert!(
+            path[0].from_slot == 0 || path[0].from_slot == 10,
+            "path should originate from slot 0 or slot 10"
+        );
+    }
+
+    /// BLACKHAT_taint_large_slot_count_still_correct [CONFIRMED-SAFE]:
+    /// Tainted slots are sorted and deduplicated regardless of how many
+    /// slots are involved. This test uses a larger graph to confirm.
+    #[test]
+    fn blackhat_taint_large_slot_count_sorted_deduplicated() {
+        let mut graph = TaintGraph::new();
+        graph.add_source(TaintSource {
+            slot: 50,
+            step: 0,
+            kind: TaintKind::Secret,
+        });
+        graph.add_source(TaintSource {
+            slot: 10,
+            step: 1,
+            kind: TaintKind::Pii,
+        });
+        graph.add_source(TaintSource {
+            slot: 10, // duplicate source slot
+            step: 2,
+            kind: TaintKind::Financial,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 50,
+            to_slot: 100,
+            via_step: 3,
+        });
+        graph.add_propagation(TaintPropagation {
+            from_slot: 100,
+            to_slot: 200,
+            via_step: 4,
+        });
+        let slots = graph.tainted_slots();
+        assert_eq!(slots, vec![10u32, 50, 100, 200]);
+    }
 }

@@ -641,4 +641,129 @@ mod tests {
         assert_eq!(s.p99_us, 1000);
         assert_eq!(s.sample_count, 10);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: SegmentAccumulator::record uses saturating_add for
+    /// total_us, which means the running sum silently clamps at u64::MAX.
+    /// After saturation, avg_us = total_us / total_count becomes increasingly
+    /// inaccurate. An attacker who records many large durations can cause the
+    /// average to under-report actual latency, hiding performance degradation.
+    #[test]
+    fn blackhat_total_us_saturation_corrupts_average() {
+        let mut p = LatencyProfile::new();
+        // Record two samples that sum to just above u64::MAX.
+        p.record("lat-sat", u64::MAX / 2);
+        p.record("lat-sat", u64::MAX / 2);
+        p.record("lat-sat", u64::MAX / 2);
+        // total_us = MAX/2 + MAX/2 + MAX/2 saturates to u64::MAX
+        // avg_us = u64::MAX / 3 which is ~1/3 of the true sum (1.5 * MAX)
+        let segs = p.segments();
+        let s = &segs[0];
+        // The true average is (MAX/2 * 3) / 3 = MAX/2
+        // The reported average is MAX / 3 which is significantly less than MAX/2
+        let true_avg = u64::MAX / 2; // would be correct without saturation
+        assert!(
+            s.avg_us < true_avg,
+            "saturated avg ({}) should be less than true avg ({})",
+            s.avg_us,
+            true_avg
+        );
+        // avg_us should be u64::MAX / 3 after saturation
+        assert_eq!(s.avg_us, u64::MAX / 3);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: SampleRing::push uses checked_rem(self.buf.len()) which
+    /// returns None when buf.len() is 0, falling back to head = 0. If a ring
+    /// is somehow constructed with zero capacity, push becomes a no-op write
+    /// that silently drops samples while incrementing len up to 0 (guarded by
+    /// the `if self.len < self.buf.len()` check). This is correctly guarded
+    /// in practice since SampleRing::new always creates a non-empty vec, but
+    /// there's no explicit invariant enforcement.
+    #[test]
+    fn blackhat_zero_capacity_ring_silently_drops_samples() {
+        // Construct a ring with zero capacity via the internal type.
+        let mut ring = SampleRing::new(0);
+        ring.push(42);
+        // buf.len() is 0, so checked_rem returns None, head stays 0.
+        // The get_mut at index 0 on an empty vec does nothing.
+        // len check: 0 < 0 is false, so len stays 0.
+        assert!(ring.is_empty(), "zero-capacity ring should remain empty");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: LatencyProfile::record performs a linear scan
+    /// (iter_mut().find()) over all accumulators to find a matching label.
+    /// With many unique labels, this becomes O(n) per insertion, making
+    /// total insertion cost O(n^2). Not a correctness issue but a performance
+    /// concern for high-cardinality label spaces.
+    #[test]
+    fn blackhat_many_labels_linear_scan_performance_concern() {
+        let mut p = LatencyProfile::new();
+        // Create 1000 unique labels -- each insertion scans all existing labels.
+        for i in 0..1000u64 {
+            let label: &'static str = Box::leak(format!("label_{i}").into_boxed_str());
+            p.record(label, 100);
+        }
+        assert_eq!(p.segments().len(), 1000);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The min_us field is initialized to u64::MAX and only
+    /// updated when a strictly smaller value is recorded. If total_count
+    /// saturates (very unlikely with u64), the min remains accurate, but
+    /// the percentile computation from the ring buffer could diverge from
+    /// the true percentile if the ring has evicted the relevant samples.
+    /// This is by design (ring is a window), but min/max are global while
+    /// percentiles are windowed -- potential confusion.
+    #[test]
+    fn blackhat_min_max_global_while_percentiles_are_windowed() {
+        let mut p = LatencyProfile::new();
+        // Record RING_CAPACITY + 10 values from 1 to 1034.
+        // Ring retains only the last 1024 values: 11..=1034.
+        for v in 1..=(RING_CAPACITY as u64 + 10) {
+            p.record("windowed", v);
+        }
+        let segs = p.segments();
+        let s = &segs[0];
+        // min/max reflect ALL samples globally.
+        assert_eq!(s.min_us, 1, "min should reflect global minimum");
+        assert_eq!(s.max_us, 1024 + 10, "max should reflect global maximum");
+        // But p50 reflects only the window 11..=1034.
+        // p50 of 1024 values: ceil(50/100 * 1024) - 1 = 511
+        // sorted[511] = 11 + 511 = 522
+        assert_eq!(s.p50_us, 522, "p50 should reflect windowed data, not global");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The percentile function uses nearest-rank interpolation.
+    /// With pct=0, rank = 0, idx = max(0-1, 0) = 0 via saturating_sub. So
+    /// percentile(sorted, 0) returns the minimum element. This is correct but
+    /// worth documenting -- pct=0 does not return an error or special value.
+    #[test]
+    fn blackhat_percentile_zero_returns_minimum_element() {
+        let sorted: &[u64] = &[10, 20, 30, 40, 50];
+        assert_eq!(percentile(sorted, 0), 10, "pct=0 should return minimum");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: LatencyProfile::segments() creates a new scratch buffer
+    /// for each call but uses &self, not &mut self. This is semantically clean
+    /// but means every call to segments() allocates. The slowest_segment()
+    /// method calls segments() internally, so computing both slowest_segment()
+    /// and total_avg_us() allocates scratch twice.
+    #[test]
+    fn blackhat_segments_allocates_scratch_per_call() {
+        let mut p = LatencyProfile::new();
+        p.record("a", 100);
+        p.record("b", 200);
+        // Call segments twice -- each allocates its own scratch.
+        let segs1 = p.segments();
+        let segs2 = p.segments();
+        assert_eq!(segs1, segs2, "repeated calls should produce identical results");
+    }
 }

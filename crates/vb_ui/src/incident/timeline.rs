@@ -871,4 +871,233 @@ mod tests {
         assert_eq!(cloned.color, entry.color);
         assert_eq!(cloned.replay_safe, entry.replay_safe);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// FINDING: from_entries() uses first/last entries to derive earliest_us/latest_us
+    /// but does NOT sort the entries. If called with unsorted entries (e.g., from
+    /// manual construction), the earliest/latest will be wrong. from_records()
+    /// sorts but from_entries() does not. Currently from_entries is only called
+    /// from filter methods which preserve sort order, but it's a latent invariant bug.
+    #[test]
+    fn blackhat_from_entries_does_not_sort_so_earliest_latest_may_be_wrong() {
+        // Construct entries with non-monotonic timestamps
+        let _entries = vec![
+            TimelineEntry {
+                timestamp_us: 5_000_000, run_id: 1, step: 0,
+                severity: IncidentSeverity::Critical, failure_code: FailureCode::TaintLeak,
+                label: String::from("late"), color: [0.0; 4], replay_safe: true,
+            },
+            TimelineEntry {
+                timestamp_us: 1_000_000, run_id: 2, step: 0,
+                severity: IncidentSeverity::Info, failure_code: FailureCode::ActionTimeout,
+                label: String::from("early"), color: [0.0; 4], replay_safe: true,
+            },
+            TimelineEntry {
+                timestamp_us: 3_000_000, run_id: 3, step: 0,
+                severity: IncidentSeverity::Warning, failure_code: FailureCode::ActionTimeout,
+                label: String::from("middle"), color: [0.0; 4], replay_safe: true,
+            },
+        ];
+        // from_entries is private, but we can test via from_records + filter
+        // which calls from_entries. The sort order from from_records is preserved
+        // through filtering, so in practice this is safe. But we verify:
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 5_000_000),
+            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
+            make_record(3, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 3_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        // from_records sorts, so entries are in timestamp order
+        assert_eq!(timeline.earliest_us, 1_000_000, "earliest is the smallest timestamp");
+        assert_eq!(timeline.latest_us, 5_000_000, "latest is the largest timestamp");
+        // filter preserves sort order, so from_entries is safe here
+        let filtered = timeline.filter_by_severity(IncidentSeverity::Info);
+        assert_eq!(filtered.earliest_us, 1_000_000);
+        assert_eq!(filtered.latest_us, 1_000_000);
+    }
+
+    /// FINDING: duration_ms() divides by 1000 which truncates sub-millisecond
+    /// precision. If latest_us and earliest_us differ by less than 1000us (1ms),
+    /// duration_ms returns 0 even though there is a non-zero time span.
+    #[test]
+    fn blackhat_duration_ms_truncates_sub_millisecond_precision() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 100),
+            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 999),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        // Difference is 899us = 0.899ms, truncated to 0
+        assert_eq!(timeline.duration_ms(), 0, "sub-millisecond duration truncated to 0");
+        // The actual span is 899 microseconds, lost in the ms conversion
+    }
+
+    /// FINDING: time_label() uses integer division throughout. For very large
+    /// timestamps (near u64::MAX), the hours value could be enormous. The
+    /// format string "{:02}" does not limit the field width, so hours could
+    /// display as a very long number (e.g., thousands of digits).
+    #[test]
+    fn blackhat_time_label_very_large_timestamp_hours_unbounded() {
+        let entry = TimelineEntry {
+            timestamp_us: u64::MAX,
+            run_id: 0, step: 0,
+            severity: IncidentSeverity::Info,
+            failure_code: FailureCode::ActionTimeout,
+            label: String::new(), color: [0.0; 4], replay_safe: true,
+        };
+        let label = entry.time_label();
+        // u64::MAX microseconds = ~1.8446744e19 us
+        // hours = (u64::MAX / 1000) / 1000 / 60 / 60 = ~5,124,095,770,322 hours
+        // The format "{:02}" only guarantees minimum width, not maximum
+        assert!(!label.is_empty(), "time_label should produce output for u64::MAX");
+        // Hours will be a very large number, not limited to 2 digits
+        assert!(label.len() > 8, "hours field is unbounded for very large timestamps");
+    }
+
+    /// FINDING: time_label() integer arithmetic: total_ms = timestamp_us / 1000.
+    /// For timestamps that are not exact multiples of 1000, the microseconds
+    /// remainder is correctly extracted via total_ms % 1000. But for timestamps
+    /// like 999us (less than 1ms), total_ms = 0, ms = 0, losing the 999us.
+    #[test]
+    fn blackhat_time_label_loses_microseconds_below_millisecond() {
+        let entry = TimelineEntry {
+            timestamp_us: 999, // 0.999ms
+            run_id: 0, step: 0,
+            severity: IncidentSeverity::Info,
+            failure_code: FailureCode::ActionTimeout,
+            label: String::new(), color: [0.0; 4], replay_safe: true,
+        };
+        let label = entry.time_label();
+        // 999us / 1000 = 0ms, so ms portion shows 000
+        assert_eq!(label, "00:00:00.000", "999us is truncated to 0ms in time_label");
+    }
+
+    /// FINDING: filter_by_run and filter_by_severity clone all filtered entries.
+    /// For large timelines with many entries, this could be expensive. No
+    /// correctness issue but a performance concern.
+    #[test]
+    fn blackhat_filter_clones_all_entries() {
+        let records: Vec<IncidentRecord> = (0..1000)
+            .map(|i| make_record(
+                u64::try_from(i).unwrap_or(u64::MAX),
+                0,
+                if i % 2 == 0 { IncidentSeverity::Critical } else { IncidentSeverity::Info },
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                u64::try_from(i * 1_000).unwrap_or(u64::MAX),
+            ))
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        // Filter to half the entries
+        let criticals = timeline.filter_by_severity(IncidentSeverity::Critical);
+        assert_eq!(criticals.entries.len(), 500);
+        // All entries are cloned, consuming memory proportional to filtered count
+        // This is documented behavior but could be a concern for very large timelines
+    }
+
+    /// FINDING: from_records and from_entries both use entries.first().map().unwrap_or(0)
+    /// after checking !entries.is_empty(). The unwrap_or(0) is dead code because
+    /// first() on a non-empty Vec always returns Some. This is a minor code smell.
+    #[test]
+    fn blackhat_from_records_unwrap_or_is_dead_code_for_non_empty() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 5_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        // entries.is_empty() is false, so unwrap_or(0) never fires
+        assert_eq!(timeline.earliest_us, 5_000_000);
+        assert_eq!(timeline.latest_us, 5_000_000);
+    }
+
+    /// FINDING: IncidentTimeline has no maximum capacity. A malicious or buggy
+    /// caller could pass millions of records, causing unbounded memory allocation.
+    #[test]
+    fn blackhat_timeline_has_no_capacity_limit() {
+        // Build a timeline with 10,000 records (moderate size for test speed)
+        let records: Vec<IncidentRecord> = (0..10_000)
+            .map(|i| make_record(
+                u64::try_from(i).unwrap_or(u64::MAX),
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                u64::try_from(i * 100).unwrap_or(u64::MAX),
+            ))
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.entries.len(), 10_000);
+        // No capacity limit enforced
+    }
+
+    /// FINDING: IncidentTimeline earliest_us and latest_us are derived from
+    /// the sorted entries but are NOT updated when entries are modified externally
+    /// (e.g., if entries Vec is mutated). Since entries is pub, this is an
+    /// invariant risk.
+    #[test]
+    fn blackhat_earliest_latest_not_auto_updated_when_entries_mutated() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
+            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 5_000_000),
+        ];
+        let mut timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.earliest_us, 1_000_000);
+        assert_eq!(timeline.latest_us, 5_000_000);
+
+        // Mutate entries directly (fields are pub)
+        timeline.entries.push(TimelineEntry {
+            timestamp_us: 10_000_000, run_id: 3, step: 0,
+            severity: IncidentSeverity::Info, failure_code: FailureCode::ActionTimeout,
+            label: String::new(), color: [0.0; 4], replay_safe: true,
+        });
+        // latest_us is now stale - still 5_000_000 instead of 10_000_000
+        assert_eq!(timeline.latest_us, 5_000_000, "latest_us is stale after direct mutation");
+        assert_eq!(timeline.entries.len(), 3, "but entries has 3 items");
+    }
+
+    /// FINDING: TimelineEntry fields are all pub, including color (f32 array)
+    /// and label (String). This allows external code to set invalid color values
+    /// (outside [0,1] range) or empty labels, violating display invariants.
+    #[test]
+    fn blackhat_timeline_entry_allows_invalid_color_values() {
+        let entry = TimelineEntry {
+            timestamp_us: 0, run_id: 0, step: 0,
+            severity: IncidentSeverity::Info,
+            failure_code: FailureCode::ActionTimeout,
+            label: String::new(),
+            color: [-1.0_f32, 2.0_f32, f32::NAN, f32::INFINITY], // all invalid
+            replay_safe: true,
+        };
+        // No validation - these invalid values are accepted
+        assert!(entry.color[0] < 0.0_f32, "negative color value accepted");
+        assert!(entry.color[1] > 1.0_f32, "color value > 1.0 accepted");
+        assert!(entry.color[2].is_nan(), "NaN color value accepted");
+        assert!(entry.color[3].is_infinite(), "infinite color value accepted");
+    }
+
+    /// FINDING: TimelineEntry::from_record allocates a String for the label
+    /// via format!(). For high-throughput incident streams, this could create
+    /// significant allocation pressure.
+    #[test]
+    fn blackhat_from_record_allocates_label_string() {
+        let record = make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000);
+        let entry = TimelineEntry::from_record(&record);
+        // Verify the label was created (it's always non-empty for valid records)
+        assert!(!entry.label.is_empty());
+        assert!(entry.label.contains("CRIT"));
+    }
+
+    /// FINDING: has_unsafe_replay checks !replay_safe which depends on
+    /// ReplaySafety::is_safe(). Since is_safe() only returns true for Safe,
+    /// both UnsafeSideEffect and Unknown count as unsafe. This is correct
+    /// but worth documenting - Unknown is treated as unsafe.
+    #[test]
+    fn blackhat_has_unsafe_replay_treats_unknown_as_unsafe() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Unknown, 1_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        assert!(timeline.has_unsafe_replay(), "Unknown replay safety is treated as unsafe");
+    }
 }

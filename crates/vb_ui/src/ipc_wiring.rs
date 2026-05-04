@@ -142,7 +142,7 @@ impl IpcAppWiring {
 
     // -- Internal routing ---------------------------------------------------
 
-    fn route_reply(&mut self, reply: IpcReply, app_state: &mut AppState, events: &mut WiringEvents) {
+    pub fn route_reply(&mut self, reply: IpcReply, app_state: &mut AppState, events: &mut WiringEvents) {
         match reply {
             IpcReply::Connected => {
                 app_state.connected = true;

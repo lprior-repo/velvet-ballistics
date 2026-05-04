@@ -388,4 +388,159 @@ mod tests {
             PressureLevel::Critical.color()
         );
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: HIGH
+    /// DESCRIPTION: PressureLevel::from_ratio uses integer cross-multiplication
+    /// with saturating_mul(10) to avoid floating-point. However, for large
+    /// depth values, depth.saturating_mul(10) can saturate to u32::MAX, making
+    /// the comparison unreliable. For depth=429_496_730 (u32::MAX/10 + 1),
+    /// depth*10 = 4_294_967_300 which overflows u32 and saturates to MAX.
+    /// With capacity=2_147_483_647 (u32::MAX/2), cap*8 also saturates.
+    /// Both sides saturate to MAX -> equality -> Critical, but the true ratio
+    /// is ~20% (Normal). This MISCLASSIFIES Normal load as Critical.
+    #[test]
+    fn blackhat_from_ratio_saturation_causes_false_critical() {
+        // depth = u32::MAX / 10 + 1 = 429_496_730
+        // depth * 10 = 4_294_967_300 > u32::MAX -> saturates to u32::MAX
+        // capacity = u32::MAX / 2 = 2_147_483_647
+        // True ratio = 429_496_730 / 2_147_483_647 ~= 0.2 (Normal)
+        // cap_x8 = 2_147_483_647 * 8 -> overflows -> saturates to u32::MAX
+        // depth_x10 (MAX) >= cap_x8 (MAX) is true -> Critical (WRONG!)
+        let depth = u32::MAX / 10 + 1; // 429_496_730 -- triggers depth_x10 saturation
+        let capacity = u32::MAX / 2; // 2_147_483_647 -- triggers cap_x8 saturation
+        let result = PressureLevel::from_ratio(depth, capacity);
+        // The true ratio is ~0.2, should be Normal.
+        // But due to saturation, both sides equal u32::MAX.
+        assert_ne!(
+            result,
+            PressureLevel::Normal,
+            "BUG: ~20% utilization classified as non-Normal due to mul saturation"
+        );
+        assert_eq!(
+            result,
+            PressureLevel::Critical,
+            "saturated comparison makes both sides equal -> Critical"
+        );
+    }
+
+    /// SEVERITY: HIGH
+    /// DESCRIPTION: With depth=500_000_000, capacity=1_000_000_000, the true
+    /// ratio is exactly 50% (Warning). But depth_x10 = 5_000_000_000 which
+    /// saturates to u32::MAX, and cap_x8 = 8_000_000_000 which also saturates
+    /// to u32::MAX. depth_x10 >= cap_x8 is true (both MAX) -> Critical.
+    /// This misclassifies a 50% utilization as Critical.
+    #[test]
+    fn blackhat_from_ratio_medium_values_boundary() {
+        // depth=500_000_000, capacity=1_000_000_000 -> true ratio = 50%
+        // depth_x10 = 5_000_000_000 -> saturates to u32::MAX
+        // cap_x8 = 8_000_000_000 -> saturates to u32::MAX
+        // depth_x10 >= cap_x8: MAX >= MAX -> true -> Critical (WRONG!)
+        let depth = 500_000_000u32;
+        let capacity = 1_000_000_000u32;
+        let result = PressureLevel::from_ratio(depth, capacity);
+        // True ratio is exactly 50%, should be Warning.
+        assert_ne!(
+            result,
+            PressureLevel::Warning,
+            "BUG: 50% ratio misclassified due to mul saturation"
+        );
+        assert_eq!(
+            result,
+            PressureLevel::Critical,
+            "50% is classified as Critical due to saturated cross-multiply"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: QueueSnapshot::frame_pressure computes "used" as
+    /// frame_pool_total.saturating_sub(frame_pool_free). If free > total
+    /// (corrupt data), used = 0, and the pool appears Normal. This silently
+    /// hides data corruption.
+    #[test]
+    fn blackhat_frame_pressure_free_exceeds_total_shows_normal() {
+        let snap = QueueSnapshot {
+            ready_depth: 0,
+            ready_capacity: 100,
+            action_depth: 0,
+            action_capacity: 100,
+            journal_depth: 0,
+            journal_capacity: 100,
+            trace_fill_pct: 10.0,
+            frame_pool_free: 200,  // corrupt: free > total
+            frame_pool_total: 100,
+        };
+        // used = 100.saturating_sub(200) = 0
+        // from_ratio(0, 100) = Normal
+        assert_eq!(
+            snap.frame_pressure(),
+            PressureLevel::Normal,
+            "corrupt free > total silently shows Normal"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: QueueSnapshot::pressure_level iterates through all five
+    /// pool pressures and picks the worst. The logic uses a slightly convoluted
+    /// match pattern that could miss the transition from Warning to Critical
+    /// in certain orders. Testing confirms the logic is correct but the code
+    /// is fragile and could break with refactoring.
+    #[test]
+    fn blackhat_pressure_level_worst_case_propagation() {
+        // Test all combinations of individual pool pressures.
+        let mut snap = QueueSnapshot {
+            ready_depth: 0,
+            ready_capacity: 100,
+            action_depth: 0,
+            action_capacity: 100,
+            journal_depth: 0,
+            journal_capacity: 100,
+            trace_fill_pct: 10.0,
+            frame_pool_free: 50, // 50/100 used = 50% -> Warning
+            frame_pool_total: 100,
+        };
+        assert_eq!(snap.pressure_level(), PressureLevel::Warning);
+
+        // Add a critical pool.
+        snap.ready_depth = 90;
+        snap.ready_capacity = 100;
+        assert_eq!(snap.pressure_level(), PressureLevel::Critical);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The trace_fill_pct field is f32 and could be negative or
+    /// exceed 100.0 (no validation). trace_pressure handles values >= 80 and
+    /// >= 50, but negative values would be classified as Normal. An extremely
+    /// large value (f32::INFINITY) would be Critical. NaN comparisons always
+    /// return false, so NaN would be classified as Normal.
+    #[test]
+    fn blackhat_trace_pressure_handles_nan_and_negative() {
+        let mut snap = QueueSnapshot {
+            ready_depth: 0,
+            ready_capacity: 100,
+            action_depth: 0,
+            action_capacity: 100,
+            journal_depth: 0,
+            journal_capacity: 100,
+            trace_fill_pct: f32::NAN,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+        };
+        // NaN >= 80.0 is false, NaN >= 50.0 is false, so Normal.
+        assert_eq!(
+            snap.trace_pressure(),
+            PressureLevel::Normal,
+            "NaN trace_fill_pct should classify as Normal"
+        );
+
+        snap.trace_fill_pct = -10.0;
+        assert_eq!(
+            snap.trace_pressure(),
+            PressureLevel::Normal,
+            "negative trace_fill_pct should classify as Normal"
+        );
+    }
 }

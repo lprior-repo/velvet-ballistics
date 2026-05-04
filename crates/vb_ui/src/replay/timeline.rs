@@ -1096,4 +1096,229 @@ mod tests {
         assert_eq!(strip.events().get(1).map(|e| e.seq), Some(2));
         assert_eq!(strip.events().get(2).map(|e| e.seq), Some(3));
     }
+
+    // =========================================================================
+    // BLACKHAT security and correctness findings
+    // =========================================================================
+
+    /// FINDING 1 -- MEDIUM: seq truncation silently collapses distinct events.
+    ///
+    /// `from_journal_events` converts the journal's `u64` EventSeq to a `u32`
+    /// via `u32::try_from(...).unwrap_or(u32::MAX)`. Two events with seq
+    /// `u32::MAX + 1` and `u32::MAX + 2` both map to `u32::MAX`, making them
+    /// indistinguishable. The `extend_from_journal` dedup logic uses binary
+    /// search on `seq`, so the second event would be falsely considered a
+    /// duplicate of the first and silently dropped.
+    ///
+    /// Impact: In long-running runs with seq > 4 billion, events at the
+    /// boundary are lost. This is a data-integrity bug.
+    #[test]
+    fn blackhat_seq_truncation_causes_silent_event_loss() {
+        let seq_a = u64::from(u32::MAX) + 1; // 4_294_967_296
+        let seq_b = u64::from(u32::MAX) + 2; // 4_294_967_297
+
+        let mut strip = TimelineStrip::new();
+        strip.extend_from_journal(&[je_run_accepted(seq_a)]);
+        assert_eq!(strip.events().len(), 1);
+
+        // Both seq_a and seq_b truncate to u32::MAX -- the second event is
+        // falsely treated as a duplicate and dropped.
+        strip.extend_from_journal(&[je_step_started(seq_b, 0)]);
+        // BUG: len is 1, should be 2.
+        assert_eq!(
+            strip.events().len(),
+            1,
+            "FINDING 1: seq truncation causes the second event to be silently dropped because both truncate to u32::MAX"
+        );
+        let ev = strip.events().get(0).expect("event at 0");
+        assert_eq!(ev.seq, u32::MAX);
+    }
+
+    /// FINDING 2 -- MEDIUM: cursor_index becomes stale after extend_from_journal
+    /// inserts events before the cursor position.
+    ///
+    /// `extend_from_journal` maintains sorted order by inserting events at the
+    /// correct position via `partition_point`. If an incoming event has a `seq`
+    /// less than the event at the current cursor, the new event is inserted
+    /// *before* the cursor. However, the cursor_index is never adjusted,
+    /// so the cursor now points at the wrong event (shifted by 1).
+    ///
+    /// Impact: After out-of-order extension, the scrubbing cursor highlights
+    /// the wrong event, confusing users during replay inspection.
+    #[test]
+    fn blackhat_cursor_stale_after_out_of_order_insert_before_cursor() {
+        let mut strip = TimelineStrip::new();
+        // Insert seq=10 and seq=30.
+        strip.extend_from_journal(&[je_run_accepted(10), je_run_finished(30)]);
+        // Cursor at seq=30 (index 1).
+        strip.set_cursor(1);
+        assert_eq!(strip.cursor(), Some(1));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(30));
+
+        // Now insert seq=20 -- goes between seq=10 and seq=30.
+        strip.extend_from_journal(&[je_step_started(20, 0)]);
+        // BUG: cursor is still 1, but index 1 is now seq=20, not seq=30.
+        assert_eq!(
+            strip.cursor(),
+            Some(1),
+            "FINDING 2: cursor_index was not adjusted after insertion before it"
+        );
+        // The cursor now points at seq=20 instead of seq=30.
+        let pointed_seq = strip
+            .cursor()
+            .and_then(|i| strip.events().get(i).map(|e| e.seq));
+        assert_eq!(
+            pointed_seq,
+            Some(20),
+            "FINDING 2: cursor now points at wrong event (seq 20 instead of 30)"
+        );
+    }
+
+    /// FINDING 3 -- LOW: timestamp_micros is always 0, making temporal analysis
+    /// impossible.
+    ///
+    /// Both `from_journal_events` and `extend_from_journal` hardcode
+    /// `timestamp_micros: 0` when constructing `TimelineEvent`. The
+    /// `JournalEvent` variants carry a `seq` but not a timestamp field
+    /// accessible from this module, so all timeline events lack temporal
+    /// information. This prevents time-based filtering, duration calculation,
+    /// and temporal ordering validation.
+    #[test]
+    fn blackhat_timestamp_always_zero_prevents_temporal_analysis() {
+        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_run_finished(3)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        for (i, ev) in strip.events().iter().enumerate() {
+            assert_eq!(
+                ev.timestamp_micros, 0,
+                "FINDING 3: timestamp_micros is always 0 at index {i}"
+            );
+        }
+    }
+
+    /// FINDING 4 -- LOW: extend_from_timeline_events does not deduplicate or
+    /// maintain sorted order, creating inconsistency with extend_from_journal.
+    ///
+    /// `extend_from_journal` deduplicates by `seq` and inserts in sorted order,
+    /// but `extend_from_timeline_events` simply appends without any ordering
+    /// or dedup. A caller mixing both methods will end up with a strip that
+    /// has unsorted seq values and potential duplicates, breaking the binary
+    /// search invariant used by `extend_from_journal`.
+    #[test]
+    fn blackhat_extend_timeline_events_breaks_sorted_invariant() {
+        let mut strip = TimelineStrip::new();
+        // Use extend_from_journal to establish sorted order.
+        strip.extend_from_journal(&[je_run_accepted(10), je_run_finished(30)]);
+
+        // Now use extend_from_timeline_events to append events out of order.
+        let out_of_order = vec![
+            make_timeline_event(5, "RunAccepted", None, 0),  // seq < existing
+            make_timeline_event(20, "StepStarted", Some(0), 0), // between existing
+        ];
+        strip.extend_from_timeline_events(&out_of_order);
+
+        // Verify the sorted invariant is broken.
+        let seqs: Vec<u32> = strip.events().iter().map(|e| e.seq).collect();
+        let mut sorted_seqs = seqs.clone();
+        sorted_seqs.sort();
+
+        // FINDING 4: The events are NOT sorted.
+        assert_ne!(
+            seqs, sorted_seqs,
+            "FINDING 4: extend_from_timeline_events breaks sorted invariant"
+        );
+    }
+
+    /// FINDING 5 -- LOW: build_chips converts seq from u32 to u64, losing the
+    /// original u64 seq precision.
+    ///
+    /// `TimelineEvent.seq` is `u32` (already truncated from `u64`), and
+    /// `build_chips` widens it to `u64`. The original full-precision seq is
+    /// lost at construction time. This means the chip cannot reference the
+    /// original journal event when seq > u32::MAX.
+    #[test]
+    fn blackhat_build_chips_cannot_reconstruct_original_seq() {
+        let seq_val = u64::from(u32::MAX) + 1;
+        let journal = vec![je_run_accepted(seq_val)];
+        let strip = TimelineStrip::from_journal_events(&journal);
+        let chips = strip.build_chips();
+
+        let chip = chips.first().expect("chip exists");
+        // The chip shows u32::MAX instead of the original seq.
+        assert_ne!(
+            chip.seq, seq_val,
+            "FINDING 5: chip seq cannot reconstruct the original u64 seq"
+        );
+        assert_eq!(chip.seq, u64::from(u32::MAX));
+    }
+
+    /// FINDING 6 -- LOW: filter_by_kind uses prefix matching which can produce
+    /// false positives.
+    ///
+    /// `filter_by_kind("Action")` matches "ActionScheduled", "ActionCompleted",
+    /// "ActionFailed" -- but would also match any hypothetical event kind that
+    /// starts with "Action" but is not action-related (e.g. "ActionLog" if
+    /// added later). This is a design choice but could lead to unexpected
+    /// results if event kinds are extended without awareness of prefix matching.
+    #[test]
+    fn blackhat_filter_by_kind_prefix_false_positive() {
+        // Demonstrate that a crafted event kind can match unexpectedly.
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunCancelled", None, 0),
+        ];
+        let strip = TimelineStrip { events, cursor_index: None };
+        // "Run" matches both RunAccepted and RunCancelled.
+        let run_indices = strip.filter_by_kind("Run");
+        assert_eq!(run_indices.len(), 2);
+        // An empty prefix matches everything.
+        let all_indices = strip.filter_by_kind("");
+        assert_eq!(
+            all_indices.len(),
+            2,
+            "FINDING 6: empty prefix matches all events"
+        );
+    }
+
+    /// FINDING 7 -- MEDIUM: extend_from_journal with unsorted input batch can
+    /// produce incorrect insertion positions.
+    ///
+    /// When `extend_from_journal` is called with an unsorted batch of events
+    /// (e.g. seq [3, 1, 2]), each event is inserted individually using
+    /// `partition_point`. After inserting seq=3, then inserting seq=1 would
+    /// go before seq=3 (correct), but inserting seq=2 would go between seq=1
+    /// and seq=3 (also correct). However, the dedup check uses binary_search
+    /// which requires sorted order. After the first insert changes the vector,
+    /// subsequent binary_searches are against a partially-modified vector,
+    /// which could behave incorrectly if the input is not monotonically sorted.
+    #[test]
+    fn blackhat_extend_from_journal_unsorted_batch_dedup_correctness() {
+        let mut strip = TimelineStrip::new();
+        // Feed a reverse-sorted batch: seq 3, then 2, then 1.
+        strip.extend_from_journal(&[
+            je_action_scheduled(3, 0),
+            je_step_started(2, 0),
+            je_run_accepted(1),
+        ]);
+        // All three should be present and sorted.
+        assert_eq!(strip.events().len(), 3);
+        assert_eq!(strip.events().get(0).map(|e| e.seq), Some(1));
+        assert_eq!(strip.events().get(1).map(|e| e.seq), Some(2));
+        assert_eq!(strip.events().get(2).map(|e| e.seq), Some(3));
+    }
+
+    /// FINDING 8 -- LOW: set_cursor to usize::MAX on a non-empty strip clamps
+    /// to last index, which is correct but relies on saturating_sub.
+    ///
+    /// Verify that the clamping logic works correctly at boundary values.
+    #[test]
+    fn blackhat_set_cursor_usize_max_clamps_correctly() {
+        let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
+        let mut strip = TimelineStrip { events, cursor_index: None };
+        strip.set_cursor(usize::MAX);
+        assert_eq!(
+            strip.cursor(),
+            Some(0),
+            "FINDING 8: usize::MAX should clamp to last valid index"
+        );
+    }
 }

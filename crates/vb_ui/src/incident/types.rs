@@ -848,4 +848,204 @@ mod tests {
         // Original still accessible
         assert_eq!(record.failure_code.as_str(), "ActionFailed");
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// FINDING: Incident struct contains a `replay_safe: bool` field but the
+    /// same concept exists as `ReplaySafety` enum in IncidentRecord. The bool
+    /// loses information (Unknown vs UnsafeSideEffect are both mapped to false).
+    /// This is a design inconsistency between legacy and Phase 5A types.
+    #[test]
+    fn blackhat_incident_replay_safe_bool_loses_information_vs_replay_safety_enum() {
+        // The bool can only represent safe/unsafe, losing the distinction between
+        // UnsafeSideEffect and Unknown.
+        let record_unsafe = IncidentRecord {
+            run_id: 1, shard_id: 0, step: 0,
+            failure_code: FailureCode::ActionTimeout,
+            severity: IncidentSeverity::Critical,
+            replay_safety: ReplaySafety::UnsafeSideEffect,
+            timestamp_us: 0, detail: String::new(),
+        };
+        let record_unknown = IncidentRecord {
+            run_id: 2, shard_id: 0, step: 0,
+            failure_code: FailureCode::ActionTimeout,
+            severity: IncidentSeverity::Critical,
+            replay_safety: ReplaySafety::Unknown,
+            timestamp_us: 0, detail: String::new(),
+        };
+        // Both map to the same boolean: not safe
+        assert!(!record_unsafe.replay_safety.is_safe());
+        assert!(!record_unknown.replay_safety.is_safe());
+        // But they are distinct enum variants
+        assert_ne!(record_unsafe.replay_safety, record_unknown.replay_safety);
+    }
+
+    /// FINDING: IncidentRecord has `timestamp_us: u64` which is microseconds
+    /// since epoch. At u64::MAX (~18.4 exa-seconds), this represents ~584,942
+    /// years. No overflow risk in practice. However, arithmetic on timestamps
+    /// (subtraction for duration) should use saturating_sub.
+    #[test]
+    fn blackhat_incident_record_timestamp_no_overflow_risk() {
+        let record = IncidentRecord {
+            run_id: 1, shard_id: 0, step: 0,
+            failure_code: FailureCode::ActionTimeout,
+            severity: IncidentSeverity::Info,
+            replay_safety: ReplaySafety::Safe,
+            timestamp_us: u64::MAX, detail: String::new(),
+        };
+        assert_eq!(record.timestamp_us, u64::MAX);
+        // Duration calculation with saturating_sub handles u64::MAX correctly
+        let duration = record.timestamp_us.saturating_sub(0);
+        assert_eq!(duration, u64::MAX);
+    }
+
+    /// FINDING: FailureCode::as_str() returns &'static str but some variants
+    /// (ActionFailed, ValidationError, Unknown) contain String payloads that
+    /// are silently ignored by as_str(). Callers needing the inner message
+    /// must pattern-match on the enum rather than using as_str().
+    #[test]
+    fn blackhat_failure_code_as_str_loses_inner_message_for_string_variants() {
+        let code_with_message = FailureCode::ActionFailed(String::from("database connection refused"));
+        assert_eq!(code_with_message.as_str(), "ActionFailed");
+        // The inner message "database connection refused" is not accessible via as_str()
+        // Callers must destructure the enum to get the message
+
+        let code_validation = FailureCode::ValidationError(String::from("missing field 'name'"));
+        assert_eq!(code_validation.as_str(), "ValidationError");
+        // Same: the validation message is lost
+    }
+
+    /// FINDING: FailureCode::as_str() returns inconsistent names for some variants.
+    /// BudgetExceeded returns "StepBudgetExhausted" and TaintLeak returns
+    /// "TaintViolation". These renames could confuse consumers who expect the
+    /// as_str() output to match the variant name.
+    #[test]
+    fn blackhat_failure_code_as_str_name_mismatches() {
+        // BudgetExceeded -> "StepBudgetExhausted" (different name)
+        assert_ne!(
+            FailureCode::BudgetExceeded.as_str(),
+            "BudgetExceeded",
+            "BudgetExceeded.as_str() returns a different name than the variant"
+        );
+        // TaintLeak -> "TaintViolation" (different name)
+        assert_ne!(
+            FailureCode::TaintLeak.as_str(),
+            "TaintLeak",
+            "TaintLeak.as_str() returns a different name than the variant"
+        );
+    }
+
+    /// FINDING: IncidentContext::action_attempts is u32. If a run has more
+    /// than u32::MAX action attempts, this would overflow. In practice this
+    /// is unlikely (~4 billion attempts), but worth documenting.
+    #[test]
+    fn blackhat_incident_context_action_attempts_at_max_u32() {
+        let ctx = IncidentContext {
+            slot_values_before: Vec::new(),
+            taint_changes: Vec::new(),
+            action_attempts: u32::MAX,
+            last_action_idempotency_key: None,
+        };
+        assert_eq!(ctx.action_attempts, u32::MAX);
+        // If incremented with wrapping_add(1), would overflow to 0
+        // If incremented with saturating_add(1), stays at u32::MAX
+    }
+
+    /// FINDING: TimelineEntry.seq is u32. If a single incident has more than
+    /// u32::MAX timeline events, the sequence counter would overflow.
+    #[test]
+    fn blackhat_timeline_entry_seq_at_max_u32() {
+        let entry = TimelineEntry {
+            seq: u32::MAX,
+            description: String::from("overflow boundary"),
+            timestamp_micros: 0,
+            event_kind: TimelineEventKind::FailureObserved,
+            timestamp: Instant::now(),
+        };
+        assert_eq!(entry.seq, u32::MAX);
+    }
+
+    /// FINDING: IncidentSlotDiff always produces a String for change_label
+    /// but the logic that sets it (in screen.rs detail_sections) only produces
+    /// "unchanged" or "modified". This could miss other change types like
+    /// "added" or "removed" for slots that appear in taint_changes but not
+    /// in slot_values_before.
+    #[test]
+    fn blackhat_incident_slot_diff_change_label_only_two_states() {
+        let diff_unchanged = IncidentSlotDiff {
+            slot_index: 0,
+            value_before: String::from("same"),
+            value_after: String::from("same"),
+            change_label: String::from("unchanged"),
+        };
+        let diff_modified = IncidentSlotDiff {
+            slot_index: 1,
+            value_before: String::from("old"),
+            value_after: String::from("new"),
+            change_label: String::from("modified"),
+        };
+        assert_eq!(diff_unchanged.change_label, "unchanged");
+        assert_eq!(diff_modified.change_label, "modified");
+        // No "added" or "removed" labels are produced by the current logic
+    }
+
+    /// FINDING: IncidentDetailSections sets replay_safe to false when no
+    /// incident is selected (the default path). This is a safe default but
+    /// could be misleading since no incident actually exists.
+    #[test]
+    fn blackhat_detail_sections_default_replay_safe_is_false() {
+        let sections = IncidentDetailSections {
+            cause: None,
+            timeline: Vec::new(),
+            state_diff: Vec::new(),
+            repair_suggestions: Vec::new(),
+            replay_safe: false,
+            side_effect_certainty: SideEffectCertainty::None,
+        };
+        assert!(!sections.replay_safe, "default replay_safe is false even with no incident");
+        assert_eq!(sections.side_effect_certainty, SideEffectCertainty::None);
+    }
+
+    /// FINDING: SideEffectCertainty has a `None` variant which could conflict
+    /// with `Option<SideEffectCertainty>::None`. This naming collision is a
+    /// readability hazard.
+    #[test]
+    fn blackhat_side_effect_certainty_none_vs_option_none() {
+        let certainty = SideEffectCertainty::None;
+        let option_none: Option<SideEffectCertainty> = None;
+        // These are different types but could be confused in code
+        assert_eq!(certainty, SideEffectCertainty::None);
+        assert!(option_none.is_none());
+        // SideEffectCertainty::None != Option::None (different types entirely)
+    }
+
+    /// FINDING: IncidentType has no Unknown/Other fallback variant. If a new
+    /// FailureCode is added without updating incident_type_for_code(), the
+    /// match would fail to compile (which is actually good - exhaustive matching
+    /// catches missing cases at compile time).
+    #[test]
+    fn blackhat_incident_type_has_no_unknown_fallback() {
+        // IncidentType has exactly 4 variants - no Unknown fallback
+        let variants = [
+            IncidentType::ActionFailure,
+            IncidentType::ReplayDivergence,
+            IncidentType::BlockedReconciliation,
+            IncidentType::SecretLeak,
+        ];
+        // All distinct
+        for i in 0..variants.len() {
+            for j in (i + 1)..variants.len() {
+                assert_ne!(variants[i], variants[j]);
+            }
+        }
+    }
+
+    /// FINDING: ReplaySafety::Unknown is conservatively treated as not safe.
+    /// This is the correct defensive posture for replay safety.
+    #[test]
+    fn blackhat_replay_safety_unknown_is_conservatively_unsafe() {
+        assert!(!ReplaySafety::Unknown.is_safe(), "Unknown should be treated as unsafe");
+    }
 }

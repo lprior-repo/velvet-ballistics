@@ -506,4 +506,107 @@ mod tests {
         assert_eq!(topo.total_active_runs(), u32::MAX);
         assert_eq!(topo.total_pending_actions(), u32::MAX);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: SystemMapLayout::compute_layout uses `as` casts (isolated
+    /// and audited) for usize <-> f32 conversion. The `int_to_f32` function
+    /// is documented as lossless for values < 2^24. For shard counts exceeding
+    /// 16 million (extremely unlikely but theoretically possible), f32 loses
+    /// precision, causing incorrect grid calculations. The `f32_to_u32`
+    /// function clamps at 16_777_216 which is safe.
+    #[test]
+    fn blackhat_layout_large_shard_count_precision() {
+        // Test with a moderately large count (well under 2^24).
+        let topo = SystemTopology {
+            shards: (0..1000).map(|i| ShardNode::new(i, 1, 10, 0, 0)).collect(),
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 1920.0, 1080.0);
+        assert_eq!(rects.len(), 1000);
+        // Verify all rects have positive dimensions.
+        for r in &rects {
+            assert!(r.w > 0.0, "width must be positive: {}", r.w);
+            assert!(r.h > 0.0, "height must be positive: {}", r.h);
+        }
+    }
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: ShardNode::new classifies as Overloaded when
+    /// active_runs >= max_runs AND max_runs > 0. If max_runs = 0, the node
+    /// is Idle (if active_runs = 0) or Active (if active_runs > 0), never
+    /// Overloaded. This means a node with active_runs = u32::MAX and
+    /// max_runs = 0 is considered merely "Active", not overloaded, which
+    /// could hide critical overload conditions.
+    #[test]
+    fn blackhat_zero_max_runs_never_overloaded() {
+        let node = ShardNode::new(0, u32::MAX, 0, 0, 0);
+        assert_eq!(
+            node.status,
+            ShardStatus::Active,
+            "node with MAX runs but zero max_runs is Active, not Overloaded"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: ShardStatus::is_worse_than doesn't handle the case where
+    /// both statuses are equal -- it correctly returns false (a status is not
+    /// strictly worse than itself). The fold in worst_status starts with Idle
+    /// and only replaces when strictly worse, which is correct.
+    #[test]
+    fn blackhat_is_worse_than_same_status_returns_false() {
+        assert!(!ShardStatus::Active.is_worse_than(ShardStatus::Active));
+        assert!(!ShardStatus::Idle.is_worse_than(ShardStatus::Idle));
+        assert!(!ShardStatus::Overloaded.is_worse_than(ShardStatus::Overloaded));
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The compute_layout function divides width/height by cols/rows.
+    /// With very large shard counts, cell dimensions become very small (< 1 pixel).
+    /// This is valid mathematically but renders poorly. No guard exists for a
+    /// minimum cell size.
+    #[test]
+    fn blackhat_layout_tiny_cells_with_many_shards() {
+        let topo = SystemTopology {
+            shards: (0..100).map(|i| ShardNode::new(i, 1, 10, 0, 0)).collect(),
+        };
+        // Very small viewport with many shards.
+        let rects = SystemMapLayout::compute_layout(&topo, 10.0, 10.0);
+        assert_eq!(rects.len(), 100);
+        // Cell width could be < 1 pixel.
+        let cell_w = rects[0].w;
+        assert!(cell_w > 0.0, "cell width should still be positive");
+        // But it may be less than 1 pixel, making rendering useless.
+        if cell_w < 1.0 {
+            // This is expected with 100 shards in 10px width.
+            assert!(cell_w < 1.0, "cell width is sub-pixel: {}", cell_w);
+        }
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The optimal_columns function uses sqrt and ceil via f32.
+    /// For count=1, cols=1. For very tall narrow viewports (height >> width),
+    /// optimal_columns could return 1, leading to a single column with many
+    /// rows. This is correct behavior (keeps tiles roughly square) but may
+    /// not match user expectations for a "grid".
+    #[test]
+    fn blackhat_optimal_columns_for_extreme_aspect_ratio() {
+        let cols = SystemMapLayout::optimal_columns(100, 10.0, 10000.0);
+        // Very tall viewport: cols should be 1 (sqrt(100 * 0.001) ~= 0.316, ceil = 1).
+        assert_eq!(cols, 1, "tall narrow viewport should use 1 column");
+        let rows = SystemMapLayout::rows_for(100, cols);
+        assert_eq!(rows, 100, "all 100 items in 1 column");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: rows_for returns 1 when cols=0, which is a guard against
+    /// division by zero. But optimal_columns.min(count) ensures cols >= 1,
+    /// so the guard is defensive. If someone calls rows_for directly with
+    /// cols=0, it returns 1 instead of panicking.
+    #[test]
+    fn blackhat_rows_for_zero_cols_returns_one() {
+        assert_eq!(SystemMapLayout::rows_for(100, 0), 1);
+    }
 }

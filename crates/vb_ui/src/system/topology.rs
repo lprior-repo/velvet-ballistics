@@ -448,4 +448,163 @@ mod tests {
         };
         assert!(!status.healthy);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: TopologySnapshot::health_for_node uses f64 division
+    /// (pending / capacity) for threshold comparison. With large u32 values,
+    /// f64::from is lossless, but the comparison `ratio >= 0.8` may have
+    /// floating-point edge-case issues. For example, pending=4294967295 and
+    /// capacity=5368709120 would give ratio ~= 0.8, but capacity > u32::MAX
+    /// is impossible here. The real concern is that f64 precision at the
+    /// boundary could misclassify: e.g., 4/5 = 0.8 exactly in f64 (Critical),
+    /// but 4278255360/5368709120 might not be exactly 0.8 due to float
+    /// representation.
+    #[test]
+    fn blackhat_float_threshold_boundary_for_health() {
+        // Test exact boundary: pending/capacity = 0.8 exactly.
+        // 4/5 = 0.8 in f64 -- should be Critical.
+        let node = ShardNode {
+            shard_id: 0,
+            active_runs: 1,
+            max_runs: 5,
+            status: ShardStatus::Active,
+            ready_depth: 4,
+            action_depth: 0,
+        };
+        let snap = TopologySnapshot::from_shards(vec![node]);
+        assert_eq!(
+            snap.metrics.shards[0].health,
+            HealthStatus::Critical,
+            "4/5 = 0.8 should be Critical"
+        );
+
+        // 3/5 = 0.6 -- should be Degraded.
+        let node2 = ShardNode {
+            shard_id: 1,
+            active_runs: 1,
+            max_runs: 5,
+            status: ShardStatus::Active,
+            ready_depth: 3,
+            action_depth: 0,
+        };
+        let snap2 = TopologySnapshot::from_shards(vec![node2]);
+        assert_eq!(
+            snap2.metrics.shards[0].health,
+            HealthStatus::Degraded,
+            "3/5 = 0.6 should be Degraded"
+        );
+
+        // 2/5 = 0.4 -- should be Healthy.
+        let node3 = ShardNode {
+            shard_id: 2,
+            active_runs: 1,
+            max_runs: 5,
+            status: ShardStatus::Active,
+            ready_depth: 2,
+            action_depth: 0,
+        };
+        let snap3 = TopologySnapshot::from_shards(vec![node3]);
+        assert_eq!(
+            snap3.metrics.shards[0].health,
+            HealthStatus::Healthy,
+            "2/5 = 0.4 should be Healthy"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: TopologySnapshot::from_shards clones the entire shard list
+    /// (line 60) AND iterates again for display_shards. This means the data
+    /// is processed three times: once for topology, once for derive_metrics,
+    /// and once for shard_displays. Not a correctness issue but unnecessary
+    /// allocation for large shard counts.
+    #[test]
+    fn blackhat_from_shards_triple_iteration_on_input() {
+        // Verify that from_shards produces consistent results despite
+        // the triple iteration.
+        let nodes: Vec<ShardNode> = (0..100)
+            .map(|i| ShardNode::new(i, 1, 10, i, i))
+            .collect();
+        let snap = TopologySnapshot::from_shards(nodes);
+        // shards display should match topology shards in count.
+        assert_eq!(snap.shards.len(), snap.topology.shards.len());
+        // total_active_runs from topology should match snap field.
+        assert_eq!(snap.total_active_runs, snap.topology.total_active_runs());
+    }
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: When pending (ready_depth + action_depth) overflows u32
+    /// via saturating_add, it saturates to u32::MAX. With max_runs=1, the
+    /// ratio becomes u32::MAX / 1 = 4294967295.0 in f64, which is >= 0.8,
+    //  so it's correctly classified as Critical. But if ready_depth and
+    //  action_depth are large but their sum saturates, the ratio is inflated.
+    //  This could misclassify a node as Critical when it's merely Degraded.
+    #[test]
+    fn blackhat_pending_saturation_inflates_ratio() {
+        // ready_depth = u32::MAX, action_depth = 1
+        // saturating_add gives u32::MAX
+        // ratio = u32::MAX / 10 = very large -> Critical
+        // But the "real" pending would overflow, so we can't know the true ratio.
+        // The saturation causes a conservative (over-alerting) classification.
+        let node = ShardNode {
+            shard_id: 0,
+            active_runs: 1,
+            max_runs: 10,
+            status: ShardStatus::Active,
+            ready_depth: u32::MAX,
+            action_depth: 1,
+        };
+        let snap = TopologySnapshot::from_shards(vec![node]);
+        // Saturated pending = u32::MAX, ratio = MAX/10 -> Critical
+        assert_eq!(
+            snap.metrics.shards[0].health,
+            HealthStatus::Critical,
+            "saturated pending should classify as Critical (conservative over-alerting)"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: ShardNode::new considers a node Overloaded when
+    /// active_runs >= max_runs AND max_runs > 0. But a node could have
+    /// active_runs > max_runs if externally constructed (via struct literal).
+    /// The health_for_node function doesn't re-check ShardNode::new's logic;
+    /// it relies on the status field being correctly set.
+    #[test]
+    fn blackhat_external_shard_node_can_have_inconsistent_status() {
+        // Construct a ShardNode directly with inconsistent status.
+        let node = ShardNode {
+            shard_id: 0,
+            active_runs: 0,
+            max_runs: 10,
+            status: ShardStatus::Overloaded, // Inconsistent: 0 runs but Overloaded
+            ready_depth: 0,
+            action_depth: 0,
+        };
+        let snap = TopologySnapshot::from_shards(vec![node]);
+        // health_for_node sees Overloaded status and returns Critical.
+        assert_eq!(
+            snap.metrics.shards[0].health,
+            HealthStatus::Critical,
+            "externally set Overloaded status propagates even with zero runs"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The summary_text method formats shard_count using
+    /// topology.shards.len() which returns usize. On a 64-bit platform this
+    /// could be very large, producing a very long string. The format! macro
+    /// will allocate accordingly. Not a real concern in practice.
+    #[test]
+    fn blackhat_summary_text_with_many_shards() {
+        let nodes: Vec<ShardNode> = (0..1000)
+            .map(|i| ShardNode::new(i, 1, 10, 0, 0))
+            .collect();
+        let snap = TopologySnapshot::from_shards(nodes);
+        let text = snap.summary_text();
+        assert!(text.contains("shards=1000"));
+        assert!(text.contains("active=1000"));
+    }
 }

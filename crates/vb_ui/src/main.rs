@@ -1529,7 +1529,12 @@ impl MatchEvent for VbApp {
             }
         }
 
-        if wiring_events.metrics_updated || wiring_events.connection_changed || wiring_events.health_checked || has_errors {
+        if wiring_events.metrics_updated
+            || wiring_events.connection_changed
+            || wiring_events.health_checked
+            || wiring_events.run_list_updated
+            || has_errors
+        {
             self.sync_system_state(cx);
         }
         if wiring_events.verification_updated || wiring_events.taint_report_updated {
@@ -1539,6 +1544,7 @@ impl MatchEvent for VbApp {
             || wiring_events.run_cancelled
             || wiring_events.events_arrived
             || wiring_events.trace_drained
+            || wiring_events.inspected
         {
             if wiring_events.events_arrived {
                 let responses = self.ipc_wiring.drain_events();
@@ -1547,6 +1553,12 @@ impl MatchEvent for VbApp {
                 let _ = self.ipc_wiring.drain_events();
             }
             self.sync_replay_state(cx);
+            // An inspected reply may have changed selected_run_id, so update
+            // the top-bar run badge as well.
+            if wiring_events.inspected {
+                let title = self.app_state.screen_title().to_string();
+                self.sync_nav(cx, title, String::new());
+            }
         }
         if wiring_events.workflow_graph_updated {
             self.sync_workflow_state(cx);
@@ -2508,6 +2520,8 @@ impl AppMain for VbApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_ui::ipc_wiring::WiringEvents;
+    use vb_ui::ipc_bridge::IpcReply;
 
     // -- f32_to_u8_color tests -----------------------------------------------
 
@@ -2665,5 +2679,177 @@ mod tests {
             state.system.overall_health,
             vb_ui::app_state::HealthLevel::Critical
         );
+    }
+
+    // ===================================================================
+    // IPC reply wiring tests
+    // ===================================================================
+
+    // -----------------------------------------------------------------------
+    // route_reply: VerifyWorkflowResult populates verification data end-to-end
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ipc_verify_workflow_result_updates_verification_data() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_07_expression_stack_depth".into(),
+                status: "Fail".into(),
+                details: "stack too deep".into(),
+            },
+        ];
+        let result = vb_ipc::VerificationResult {
+            certificates: certs,
+            total_checks: 2,
+            pass_count: 1,
+            fail_count: 1,
+        };
+        wiring.route_reply(
+            IpcReply::VerifyWorkflowResult(vb_ipc::server::IpcResponse::VerifyWorkflow { result }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.verification_updated, "VerifyWorkflowResult should set verification_updated");
+        assert!(!state.verification.all_clean, "failing bounded check should clear all_clean");
+        assert_eq!(state.verification.cert_structure.badge_text, "PASS");
+        assert_eq!(state.verification.cert_bounded.badge_text, "FAIL");
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: TaintReportReceived updates all_clean when finish_safe
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ipc_taint_report_received_safe_flips_all_clean() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.verification.all_clean = false;
+        let mut events = WiringEvents::default();
+
+        wiring.route_reply(
+            IpcReply::TaintReportReceived(vb_ipc::server::IpcResponse::TaintReport {
+                sources: Vec::new(),
+                sinks: Vec::new(),
+                finish_safe: true,
+                paths: Vec::new(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.taint_report_updated, "TaintReportReceived should set taint_report_updated");
+        assert!(state.verification.all_clean, "finish_safe=true should set all_clean");
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: WorkflowGraphReceived sets node count
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ipc_workflow_graph_received_sets_node_count() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.workflow.node_count = 0;
+        let mut events = WiringEvents::default();
+
+        let nodes = vec![
+            vb_ipc::NodeDescriptor {
+                step_idx: 0,
+                kind: "Nop".into(),
+                next: Some(1),
+                title: "Start".into(),
+            },
+            vb_ipc::NodeDescriptor {
+                step_idx: 1,
+                kind: "Do".into(),
+                next: Some(2),
+                title: "Process".into(),
+            },
+            vb_ipc::NodeDescriptor {
+                step_idx: 2,
+                kind: "Finish".into(),
+                next: None,
+                title: "End".into(),
+            },
+        ];
+        let edges = vec![vb_ipc::EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: Some("fallthrough".into()),
+            edge_type: "fallthrough".into(),
+        }];
+        wiring.route_reply(
+            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::WorkflowGraph { nodes, edges }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.workflow_graph_updated, "WorkflowGraphReceived should set workflow_graph_updated");
+        assert_eq!(state.workflow.node_count, 3);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: Inspected reply updates selected_run_id and sets inspected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ipc_inspected_updates_selected_run_id() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+
+        wiring.route_reply(
+            IpcReply::Inspected(vb_ipc::server::IpcResponse::Inspected { run_id: 42 }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.inspected, "Inspected reply should set inspected flag");
+        assert_eq!(state.selected_run_id, Some(42));
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: RunList reply triggers run_list_updated and updates system
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ipc_run_list_updates_system_active_runs() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+
+        let runs = vec![
+            vb_ipc::RunSummary {
+                run_id: vb_core::ids::RunId::new(1),
+                workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+                state: vb_ipc::RunListState::Active,
+                submitted_seq: 0,
+                finished_seq: None,
+                step_count: 5,
+                steps_completed: 2,
+            },
+            vb_ipc::RunSummary {
+                run_id: vb_core::ids::RunId::new(2),
+                workflow: vb_core::WorkflowDigest::from_bytes([1; 32]),
+                state: vb_ipc::RunListState::Active,
+                submitted_seq: 10,
+                finished_seq: None,
+                step_count: 3,
+                steps_completed: 1,
+            },
+        ];
+        wiring.route_reply(
+            IpcReply::Inspected(vb_ipc::server::IpcResponse::RunList { runs }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.run_list_updated, "RunList response should set run_list_updated");
+        assert_eq!(state.system.total_active_runs, 2);
     }
 }

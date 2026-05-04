@@ -1144,4 +1144,159 @@ mod tests {
         assert_eq!(incidents[1].id, 20);
         assert_eq!(incidents[2].id, 30);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// FINDING: push_incident trimming uses Vec::remove(0) in a while loop.
+    /// This is an O(n^2) performance concern when trimming many records at once.
+    /// If max_display is small and many records are pushed rapidly, each remove(0)
+    /// shifts all remaining elements. This test documents the behavior at the boundary.
+    #[test]
+    fn blackhat_push_incident_trim_uses_remove_zero_performance_concern() {
+        let mut console = IncidentConsole::with_max_display(5);
+        // Push 100 records at once; the while loop runs 95 iterations of remove(0)
+        for i in 0u64..100 {
+            console.push_incident(make_record(
+                i,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+            ));
+        }
+        // Verify only the last 5 remain (records 95..99)
+        assert_eq!(console.active_incidents().len(), 5);
+        assert_eq!(console.active_incidents()[0].run_id, 95);
+        assert_eq!(console.active_incidents()[4].run_id, 99);
+    }
+
+    /// FINDING: with_max_display accepts usize::MAX without capping.
+    /// While not a memory safety issue in Rust, this could lead to unbounded
+    /// memory consumption if a caller passes a very large value.
+    /// This test documents that max_display is stored as-is without validation.
+    #[test]
+    fn blackhat_with_max_display_accepts_very_large_value() {
+        let console = IncidentConsole::with_max_display(usize::MAX);
+        assert_eq!(console.max_display, usize::MAX);
+    }
+
+    /// FINDING: dismiss() selection adjustment has a subtle edge case.
+    /// When dismissing index == selected, the selection is cleared (set to None).
+    /// This means if two incidents exist at indices 0 and 1, selecting index 1
+    /// and then dismissing index 1 clears the selection, even though index 0
+    /// still has a valid incident. This is by design but worth documenting.
+    #[test]
+    fn blackhat_dismiss_selected_index_clears_instead_of_shifting() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.select(1);
+        assert_eq!(console.selected().map(|i| i.id), Some(2));
+        // Dismissing the selected incident clears selection entirely
+        // rather than shifting to the remaining valid index
+        console.dismiss(1);
+        assert!(console.selected().is_none(), "selection cleared even though index 0 remains valid");
+        assert_eq!(console.active_count(), 1);
+    }
+
+    /// FINDING: selected() uses `self.selected.and_then(|i| self.incidents.get(i))`.
+    /// If `selected` is Some(idx) but `incidents.get(idx)` returns None (impossible
+    /// under normal operation since select() validates the index, but if incidents
+    /// are removed externally), the selection silently returns None.
+    /// This test verifies the defensive behavior.
+    #[test]
+    fn blackhat_selected_returns_none_if_index_out_of_sync() {
+        // The select() method validates, so this scenario requires a sequence of
+        // add, select, dismiss. After dismiss of a different index, the selected
+        // index may point to a different incident. This is correct behavior.
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.select(0);
+        assert_eq!(console.selected().map(|i| i.id), Some(1));
+        // Dismiss the only incident; selection should be cleared
+        console.dismiss(0);
+        assert!(console.selected().is_none());
+    }
+
+    /// FINDING: selected_suggestions() uses `unwrap_or_default()` on the Option
+    /// from `map(suggest_repairs)`. This means if no incident is selected, we get
+    /// an empty Vec rather than an error. This is defensive and correct.
+    #[test]
+    fn blackhat_selected_suggestions_empty_when_none_selected() {
+        let console = IncidentConsole::new();
+        assert!(console.selected_suggestions().is_empty());
+    }
+
+    /// FINDING: push_incident and legacy add_incident operate on completely
+    /// independent Vecs. dismiss() only affects legacy incidents and their
+    /// selection. clear_resolved() only affects records. There is no cross-
+    /// contamination risk, but the two APIs are a maintenance hazard.
+    #[test]
+    fn blackhat_dismiss_does_not_affect_records_and_clear_resolved_does_not_affect_legacy() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.push_incident(make_record(10, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
+
+        // dismiss only affects legacy
+        console.dismiss(0);
+        assert_eq!(console.active_count(), 0, "legacy should be empty");
+        assert_eq!(console.active_incidents().len(), 1, "records should be untouched");
+
+        // Add back a legacy incident
+        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+
+        // clear_resolved only affects records
+        console.clear_resolved(10);
+        assert_eq!(console.active_count(), 1, "legacy should still have 1");
+        assert!(console.active_incidents().is_empty(), "records should be cleared");
+    }
+
+    /// FINDING: The max_display field is only used for push_incident trimming.
+    /// It has no effect on the legacy add_incident API. A user might assume
+    /// max_display limits all stored incidents, but legacy incidents bypass it.
+    #[test]
+    fn blackhat_max_display_does_not_limit_legacy_incidents() {
+        let mut console = IncidentConsole::with_max_display(2);
+        // Legacy API ignores max_display
+        for i in 0u64..10 {
+            console.add_incident(make_incident(i, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        }
+        assert_eq!(console.active_count(), 10, "legacy API bypasses max_display");
+
+        // Record API respects max_display
+        for i in 0u64..10 {
+            console.push_incident(make_record(i, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe));
+        }
+        assert_eq!(console.active_incidents().len(), 2, "record API respects max_display");
+    }
+
+    /// FINDING: critical_count() and legacy_critical_count() count severity
+    /// independently on records vs legacy incidents. Callers must be careful
+    /// which count they use.
+    #[test]
+    fn blackhat_both_critical_counts_are_zero_when_only_records_have_critical() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.push_incident(make_record(10, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
+        assert_eq!(console.legacy_critical_count(), 0, "legacy has no critical");
+        assert_eq!(console.critical_count(), 1, "records have one critical");
+    }
+
+    /// FINDING: incidents_by_severity returns Vec of references.
+    /// If the caller holds these references and modifies the console (push/dismiss),
+    /// the borrow checker prevents use-after-free. This is safe by Rust's design.
+    /// This test confirms the API compiles and works correctly.
+    #[test]
+    fn blackhat_incidents_by_severity_returns_correct_references() {
+        let mut console = IncidentConsole::new();
+        console.push_incident(make_record(1, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
+        console.push_incident(make_record(2, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe));
+        console.push_incident(make_record(3, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::UnsafeSideEffect));
+        let criticals = console.incidents_by_severity(IncidentSeverity::Critical);
+        assert_eq!(criticals.len(), 2);
+        // Verify references point to actual records
+        assert_eq!(criticals[0].run_id, 1);
+        assert_eq!(criticals[1].run_id, 3);
+    }
 }

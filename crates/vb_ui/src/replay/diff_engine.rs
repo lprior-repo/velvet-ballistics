@@ -1161,4 +1161,289 @@ mod tests {
             .map(|s| make_event_with_snapshot(s.clone()))
             .collect()
     }
+
+    // =========================================================================
+    // BLACKHAT security and correctness findings
+    // =========================================================================
+
+    /// FINDING 1 -- HIGH: compute_taint_deltas uses a single sentinel slot=0
+    /// for the entire taint state change, losing per-slot taint granularity.
+    ///
+    /// The function compares the raw `taint_state` byte vectors. If they differ,
+    /// it emits a single `TaintDelta` with `slot: 0` (sentinel). This means:
+    /// - If 3 slots change taint simultaneously, only ONE delta is emitted.
+    /// - The sentinel slot=0 could collide with actual slot 0 taint changes.
+    /// - The description only reports byte length changes, not WHICH slots
+    ///   changed taint.
+    ///
+    /// Impact: Taint propagation from Secret to Clean on a specific slot is
+    /// invisible at the per-slot level. Security reviewers cannot determine
+    /// which specific slot had its taint changed.
+    #[test]
+    fn blackhat_taint_delta_single_sentinel_loses_per_slot_granularity() {
+        let engine = ReplayDiffEngine::new();
+        let before = make_snapshot(0, Vec::new(), vec![0x00u8, 0x01, 0x00]);
+        let after = make_snapshot(1, Vec::new(), vec![0x01u8, 0x01, 0x00]);
+        let diff = engine.diff_snapshots(&before, &after);
+
+        assert_eq!(diff.taint_deltas.len(), 1);
+        let delta = diff.taint_deltas.first().expect("delta");
+        assert_eq!(
+            delta.slot, 0,
+            "FINDING 1: taint delta uses sentinel slot=0, losing per-slot granularity"
+        );
+        assert!(
+            delta.kind_change.contains("3 bytes -> 3 bytes"),
+            "FINDING 1: description only shows byte lengths, not actual taint changes"
+        );
+    }
+
+    /// FINDING 2 -- MEDIUM: taint_delta description is misleading when byte
+    /// vectors have the same length but different content.
+    ///
+    /// When taint_state changes from [0x00, 0x01] to [0x01, 0x01], the
+    /// description says "2 bytes -> 2 bytes" which looks like no change.
+    /// A user reading "2 bytes -> 2 bytes" would reasonably assume nothing
+    /// changed, but the taint state DID change.
+    #[test]
+    fn blackhat_taint_delta_description_misleading_same_length() {
+        let engine = ReplayDiffEngine::new();
+        let before = make_snapshot(0, Vec::new(), vec![0x00u8, 0x01]);
+        let after = make_snapshot(1, Vec::new(), vec![0x01u8, 0x01]);
+        let diff = engine.diff_snapshots(&before, &after);
+
+        assert_eq!(diff.taint_deltas.len(), 1);
+        let delta = diff.taint_deltas.first().expect("delta");
+        // The description says "2 bytes -> 2 bytes" -- misleading.
+        assert_eq!(
+            delta.kind_change,
+            "taint_state changed (2 bytes -> 2 bytes)",
+            "FINDING 2: same-length taint change has misleading description"
+        );
+        // The delta IS reported, but the message looks like no-op.
+    }
+
+    /// FINDING 3 -- MEDIUM: find_slot_bytes is O(n) linear scan, not binary
+    /// search, making it inefficient for large slot sets.
+    ///
+    /// `collect_all_slot_ids` collects all slot IDs into a sorted, deduplicated
+    /// list. Then for each slot, `find_slot_bytes` does a linear scan over the
+    /// slot_values vec. If slot_values has N entries and M unique slots across
+    /// both snapshots, the total cost is O(N*M) instead of O(M log N) with
+    /// binary search. For large slot sets, this is a performance concern.
+    ///
+    /// More critically: if `slot_values` has duplicate slot IDs within a single
+    /// snapshot, `find_slot_bytes` returns the FIRST match. This means
+    /// duplicate slot IDs within a snapshot are silently collapsed.
+    #[test]
+    fn blackhat_duplicate_slot_ids_in_snapshot_first_match_wins() {
+        let engine = ReplayDiffEngine::new();
+        // Before: slot 5 has TWO entries -- which one is used?
+        let before = make_snapshot(
+            0,
+            vec![
+                (5u32, vec![1u8]),
+                (5u32, vec![2u8]), // duplicate slot ID
+            ],
+            Vec::new(),
+        );
+        let after = make_snapshot(1, Vec::new(), Vec::new());
+        let diff = engine.diff_snapshots(&before, &after);
+
+        // collect_all_slot_ids dedups, so only one slot 5 appears.
+        assert_eq!(diff.changes.len(), 1);
+        let change = diff.changes.first().expect("change");
+        assert_eq!(change.slot, 5);
+        // find_slot_bytes returns the FIRST match, so before = [1], not [2].
+        assert_eq!(
+            change.before, vec![1u8],
+            "FINDING 3: duplicate slot ID uses first match, second value is silently lost"
+        );
+    }
+
+    /// FINDING 4 -- LOW: SlotChange stores both `change_type` and redundant
+    /// `color` field which is always `change_type.color()`.
+    ///
+    /// Every `SlotChange` stores a `color` field that is derived exclusively
+    /// from `change_type`. This is redundant and creates an invariant that
+    /// must be manually maintained. If someone constructs a `SlotChange` with
+    /// mismatched `change_type` and `color`, there is no validation.
+    #[test]
+    fn blackhat_slot_change_color_redundant_with_change_type() {
+        // Verify the engine always sets color = change_type.color().
+        let engine = ReplayDiffEngine::new();
+        let before = make_snapshot(0, Vec::new(), Vec::new());
+        let after = make_snapshot(1, vec![(1u32, vec![1u8])], Vec::new());
+        let diff = engine.diff_snapshots(&before, &after);
+
+        for change in &diff.changes {
+            assert_eq!(
+                change.color,
+                change.change_type.color(),
+                "FINDING 4: color must match change_type.color()"
+            );
+        }
+    }
+
+    /// FINDING 5 -- MEDIUM: change_count can overflow for very large changes.
+    ///
+    /// `change_count` uses `saturating_add(self.taint_deltas.len())` which is
+    /// correct for overflow safety. However, the `changes.iter().filter().count()`
+    /// result is NOT protected -- if `changes` has more than `usize::MAX - N`
+    /// non-unchanged entries where N is `taint_deltas.len()`, the saturating_add
+    /// correctly saturates at `usize::MAX`. This is actually correct behavior;
+    /// the finding is that the implementation is sound but relies on saturating
+    /// arithmetic as a safety net rather than preventing the condition.
+    #[test]
+    fn blackhat_change_count_saturating_add_is_sound() {
+        let diff = StepDiff {
+            step: 0,
+            changes: vec![
+                SlotChange {
+                    slot: 1,
+                    before: vec![],
+                    after: vec![1u8],
+                    change_type: ChangeType::Added,
+                    color: NEON_GREEN,
+                },
+                SlotChange {
+                    slot: 2,
+                    before: vec![],
+                    after: vec![2u8],
+                    change_type: ChangeType::Added,
+                    color: NEON_GREEN,
+                },
+            ],
+            taint_deltas: vec![TaintDelta {
+                slot: 0,
+                kind_change: String::from("changed"),
+                color: NEON_CYAN,
+            }],
+        };
+        assert_eq!(diff.change_count(), 3);
+    }
+
+    /// FINDING 6 -- MEDIUM: diff_events pairs consecutive snapshots regardless
+    /// of their step_index ordering.
+    ///
+    /// If events arrive out of order (step_index 5 before step_index 3), the
+    /// diff engine will still pair them as before/after. The resulting StepDiff
+    /// will have `step` from the `after` snapshot, but the diff direction is
+    /// reversed. This can produce misleading Added/Removed classifications.
+    #[test]
+    fn blackhat_diff_events_pairs_consecutive_snapshots_not_ordered_by_step() {
+        let engine = ReplayDiffEngine::new();
+        // Out-of-order: step 5 arrives before step 3.
+        let snap_5 = make_snapshot(5, vec![(1u32, vec![42u8])], Vec::new());
+        let snap_3 = make_snapshot(3, Vec::new(), Vec::new());
+        let events = vec![
+            make_event_with_snapshot(snap_5),
+            make_event_with_snapshot(snap_3),
+        ];
+        let diffs = engine.diff_events(&events);
+        assert_eq!(diffs.len(), 1);
+        // The diff reports step=3 (from "after"), but the logical order is
+        // step 3 -> step 5 (slot added), not step 5 -> step 3 (slot removed).
+        assert_eq!(diffs[0].step, 3);
+        // The diff says the slot was Removed, but logically it was Added
+        // between steps 3 and 5.
+        assert_eq!(
+            diffs[0].changes.first().map(|c| c.change_type),
+            Some(ChangeType::Removed),
+            "FINDING 6: out-of-order steps produce misleading Removed instead of Added"
+        );
+    }
+
+    /// FINDING 7 -- LOW: compute_slot_changes allocates two Vecs per slot
+    /// (before and after), even for Unchanged slots.
+    ///
+    /// For Unchanged slots, both `before` and `after` contain identical bytes,
+    /// wasting memory. In a snapshot with many unchanged slots, this doubles
+    /// memory usage.
+    #[test]
+    fn blackhat_unchanged_slots_allocate_duplicate_bytes() {
+        let engine = ReplayDiffEngine::new();
+        let large_bytes: Vec<u8> = (0..=255u8).cycle().take(1000).collect();
+        let before = make_snapshot(0, vec![(1u32, large_bytes.clone())], Vec::new());
+        let after = make_snapshot(1, vec![(1u32, large_bytes.clone())], Vec::new());
+        let diff = engine.diff_snapshots(&before, &after);
+
+        assert_eq!(diff.changes.len(), 1);
+        let change = diff.changes.first().expect("change");
+        assert_eq!(change.change_type, ChangeType::Unchanged);
+        // Both before and after hold copies of the same 1000 bytes.
+        assert_eq!(change.before.len(), 1000);
+        assert_eq!(change.after.len(), 1000);
+        assert_eq!(change.before, change.after);
+        // FINDING 7: two 1000-byte allocations for an unchanged slot.
+    }
+
+    /// FINDING 8 -- LOW: compute_slot_changes uses `(None, None)` arm as
+    /// `continue`, which is unreachable given how collect_all_slot_ids works.
+    ///
+    /// `collect_all_slot_ids` only collects IDs from before and after. For each
+    /// ID, at least one of before/after must have bytes. The `(None, None)`
+    /// match arm is dead code. This is not a bug but indicates a missing
+    /// code path that could mask a logic error if `collect_all_slot_ids`
+    /// were changed to produce IDs not present in either snapshot.
+    #[test]
+    fn blackhat_none_none_arm_is_dead_code() {
+        let engine = ReplayDiffEngine::new();
+        // Every ID in collect_all_slot_ids comes from before or after,
+        // so (None, None) is unreachable.
+        let before = make_snapshot(0, vec![(1u32, vec![1u8])], Vec::new());
+        let after = make_snapshot(1, vec![(2u32, vec![2u8])], Vec::new());
+        let diff = engine.diff_snapshots(&before, &after);
+        // Slot 1: Removed, Slot 2: Added. No (None, None) possible.
+        assert_eq!(diff.changes.len(), 2);
+        for change in &diff.changes {
+            assert!(
+                !change.before.is_empty() || !change.after.is_empty(),
+                "FINDING 8: (None, None) arm is dead code"
+            );
+        }
+    }
+
+    /// FINDING 9 -- LOW: step index in StepDiff is u16, matching ReplaySnapshot.
+    /// Verify boundary step indices work correctly.
+    #[test]
+    fn blackhat_step_index_boundary_values() {
+        let engine = ReplayDiffEngine::new();
+        let before = make_snapshot(0, Vec::new(), Vec::new());
+        let after = make_snapshot(u16::MAX, vec![(1u32, vec![1u8])], Vec::new());
+        let diff = engine.diff_snapshots(&before, &after);
+        assert_eq!(
+            diff.step, u16::MAX,
+            "FINDING 9: step u16::MAX should work correctly"
+        );
+        assert_eq!(diff.change_count(), 1);
+    }
+
+    /// FINDING 10 -- MEDIUM: diff_events does not validate that event types
+    /// are semantically compatible with their snapshots.
+    ///
+    /// An event with `ReplayEventType::SlotWritten` but no snapshot will be
+    /// skipped, while an event with `ReplayEventType::StepStarted` but WITH
+    /// a snapshot will be included in the diff chain. The engine does not
+    /// validate that snapshot-bearing events are semantically appropriate.
+    #[test]
+    fn blackhat_diff_events_includes_mismatched_event_type_with_snapshot() {
+        let engine = ReplayDiffEngine::new();
+        let snap_a = make_snapshot(0, vec![(1u32, vec![0u8])], Vec::new());
+        // StepStarted event carrying a snapshot -- semantically odd but not rejected.
+        let event_mismatched = ReplayEvent::with_snapshot(
+            ReplayEventType::StepStarted,
+            make_snapshot(1, vec![(1u32, vec![1u8])], Vec::new()),
+        );
+        let events = vec![
+            make_event_with_snapshot(snap_a),
+            event_mismatched,
+        ];
+        let diffs = engine.diff_events(&events);
+        // The mismatched event is included because it has a snapshot.
+        assert_eq!(
+            diffs.len(), 1,
+            "FINDING 10: mismatched event type with snapshot is included in diff chain"
+        );
+    }
 }

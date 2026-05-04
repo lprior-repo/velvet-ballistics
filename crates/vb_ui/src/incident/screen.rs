@@ -1742,4 +1742,212 @@ mod tests {
         assert!(sections2.replay_safe);
         assert_eq!(sections2.side_effect_certainty, SideEffectCertainty::None);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// FINDING: summary_text() says "1 incidents" (plural) for a single incident.
+    /// This is a grammatical inconsistency - should be "1 incident" (singular).
+    /// Not a security issue but a logic error in display formatting.
+    #[test]
+    fn blackhat_summary_text_singular_vs_plural_grammar_bug() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        let text = screen.summary_text();
+        // BUG: says "1 incidents" instead of "1 incident"
+        assert!(
+            text.contains("1 incidents"),
+            "known grammar bug: should be '1 incident' but got '{}'",
+            text
+        );
+    }
+
+    /// FINDING: process_failure() always sets incident.id = 0.
+    /// If the returned Incident is used directly without calling register_incident(),
+    /// multiple incidents will share id=0, violating the uniqueness invariant.
+    #[test]
+    fn blackhat_process_failure_returns_zero_id_violating_uniqueness() {
+        use vb_core::{ActionId, RunId, StepIdx};
+        use vb_storage::EventSeq;
+        let e1 = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
+        let e2 = vb_storage::JournalEvent::RunFailedEvent { run: RunId::new(2), seq: EventSeq::new(2) };
+        let inc1 = IncidentScreen::process_failure(&e1).unwrap();
+        let inc2 = IncidentScreen::process_failure(&e2).unwrap();
+        // Both have id=0, violating the uniqueness contract
+        assert_eq!(inc1.id, 0, "process_failure always assigns id=0");
+        assert_eq!(inc2.id, 0, "second incident also gets id=0 - uniqueness violated");
+    }
+
+    /// FINDING: register_incident() properly assigns IDs via allocate_id().
+    /// This compensates for process_failure's id=0 issue.
+    /// Verify the ID allocation starts at 1 (not 0) and increments.
+    #[test]
+    fn blackhat_register_incident_compensates_for_process_failure_zero_id() {
+        use vb_core::{ActionId, RunId, StepIdx};
+        use vb_storage::EventSeq;
+        let mut screen = IncidentScreen::new();
+        let event = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
+        let incident = IncidentScreen::process_failure(&event).unwrap();
+        assert_eq!(incident.id, 0, "process_failure gives id=0");
+        let _idx = screen.register_incident(incident);
+        // register_incident overwrites id to 1
+        assert_eq!(screen.incidents().first().map(|i| i.id), Some(1), "register_incident reassigns id starting from 1");
+    }
+
+    /// FINDING: instant_to_micros uses instant.elapsed() which measures time
+    /// since the Instant was created. Since `now = Instant::now()` is called
+    /// just before conversion, the elapsed time is near-zero microseconds.
+    /// This means timestamps are effectively 0 or very small, which may not
+    /// be the intended behavior for persistent storage.
+    #[test]
+    fn blackhat_instant_to_micros_produces_near_zero_values() {
+        let now = std::time::Instant::now();
+        let micros = IncidentScreen::instant_to_micros(now);
+        // elapsed() from a just-created Instant is ~0 microseconds
+        assert!(micros < 1_000_000, "instant_to_micros returns near-zero for just-created Instant: {micros}");
+    }
+
+    /// FINDING: allocate_id uses saturating_add which means after u64::MAX
+    /// IDs, all subsequent incidents share the same ID. This violates the
+    /// uniqueness invariant for extremely long-running sessions.
+    #[test]
+    fn blackhat_allocate_id_saturates_at_max() {
+        let mut screen = IncidentScreen::new();
+        // Simulate near-overflow by setting next_incident_id to u64::MAX
+        screen.next_incident_id = u64::MAX;
+        let id1 = {
+            let id = screen.next_incident_id;
+            screen.next_incident_id = screen.next_incident_id.saturating_add(1);
+            id
+        };
+        // After saturation, next_incident_id stays at u64::MAX
+        assert_eq!(id1, u64::MAX);
+        assert_eq!(screen.next_incident_id, u64::MAX, "saturating_add causes ID reuse at u64::MAX");
+    }
+
+    /// FINDING: severity_for_code maps BudgetExceeded to Major but the actual
+    /// budget exhaustion could be Critical if it causes a cascading failure.
+    /// This is a design decision worth documenting.
+    #[test]
+    fn blackhat_severity_for_budget_exceeded_is_major_not_critical() {
+        let severity = IncidentScreen::severity_for_code(&FailureCode::BudgetExceeded);
+        assert_eq!(severity, IncidentSeverity::Major, "BudgetExceeded is Major, not Critical");
+    }
+
+    /// FINDING: replay_safe_for_code maps only ActionTimeout, ValidationError,
+    /// and BudgetExceeded as replay-safe. StepPanicked is NOT marked replay-safe,
+    /// which is correct since a panic may have left partial state.
+    #[test]
+    fn blackhat_step_panicked_is_not_replay_safe() {
+        let replay_safe = IncidentScreen::replay_safe_for_code(&FailureCode::StepPanicked);
+        assert!(!replay_safe, "StepPanicked is correctly NOT replay-safe");
+    }
+
+    /// FINDING: detail_sections() state_diff only matches taint_changes to
+    /// slot_values_before by slot_index. If taint_changes has entries for
+    /// slots not in slot_values_before, those taint changes are silently
+    /// dropped from the diff view.
+    #[test]
+    fn blackhat_detail_sections_drops_taint_changes_without_matching_slot() {
+        let mut screen = IncidentScreen::new();
+        // Create an incident with a taint change for a slot not in slot_values_before
+        let now = std::time::Instant::now();
+        let incident = Incident {
+            id: 1, incident_type: IncidentType::ActionFailure,
+            severity: IncidentSeverity::Major,
+            failure_code: FailureCode::ActionTimeout,
+            run_id: 1, workflow_name: String::new(),
+            step_id: None, step_name: None,
+            error_message: String::from("test"),
+            replay_safe: true,
+            side_effect_certainty: SideEffectCertainty::None,
+            timestamp: now,
+            context: IncidentContext {
+                slot_values_before: vec![(1_u16, String::from("slot1"))],
+                taint_changes: vec![
+                    (1_u16, String::from("tainted_slot1")),
+                    (2_u16, String::from("orphan_taint")), // no matching slot_values_before
+                ],
+                action_attempts: 0,
+                last_action_idempotency_key: None,
+            },
+            timeline: vec![],
+        };
+        screen.register_incident(incident);
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        // Only slot 1 should appear in state_diff; slot 2's taint is silently dropped
+        assert_eq!(sections.state_diff.len(), 1, "only slot_values_before slots appear in diff");
+        assert_eq!(sections.state_diff[0].slot_index, 1);
+        // The orphan taint for slot 2 is not visible in the diff
+    }
+
+    /// FINDING: process_run_failure always sets step_id to None. The step
+    /// parameter becomes step_name (Option<&str>), but the Incident's step_id
+    /// field (Option<u16>) is always None. Callers expecting step_id to be
+    /// populated from process_run_failure will be disappointed.
+    #[test]
+    fn blackhat_process_run_failure_always_sets_step_id_to_none() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, Some("step-name"), FailureCode::ActionTimeout, "t");
+        let detail = screen.get_failure_detail(0).unwrap();
+        assert!(detail.step_id.is_none(), "step_id is always None from process_run_failure");
+        assert_eq!(detail.step_name.as_deref(), Some("step-name"), "step_name is populated from the step param");
+    }
+
+    /// FINDING: process_replay_divergence sets side_effect_certainty to Unknown
+    /// and replay_safe to false. This is correct and conservative.
+    #[test]
+    fn blackhat_replay_divergence_is_unsafe_and_unknown_certainty() {
+        let mut screen = IncidentScreen::new();
+        screen.process_replay_divergence(1, "a", "b");
+        let detail = screen.get_failure_detail(0).unwrap();
+        assert!(!detail.replay_safe);
+        assert_eq!(detail.side_effect_certainty, SideEffectCertainty::Unknown);
+    }
+
+    /// FINDING: format_failure_code uses different labels than FailureCode::as_str().
+    /// For example, BudgetExceeded is "BudgetExceeded" in format_failure_code
+    /// but "StepBudgetExhausted" in FailureCode::as_str(). This inconsistency
+    /// could confuse consumers of the error information.
+    #[test]
+    fn blackhat_format_failure_code_disagrees_with_as_str() {
+        assert_eq!(format_failure_code(&FailureCode::BudgetExceeded), "BudgetExceeded");
+        assert_eq!(FailureCode::BudgetExceeded.as_str(), "StepBudgetExhausted");
+        // These disagree! format_failure_code and as_str() return different strings.
+
+        assert_eq!(format_failure_code(&FailureCode::TaintLeak), "TaintLeak");
+        assert_eq!(FailureCode::TaintLeak.as_str(), "TaintViolation");
+        // Another disagreement: "TaintLeak" vs "TaintViolation"
+    }
+
+    /// FINDING: IncidentScreen wraps IncidentConsole but does not expose
+    /// the Phase 5A record API (push_incident, active_incidents, etc.).
+    /// This means Phase 5A record features are only available through
+    /// IncidentConsole directly, creating a split API surface.
+    #[test]
+    fn blackhat_screen_does_not_expose_phase5a_record_api() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        // IncidentScreen has no push_incident, active_incidents, clear_resolved, etc.
+        // These are only on IncidentConsole.
+        assert_eq!(screen.active_count(), 1);
+        // active_count() delegates to legacy active_count, not records
+    }
+
+    /// FINDING: dismiss_selected() has a TOCTOU-like pattern where it gets
+    /// selected_index, then checks had_incident, then dismisses. In single-
+    /// threaded code this is safe, but the defensive check is good practice.
+    #[test]
+    fn blackhat_dismiss_selected_defensive_check_when_incident_already_gone() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        // Dismiss via the non-selected path first
+        screen.dismiss(0);
+        // Now dismiss_selected tries to use the stale selected_index
+        let result = screen.dismiss_selected();
+        assert!(!result, "dismiss_selected returns false when incident already gone");
+    }
 }

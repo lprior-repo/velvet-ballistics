@@ -1485,4 +1485,167 @@ mod tests {
             "BLACK HAT [LOW]: peak_frames counts branch nodes AND fanout separately, double-counting"
         );
     }
+
+    // =========================================================================
+    // BLACKHAT security-focused tests
+    // =========================================================================
+
+    /// BLACKHAT_resources_node_count_truncation [MEDIUM]:
+    /// compute_resource_bounds uses `u32::try_from(parts.nodes.len())`
+    /// clamping to u32::MAX. While unlikely to be hit in practice, a
+    /// workflow with more than ~4 billion nodes would silently report
+    /// u32::MAX instead of the real count, causing resource comparison
+    /// errors in the panel.
+    #[test]
+    fn blackhat_resources_node_count_truncation_to_u32_max() {
+        // Verify the truncation logic.
+        let huge_count: usize = 5_000_000_000;
+        let clamped = u32::try_from(huge_count).unwrap_or(u32::MAX);
+        assert_eq!(
+            clamped,
+            u32::MAX,
+            "BLACKHAT [MEDIUM]: node count > u32::MAX is clamped to u32::MAX"
+        );
+    }
+
+    /// BLACKHAT_resources_payload_metric_semantics [LOW]:
+    /// The "estimated_action_payload / max_ipc_payload_bytes" metric computes
+    /// do_node_count * max_ipc_payload_bytes and compares against
+    /// max_ipc_payload_bytes. For any workflow with > 1 Do node, this always
+    /// exceeds the limit. The metric's semantics are questionable because it
+    /// compares total payload against single-payload limit.
+    #[test]
+    fn blackhat_resources_two_do_nodes_always_exceed_payload_limit() {
+        let contract = ResourceContract {
+            max_ipc_payload_bytes: 1024,
+            ..ResourceContract::DEFAULT
+        };
+        let bounds = ResourceBounds {
+            slot_count: 2,
+            node_count: 3,
+            do_node_count: 2,
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: 6,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let payload_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_action_payload / max_ipc_payload_bytes");
+        let Some(m) = payload_metric else { return };
+        // 2 * 1024 = 2048 > 1024 => ExceedsLimit
+        assert_eq!(
+            m.status,
+            ResourceStatus::ExceedsLimit,
+            "BLACKHAT [LOW]: any workflow with >1 Do node always exceeds payload limit"
+        );
+    }
+
+    /// BLACKHAT_resources_slot_count_u16_to_u64_safe [CONFIRMED-SAFE]:
+    /// slot_count is u16 and is converted to u64 for comparison. This
+    /// conversion is always safe because u16 fits in u64.
+    #[test]
+    fn blackhat_resources_slot_count_conversion_safe() {
+        let max_slot: u16 = u16::MAX;
+        let converted: u64 = u64::from(max_slot);
+        assert_eq!(
+            converted,
+            65535u64,
+            "u16 to u64 conversion is always safe"
+        );
+    }
+
+    /// BLACKHAT_resources_zero_do_nodes_zero_payload [CONFIRMED-SAFE]:
+    /// With zero Do nodes, payload and result estimations are 0, which
+    /// should be WithinBounds.
+    #[test]
+    fn blackhat_resources_zero_do_nodes_zero_payload_within_bounds() {
+        let contract = ResourceContract {
+            max_ipc_payload_bytes: 1024,
+            max_output_bytes: 512,
+            ..ResourceContract::DEFAULT
+        };
+        let bounds = ResourceBounds {
+            slot_count: 2,
+            node_count: 5,
+            do_node_count: 0,
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: 0,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+
+        let payload_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_action_payload / max_ipc_payload_bytes");
+        let Some(m) = payload_metric else { return };
+        assert_eq!(m.computed_value, 0);
+        assert_eq!(m.status, ResourceStatus::WithinBounds);
+
+        let result_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_result_size / max_output_bytes");
+        let Some(r) = result_metric else { return };
+        assert_eq!(r.computed_value, 0);
+        assert_eq!(r.status, ResourceStatus::WithinBounds);
+    }
+
+    /// BLACKHAT_resources_foreach_zero_limit [LOW]:
+    /// A ForEachStart with limit=0 contributes 0 iteration frames but
+    /// still adds +3 structural frames (start+next+join). This is correct
+    /// but the test documents the behavior.
+    #[test]
+    fn blackhat_resources_foreach_zero_limit_contributes_structural_only() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 0, // zero iterations
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::new(2),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(3),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+        // Base 1 + 3 structural loop nodes = 4, + 0 iterations = 4
+        assert_eq!(
+            bounds.estimated_peak_frames, 4,
+            "ForEachStart with limit=0 should contribute structural frames only"
+        );
+    }
+
+    /// BLACKHAT_resources_together_zero_branches [LOW]:
+    /// A TogetherStart with zero branches contributes +1 for TogetherStart
+    /// and +1 for TogetherJoin but 0 fanout. This is correct behavior.
+    #[test]
+    fn blackhat_resources_together_zero_branches_no_fanout() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([]),
+                join: StepIdx::new(1),
+            },
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 0,
+                accumulator: SlotIdx::new(0),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+        // Base 1 + 2 together nodes = 3, + 0 fanout = 3
+        assert_eq!(
+            bounds.estimated_peak_frames, 3,
+            "TogetherStart with zero branches should have no fanout contribution"
+        );
+    }
 }

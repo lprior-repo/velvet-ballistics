@@ -991,4 +991,180 @@ mod tests {
             );
         }
     }
+
+    // -----------------------------------------------------------------------
+    // BLACKHAT security and correctness review tests
+    // -----------------------------------------------------------------------
+
+    /// LOW: RepeatStart with max_attempts=0 produces "R0" badge. This is
+    /// semantically questionable -- a repeat with 0 max attempts means the
+    /// loop body never executes. The badge is still generated, which could
+    /// mislead users into thinking retry is configured.
+    #[test]
+    fn blackhat_repeat_start_zero_max_attempts_produces_r0_badge() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 0,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "R0");
+    }
+
+    /// LOW: Do node action ID u16::MAX produces large label string.
+    /// The action.get() returns the raw u16 which is formatted into the badge.
+    /// No overflow, but the label "A65535" is long for a badge.
+    #[test]
+    fn blackhat_do_node_action_max_u16_produces_large_label() {
+        let kind = CompiledNodeKind::Do {
+            action: ActionId::new(u16::MAX),
+            input: SlotIdx::new(0),
+        };
+        let label = kind_label(&kind);
+        assert_eq!(label, "Do#65535");
+        let badges = extract_badges(&kind);
+        assert_eq!(badges[0].label, "A65535");
+    }
+
+    /// LOW: TogetherBranch branch index is a plain u16 -- large value
+    /// produces long label. No overflow risk, but documents the behavior.
+    #[test]
+    fn blackhat_together_branch_large_index_label() {
+        let kind = CompiledNodeKind::TogetherBranch {
+            branch: u16::MAX,
+            entry: StepIdx::new(1),
+            join: StepIdx::new(2),
+            accumulator: SlotIdx::new(0),
+        };
+        let label = kind_label(&kind);
+        assert_eq!(label, "Branch#65535");
+    }
+
+    /// LOW: NodeCard default-like construction with step_idx u16::MAX.
+    /// Verifies that the data structures accept the full range of u16 step
+    /// indices without issue.
+    #[test]
+    fn blackhat_node_card_accepts_u16_max_step_idx() {
+        let card = NodeCard {
+            step_idx: u16::MAX,
+            step_name: String::from("test"),
+            kind_label: String::from("Nop"),
+            category: NodeCategory::Control,
+            x: 0.0,
+            y: 0.0,
+            width: NODE_WIDTH,
+            height: NODE_HEIGHT,
+            header_color: node_header_color(NodeCategory::Control),
+            body_color: node_body_color(NodeCategory::Control),
+            border_color: [0.0; 4],
+            text_color: [1.0; 4],
+            badges: Vec::new(),
+            state_overlay: None,
+        };
+        assert_eq!(card.step_idx, u16::MAX);
+    }
+
+    /// LOW: EdgeLine with source and target both u16::MAX. Verifies that
+    /// edge records can hold the full u16 range for step indices.
+    #[test]
+    fn blackhat_edge_line_accepts_u16_max_steps() {
+        let el = EdgeLine {
+            source_step: u16::MAX,
+            target_step: u16::MAX,
+            source_port: String::from("out"),
+            target_port: String::from("in"),
+            edge_type: EdgeType::Normal,
+            color: edge_color(EdgeType::Normal),
+            width: 1.0,
+            dashed: false,
+        };
+        assert_eq!(el.source_step, u16::MAX);
+        assert_eq!(el.target_step, u16::MAX);
+    }
+
+    /// LOW: StateOverlay glow_radius of 0.0 or negative. The state_glow
+    /// function returns positive radii, but the struct accepts any f32.
+    /// A radius of 0.0 would produce no visible glow.
+    #[test]
+    fn blackhat_state_overlay_accepts_zero_glow_radius() {
+        let overlay = StateOverlay {
+            state: OverlayState::Pending,
+            glow_color: colors::state::PENDING,
+            glow_radius: 0.0,
+        };
+        assert_eq!(overlay.glow_radius, 0.0);
+    }
+
+    /// LOW: classify_node is exhaustive for all 34 variants. If a new
+    /// CompiledNodeKind variant is added without updating classify_node,
+    /// compilation will fail (match is non-exhaustive). This test verifies
+    /// the count matches.
+    #[test]
+    fn blackhat_all_kinds_classified_count_matches() {
+        let kinds = all_kinds();
+        assert_eq!(kinds.len(), 34, "must have exactly 34 variants");
+        for kind in &kinds {
+            let _cat = classify_node(kind);
+            // Should not panic for any variant.
+        }
+    }
+
+    /// LOW: extract_badges for Ask without timeout and WaitEvent without
+    /// timeout both produce empty badges. Timeout_slot being None is the
+    /// correct condition for no timeout badge.
+    #[test]
+    fn blackhat_ask_and_wait_event_no_timeout_both_empty() {
+        let ask = CompiledNodeKind::Ask {
+            prompt: SlotIdx::new(0),
+            timeout_slot: None,
+        };
+        let wait = CompiledNodeKind::WaitEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: None,
+        };
+        assert!(extract_badges(&ask).is_empty());
+        assert!(extract_badges(&wait).is_empty());
+    }
+
+    /// LOW: Finish badge always shows "D" regardless of the result slot
+    /// value. The result slot is not used for badge determination.
+    #[test]
+    fn blackhat_finish_badge_ignores_result_slot_value() {
+        let kind = CompiledNodeKind::Finish {
+            result: SlotIdx::new(u16::MAX),
+        };
+        let badges = extract_badges(&kind);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].label, "D");
+    }
+
+    /// LOW: Node header and body colors always have alpha > 0.
+    /// Verifies all categories produce visible colors.
+    #[test]
+    fn blackhat_all_category_colors_have_positive_alpha() {
+        let categories = [
+            NodeCategory::Data,
+            NodeCategory::External,
+            NodeCategory::Branch,
+            NodeCategory::Loop,
+            NodeCategory::Parallel,
+            NodeCategory::Suspend,
+            NodeCategory::Terminal,
+            NodeCategory::Error,
+            NodeCategory::Control,
+        ];
+        for cat in &categories {
+            let hdr = node_header_color(*cat);
+            let body = node_body_color(*cat);
+            assert!(
+                hdr[3] > 0.0,
+                "header alpha must be positive for {cat:?}"
+            );
+            assert!(
+                body[3] > 0.0,
+                "body alpha must be positive for {cat:?}"
+            );
+        }
+    }
 }

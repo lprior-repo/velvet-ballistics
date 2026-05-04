@@ -1141,4 +1141,195 @@ mod tests {
         let pin_count = suggestions.iter().filter(|s| s.action == RepairAction::PinIdempotency).count();
         assert_eq!(pin_count, 1, "exactly one PinIdempotency suggestion");
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// FINDING: suggest_repairs_for_record() does NOT check side_effect_certainty
+    /// unlike suggest_repairs() which adds a PinIdempotency suggestion when
+    /// certainty is Unknown. IncidentRecord has no side_effect_certainty field,
+    /// so this check cannot be ported. However, this creates a behavioral
+    /// inconsistency between the two suggestion functions.
+    #[test]
+    fn blackhat_suggest_repairs_for_record_misses_side_effect_certainty_check() {
+        // suggest_repairs adds PinIdempotency for Unknown certainty
+        let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Unknown);
+        let legacy_suggestions = suggest_repairs(&incident);
+        assert!(
+            legacy_suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency),
+            "legacy adds PinIdempotency for Unknown certainty"
+        );
+
+        // suggest_repairs_for_record has no equivalent check since
+        // IncidentRecord lacks side_effect_certainty
+        let record = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::Safe);
+        let record_suggestions = suggest_repairs_for_record(&record);
+        assert!(
+            !record_suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency),
+            "record-based suggestions miss the side_effect_certainty check"
+        );
+    }
+
+    /// FINDING: RepairSuggestion.confidence is f32, which has precision issues.
+    /// 0.85_f32 may not be exactly 0.85 due to floating-point representation.
+    /// The code uses hardcoded f32 literals which are fine for comparison with
+    /// epsilon, but exact equality checks (==) would be unreliable.
+    #[test]
+    fn blackhat_confidence_f32_precision_at_common_values() {
+        // 0.85 cannot be exactly represented in f32
+        let val = 0.85_f32;
+        // It should be very close but may not be exact
+        let diff = (val - 0.85_f32).abs();
+        assert!(diff < 0.001_f32, "f32 precision for 0.85 is acceptable but not exact");
+
+        // Verify all hardcoded confidence values are in [0.0, 1.0]
+        let hardcoded_values = [0.9_f32, 0.7_f32, 0.95_f32, 0.3_f32, 0.8_f32, 0.5_f32, 0.4_f32, 0.85_f32, 0.6_f32, 0.1_f32];
+        for v in &hardcoded_values {
+            assert!((0.0_f32..=1.0_f32).contains(v), "confidence {v} out of [0,1] range");
+        }
+    }
+
+    /// FINDING: suggest_repairs for ActionFailed bases confidence on
+    /// incident.replay_safe (0.95 for true, 0.3 for false) but does not
+    /// consider other factors like severity or failure count. This is a
+    /// simplistic heuristic that could mislead operators.
+    #[test]
+    fn blackhat_action_failed_confidence_binary_based_on_replay_safe() {
+        let incident_safe = make_incident(FailureCode::ActionFailed("err".into()), SideEffectCertainty::Certain);
+        assert!(incident_safe.replay_safe);
+        let suggestions_safe = suggest_repairs(&incident_safe);
+        let safe_diff = (suggestions_safe[0].confidence - 0.95_f32).abs();
+        assert!(safe_diff < f32::EPSILON, "replay_safe=true gives 0.95 confidence");
+
+        let mut incident_unsafe = make_incident(FailureCode::ActionFailed("err".into()), SideEffectCertainty::Certain);
+        incident_unsafe.replay_safe = false;
+        let suggestions_unsafe = suggest_repairs(&incident_unsafe);
+        let unsafe_diff = (suggestions_unsafe[0].confidence - 0.3_f32).abs();
+        assert!(unsafe_diff < f32::EPSILON, "replay_safe=false gives 0.3 confidence");
+    }
+
+    /// FINDING: RepairKind has no Unknown/Default variant. If a new FailureCode
+    /// is added and suggest_repairs is not updated, the match will fail at compile
+    /// time (good - exhaustive matching). But suggest_repairs_for_record would
+    /// also fail. This is actually a safety feature.
+    #[test]
+    fn blackhat_repair_kind_covers_all_failure_codes() {
+        // Verify every FailureCode maps to at least one RepairKind
+        let failure_codes = [
+            FailureCode::ActionTimeout,
+            FailureCode::ActionFailed(String::from("err")),
+            FailureCode::BudgetExceeded,
+            FailureCode::StepPanicked,
+            FailureCode::ValidationError(String::from("bad")),
+            FailureCode::TaintLeak,
+            FailureCode::ReplayDivergence,
+            FailureCode::Unknown(String::from("x")),
+        ];
+        for code in &failure_codes {
+            let incident = make_incident(code.clone(), SideEffectCertainty::Certain);
+            let suggestions = suggest_repairs(&incident);
+            assert!(!suggestions.is_empty(), "every FailureCode must produce at least one suggestion");
+            // Every suggestion must have a valid kind
+            for s in &suggestions {
+                let label = s.kind.as_str();
+                assert!(!label.is_empty(), "RepairKind.as_str() must return non-empty for {:?}", s.kind);
+            }
+        }
+    }
+
+    /// FINDING: suggest_repairs_for_record for ValidationError includes the raw
+    /// message in the rationale via format!(). If the validation message contains
+    /// user-controlled data, this could lead to log injection or misleading output.
+    #[test]
+    fn blackhat_validation_error_rationale_includes_raw_message() {
+        let record = make_record(
+            1, 1,
+            FailureCode::ValidationError(String::from("field 'name' contains <script>alert(1)</script>")),
+            ReplaySafety::Safe,
+        );
+        let suggestions = suggest_repairs_for_record(&record);
+        assert_eq!(suggestions.len(), 1);
+        // The raw message is included verbatim in the rationale
+        assert!(suggestions[0].rationale.contains("<script>alert(1)</script>"),
+            "raw user message included in rationale without sanitization");
+    }
+
+    /// FINDING: suggest_repairs_for_record for Unknown includes the inner string
+    /// in the rationale. Same injection concern as ValidationError.
+    #[test]
+    fn blackhat_unknown_failure_inner_string_in_rationale() {
+        let record = make_record(
+            1, 1,
+            FailureCode::Unknown(String::from("error\nwith\nnewlines")),
+            ReplaySafety::Safe,
+        );
+        let suggestions = suggest_repairs_for_record(&record);
+        assert!(suggestions[0].rationale.contains("error\nwith\nnewlines"),
+            "raw inner string with newlines included in rationale");
+    }
+
+    /// FINDING: RepairAction has both PinIdempotency and ManualIntervention
+    /// which overlap in purpose for some failure codes. ReplayDivergence maps
+    /// to PinIdempotency kind but ManualIntervention action, which is confusing.
+    #[test]
+    fn blackhat_replay_divergence_kind_vs_action_mismatch() {
+        let record = make_record(1, 1, FailureCode::ReplayDivergence, ReplaySafety::Safe);
+        let suggestions = suggest_repairs_for_record(&record);
+        assert_eq!(suggestions[0].kind, RepairKind::PinIdempotency, "kind is PinIdempotency");
+        assert_eq!(suggestions[0].action, RepairAction::ManualIntervention, "action is ManualIntervention");
+        // The kind says "pin idempotency" but the action says "manual intervention"
+        // This is semantically inconsistent
+    }
+
+    /// FINDING: RepairAction::AdjustBudget is used only for BudgetExceeded in
+    /// both legacy and record paths, but there's no corresponding RepairKind
+    /// (it maps to RepairKind::IncreaseTimeout instead). This means the "kind"
+    /// label says "IncreaseTimeout" while the "action" says "AdjustBudget".
+    #[test]
+    fn blackhat_budget_exceeded_kind_increase_timeout_vs_action_adjust_budget() {
+        let record = make_record(1, 1, FailureCode::BudgetExceeded, ReplaySafety::Safe);
+        let suggestions = suggest_repairs_for_record(&record);
+        assert_eq!(suggestions[0].kind, RepairKind::IncreaseTimeout, "kind says IncreaseTimeout");
+        assert_eq!(suggestions[0].action, RepairAction::AdjustBudget, "action says AdjustBudget");
+        // Kind and action disagree on the repair strategy
+    }
+
+    /// FINDING: suggest_repairs adds PinIdempotency when side_effect_certainty
+    /// is Unknown, regardless of the failure code. This means StepPanicked with
+    /// Unknown certainty gets both ManualInvestigation AND PinIdempotency,
+    /// which may be contradictory (if the panic was in the idempotency logic).
+    #[test]
+    fn blackhat_step_panicked_unknown_certainty_adds_contradictory_pin_idempotency() {
+        let incident = make_incident(FailureCode::StepPanicked, SideEffectCertainty::Unknown);
+        let suggestions = suggest_repairs(&incident);
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::ManualInvestigation));
+        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        // Both suggestions are present, which may be contradictory if the panic
+        // occurred in the idempotency pinning logic itself
+    }
+
+    /// FINDING: suggest_repairs_for_record with ReplaySafety::Unknown adds a
+    /// PinIdempotency suggestion with confidence 0.6. This is the same as
+    /// UnsafeSideEffect, which means Unknown and UnsafeSideEffect are treated
+    /// identically in the record-based suggestion system.
+    #[test]
+    fn blackhat_record_unknown_and_unsafe_replay_safety_same_extra_suggestion() {
+        let record_unknown = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::Unknown);
+        let record_unsafe = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect);
+
+        let suggestions_unknown = suggest_repairs_for_record(&record_unknown);
+        let suggestions_unsafe = suggest_repairs_for_record(&record_unsafe);
+
+        // Both should have 2 suggestions
+        assert_eq!(suggestions_unknown.len(), 2);
+        assert_eq!(suggestions_unsafe.len(), 2);
+
+        // The extra PinIdempotency suggestion has the same confidence and level for both
+        let pin_unknown = suggestions_unknown.iter().find(|s| s.kind == RepairKind::PinIdempotency);
+        let pin_unsafe = suggestions_unsafe.iter().find(|s| s.kind == RepairKind::PinIdempotency);
+        assert!(pin_unknown.is_some());
+        assert!(pin_unsafe.is_some());
+        assert_eq!(pin_unknown.map(|s| s.confidence), pin_unsafe.map(|s| s.confidence));
+    }
 }

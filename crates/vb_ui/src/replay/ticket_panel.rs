@@ -879,4 +879,276 @@ mod tests {
         let verdict = classify_replay_safety(&ticket);
         assert_eq!(verdict, ReplaySafety::Unknown);
     }
+
+    // =========================================================================
+    // BLACKHAT security and correctness findings
+    // =========================================================================
+
+    /// FINDING 1 -- HIGH: classify_replay_safety classifies replay_safe=false
+    /// + SideEffectCertainty::None as Unknown instead of Unsafe.
+    ///
+    /// The classify_replay_safety function returns `ReplaySafety::Safe` only
+    /// when `replay_safe && certainty == None`. When `replay_safe` is false
+    /// but certainty is `None`, it falls through to `Unknown`. However, an
+    /// action marked replay_safe=false with no known side effects is
+    /// explicitly marked as not safe to replay -- it should arguably be
+    /// `UnsafeSideEffect` or at least have a distinct "UnsafeNonIdempotent"
+    /// classification rather than lumped in with "Unknown".
+    ///
+    /// Impact: Non-idempotent actions with no known side effects are
+    /// classified as "Unknown" rather than "Unsafe", potentially leading
+    /// to overly permissive replay decisions.
+    #[test]
+    fn blackhat_replay_safe_false_with_none_certainty_classified_as_unknown() {
+        let ticket = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0,
+            false,                          // replay_safe = false
+            SideEffectCertainty::None,      // no known side effects
+            Taint::Clean,
+            false,
+        );
+        let verdict = classify_replay_safety(&ticket);
+        assert_eq!(
+            verdict,
+            ReplaySafety::Unknown,
+            "FINDING 1: replay_safe=false + None certainty is Unknown, not Unsafe"
+        );
+        // This means the action is NOT replay-safe but is not classified as
+        // having unsafe side effects either -- a gap in the safety model.
+        assert!(!verdict.is_safe());
+    }
+
+    /// FINDING 2 -- MEDIUM: attempt field is u16 with no overflow protection.
+    ///
+    /// The `attempt` field is `u16` (max 65535). If a system generates more
+    /// than 65535 retries, the attempt counter would need to wrap or saturate.
+    /// There is no validation that attempt > 0 in the constructor. An attempt
+    /// of 0 violates the documented "1-based" invariant.
+    ///
+    /// Impact: An attempt of 0 could cause off-by-one errors in retry counting.
+    #[test]
+    fn blackhat_attempt_zero_violates_one_based_invariant() {
+        let ticket = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            0,                              // attempt = 0, violates "1-based"
+            0,
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        );
+        // The constructor accepts attempt=0 without validation.
+        assert_eq!(
+            ticket.attempt, 0,
+            "FINDING 2: attempt=0 is accepted, violating the documented 1-based invariant"
+        );
+    }
+
+    /// FINDING 3 -- MEDIUM: taint field is stored but never used in
+    /// replay-safety classification.
+    ///
+    /// The `ActionTicketDisplay` struct carries a `taint: Taint` field, but
+    /// neither `classify_replay_safety` nor `is_replay_safe_aggregate`
+    /// considers taint when computing the safety verdict. An action with
+    /// `Taint::Secret` inputs that is otherwise "safe" would be classified
+    /// as `ReplaySafety::Safe`, which could cause secret data to be replayed
+    /// without proper handling.
+    ///
+    /// Impact: Secret-tainted actions may be replayed without taint-aware
+    /// safety checks, potentially exposing sensitive data.
+    #[test]
+    fn blackhat_taint_secret_ignored_in_safety_classification() {
+        let ticket = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0,
+            true,                           // replay_safe
+            SideEffectCertainty::None,
+            Taint::Secret,                  // HIGH taint
+            false,
+        );
+        let verdict = classify_replay_safety(&ticket);
+        assert_eq!(
+            verdict,
+            ReplaySafety::Safe,
+            "FINDING 3: Secret-tainted action classified as Safe because taint is ignored"
+        );
+    }
+
+    /// FINDING 4 -- LOW: idempotency_key is u128 but detail_lines formats it
+    /// as hex with fixed 32-character width, which is correct. However, two
+    /// actions with different keys but same fields otherwise are not detected
+    /// as duplicates by any built-in logic. The idempotency_key is purely
+    /// informational.
+    #[test]
+    fn blackhat_idempotency_key_not_used_for_dedup() {
+        let ticket_a = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0xAAAA,
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        );
+        let ticket_b = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(2),
+            1,
+            0xBBBB,                         // different key
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        );
+        // Both are safe, both reference same action, but different keys.
+        // The panel model does not provide dedup by key.
+        assert_ne!(ticket_a.idempotency_key, ticket_b.idempotency_key);
+        assert_eq!(ticket_a.action, ticket_b.action);
+        // Both classified as safe.
+        assert!(is_replay_safe_aggregate(&[ticket_a.clone(), ticket_b.clone()]));
+    }
+
+    /// FINDING 5 -- LOW: summary_line only shows action ID, hiding all other
+    /// fields including taint and replay safety details.
+    ///
+    /// The summary line format is `ActionTicket #N -- replay-safe: YES/NO`.
+    /// It does not show step, run, attempt, taint, or side-effect certainty.
+    /// Users relying on the summary line may miss critical security info.
+    #[test]
+    fn blackhat_summary_line_hides_critical_security_fields() {
+        let secret_ticket = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(5),
+            SeqNo::new(1),
+            1,
+            0,
+            false,
+            SideEffectCertainty::Certain,
+            Taint::Secret,
+            true,
+        );
+        let summary = secret_ticket.summary_line();
+        // The summary does not mention Taint::Secret, Certain side effects,
+        // or duplicate_completion.
+        assert!(!summary.contains("Secret"), "FINDING 5: summary hides taint");
+        assert!(!summary.contains("Certain"), "FINDING 5: summary hides side-effect certainty");
+        assert!(!summary.contains("duplicate"), "FINDING 5: summary hides duplicate status");
+    }
+
+    /// FINDING 6 -- MEDIUM: worst_side_effect_certainty helper uses verbose
+    /// pattern matching instead of an ordering relation.
+    ///
+    /// The helper function has a large match on `worst` to compute the max
+    /// certainty level. This is error-prone: if a new variant is added to
+    /// `SideEffectCertainty`, the helper will silently ignore it in some
+    /// branches. Using an `Ord` implementation would prevent this.
+    #[test]
+    fn blackhat_worst_certainty_empty_returns_none() {
+        let tickets: Vec<ActionTicketDisplay> = Vec::new();
+        let result = worst_side_effect_certainty(&tickets);
+        assert!(
+            result.is_none(),
+            "FINDING 6: empty list returns None, not a default certainty"
+        );
+    }
+
+    /// FINDING 7 -- LOW: duplicate_completion flag is purely informational and
+    /// not enforced. Nothing prevents setting both replay_safe=true and
+    /// duplicate_completion=true on the same ticket, which is semantically
+    /// contradictory (a duplicate completion of a safe action may still be
+    /// unsafe if it triggers side effects twice).
+    #[test]
+    fn blackhat_replay_safe_with_duplicate_completion_is_contradictory() {
+        let ticket = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0,
+            true,                           // replay_safe
+            SideEffectCertainty::None,
+            Taint::Clean,
+            true,                           // duplicate_completion -- contradictory?
+        );
+        // Both flags can be true simultaneously -- no validation.
+        assert!(ticket.replay_safe);
+        assert!(ticket.duplicate_completion);
+    }
+
+    /// FINDING 8 -- LOW: detail_lines formats idempotency_key as :032x which
+    /// is correct for u128. Verify it handles zero and max values.
+    #[test]
+    fn blackhat_idempotency_key_boundary_formatting() {
+        let zero_key = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0,
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        );
+        let lines = zero_key.detail_lines();
+        let idem_line = lines.iter().find(|l| l.contains("Idempotency key:"));
+        assert!(idem_line.is_some());
+        assert!(
+            idem_line.unwrap().contains("00000000000000000000000000000000"),
+            "FINDING 8: zero key should format as 32 zeros"
+        );
+
+        let max_key = ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            u128::MAX,
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        );
+        let lines_max = max_key.detail_lines();
+        let idem_line_max = lines_max.iter().find(|l| l.contains("Idempotency key:"));
+        assert!(idem_line_max.is_some());
+        assert!(
+            idem_line_max.unwrap().contains("ffffffffffffffffffffffffffffffff"),
+            "FINDING 8: max key should format as 32 f's"
+        );
+    }
+
+    /// FINDING 9 -- LOW: ActionTicketDisplay does not derive PartialEq/Eq,
+    /// making it harder to compare tickets in tests or collection operations.
+    #[test]
+    fn blackhat_ticket_display_no_partial_eq() {
+        let a = make_ticket(1, true);
+        let b = make_ticket(1, true);
+        // ActionTicketDisplay does not derive PartialEq, so we cannot do
+        // assert_eq!(a, b). This is a finding because it makes test assertions
+        // verbose and prevents use in Hash-based collections.
+        assert_eq!(a.action, b.action);
+        assert_eq!(a.replay_safe, b.replay_safe);
+    }
 }

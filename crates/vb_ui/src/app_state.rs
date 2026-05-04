@@ -1459,4 +1459,239 @@ mod tests {
         assert_eq!(state.verification.cert_action.badge_text, "--");
         assert_eq!(state.verification.cert_durability.badge_text, "--");
     }
+
+    // -----------------------------------------------------------------------
+    // BLACKHAT security and correctness review tests
+    // -----------------------------------------------------------------------
+
+    /// HIGH: warn_count is hardcoded to 0 in populate_cert_cards. The
+    /// aggregate counters never populate warn_count regardless of cert
+    /// status. This means worst_risk_text() can never return "WARNING"
+    /// after populate_cert_cards runs, and the warn_count field is
+    /// permanently zero. The status_badge_text() path that handles
+    /// warn-only (line 399-402) is unreachable via populate_cert_cards.
+    #[test]
+    fn blackhat_populate_cert_cards_warn_count_always_zero() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_check".into(),
+                status: "Warn".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint".into(),
+                status: "Warn".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert_eq!(
+            vd.warn_count, 0,
+            "warn_count should be 0 even with Warn certs -- hardcoded to 0"
+        );
+        // All "Warn" certs count as fail (not "Pass"), so fail_count = 2.
+        assert_eq!(vd.fail_count, 2);
+        assert!(!vd.all_clean);
+    }
+
+    /// MEDIUM: populate_cert_cards treats any non-"Pass" status as a failure.
+    /// "Warn" status, unknown statuses like "Skip", and empty strings all
+    /// count as failures. This makes the fail_count inflated and the
+    /// all_clean flag too conservative.
+    #[test]
+    fn blackhat_populate_cert_cards_non_pass_treated_as_fail() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint".into(),
+                status: "Skip".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_08_res".into(),
+                status: String::new(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        // Only gate_09 is "Pass". "Skip" and "" count as fail.
+        assert_eq!(vd.pass_count, 1);
+        assert_eq!(vd.fail_count, 2);
+        assert!(!vd.all_clean);
+    }
+
+    /// MEDIUM: build_card inside populate_cert_cards also treats any
+    /// non-"Pass" status as fail for per-panel badges. A panel with
+    /// only "Warn" certs gets a FAIL badge, not a WARN badge.
+    #[test]
+    fn blackhat_build_card_treats_warn_as_fail_in_panel() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_warn".into(),
+                status: "Warn".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        // cert_structure matches gate_09 prefix. The "Warn" status is
+        // not "Pass", so the panel badge is FAIL.
+        assert_eq!(
+            vd.cert_structure.badge_text, "FAIL",
+            "Warn status should produce FAIL badge in panel -- no WARN category exists"
+        );
+    }
+
+    /// MEDIUM: populate_cert_cards with only unrelated gates (gate_99)
+    /// produces all_clean=false when pass=0 and fail>0. This means
+    /// non-matching gates that are not "Pass" inflate the fail counter
+    /// and taint the overall all_clean flag, even though no recognized
+    /// panel has any failures.
+    #[test]
+    fn blackhat_unrelated_gates_taint_all_clean_via_fail_counter() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_99_unknown".into(),
+                status: "Fail".into(),
+                details: "unknown".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        // All panel badges are "--" (no matching prefixes), but fail_count=1.
+        assert_eq!(vd.cert_structure.badge_text, "--");
+        assert_eq!(vd.cert_bounded.badge_text, "--");
+        assert!(!vd.all_clean, "unrelated gate failure taints all_clean");
+        assert_eq!(vd.fail_count, 1);
+    }
+
+    /// LOW: VerificationData status_badge_text saturating_sub correctness.
+    /// When warn_count > 0 and fail_count == 0, clean = total - warn.
+    /// But since populate_cert_cards hardcodes warn_count=0, this path
+    /// is only reachable via direct field mutation.
+    #[test]
+    fn blackhat_status_badge_warn_only_path_reachable_via_direct_mutation() {
+        let mut vd = VerificationData::new();
+        vd.all_clean = false;
+        vd.total_checks = 5;
+        vd.warn_count = 2;
+        vd.fail_count = 0;
+        let text = vd.status_badge_text();
+        // clean = 5 - 0 - 2 = 3 (using saturating_sub chain)
+        assert!(text.contains("PASS"));
+        assert!(text.contains("3/5 panels clean"));
+        assert_eq!(vd.worst_risk_text(), "WARNING");
+    }
+
+    /// LOW: ReplayData speed_text boundary exactly at 9.95. The boundary
+    /// check is `playback_speed < 10.0`, so 9.95 uses the {:.1} format.
+    /// format!("{:.1}", 9.95) produces "9.9" (banker's rounding), not "10.0".
+    #[test]
+    fn blackhat_speed_text_rounding_boundary() {
+        let mut state = AppState::new();
+        state.replay.playback_speed = 9.95;
+        let text = state.replay.speed_text();
+        assert_eq!(text, "9.9x", "9.95 rounds down in .1f format (bankers rounding)");
+    }
+
+    /// LOW: Negative playback_speed produces "-1.0x". No validation
+    /// prevents negative speeds from being displayed.
+    #[test]
+    fn blackhat_negative_playback_speed_displays_as_negative() {
+        let mut state = AppState::new();
+        state.replay.playback_speed = -2.5;
+        let text = state.replay.speed_text();
+        assert_eq!(text, "-2.5x");
+    }
+
+    /// LOW: Zero playback_speed produces "0.0x". Not a valid speed but
+    /// the display code handles it without panic.
+    #[test]
+    fn blackhat_zero_playback_speed_displays_zero() {
+        let mut state = AppState::new();
+        state.replay.playback_speed = 0.0;
+        let text = state.replay.speed_text();
+        assert_eq!(text, "0.0x");
+    }
+
+    /// LOW: IncidentData critical_count + warning_count can exceed
+    /// active_incidents. No invariant enforcement between these fields.
+    #[test]
+    fn blackhat_incident_counts_can_exceed_active_incidents() {
+        let mut state = AppState::new();
+        state.incident.active_incidents = 1;
+        state.incident.critical_count = 5;
+        state.incident.warning_count = 10;
+        // No invariant check -- counts can exceed active_incidents.
+        assert_eq!(state.incident.active_incidents, 1);
+        assert_eq!(state.incident.critical_count, 5);
+        assert_eq!(state.incident.warning_count, 10);
+    }
+
+    /// LOW: VerificationData all_clean can be true while fail_count > 0
+    /// via direct mutation. No invariant enforcement. status_badge_text()
+    /// checks all_clean first, so the badge is inconsistent with worst_risk.
+    #[test]
+    fn blackhat_all_clean_invariant_violation_via_direct_mutation() {
+        let mut vd = VerificationData::new();
+        vd.all_clean = true;
+        vd.fail_count = 3;
+        // Inconsistent state: all_clean=true but fail_count > 0.
+        assert!(vd.all_clean);
+        assert_eq!(vd.fail_count, 3);
+        // worst_risk_text checks fail_count first, so it says HIGH RISK.
+        assert_eq!(vd.worst_risk_text(), "HIGH RISK");
+        // But status_badge_text checks all_clean first, returning PASS.
+        // This demonstrates the inconsistency: badge says PASS but risk says HIGH.
+        assert!(
+            vd.status_badge_text().contains("PASS"),
+            "status_badge_text should return PASS because all_clean=true, \
+             even though fail_count=3 -- this documents the invariant violation"
+        );
+    }
+
+    /// LOW: CertCardStatus badge_color returns fallback "#555577" for
+    /// any unrecognized badge_text, including empty string.
+    #[test]
+    fn blackhat_cert_card_badge_color_fallback_for_empty_string() {
+        let card = CertCardStatus {
+            badge_text: String::new(),
+            field1: String::new(),
+            field2: String::new(),
+            field3: String::new(),
+            field4: String::new(),
+        };
+        assert_eq!(card.badge_color(), "#555577");
+        assert_eq!(card.field_color(), "#555577");
+    }
+
+    /// LOW: Sync system from screen with zero total_active_runs and
+    /// non-zero queue depths. The metrics propagation should reflect
+    /// queue depth correctly.
+    #[test]
+    fn blackhat_sync_system_zero_active_runs_with_queue_depth() {
+        let mut state = AppState::new();
+        let shard = vb_ipc::ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 50,
+            action_queue_depth: 30,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        state.system_screen.update_from_metrics(&shard);
+        state.sync_system_from_screen();
+        assert_eq!(state.system.total_active_runs, 0);
+        assert_eq!(state.system.total_queue_depth, 80);
+    }
 }

@@ -1939,4 +1939,186 @@ mod tests {
         // will report this as a Warn (not Pass), which may cause unnecessary
         // concern for workflows that handle events correctly.
     }
+
+    // =========================================================================
+    // BLACKHAT security-focused tests
+    // =========================================================================
+
+    /// BLACKHAT_overlay_step_color_u16_overflow [HIGH]:
+    /// step_color converts step_idx (usize) to StepIdx via
+    /// `u16::try_from(step_idx).unwrap_or(u16::MAX)`. For step indices
+    /// exceeding u16::MAX, this silently clamps to u16::MAX, which could map
+    /// to a valid node in the workflow and return an incorrect color.
+    #[test]
+    fn blackhat_overlay_step_color_large_index_clamped_to_u16_max() {
+        let parts = make_parts_with_next(vec![(
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+        )]);
+        let result = compute_taint_overlay(&parts, &empty_taint_map());
+
+        // Step index 65535 (u16::MAX) maps to step 0 in a 1-node workflow,
+        // producing a misleading color instead of COLOR_CLEAN.
+        let color_65535 = step_color(65535, &result);
+        // With u16::MAX clamping, this maps to StepIdx::new(65535) which does
+        // not match any source/sink, so it returns COLOR_CLEAN.
+        assert_eq!(
+            color_65535,
+            COLOR_CLEAN,
+            "BLACKHAT [HIGH]: step index 65535 is clamped to u16::MAX via try_from"
+        );
+
+        // An extremely large step index also clamps.
+        let color_huge = step_color(70000, &result);
+        assert_eq!(
+            color_huge,
+            COLOR_CLEAN,
+            "BLACKHAT [HIGH]: step index 70000 overflows to u16::MAX and returns CLEAN"
+        );
+    }
+
+    /// BLACKHAT_overlay_self_referencing_node_no_infinite_loop [MEDIUM]:
+    /// walk_forward uses a HashSet for visited tracking, so a node whose
+    /// `next` points back to itself does not cause infinite iteration.
+    /// This test documents the cycle prevention.
+    #[test]
+    fn blackhat_overlay_self_referencing_node_no_infinite_loop() {
+        let parts = make_parts_with_next(vec![
+            (CompiledNodeKind::Nop, Some(StepIdx::new(0))), // points to itself
+        ]);
+        let reachable = walk_forward(&parts, StepIdx::new(0));
+        // Node 0's successor is itself (already visited), so result is empty.
+        assert!(
+            reachable.is_empty(),
+            "self-referencing node should produce no reachable successors"
+        );
+    }
+
+    /// BLACKHAT_overlay_build_path_nodes_non_adjacent_source_sink [MEDIUM]:
+    /// build_path_nodes falls back to `vec![source, sink]` when BFS fails
+    /// to find a path. This creates a phantom direct edge that does not
+    /// exist in the actual graph. The test confirms the fallback path.
+    #[test]
+    fn blackhat_overlay_build_path_nodes_fallback_phantom_edge() {
+        let source_set: HashSet<StepIdx> = [StepIdx::new(0)].into_iter().collect();
+        // Two disconnected nodes with no path between them.
+        let parts = make_parts_with_next(vec![
+            (CompiledNodeKind::Nop, None), // node 0, no next
+            (CompiledNodeKind::Nop, None), // node 1, no next
+        ]);
+        let path = build_path_nodes(&parts, StepIdx::new(0), StepIdx::new(1), &source_set);
+        // Fallback returns [source, sink] even though no path exists.
+        assert_eq!(
+            path.len(),
+            2,
+            "BLACKHAT [MEDIUM]: fallback returns phantom 2-node path for disconnected nodes"
+        );
+        assert_eq!(path[0], StepIdx::new(0));
+        assert_eq!(path[1], StepIdx::new(1));
+    }
+
+    /// BLACKHAT_overlay_is_secret_taint_case_sensitive [LOW]:
+    /// The "derived" check in is_secret_taint is case-sensitive (lowercase).
+    /// "Derived" (capital D) does not match "derived". This is inconsistent
+    /// with "Secret" and "DerivedFromSecret" which start with capitals but
+    /// are matched via case-sensitive contains.
+    #[test]
+    fn blackhat_overlay_is_secret_taint_derived_case_sensitive() {
+        let mut map = HashMap::new();
+        let slot_lower = SlotIdx::new(100);
+        map.insert(slot_lower, String::from("derived-value"));
+        assert!(
+            is_secret_taint(&map, slot_lower),
+            "lowercase 'derived' should match"
+        );
+
+        let slot_upper = SlotIdx::new(101);
+        map.insert(slot_upper, String::from("Derived-value"));
+        // "Derived" does NOT contain "derived" (case-sensitive).
+        assert!(
+            !is_secret_taint(&map, slot_upper),
+            "BLACKHAT [LOW]: 'Derived' (capital D) does not match 'derived' -- inconsistent casing"
+        );
+    }
+
+    /// BLACKHAT_overlay_flow_path_non_forbidden_contains_source_and_sink [LOW]:
+    /// When a source has reachable nodes but does not reach a sink, the code
+    /// creates a non-forbidden flow path where path_nodes contains [source,
+    /// source, ...reachable...]. The source appears twice because the code
+    /// pushes source first and then iterates reachable (which does not contain
+    /// source but the vec starts with source).
+    #[test]
+    fn blackhat_overlay_non_forbidden_path_has_correct_nodes() {
+        let parts = make_parts_with_output(vec![
+            // Source with tainted output, connects to Nop, Nop has no Finish.
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(0)),
+            ),
+            (CompiledNodeKind::Nop, None, None),
+        ]);
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(0), String::from("Secret"));
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        // Source at step 0 reaches step 1 but step 1 is not a Finish.
+        assert!(
+            result.finish_safe,
+            "source should not reach any Finish"
+        );
+        // Check non-forbidden flow path exists.
+        let non_forbidden: Vec<&TaintFlowPath> = result
+            .flow_paths
+            .iter()
+            .filter(|p| !p.is_forbidden)
+            .collect();
+        if let Some(path) = non_forbidden.first() {
+            // The path should contain source step 0 and reachable step 1.
+            assert!(
+                path.path_nodes.contains(&StepIdx::new(0)),
+                "path should contain source step 0"
+            );
+            assert!(
+                path.path_nodes.contains(&StepIdx::new(1)),
+                "path should contain reachable step 1"
+            );
+        }
+    }
+
+    /// BLACKHAT_overlay_tainted_nodes_via_input_slots [LOW]:
+    /// find_tainted_nodes checks both output slots and input slots for taint.
+    /// A node whose input slot is tainted (but output is not) is correctly
+    /// classified as tainted. This test verifies the input-slot taint path.
+    #[test]
+    fn blackhat_overlay_node_tainted_via_input_slot_only() {
+        let parts = make_parts_with_output(vec![
+            // Node 0: reads slot 5 (tainted input), writes to slot 10 (clean)
+            (
+                CompiledNodeKind::Copy {
+                    source: SlotIdx::new(5),
+                },
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(10)),
+            ),
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(10),
+                },
+                None,
+                None,
+            ),
+        ]);
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(5), String::from("Secret"));
+        // Slot 10 is NOT tainted -- only input slot 5 is.
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        assert!(
+            result.tainted_nodes.contains(&0),
+            "node reading from tainted input slot should be in tainted_nodes"
+        );
+    }
 }

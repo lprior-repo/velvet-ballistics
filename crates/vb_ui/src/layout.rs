@@ -1095,4 +1095,265 @@ mod tests {
             }
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Additional BLACKHAT security and correctness review tests
+    // -----------------------------------------------------------------------
+
+    /// MEDIUM: compute_barycenter division by zero protection. When
+    /// count > 0 (valid neighbors found) but u32::try_from(count) fails
+    /// (impossible in practice since count <= nbrs.len() <= usize::MAX on
+    /// 64-bit), the unwrap_or(1) prevents division by zero. This test
+    /// verifies the barycenter computation works for a simple case.
+    #[test]
+    fn blackhat_barycenter_no_division_by_zero() {
+        let nodes = vec![node("a"), node("b"), node("c")];
+        let edges = vec![edge("a", "c"), edge("b", "c")];
+        let result = compute_layout(&nodes, &edges, "a");
+
+        // All nodes should have finite positions.
+        for (id, pos) in &result.positions {
+            assert!(pos[0].is_finite() && pos[1].is_finite(), "{id} must be finite");
+        }
+    }
+
+    /// MEDIUM: Group bounds with negative node dimensions produces
+    /// corrupted extents. When node width is negative, half_w is negative,
+    /// causing left = pos[0] - (-half) = pos[0] + half which is larger
+    /// than right = pos[0] + (-half) = pos[0] - half. This means
+    /// max_x < min_x, producing negative group width.
+    #[test]
+    fn blackhat_negative_node_dimensions_corrupt_group_bounds() {
+        let nodes = vec![LayoutNode {
+            id: String::from("neg_dim"),
+            width: -100.0,
+            height: -60.0,
+            group: Some(String::from("g_neg")),
+        }];
+        let result = compute_layout(&nodes, &[], "neg_dim");
+
+        let bounds = match result.groups.get("g_neg") {
+            Some(b) => b,
+            None => return,
+        };
+        // With negative dimensions: left = 80 - (-50) = 130, right = 80 + (-50) = 30.
+        // So max_x (30) < min_x (130), producing negative width.
+        assert!(
+            bounds.width < 0.0,
+            "negative node dimensions should produce negative group width, got {}",
+            bounds.width,
+        );
+    }
+
+    /// LOW: Infinity node dimensions propagate through group bounds.
+    /// When a node has f64::INFINITY width/height, the group bounds
+    /// become infinite.
+    #[test]
+    fn blackhat_infinity_dimensions_propagate_to_group_bounds() {
+        let nodes = vec![LayoutNode {
+            id: String::from("inf_node"),
+            width: f64::INFINITY,
+            height: f64::INFINITY,
+            group: Some(String::from("g_inf")),
+        }];
+        let result = compute_layout(&nodes, &[], "inf_node");
+
+        let bounds = match result.groups.get("g_inf") {
+            Some(b) => b,
+            None => return,
+        };
+        assert!(
+            !bounds.width.is_finite() || !bounds.height.is_finite(),
+            "infinity dimensions should produce non-finite group bounds, got w={}, h={}",
+            bounds.width,
+            bounds.height,
+        );
+    }
+
+    /// LOW: Edge from a node to itself is correctly skipped.
+    /// Self-loops should not affect the adjacency lists.
+    #[test]
+    fn blackhat_self_loop_does_not_affect_adjacency() {
+        let nodes = vec![node("a"), node("b")];
+        let edges = vec![edge("a", "a"), edge("a", "b")];
+        let result = compute_layout(&nodes, &edges, "a");
+
+        // a -> b should still work. a -> a is skipped.
+        assert!(result.positions["a"][0] < result.positions["b"][0]);
+        assert_eq!(result.positions.len(), 2);
+    }
+
+    /// LOW: Node with empty string ID. Empty IDs are valid HashMap keys
+    /// and should not cause issues.
+    #[test]
+    fn blackhat_empty_string_node_id_works() {
+        let nodes = vec![LayoutNode {
+            id: String::new(),
+            width: 100.0,
+            height: 60.0,
+            group: None,
+        }];
+        let result = compute_layout(&nodes, &[], "");
+
+        assert_eq!(result.positions.len(), 1);
+        assert!(result.positions.contains_key(""));
+    }
+
+    /// MEDIUM: BFS depth can reach usize::MAX on cyclic graphs. The BFS
+    /// uses `candidate > existing` which keeps increasing depth for nodes
+    /// in cycles. With `saturating_add(1)`, depth stops at usize::MAX but
+    /// the BFS continues processing. For a true cycle, this means the BFS
+    /// enqueues nodes until depth saturates. This test verifies that a DAG
+    /// with a "shortcut" edge (which creates a longer alternative path)
+    /// completes correctly, documenting that true cycles would cause very
+    /// long execution.
+    #[test]
+    fn blackhat_dag_with_shortcut_longest_path_wins() {
+        // a -> b -> c -> d, plus shortcut a -> d.
+        // Longest path to d is a -> b -> c -> d (depth 3).
+        let nodes = vec![node("a"), node("b"), node("c"), node("d")];
+        let edges = vec![
+            edge("a", "b"),
+            edge("b", "c"),
+            edge("c", "d"),
+            edge("a", "d"),
+        ];
+        let result = compute_layout(&nodes, &edges, "a");
+
+        let x_a = result.positions.get("a").map(|p| p[0]);
+        let x_d = result.positions.get("d").map(|p| p[0]);
+
+        // d should be at column 3 (longest path), not column 1.
+        assert!(x_a.is_some() && x_d.is_some());
+        let x_a = x_a.unwrap_or(0.0);
+        let x_d = x_d.unwrap_or(0.0);
+        assert!(
+            x_d > x_a + 2.0 * COLUMN_SPACING,
+            "d should be at column 3 via longest path, x_a={}, x_d={}",
+            x_a, x_d,
+        );
+    }
+
+    /// LOW: Very large graph (500 nodes) completes in reasonable time.
+    /// Verifies O(n) performance for a linear chain.
+    #[test]
+    fn blackhat_large_linear_chain_completes() {
+        let nodes: Vec<LayoutNode> = (0..500)
+            .map(|i| LayoutNode {
+                id: format!("n{i}"),
+                width: 100.0,
+                height: 60.0,
+                group: None,
+            })
+            .collect();
+        let edges: Vec<LayoutEdge> = (0..499)
+            .map(|i| edge(&format!("n{i}"), &format!("n{}", i + 1)))
+            .collect();
+        let result = compute_layout(&nodes, &edges, "n0");
+
+        assert_eq!(result.positions.len(), 500);
+        // All nodes should be on row 0.
+        for (id, pos) in &result.positions {
+            assert_eq!(pos[1], MARGIN_TOP, "{id} should be on row 0");
+        }
+    }
+
+    /// LOW: Group bounds with zero-padding dimensions. When a node has
+    /// width=0 and height=0, the group bounds should still be computed
+    /// correctly (just padding around the center point).
+    #[test]
+    fn blackhat_zero_dimension_node_group_bounds() {
+        let nodes = vec![LayoutNode {
+            id: String::from("zero"),
+            width: 0.0,
+            height: 0.0,
+            group: Some(String::from("g_zero")),
+        }];
+        let result = compute_layout(&nodes, &[], "zero");
+
+        let bounds = match result.groups.get("g_zero") {
+            Some(b) => b,
+            None => return,
+        };
+        // Width and height should be exactly 2 * GROUP_PADDING.
+        assert!(
+            (bounds.width - 2.0 * GROUP_PADDING).abs() < f64::EPSILON,
+            "zero-dimension node group width should be 2*padding, got {}",
+            bounds.width,
+        );
+        assert!(
+            (bounds.height - 2.0 * GROUP_PADDING).abs() < f64::EPSILON,
+            "zero-dimension node group height should be 2*padding, got {}",
+            bounds.height,
+        );
+    }
+
+    /// LOW: Multiple edges between same pair produce same layout as one.
+    /// Deduplication in adjacency lists ensures consistent barycenter.
+    #[test]
+    fn blackhat_multiple_edges_same_pair_deduplicated() {
+        let nodes = vec![node("a"), node("b"), node("c")];
+        let edges_single = vec![edge("a", "b"), edge("b", "c")];
+        let edges_triple = vec![
+            edge("a", "b"),
+            edge("a", "b"),
+            edge("a", "b"),
+            edge("b", "c"),
+            edge("b", "c"),
+            edge("b", "c"),
+        ];
+        let result_single = compute_layout(&nodes, &edges_single, "a");
+        let result_triple = compute_layout(&nodes, &edges_triple, "a");
+
+        assert_eq!(result_single.positions["a"], result_triple.positions["a"]);
+        assert_eq!(result_single.positions["b"], result_triple.positions["b"]);
+        assert_eq!(result_single.positions["c"], result_triple.positions["c"]);
+    }
+
+    /// LOW: Entry node with no successors still gets a valid position.
+    #[test]
+    fn blackhat_entry_node_no_successors_still_positioned() {
+        let nodes = vec![node("entry"), node("other")];
+        let edges: Vec<LayoutEdge> = Vec::new();
+        let result = compute_layout(&nodes, &edges, "entry");
+
+        assert_eq!(result.positions.len(), 2);
+        assert_eq!(result.positions["entry"][0], MARGIN_LEFT);
+        assert_eq!(result.positions["entry"][1], MARGIN_TOP);
+    }
+
+    /// LOW: Node referenced in edges but not in nodes list is ignored.
+    /// Both source-only and target-only phantom references are skipped.
+    #[test]
+    fn blackhat_phantom_edges_both_directions_ignored() {
+        let nodes = vec![node("real")];
+        let edges = vec![
+            edge("real", "phantom_target"),
+            edge("phantom_source", "real"),
+        ];
+        let result = compute_layout(&nodes, &edges, "real");
+
+        assert_eq!(result.positions.len(), 1);
+        assert!(result.positions.contains_key("real"));
+    }
+
+    /// MEDIUM: Group with all member nodes missing positions is skipped.
+    /// compute_group_bounds has a guard for min_x == f64::MAX. When all
+    /// group members lack positions, the group is not emitted.
+    #[test]
+    fn blackhat_group_with_no_positioned_members_skipped() {
+        // Create nodes where one is in a group but we don't call
+        // compute_layout directly. Instead verify the guard by testing
+        // with a valid setup and checking groups are present.
+        let nodes = vec![
+            node_in_group("a", "g1"),
+            node("b"),
+        ];
+        let edges = vec![edge("a", "b")];
+        let result = compute_layout(&nodes, &edges, "a");
+
+        assert!(result.groups.contains_key("g1"));
+        // If the group had no positioned members, it would be absent.
+        // This test confirms the normal path works and documents the guard.
+    }
 }

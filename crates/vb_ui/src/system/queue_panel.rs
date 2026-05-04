@@ -460,4 +460,90 @@ mod tests {
         assert_eq!(pending, u32::MAX);
         assert_eq!(seg.total_pending, u32::MAX);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: QueueBarSegment::fill_ratio uses an `as` cast (via
+    /// u32_to_f32) to convert depth and capacity to f32 for division.
+    /// For values >= 2^24 (16,777,216), f32 loses precision. If capacity
+    /// exceeds 2^24, the ratio may be imprecise. With depth and capacity
+    /// both >= 2^24, the ratio could be 0.999... instead of 1.0 or vice
+    /// versa due to float rounding.
+    #[test]
+    fn blackhat_fill_ratio_precision_loss_for_large_values() {
+        // Values under 2^24 are exact in f32.
+        let seg = QueueBarSegment {
+            label: "Large".to_string(),
+            depth: 16_777_215, // just under 2^24
+            capacity: 16_777_215,
+            color: NEON_GREEN,
+        };
+        let ratio = seg.fill_ratio();
+        assert!(
+            (ratio - 1.0).abs() < 0.001,
+            "ratio should be ~1.0 for equal values: {ratio}"
+        );
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: QueueBarSegment has capacity as u32 but fill_ratio divides
+    /// by capacity after casting to f32. If capacity is 0, it returns 0.0
+    /// (correct guard). But if depth > capacity, the ratio exceeds 1.0, which
+    /// could confuse downstream rendering code that expects a [0.0, 1.0] range.
+    #[test]
+    fn blackhat_fill_ratio_exceeds_one_when_depth_over_capacity() {
+        let seg = QueueBarSegment {
+            label: "Over".to_string(),
+            depth: 300,
+            capacity: 256,
+            color: NEON_RED,
+        };
+        let ratio = seg.fill_ratio();
+        assert!(
+            ratio > 1.0,
+            "ratio should exceed 1.0 when depth > capacity: {ratio}"
+        );
+    }
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: SystemQueuePanelBuilder::build uses NOMINAL_POOL_CAPACITY
+    /// (256) as the capacity for all ready and action bars, regardless of
+    /// the actual capacity from the shard data. This means the fill_ratio
+    /// and visual representation use a hardcoded capacity rather than the
+    /// real capacity, which could misrepresent actual queue pressure if the
+    /// real capacity differs from 256.
+    #[test]
+    fn blackhat_hardcoded_capacity_mismatches_real_data() {
+        let screen = SystemScreen::new();
+        let panel = SystemQueuePanelBuilder::build(&screen);
+        // For an empty screen, verify capacity is always NOMINAL_POOL_CAPACITY.
+        for shard_panel in &panel.shards {
+            assert_eq!(
+                shard_panel.ready_bar.capacity, NOMINAL_POOL_CAPACITY,
+                "capacity is hardcoded to NOMINAL_POOL_CAPACITY"
+            );
+        }
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: The worst_status propagation in SystemQueuePanelBuilder::build
+    /// uses a match that only upgrades from Normal to Pressured, or anything to
+    /// Critical. It never downgrades. But if shard_worst is Normal and worst_status
+    /// is already Pressured, the match falls through to `_ => {}`, correctly
+    /// preserving Pressured. The logic is correct but could be simpler with an
+    /// ordinal comparison.
+    #[test]
+    fn blackhat_worst_status_never_downgrades() {
+        let mut screen = SystemScreen::new();
+        // First shard: pressured via ready=130/256.
+        screen.update_from_metrics(&stub_metrics(0, 130, 5, 90, 100, 20.0));
+        // Second shard: normal.
+        screen.update_from_metrics(&stub_metrics(1, 10, 5, 90, 100, 20.0));
+        let panel = SystemQueuePanelBuilder::build(&screen);
+        // Worst should remain Pressured from shard 0.
+        assert_eq!(panel.worst_status, QueueStatus::Pressured);
+    }
 }

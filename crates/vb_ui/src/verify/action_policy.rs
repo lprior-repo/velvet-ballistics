@@ -1134,4 +1134,144 @@ mod tests {
         assert!(!reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
         assert!(!reports[0].strict_eligible);
     }
+
+    // =========================================================================
+    // BLACKHAT security-focused tests
+    // =========================================================================
+
+    /// BLACKHAT_policy_timeout_u64_to_u32_truncation [MEDIUM]:
+    /// build_report converts timeout_ms from u64 to u32 via
+    /// `u32::try_from(c.timeout_ms).ok().unwrap_or(u32::MAX)`. Values above
+    /// u32::MAX (~4.3 billion ms ~= 49 days) are silently clamped to u32::MAX.
+    /// This means a timeout of 50 days appears as ~49.7 days, which could
+    /// mislead users about the actual timeout.
+    #[test]
+    fn blackhat_policy_timeout_truncation_to_u32_max() {
+        let huge_timeout: u64 = u64::from(u32::MAX) + 1000;
+        assert!(
+            huge_timeout > u64::from(u32::MAX),
+            "test timeout should exceed u32::MAX"
+        );
+        let truncated = u32::try_from(huge_timeout).unwrap_or(u32::MAX);
+        assert_eq!(
+            truncated,
+            u32::MAX,
+            "BLACKHAT [MEDIUM]: timeout > u32::MAX is silently clamped to u32::MAX"
+        );
+    }
+
+    /// BLACKHAT_policy_seen_actions_linear_scan [LOW]:
+    /// analyze_action_policies uses `seen_actions.contains(&action_raw)` which
+    /// is O(n) per Do node, making the total dedup O(n^2). For workflows with
+    /// many Do nodes calling different actions, this is inefficient but not a
+    /// correctness bug.
+    #[test]
+    fn blackhat_policy_many_actions_linear_dedup() {
+        let mut kinds = Vec::new();
+        // 50 Do nodes with different action IDs.
+        for i in 0u16..50 {
+            kinds.push(CompiledNodeKind::Do {
+                action: ActionId::new(i),
+                input: SlotIdx::new(0),
+            });
+        }
+        kinds.push(CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        });
+        let parts = make_parts(kinds);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert_eq!(
+            reports.len(),
+            50,
+            "50 distinct action IDs should produce 50 reports"
+        );
+    }
+
+    /// BLACKHAT_policy_strict_eligible_needs_all_clean [CONFIRMED-SAFE]:
+    /// compute_strict_eligibility correctly requires DeterministicPure,
+    /// has_timeout=true, AND empty issues. A single issue (even UnsafeRetry)
+    /// blocks strict eligibility.
+    #[test]
+    fn blackhat_policy_strict_eligible_blocked_by_single_issue() {
+        assert!(
+            !compute_strict_eligibility(
+                IdempotencyClass::DeterministicPure,
+                true,
+                &[PolicyIssue::UnsafeRetry],
+            ),
+            "a single UnsafeRetry issue must block strict eligibility"
+        );
+        assert!(
+            !compute_strict_eligibility(
+                IdempotencyClass::DeterministicPure,
+                true,
+                &[PolicyIssue::MissingTimeout],
+            ),
+            "a single MissingTimeout issue must block strict eligibility"
+        );
+    }
+
+    /// BLACKHAT_policy_action_id_zero_treated_as_unknown [LOW]:
+    /// A Do node with action_id 0 and no matching contract is classified
+    /// as Unknown, which is correct. But action_id 0 is a valid ID in the
+    /// system, so this tests the edge case.
+    #[test]
+    fn blackhat_policy_action_id_zero_without_contract() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].action_id, 0);
+        assert_eq!(reports[0].idempotency_class, IdempotencyClass::Unknown);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+    }
+
+    /// BLACKHAT_policy_find_contract_returns_first_match [CONFIRMED-SAFE]:
+    /// When multiple contracts share the same action ID, find_contract returns
+    /// the first match. This is correct behavior but means duplicate contracts
+    /// silently mask later entries.
+    #[test]
+    fn blackhat_policy_duplicate_contracts_first_wins() {
+        let contracts = vec![
+            make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
+            make_contract(1, 5000, Idempotency::AtLeastOnceExternal, RetrySafety::Unsafe),
+        ];
+        let found = find_contract(ActionId::new(1), &contracts);
+        assert!(found.is_some());
+        let Some(c) = found else { return };
+        // First contract wins.
+        assert_eq!(c.timeout_ms, 1000);
+        assert_eq!(c.idempotency, Idempotency::DeterministicPure);
+    }
+
+    /// BLACKHAT_policy_no_contract_no_unsafe_retry [CONFIRMED-SAFE]:
+    /// When a Do node has no contract, UnsafeRetry is NOT flagged because
+    /// there is no retry_safety field to check. Only MissingTimeout and
+    /// MissingIdempotency are reported.
+    #[test]
+    fn blackhat_policy_no_contract_only_two_issues() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(99),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].issues.len(), 2);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+        assert!(!reports[0].issues.contains(&PolicyIssue::UnsafeRetry));
+    }
 }

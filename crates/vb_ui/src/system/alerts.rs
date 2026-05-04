@@ -1026,4 +1026,159 @@ mod tests {
         assert_eq!(id2, None);
         assert_eq!(router.len(), 0);
     }
+
+    // =========================================================================
+    // BLACKHAT security review tests
+    // =========================================================================
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: AlertRouter::trim only removes acknowledged alerts, but the
+    /// dedup_keys HashSet grows without bound for unacknowledged alerts. An
+    /// attacker who sends unique (source, fingerprint) pairs with Critical
+    /// severity (which are never acknowledged) can exhaust memory because trim
+    /// never evicts their dedup keys. Even after alerts are trimmed, the dedup
+    /// keys remain, preventing re-routing of those alerts and leaking memory.
+    /// The dedup set is unbounded and only grows.
+    #[test]
+    fn blackhat_dedup_keys_grow_unbounded_for_unacked_alerts() {
+        let mut router = AlertRouter::new(3);
+        // Fill with 3 critical (unacked) alerts with unique keys.
+        for i in 0..3u64 {
+            router.route_alert(
+                AlertSeverity::Critical,
+                format!("crit-{i}"),
+                format!("src-{i}"),
+                i,
+                100 + i,
+            );
+        }
+        assert_eq!(router.len(), 3);
+
+        // Try to add a 4th -- buffer is full and none are acked, so trim
+        // cannot evict anything, but the alert IS accepted because it has
+        // a new dedup key. The buffer grows beyond max_alerts.
+        let id4 = router.route_alert(
+            AlertSeverity::Critical,
+            "crit-overflow".to_string(),
+            "src-overflow".to_string(),
+            999,
+            999,
+        );
+        // The alert is accepted (new dedup key) even though we're at capacity.
+        // This means the router has NO hard cap on alert count for unacked alerts.
+        assert!(id4.is_some(), "alert accepted despite exceeding max_alerts");
+        assert_eq!(router.len(), 4, "buffer exceeds max_alerts of 3");
+
+        // trim cannot remove anything because nothing is acknowledged.
+        router.trim();
+        assert_eq!(router.len(), 4, "trim is powerless against unacked alerts");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: AlertManager::add uses Vec::remove(0) for eviction which is
+    /// O(n). Combined with rapid alert insertion at max_alerts capacity, this
+    /// creates O(n^2) total time for n insertions. Not a correctness bug but a
+    /// denial-of-service vector if max_alerts is set very large.
+    #[test]
+    fn blackhat_alert_manager_add_eviction_is_on_linear_time() {
+        // Demonstrate that add with eviction works correctly even under pressure.
+        let mut mgr = AlertManager::new(5);
+        // Fill to capacity then overflow to trigger eviction path.
+        for i in 0..100 {
+            mgr.add(Alert {
+                severity: AlertSeverity::Info,
+                kind: AlertKind::QueuePressure,
+                message: format!("alert-{i}"),
+                run_id: None,
+                shard_id: None,
+                timestamp: Instant::now(),
+            });
+        }
+        // Should still be capped at max_alerts.
+        assert_eq!(mgr.active().len(), 5);
+        // Most recent alerts should be retained.
+        assert_eq!(mgr.active()[4].message, "alert-99");
+    }
+
+    /// SEVERITY: Medium
+    /// DESCRIPTION: When AlertRouter::route_alert is called with next_id at
+    /// u64::MAX - 1, it assigns id = MAX-1, then next_id becomes MAX via
+    /// saturating_add. The NEXT call is rejected by the guard. However, the
+    /// alert with id = MAX-1 can still be acknowledged and trimmed normally.
+    /// The issue is that after saturation, no more alerts can EVER be routed,
+    /// even if all existing alerts are trimmed -- the router becomes permanently
+    /// unusable. This is a latent state-machine deadlock.
+    #[test]
+    fn blackhat_router_permanently_dead_after_id_saturation() {
+        let mut router = AlertRouter::new(10);
+        // Simulate reaching the saturation point.
+        router.next_id = u64::MAX;
+        // Router rejects all new alerts.
+        let result = router.route_alert(
+            AlertSeverity::Info,
+            "msg".to_string(),
+            "src".to_string(),
+            1,
+            100,
+        );
+        assert_eq!(result, None);
+
+        // Even if we acknowledge and trim everything, router stays dead.
+        // (There's nothing to trim since nothing was added, but conceptually
+        // even if existing alerts were trimmed, next_id stays at MAX forever.)
+        assert_eq!(router.next_id, u64::MAX, "next_id is permanently saturated");
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: AlertRouter::trim removes dedup keys for evicted alerts,
+    /// which means the same (source, fingerprint) pair can be re-routed after
+    /// trim. However, if the original alert was NOT acknowledged and was NOT
+    /// evicted (because trim only evicts acknowledged alerts), the dedup key
+    /// stays. This is correct behavior, but it means that an alert storm with
+    /// unique fingerprints can bypass the dedup entirely since each has a
+    /// unique key.
+    #[test]
+    fn blackhat_unique_fingerprints_bypass_dedup_entirely() {
+        let mut router = AlertRouter::new(100);
+        // Insert 50 alerts with unique fingerprints from the same source.
+        for i in 0..50u64 {
+            let id = router.route_alert(
+                AlertSeverity::Info,
+                format!("msg-{i}"),
+                "same-source".to_string(),
+                i, // unique fingerprint per alert
+                i * 100,
+            );
+            assert!(id.is_some(), "each unique fingerprint should be accepted");
+        }
+        assert_eq!(router.len(), 50);
+        // All 50 dedup keys are in the set -- no actual dedup happened
+        // because fingerprints are unique.
+        assert_eq!(router.dedup_keys.len(), 50);
+    }
+
+    /// SEVERITY: Low
+    /// DESCRIPTION: Alert dismiss at index 0 is O(n) due to Vec::remove(0),
+    /// which shifts all remaining elements. If max_alerts is large and dismiss
+    /// is called repeatedly on index 0, total cost is O(n^2).
+    #[test]
+    fn blackhat_dismiss_index_zero_shifts_all_remaining() {
+        let mut mgr = AlertManager::new(10);
+        for i in 0..10 {
+            mgr.add(Alert {
+                severity: AlertSeverity::Info,
+                kind: AlertKind::QueuePressure,
+                message: format!("alert-{i}"),
+                run_id: None,
+                shard_id: None,
+                timestamp: Instant::now(),
+            });
+        }
+        // Dismiss from front repeatedly -- each shifts remaining elements.
+        mgr.dismiss(0);
+        assert_eq!(mgr.active().len(), 9);
+        assert_eq!(mgr.active()[0].message, "alert-1");
+        mgr.dismiss(0);
+        assert_eq!(mgr.active()[0].message, "alert-2");
+    }
 }
