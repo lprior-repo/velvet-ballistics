@@ -1401,7 +1401,7 @@ mod tests {
         assert_eq!(doc.graph.edges.len(), 1);
         let edge = doc.graph.edges.get_index(0).map(|(_, e)| e.clone());
         assert!(edge.is_some());
-        let e = edge.unwrap_or_else(|| panic!("edge missing"));
+        let e = edge.expect("edge missing");
         assert_eq!(e.source.as_str(), "step-0");
         assert_eq!(e.target.as_str(), "step-1");
         assert_eq!(e.source_port.as_str(), "next");
@@ -1416,11 +1416,11 @@ mod tests {
         let doc = build_document(&parts);
         let entry = doc.graph.nodes.get("step-0");
         assert!(entry.is_some());
-        let n = entry.unwrap_or_else(|| panic!("node missing"));
+        let n = entry.expect("node missing");
         assert!(n.flags.entry);
         let non_entry = doc.graph.nodes.get("step-1");
         assert!(non_entry.is_some());
-        let n2 = non_entry.unwrap_or_else(|| panic!("node missing"));
+        let n2 = non_entry.expect("node missing");
         assert!(!n2.flags.entry);
     }
 
@@ -1431,7 +1431,7 @@ mod tests {
         let doc = build_document(&parts);
         let node = doc.graph.nodes.get("step-0");
         assert!(node.is_some());
-        let record = node.unwrap_or_else(|| panic!("node missing"));
+        let record = node.expect("node missing");
         assert!(record.flags.terminal);
     }
 
@@ -1447,7 +1447,7 @@ mod tests {
             .edges
             .get_index(0)
             .map(|(_, e)| e.clone())
-            .unwrap_or_else(|| panic!("edge missing"));
+            .expect("edge missing");
         assert_eq!(e.source_port.as_str(), "jump");
         assert_eq!(e.target.as_str(), "step-1");
     }
@@ -1538,7 +1538,7 @@ mod tests {
             .edges
             .get_index(0)
             .map(|(_, e)| e.clone())
-            .unwrap_or_else(|| panic!("edge missing"));
+            .expect("edge missing");
         assert_eq!(e.source_port.as_str(), "handler");
         assert_eq!(e.target.as_str(), "step-2");
         assert!(e.style.dashed);
@@ -1597,7 +1597,7 @@ mod tests {
             .groups
             .get("group-foreach-0")
             .cloned()
-            .unwrap_or_else(|| panic!("group missing"));
+            .expect("group missing");
         assert_eq!(group.kind, GroupKind::BranchContainer);
         assert_eq!(group.children.len(), 4);
     }
@@ -1624,7 +1624,7 @@ mod tests {
         );
         let entry = doc.graph.nodes.get("step-1");
         assert!(entry.is_some());
-        assert!(entry.unwrap_or_else(|| panic!("node missing")).flags.entry);
+        assert!(entry.expect("node missing").flags.entry);
     }
 
     // -----------------------------------------------------------------------

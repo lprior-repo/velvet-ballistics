@@ -540,8 +540,7 @@ mod tests {
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
-                    value: postcard::to_allocvec(&SlotValue::Bool(true))
-                        .expect("encode"),
+                    value: postcard::to_allocvec(&SlotValue::Bool(true)).unwrap(),
                 },
                 RuntimeJournalEvent::SlotWritten {
                     run,

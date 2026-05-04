@@ -344,12 +344,12 @@ impl ReplayController {
                 if self.load_phase == LoadPhase::WaitingInspect {
                     self.load_phase = LoadPhase::WaitingEvents;
                     if let Some(run_id) = self.active_run {
-                        self.bridge
-                            .send(IpcRequest::ListEvents {
-                                run_id,
-                                from_sequence: 0,
-                            })
-                            .ok();
+                        if let Err(err) = self.bridge.send(IpcRequest::ListEvents {
+                            run_id,
+                            from_sequence: 0,
+                        }) {
+                            eprintln!("failed to send bridge message: {:?}", err);
+                        }
                     }
                 }
             }

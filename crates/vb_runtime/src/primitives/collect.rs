@@ -99,7 +99,7 @@ pub fn collect_start(
     let page_len = page.len();
     let current_page = write_collected_page_with_taint(run, store, collector, page, source_taint)?;
     let cursor = checked_add_usize(0, page_len, "collect cursor overflow")?;
-    let start_millis = millis_since_epoch();
+    let start_millis = millis_since_epoch()?;
     states.upsert(CollectPaginationState {
         run_id: run.run_id(),
         collector_slot: collector,
@@ -195,7 +195,7 @@ pub fn collect_finish(
 
 fn check_time_limit(state: &CollectPaginationState) -> Result<(), EngineError> {
     if let Some(limit_ms) = state.time_limit_ms {
-        let elapsed = millis_since_epoch().saturating_sub(state.start_millis);
+        let elapsed = millis_since_epoch()?.saturating_sub(state.start_millis);
         if elapsed > limit_ms {
             return Err(EngineError::CollectTimeLimitExceeded);
         }
@@ -203,11 +203,17 @@ fn check_time_limit(state: &CollectPaginationState) -> Result<(), EngineError> {
     Ok(())
 }
 
-fn millis_since_epoch() -> u64 {
+fn millis_since_epoch() -> Result<u64, EngineError> {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| u64::try_from(d.as_millis()).unwrap_or(0))
-        .unwrap_or(0)
+        .map_err(|_| EngineError::InternalInvariantViolation {
+            reason: "system time is before UNIX epoch",
+        })?
+        .as_millis()
+        .try_into()
+        .map_err(|_| EngineError::InternalInvariantViolation {
+            reason: "millis_since_epoch overflow",
+        })
 }
 
 fn write_empty_collector(
