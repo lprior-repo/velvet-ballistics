@@ -4098,4 +4098,183 @@ mod tests {
         let debug = format!("{err:?}");
         ensure_equal(debug.contains("FanoutExceeded"), true)
     }
+
+    // -------------------------------------------------------------------------
+    // Edge-case coverage: StepBudget boundary and exhaustion scenarios
+    // -------------------------------------------------------------------------
+
+    /// StepBudget::new(0) is immediately exhausted -- every try_take returns false.
+    #[test]
+    fn edge_budget_zero_immediately_exhausted() -> Result<(), String> {
+        let mut b = StepBudget::new(0);
+        ensure_equal(b.remaining(), 0)?;
+        // Repeated takes must all return false without error.
+        for _ in 0..5 {
+            let taken = b.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, false)?;
+            ensure_equal(b.remaining(), 0)?;
+        }
+        Ok(())
+    }
+
+    /// StepBudget::new(1) allows exactly one take, then returns false.
+    #[test]
+    fn edge_budget_one_exactly_single_take() -> Result<(), String> {
+        let mut b = StepBudget::new(1);
+        ensure_equal(b.remaining(), 1)?;
+        // First take succeeds.
+        let first = b.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(first, true)?;
+        ensure_equal(b.remaining(), 0)?;
+        // All subsequent takes fail.
+        for _ in 0..3 {
+            let taken = b.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, false)?;
+            ensure_equal(b.remaining(), 0)?;
+        }
+        Ok(())
+    }
+
+    /// StepBudget::new(u32::MAX as u64) -- value exceeds MAX_STEP_BUDGET so it
+    /// is clamped down to MAX_STEP_BUDGET.
+    #[test]
+    fn edge_budget_u32_max_clamped_to_ceiling() -> Result<(), String> {
+        let big = u64::from(u32::MAX);
+        let b = StepBudget::new(big);
+        ensure_equal(b.remaining(), crate::limits::MAX_STEP_BUDGET)
+    }
+
+    /// try_take on a fully exhausted budget returns Ok(false) every single time
+    /// and remaining stays at zero.
+    #[test]
+    fn edge_exhausted_budget_returns_false_repeatedly() -> Result<(), String> {
+        let mut b = StepBudget::new(2);
+        ensure_equal(b.try_take().map_err(|e| e.to_string())?, true)?;
+        ensure_equal(b.try_take().map_err(|e| e.to_string())?, true)?;
+        ensure_equal(b.remaining(), 0)?;
+        // Hammer it many times.
+        for _ in 0..20 {
+            let taken = b.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, false)?;
+            ensure_equal(b.remaining(), 0)?;
+        }
+        Ok(())
+    }
+
+    /// remaining() returns the correct count after each individual take.
+    #[test]
+    fn edge_remaining_decrements_one_per_take() -> Result<(), String> {
+        let mut b = StepBudget::new(6);
+        let mut expected = 6u64;
+        for _ in 0..6 {
+            ensure_equal(b.remaining(), expected)?;
+            let taken = b.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, true)?;
+            expected = expected.saturating_sub(1);
+        }
+        ensure_equal(b.remaining(), 0)?;
+        let taken = b.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, false)?;
+        ensure_equal(b.remaining(), 0)
+    }
+
+    /// Simulates a sub-budget created from a partially consumed parent:
+    /// the new budget is independent and starts fresh with its own allocation.
+    #[test]
+    fn edge_sub_budget_from_partially_consumed_parent() -> Result<(), String> {
+        let mut parent = StepBudget::new(10);
+        // Consume 4 from the parent.
+        for _ in 0..4 {
+            let taken = parent.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, true)?;
+        }
+        ensure_equal(parent.remaining(), 6)?;
+        // Create an independent sub-budget with the remaining count.
+        let mut child = StepBudget::new(parent.remaining());
+        ensure_equal(child.remaining(), 6)?;
+        // The child operates independently.
+        let taken = child.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, true)?;
+        ensure_equal(child.remaining(), 5)?;
+        // Parent is unaffected.
+        ensure_equal(parent.remaining(), 6)?;
+        Ok(())
+    }
+
+    /// Sub-budget from a fully exhausted parent: the child starts at zero but
+    /// is still an independent, valid budget.
+    #[test]
+    fn edge_sub_budget_from_exhausted_parent_is_independent() -> Result<(), String> {
+        let mut parent = StepBudget::new(3);
+        for _ in 0..3 {
+            let taken = parent.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, true)?;
+        }
+        ensure_equal(parent.remaining(), 0)?;
+        // Child created with 0 remaining.
+        let mut child = StepBudget::new(parent.remaining());
+        ensure_equal(child.remaining(), 0)?;
+        let taken = child.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, false)?;
+        ensure_equal(child.remaining(), 0)?;
+        // Parent still at 0, independent of child.
+        ensure_equal(parent.remaining(), 0)?;
+        Ok(())
+    }
+
+    /// Multiple sequential sub-budgets derived from the same parent each
+    /// operate independently.
+    #[test]
+    fn edge_multiple_sequential_sub_budgets() -> Result<(), String> {
+        let mut parent = StepBudget::new(10);
+        // Consume 2.
+        parent.try_take().map_err(|e| e.to_string())?;
+        parent.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(parent.remaining(), 8)?;
+
+        // Sub-budget 1 with 3 units.
+        let mut child1 = StepBudget::new(3);
+        let taken = child1.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, true)?;
+        ensure_equal(child1.remaining(), 2)?;
+
+        // Sub-budget 2 with 5 units.
+        let mut child2 = StepBudget::new(5);
+        for _ in 0..5 {
+            let taken = child2.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, true)?;
+        }
+        ensure_equal(child2.remaining(), 0)?;
+        // Exhausted child2 stays exhausted.
+        let taken = child2.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, false)?;
+
+        // Parent is unaffected by either child.
+        ensure_equal(parent.remaining(), 8)?;
+        // child1 is unaffected by child2.
+        ensure_equal(child1.remaining(), 2)?;
+        Ok(())
+    }
+
+    /// Boundary test: take exactly N from a budget of N, then attempt N+1.
+    /// All N takes succeed, the (N+1)th returns false.
+    #[test]
+    fn edge_take_exact_budget_then_one_more() -> Result<(), String> {
+        let n = 7u64;
+        let mut b = StepBudget::new(n);
+        ensure_equal(b.remaining(), n)?;
+        // Take exactly N steps.
+        for i in 0..n {
+            let taken = b.try_take().map_err(|e| e.to_string())?;
+            ensure_equal(taken, true,)?; // ", "step {} should succeed
+            ensure_equal(b.remaining(), n.saturating_sub(i).saturating_sub(1),)?; // ", "remaining after step {}
+        }
+        // Budget is now at zero.
+        ensure_equal(b.remaining(), 0)?;
+        // Attempt one more -- must fail.
+        let extra = b.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(extra, false)?;
+        // Still zero.
+        ensure_equal(b.remaining(), 0)
+    }
 }

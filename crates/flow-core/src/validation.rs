@@ -2,6 +2,7 @@ use crate::doc::*;
 use crate::ids::*;
 use crate::patch::{Diagnostic, DiagnosticSeverity};
 use smol_str::SmolStr;
+use std::collections::{HashMap, HashSet};
 
 // ---------------------------------------------------------------------------
 // Validator trait
@@ -162,6 +163,149 @@ fn check_group_members(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
                 Some(node_id.clone()),
                 None,
             ));
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Semantic validator
+// ---------------------------------------------------------------------------
+
+pub struct SemanticValidator;
+
+impl FlowValidator for SemanticValidator {
+    fn validate(&self, doc: &FlowDocument) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+
+        semantic_check_edge_node_existence(&doc.graph, &mut diagnostics);
+        semantic_check_nonempty_kind_orphans(&doc.graph, &mut diagnostics);
+        semantic_check_group_member_validity(&doc.graph, &mut diagnostics);
+        semantic_check_duplicate_port_connections(&doc.graph, &mut diagnostics);
+
+        diagnostics
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Semantic checks
+// ---------------------------------------------------------------------------
+
+/// Check 1: Every edge's source_node and target_node exist as nodes in the
+/// document.
+fn semantic_check_edge_node_existence(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
+    for (edge_id, edge) in &graph.edges {
+        if !graph.nodes.contains_key(&edge.source_node) {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "semantic-edge-source-missing",
+                format!(
+                    "edge '{}' references non-existent source node '{}'",
+                    edge_id, edge.source_node
+                ),
+                Some(edge.source_node.clone()),
+                Some(edge_id.clone()),
+            ));
+        }
+        if !graph.nodes.contains_key(&edge.target_node) {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "semantic-edge-target-missing",
+                format!(
+                    "edge '{}' references non-existent target node '{}'",
+                    edge_id, edge.target_node
+                ),
+                Some(edge.target_node.clone()),
+                Some(edge_id.clone()),
+            ));
+        }
+    }
+}
+
+/// Check 2: Every node whose `kind` field is non-empty must have at least one
+/// connected edge.  Nodes with an empty `kind` are treated as placeholders
+/// and are exempt from this requirement.
+fn semantic_check_nonempty_kind_orphans(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
+    let mut connected: HashSet<NodeId> = HashSet::new();
+    for edge in graph.edges.values() {
+        if graph.nodes.contains_key(&edge.source_node) {
+            connected.insert(edge.source_node.clone());
+        }
+        if graph.nodes.contains_key(&edge.target_node) {
+            connected.insert(edge.target_node.clone());
+        }
+    }
+
+    for (node_id, node) in &graph.nodes {
+        if node.kind.is_empty() {
+            continue;
+        }
+        if !connected.contains(node_id) {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Warning,
+                "semantic-orphan-node",
+                format!(
+                    "node '{}' with kind '{}' has no connected edges",
+                    node_id, node.kind
+                ),
+                Some(node_id.clone()),
+                None,
+            ));
+        }
+    }
+}
+
+/// Check 3: Every node that claims a parent group references a group that
+/// actually exists in the document.
+fn semantic_check_group_member_validity(graph: &FlowGraph, diagnostics: &mut Vec<Diagnostic>) {
+    for (node_id, node) in &graph.nodes {
+        if let Some(ref group_id) = node.parent
+            && !graph.groups.contains_key(group_id)
+        {
+            diagnostics.push(diag(
+                DiagnosticSeverity::Error,
+                "semantic-node-parent-group-missing",
+                format!(
+                    "node '{}' references non-existent parent group '{}'",
+                    node_id, group_id
+                ),
+                Some(node_id.clone()),
+                None,
+            ));
+        }
+    }
+}
+
+/// Check 4: No two edges connect the same (source_node, source_port) to the
+/// same (target_node, target_port).
+fn semantic_check_duplicate_port_connections(
+    graph: &FlowGraph,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let mut seen: HashMap<(NodeId, PortId, NodeId, PortId), EdgeId> = HashMap::new();
+    for (edge_id, edge) in &graph.edges {
+        let key = (
+            edge.source_node.clone(),
+            edge.source_port.clone(),
+            edge.target_node.clone(),
+            edge.target_port.clone(),
+        );
+        match seen.entry(key) {
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                let first_id = entry.get();
+                diagnostics.push(diag(
+                    DiagnosticSeverity::Error,
+                    "semantic-duplicate-edge",
+                    format!(
+                        "edge '{}' duplicates edge '{}' (same source port -> target port connection)",
+                        edge_id, first_id
+                    ),
+                    None,
+                    Some(edge_id.clone()),
+                ));
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(edge_id.clone());
+            }
         }
     }
 }
@@ -802,5 +946,475 @@ mod tests {
         let doc = FlowDocument::default();
         let diags = validator.validate(&doc);
         assert!(diags.is_empty());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SemanticValidator tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod semantic_tests {
+    use super::*;
+    use crate::doc::{
+        Cardinality, EdgeStyle, FlowEdgeRecord, FlowGroupRecord, FlowNodeRecord, FlowPortRecord,
+        GroupKind, NodeFlags, NodeUiState, PortRole, PortSide,
+    };
+    use crate::ids::{EdgeId, GroupId, NodeId, PortId};
+    use smol_str::SmolStr;
+
+    fn nid(s: &str) -> NodeId {
+        SmolStr::from(s)
+    }
+
+    fn eid(s: &str) -> EdgeId {
+        SmolStr::from(s)
+    }
+
+    fn pid(s: &str) -> PortId {
+        SmolStr::from(s)
+    }
+
+    fn gid(s: &str) -> GroupId {
+        SmolStr::from(s)
+    }
+
+    fn make_port_record(id: &str, role: PortRole) -> FlowPortRecord {
+        FlowPortRecord {
+            id: pid(id),
+            side: match role {
+                PortRole::Source | PortRole::Bidirectional => PortSide::Right,
+                PortRole::Target => PortSide::Left,
+            },
+            role,
+            label: SmolStr::from(id),
+            order: 0,
+            cardinality: Cardinality::One,
+            data_type: None,
+        }
+    }
+
+    fn make_node(id: &str, kind: &str) -> FlowNodeRecord {
+        FlowNodeRecord {
+            id: nid(id),
+            kind: SmolStr::from(kind),
+            title: SmolStr::from(id),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![
+                make_port_record("out", PortRole::Source),
+                make_port_record("in", PortRole::Target),
+            ],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        }
+    }
+
+    fn make_node_empty_kind(id: &str) -> FlowNodeRecord {
+        FlowNodeRecord {
+            id: nid(id),
+            kind: SmolStr::new(""),
+            title: SmolStr::from(id),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        }
+    }
+
+    fn make_edge(id: &str, src: &str, src_port: &str, tgt: &str, tgt_port: &str) -> FlowEdgeRecord {
+        FlowEdgeRecord {
+            id: eid(id),
+            source_node: nid(src),
+            source_port: pid(src_port),
+            target_node: nid(tgt),
+            target_port: pid(tgt_port),
+            label: None,
+            style: EdgeStyle::default(),
+            data: serde_json::Value::Null,
+            ui: EdgeUiState::default(),
+        }
+    }
+
+    fn make_group(id: &str) -> FlowGroupRecord {
+        FlowGroupRecord {
+            id: gid(id),
+            kind: GroupKind::Generic,
+            title: SmolStr::from(id),
+            bounds: [0.0, 0.0, 200.0, 200.0],
+            data: serde_json::Value::Null,
+        }
+    }
+
+    // =========================================================================
+    // SemanticValidator integration tests
+    // =========================================================================
+
+    #[test]
+    fn semantic_valid_document_no_diagnostics() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "source"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "sink"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags.is_empty(), "expected no diagnostics, got: {diags:?}");
+    }
+
+    #[test]
+    fn semantic_empty_document_no_diagnostics() {
+        let doc = FlowDocument::default();
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn semantic_validator_trait_object_works() {
+        let validator: Box<dyn FlowValidator> = Box::new(SemanticValidator);
+        let doc = FlowDocument::default();
+        let diags = validator.validate(&doc);
+        assert!(diags.is_empty());
+    }
+
+    // =========================================================================
+    // Check 1: edge node existence
+    // =========================================================================
+
+    #[test]
+    fn edge_source_node_missing_produces_error() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "sink"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "ghost", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-source-missing"));
+    }
+
+    #[test]
+    fn edge_target_node_missing_produces_error() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "source"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "ghost", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-target-missing"));
+    }
+
+    #[test]
+    fn edge_both_endpoints_missing_produces_two_errors() {
+        let mut doc = FlowDocument::default();
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "ghost1", "out", "ghost2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-source-missing"));
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-target-missing"));
+        assert_eq!(diags.len(), 2);
+    }
+
+    // =========================================================================
+    // Check 2: orphan nodes with non-empty kind
+    // =========================================================================
+
+    #[test]
+    fn connected_node_not_flagged_as_orphan() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "transform"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "output"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-orphan-node"));
+    }
+
+    #[test]
+    fn disconnected_node_with_kind_flagged_as_orphan() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "transform"));
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-orphan-node"));
+        let orphan = diags
+            .iter()
+            .find(|d| d.code.as_str() == "semantic-orphan-node");
+        assert!(orphan.is_some_and(|d| d.node.as_ref() == Some(&nid("n1"))));
+    }
+
+    #[test]
+    fn disconnected_node_with_empty_kind_not_flagged() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_empty_kind("n1"));
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-orphan-node"));
+    }
+
+    #[test]
+    fn multiple_orphan_nodes_all_flagged() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node("n1", "alpha"));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node("n2", "beta"));
+        doc.graph
+            .nodes
+            .insert(nid("n3"), make_node("n3", "gamma"));
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        let orphan_count = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "semantic-orphan-node")
+            .count();
+        assert_eq!(orphan_count, 3);
+    }
+
+    // =========================================================================
+    // Check 3: group member node validity
+    // =========================================================================
+
+    #[test]
+    fn node_with_valid_parent_group_no_diagnostic() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut node = make_node("n1", "test");
+        node.parent = Some(gid("g1"));
+        doc.graph.nodes.insert(nid("n1"), node);
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node("n2", "test"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-node-parent-group-missing"));
+    }
+
+    #[test]
+    fn node_with_missing_parent_group_produces_error() {
+        let mut doc = FlowDocument::default();
+        let mut node = make_node("n1", "test");
+        node.parent = Some(gid("ghost-group"));
+        doc.graph.nodes.insert(nid("n1"), node);
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-node-parent-group-missing"));
+    }
+
+    #[test]
+    fn node_with_no_parent_no_diagnostic() {
+        let mut doc = FlowDocument::default();
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node("n1", "test"));
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-node-parent-group-missing"));
+    }
+
+    // =========================================================================
+    // Check 4: duplicate port connections
+    // =========================================================================
+
+    #[test]
+    fn unique_edges_no_duplicate_diagnostic() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "src"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "tgt"));
+        doc.graph.nodes.insert(nid("n3"), make_node("n3", "tgt2"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge("e2", "n1", "out", "n3", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-duplicate-edge"));
+    }
+
+    #[test]
+    fn exact_duplicate_edge_produces_error() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "src"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "tgt"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge("e2", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-duplicate-edge"));
+    }
+
+    #[test]
+    fn same_nodes_different_ports_no_duplicate() {
+        let mut doc = FlowDocument::default();
+        let mut n1 = make_node("n1", "src");
+        n1.ports = vec![
+            make_port_record("out-a", PortRole::Source),
+            make_port_record("out-b", PortRole::Source),
+        ];
+        let mut n2 = make_node("n2", "tgt");
+        n2.ports = vec![
+            make_port_record("in-a", PortRole::Target),
+            make_port_record("in-b", PortRole::Target),
+        ];
+        doc.graph.nodes.insert(nid("n1"), n1);
+        doc.graph.nodes.insert(nid("n2"), n2);
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out-a", "n2", "in-a"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge("e2", "n1", "out-b", "n2", "in-b"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(!diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-duplicate-edge"));
+    }
+
+    #[test]
+    fn three_duplicate_edges_produce_two_errors() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1", "src"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2", "tgt"));
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        doc.graph.edges.insert(
+            eid("e2"),
+            make_edge("e2", "n1", "out", "n2", "in"),
+        );
+        doc.graph.edges.insert(
+            eid("e3"),
+            make_edge("e3", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        let dup_count = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "semantic-duplicate-edge")
+            .count();
+        // e2 duplicates e1, e3 duplicates e1 => 2 errors
+        assert_eq!(dup_count, 2);
+    }
+
+    // =========================================================================
+    // Integration: all four checks together
+    // =========================================================================
+
+    #[test]
+    fn all_semantic_checks_on_valid_document() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut n1 = make_node("n1", "source");
+        n1.parent = Some(gid("g1"));
+        let mut n2 = make_node("n2", "sink");
+        n2.parent = Some(gid("g1"));
+        doc.graph.nodes.insert(nid("n1"), n1);
+        doc.graph.nodes.insert(nid("n2"), n2);
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "n1", "out", "n2", "in"),
+        );
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+        assert!(
+            diags.is_empty(),
+            "valid document should produce no diagnostics, got: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn all_semantic_checks_accumulate_from_multiple_issues() {
+        let mut doc = FlowDocument::default();
+        // No groups -- but node references a ghost group
+        let mut n1 = make_node("n1", "orphan-with-bad-group");
+        n1.parent = Some(gid("ghost"));
+        doc.graph.nodes.insert(nid("n1"), n1);
+        // Edge references nonexistent nodes
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge("e1", "missing-src", "out", "missing-tgt", "in"),
+        );
+
+        let validator = SemanticValidator;
+        let diags = validator.validate(&doc);
+
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-source-missing"));
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-edge-target-missing"));
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-orphan-node"));
+        assert!(diags
+            .iter()
+            .any(|d| d.code.as_str() == "semantic-node-parent-group-missing"));
+        assert!(diags.len() >= 4);
     }
 }

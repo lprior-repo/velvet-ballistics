@@ -3825,4 +3825,384 @@ mod tests {
             Err(ValidationError::SecretResultLeak)
         ));
     }
+
+    // =========================================================================
+    // Blackhat edge-case tests
+    // =========================================================================
+
+    /// Edge case 1: BuildObject with zero fields remains Clean.
+    /// An empty composite represents an object with no fields. Since there are
+    /// no sub-values, no secret taint can be introduced. The slot written by
+    /// this save should have Clean taint, and finishing with it should succeed.
+    #[test]
+    fn edge_build_object_zero_fields_remains_clean() {
+        // BuildObject with no fields -> empty Composite
+        let wf = make_workflow(vec![
+            save_step("empty_obj", TypedValue::Composite(vec![])),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        // Type check passes (no incompatible types).
+        assert_eq!(validate_types(&wf), Ok(()));
+        // Taint check passes (no secrets involved).
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Edge case 2: BuildList with empty list remains Clean.
+    /// An empty list has no elements, so no secret taint can propagate.
+    /// The slot written by this save should have Clean taint, and finishing
+    /// with it should succeed.
+    #[test]
+    fn edge_build_list_empty_remains_clean() {
+        // BuildList with no elements -> empty Composite
+        let wf = make_workflow(vec![
+            save_step("empty_list", TypedValue::Composite(vec![])),
+            save_step("relay", TypedValue::Slot(0)),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+        assert_eq!(validate_types(&wf), Ok(()));
+    }
+
+    /// Edge case 3: Multi-hop taint propagation A -> B -> C (three Save steps).
+    /// A secret is captured at step A, relayed through step B, relayed again
+    /// through step C, and then finished. The taint must survive all three hops.
+    #[test]
+    fn edge_multi_hop_taint_a_to_b_to_c() {
+        let mut wf = make_workflow(vec![
+            // A: capture secret
+            save_step("a", TypedValue::Reference("$secrets.db_credential".into())),
+            // B: relay from A
+            save_step("b", TypedValue::Slot(0)),
+            // C: relay from B
+            save_step("c", TypedValue::Slot(1)),
+            // Finish from C -- must be tainted
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("db_credential".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak),
+            "taint must propagate through three consecutive save hops"
+        );
+    }
+
+    /// Edge case 4: Clean stays clean through non-secret operations end-to-end.
+    /// A workflow that uses only clean inputs, clean vars, clean literals, and
+    /// clean composites should pass both type and taint validation without
+    /// any issues from start to finish.
+    #[test]
+    fn edge_clean_stays_clean_end_to_end() {
+        let mut wf = make_workflow(vec![
+            // Save a clean input
+            save_step("input_val", TypedValue::Reference("$input.count".into())),
+            // Save a clean var
+            save_step("var_val", TypedValue::Reference("$vars.threshold".into())),
+            // Save a clean literal
+            save_step("lit_val", TypedValue::Literal(ValueType::Text)),
+            // Composite of all clean values
+            save_step(
+                "combined",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Slot(1),
+                    TypedValue::Slot(2),
+                ]),
+            ),
+            // Choose with a clean boolean
+            save_step("flag", TypedValue::Literal(ValueType::Boolean)),
+            choose_step("route", TypedValue::Slot(4)),
+            // Finish from the clean composite
+            finish_step("done", TypedValue::Slot(3)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "count".to_owned(),
+            schema_type: ValueType::Number,
+            is_secret: false,
+        });
+        wf.vars.push(("threshold".to_owned(), ValueType::Number));
+        // Secrets exist but are not used
+        wf.secrets.push("unused_secret".to_owned());
+        assert_eq!(
+            validate_types(&wf),
+            Ok(()),
+            "type check must pass for all-clean workflow"
+        );
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "taint check must pass for all-clean workflow"
+        );
+    }
+
+    /// Edge case 5: Two independent secret sources merging into one output.
+    /// One secret comes from $secrets namespace, another from a secret input.
+    /// When both are combined in a composite, the result must be tainted.
+    #[test]
+    fn edge_two_independent_secret_sources_merge() {
+        let mut wf = make_workflow(vec![
+            // Source 1: $secrets namespace
+            save_step("secret_a", TypedValue::Reference("$secrets.oauth_token".into())),
+            // Source 2: secret input
+            save_step("secret_b", TypedValue::Reference("$input.private_key".into())),
+            // Merge both into one composite
+            save_step(
+                "merged_output",
+                TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Slot(1)]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("oauth_token".to_owned());
+        wf.inputs.push(InputDecl {
+            name: "private_key".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        assert_eq!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak),
+            "merging two independent secret sources must produce Secret taint"
+        );
+    }
+
+    /// Edge case 6: Taint through ForEach body -- body sees parent taint.
+    /// The ForEach concept is simulated by saving items from a tainted source
+    /// into separate slots (representing iteration over items). Each "body
+    /// iteration" that reads from the tainted parent should carry taint.
+    /// In this model, the sequential save pattern captures the same taint
+    /// propagation behavior that ForEach would exhibit.
+    #[test]
+    fn edge_taint_through_for_each_body_sees_parent_taint() {
+        // Simulate ForEach: parent has a tainted slot, and "body" steps
+        // read from it, producing tainted output.
+        let mut wf = make_workflow(vec![
+            // Parent: save a secret
+            save_step("parent", TypedValue::Reference("$secrets.db_url".into())),
+            // Body iteration 1: read parent slot
+            save_step("body_item_1", TypedValue::Slot(0)),
+            // Body iteration 2: read parent slot into a composite
+            save_step(
+                "body_item_2",
+                TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Literal(ValueType::Text)]),
+            ),
+            // Body iteration 3: relay of body_item_1
+            save_step("body_item_3", TypedValue::Slot(1)),
+            // Finish with body output -- tainted via parent
+            finish_step("done", TypedValue::Slot(3)),
+        ]);
+        wf.secrets.push("db_url".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak),
+            "ForEach body items that read from a tainted parent must carry taint"
+        );
+    }
+
+    /// Edge case 6b: ForEach body with clean parent stays clean.
+    /// When the parent slot is clean, all body items derived from it are also
+    /// clean, and finishing with a body output succeeds.
+    #[test]
+    fn edge_for_each_body_with_clean_parent_stays_clean() {
+        let wf = make_workflow(vec![
+            // Parent: clean literal
+            save_step("parent", TypedValue::Literal(ValueType::Number)),
+            // Body iteration 1: read parent slot
+            save_step("body_item_1", TypedValue::Slot(0)),
+            // Body iteration 2: composite with parent slot
+            save_step(
+                "body_item_2",
+                TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Literal(ValueType::Text)]),
+            ),
+            // Finish from body output -- clean
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "ForEach body with clean parent must remain clean"
+        );
+    }
+
+    /// Edge case 7: Taint through Together branches -- each branch is independent.
+    /// The Together concept is simulated by two independent save chains that
+    /// don't reference each other. One branch carries taint, the other is clean.
+    /// Finishing from the clean branch should succeed even though the other
+    /// branch is tainted.
+    #[test]
+    fn edge_together_branches_independent_taint() {
+        let mut wf = make_workflow(vec![
+            // Branch A: tainted
+            save_step("branch_a", TypedValue::Reference("$secrets.internal_key".into())),
+            // Branch B: clean
+            save_step("branch_b", TypedValue::Literal(ValueType::Number)),
+            // Finish from the clean branch -- must pass
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("internal_key".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "Together: finishing from the clean branch must pass"
+        );
+    }
+
+    /// Edge case 7b: Together branches -- finishing from the tainted branch fails.
+    #[test]
+    fn edge_together_branches_tainted_branch_finish_fails() {
+        let mut wf = make_workflow(vec![
+            // Branch A: tainted
+            save_step("branch_a", TypedValue::Reference("$secrets.internal_key".into())),
+            // Branch B: clean
+            save_step("branch_b", TypedValue::Literal(ValueType::Number)),
+            // Finish from the tainted branch -- must fail
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        wf.secrets.push("internal_key".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak),
+            "Together: finishing from the tainted branch must fail"
+        );
+    }
+
+    /// Edge case 7c: Together branches merging -- both branches feed into a
+    /// composite result. If one branch is tainted, the merged result is tainted.
+    #[test]
+    fn edge_together_branches_merged_one_tainted_result_is_tainted() {
+        let mut wf = make_workflow(vec![
+            // Branch A: tainted
+            save_step("branch_a", TypedValue::Reference("$secrets.credential".into())),
+            // Branch B: clean
+            save_step("branch_b", TypedValue::Literal(ValueType::Text)),
+            // Merge both branches
+            save_step(
+                "merged",
+                TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Slot(1)]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("credential".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak),
+            "Together: merging clean and tainted branches must be tainted"
+        );
+    }
+
+    /// Edge case 8: Self-referential slot doesn't cause infinite loop.
+    /// A save step reads from its own slot index. Since the slot has not been
+    /// written yet at the time of the read, it resolves as clean Any. The
+    /// write then stores clean Any into the slot. Finishing from this slot
+    /// should succeed without infinite recursion or panics.
+    #[test]
+    fn edge_self_referential_slot_no_infinite_loop() {
+        let wf = make_workflow(vec![
+            // Slot 0 reads from itself -- uninitialized, resolves as clean Any
+            save_step("self_ref", TypedValue::Slot(0)),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        // Must not panic or hang
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "self-referential slot must resolve as clean, not cause infinite loop"
+        );
+        assert_eq!(
+            validate_types(&wf),
+            Ok(()),
+            "self-referential slot type check must pass"
+        );
+    }
+
+    /// Edge case 8b: Self-referential slot with a tainted slot in between.
+    /// Slot 0 is tainted, slot 1 reads from slot 1 (self-ref, resolves clean),
+    /// finish from slot 1 is clean. The tainted slot 0 is not involved.
+    #[test]
+    fn edge_self_referential_slot_with_adjacent_taint_stays_clean() {
+        let mut wf = make_workflow(vec![
+            // Slot 0: tainted
+            save_step("tainted", TypedValue::Reference("$secrets.adj".into())),
+            // Slot 1: self-referential (reads slot 1, which is None -> clean)
+            save_step("self_ref", TypedValue::Slot(1)),
+            // Finish from slot 1 -- clean because self-ref resolved as clean Any
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("adj".to_owned());
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "self-referential slot must not pick up taint from adjacent slots"
+        );
+    }
+
+    /// Edge case 9: Finish with Clean taint succeeds.
+    /// A straightforward workflow where the finish step receives a value with
+    /// Clean taint from a composite of clean inputs, clean literals, and clean
+    /// vars. This must pass both validators.
+    #[test]
+    fn edge_finish_with_clean_taint_succeeds() {
+        let mut wf = make_workflow(vec![
+            save_step("input_val", TypedValue::Reference("$input.email".into())),
+            save_step("var_val", TypedValue::Reference("$vars.counter".into())),
+            save_step(
+                "result",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(0),
+                    TypedValue::Slot(1),
+                    TypedValue::Literal(ValueType::Boolean),
+                ]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "email".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: false,
+        });
+        wf.vars.push(("counter".to_owned(), ValueType::Number));
+        assert_eq!(
+            validate_taint(&wf),
+            Ok(()),
+            "finish with clean taint must succeed"
+        );
+        assert_eq!(
+            validate_types(&wf),
+            Ok(()),
+            "finish with clean taint must pass type check"
+        );
+    }
+
+    /// Edge case 10: Finish with Secret taint fails with SecretResultLeak.
+    /// A workflow where taint propagates from a secret input through a relay
+    /// into a composite and finally to the finish step. The exact error must
+    /// be ValidationError::SecretResultLeak.
+    #[test]
+    fn edge_finish_with_secret_taint_fails_with_secret_result_leak() {
+        let mut wf = make_workflow(vec![
+            // Capture secret input
+            save_step("cap", TypedValue::Reference("$input.password".into())),
+            // Relay
+            save_step("relay", TypedValue::Slot(0)),
+            // Composite with relay
+            save_step(
+                "payload",
+                TypedValue::Composite(vec![
+                    TypedValue::Slot(1),
+                    TypedValue::Literal(ValueType::Text),
+                ]),
+            ),
+            // Finish with tainted composite
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.inputs.push(InputDecl {
+            name: "password".to_owned(),
+            schema_type: ValueType::Text,
+            is_secret: true,
+        });
+        let result = validate_taint(&wf);
+        assert_eq!(
+            result,
+            Err(ValidationError::SecretResultLeak),
+            "finish with secret taint must fail with SecretResultLeak exactly"
+        );
+    }
 }
