@@ -766,6 +766,217 @@ mod tests {
             SlotValue::List(ListId::new(0))
         );
     }
+
+    // =========================================================================
+    // Additional edge-case tests — construction, equality, Debug, Display
+    // =========================================================================
+
+    #[test]
+    fn slot_value_null_debug_format() {
+        let val = SlotValue::Null;
+        assert!(format!("{val:?}").contains("Null"), "Debug for Null must contain 'Null'");
+    }
+
+    #[test]
+    fn slot_value_bool_debug_format() {
+        let val = SlotValue::Bool(true);
+        let debug = format!("{val:?}");
+        assert!(debug.contains("Bool"), "Debug for Bool must contain 'Bool'");
+    }
+
+    #[test]
+    fn slot_value_i64_debug_format() {
+        let val = SlotValue::I64(-99);
+        let debug = format!("{val:?}");
+        assert!(debug.contains("I64"), "Debug for I64 must contain 'I64'");
+    }
+
+    #[test]
+    fn slot_value_null_display_is_null() {
+        assert_eq!(format!("{}", SlotValue::Null), "null");
+    }
+
+    #[test]
+    fn slot_value_bool_display_true() {
+        assert_eq!(format!("{}", SlotValue::Bool(true)), "true");
+    }
+
+    #[test]
+    fn slot_value_bool_display_false() {
+        assert_eq!(format!("{}", SlotValue::Bool(false)), "false");
+    }
+
+    #[test]
+    fn slot_value_i64_display() {
+        assert_eq!(format!("{}", SlotValue::I64(42)), "42");
+    }
+
+    #[test]
+    fn slot_value_i64_negative_display() {
+        assert_eq!(format!("{}", SlotValue::I64(-1)), "-1");
+    }
+
+    #[test]
+    fn slot_value_symbol_display() {
+        let val = SlotValue::Symbol(SymbolId::new(7));
+        assert_eq!(format!("{val}"), "symbol:7");
+    }
+
+    #[test]
+    fn slot_value_list_display() {
+        let val = SlotValue::List(ListId::new(3));
+        assert_eq!(format!("{val}"), "list:3");
+    }
+
+    #[test]
+    fn slot_value_object_display() {
+        let val = SlotValue::Object(ObjectId::new(5));
+        assert_eq!(format!("{val}"), "object:5");
+    }
+
+    #[test]
+    fn slot_value_blob_display() {
+        let val = SlotValue::Blob(BlobId::new(9));
+        assert_eq!(format!("{val}"), "blob:9");
+    }
+
+    #[test]
+    fn slot_value_i64_equality_same() {
+        assert_eq!(SlotValue::I64(0), SlotValue::I64(0));
+        assert_eq!(SlotValue::I64(-1), SlotValue::I64(-1));
+        assert_eq!(SlotValue::I64(i64::MAX), SlotValue::I64(i64::MAX));
+    }
+
+    #[test]
+    fn slot_value_i64_inequality_different() {
+        assert_ne!(SlotValue::I64(0), SlotValue::I64(1));
+        assert_ne!(SlotValue::I64(-1), SlotValue::I64(1));
+    }
+
+    #[test]
+    fn slot_value_bool_equality() {
+        assert_eq!(SlotValue::Bool(true), SlotValue::Bool(true));
+        assert_eq!(SlotValue::Bool(false), SlotValue::Bool(false));
+        assert_ne!(SlotValue::Bool(true), SlotValue::Bool(false));
+    }
+
+    #[test]
+    fn slot_value_copy_preserves_equality() {
+        let a = SlotValue::I64(42);
+        let b = a;
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn slot_value_clone_preserves_equality() {
+        let a = SlotValue::Bool(true);
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn const_value_null_equality() {
+        assert_eq!(ConstValue::Null, ConstValue::Null);
+    }
+
+    #[test]
+    fn const_value_bool_equality() {
+        assert_eq!(ConstValue::Bool(true), ConstValue::Bool(true));
+        assert_eq!(ConstValue::Bool(false), ConstValue::Bool(false));
+        assert_ne!(ConstValue::Bool(true), ConstValue::Bool(false));
+    }
+
+    #[test]
+    fn const_value_i64_equality() {
+        assert_eq!(ConstValue::I64(0), ConstValue::I64(0));
+        assert_eq!(ConstValue::I64(i64::MAX), ConstValue::I64(i64::MAX));
+        assert_eq!(ConstValue::I64(i64::MIN), ConstValue::I64(i64::MIN));
+        assert_ne!(ConstValue::I64(0), ConstValue::I64(1));
+    }
+
+    #[test]
+    fn const_value_symbol_equality() {
+        assert_eq!(
+            ConstValue::Symbol(SymbolId::new(0)),
+            ConstValue::Symbol(SymbolId::new(0))
+        );
+        assert_ne!(
+            ConstValue::Symbol(SymbolId::new(0)),
+            ConstValue::Symbol(SymbolId::new(1))
+        );
+    }
+
+    #[test]
+    fn const_value_distinguishes_null_from_bool_false() {
+        assert_ne!(ConstValue::Null, ConstValue::Bool(false));
+    }
+
+    #[test]
+    fn const_value_distinguishes_i64_from_symbol() {
+        assert_ne!(ConstValue::I64(0), ConstValue::Symbol(SymbolId::new(0)));
+    }
+
+    #[test]
+    fn const_value_to_slot_value_null_preserves_equality() {
+        assert_eq!(ConstValue::Null.to_slot_value(), Ok(SlotValue::Null));
+    }
+
+    #[test]
+    fn finite_f64_display_matches_inner() -> Result<(), String> {
+        let val = FiniteF64::new(3.14).map_err(|e| e.to_string())?;
+        let display = format!("{val}");
+        assert!(display.contains("3.14"), "display must contain the value, got: {display}");
+        Ok(())
+    }
+
+    #[test]
+    fn taint_debug_format_variants() {
+        let clean_debug = format!("{:?}", Taint::Clean);
+        assert!(clean_debug.contains("Clean"));
+        let secret_debug = format!("{:?}", Taint::Secret);
+        assert!(secret_debug.contains("Secret"));
+        let derived_debug = format!("{:?}", Taint::DerivedFromSecret);
+        assert!(derived_debug.contains("DerivedFromSecret"));
+    }
+
+    #[test]
+    fn taint_equality_reflexive() {
+        assert_eq!(Taint::Clean, Taint::Clean);
+        assert_eq!(Taint::Secret, Taint::Secret);
+        assert_eq!(Taint::DerivedFromSecret, Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn taint_inequality() {
+        assert_ne!(Taint::Clean, Taint::Secret);
+        assert_ne!(Taint::Clean, Taint::DerivedFromSecret);
+        assert_ne!(Taint::DerivedFromSecret, Taint::Secret);
+    }
+
+    #[test]
+    fn slot_value_f64_with_positive_zero() -> Result<(), String> {
+        let finite = FiniteF64::new(0.0).map_err(|e| e.to_string())?;
+        let val = SlotValue::F64(finite);
+        assert_eq!(val.type_name(), "number");
+        assert!(!val.is_true());
+        Ok(())
+    }
+
+    #[test]
+    fn const_value_debug_format() {
+        let debug = format!("{:?}", ConstValue::I64(42));
+        assert!(debug.contains("I64"), "Debug for ConstValue::I64 must contain 'I64'");
+        let debug = format!("{:?}", ConstValue::Null);
+        assert!(debug.contains("Null"), "Debug for ConstValue::Null must contain 'Null'");
+    }
+
+    #[test]
+    fn slot_value_all_variants_distinct_type_names() {
+        // Ensure each handle variant has a distinct type name
+        assert_ne!(SlotValue::Symbol(SymbolId::new(0)).type_name(), SlotValue::List(ListId::new(0)).type_name());
+        assert_ne!(SlotValue::List(ListId::new(0)).type_name(), SlotValue::Object(ObjectId::new(0)).type_name());
+        assert_ne!(SlotValue::Object(ObjectId::new(0)).type_name(), SlotValue::Blob(BlobId::new(0)).type_name());
+    }
 }
 
 impl SlotValue {

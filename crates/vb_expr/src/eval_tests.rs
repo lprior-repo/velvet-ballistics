@@ -1374,4 +1374,223 @@ mod tests {
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
+
+    // ===== Edge-case tests added for comprehensive coverage =====
+
+    /// Edge case: F64 values are rejected by integer arithmetic (type mismatch).
+    ///
+    /// The expression evaluator only supports I64 arithmetic. Supplying an F64
+    /// value to an Add operation must produce TypeMismatch, not a panic or
+    /// silent coercion.
+    #[test]
+    fn edge_f64_rejected_by_integer_addition() -> ExprResult<()> {
+        let f64_val = vb_core::value::FiniteF64::new(3.14)
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_val), SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 + I64".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    /// Edge case: F64 values rejected by comparison operators (type mismatch).
+    ///
+    /// Comparison operators expect I64 operands. Supplying F64 must fail.
+    #[test]
+    fn edge_f64_rejected_by_comparison() -> ExprResult<()> {
+        let f64_val = vb_core::value::FiniteF64::new(1.0)
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_binary_op(BinaryOp::Lt, SlotValue::F64(f64_val), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 < I64".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    /// Edge case: Parenthesized groups override operator precedence.
+    ///
+    /// `(1 + 2) * (3 + 4)` should evaluate to `3 * 7 = 21`, not `1 + (2 * 3) + 4`.
+    /// This tests that parentheses correctly override the default precedence
+    /// where multiplication binds tighter than addition.
+    #[test]
+    fn edge_parenthesized_groups_override_precedence() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("(1 + 2) * (3 + 4)")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::I64(21));
+        Ok(())
+    }
+
+    /// Edge case: Comparison operators mixed with arithmetic in precedence.
+    ///
+    /// `1 + 2 < 3 + 4` should be parsed as `(1 + 2) < (3 + 4)` which evaluates
+    /// to `3 < 7` = true. This verifies that comparison operators have lower
+    /// precedence than arithmetic operators.
+    #[test]
+    fn edge_comparison_lower_precedence_than_arithmetic() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("1 + 2 < 3 + 4")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    /// Edge case: Boolean equality and inequality across same and different values.
+    ///
+    /// `true == true` should be true, `true == false` should be false,
+    /// `false != false` should be false, `true != false` should be true.
+    #[test]
+    fn edge_boolean_equality_and_inequality() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("true == true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+
+        let tokens = crate::lexer::lex_expr("true != false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    /// Edge case: All four comparison operators on equal values.
+    ///
+    /// For `5 < 5` -> false, `5 <= 5` -> true, `5 > 5` -> false, `5 >= 5` -> true.
+    /// This verifies the boundary behavior of comparison operators.
+    #[test]
+    fn edge_comparison_boundary_on_equal_values() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Lt, SlotValue::I64(5), SlotValue::I64(5))?;
+        assert_eq!(result, SlotValue::Bool(false), "5 < 5 should be false");
+
+        let result = eval_binary_op(BinaryOp::Lte, SlotValue::I64(5), SlotValue::I64(5))?;
+        assert_eq!(result, SlotValue::Bool(true), "5 <= 5 should be true");
+
+        let result = eval_binary_op(BinaryOp::Gt, SlotValue::I64(5), SlotValue::I64(5))?;
+        assert_eq!(result, SlotValue::Bool(false), "5 > 5 should be false");
+
+        let result = eval_binary_op(BinaryOp::Gte, SlotValue::I64(5), SlotValue::I64(5))?;
+        assert_eq!(result, SlotValue::Bool(true), "5 >= 5 should be true");
+        Ok(())
+    }
+
+    /// Edge case: Negation of a negative number returns the positive.
+    ///
+    /// `-(-42)` should evaluate to `42`. This exercises the unary negation
+    /// path with a non-zero, non-MIN negative operand.
+    #[test]
+    fn edge_negation_of_negative_returns_positive() -> ExprResult<()> {
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(-42))?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    /// Edge case: Logical AND/OR with all boolean combinations.
+    ///
+    /// Verifies `false and false` -> false, `true or true` -> true,
+    /// `false or false` -> false. Existing tests cover `true and false`
+    /// and `true or false`, but these three combinations are untested.
+    #[test]
+    fn edge_logical_and_or_all_combinations() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false), "false and false");
+
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true), "true or true");
+
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false), "false or false");
+        Ok(())
+    }
+
+    /// Edge case: Chained left-associative subtraction via end-to-end pipeline.
+    ///
+    /// `100 - 50 - 25` should parse as `(100 - 50) - 25 = 25`, not `100 - (50 - 25) = 75`.
+    /// This verifies that subtraction is left-associative through the full
+    /// lex -> parse -> compile -> eval pipeline.
+    #[test]
+    fn edge_left_associative_subtraction_e2e() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("100 - 50 - 25")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::I64(25));
+        Ok(())
+    }
+
+    /// Edge case: Division of negative by negative produces correct positive result.
+    ///
+    /// `-100 / -10` should yield `10`. Exercises signed division through the
+    /// end-to-end pipeline.
+    #[test]
+    fn edge_negative_division_e2e() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("0 - 100")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program_neg100 = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+
+        let tokens = crate::lexer::lex_expr("0 - 10")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants2 = Vec::new();
+        let program_neg10 = crate::bytecode::compile_expr_with_pool(&ast, &mut constants2)?;
+
+        // Use direct binary op since we cannot parse negative literals
+        let neg100_result = eval_expr_program(&program_neg100, &[], &constants)?;
+        let neg10_result = eval_expr_program(&program_neg10, &[], &constants2)?;
+
+        let result = eval_binary_op(BinaryOp::Div, neg100_result, neg10_result)?;
+        assert_eq!(result, SlotValue::I64(10));
+        Ok(())
+    }
+
+    /// Edge case: `not true or true` precedence -- NOT binds tighter than OR.
+    ///
+    /// This should parse as `(not true) or true` = `false or true` = `true`.
+    /// If OR bound tighter, it would be `not (true or true)` = `not true` = `false`.
+    #[test]
+    fn edge_not_binds_tighter_than_or() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("not true or true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true), "not true or true should be true");
+        Ok(())
+    }
+
+    /// Edge case: Whitespace-only input through full pipeline returns error.
+    ///
+    /// The lexer produces only an End token for whitespace-only input.
+    /// The parser should reject this with UnexpectedToken.
+    #[test]
+    fn edge_whitespace_only_rejected_by_parser() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("   \t  \n  ")?;
+        let result = crate::parser::parse_expr(&tokens);
+        let Err(ExprError::UnexpectedToken { token }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected UnexpectedToken for whitespace-only".into(),
+            });
+        };
+        assert!(
+            token.contains("End"),
+            "whitespace-only should produce End token error, got: {token}"
+        );
+        Ok(())
+    }
 }
