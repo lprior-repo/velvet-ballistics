@@ -11,6 +11,8 @@ use std::path::PathBuf;
 
 use vb_core::ids::RunId;
 
+use vb_ipc::server::IpcResponse;
+
 use crate::app_state::{AppState, HealthLevel};
 use crate::ipc_bridge::{IpcBridge, IpcReply, IpcRequest};
 use crate::theme::colors;
@@ -29,6 +31,9 @@ use crate::theme::colors;
 /// 4. Inspect the returned [`WiringEvents`] to decide whether to redraw.
 pub struct IpcAppWiring {
     bridge: IpcBridge,
+    /// Buffer for event responses that arrive via `IpcReply::Events`.
+    /// The replay controller calls [`IpcAppWiring::drain_events`] to consume them.
+    events_buffer: Vec<IpcResponse>,
 }
 
 impl Default for IpcAppWiring {
@@ -42,6 +47,7 @@ impl IpcAppWiring {
     pub fn new() -> Self {
         Self {
             bridge: IpcBridge::new(),
+            events_buffer: Vec::new(),
         }
     }
 
@@ -88,6 +94,13 @@ impl IpcAppWiring {
         self.bridge.is_connected()
     }
 
+    /// Drains and returns all buffered event responses accumulated since the
+    /// last call. The replay controller should call this after
+    /// [`WiringEvents::events_arrived`] is set to true.
+    pub fn drain_events(&mut self) -> Vec<IpcResponse> {
+        std::mem::take(&mut self.events_buffer)
+    }
+
     /// Polls the IPC bridge and routes replies into `app_state`.
     ///
     /// Returns a [`WiringEvents`] summarising what changed so the caller can
@@ -105,7 +118,7 @@ impl IpcAppWiring {
 
     // -- Internal routing ---------------------------------------------------
 
-    fn route_reply(&self, reply: IpcReply, app_state: &mut AppState, events: &mut WiringEvents) {
+    fn route_reply(&mut self, reply: IpcReply, app_state: &mut AppState, events: &mut WiringEvents) {
         match reply {
             IpcReply::Connected => {
                 app_state.connected = true;
@@ -136,11 +149,11 @@ impl IpcAppWiring {
                 self.route_inspected(response, app_state, events);
             }
             IpcReply::Events(response) => {
-                // Events replies are consumed by the replay controller
-                // directly. We record that events arrived so the caller can
-                // delegate to the replay sub-system.
-                let _ = response;
+                // Buffer the events response so the replay controller can
+                // retrieve it via `drain_events`.
+                self.events_buffer.push(response);
                 events.events_arrived = true;
+                events.events_buffered = events.events_buffered.saturating_add(1);
             }
             IpcReply::TraceCount(count) => {
                 let _ = count;
@@ -167,7 +180,7 @@ impl IpcAppWiring {
     }
 
     fn route_inspected(
-        &self,
+        &mut self,
         response: vb_ipc::server::IpcResponse,
         app_state: &mut AppState,
         events: &mut WiringEvents,
@@ -292,8 +305,11 @@ pub struct WiringEvents {
     pub run_cancelled: bool,
     /// An inspect reply was processed.
     pub inspected: bool,
-    /// Journal events arrived (replay subsystem should pick them up).
+    /// Journal events arrived and were buffered in the wiring. Call
+    /// [`IpcAppWiring::drain_events`] to retrieve the data.
     pub events_arrived: bool,
+    /// Number of event responses buffered during this poll cycle.
+    pub events_buffered: usize,
     /// Trace drain completed.
     pub trace_drained: bool,
     /// Health check completed.
@@ -485,6 +501,25 @@ mod tests {
             "ERROR"
         );
         assert_eq!(WiringEvents::default().connection_status_text(), "IDLE");
+    }
+
+    #[test]
+    fn drain_events_returns_empty_when_no_events_buffered() {
+        let mut wiring = IpcAppWiring::new();
+        let events = wiring.drain_events();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn drain_events_clears_buffer_after_drain() {
+        let mut wiring = IpcAppWiring::new();
+        wiring.events_buffer.push(vb_ipc::server::IpcResponse::Events {
+            events: Vec::new(),
+        });
+        let first = wiring.drain_events();
+        assert_eq!(first.len(), 1);
+        let second = wiring.drain_events();
+        assert!(second.is_empty());
     }
 
     #[test]
