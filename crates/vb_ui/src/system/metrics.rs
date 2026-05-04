@@ -360,12 +360,13 @@ mod tests {
     /// SEVERITY: HIGH
     /// DESCRIPTION: SystemMetrics::recompute() uses Iterator::sum() to
     /// accumulate u32 shard totals (lines 114-116). The default Sum<u32>
-    /// implementation uses wrapping arithmetic on overflow. With two shards
-    /// each having active_runs = u32::MAX / 2 + 1, the sum wraps to a small
-    /// value instead of saturating. This silently produces wrong totals,
-    /// potentially hiding system overload from operators.
+    /// implementation panics on overflow in debug mode and wraps in release.
+    /// With two shards each having active_runs = u32::MAX / 2 + 1, the sum
+    /// panics in debug (crashes the process) or wraps to 0 in release
+    /// (silently wrong). Both outcomes are severe bugs.
     #[test]
-    fn blackhat_recompute_u32_sum_wraps_on_overflow() {
+    #[should_panic(expected = "attempt to add with overflow")]
+    fn blackhat_recompute_u32_sum_panics_on_overflow() {
         let half = u32::MAX / 2 + 1; // 2_147_483_648
         let mut metrics = SystemMetrics {
             shards: vec![
@@ -401,23 +402,9 @@ mod tests {
             total_action_queue_depth: 0,
             overall_health: HealthStatus::Healthy,
         };
+        // BUG: sum() panics in debug, wraps in release.
+        // The fix should use saturating_add via fold instead of sum().
         metrics.recompute();
-        // BUG: sum wraps! half + half = 2^32 which wraps to 0 in debug
-        // and is UB-adjacent in release (though Rust defines it as wrapping).
-        // The total should be ~u32::MAX but actually wraps.
-        let expected_total = half.saturating_add(half); // = u32::MAX
-        // NOTE: This test DOCUMENTS the wrapping behavior. The sum() call
-        // wraps to 0 instead of saturating to u32::MAX.
-        assert_ne!(
-            metrics.total_active_runs, expected_total,
-            "recompute uses wrapping sum -- this test documents the bug"
-        );
-        // The actual wrapped value:
-        assert_eq!(
-            metrics.total_active_runs, 0,
-            "wrapping: {} + {} = {} (should be {})",
-            half, half, metrics.total_active_runs, expected_total
-        );
     }
 
     /// SEVERITY: Medium
