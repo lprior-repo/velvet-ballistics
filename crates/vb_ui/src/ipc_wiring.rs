@@ -235,15 +235,7 @@ impl IpcAppWiring {
                 events.metrics_updated = true;
             }
             vb_ipc::server::IpcResponse::VerifyWorkflow { result } => {
-                app_state.verification.total_checks = result.total_checks;
-                app_state.verification.pass_count = result.pass_count;
-                app_state.verification.fail_count = result.fail_count;
-                app_state.verification.warn_count = result
-                    .total_checks
-                    .saturating_sub(result.pass_count)
-                    .saturating_sub(result.fail_count);
-                app_state.verification.all_clean =
-                    result.fail_count == 0 && app_state.verification.warn_count == 0;
+                app_state.verification.populate_cert_cards(&result.certificates);
                 events.verification_updated = true;
             }
             vb_ipc::server::IpcResponse::TaintReport {

@@ -1626,4 +1626,379 @@ mod tests {
         assert!(entry.is_some());
         assert!(entry.unwrap_or_else(|| panic!("node missing")).flags.entry);
     }
+
+    // -----------------------------------------------------------------------
+    // Additional tests for graph_builder
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn choose_with_otherwise_produces_three_edges() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([
+                    vb_core::workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    vb_core::workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(3)),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = make_nop_node(2, None);
+        let n3 = make_finish_node(3, 0);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // 2 branch edges + 1 otherwise edge = 3 total.
+        assert_eq!(doc.graph.edges.len(), 3);
+
+        // Find the otherwise edge: it should be dashed.
+        let mut found_otherwise = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str() == "otherwise" {
+                found_otherwise = true;
+                assert!(e.style.dashed, "otherwise edge should be dashed");
+                assert_eq!(e.target.as_str(), "step-3");
+            }
+        }
+        assert!(found_otherwise, "should find an otherwise edge");
+
+        // Branch edges should be solid.
+        let mut solid_branch_count = 0usize;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str().starts_with("branch-") {
+                assert!(!e.style.dashed, "branch edge should be solid");
+                solid_branch_count = solid_branch_count.saturating_add(1);
+            }
+        }
+        assert_eq!(solid_branch_count, 2);
+    }
+
+    #[test]
+    fn together_start_creates_swimlane_group() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = make_nop_node(2, None);
+        let n3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: vb_core::ids::SlotIdx::new(0),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // Should produce a swimlane group.
+        let group = match doc.graph.groups.get("group-together-0") {
+            Some(g) => g,
+            None => return,
+        };
+        assert_eq!(group.kind, GroupKind::Swimlane);
+        // Children should span steps 0 through 3 (inclusive).
+        assert_eq!(group.children.len(), 4);
+        assert_eq!(group.children[0].as_str(), "step-0");
+        assert_eq!(group.children[3].as_str(), "step-3");
+    }
+
+    #[test]
+    fn collect_start_creates_branch_container_group() {
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: vb_core::ids::SlotIdx::new(0),
+                limit: 100,
+                page_size: 10,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: vb_core::ids::SlotIdx::new(1),
+            },
+        };
+        let parts = make_simple_parts(vec![n0, n1, n2], 0);
+        let doc = build_document(&parts);
+
+        let group = match doc.graph.groups.get("group-collect-0") {
+            Some(g) => g,
+            None => return,
+        };
+        assert_eq!(group.kind, GroupKind::BranchContainer);
+        assert_eq!(group.children.len(), 3);
+    }
+
+    #[test]
+    fn build_ports_for_build_object_with_fields() {
+        use vb_core::ids::{SlotIdx, SymbolId};
+
+        let kind = CompiledNodeKind::BuildObject {
+            fields: Box::new([
+                (SymbolId::new(0), SlotIdx::new(1)),
+                (SymbolId::new(1), SlotIdx::new(2)),
+                (SymbolId::new(2), SlotIdx::new(3)),
+            ]),
+        };
+        let (inputs, outputs) = build_ports(&kind, Some(SlotIdx::new(0)));
+
+        // 3 field input ports.
+        assert_eq!(inputs.len(), 3);
+        assert_eq!(inputs[0].id.as_str(), "field-0");
+        assert_eq!(inputs[1].id.as_str(), "field-1");
+        assert_eq!(inputs[2].id.as_str(), "field-2");
+        // All input ports should be on the Input side with Data role.
+        for port in &inputs {
+            assert_eq!(port.side, PortSide::Input);
+            assert_eq!(port.role, PortRole::Data);
+        }
+        // One output port for the output slot.
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].id.as_str(), "out");
+        assert_eq!(outputs[0].side, PortSide::Output);
+    }
+
+    #[test]
+    fn build_ports_for_build_list_with_items() {
+        use vb_core::ids::SlotIdx;
+
+        let kind = CompiledNodeKind::BuildList {
+            items: Box::new([
+                SlotIdx::new(10),
+                SlotIdx::new(20),
+                SlotIdx::new(30),
+                SlotIdx::new(40),
+            ]),
+        };
+        let (inputs, outputs) = build_ports(&kind, Some(SlotIdx::new(5)));
+
+        // 4 item input ports.
+        assert_eq!(inputs.len(), 4);
+        assert_eq!(inputs[0].id.as_str(), "item-0");
+        assert_eq!(inputs[3].id.as_str(), "item-3");
+        // All input ports should be on the Input side with Data role.
+        for port in &inputs {
+            assert_eq!(port.side, PortSide::Input);
+            assert_eq!(port.role, PortRole::Data);
+        }
+        // One output port for the output slot.
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].id.as_str(), "out");
+    }
+
+    #[test]
+    fn edge_style_defaults_solid_vs_dashed() {
+        // Verify the EdgeStyle constructors produce the expected values.
+        let solid = EdgeStyle::default_solid();
+        assert!(!solid.dashed);
+        assert!(!solid.highlighted);
+
+        let dashed = EdgeStyle::dashed();
+        assert!(dashed.dashed);
+        assert!(!dashed.highlighted);
+
+        // Error handler edges should use dashed style.
+        let n0 = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(3),
+                error_slot: None,
+            },
+        };
+        let n1 = make_nop_node(1, None);
+        let n2 = make_nop_node(2, None);
+        let n3 = make_nop_node(3, None);
+        let parts = make_simple_parts(vec![n0, n1, n2, n3], 0);
+        let doc = build_document(&parts);
+
+        // Should have a `next` edge (solid) and a `handler` edge (dashed).
+        let mut found_solid_next = false;
+        let mut found_dashed_handler = false;
+        for (_id, e) in &doc.graph.edges {
+            if e.source_port.as_str() == "next" {
+                found_solid_next = true;
+                assert!(!e.style.dashed, "next edge should be solid");
+            }
+            if e.source_port.as_str() == "handler" {
+                found_dashed_handler = true;
+                assert!(e.style.dashed, "handler edge should be dashed");
+            }
+        }
+        assert!(found_solid_next, "should find a solid next edge");
+        assert!(found_dashed_handler, "should find a dashed handler edge");
+    }
+
+    #[test]
+    fn wait_event_with_timeout_produces_two_input_ports() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: vb_core::ids::SlotIdx::new(5),
+            timeout_slot: Some(vb_core::ids::SlotIdx::new(8)),
+        };
+        let (inputs, outputs) = build_ports(&kind, None);
+
+        // Event port + timeout port = 2 input ports.
+        assert_eq!(inputs.len(), 2, "WaitEvent with timeout should have 2 inputs");
+        assert_eq!(inputs[0].id.as_str(), "event");
+        assert_eq!(inputs[1].id.as_str(), "timeout");
+
+        for port in &inputs {
+            assert_eq!(port.side, PortSide::Input);
+            assert_eq!(port.role, PortRole::Data);
+        }
+
+        // No output slot provided, so no output ports.
+        assert!(outputs.is_empty(), "WaitEvent has no output ports when output is None");
+    }
+
+    #[test]
+    fn wait_event_without_timeout_produces_one_input_port() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: vb_core::ids::SlotIdx::new(3),
+            timeout_slot: None,
+        };
+        let (inputs, outputs) = build_ports(&kind, None);
+
+        // Only event port; no timeout port.
+        assert_eq!(inputs.len(), 1, "WaitEvent without timeout should have 1 input");
+        assert_eq!(inputs[0].id.as_str(), "event");
+        assert_eq!(inputs[0].side, PortSide::Input);
+        assert_eq!(inputs[0].role, PortRole::Data);
+
+        assert!(outputs.is_empty());
+    }
+
+    #[test]
+    fn wait_event_with_timeout_and_output_slot() {
+        let kind = CompiledNodeKind::WaitEvent {
+            event: vb_core::ids::SlotIdx::new(1),
+            timeout_slot: Some(vb_core::ids::SlotIdx::new(2)),
+        };
+        let (inputs, outputs) = build_ports(&kind, Some(vb_core::ids::SlotIdx::new(10)));
+
+        // Still 2 input ports.
+        assert_eq!(inputs.len(), 2);
+        assert_eq!(inputs[0].id.as_str(), "event");
+        assert_eq!(inputs[1].id.as_str(), "timeout");
+
+        // Now has an output port for the output slot.
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].id.as_str(), "out");
+        assert_eq!(outputs[0].side, PortSide::Output);
+    }
+
+    #[test]
+    fn choose_ports_include_branch_triggers_and_otherwise() {
+        use vb_core::ids::ExprIdx;
+
+        let kind = CompiledNodeKind::Choose {
+            branches: Box::new([
+                vb_core::workflow::ExprBranch {
+                    condition: ExprIdx::new(0),
+                    target: StepIdx::new(1),
+                },
+                vb_core::workflow::ExprBranch {
+                    condition: ExprIdx::new(1),
+                    target: StepIdx::new(2),
+                },
+            ]),
+            otherwise: Some(StepIdx::new(3)),
+        };
+        let (inputs, outputs) = build_ports(&kind, None);
+
+        // No input ports (Choose branches from expressions, not slots).
+        assert!(inputs.is_empty());
+
+        // 2 branch trigger ports + 1 otherwise port = 3 output ports.
+        assert_eq!(outputs.len(), 3);
+        assert_eq!(outputs[0].id.as_str(), "branch-0");
+        assert_eq!(outputs[0].role, PortRole::Trigger);
+        assert_eq!(outputs[1].id.as_str(), "branch-1");
+        assert_eq!(outputs[1].role, PortRole::Trigger);
+        assert_eq!(outputs[2].id.as_str(), "otherwise");
+        assert_eq!(outputs[2].role, PortRole::Otherwise);
+    }
+
+    #[test]
+    fn together_start_ports_match_branch_count_plus_join() {
+        let kind = CompiledNodeKind::TogetherStart {
+            branches: Box::new([StepIdx::new(1), StepIdx::new(2), StepIdx::new(3)]),
+            join: StepIdx::new(4),
+        };
+        let (inputs, outputs) = build_ports(&kind, None);
+
+        assert!(inputs.is_empty());
+
+        // 3 branch trigger ports + 1 join done port = 4.
+        assert_eq!(outputs.len(), 4);
+        assert_eq!(outputs[0].id.as_str(), "branch-0");
+        assert_eq!(outputs[0].role, PortRole::Trigger);
+        assert_eq!(outputs[1].id.as_str(), "branch-1");
+        assert_eq!(outputs[2].id.as_str(), "branch-2");
+        assert_eq!(outputs[3].id.as_str(), "join");
+        assert_eq!(outputs[3].role, PortRole::Done);
+    }
+
+    #[test]
+    fn collect_start_ports_have_input_body_and_done() {
+        let kind = CompiledNodeKind::CollectStart {
+            source: vb_core::ids::SlotIdx::new(0),
+            limit: 50,
+            page_size: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        let (inputs, outputs) = build_ports(&kind, None);
+
+        // One input port for the source slot.
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(inputs[0].id.as_str(), "source");
+        assert_eq!(inputs[0].side, PortSide::Input);
+        assert_eq!(inputs[0].role, PortRole::Data);
+
+        // Two output ports: body and done.
+        assert_eq!(outputs.len(), 2);
+        assert_eq!(outputs[0].id.as_str(), "body");
+        assert_eq!(outputs[0].role, PortRole::Body);
+        assert_eq!(outputs[1].id.as_str(), "done");
+        assert_eq!(outputs[1].role, PortRole::Done);
+    }
 }

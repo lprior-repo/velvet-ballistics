@@ -4,7 +4,7 @@ pub use makepad_widgets;
 
 use makepad_widgets::*;
 use vb_ui::app_state::{AppState, ReplayData, Screen};
-use vb_ui::ipc_wiring::IpcAppWiring;
+use vb_ui::ipc_wiring::{IpcAppWiring, WiringError};
 
 app_main!(VbApp);
 
@@ -1018,6 +1018,12 @@ script_mod! {
                                             draw_text +: {color: #2d6bff text_style +: {font_size: 11}}
                                         }
 
+                                        ipc_error := Label{
+                                            text: ""
+                                            draw_text +: {color: #ff073a text_style +: {font_size: 9}}
+                                            visible: false
+                                        }
+
                                         alert_1 := AlertCard{
                                             draw_bg +: {color: #1a0d00 border_radius: 4.0}
                                             alert_dot := Label{text: "!" draw_text +: {color: #ff073a text_style +: {font_size: 12}}}
@@ -1481,7 +1487,29 @@ impl MatchEvent for VbApp {
         // sync calls for the affected subsystems.
         let wiring_events = self.ipc_wiring.poll(&mut self.app_state);
 
-        if wiring_events.metrics_updated || wiring_events.connection_changed || wiring_events.health_checked {
+        // -- Surface IPC wiring errors -----------------------------------
+        // Connection failures, IPC errors, and "not implemented" warnings
+        // were previously silently discarded. Store the first error so the
+        // System Overview screen can display it.
+        let has_errors = !wiring_events.errors.is_empty();
+        if has_errors {
+            if let Some(err) = wiring_events.errors.first() {
+                let msg = match err {
+                    WiringError::ConnectionFailed(detail) => {
+                        format!("IPC connection failed: {detail}")
+                    }
+                    WiringError::IpcError(detail) => {
+                        format!("IPC error: {detail}")
+                    }
+                };
+                self.app_state.last_ipc_error = Some(msg);
+            }
+        } else if self.app_state.last_ipc_error.is_some() {
+            // Clear stale error when a clean poll cycle arrives.
+            self.app_state.last_ipc_error = None;
+        }
+
+        if wiring_events.metrics_updated || wiring_events.connection_changed || wiring_events.health_checked || has_errors {
             self.sync_system_state(cx);
         }
         if wiring_events.verification_updated || wiring_events.taint_report_updated {
@@ -1492,7 +1520,12 @@ impl MatchEvent for VbApp {
             || wiring_events.events_arrived
             || wiring_events.trace_drained
         {
-            let _events = self.ipc_wiring.drain_events();
+            if wiring_events.events_arrived {
+                let responses = self.ipc_wiring.drain_events();
+                self.ingest_timeline_events(&responses);
+            } else {
+                let _ = self.ipc_wiring.drain_events();
+            }
             self.sync_replay_state(cx);
         }
         if wiring_events.workflow_graph_updated {
@@ -1609,6 +1642,21 @@ fn rgba_to_html_hex(rgba: [f32; 4]) -> String {
 /// Alias kept for readability — same as `rgba_to_html_hex`.
 fn rgba_to_hex(rgba: [f32; 4]) -> String {
     rgba_to_html_hex(rgba)
+}
+
+/// Darkens an RGBA color for chip background use (multiplies RGB by 0.25,
+/// keeps alpha at 1.0).
+fn darken_for_bg(rgba: [f32; 4]) -> [f32; 4] {
+    [rgba[0] * 0.25, rgba[1] * 0.25, rgba[2] * 0.25, 1.0]
+}
+
+/// Builds a display label for a timeline chip from the event kind and optional
+/// step id.
+fn chip_label(kind: &str, step_id: Option<u16>) -> String {
+    match step_id {
+        Some(step) => format!("{kind}:{step}"),
+        None => kind.to_owned(),
+    }
 }
 
 /// Convert a 0.0–1.0 float colour channel to a `u8` in `[0, 255]`.
@@ -1734,6 +1782,153 @@ impl VbApp {
         script_apply_eval!(cx, self.ui, {
             btn_play.text: #(play_label)
         });
+
+        // Push timeline chip data from the strip.
+        self.sync_timeline_chips(cx);
+    }
+
+    /// Converts drained IPC event responses into a TimelineStrip and stores
+    /// it on ReplayData.
+    fn ingest_timeline_events(&mut self, responses: &[vb_ipc::server::IpcResponse]) {
+        use vb_storage::JournalEvent;
+        use vb_ui::replay::trace_to_journal;
+
+        let mut journal_events: Vec<JournalEvent> = Vec::new();
+        for response in responses {
+            if let vb_ipc::server::IpcResponse::Events { events } = response {
+                for trace in events {
+                    if let Some(je) = trace_to_journal(trace.clone()) {
+                        journal_events.push(je);
+                    }
+                }
+            }
+        }
+
+        if journal_events.is_empty() {
+            return;
+        }
+
+        // Sort by sequence to guarantee ordering.
+        journal_events.sort_by_key(|e| e.seq());
+
+        self.app_state
+            .replay
+            .timeline_strip
+            .extend_from_journal(&journal_events);
+
+        self.app_state.replay.total_events =
+            u32::try_from(self.app_state.replay.timeline_strip.events().len())
+                .unwrap_or(u32::MAX);
+    }
+
+    /// Pushes chip labels and colours from the timeline strip into the 10
+    /// EventChip widgets (ev1..ev10). Empty slots show "--".
+    fn sync_timeline_chips(&mut self, cx: &mut Cx) {
+        let events = self.app_state.replay.timeline_strip.events();
+        for idx in 0..10usize {
+            let chip_event = events.get(idx);
+            let label: String;
+            let dot_color: String;
+            let dot_color2: String;
+            let bg: String;
+            match chip_event {
+                Some(ev) => {
+                    label = chip_label(ev.event_kind.as_str(), ev.step_id);
+                    dot_color = rgba_to_hex(ev.color);
+                    dot_color2 = dot_color.clone();
+                    bg = rgba_to_hex(darken_for_bg(ev.color));
+                }
+                None => {
+                    label = String::from("--");
+                    dot_color = String::from("#555577");
+                    dot_color2 = String::from("#555577");
+                    bg = String::from("#16162a");
+                }
+            }
+            match idx {
+                0 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev1.draw_bg.color: #(bg)
+                        ev1.ev_dot.draw_text.color: #(dot_color)
+                        ev1.ev_label.text: #(label)
+                        ev1.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                1 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev2.draw_bg.color: #(bg)
+                        ev2.ev_dot.draw_text.color: #(dot_color)
+                        ev2.ev_label.text: #(label)
+                        ev2.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                2 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev3.draw_bg.color: #(bg)
+                        ev3.ev_dot.draw_text.color: #(dot_color)
+                        ev3.ev_label.text: #(label)
+                        ev3.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                3 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev4.draw_bg.color: #(bg)
+                        ev4.ev_dot.draw_text.color: #(dot_color)
+                        ev4.ev_label.text: #(label)
+                        ev4.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                4 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev5.draw_bg.color: #(bg)
+                        ev5.ev_dot.draw_text.color: #(dot_color)
+                        ev5.ev_label.text: #(label)
+                        ev5.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                5 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev6.draw_bg.color: #(bg)
+                        ev6.ev_dot.draw_text.color: #(dot_color)
+                        ev6.ev_label.text: #(label)
+                        ev6.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                6 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev7.draw_bg.color: #(bg)
+                        ev7.ev_dot.draw_text.color: #(dot_color)
+                        ev7.ev_label.text: #(label)
+                        ev7.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                7 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev8.draw_bg.color: #(bg)
+                        ev8.ev_dot.draw_text.color: #(dot_color)
+                        ev8.ev_label.text: #(label)
+                        ev8.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                8 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev9.draw_bg.color: #(bg)
+                        ev9.ev_dot.draw_text.color: #(dot_color)
+                        ev9.ev_label.text: #(label)
+                        ev9.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                9 => {
+                    script_apply_eval!(cx, self.ui, {
+                        ev10.draw_bg.color: #(bg)
+                        ev10.ev_dot.draw_text.color: #(dot_color)
+                        ev10.ev_label.text: #(label)
+                        ev10.ev_label.draw_text.color: #(dot_color2)
+                    });
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Synchronizes Verification screen state to UI labels.
@@ -1939,10 +2134,27 @@ impl VbApp {
         self.app_state.sync_system_from_screen();
 
         let lanes_hint = self.app_state.system.lanes_hint_text();
+        let ipc_error_text = self.app_state.last_ipc_error.clone();
+        let ipc_error_visible = ipc_error_text.is_some();
 
         script_apply_eval!(cx, self.ui, {
             lanes_hint.text: #(lanes_hint)
         });
+
+        // Surface the last IPC wiring error in the System Overview alerts panel.
+        if ipc_error_visible {
+            if let Some(ref msg) = ipc_error_text {
+                script_apply_eval!(cx, self.ui, {
+                    ipc_error.text: #(msg)
+                    ipc_error.visible: true
+                });
+            }
+        } else {
+            script_apply_eval!(cx, self.ui, {
+                ipc_error.text: ""
+                ipc_error.visible: false
+            });
+        }
 
         // Build a full render frame from the system screen.
         let frame = SystemFrameBuilder::new(&self.app_state.system_screen).build_frame();
