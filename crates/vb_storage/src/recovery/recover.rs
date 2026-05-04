@@ -11,6 +11,12 @@ use crate::{FjallJournal, JournalEvent};
 use vb_core::{RunId, WorkflowDigest};
 
 /// Verifies that the workflow source digest matches the stored record.
+///
+/// Returns `WorkflowSourceDigestMismatch` when the stored digest differs from
+/// the expected value, and `NoRecoveryData` when no `RunAccepted` event is
+/// present in the journal for the given run. A missing acceptance record is
+/// treated as a verification failure because it means the digest was never
+/// recorded and therefore cannot be trusted.
 pub fn check_workflow_source_digest(
     journal: &FjallJournal,
     run: RunId,
@@ -28,7 +34,7 @@ pub fn check_workflow_source_digest(
             return Ok(());
         }
     }
-    Ok(())
+    Err(RecoveryError::NoRecoveryData { run })
 }
 
 /// Verifies that the compiled IR digest matches the expected value.

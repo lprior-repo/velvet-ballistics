@@ -325,9 +325,11 @@ mod tests {
     fn document_serialization_roundtrip() {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
-        let json = serde_json::to_string(&doc).expect("serialize should succeed");
-        let back: FlowDocument = serde_json::from_str(&json).expect("deserialize should succeed");
-        assert!(back.graph.nodes.contains_key(&SmolStr::from("n1")));
+        let json = serde_json::to_string(&doc).ok();
+        assert!(json.is_some());
+        let back: Option<FlowDocument> = json.and_then(|j| serde_json::from_str(&j).ok());
+        assert!(back.is_some());
+        assert!(back.is_some_and(|d| d.graph.nodes.contains_key(&SmolStr::from("n1"))));
     }
 
     // ---- FlowGraph ----
@@ -651,25 +653,28 @@ mod tests {
     #[test]
     fn node_serialization_roundtrip() {
         let node = make_node("n1");
-        let json = serde_json::to_string(&node).expect("serialize");
-        let back: FlowNodeRecord = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back.id, node.id);
+        let json = serde_json::to_string(&node).ok();
+        assert!(json.is_some());
+        let back: Option<FlowNodeRecord> = json.and_then(|j| serde_json::from_str(&j).ok());
+        assert!(back.is_some_and(|b| b.id == node.id));
     }
 
     #[test]
     fn edge_serialization_roundtrip() {
         let edge = make_edge("e1", "n1", "out", "n2", "in");
-        let json = serde_json::to_string(&edge).expect("serialize");
-        let back: FlowEdgeRecord = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back.id, edge.id);
+        let json = serde_json::to_string(&edge).ok();
+        assert!(json.is_some());
+        let back: Option<FlowEdgeRecord> = json.and_then(|j| serde_json::from_str(&j).ok());
+        assert!(back.is_some_and(|b| b.id == edge.id));
     }
 
     #[test]
     fn group_serialization_roundtrip() {
         let group = make_group("g1");
-        let json = serde_json::to_string(&group).expect("serialize");
-        let back: FlowGroupRecord = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back.id, group.id);
+        let json = serde_json::to_string(&group).ok();
+        assert!(json.is_some());
+        let back: Option<FlowGroupRecord> = json.and_then(|j| serde_json::from_str(&j).ok());
+        assert!(back.is_some_and(|b| b.id == group.id));
     }
 
     #[test]
@@ -686,15 +691,18 @@ mod tests {
             .insert(SmolStr::from("g1"), make_group("g1"));
         doc.graph.entry_node = Some(SmolStr::from("n1"));
 
-        let json = serde_json::to_string(&doc).expect("serialize");
-        let back: FlowDocument = serde_json::from_str(&json).expect("deserialize");
-
-        assert_eq!(back.graph.nodes.len(), 2);
-        assert_eq!(back.graph.edges.len(), 1);
-        assert_eq!(back.graph.groups.len(), 1);
-        assert_eq!(
-            back.graph.entry_node.as_ref().map(|s| s.as_str()),
-            Some("n1")
-        );
+        let json = serde_json::to_string(&doc).ok();
+        assert!(json.is_some());
+        let back: Option<FlowDocument> = json.and_then(|j| serde_json::from_str(&j).ok());
+        assert!(back.is_some());
+        if let Some(b) = back {
+            assert_eq!(b.graph.nodes.len(), 2);
+            assert_eq!(b.graph.edges.len(), 1);
+            assert_eq!(b.graph.groups.len(), 1);
+            assert_eq!(
+                b.graph.entry_node.as_ref().map(|s| s.as_str()),
+                Some("n1")
+            );
+        }
     }
 }

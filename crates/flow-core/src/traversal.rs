@@ -301,14 +301,14 @@ mod tests {
         let g = linear_chain_graph();
         let inc_b = g.incomers(&nid("b"));
         assert_eq!(inc_b.len(), 1);
-        assert_eq!(inc_b[0].id, eid("e1"));
+        assert!(inc_b.get(0).is_some_and(|e| e.id == eid("e1")));
 
         let inc_a = g.incomers(&nid("a"));
         assert!(inc_a.is_empty());
 
         let inc_c = g.incomers(&nid("c"));
         assert_eq!(inc_c.len(), 1);
-        assert_eq!(inc_c[0].id, eid("e2"));
+        assert!(inc_c.get(0).is_some_and(|e| e.id == eid("e2")));
     }
 
     #[test]
@@ -343,7 +343,7 @@ mod tests {
         let g = linear_chain_graph();
         let out_a = g.outgoers(&nid("a"));
         assert_eq!(out_a.len(), 1);
-        assert_eq!(out_a[0].id, eid("e1"));
+        assert!(out_a.get(0).is_some_and(|e| e.id == eid("e1")));
 
         let out_c = g.outgoers(&nid("c"));
         assert!(out_c.is_empty());
