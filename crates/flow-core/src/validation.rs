@@ -1312,4 +1312,994 @@ mod tests {
         p.add_validator(Box::new(Err2));
         assert_eq!(p.validate(&FlowDocument::default()).len(), 2);
     }
+
+    // =========================================================================
+    // INTEGRATION TESTS: ValidationPipeline combining all three validators
+    // with complex multi-issue documents
+    // =========================================================================
+
+    // Helper: create a well-formed node with one Source port and one Target port
+    fn make_full_node(id: &str, pos: [f64; 2]) -> FlowNodeRecord {
+        FlowNodeRecord {
+            id: nid(id),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from(id),
+            position: pos,
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![
+                FlowPortRecord {
+                    id: pid(&format!("{id}-in")),
+                    side: PortSide::Left,
+                    role: PortRole::Target,
+                    label: SmolStr::from("in"),
+                    order: 0,
+                    cardinality: Cardinality::One,
+                    data_type: Some(SmolStr::from("data")),
+                },
+                FlowPortRecord {
+                    id: pid(&format!("{id}-out")),
+                    side: PortSide::Right,
+                    role: PortRole::Source,
+                    label: SmolStr::from("out"),
+                    order: 1,
+                    cardinality: Cardinality::Many,
+                    data_type: Some(SmolStr::from("data")),
+                },
+            ],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        }
+    }
+
+    // Helper: connect two nodes via their ports
+    fn connect(edge_id: &str, src: &str, tgt: &str) -> FlowEdgeRecord {
+        FlowEdgeRecord {
+            id: eid(edge_id),
+            source_node: nid(src),
+            source_port: pid(&format!("{src}-out")),
+            target_node: nid(tgt),
+            target_port: pid(&format!("{tgt}-in")),
+            label: None,
+            style: EdgeStyle::default(),
+            data: serde_json::Value::Null,
+            ui: EdgeUiState::default(),
+        }
+    }
+
+    // ---- Integration: fully valid pipeline produces no diagnostics ----
+
+    #[test]
+    fn integration_pipeline_valid_diamond_dag() {
+        let mut doc = FlowDocument::default();
+        // a -> b, a -> c, b -> d, c -> d (diamond DAG)
+        // a is entry (only out-port), d is terminal (only in-port)
+        // b and c are middle nodes with both ports
+
+        // Node a: entry, only output port
+        let a = FlowNodeRecord {
+            id: nid("a"),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from("a"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid("a-out"),
+                side: PortSide::Right,
+                role: PortRole::Source,
+                label: SmolStr::from("out"),
+                order: 0,
+                cardinality: Cardinality::Many,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { entry: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("a"), a);
+        doc.graph.nodes.insert(nid("b"), make_full_node("b", [200.0, -100.0]));
+        doc.graph.nodes.insert(nid("c"), make_full_node("c", [200.0, 100.0]));
+
+        // Node d: terminal, only input port
+        let d = FlowNodeRecord {
+            id: nid("d"),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from("d"),
+            position: [400.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid("d-in"),
+                side: PortSide::Left,
+                role: PortRole::Target,
+                label: SmolStr::from("in"),
+                order: 0,
+                cardinality: Cardinality::One,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { terminal: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("d"), d);
+
+        doc.graph.edges.insert(eid("e1"), connect("e1", "a", "b"));
+        doc.graph.edges.insert(eid("e2"), connect("e2", "a", "c"));
+        doc.graph.edges.insert(eid("e3"), connect("e3", "b", "d"));
+        doc.graph.edges.insert(eid("e4"), connect("e4", "c", "d"));
+        doc.graph.entry_node = Some(nid("a"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        assert!(diags.is_empty(), "expected no diagnostics for valid diamond DAG, got: {diags:?}");
+    }
+
+    #[test]
+    fn integration_pipeline_valid_linear_chain() {
+        let mut doc = FlowDocument::default();
+        let count: usize = 10;
+        // First node: entry, only output port
+        let mut first = FlowNodeRecord {
+            id: nid("n0"),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from("n0"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid("n0-out"),
+                side: PortSide::Right,
+                role: PortRole::Source,
+                label: SmolStr::from("out"),
+                order: 0,
+                cardinality: Cardinality::Many,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { entry: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        first.flags.entry = true;
+        doc.graph.nodes.insert(nid("n0"), first);
+
+        // Middle nodes
+        for i in 1..count.saturating_sub(1) {
+            let pos = [f64::from(u32::try_from(i).unwrap_or(u32::MAX)).mul_add(150.0, 0.0), 0.0];
+            doc.graph.nodes.insert(
+                nid(&format!("n{i}")),
+                make_full_node(&format!("n{i}"), pos),
+            );
+        }
+
+        // Last node: terminal, only input port
+        let last_idx = count.saturating_sub(1);
+        let last_pos = [f64::from(u32::try_from(last_idx).unwrap_or(u32::MAX)).mul_add(150.0, 0.0), 0.0];
+        let last = FlowNodeRecord {
+            id: nid(&format!("n{last_idx}")),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from(format!("n{last_idx}")),
+            position: last_pos,
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid(&format!("n{last_idx}-in")),
+                side: PortSide::Left,
+                role: PortRole::Target,
+                label: SmolStr::from("in"),
+                order: 0,
+                cardinality: Cardinality::One,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { terminal: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid(&format!("n{last_idx}")), last);
+
+        for i in 0..count.saturating_sub(1) {
+            let next = i.saturating_add(1);
+            doc.graph.edges.insert(
+                eid(&format!("e{i}")),
+                connect(&format!("e{i}"), &format!("n{i}"), &format!("n{next}")),
+            );
+        }
+        doc.graph.entry_node = Some(nid("n0"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        assert!(diags.is_empty(), "expected no diagnostics for valid chain, got: {diags:?}");
+    }
+
+    // ---- Integration: multi-issue document triggers all three phases ----
+
+    #[test]
+    fn integration_multi_issue_document_triggers_all_phases() {
+        let mut doc = FlowDocument::default();
+
+        // Structural issue: entry_node references nonexistent node
+        doc.graph.entry_node = Some(nid("nonexistent-entry"));
+
+        // Structural issue: edge references nonexistent source
+        doc.graph.edges.insert(
+            eid("bad-edge"),
+            FlowEdgeRecord {
+                id: eid("bad-edge"),
+                source_node: nid("ghost-src"),
+                source_port: pid("out"),
+                target_node: nid("ghost-tgt"),
+                target_port: pid("in"),
+                label: None,
+                style: EdgeStyle::default(),
+                data: serde_json::Value::Null,
+                ui: EdgeUiState::default(),
+            },
+        );
+
+        // Export issue: node with empty kind and empty title
+        let mut bad_node = make_full_node("bad-node", [0.0, 0.0]);
+        bad_node.kind = SmolStr::new("");
+        bad_node.title = SmolStr::new("");
+        doc.graph.nodes.insert(nid("bad-node"), bad_node);
+
+        // Export issue: overlapping nodes
+        doc.graph.nodes.insert(
+            nid("overlap1"),
+            FlowNodeRecord {
+                id: nid("overlap1"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("overlap1"),
+                position: [50.0, 50.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+        doc.graph.nodes.insert(
+            nid("overlap2"),
+            FlowNodeRecord {
+                id: nid("overlap2"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("overlap2"),
+                position: [50.0, 50.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        // Structural phase catches
+        assert!(codes.contains(&"entry-node-missing"), "missing entry-node-missing in {codes:?}");
+        assert!(codes.contains(&"edge-source-missing"), "missing edge-source-missing in {codes:?}");
+        assert!(codes.contains(&"edge-target-missing"), "missing edge-target-missing in {codes:?}");
+
+        // Export phase catches
+        assert!(codes.contains(&"export-node-kind-empty"), "missing export-node-kind-empty in {codes:?}");
+        assert!(codes.contains(&"export-node-title-empty"), "missing export-node-title-empty in {codes:?}");
+        assert!(codes.contains(&"export-overlapping-nodes"), "missing export-overlapping-nodes in {codes:?}");
+    }
+
+    #[test]
+    fn integration_semantic_issues_with_pipeline() {
+        let mut doc = FlowDocument::default();
+
+        // Two nodes with an edge using wrong port role
+        let n1 = FlowNodeRecord {
+            id: nid("n1"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n1"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("bad-out", PortRole::Target, Cardinality::One)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let n2 = FlowNodeRecord {
+            id: nid("n2"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n2"),
+            position: [200.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("bad-in", PortRole::Source, Cardinality::One)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("n1"), n1);
+        doc.graph.nodes.insert(nid("n2"), n2);
+        doc.graph.edges.insert(
+            eid("e1"),
+            make_edge_with_ports("e1", "n1", "bad-out", "n2", "bad-in"),
+        );
+
+        // Add a cycle for the cycle checker
+        let n3 = FlowNodeRecord {
+            id: nid("n3"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n3"),
+            position: [400.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![
+                make_port_record("in3", PortRole::Target, Cardinality::One),
+                make_port_record("out3", PortRole::Source, Cardinality::One),
+            ],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let n4 = FlowNodeRecord {
+            id: nid("n4"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n4"),
+            position: [600.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![
+                make_port_record("in4", PortRole::Target, Cardinality::One),
+                make_port_record("out4", PortRole::Source, Cardinality::One),
+            ],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("n3"), n3);
+        doc.graph.nodes.insert(nid("n4"), n4);
+        doc.graph.edges.insert(eid("e2"), make_edge_with_ports("e2", "n3", "out3", "n4", "in4"));
+        doc.graph.edges.insert(eid("e3"), make_edge_with_ports("e3", "n4", "out4", "n3", "in3"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"edge-source-port-role-mismatch"), "missing edge-source-port-role-mismatch in {codes:?}");
+        assert!(codes.contains(&"edge-target-port-role-mismatch"), "missing edge-target-port-role-mismatch in {codes:?}");
+        assert!(codes.contains(&"graph-contains-cycle"), "missing graph-contains-cycle in {codes:?}");
+    }
+
+    // ---- Integration: orphan nodes + empty group + degenerate group ----
+
+    #[test]
+    fn integration_semantic_orphans_and_groups() {
+        let mut doc = FlowDocument::default();
+
+        // Orphan node (not entry, not terminal, no edges)
+        doc.graph.nodes.insert(
+            nid("orphan"),
+            FlowNodeRecord {
+                id: nid("orphan"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("orphan"),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![make_port_record("p", PortRole::Source, Cardinality::One)],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        // Empty group
+        doc.graph.groups.insert(
+            gid("empty-group"),
+            FlowGroupRecord {
+                id: gid("empty-group"),
+                kind: GroupKind::Generic,
+                title: SmolStr::from("empty-group"),
+                bounds: [0.0, 0.0, 200.0, 200.0],
+                data: serde_json::Value::Null,
+            },
+        );
+
+        // Degenerate group (zero width)
+        doc.graph.groups.insert(
+            gid("degen-group"),
+            FlowGroupRecord {
+                id: gid("degen-group"),
+                kind: GroupKind::Generic,
+                title: SmolStr::from("degen-group"),
+                bounds: [0.0, 0.0, 0.0, 100.0],
+                data: serde_json::Value::Null,
+            },
+        );
+
+        // Overlapping groups
+        doc.graph.groups.insert(
+            gid("overlap-a"),
+            FlowGroupRecord {
+                id: gid("overlap-a"),
+                kind: GroupKind::Generic,
+                title: SmolStr::from("overlap-a"),
+                bounds: [0.0, 0.0, 200.0, 200.0],
+                data: serde_json::Value::Null,
+            },
+        );
+        doc.graph.groups.insert(
+            gid("overlap-b"),
+            FlowGroupRecord {
+                id: gid("overlap-b"),
+                kind: GroupKind::Generic,
+                title: SmolStr::from("overlap-b"),
+                bounds: [100.0, 100.0, 200.0, 200.0],
+                data: serde_json::Value::Null,
+            },
+        );
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"orphan-node"), "missing orphan-node in {codes:?}");
+        assert!(codes.contains(&"group-empty"), "missing group-empty in {codes:?}");
+        assert!(codes.contains(&"group-degenerate-bounds"), "missing group-degenerate-bounds in {codes:?}");
+        assert!(codes.contains(&"overlapping-groups"), "missing overlapping-groups in {codes:?}");
+    }
+
+    // ---- Integration: export issues -- duplicate titles, bounds exceeded, unconnected ports ----
+
+    #[test]
+    fn integration_export_issues_combined() {
+        let mut doc = FlowDocument::default();
+
+        // Two nodes with same title at different positions (export: duplicate titles)
+        doc.graph.nodes.insert(
+            nid("n1"),
+            FlowNodeRecord {
+                id: nid("n1"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("same-title"),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![make_port_record("out", PortRole::Source, Cardinality::One)],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+        doc.graph.nodes.insert(
+            nid("n2"),
+            FlowNodeRecord {
+                id: nid("n2"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("same-title"),
+                position: [20000.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![make_port_record("in", PortRole::Target, Cardinality::One)],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"export-duplicate-node-title"), "missing export-duplicate-node-title in {codes:?}");
+        assert!(codes.contains(&"export-graph-bounds-exceeded"), "missing export-graph-bounds-exceeded in {codes:?}");
+        assert!(codes.contains(&"export-port-unconnected"), "missing export-port-unconnected in {codes:?}");
+    }
+
+    // ---- Integration: cardinality + duplicate edges + parent group missing ----
+
+    #[test]
+    fn integration_cardinality_duplicate_parent_issues() {
+        let mut doc = FlowDocument::default();
+
+        // Node with Cardinality::One source port and nonexistent parent group
+        let n1 = FlowNodeRecord {
+            id: nid("n1"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n1"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: Some(gid("nonexistent-group")),
+            ports: vec![make_port_record("out", PortRole::Source, Cardinality::One)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let n2 = FlowNodeRecord {
+            id: nid("n2"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n2"),
+            position: [200.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("in", PortRole::Target, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let n3 = FlowNodeRecord {
+            id: nid("n3"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n3"),
+            position: [400.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("in", PortRole::Target, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("n1"), n1);
+        doc.graph.nodes.insert(nid("n2"), n2);
+        doc.graph.nodes.insert(nid("n3"), n3);
+
+        // Two edges from the same source port (Cardinality::One violation)
+        doc.graph.edges.insert(eid("e1"), make_edge_with_ports("e1", "n1", "out", "n2", "in"));
+        doc.graph.edges.insert(eid("e2"), make_edge_with_ports("e2", "n1", "out", "n3", "in"));
+
+        // Also add a duplicate edge
+        doc.graph.edges.insert(eid("e3"), make_edge_with_ports("e3", "n1", "out", "n2", "in"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"node-parent-group-missing"), "missing node-parent-group-missing in {codes:?}");
+        assert!(codes.contains(&"cardinality-one-multi-source"), "missing cardinality-one-multi-source in {codes:?}");
+        assert!(codes.contains(&"duplicate-edge"), "missing duplicate-edge in {codes:?}");
+    }
+
+    // ---- Integration: export edge with empty node IDs ----
+
+    #[test]
+    fn integration_export_empty_edge_node_ids() {
+        let mut doc = FlowDocument::default();
+        let mut edge = make_edge_with_ports("e1", "", "out", "", "in");
+        edge.source_node = SmolStr::new("");
+        edge.target_node = SmolStr::new("");
+        doc.graph.edges.insert(eid("e1"), edge);
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"export-edge-source-node-empty"), "missing export-edge-source-node-empty in {codes:?}");
+        assert!(codes.contains(&"export-edge-target-node-empty"), "missing export-edge-target-node-empty in {codes:?}");
+        assert!(codes.contains(&"edge-source-missing"), "missing edge-source-missing in {codes:?}");
+        assert!(codes.contains(&"edge-target-missing"), "missing edge-target-missing in {codes:?}");
+    }
+
+    // ---- Integration: self-loop on same port ----
+
+    #[test]
+    fn integration_self_loop_same_port_catches_all_phases() {
+        let mut doc = FlowDocument::default();
+        let node = FlowNodeRecord {
+            id: nid("self"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("self"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("io", PortRole::Bidirectional, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("self"), node);
+        doc.graph.edges.insert(eid("e1"), make_edge_with_ports("e1", "self", "io", "self", "io"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        assert!(codes.contains(&"self-loop-same-port"), "missing self-loop-same-port in {codes:?}");
+    }
+
+    // ---- Integration: non-finite node positions ----
+
+    #[test]
+    fn integration_non_finite_positions() {
+        let mut doc = FlowDocument::default();
+
+        // Node with NaN position
+        doc.graph.nodes.insert(
+            nid("nan-node"),
+            FlowNodeRecord {
+                id: nid("nan-node"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("nan-node"),
+                position: [f64::NAN, f64::NAN],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        // Node with infinity position
+        doc.graph.nodes.insert(
+            nid("inf-node"),
+            FlowNodeRecord {
+                id: nid("inf-node"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("inf-node"),
+                position: [f64::INFINITY, f64::NEG_INFINITY],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let pos_codes: Vec<&str> = diags
+            .iter()
+            .filter(|d| d.code.as_str() == "export-node-position-invalid")
+            .map(|d| d.code.as_str())
+            .collect();
+        // Both nodes should produce position-invalid errors
+        assert!(pos_codes.len() >= 2, "expected at least 2 position-invalid diagnostics, got: {diags:?}");
+    }
+
+    // ---- Integration: Pipeline.run() produces correct ValidationFindings ----
+
+    #[test]
+    fn integration_run_produces_findings_with_correct_levels() {
+        let mut doc = FlowDocument::default();
+        // Mix of errors and warnings
+        doc.graph.entry_node = Some(nid("ghost")); // Error (structural)
+        doc.graph.nodes.insert(
+            nid("n1"),
+            FlowNodeRecord {
+                id: nid("n1"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("n1"),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+        doc.graph.nodes.insert(
+            nid("n2"),
+            FlowNodeRecord {
+                id: nid("n2"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("n2"),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![],
+                flags: NodeFlags::default(),
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+
+        let findings = ValidationPipeline::run(&doc);
+        assert!(!findings.is_empty());
+
+        // entry-node-missing should be Error level
+        let entry_finding = findings.iter().find(|f| f.code.as_str() == "entry-node-missing");
+        assert!(entry_finding.is_some_and(|f| f.level == ValidationLevel::Error));
+
+        // orphan-node should be Warning level
+        let orphan_findings: Vec<&ValidationFinding> = findings.iter().filter(|f| f.code.as_str() == "orphan-node").collect();
+        assert!(!orphan_findings.is_empty());
+        assert!(orphan_findings.iter().all(|f| f.level == ValidationLevel::Warning));
+
+        // export-overlapping-nodes should be Warning
+        let overlap_finding = findings.iter().find(|f| f.code.as_str() == "export-overlapping-nodes");
+        assert!(overlap_finding.is_some_and(|f| f.level == ValidationLevel::Warning));
+    }
+
+    // ---- Integration: complex document with groups, edges, and multiple issues ----
+
+    #[test]
+    fn integration_complex_multi_issue_document() {
+        let mut doc = FlowDocument::default();
+
+        // Valid connected pair: n1 -> n2
+        doc.graph.nodes.insert(nid("n1"), make_full_node("n1", [0.0, 0.0]));
+        doc.graph.nodes.insert(nid("n2"), make_full_node("n2", [200.0, 0.0]));
+        doc.graph.edges.insert(eid("e1"), connect("e1", "n1", "n2"));
+
+        // Orphan node with nonexistent parent group
+        let mut orphan = make_full_node("orphan", [400.0, 0.0]);
+        orphan.parent = Some(gid("ghost-group"));
+        doc.graph.nodes.insert(nid("orphan"), orphan);
+
+        // Entry node references a nonexistent node
+        doc.graph.entry_node = Some(nid("missing-entry"));
+
+        // Degenerate group
+        doc.graph.groups.insert(
+            gid("degen"),
+            FlowGroupRecord {
+                id: gid("degen"),
+                kind: GroupKind::Subflow,
+                title: SmolStr::from("degen"),
+                bounds: [0.0, 0.0, -10.0, 50.0],
+                data: serde_json::Value::Null,
+            },
+        );
+
+        // Empty group
+        doc.graph.groups.insert(
+            gid("empty"),
+            FlowGroupRecord {
+                id: gid("empty"),
+                kind: GroupKind::Generic,
+                title: SmolStr::from("empty"),
+                bounds: [0.0, 0.0, 100.0, 100.0],
+                data: serde_json::Value::Null,
+            },
+        );
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        // Structural
+        assert!(codes.contains(&"entry-node-missing"), "missing entry-node-missing");
+        assert!(codes.contains(&"node-parent-group-missing"), "missing node-parent-group-missing");
+
+        // Semantic
+        assert!(codes.contains(&"orphan-node"), "missing orphan-node");
+        assert!(codes.contains(&"group-degenerate-bounds"), "missing group-degenerate-bounds");
+        assert!(codes.contains(&"group-empty"), "missing group-empty");
+
+        // Export -- unconnected ports on orphan node
+        assert!(codes.contains(&"export-port-unconnected"), "missing export-port-unconnected");
+    }
+
+    // ---- Integration: empty document through pipeline produces nothing ----
+
+    #[test]
+    fn integration_empty_document_all_validators_clean() {
+        let doc = FlowDocument::default();
+        let s = StructuralValidator.validate(&doc);
+        let sem = SemanticValidator.validate(&doc);
+        let exp = ExportValidator.validate(&doc);
+        let pipe = ValidationPipeline::standard().validate(&doc);
+        let findings = ValidationPipeline::run(&doc);
+
+        assert!(s.is_empty(), "structural: {s:?}");
+        assert!(sem.is_empty(), "semantic: {sem:?}");
+        assert!(exp.is_empty(), "export: {exp:?}");
+        assert!(pipe.is_empty(), "pipeline: {pipe:?}");
+        assert!(findings.is_empty(), "findings: {findings:?}");
+    }
+
+    // ---- Integration: large valid document does not produce spurious warnings ----
+
+    #[test]
+    fn integration_large_valid_chain_no_false_positives() {
+        let mut doc = FlowDocument::default();
+        let count: usize = 30;
+
+        // First node: entry, only output port
+        let mut first = FlowNodeRecord {
+            id: nid("n0"),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from("n0"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid("n0-out"),
+                side: PortSide::Right,
+                role: PortRole::Source,
+                label: SmolStr::from("out"),
+                order: 0,
+                cardinality: Cardinality::Many,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { entry: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        first.flags.entry = true;
+        doc.graph.nodes.insert(nid("n0"), first);
+
+        // Middle nodes
+        for i in 1..count.saturating_sub(1) {
+            let pos = [f64::from(u32::try_from(i).unwrap_or(u32::MAX)).mul_add(120.0, 0.0), 0.0];
+            doc.graph.nodes.insert(
+                nid(&format!("n{i}")),
+                make_full_node(&format!("n{i}"), pos),
+            );
+        }
+
+        // Last node: terminal, only input port
+        let last_idx = count.saturating_sub(1);
+        let last_pos = [f64::from(u32::try_from(last_idx).unwrap_or(u32::MAX)).mul_add(120.0, 0.0), 0.0];
+        let last = FlowNodeRecord {
+            id: nid(&format!("n{last_idx}")),
+            kind: SmolStr::from("processor"),
+            title: SmolStr::from(format!("n{last_idx}")),
+            position: last_pos,
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![FlowPortRecord {
+                id: pid(&format!("n{last_idx}-in")),
+                side: PortSide::Left,
+                role: PortRole::Target,
+                label: SmolStr::from("in"),
+                order: 0,
+                cardinality: Cardinality::One,
+                data_type: Some(SmolStr::from("data")),
+            }],
+            flags: NodeFlags { terminal: true, ..NodeFlags::default() },
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid(&format!("n{last_idx}")), last);
+
+        for i in 0..count.saturating_sub(1) {
+            let next = i.saturating_add(1);
+            doc.graph.edges.insert(
+                eid(&format!("e{i}")),
+                connect(&format!("e{i}"), &format!("n{i}"), &format!("n{next}")),
+            );
+        }
+        doc.graph.entry_node = Some(nid("n0"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        assert!(diags.is_empty(), "unexpected diagnostics for valid large chain: {diags:?}");
+    }
+
+    // ---- Integration: duplicate edges detected alongside other issues ----
+
+    #[test]
+    fn integration_duplicate_edge_with_cardinality_violation() {
+        let mut doc = FlowDocument::default();
+        let n1 = FlowNodeRecord {
+            id: nid("n1"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n1"),
+            position: [0.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("out", PortRole::Source, Cardinality::One)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        let n2 = FlowNodeRecord {
+            id: nid("n2"),
+            kind: SmolStr::from("test"),
+            title: SmolStr::from("n2"),
+            position: [200.0, 0.0],
+            size: [100.0, 50.0],
+            z_index: 0,
+            parent: None,
+            ports: vec![make_port_record("in", PortRole::Target, Cardinality::Many)],
+            flags: NodeFlags::default(),
+            data: serde_json::Value::Null,
+            ui: NodeUiState::default(),
+        };
+        doc.graph.nodes.insert(nid("n1"), n1);
+        doc.graph.nodes.insert(nid("n2"), n2);
+
+        // Three identical edges -> duplicate-edge + cardinality violation
+        doc.graph.edges.insert(eid("e1"), make_edge_with_ports("e1", "n1", "out", "n2", "in"));
+        doc.graph.edges.insert(eid("e2"), make_edge_with_ports("e2", "n1", "out", "n2", "in"));
+        doc.graph.edges.insert(eid("e3"), make_edge_with_ports("e3", "n1", "out", "n2", "in"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+        // Should have at least 2 duplicate-edge (e2 duplicates e1, e3 duplicates e1)
+        let dup_count = codes.iter().filter(|&&c| c == "duplicate-edge").count();
+        assert!(dup_count >= 2, "expected at least 2 duplicate-edge, got {dup_count} in {codes:?}");
+        assert!(codes.contains(&"cardinality-one-multi-source"), "missing cardinality-one-multi-source in {codes:?}");
+    }
+
+    // ---- Integration: node with all flags set (entry + terminal) ----
+
+    #[test]
+    fn integration_entry_and_terminal_node_exemptions() {
+        let mut doc = FlowDocument::default();
+        // A single node that is both entry and terminal -- should not be flagged as orphan
+        doc.graph.nodes.insert(
+            nid("et"),
+            FlowNodeRecord {
+                id: nid("et"),
+                kind: SmolStr::from("test"),
+                title: SmolStr::from("et"),
+                position: [0.0, 0.0],
+                size: [100.0, 50.0],
+                z_index: 0,
+                parent: None,
+                ports: vec![
+                    make_port_record("out", PortRole::Source, Cardinality::One),
+                    make_port_record("in", PortRole::Target, Cardinality::One),
+                ],
+                flags: NodeFlags { entry: true, terminal: true, ..NodeFlags::default() },
+                data: serde_json::Value::Null,
+                ui: NodeUiState::default(),
+            },
+        );
+        doc.graph.entry_node = Some(nid("et"));
+
+        let diags = ValidationPipeline::standard().validate(&doc);
+        // Should have no orphan warning
+        assert!(!diags.iter().any(|d| d.code.as_str() == "orphan-node"), "entry+terminal should not be orphan");
+        // Ports should not warn because entry output + terminal input are exempt
+        let port_diags: Vec<&Diagnostic> = diags.iter().filter(|d| d.code.as_str() == "export-port-unconnected").collect();
+        assert!(port_diags.is_empty(), "entry/terminal port exemptions should suppress warnings, got: {port_diags:?}");
+    }
+
+    // ---- Integration: custom validator injected into pipeline ----
+
+    #[test]
+    fn integration_custom_validator_with_standard_pipeline() {
+        struct NoMoreThanThreeNodes;
+        impl FlowValidator for NoMoreThanThreeNodes {
+            fn validate(&self, doc: &FlowDocument) -> Vec<Diagnostic> {
+                let count = doc.graph.nodes.len();
+                if count > 3 {
+                    return vec![Diagnostic {
+                        severity: DiagnosticSeverity::Error,
+                        code: SmolStr::from("too-many-nodes"),
+                        message: format!("document has {count} nodes, max is 3"),
+                        node: None,
+                        edge: None,
+                    }];
+                }
+                Vec::new()
+            }
+        }
+
+        let mut doc = FlowDocument::default();
+        for i in 0..5u16 {
+            let pos = [f64::from(i).mul_add(150.0, 0.0), 0.0];
+            doc.graph.nodes.insert(
+                nid(&format!("n{i}")),
+                make_full_node(&format!("n{i}"), pos),
+            );
+        }
+
+        let mut pipeline = ValidationPipeline::standard();
+        pipeline.add_validator(Box::new(NoMoreThanThreeNodes));
+        let diags = pipeline.validate(&doc);
+        assert!(diags.iter().any(|d| d.code.as_str() == "too-many-nodes"));
+        // Standard validators also produce orphan warnings etc.
+        assert!(diags.len() > 1);
+    }
 }

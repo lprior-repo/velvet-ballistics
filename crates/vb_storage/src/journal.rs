@@ -1566,4 +1566,480 @@ mod tests {
         assert_eq!(loaded.source.len(), 0, "empty source should round-trip");
         assert_eq!(loaded.source, source);
     }
+
+    // =========================================================================
+    // Edge case: multiple persist_strict calls in sequence
+    // =========================================================================
+
+    #[test]
+    fn multiple_persist_strict_calls_succeed() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(9900);
+        let event = make_event(run, 0);
+        journal.append_strict(&event).expect("first append");
+        journal.persist_strict().expect("first persist");
+        journal.persist_strict().expect("second persist");
+        journal.persist_strict().expect("third persist");
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(replayed.len(), 1);
+    }
+
+    // =========================================================================
+    // Edge case: interleaved writes to different runs
+    // =========================================================================
+
+    #[test]
+    fn interleaved_writes_to_different_runs_preserves_ordering() {
+        let (_temp, journal) = temp_journal();
+        let run_a = RunId::new(10001);
+        let run_b = RunId::new(10002);
+        let digest = WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]);
+
+        let events = [
+            JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: digest },
+            JournalEvent::RunAccepted { run: run_b, seq: EventSeq::new(0), workflow: digest },
+            JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(1), step: StepIdx::new(0) },
+            JournalEvent::StepStarted { run: run_b, seq: EventSeq::new(1), step: StepIdx::new(0) },
+            JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(2), step: StepIdx::new(1) },
+        ];
+        journal.append_strict_batch(&events).expect("batch should succeed");
+
+        let replayed_a = journal.events_for_run(run_a).expect("replay A");
+        let replayed_b = journal.events_for_run(run_b).expect("replay B");
+
+        assert_eq!(replayed_a.len(), 3, "run A should have 3 events");
+        assert_eq!(replayed_b.len(), 2, "run B should have 2 events");
+        assert_eq!(replayed_a[0].seq().get(), 0);
+        assert_eq!(replayed_a[1].seq().get(), 1);
+        assert_eq!(replayed_a[2].seq().get(), 2);
+        assert_eq!(replayed_b[0].seq().get(), 0);
+        assert_eq!(replayed_b[1].seq().get(), 1);
+    }
+
+    // =========================================================================
+    // Edge case: batch with single element
+    // =========================================================================
+
+    #[test]
+    fn append_strict_batch_single_element_roundtrips() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(10100);
+        let event = make_event(run, 0);
+        journal.append_strict_batch(&[event.clone()]).expect("single-element batch");
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 1);
+        assert_eq!(replayed[0], event);
+    }
+
+    // =========================================================================
+    // Edge case: duplicate detection after batch commit
+    // =========================================================================
+
+    #[test]
+    fn duplicate_event_after_batch_commit_is_rejected() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(10200);
+        let event = make_event(run, 0);
+        journal.append_strict_batch(&[event.clone()]).expect("batch commit");
+        let result = journal.append_strict(&event);
+        assert!(
+            matches!(result, Err(JournalError::DuplicateEvent { .. })),
+            "duplicate after batch should be rejected, got {:?}",
+            result
+        );
+    }
+
+    // =========================================================================
+    // Edge case: snapshot with post-snapshot events starts replay from snapshot
+    // =========================================================================
+
+    #[test]
+    fn events_for_run_starts_from_snapshot_when_pre_snapshot_trimmed() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(10300);
+        let workflow = WorkflowDigest::from_bytes([0x33; DIGEST_BYTES]);
+
+        // Write a snapshot at seq 2
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(2),
+            workflow,
+            slots: vec![],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("put snapshot");
+
+        // Only write events at seq 2, 3, 4 (as if pre-snapshot events were trimmed)
+        for seq in 2u64..5 {
+            let event = JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(seq),
+                step: StepIdx::new(seq as u16),
+            };
+            journal.append_unpersisted(&event).expect("append should succeed");
+        }
+
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 3, "should replay 3 events starting from snapshot seq");
+        assert_eq!(replayed[0].seq().get(), 2);
+        assert_eq!(replayed[1].seq().get(), 3);
+        assert_eq!(replayed[2].seq().get(), 4);
+    }
+
+    // =========================================================================
+    // Edge case: compiled_ir stores multiple distinct digests
+    // =========================================================================
+
+    #[test]
+    fn compiled_ir_stores_multiple_distinct_digests() {
+        let (_temp, journal) = temp_journal();
+        let ir_v1 = b"compiled-v1".to_vec();
+        let digest_v1 = WorkflowDigest::from_bytes(blake3::hash(&ir_v1).into());
+        let record_v1 = CompiledIrRecord { digest: digest_v1, ir: ir_v1.clone() };
+        journal.put_compiled_ir(&record_v1).expect("put v1");
+
+        let ir_v2 = b"compiled-v2".to_vec();
+        let digest_v2 = WorkflowDigest::from_bytes(blake3::hash(&ir_v2).into());
+        let record_v2 = CompiledIrRecord { digest: digest_v2, ir: ir_v2.clone() };
+        journal.put_compiled_ir(&record_v2).expect("put v2");
+
+        let loaded_v1 = journal.compiled_ir(digest_v1).expect("get v1").expect("present");
+        let loaded_v2 = journal.compiled_ir(digest_v2).expect("get v2").expect("present");
+        assert_eq!(loaded_v1.ir, ir_v1);
+        assert_eq!(loaded_v2.ir, ir_v2);
+    }
+
+    // =========================================================================
+    // Edge case: many distinct runs with one event each
+    // =========================================================================
+
+    #[test]
+    fn many_runs_one_event_each_are_isolated() {
+        let (_temp, journal) = temp_journal();
+        let count: u64 = 20;
+        for i in 0u64..count {
+            let run = RunId::new(11000_u64.saturating_add(i));
+            let event = make_event(run, 0);
+            journal.append_unpersisted(&event).expect("append should succeed");
+        }
+
+        for i in 0u64..count {
+            let run = RunId::new(11000_u64.saturating_add(i));
+            let replayed = journal.events_for_run(run).expect("replay");
+            assert_eq!(replayed.len(), 1, "run {} should have 1 event", i);
+            assert_eq!(replayed[0].run_id(), run);
+        }
+    }
+
+    // =========================================================================
+    // Edge case: large batch write of 500 events
+    // =========================================================================
+
+    #[test]
+    fn large_batch_500_events_roundtrips() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(12000);
+        let count: u64 = 500;
+
+        let events: Vec<JournalEvent> = (0..count)
+            .map(|i| JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(i),
+                step: StepIdx::new((i % 256) as u16),
+            })
+            .collect();
+
+        journal.append_strict_batch(&events).expect("batch should succeed");
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(replayed.len(), count as usize);
+        for (i, event) in replayed.iter().enumerate() {
+            assert_eq!(event.seq().get(), i as u64);
+        }
+    }
+
+    // =========================================================================
+    // Edge case: boundary sequence numbers (0 and 1)
+    // =========================================================================
+
+    #[test]
+    fn boundary_sequence_numbers_roundtrip() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(13000);
+        let digest = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
+
+        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest };
+        journal.append_unpersisted(&e0).expect("append seq 0");
+
+        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        journal.append_unpersisted(&e1).expect("append seq 1");
+
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 2);
+        assert_eq!(replayed[0].seq().get(), 0);
+        assert_eq!(replayed[1].seq().get(), 1);
+    }
+
+    // =========================================================================
+    // Edge case: blob with 16 KiB payload roundtrips
+    // =========================================================================
+
+    #[test]
+    fn blob_large_payload_roundtrips() {
+        let (_temp, journal) = temp_journal();
+        let payload = vec![0xFE_u8; 16384];
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
+        let record = BlobRecord { digest, bytes: payload.clone() };
+        journal.put_blob(&record).expect("put should succeed");
+        let loaded = journal.blob(digest).expect("get should succeed").expect("present");
+        assert_eq!(loaded.bytes, payload);
+    }
+
+    // =========================================================================
+    // Edge case: batch append_event allows duplicate key (last write wins)
+    // =========================================================================
+
+    #[test]
+    fn batch_append_event_allows_duplicate_key_insertion() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(14000);
+        let event = make_event(run, 0);
+
+        let mut batch = journal.batch();
+        batch.append_event(&event).expect("first batch append");
+        batch.append_event(&event).expect("second batch append in same batch");
+        batch.commit().expect("commit should succeed");
+
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 1, "duplicate in batch should result in single event");
+    }
+
+    // =========================================================================
+    // Edge case: batch with snapshot and event for same run
+    // =========================================================================
+
+    #[test]
+    fn batch_with_snapshot_and_event_for_same_run() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(15000);
+        let workflow = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+            slots: vec![1, 2, 3],
+            taint: vec![],
+        };
+        let event = make_event(run, 0);
+
+        let mut batch = journal.batch();
+        batch.put_snapshot(&snapshot).expect("batch snapshot");
+        batch.append_event(&event).expect("batch event");
+        batch.commit().expect("commit");
+
+        let loaded_snap = journal.snapshot(run, EventSeq::new(0)).expect("get snapshot").expect("present");
+        assert_eq!(loaded_snap.slots, vec![1, 2, 3]);
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 1);
+    }
+
+    // =========================================================================
+    // Edge case: workflow source with 128 KiB payload
+    // =========================================================================
+
+    #[test]
+    fn workflow_source_near_max_bytes_is_accepted() {
+        let (_temp, journal) = temp_journal();
+        let source = vec![0x42u8; 131072];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+        let record = WorkflowSourceRecord { digest, source: source.clone() };
+        journal.put_workflow_source(&record).expect("put should succeed for 128 KiB");
+        let loaded = journal.workflow_source(digest).expect("get").expect("present");
+        assert_eq!(loaded.source.len(), source.len());
+    }
+
+    // =========================================================================
+    // Edge case: run header with max field values
+    // =========================================================================
+
+    #[test]
+    fn run_header_with_max_field_values() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(u64::MAX);
+        let digest = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
+        let record = RunHeaderRecord {
+            run,
+            workflow_id: vb_core::WorkflowId::new(u32::MAX),
+            compiled_digest: digest,
+            status: u8::MAX,
+            accepted_at_ms: u64::MAX,
+        };
+        journal.put_run_header(&record).expect("put should succeed");
+        let loaded = journal.run_header(run).expect("get").expect("present");
+        assert_eq!(loaded.run, run);
+        assert_eq!(loaded.workflow_id, vb_core::WorkflowId::new(u32::MAX));
+        assert_eq!(loaded.status, u8::MAX);
+        assert_eq!(loaded.accepted_at_ms, u64::MAX);
+    }
+
+    // =========================================================================
+    // Edge case: empty run headers list
+    // =========================================================================
+
+    #[test]
+    fn run_headers_empty_journal_returns_empty_vec() {
+        let (_temp, journal) = temp_journal();
+        let headers = journal.run_headers().expect("run_headers on empty journal");
+        assert_eq!(headers.len(), 0, "empty journal should have no headers");
+    }
+
+    // =========================================================================
+    // Edge case: snapshot with populated slots and empty taint
+    // =========================================================================
+
+    #[test]
+    fn snapshot_with_populated_slots_empty_taint() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(16000);
+        let workflow = WorkflowDigest::from_bytes([0x66; DIGEST_BYTES]);
+        let slots = vec![0x01_u8; 256];
+        let snapshot = RunSnapshot { run, seq: EventSeq::new(10), workflow, slots: slots.clone(), taint: vec![] };
+        journal.put_snapshot(&snapshot).expect("put");
+        let loaded = journal.snapshot(run, EventSeq::new(10)).expect("get").expect("present");
+        assert_eq!(loaded.slots, slots);
+        assert!(loaded.taint.is_empty());
+    }
+
+    // =========================================================================
+    // Edge case: snapshot with empty slots and populated taint
+    // =========================================================================
+
+    #[test]
+    fn snapshot_with_empty_slots_populated_taint() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(16001);
+        let workflow = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
+        let taint = vec![0xFF_u8; 128];
+        let snapshot = RunSnapshot { run, seq: EventSeq::new(5), workflow, slots: vec![], taint: taint.clone() };
+        journal.put_snapshot(&snapshot).expect("put");
+        let loaded = journal.snapshot(run, EventSeq::new(5)).expect("get").expect("present");
+        assert!(loaded.slots.is_empty());
+        assert_eq!(loaded.taint, taint);
+    }
+
+    // =========================================================================
+    // Edge case: append_queued_unpersisted then read back
+    // =========================================================================
+
+    #[test]
+    fn append_queued_unpersisted_then_read_back() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(17000);
+        let event = make_event(run, 0);
+        journal.append_queued_unpersisted(&event).expect("append should succeed");
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 1);
+        assert_eq!(replayed[0], event);
+    }
+
+    // =========================================================================
+    // Edge case: consecutive append_journaled calls
+    // =========================================================================
+
+    #[test]
+    fn consecutive_append_journaled_calls() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(18000);
+
+        for seq in 0u64..10 {
+            let event = JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(seq),
+                step: StepIdx::new(seq as u16),
+            };
+            journal.append_journaled(&event).expect("append_journaled should succeed");
+        }
+
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 10);
+        for (i, event) in replayed.iter().enumerate() {
+            assert_eq!(event.seq().get(), i as u64);
+        }
+    }
+
+    // =========================================================================
+    // Edge case: mixed durability modes on same run
+    // =========================================================================
+
+    #[test]
+    fn mixed_durability_modes_on_same_run() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(19000);
+        let digest = WorkflowDigest::from_bytes([0x88; DIGEST_BYTES]);
+
+        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest };
+        journal.append_strict(&e0).expect("strict append");
+
+        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        journal.append_journaled(&e1).expect("journaled append");
+
+        let e2 = JournalEvent::StepStarted { run, seq: EventSeq::new(2), step: StepIdx::new(1) };
+        journal.append_strict(&e2).expect("strict append 2");
+
+        let replayed = journal.events_for_run(run).expect("replay");
+        assert_eq!(replayed.len(), 3);
+        assert_eq!(replayed[0], e0);
+        assert_eq!(replayed[1], e1);
+        assert_eq!(replayed[2], e2);
+    }
+
+    // =========================================================================
+    // Edge case: index keyspaces remain empty until explicitly written
+    // =========================================================================
+
+    #[test]
+    fn index_keyspaces_empty_after_regular_writes() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(20000);
+        let event = make_event(run, 0);
+        journal.append_strict(&event).expect("append");
+
+        let mut status_count = 0usize;
+        for item in journal.index_status.iter() {
+            let _ = item.key();
+            status_count = status_count.saturating_add(1);
+        }
+        assert_eq!(status_count, 0, "status index should be empty");
+
+        let mut workflow_count = 0usize;
+        for item in journal.index_workflow.iter() {
+            let _ = item.key();
+            workflow_count = workflow_count.saturating_add(1);
+        }
+        assert_eq!(workflow_count, 0, "workflow index should be empty");
+
+        let mut action_count = 0usize;
+        for item in journal.index_action.iter() {
+            let _ = item.key();
+            action_count = action_count.saturating_add(1);
+        }
+        assert_eq!(action_count, 0, "action index should be empty");
+    }
+
+    // =========================================================================
+    // Edge case: all declared keyspaces are queryable after open
+    // =========================================================================
+
+    #[test]
+    fn all_declared_keyspaces_are_iterable_after_open() {
+        let (_temp, journal) = temp_journal();
+        let _ = journal.workflow_source.iter().count();
+        let _ = journal.compiled_ir.iter().count();
+        let _ = journal.run_header.iter().count();
+        let _ = journal.events.iter().count();
+        let _ = journal.run_snapshot.iter().count();
+        let _ = journal.blob.iter().count();
+        let _ = journal.index_status.iter().count();
+        let _ = journal.index_workflow.iter().count();
+        let _ = journal.index_action.iter().count();
+    }
 }
