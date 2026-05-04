@@ -315,6 +315,78 @@ impl VerificationData {
         }
     }
 
+    /// Populate all six cert card panels from a slice of `CertificateWire`
+    /// results returned over IPC.
+    ///
+    /// Gate-to-panel mapping:
+    /// - Structure: gate_09, gate_10
+    /// - Bounded:   gate_07
+    /// - Resources:  gate_08
+    /// - Taint:      gate_13
+    /// - Action:     gate_14
+    /// - Durability: gate_11, gate_15
+    pub fn populate_cert_cards(&mut self, certs: &[vb_ipc::CertificateWire]) {
+        let total_count = u32::try_from(certs.len()).unwrap_or(u32::MAX);
+
+        // Helper: given a list of gate name prefixes, build a CertCardStatus.
+        fn build_card(certs: &[vb_ipc::CertificateWire], prefixes: &[&str]) -> CertCardStatus {
+            let mut pass_count: u32 = 0;
+            let mut fail_count: u32 = 0;
+            let mut total_in_panel: u32 = 0;
+
+            for cert in certs {
+                let matches = prefixes.iter().any(|prefix| cert.kind.starts_with(prefix));
+                if matches {
+                    total_in_panel = total_in_panel.saturating_add(1);
+                    if cert.status == "Pass" {
+                        pass_count = pass_count.saturating_add(1);
+                    } else {
+                        fail_count = fail_count.saturating_add(1);
+                    }
+                }
+            }
+
+            let badge_text = if fail_count == 0 && pass_count > 0 {
+                "PASS"
+            } else if fail_count > 0 {
+                "FAIL"
+            } else {
+                "--"
+            };
+
+            CertCardStatus {
+                badge_text: String::from(badge_text),
+                field1: format!("total: {total_in_panel}"),
+                field2: format!("pass: {pass_count}"),
+                field3: format!("fail: {fail_count}"),
+                field4: String::from("--"),
+            }
+        }
+
+        self.cert_structure = build_card(certs, &["gate_09", "gate_10"]);
+        self.cert_bounded = build_card(certs, &["gate_07"]);
+        self.cert_resources = build_card(certs, &["gate_08"]);
+        self.cert_taint = build_card(certs, &["gate_13"]);
+        self.cert_action = build_card(certs, &["gate_14"]);
+        self.cert_durability = build_card(certs, &["gate_11", "gate_15"]);
+
+        // Derive aggregate counters from the full certificate list.
+        let mut pass: u32 = 0;
+        let mut fail: u32 = 0;
+        for cert in certs {
+            if cert.status == "Pass" {
+                pass = pass.saturating_add(1);
+            } else {
+                fail = fail.saturating_add(1);
+            }
+        }
+        self.total_checks = total_count;
+        self.pass_count = pass;
+        self.fail_count = fail;
+        self.warn_count = 0;
+        self.all_clean = fail == 0 && pass > 0;
+    }
+
     /// Returns a human-readable summary string for the verification badge.
     pub fn status_badge_text(&self) -> String {
         if self.all_clean {

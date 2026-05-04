@@ -845,4 +845,150 @@ mod tests {
         assert_eq!(edge_color(EdgeType::Join), colors::neon::BLUE_DIM);
         assert_eq!(edge_color(EdgeType::LoopBack), colors::neon::TEAL);
     }
+
+    // -------------------------------------------------------------------------
+    // New tests covering requested surface area
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn classify_build_object_as_data() {
+        let kind = CompiledNodeKind::BuildObject {
+            fields: Box::new([]),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Data);
+    }
+
+    #[test]
+    fn classify_build_list_as_data() {
+        let kind = CompiledNodeKind::BuildList {
+            items: Box::new([]),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Data);
+    }
+
+    #[test]
+    fn classify_collect_start_as_loop() {
+        let kind = CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(0),
+            limit: 10,
+            page_size: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Loop);
+    }
+
+    #[test]
+    fn classify_reduce_start_as_loop() {
+        let kind = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: vb_core::ids::ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Loop);
+    }
+
+    #[test]
+    fn classify_ask_resume_as_suspend() {
+        let kind = CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(0),
+        };
+        assert_eq!(classify_node(&kind), NodeCategory::Suspend);
+    }
+
+    #[test]
+    fn classify_nop_as_control() {
+        assert_eq!(classify_node(&CompiledNodeKind::Nop), NodeCategory::Control);
+    }
+
+    #[test]
+    fn kind_label_all_loop_variants() {
+        let foreach_start = CompiledNodeKind::ForEachStart {
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 10,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(kind_label(&foreach_start), "ForEach");
+
+        let collect_start = CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(0),
+            limit: 10,
+            page_size: 5,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(kind_label(&collect_start), "Collect");
+
+        let collect_next = CompiledNodeKind::CollectNext {
+            collector_slot: SlotIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(kind_label(&collect_next), "Collect*");
+
+        let collect_finish = CompiledNodeKind::CollectFinish {
+            collector_slot: SlotIdx::new(0),
+        };
+        assert_eq!(kind_label(&collect_finish), "CollectDone");
+
+        let reduce_start = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: vb_core::ids::ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
+        };
+        assert_eq!(kind_label(&reduce_start), "Reduce");
+
+        let reduce_finish = CompiledNodeKind::ReduceFinish {
+            accumulator: SlotIdx::new(0),
+        };
+        assert_eq!(kind_label(&reduce_finish), "ReduceDone");
+    }
+
+    #[test]
+    fn extract_badges_ask_without_timeout_is_empty() {
+        let kind = CompiledNodeKind::Ask {
+            prompt: SlotIdx::new(0),
+            timeout_slot: None,
+        };
+        let badges = extract_badges(&kind);
+        assert!(badges.is_empty());
+    }
+
+    #[test]
+    fn edge_color_loopback_is_teal() {
+        let c = edge_color(EdgeType::LoopBack);
+        assert_eq!(c, colors::neon::TEAL);
+    }
+
+    #[test]
+    fn state_glow_each_variant_positive_radius() {
+        let variants = [
+            OverlayState::Pending,
+            OverlayState::Running,
+            OverlayState::Succeeded,
+            OverlayState::Failed,
+            OverlayState::Skipped,
+            OverlayState::Waiting,
+            OverlayState::Asking,
+            OverlayState::Cancelled,
+        ];
+        for v in &variants {
+            let (color, radius) = state_glow(*v);
+            assert!(
+                radius > 0.0,
+                "radius must be positive for {v:?}, got {radius}"
+            );
+            // Alpha channel of glow color must also be positive.
+            assert!(
+                color[3] > 0.0,
+                "glow alpha must be positive for {v:?}"
+            );
+        }
+    }
 }

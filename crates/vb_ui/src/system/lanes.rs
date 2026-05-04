@@ -523,4 +523,227 @@ mod tests {
         lanes.update_from_metrics(&m);
         assert_eq!(lanes.lanes().len(), 1);
     }
+
+    #[test]
+    fn total_active_runs_saturates_at_u32_max() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: u32::MAX,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 1,
+            active_runs: u32::MAX,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        assert_eq!(lanes.total_active_runs(), u32::MAX);
+    }
+
+    #[test]
+    fn total_ready_queue_saturates_at_u32_max() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: u32::MAX,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 1,
+            active_runs: 0,
+            ready_queue_depth: u32::MAX,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        assert_eq!(lanes.total_ready_queue(), u32::MAX);
+    }
+
+    #[test]
+    fn total_action_queue_saturates_at_u32_max() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: u32::MAX,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 1,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: u32::MAX,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        assert_eq!(lanes.total_action_queue(), u32::MAX);
+    }
+
+    #[test]
+    fn lanes_maintain_insertion_order() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 5,
+            active_runs: 50,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 2,
+            active_runs: 20,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 8,
+            active_runs: 80,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        let all_lanes = lanes.lanes();
+        assert_eq!(all_lanes.len(), 3);
+        // Order must be 5, 2, 8 (insertion order), not 2, 5, 8 (sorted).
+        let Some(first) = all_lanes.get(0) else { return };
+        let Some(second) = all_lanes.get(1) else { return };
+        let Some(third) = all_lanes.get(2) else { return };
+        assert_eq!(first.shard_id, 5);
+        assert_eq!(second.shard_id, 2);
+        assert_eq!(third.shard_id, 8);
+    }
+
+    #[test]
+    fn update_existing_shard_preserves_position() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 10,
+            active_runs: 1,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 20,
+            active_runs: 2,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 30,
+            active_runs: 3,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        // Update shard 20 in place; it must stay at index 1.
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 20,
+            active_runs: 99,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        let all_lanes = lanes.lanes();
+        assert_eq!(all_lanes.len(), 3);
+        let Some(lane_0) = all_lanes.get(0) else { return };
+        let Some(lane_1) = all_lanes.get(1) else { return };
+        let Some(lane_2) = all_lanes.get(2) else { return };
+        assert_eq!(lane_0.shard_id, 10);
+        assert_eq!(lane_1.shard_id, 20);
+        assert_eq!(lane_2.shard_id, 30);
+        // Confirm the update took effect without moving the lane.
+        assert_eq!(lane_1.active_runs, 99);
+    }
+
+    #[test]
+    fn timer_count_carried_from_shard_metrics() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 42,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        let Some(lane) = lanes.lanes().get(0) else { return };
+        assert_eq!(lane.timer_count, 42);
+    }
 }
