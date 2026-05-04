@@ -1951,4 +1951,845 @@ mod tests {
         assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("body"))).count(), 1);
         assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("done"))).count(), 1);
     }
+
+    // =======================================================================
+    // Comprehensive build_graph tests
+    // =======================================================================
+
+    // -- 1. Empty graph (single finish node = minimal valid graph) -----------
+
+    #[test]
+    fn build_graph_single_node_has_no_sequential_edges() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        let sequential: Vec<&WorkflowEdge> = graph
+            .edges
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Sequential)
+            .collect();
+        assert!(sequential.is_empty());
+    }
+
+    #[test]
+    fn build_graph_single_node_entry_step_is_zero() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.entry_step, StepIdx::new(0));
+    }
+
+    // -- 2. Single node graph (various kinds) --------------------------------
+
+    #[test]
+    fn build_graph_nop_no_next_no_edges() {
+        let parts = make_simple_parts(vec![make_nop_node(0, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 1);
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn build_graph_do_node_no_next_no_sequential_edge() {
+        let parts = make_simple_parts(vec![make_do_node(0, 5, 0, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 1);
+        assert!(graph.edges.is_empty());
+    }
+
+    // -- 3. Linear chain (A -> B -> C) --------------------------------------
+
+    #[test]
+    fn build_graph_linear_chain_edge_sources_and_targets() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 2);
+        assert_eq!(graph.edges[0].from_step, StepIdx::new(0));
+        assert_eq!(graph.edges[0].to_step, StepIdx::new(1));
+        assert_eq!(graph.edges[1].from_step, StepIdx::new(1));
+        assert_eq!(graph.edges[1].to_step, StepIdx::new(2));
+    }
+
+    #[test]
+    fn build_graph_linear_chain_no_labels_on_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        for edge in &graph.edges {
+            assert!(edge.label.is_none());
+        }
+    }
+
+    #[test]
+    fn build_graph_five_node_chain_has_four_edges() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_nop_node(2, Some(3)),
+                make_nop_node(3, Some(4)),
+                make_finish_node(4, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 5);
+        assert_eq!(graph.edges.len(), 4);
+    }
+
+    // -- 4. Branching graph (Choose with branches) ---------------------------
+
+    #[test]
+    fn build_graph_choose_two_branches_correct_targets() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1, 2], None),
+                make_finish_node(1, 0),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let branches: Vec<&WorkflowEdge> = graph
+            .edges
+            .iter()
+            .filter(|e| matches!(e.edge_type, EdgeType::Branch { .. }))
+            .collect();
+        assert_eq!(branches.len(), 2);
+        assert_eq!(branches[0].to_step, StepIdx::new(1));
+        assert_eq!(branches[1].to_step, StepIdx::new(2));
+    }
+
+    #[test]
+    fn build_graph_choose_branch_labels_are_cond_indexed() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1, 2, 3], None),
+                make_finish_node(1, 0),
+                make_finish_node(2, 0),
+                make_finish_node(3, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let labels: Vec<String> = graph
+            .edges
+            .iter()
+            .filter(|e| matches!(e.edge_type, EdgeType::Branch { .. }))
+            .filter_map(|e| e.label.clone())
+            .collect();
+        assert_eq!(labels.len(), 3);
+        assert_eq!(labels[0], "cond-0");
+        assert_eq!(labels[1], "cond-1");
+        assert_eq!(labels[2], "cond-2");
+    }
+
+    #[test]
+    fn build_graph_choose_with_otherwise_has_extra_branch() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1], Some(2)),
+                make_finish_node(1, 0),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let branches: Vec<&WorkflowEdge> = graph
+            .edges
+            .iter()
+            .filter(|e| matches!(e.edge_type, EdgeType::Branch { .. }))
+            .collect();
+        assert_eq!(branches.len(), 2);
+        let otherwise = branches
+            .iter()
+            .find(|e| e.label == Some(String::from("otherwise")));
+        assert!(otherwise.is_some());
+        assert_eq!(otherwise.map(|e| e.to_step), Some(StepIdx::new(2)));
+    }
+
+    // -- 5. Loop graph (ForEach with body) -----------------------------------
+
+    #[test]
+    fn build_graph_foreach_start_body_edge_is_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body_edge = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body_edge.is_some());
+        assert_eq!(body_edge.map(|e| e.edge_type.clone()), Some(EdgeType::Sequential));
+    }
+
+    #[test]
+    fn build_graph_foreach_start_done_edge_is_join() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let done_edge = graph.edges.iter().find(|e| e.label == Some(String::from("done")));
+        assert!(done_edge.is_some());
+        assert_eq!(done_edge.map(|e| e.edge_type.clone()), Some(EdgeType::JoinRoute));
+    }
+
+    #[test]
+    fn build_graph_foreach_next_body_edge_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body_edge = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body_edge.is_some());
+        assert_eq!(body_edge.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+    }
+
+    // -- 6. Parallel graph (Together with branches) --------------------------
+
+    #[test]
+    fn build_graph_together_start_branch_edges_are_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::TogetherStart {
+                        branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                        join: StepIdx::new(3),
+                    },
+                },
+                make_nop_node(1, None),
+                make_nop_node(2, None),
+                make_finish_node(3, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let branch_edges: Vec<&WorkflowEdge> = graph
+            .edges
+            .iter()
+            .filter(|e| e.label.as_ref().map_or(false, |l| l.starts_with("branch-")))
+            .collect();
+        assert_eq!(branch_edges.len(), 2);
+        for edge in &branch_edges {
+            assert_eq!(edge.edge_type, EdgeType::Sequential);
+        }
+    }
+
+    // -- 7. Error/retry edges ------------------------------------------------
+
+    #[test]
+    fn build_graph_retry_check_body_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck {
+                        policy_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        exhausted: StepIdx::new(2),
+                    },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let retry = graph.edges.iter().find(|e| e.label == Some(String::from("retry")));
+        assert!(retry.is_some());
+        assert_eq!(retry.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+        assert_eq!(retry.map(|e| e.to_step), Some(StepIdx::new(1)));
+    }
+
+    #[test]
+    fn build_graph_retry_check_exhausted_is_error_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck {
+                        policy_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        exhausted: StepIdx::new(2),
+                    },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let exhausted = graph.edges.iter().find(|e| e.label == Some(String::from("exhausted")));
+        assert!(exhausted.is_some());
+        assert_eq!(exhausted.map(|e| e.edge_type.clone()), Some(EdgeType::ErrorRoute));
+        assert_eq!(exhausted.map(|e| e.to_step), Some(StepIdx::new(2)));
+    }
+
+    #[test]
+    fn build_graph_error_handler_body_is_sequential() {
+        let parts = make_simple_parts(
+            vec![make_error_handler_node(0, 1, 2), make_nop_node(1, None), make_nop_node(2, None)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::Sequential));
+    }
+
+    #[test]
+    fn build_graph_repeat_start_body_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatStart { max_attempts: 3, body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+    }
+
+    #[test]
+    fn build_graph_repeat_attempt_body_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatAttempt { attempt_slot: SlotIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+    }
+
+    // -- 8. Next reference edges ---------------------------------------------
+
+    #[test]
+    fn build_graph_node_next_reference_creates_sequential_edge() {
+        let parts = make_simple_parts(vec![make_nop_node(0, Some(1)), make_finish_node(1, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::Sequential);
+    }
+
+    #[test]
+    fn build_graph_forward_edge_is_not_labeled_loop() {
+        let parts = make_simple_parts(
+            vec![make_nop_node(0, Some(1)), make_nop_node(1, Some(2)), make_finish_node(2, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        for edge in &graph.edges {
+            assert_ne!(edge.label, Some(String::from("loop")));
+        }
+    }
+
+    // -- 9. Node badge computation -------------------------------------------
+
+    #[test]
+    fn build_graph_do_node_action_id_badge_value() {
+        let parts = make_simple_parts(vec![make_do_node(0, 42, 0, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].badges.first(), Some(&NodeBadge::ActionId(42)));
+    }
+
+    #[test]
+    fn build_graph_repeat_start_max_attempts_badge_value() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatStart { max_attempts: 7, body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].badges.first(), Some(&NodeBadge::RetryMax(7)));
+    }
+
+    // -- 10. Edge type classification ----------------------------------------
+
+    #[test]
+    fn build_graph_edge_to_join_target_classified_as_join() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                CompiledNode {
+                    id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ForEachJoin { output: SlotIdx::new(0) },
+                },
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::JoinRoute);
+    }
+
+    #[test]
+    fn build_graph_edge_to_repeat_finish_classified_as_join() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                CompiledNode {
+                    id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatFinish { result: SlotIdx::new(0) },
+                },
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::JoinRoute);
+    }
+
+    #[test]
+    fn build_graph_edge_to_nop_is_sequential() {
+        let parts = make_simple_parts(vec![make_nop_node(0, Some(1)), make_nop_node(1, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::Sequential);
+    }
+
+    // -- 11. Stress test (many nodes) ----------------------------------------
+
+    fn make_long_chain_nodes(count: usize) -> Vec<CompiledNode> {
+        let mut nodes = Vec::with_capacity(count);
+        for i in 0..count.saturating_sub(1) {
+            let next_id = u16::try_from(i.saturating_add(1)).unwrap_or(u16::MAX);
+            nodes.push(make_nop_node(u16::try_from(i).unwrap_or(u16::MAX), Some(next_id)));
+        }
+        let last = u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX);
+        nodes.push(make_finish_node(last, 0));
+        nodes
+    }
+
+    #[test]
+    fn build_graph_10_node_chain() {
+        let nodes = make_long_chain_nodes(10);
+        let parts = make_simple_parts(nodes, 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 10);
+        assert_eq!(graph.edges.len(), 9);
+    }
+
+    #[test]
+    fn build_graph_100_node_chain() {
+        let nodes = make_long_chain_nodes(100);
+        let parts = make_simple_parts(nodes, 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 100);
+        assert_eq!(graph.edges.len(), 99);
+    }
+
+    #[test]
+    fn build_graph_500_node_chain() {
+        let nodes = make_long_chain_nodes(500);
+        let parts = make_simple_parts(nodes, 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 500);
+        assert_eq!(graph.edges.len(), 499);
+    }
+
+    #[test]
+    fn build_graph_stress_all_edges_are_sequential_forward() {
+        let nodes = make_long_chain_nodes(100);
+        let parts = make_simple_parts(nodes, 0);
+        let graph = build_graph_from_parts(parts);
+        for edge in &graph.edges {
+            assert_eq!(edge.edge_type, EdgeType::Sequential);
+            assert!(edge.label.is_none());
+        }
+    }
+
+    // -- 12. Mixed graph (complex topology) ----------------------------------
+
+    #[test]
+    fn build_graph_choose_with_sequential_continuation() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1, 2], None),
+                make_nop_node(1, Some(3)),
+                make_nop_node(2, Some(3)),
+                make_finish_node(3, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 4);
+        let branches = graph.edges.iter().filter(|e| matches!(e.edge_type, EdgeType::Branch { .. })).count();
+        assert_eq!(branches, 2);
+        let sequential = graph.edges.iter().filter(|e| e.edge_type == EdgeType::Sequential).count();
+        assert_eq!(sequential, 2);
+    }
+
+    #[test]
+    fn build_graph_jump_edge_is_sequential_type() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Jump { target: StepIdx::new(1) } },
+                make_finish_node(1, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::Sequential);
+        assert_eq!(graph.edges[0].to_step, StepIdx::new(1));
+    }
+
+    // -- ChooseSlot edge labels ----------------------------------------------
+
+    #[test]
+    fn build_graph_choose_slot_branch_labels_use_slot_prefix() {
+        use vb_core::workflow::SlotBranch;
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ChooseSlot { branches: Box::new([
+                        SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
+                        SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(2) },
+                    ]), otherwise: None } },
+                make_finish_node(1, 0), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let labels: Vec<String> = graph.edges.iter()
+            .filter(|e| matches!(e.edge_type, EdgeType::Branch { .. }))
+            .filter_map(|e| e.label.clone())
+            .collect();
+        assert_eq!(labels.len(), 2);
+        assert_eq!(labels[0], "slot-cond-0");
+        assert_eq!(labels[1], "slot-cond-1");
+    }
+
+    // -- Collect/Reduce edge types -------------------------------------------
+
+    #[test]
+    fn build_graph_collect_next_body_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::CollectNext { collector_slot: SlotIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+    }
+
+    #[test]
+    fn build_graph_reduce_next_body_is_retry_route() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ReduceNext { iterator_slot: SlotIdx::new(0), accumulator: SlotIdx::new(1), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::RetryRoute));
+    }
+
+    #[test]
+    fn build_graph_collect_start_body_is_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit: 10, page_size: 5, body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::Sequential));
+    }
+
+    #[test]
+    fn build_graph_reduce_start_body_is_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ReduceStart { input: SlotIdx::new(0), accumulator: SlotIdx::new(1), initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let body = graph.edges.iter().find(|e| e.label == Some(String::from("body")));
+        assert!(body.is_some());
+        assert_eq!(body.map(|e| e.edge_type.clone()), Some(EdgeType::Sequential));
+    }
+
+    // -- TogetherStart with empty branches -----------------------------------
+
+    #[test]
+    fn build_graph_together_start_zero_branches_only_join_edge() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::TogetherStart { branches: Box::new([]), join: StepIdx::new(1) } },
+                make_finish_node(1, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].label, Some(String::from("join")));
+        assert_eq!(graph.edges[0].edge_type, EdgeType::JoinRoute);
+    }
+
+    // -- WorkflowGraph clone equality complex --------------------------------
+
+    #[test]
+    fn build_graph_clone_equality_complex() {
+        let parts = make_simple_parts(
+            vec![
+                make_error_handler_node(0, 1, 2),
+                CompiledNode { id: StepIdx::new(1), output: None, next: Some(StepIdx::new(3)), on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::Do { action: ActionId::new(5), input: SlotIdx::new(0) } },
+                make_nop_node(2, None),
+                make_finish_node(3, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let cloned = graph.clone();
+        assert_eq!(graph, cloned);
+    }
+
+    // -- Node step_idx consistency -------------------------------------------
+
+    #[test]
+    fn build_graph_step_indices_match_node_order() {
+        let parts = make_simple_parts(
+            vec![make_nop_node(0, Some(1)), make_do_node(1, 10, 0, Some(2)), make_finish_node(2, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        for (i, node) in graph.nodes.iter().enumerate() {
+            assert_eq!(node.step_idx, StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)));
+        }
+    }
+
+    // -- EdgeType/NodeBadge hash consistency ---------------------------------
+
+    #[test]
+    fn edge_type_hash_consistency() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(EdgeType::Sequential);
+        set.insert(EdgeType::Branch { condition_index: 0 });
+        set.insert(EdgeType::ErrorRoute);
+        set.insert(EdgeType::RetryRoute);
+        set.insert(EdgeType::JoinRoute);
+        assert_eq!(set.len(), 5);
+        set.insert(EdgeType::Sequential);
+        assert_eq!(set.len(), 5);
+    }
+
+    #[test]
+    fn node_badge_hash_consistency() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(NodeBadge::ActionId(1));
+        set.insert(NodeBadge::ActionId(2));
+        set.insert(NodeBadge::RetryMax(3));
+        set.insert(NodeBadge::Timeout(10));
+        set.insert(NodeBadge::SecretSensitive);
+        set.insert(NodeBadge::StrictDurable);
+        set.insert(NodeBadge::RecentFailures(5));
+        assert_eq!(set.len(), 7);
+        set.insert(NodeBadge::ActionId(1));
+        assert_eq!(set.len(), 7);
+    }
+
+    // -- Complex: error handler wrapping retry check -------------------------
+
+    #[test]
+    fn build_graph_error_handler_wrapping_retry_check() {
+        let parts = make_simple_parts(
+            vec![
+                make_error_handler_node(0, 1, 4),
+                CompiledNode { id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::new(0), body: StepIdx::new(2), exhausted: StepIdx::new(3) } },
+                make_nop_node(2, None),
+                make_finish_node(3, 0),
+                make_finish_node(4, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 4);
+        assert_eq!(graph.edges.iter().filter(|e| e.edge_type == EdgeType::ErrorRoute).count(), 2);
+        assert_eq!(graph.edges.iter().filter(|e| e.edge_type == EdgeType::RetryRoute).count(), 1);
+    }
+
+    // -- Do node badge count -------------------------------------------------
+
+    #[test]
+    fn build_graph_do_node_badge_list_length_is_one() {
+        let parts = make_simple_parts(vec![make_do_node(0, 5, 0, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].badges.len(), 1);
+    }
+
+    // -- TogetherStart with 3 branches --------------------------------------
+
+    #[test]
+    fn build_graph_together_start_three_branches() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::TogetherStart { branches: Box::new([StepIdx::new(1), StepIdx::new(2), StepIdx::new(3)]), join: StepIdx::new(4) } },
+                make_nop_node(1, None), make_nop_node(2, None), make_nop_node(3, None),
+                make_finish_node(4, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let branch_labels: Vec<String> = graph.edges.iter()
+            .filter_map(|e| if e.label.as_ref().map_or(false, |l| l.starts_with("branch-")) { e.label.clone() } else { None })
+            .collect();
+        assert_eq!(branch_labels.len(), 3);
+        assert!(branch_labels.contains(&String::from("branch-0")));
+        assert!(branch_labels.contains(&String::from("branch-1")));
+        assert!(branch_labels.contains(&String::from("branch-2")));
+    }
+
+    // -- Edge bounds checks --------------------------------------------------
+
+    #[test]
+    fn build_graph_all_edges_have_valid_steps() {
+        let parts = make_simple_parts(
+            vec![make_choose_node(0, &[1, 2], Some(3)), make_finish_node(1, 0), make_finish_node(2, 0), make_finish_node(3, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        for edge in &graph.edges {
+            assert!(edge.from_step.get() < 4, "from_step out of bounds");
+            assert!(edge.to_step.get() < 4, "to_step out of bounds");
+        }
+    }
+
+    // -- ViewportRect edge cases ---------------------------------------------
+
+    #[test]
+    fn viewport_rect_zero_size_no_intersection() {
+        let vr = ViewportRect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 };
+        assert!(!vr.intersects(0.0, 0.0, 10.0, 10.0));
+    }
+
+    #[test]
+    fn viewport_rect_adjacent_top_no_overlap() {
+        let vr = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+        assert!(!vr.intersects(0.0, -50.0, 100.0, 50.0));
+    }
+
+    // -- Combined next + badge -----------------------------------------------
+
+    #[test]
+    fn build_graph_do_node_with_next_produces_sequential_and_badge() {
+        let parts = make_simple_parts(vec![make_do_node(0, 99, 0, Some(1)), make_finish_node(1, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::Sequential);
+        assert!(graph.nodes[0].badges.iter().any(|b| *b == NodeBadge::ActionId(99)));
+    }
+
+    // -- NodeBadge/EdgeType inequality ---------------------------------------
+
+    #[test]
+    fn node_badge_different_variants_not_equal() {
+        assert_ne!(NodeBadge::ActionId(0), NodeBadge::RetryMax(0));
+        assert_ne!(NodeBadge::Timeout(0), NodeBadge::RecentFailures(0));
+        assert_ne!(NodeBadge::SecretSensitive, NodeBadge::StrictDurable);
+    }
+
+    #[test]
+    fn edge_type_different_variants_not_equal() {
+        assert_ne!(EdgeType::Sequential, EdgeType::JoinRoute);
+        assert_ne!(EdgeType::ErrorRoute, EdgeType::RetryRoute);
+        assert_ne!(EdgeType::Branch { condition_index: 0 }, EdgeType::ErrorRoute);
+    }
 }

@@ -1639,6 +1639,349 @@ mod tests {
     }
 
     // =========================================================================
+    // Edge case: minimum valid event round-trip
+    // =========================================================================
+
+    #[test]
+    fn encode_decode_roundtrip_minimum_valid_run_accepted() -> Result<(), JournalError> {
+        // Smallest valid RunAccepted: run=0, seq=0, workflow=all-zeros digest
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(0),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+        };
+        let bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let (envelope, decoded) = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(envelope.record_kind, RecordKind::RunAccepted.id());
+        assert_eq!(envelope.sequence, 0);
+        assert_eq!(decoded, event);
+        Ok(())
+    }
+
+    // =========================================================================
+    // Edge case: maximum field sizes round-trip
+    // =========================================================================
+
+    #[test]
+    fn encode_decode_roundtrip_max_field_values() -> Result<(), JournalError> {
+        // Use maximum sequence number and max-valued run ID
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(u64::MAX),
+            seq: EventSeq::new(u64::MAX),
+            workflow: WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]),
+        };
+        let bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            u64::MAX,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let (envelope, decoded) = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        assert_eq!(envelope.sequence, u64::MAX);
+        assert_eq!(decoded, event);
+        Ok(())
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_slot_written_with_large_value() -> Result<(), JournalError> {
+        // Build a SlotWrittenEvent with a large value payload near the max
+        let large_value = vec![0xAB_u8; 1024];
+        let event = JournalEvent::SlotWrittenEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            slot: SlotIdx::new(u16::MAX.into()),
+            value: Some(large_value.clone()),
+        };
+        let bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::SlotWritten,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let (_, decoded) = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        assert_eq!(decoded, event);
+        // Verify the large value survived
+        if let JournalEvent::SlotWrittenEvent { value: Some(v), .. } = decoded {
+            assert_eq!(v.len(), large_value.len());
+        } else {
+            panic!("expected SlotWrittenEvent with value");
+        }
+        Ok(())
+    }
+
+    // =========================================================================
+    // Edge case: decode truncated magic bytes (partial header)
+    // =========================================================================
+
+    #[test]
+    fn decode_rejects_1_byte_input() {
+        let result = decode_record::<JournalEvent>(
+            &[0x56],
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "1-byte input must yield UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn decode_rejects_4_byte_magic_only() {
+        // Just the 4-byte magic, far short of the 60-byte header
+        let magic_bytes = MAGIC_JOURNAL_EVENT.to_le_bytes();
+        let result = decode_record::<JournalEvent>(
+            &magic_bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "4-byte (magic-only) input must yield UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn decode_rejects_59_byte_header_one_short() {
+        let partial = [0u8; RECORD_HEADER_BYTES.saturating_sub(1)];
+        let result = decode_record::<JournalEvent>(
+            &partial,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof)),
+            "59-byte input (one byte short of header) must yield UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    // =========================================================================
+    // Edge case: zero-length payload round-trip via raw header encode
+    // =========================================================================
+
+    #[test]
+    fn encode_decode_header_with_zero_length_payload_roundtrip() -> Result<(), JournalError> {
+        let payload: &[u8] = &[];
+        let header = encode_record_header(
+            MAGIC_BLOB,
+            RecordKind::Blob,
+            0,
+            payload,
+            1024,
+        )?;
+        let decoded = decode_record_header(&header, MAGIC_BLOB, 1024)?;
+        assert_eq!(decoded.payload_len, 0);
+        assert_eq!(decoded.magic, MAGIC_BLOB);
+        assert_eq!(decoded.header_len, RECORD_HEADER_LEN);
+        Ok(())
+    }
+
+    // =========================================================================
+    // Edge case: multiple sequential encode-decode cycles
+    // =========================================================================
+
+    #[test]
+    fn multiple_sequential_encode_decode_cycles() -> Result<(), JournalError> {
+        let events: Vec<JournalEvent> = (0..10)
+            .map(|i| JournalEvent::RunAccepted {
+                run: RunId::new(i),
+                seq: EventSeq::new(i),
+                workflow: WorkflowDigest::from_bytes([i as u8; DIGEST_BYTES]),
+            })
+            .collect();
+
+        for event in &events {
+            let bytes = encode_record(
+                MAGIC_JOURNAL_EVENT,
+                RecordKind::RunAccepted,
+                event.seq().get(),
+                event,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            let (_, decoded) = decode_record::<JournalEvent>(
+                &bytes,
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            assert_eq!(decoded, *event);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn sequential_cycles_with_varying_kinds() -> Result<(), JournalError> {
+        let run = RunId::new(42);
+        let digest = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
+
+        let events = [
+            JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest },
+            JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) },
+            JournalEvent::RunCancelled { run, seq: EventSeq::new(2) },
+            JournalEvent::RunFinished { run, seq: EventSeq::new(3), result: SlotIdx::new(0) },
+        ];
+
+        let mut accumulated = Vec::new();
+        for event in &events {
+            let bytes = encode_record(
+                MAGIC_JOURNAL_EVENT,
+                event.record_kind(),
+                event.seq().get(),
+                event,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            accumulated.push(bytes);
+        }
+
+        // Now decode all accumulated bytes back
+        for (i, bytes) in accumulated.iter().enumerate() {
+            let (_, decoded) = decode_record::<JournalEvent>(
+                bytes,
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            assert_eq!(decoded, events[i], "mismatch at cycle {i}");
+        }
+        Ok(())
+    }
+
+    // =========================================================================
+    // Edge case: kind encoding for all event types
+    // =========================================================================
+
+    #[test]
+    fn all_journal_event_kinds_encode_and_decode_correctly() -> Result<(), JournalError> {
+        let run = RunId::new(99);
+        let digest = WorkflowDigest::from_bytes([0xCC; DIGEST_BYTES]);
+
+        let events_and_kinds: Vec<(JournalEvent, RecordKind)> = vec![
+            (
+                JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest },
+                RecordKind::RunAccepted,
+            ),
+            (
+                JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) },
+                RecordKind::StepStarted,
+            ),
+            (
+                JournalEvent::StepSucceeded { run, seq: EventSeq::new(2), step: StepIdx::new(0), output: SlotIdx::new(0) },
+                RecordKind::SlotWritten,
+            ),
+            (
+                JournalEvent::ActionScheduled { run, seq: EventSeq::new(3), step: StepIdx::new(0), action: vb_core::ActionId::new(1) },
+                RecordKind::ActionScheduled,
+            ),
+            (
+                JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(4), step: StepIdx::new(0), action: vb_core::ActionId::new(1) },
+                RecordKind::ActionCompleted,
+            ),
+            (
+                JournalEvent::ActionFailedEvent { run, seq: EventSeq::new(5), step: StepIdx::new(1), action: vb_core::ActionId::new(2) },
+                RecordKind::ActionFailed,
+            ),
+            (
+                JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(6), slot: SlotIdx::new(0), value: None },
+                RecordKind::SlotWritten,
+            ),
+            (
+                JournalEvent::WaitScheduledEvent { run, seq: EventSeq::new(7), step: StepIdx::new(1) },
+                RecordKind::WaitScheduled,
+            ),
+            (
+                JournalEvent::AskScheduledEvent { run, seq: EventSeq::new(8), step: StepIdx::new(2) },
+                RecordKind::AskScheduled,
+            ),
+            (
+                JournalEvent::AskAnsweredEvent { run, seq: EventSeq::new(9), step: StepIdx::new(2) },
+                RecordKind::AskAnswered,
+            ),
+            (
+                JournalEvent::RetryScheduledEvent { run, seq: EventSeq::new(10), step: StepIdx::new(1) },
+                RecordKind::RetryScheduled,
+            ),
+            (
+                JournalEvent::RunCancelled { run, seq: EventSeq::new(11) },
+                RecordKind::RunCancelled,
+            ),
+            (
+                JournalEvent::RunFinished { run, seq: EventSeq::new(12), result: SlotIdx::new(1) },
+                RecordKind::RunFinished,
+            ),
+            (
+                JournalEvent::RunFailedEvent { run, seq: EventSeq::new(13) },
+                RecordKind::RunFailed,
+            ),
+        ];
+
+        for (i, (event, expected_kind)) in events_and_kinds.iter().enumerate() {
+            let bytes = encode_record(
+                MAGIC_JOURNAL_EVENT,
+                *expected_kind,
+                event.seq().get(),
+                event,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            let (envelope, decoded) = decode_record::<JournalEvent>(
+                &bytes,
+                MAGIC_JOURNAL_EVENT,
+                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            assert_eq!(
+                envelope.record_kind, expected_kind.id(),
+                "kind mismatch at index {i}: expected {}, got {}",
+                expected_kind.id(),
+                envelope.record_kind,
+            );
+            assert_eq!(decoded, *event, "event mismatch at index {i}");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn kind_id_matches_wire_value_for_every_variant() {
+        assert_eq!(RecordKind::RunAccepted.id(), 10);
+        assert_eq!(RecordKind::StepStarted.id(), 11);
+        assert_eq!(RecordKind::SlotWritten.id(), 12);
+        assert_eq!(RecordKind::ActionScheduled.id(), 13);
+        assert_eq!(RecordKind::ActionCompleted.id(), 14);
+        assert_eq!(RecordKind::ActionFailed.id(), 15);
+        assert_eq!(RecordKind::WaitScheduled.id(), 16);
+        assert_eq!(RecordKind::AskScheduled.id(), 17);
+        assert_eq!(RecordKind::AskAnswered.id(), 18);
+        assert_eq!(RecordKind::RetryScheduled.id(), 19);
+        assert_eq!(RecordKind::StepFailed.id(), 20);
+        assert_eq!(RecordKind::RunCancelled.id(), 21);
+        assert_eq!(RecordKind::RunFinished.id(), 22);
+        assert_eq!(RecordKind::RunFailed.id(), 23);
+        assert_eq!(RecordKind::Snapshot.id(), 30);
+        assert_eq!(RecordKind::Blob.id(), 40);
+        assert_eq!(RecordKind::IndexUpdate.id(), 50);
+    }
+
+    // =========================================================================
     // Schema version: old version triggers migration required
     // =========================================================================
 

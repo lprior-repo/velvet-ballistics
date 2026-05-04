@@ -1249,4 +1249,321 @@ mod tests {
         let (_temp, journal) = temp_journal();
         journal.persist_strict().expect("persist_strict on idle journal should succeed");
     }
+
+    // =========================================================================
+    // Edge case: write and read single event
+    // =========================================================================
+
+    #[test]
+    fn write_and_read_single_event() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(7777);
+        let digest = WorkflowDigest::from_bytes([0xDD; DIGEST_BYTES]);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        };
+        journal.append_strict(&event).expect("append should succeed");
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(replayed.len(), 1, "should have exactly one event");
+        assert_eq!(replayed[0], event, "replayed event should match original");
+    }
+
+    // =========================================================================
+    // Edge case: write batch of 100 events, read all back in order
+    // =========================================================================
+
+    #[test]
+    fn write_batch_100_events_read_all_in_order() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(8888);
+        let count: u64 = 100;
+
+        let events: Vec<JournalEvent> = (0..count)
+            .map(|i| JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(i),
+                step: StepIdx::new((i % 256) as u16),
+            })
+            .collect();
+
+        journal
+            .append_strict_batch(&events)
+            .expect("batch append should succeed");
+
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(
+            replayed.len(),
+            count as usize,
+            "should have exactly 100 events"
+        );
+
+        for (i, event) in replayed.iter().enumerate() {
+            assert_eq!(
+                event.seq().get(),
+                i as u64,
+                "event at index {} should have seq {}",
+                i,
+                i
+            );
+            assert_eq!(event.run_id(), run, "all events should belong to same run");
+            assert_eq!(
+                *event, events[i],
+                "event at index {} should match original",
+                i
+            );
+        }
+    }
+
+    // =========================================================================
+    // Edge case: read from empty journal
+    // =========================================================================
+
+    #[test]
+    fn read_from_empty_journal_returns_nothing() {
+        let (_temp, journal) = temp_journal();
+
+        // All read operations on an empty journal should return None or empty
+        let events = journal
+            .events_for_run(RunId::new(1))
+            .expect("events_for_run on empty journal should succeed");
+        assert_eq!(events.len(), 0, "empty journal should have no events");
+
+        let source = journal
+            .workflow_source(WorkflowDigest::from_bytes([0; DIGEST_BYTES]))
+            .expect("workflow_source on empty journal should succeed");
+        assert_eq!(source, None, "empty journal should return None for workflow source");
+
+        let ir = journal
+            .compiled_ir(WorkflowDigest::from_bytes([0; DIGEST_BYTES]))
+            .expect("compiled_ir on empty journal should succeed");
+        assert_eq!(ir, None, "empty journal should return None for compiled IR");
+
+        let header = journal
+            .run_header(RunId::new(1))
+            .expect("run_header on empty journal should succeed");
+        assert_eq!(header, None, "empty journal should return None for run header");
+
+        let snap = journal
+            .snapshot(RunId::new(1), EventSeq::new(0))
+            .expect("snapshot on empty journal should succeed");
+        assert_eq!(snap, None, "empty journal should return None for snapshot");
+
+        let blob = journal
+            .blob([0; DIGEST_BYTES])
+            .expect("blob on empty journal should succeed");
+        assert_eq!(blob, None, "empty journal should return None for blob");
+
+        let headers = journal
+            .run_headers()
+            .expect("run_headers on empty journal should succeed");
+        assert_eq!(headers.len(), 0, "empty journal should have no run headers");
+    }
+
+    // =========================================================================
+    // Edge case: header validation - corrupted magic in stored record
+    // =========================================================================
+
+    #[test]
+    fn header_validation_rejects_corrupted_magic_in_stored_event() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(9001);
+        let event = make_event(run, 0);
+        journal
+            .append_strict(&event)
+            .expect("append should succeed");
+
+        // Directly corrupt the magic bytes in the underlying keyspace
+        let key = crate::keys::run_event_key(run, EventSeq::new(0))
+            .expect("key construction should succeed");
+        let mut value = journal
+            .events
+            .get(key.as_slice())
+            .expect("fjall get should succeed")
+            .expect("event should exist")
+            .to_vec();
+
+        // Overwrite the first 4 bytes (magic) with garbage
+        let garbage_magic: u32 = 0xDEAD_BEEF;
+        let magic_bytes = garbage_magic.to_le_bytes();
+        if let Some(slice) = value.get_mut(0..4) {
+            slice.copy_from_slice(&magic_bytes);
+        }
+        // Recompute CRC so the header passes CRC check but has wrong magic
+        let checksum = crc32c::crc32c(&value[..CRC_OFFSET]);
+        let crc_bytes = checksum.to_le_bytes();
+        if let Some(slice) = value.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
+            slice.copy_from_slice(&crc_bytes);
+        }
+
+        // Write back corrupted value
+        journal
+            .events
+            .insert(key.to_vec(), value)
+            .expect("insert should succeed");
+
+        let result = journal.events_for_run(run);
+        assert!(
+            matches!(result, Err(JournalError::BadMagic { .. })),
+            "corrupted magic in stored event must yield BadMagic, got {:?}",
+            result
+        );
+    }
+
+    // =========================================================================
+    // Edge case: header validation - wrong schema version in stored record
+    // =========================================================================
+
+    #[test]
+    fn header_validation_rejects_wrong_schema_version_in_stored_event() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(9002);
+        let event = make_event(run, 0);
+        journal
+            .append_strict(&event)
+            .expect("append should succeed");
+
+        let key = crate::keys::run_event_key(run, EventSeq::new(0))
+            .expect("key construction should succeed");
+        let mut value = journal
+            .events
+            .get(key.as_slice())
+            .expect("fjall get should succeed")
+            .expect("event should exist")
+            .to_vec();
+
+        // Overwrite schema version (offset 4, u16 LE) with a future version
+        let future_version: u16 = 99;
+        let version_bytes = future_version.to_le_bytes();
+        if let Some(slice) = value.get_mut(4..6) {
+            slice.copy_from_slice(&version_bytes);
+        }
+        // Recompute CRC after modifying header
+        let checksum = crc32c::crc32c(&value[..CRC_OFFSET]);
+        let crc_bytes = checksum.to_le_bytes();
+        if let Some(slice) = value.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
+            slice.copy_from_slice(&crc_bytes);
+        }
+
+        journal
+            .events
+            .insert(key.to_vec(), value)
+            .expect("insert should succeed");
+
+        let result = journal.events_for_run(run);
+        assert!(
+            matches!(result, Err(JournalError::UnsupportedSchemaVersion { .. })),
+            "wrong schema version in stored event must yield UnsupportedSchemaVersion, got {:?}",
+            result
+        );
+    }
+
+    // =========================================================================
+    // Edge case: snapshot round-trip (write snapshot, read back)
+    // =========================================================================
+
+    #[test]
+    fn snapshot_roundtrip_preserves_all_fields() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(7777);
+        let workflow = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
+        let slots = vec![0x01_u8, 0x02, 0x03, 0x04];
+        let taint = vec![0xFF_u8, 0xFE, 0xFD];
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(42),
+            workflow,
+            slots: slots.clone(),
+            taint: taint.clone(),
+        };
+
+        journal.put_snapshot(&snapshot).expect("put_snapshot should succeed");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(42))
+            .expect("snapshot get should succeed")
+            .expect("snapshot should exist");
+
+        assert_eq!(loaded.run, run, "run must match");
+        assert_eq!(loaded.seq, EventSeq::new(42), "seq must match");
+        assert_eq!(loaded.workflow, workflow, "workflow must match");
+        assert_eq!(loaded.slots, slots, "slots must match byte-for-byte");
+        assert_eq!(loaded.taint, taint, "taint must match byte-for-byte");
+    }
+
+    #[test]
+    fn snapshot_roundtrip_with_empty_slots_and_taint() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(7778);
+        let workflow = WorkflowDigest::from_bytes([0; DIGEST_BYTES]);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+            slots: vec![],
+            taint: vec![],
+        };
+
+        journal.put_snapshot(&snapshot).expect("put_snapshot should succeed");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(0))
+            .expect("snapshot get should succeed")
+            .expect("snapshot should exist");
+
+        assert_eq!(loaded.slots.len(), 0, "slots should be empty");
+        assert_eq!(loaded.taint.len(), 0, "taint should be empty");
+        assert_eq!(loaded, snapshot, "full snapshot must round-trip");
+    }
+
+    // =========================================================================
+    // Edge case: source marker round-trip (workflow source)
+    // =========================================================================
+
+    #[test]
+    fn source_marker_roundtrip_preserves_content_and_digest() {
+        let (_temp, journal) = temp_journal();
+        let source = b"workflow:\n  name: edge_test\n  steps: []".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+        let record = WorkflowSourceRecord {
+            digest,
+            source: source.clone(),
+        };
+
+        journal
+            .put_workflow_source(&record)
+            .expect("put_workflow_source should succeed");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("workflow_source get should succeed")
+            .expect("workflow source should exist");
+
+        assert_eq!(
+            loaded.source, source,
+            "source bytes must round-trip exactly"
+        );
+        assert_eq!(loaded.digest, digest, "digest must round-trip exactly");
+    }
+
+    #[test]
+    fn source_marker_roundtrip_with_minimal_source() {
+        let (_temp, journal) = temp_journal();
+        // Minimal valid source: empty bytes
+        let source: Vec<u8> = vec![];
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+        let record = WorkflowSourceRecord {
+            digest,
+            source: source.clone(),
+        };
+
+        journal
+            .put_workflow_source(&record)
+            .expect("put_workflow_source should succeed for empty source");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("workflow_source get should succeed")
+            .expect("workflow source should exist");
+
+        assert_eq!(loaded.source.len(), 0, "empty source should round-trip");
+        assert_eq!(loaded.source, source);
+    }
 }

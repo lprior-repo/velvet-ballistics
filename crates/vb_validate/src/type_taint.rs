@@ -3738,4 +3738,91 @@ mod tests {
     fn run_resource_limits_zero_queue_depth_rejected() {
         resource_limits_zero_queue_depth_rejected().unwrap()
     }
+
+    // ---------------------------------------------------------------------------
+    // Edge-case coverage: taint propagation boundary conditions
+    // ---------------------------------------------------------------------------
+
+    /// Taint propagation through an empty composite (zero fields / empty
+    /// object): a Save step with an empty Composite value produces a Clean
+    /// taint because there are no sub-values to introduce Secret taint.
+    /// Finishing with that slot should be accepted.
+    #[test]
+    fn taint_empty_composite_remains_clean() {
+        let wf = make_workflow(vec![
+            save_step("obj", TypedValue::Composite(vec![])),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Taint propagation through an empty list: a Save step with an empty
+    /// Composite should produce type Any with Clean taint. Type validation
+    /// should also pass since no type constraint is violated.
+    #[test]
+    fn taint_empty_list_save_then_clean_finish() {
+        let wf = make_workflow(vec![
+            save_step("list", TypedValue::Composite(vec![])),
+            finish_step("done", TypedValue::Slot(0)),
+        ]);
+        // Type validation passes (no incompatible type usage).
+        assert_eq!(validate_types(&wf), Ok(()));
+        // Taint validation passes (no secret data involved).
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Taint origin tracking across multiple hops (A -> B -> C):
+    ///   Step 0 (A): saves a secret reference
+    ///   Step 1 (B): saves the slot from step 0
+    ///   Step 2 (C): finishes with the slot from step 1
+    /// The secret taint must propagate through all three hops.
+    #[test]
+    fn taint_propagation_across_three_hops() {
+        let mut wf = make_workflow(vec![
+            save_step("a", TypedValue::Reference("$secrets.key".into())),
+            save_step("b", TypedValue::Slot(0)),
+            finish_step("c", TypedValue::Slot(1)),
+        ]);
+        wf.secrets.push("key".to_owned());
+        // Must reject: secret taint propagated from A -> B -> C.
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
+    }
+
+    /// Taint::Clean remains clean through non-secret operations:
+    /// saving a literal, reading it back from a slot, and finishing with it
+    /// should all stay Clean.
+    #[test]
+    fn clean_stays_clean_through_non_secret_operations() {
+        let wf = make_workflow(vec![
+            save_step("val", TypedValue::Literal(ValueType::Number)),
+            save_step("copy", TypedValue::Slot(0)),
+            finish_step("done", TypedValue::Slot(1)),
+        ]);
+        assert_eq!(validate_taint(&wf), Ok(()));
+    }
+
+    /// Secret taint merging: two independent secret sources converge into a
+    /// single composite value. The resulting taint must be Secret.
+    #[test]
+    fn two_secret_sources_merge_to_secret_taint() {
+        let mut wf = make_workflow(vec![
+            save_step("a", TypedValue::Reference("$secrets.api_key".into())),
+            save_step("b", TypedValue::Reference("$secrets.api_secret".into())),
+            save_step(
+                "merged",
+                TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Slot(1)]),
+            ),
+            finish_step("done", TypedValue::Slot(2)),
+        ]);
+        wf.secrets.push("api_key".to_owned());
+        wf.secrets.push("api_secret".to_owned());
+        // Must reject: both secrets merged into the result.
+        assert!(matches!(
+            validate_taint(&wf),
+            Err(ValidationError::SecretResultLeak)
+        ));
+    }
 }
