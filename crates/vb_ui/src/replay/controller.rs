@@ -343,13 +343,13 @@ impl ReplayController {
                 // Inspection acknowledged. Now request the events.
                 if self.load_phase == LoadPhase::WaitingInspect {
                     self.load_phase = LoadPhase::WaitingEvents;
-                    if let Some(run_id) = self.active_run {
-                        if let Err(err) = self.bridge.send(IpcRequest::ListEvents {
+                    if let Some(run_id) = self.active_run
+                        && let Err(err) = self.bridge.send(IpcRequest::ListEvents {
                             run_id,
                             from_sequence: 0,
-                        }) {
-                            eprintln!("failed to send bridge message: {:?}", err);
-                        }
+                        })
+                    {
+                        eprintln!("failed to send bridge message: {:?}", err);
                     }
                 }
             }
