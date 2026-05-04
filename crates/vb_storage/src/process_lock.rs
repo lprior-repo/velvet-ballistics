@@ -51,9 +51,9 @@ impl ProcessLock {
                 // Write our own PID into the lock file so a later contender
                 // can report who holds the lock.
                 let pid = std::process::id();
-                // Best-effort — ignore write errors for the PID recording.
-                drop(file.set_len(0));
-                drop(write!(file, "{pid}"));
+                // Best-effort PID recording — lock already held, write failure is non-critical.
+                let _ = file.set_len(0);
+                let _ = write!(file, "{pid}");
 
                 Ok(Self {
                     _file: file,
@@ -91,8 +91,9 @@ impl ProcessLock {
 /// Best-effort read of the PID stored in the lock file by the current holder.
 fn read_holder_pid(file: &File) -> Option<u32> {
     let mut buf = String::new();
+    // Shadow to obtain &mut for Read+Seek traits (File does not impl Copy).
     let mut file = file;
-    drop(file.rewind());
-    drop(file.read_to_string(&mut buf));
+    let _ = file.rewind();
+    let _ = file.read_to_string(&mut buf);
     buf.trim().parse::<u32>().ok()
 }
