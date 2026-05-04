@@ -244,7 +244,6 @@ script_mod! {
                         // ════════════════════════════════════════
                         screens := PageFlip{
                             width: Fill height: Fill
-                            active_page: replay_page
 
                             // ──────────────────────────────────
                             // SCREEN 1: REPLAY THEATER
@@ -1482,10 +1481,19 @@ pub struct VbApp {
     /// `last_ipc_error` so the user has time to read the message.
     #[rust]
     ipc_clean_cycles: u8,
+    #[rust]
+    first_frame: bool,
 }
 
 impl MatchEvent for VbApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        // ── First-frame: set initial PageFlip page via Rust API ───
+        if !self.first_frame {
+            self.first_frame = true;
+            let pf = self.ui.widget(cx, ids!(screens)).as_page_flip();
+            pf.set_active_page(cx, live_id!(replay_page));
+        }
+
         // ── Frame-poll the IPC wiring ─────────────────────────────
         // Drain pending IPC replies into AppState and dispatch UI
         // sync calls for the affected subsystems.
