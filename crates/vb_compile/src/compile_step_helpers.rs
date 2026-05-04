@@ -688,4 +688,580 @@ mod tests {
             "mark should be unavailable",
         )
     }
+
+    // ========================================================================
+    // Additional boundary and edge-case tests
+    // ========================================================================
+
+    // -- slot_idx_for_step: boundary values --
+
+    #[test]
+    fn slot_idx_for_step_at_u16_max() -> Result<(), String> {
+        let slot = slot_idx_for_step(usize::from(u16::MAX))?;
+        ensure(slot.as_u16() == u16::MAX, "should accept u16::MAX")
+    }
+
+    #[test]
+    fn slot_idx_for_step_zero() -> Result<(), String> {
+        let slot = slot_idx_for_step(0)?;
+        ensure(slot.as_u16() == 0, "should accept zero")
+    }
+
+    #[test]
+    fn slot_idx_for_step_just_above_u16_max() -> Result<(), String> {
+        let value = usize::from(u16::MAX).checked_add(1).ok_or("overflow")?;
+        match slot_idx_for_step(value) {
+            Err(CompileError::StepIndexOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected StepIndexOutOfRange, got {other:?}")),
+        }
+    }
+
+    // -- required_slot: boundary values --
+
+    #[test]
+    fn required_slot_accepts_zero() -> Result<(), String> {
+        let body = yaml_node("input: 0")?;
+        let slot = required_slot(&body, 0, "input")?;
+        ensure(slot.as_u16() == 0, "slot zero should be accepted")
+    }
+
+    #[test]
+    fn required_slot_accepts_u16_max() -> Result<(), String> {
+        let body = yaml_node("input: 65535")?;
+        let slot = required_slot(&body, 0, "input")?;
+        ensure(slot.as_u16() == 65535, "slot u16::MAX should be accepted")
+    }
+
+    #[test]
+    fn required_slot_rejects_negative() -> Result<(), String> {
+        let body = yaml_node("input: -1")?;
+        match required_slot(&body, 0, "input") {
+            Err(CompileError::SlotIndexOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected SlotIndexOutOfRange for negative, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_slot_propagates_step_index_in_error() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_slot(&body, 7, "missing_field") {
+            Err(CompileError::MissingStepField { step: 7, field: "missing_field" }) => Ok(()),
+            other => Err(format!("expected MissingStepField with step=7, got {other:?}")),
+        }
+    }
+
+    // -- required_step_field: additional cases --
+
+    #[test]
+    fn required_step_field_returns_body_value() -> Result<(), String> {
+        let body = yaml_node("target: 42")?;
+        let node = required_step_field(&body, 0, "target")?;
+        ensure(
+            node.as_integer() == Some(42),
+            "should return the YAML node for the field",
+        )
+    }
+
+    #[test]
+    fn required_step_field_rejects_non_mapping() -> Result<(), String> {
+        let body = yaml_node("[1, 2, 3]")?;
+        match required_step_field(&body, 0, "field") {
+            Err(CompileError::MissingStepField { .. }) => Ok(()),
+            other => Err(format!("expected MissingStepField for non-mapping body, got {other:?}")),
+        }
+    }
+
+    // -- optional_slot_field: error propagation when present but invalid --
+
+    #[test]
+    fn optional_slot_field_propagates_parse_error_when_present_but_non_integer() -> Result<(), String> {
+        let body = yaml_node("timeout: not_a_number")?;
+        match optional_slot_field(&body, 0, "timeout") {
+            Err(CompileError::StepFieldShape { .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for non-integer, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn optional_slot_field_propagates_range_error_when_present_but_too_large() -> Result<(), String> {
+        let body = yaml_node("timeout: 70000")?;
+        match optional_slot_field(&body, 0, "timeout") {
+            Err(CompileError::SlotIndexOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected SlotIndexOutOfRange for out-of-range, got {other:?}")),
+        }
+    }
+
+    // -- required_u32_field: boundary values --
+
+    #[test]
+    fn required_u32_field_accepts_zero() -> Result<(), String> {
+        let body = yaml_node("limit: 0")?;
+        let value = required_u32_field(&body, 0, "for_each", "limit")?;
+        ensure(value == 0, "u32 zero should be accepted")
+    }
+
+    #[test]
+    fn required_u32_field_accepts_u32_max() -> Result<(), String> {
+        let body = yaml_node("limit: 4294967295")?;
+        let value = required_u32_field(&body, 0, "for_each", "limit")?;
+        ensure(value == u32::MAX, "u32::MAX should be accepted")
+    }
+
+    #[test]
+    fn required_u32_field_rejects_missing_field() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_u32_field(&body, 0, "for_each", "limit") {
+            Err(CompileError::MissingStepField { step: 0, field: "limit" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_u32_field_rejects_non_integer() -> Result<(), String> {
+        let body = yaml_node("limit: abc")?;
+        match required_u32_field(&body, 0, "for_each", "limit") {
+            Err(CompileError::StepFieldShape { step: 0, field: "limit", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for non-integer, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_u32_field_rejects_i64_max() -> Result<(), String> {
+        let body = yaml_node("limit: 9223372036854775807")?;
+        match required_u32_field(&body, 0, "for_each", "limit") {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => Ok(()),
+            other => Err(format!("expected PrimitiveLoweringLimitExceeded, got {other:?}")),
+        }
+    }
+
+    // -- required_u16_field: boundary values --
+
+    #[test]
+    fn required_u16_field_accepts_zero() -> Result<(), String> {
+        let body = yaml_node("max_attempts: 0")?;
+        let value = required_u16_field(&body, 0, "repeat", "max_attempts")?;
+        ensure(value == 0, "u16 zero should be accepted")
+    }
+
+    #[test]
+    fn required_u16_field_accepts_u16_max() -> Result<(), String> {
+        let body = yaml_node("max_attempts: 65535")?;
+        let value = required_u16_field(&body, 0, "repeat", "max_attempts")?;
+        ensure(value == u16::MAX, "u16::MAX should be accepted")
+    }
+
+    #[test]
+    fn required_u16_field_rejects_missing() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_u16_field(&body, 0, "repeat", "max_attempts") {
+            Err(CompileError::MissingStepField { step: 0, field: "max_attempts" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_u16_field_rejects_non_integer() -> Result<(), String> {
+        let body = yaml_node("max_attempts: true")?;
+        match required_u16_field(&body, 0, "repeat", "max_attempts") {
+            Err(CompileError::StepFieldShape { step: 0, field: "max_attempts", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_u16_field_rejects_negative() -> Result<(), String> {
+        let body = yaml_node("max_attempts: -1")?;
+        match required_u16_field(&body, 0, "repeat", "max_attempts") {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => Ok(()),
+            other => Err(format!("expected PrimitiveLoweringLimitExceeded, got {other:?}")),
+        }
+    }
+
+    // -- required_action: error paths --
+
+    #[test]
+    fn required_action_rejects_missing() -> Result<(), String> {
+        let body = yaml_node("input: 0")?;
+        match required_action(&body, 0, "do") {
+            Err(CompileError::MissingStepField { step: 0, field: "action" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_action_rejects_non_integer() -> Result<(), String> {
+        let body = yaml_node("action: hello")?;
+        match required_action(&body, 0, "do") {
+            Err(CompileError::StepFieldShape { step: 0, field: "action", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for non-integer action, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_action_rejects_out_of_range() -> Result<(), String> {
+        let body = yaml_node("action: 70000")?;
+        match required_action(&body, 0, "do") {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => Ok(()),
+            other => Err(format!("expected PrimitiveLoweringLimitExceeded, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_action_rejects_negative() -> Result<(), String> {
+        let body = yaml_node("action: -1")?;
+        match required_action(&body, 0, "do") {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => Ok(()),
+            other => Err(format!("expected PrimitiveLoweringLimitExceeded for negative, got {other:?}")),
+        }
+    }
+
+    // -- required_branch_targets: error paths --
+
+    #[test]
+    fn required_branch_targets_rejects_missing_field() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_branch_targets(&body, 0, "branches") {
+            Err(CompileError::MissingStepField { step: 0, field: "branches" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_targets_rejects_non_sequence() -> Result<(), String> {
+        let body = yaml_node("branches: 42")?;
+        match required_branch_targets(&body, 0, "branches") {
+            Err(CompileError::StepFieldShape { step: 0, field: "branches", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for non-sequence, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_targets_rejects_non_integer_element() -> Result<(), String> {
+        let body = yaml_node("branches: [1, two]")?;
+        match required_branch_targets(&body, 0, "branches") {
+            Err(CompileError::StepFieldShape { step: 0, field: "branches", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for non-integer element, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_targets_rejects_out_of_range_element() -> Result<(), String> {
+        let body = yaml_node("branches: [1, 70000]")?;
+        match required_branch_targets(&body, 0, "branches") {
+            Err(CompileError::BranchTargetOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected BranchTargetOutOfRange, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_targets_single_element() -> Result<(), String> {
+        let body = yaml_node("branches: [5]")?;
+        let targets = required_branch_targets(&body, 0, "branches")?;
+        ensure(targets.len() == 1, "should have 1 target")?;
+        ensure(targets[0].as_usize() == 5, "single target should be 5")
+    }
+
+    // -- required_branch_target: error paths --
+
+    #[test]
+    fn required_branch_target_rejects_missing_field() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_branch_target(&body, 0, "on_true") {
+            Err(CompileError::MissingStepField { step: 0, field: "on_true" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_target_rejects_non_integer() -> Result<(), String> {
+        let body = yaml_node("on_true: hello")?;
+        match required_branch_target(&body, 0, "on_true") {
+            Err(CompileError::StepFieldShape { step: 0, field: "on_true", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_target_rejects_out_of_range() -> Result<(), String> {
+        let body = yaml_node("on_true: 70000")?;
+        match required_branch_target(&body, 0, "on_true") {
+            Err(CompileError::BranchTargetOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected BranchTargetOutOfRange, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_branch_target_rejects_negative() -> Result<(), String> {
+        let body = yaml_node("on_true: -5")?;
+        match required_branch_target(&body, 0, "on_true") {
+            Err(CompileError::BranchTargetOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected BranchTargetOutOfRange for negative, got {other:?}")),
+        }
+    }
+
+    // -- required_choose_condition: both variants --
+
+    #[test]
+    fn required_choose_condition_literal_true() -> Result<(), String> {
+        let body = yaml_node("condition: true")?;
+        match required_choose_condition(&body, 0) {
+            Ok(ChooseCondition::Literal(true)) => Ok(()),
+            other => Err(format!("expected Literal(true), got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_choose_condition_literal_false() -> Result<(), String> {
+        let body = yaml_node("condition: false")?;
+        match required_choose_condition(&body, 0) {
+            Ok(ChooseCondition::Literal(false)) => Ok(()),
+            other => Err(format!("expected Literal(false), got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_choose_condition_slot_variant() -> Result<(), String> {
+        let body = yaml_node("condition: 3")?;
+        match required_choose_condition(&body, 0) {
+            Ok(ChooseCondition::Slot(slot)) if slot.as_u16() == 3 => Ok(()),
+            other => Err(format!("expected Slot(3), got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_choose_condition_rejects_missing() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        match required_choose_condition(&body, 0) {
+            Err(CompileError::MissingStepField { step: 0, field: "condition" }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn required_choose_condition_rejects_string_condition() -> Result<(), String> {
+        let body = yaml_node("condition: hello")?;
+        match required_choose_condition(&body, 0) {
+            Err(CompileError::StepFieldShape { .. }) => Ok(()),
+            other => Err(format!("expected error for string condition, got {other:?}")),
+        }
+    }
+
+    // -- checked_step_offset: additional cases --
+
+    #[test]
+    fn checked_step_offset_zero_offset() -> Result<(), String> {
+        let result = checked_step_offset(StepIdx::new(100), 0, "for_each", "body")?;
+        ensure(result.as_usize() == 100, "zero offset should be identity")
+    }
+
+    #[test]
+    fn checked_step_offset_at_boundary() -> Result<(), String> {
+        let result = checked_step_offset(StepIdx::new(65534), 1, "for_each", "body")?;
+        ensure(result.as_usize() == 65535, "65534 + 1 should be 65535")
+    }
+
+    // -- source_ir_start: boundary cases --
+
+    #[test]
+    fn source_ir_start_empty_slice() -> Result<(), String> {
+        let starts: &[StepIdx] = &[];
+        match source_ir_start(starts, 0) {
+            Err(CompileError::StepIndexOutOfRange { value: 0 }) => Ok(()),
+            other => Err(format!("expected StepIndexOutOfRange for empty slice, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn source_ir_start_first_element() -> Result<(), String> {
+        let starts = [StepIdx::new(42)];
+        let result = source_ir_start(&starts, 0)?;
+        ensure(result.as_usize() == 42, "should return first element")
+    }
+
+    // -- mapped_branch_target --
+
+    #[test]
+    fn mapped_branch_target_resolves_through_starts() -> Result<(), String> {
+        let body = yaml_node("on_true: 2")?;
+        let starts = [StepIdx::new(0), StepIdx::new(5), StepIdx::new(10)];
+        let result = mapped_branch_target(&body, 0, "on_true", &starts)?;
+        ensure(result.as_usize() == 10, "should resolve to starts[2]")
+    }
+
+    #[test]
+    fn mapped_branch_target_propagates_missing_field() -> Result<(), String> {
+        let body = yaml_node("other: 1")?;
+        let starts = [StepIdx::new(0)];
+        match mapped_branch_target(&body, 0, "on_true", &starts) {
+            Err(CompileError::MissingStepField { .. }) => Ok(()),
+            other => Err(format!("expected MissingStepField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn mapped_branch_target_propagates_out_of_range_start() -> Result<(), String> {
+        let body = yaml_node("on_true: 5")?;
+        let starts = [StepIdx::new(0)];
+        match mapped_branch_target(&body, 0, "on_true", &starts) {
+            Err(CompileError::StepIndexOutOfRange { .. }) => Ok(()),
+            other => Err(format!("expected StepIndexOutOfRange, got {other:?}")),
+        }
+    }
+
+    // -- required_next_step --
+
+    #[test]
+    fn required_next_step_returns_some_value() -> Result<(), String> {
+        let result = required_next_step(Some(StepIdx::new(3)), 0)?;
+        ensure(result.as_usize() == 3, "should return the step index")
+    }
+
+    #[test]
+    fn required_next_step_rejects_none() -> Result<(), String> {
+        match required_next_step(None, 42) {
+            Err(CompileError::StepIndexOutOfRange { value: 42 }) => Ok(()),
+            other => Err(format!("expected StepIndexOutOfRange with value=42, got {other:?}")),
+        }
+    }
+
+    // -- reject_last_non_finish: boundary cases --
+
+    #[test]
+    fn reject_last_non_finish_single_step() -> Result<(), String> {
+        match reject_last_non_finish(0, 0) {
+            Err(CompileError::LastStepMustFinish) => Ok(()),
+            other => Err(format!("single step should be last, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn reject_last_non_finish_non_last_steps_pass() -> Result<(), String> {
+        reject_last_non_finish(0, 5)?;
+        reject_last_non_finish(1, 5)?;
+        reject_last_non_finish(4, 5)
+    }
+
+    // -- reject_unknown_primitive_fields: edge cases --
+
+    #[test]
+    fn reject_unknown_primitive_fields_rejects_non_mapping() -> Result<(), String> {
+        let body = yaml_node("just_a_string")?;
+        match reject_unknown_primitive_fields(&body, 0, "do", &["action"]) {
+            Err(CompileError::StepFieldShape { step: 0, field: "do", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for scalar, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn reject_unknown_primitive_fields_empty_allowed_list() -> Result<(), String> {
+        let body = yaml_node("action: 1")?;
+        match reject_unknown_primitive_fields(&body, 0, "do", &[]) {
+            Err(CompileError::UnknownStepPrimitiveField { step: 0, primitive: "do", .. }) => Ok(()),
+            other => Err(format!("expected UnknownStepPrimitiveField, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn reject_unknown_primitive_fields_empty_mapping_passes() -> Result<(), String> {
+        let body = yaml_node("{}")?;
+        reject_unknown_primitive_fields(&body, 0, "do", &["action"])
+    }
+
+    #[test]
+    fn reject_unknown_primitive_fields_non_string_key_produces_step_shape() -> Result<(), String> {
+        // Build a YAML mapping with a non-string key via a sequence trick.
+        // Using explicit integer key in YAML to trigger non-string key path.
+        let source = "1: value";
+        let docs = saphyr::LoadableYamlNode::load_from_str(source)
+            .map_err(|e| format!("yaml: {e:?}"))?;
+        let body = docs.first().ok_or("empty doc")?;
+        match reject_unknown_primitive_fields(body, 0, "do", &["action"]) {
+            Err(CompileError::StepShape { step: 0 }) => Ok(()),
+            other => Err(format!("expected StepShape for non-string key, got {other:?}")),
+        }
+    }
+
+    // -- reject_non_mapping_step_body --
+
+    #[test]
+    fn reject_non_mapping_step_body_passes_for_mapping() -> Result<(), String> {
+        let body = yaml_node("key: value")?;
+        reject_non_mapping_step_body(&body, 0, "do", "a mapping")
+    }
+
+    #[test]
+    fn reject_non_mapping_step_body_rejects_scalar() -> Result<(), String> {
+        let body = yaml_node("42")?;
+        match reject_non_mapping_step_body(&body, 0, "do", "a mapping") {
+            Err(CompileError::StepFieldShape { step: 0, field: "do", expected: "a mapping" }) => Ok(()),
+            other => Err(format!("expected StepFieldShape, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn reject_non_mapping_step_body_rejects_sequence() -> Result<(), String> {
+        let body = yaml_node("[1, 2]")?;
+        match reject_non_mapping_step_body(&body, 0, "do", "a mapping") {
+            Err(CompileError::StepFieldShape { step: 0, field: "do", .. }) => Ok(()),
+            other => Err(format!("expected StepFieldShape for sequence, got {other:?}")),
+        }
+    }
+
+    // -- reject_unsupported_for_each_fields: non-mapping body --
+
+    #[test]
+    fn reject_unsupported_for_each_non_mapping_passes() -> Result<(), String> {
+        let body = yaml_node("42")?;
+        reject_unsupported_for_each_fields(&body, 0)
+    }
+
+    // -- slot_value: additional edge cases --
+
+    #[test]
+    fn slot_value_parses_large_positive_integer() -> Result<(), String> {
+        let node = yaml_node("9223372036854775807")?;
+        let value = slot_value(&node, 0).map_err(|e| format!("slot_value: {e:?}"))?;
+        ensure(value == ConstValue::I64(i64::MAX), "i64::MAX should map to I64")
+    }
+
+    #[test]
+    fn slot_value_parses_min_negative_integer() -> Result<(), String> {
+        // YAML may parse -9223372036854775808 as i64::MIN or overflow
+        let node = yaml_node("-9223372036854775807")?;
+        let value = slot_value(&node, 0).map_err(|e| format!("slot_value: {e:?}"))?;
+        ensure(
+            value == ConstValue::I64(i64::MIN + 1),
+            "near-min negative should map correctly",
+        )
+    }
+
+    #[test]
+    fn slot_value_preserves_step_index_in_error() -> Result<(), String> {
+        let node = yaml_node("hello")?;
+        match slot_value(&node, 42) {
+            Err(CompileError::UnsupportedConstantValue { step: 42 }) => Ok(()),
+            other => Err(format!("expected UnsupportedConstantValue with step=42, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn slot_value_parses_zero_integer() -> Result<(), String> {
+        let node = yaml_node("0")?;
+        let value = slot_value(&node, 0).map_err(|e| format!("slot_value: {e:?}"))?;
+        ensure(value == ConstValue::I64(0), "zero should map to I64(0)")
+    }
+
+    // -- alloc_workflow_slot: integration with WorkflowBuilder --
+
+    #[test]
+    fn alloc_workflow_slot_returns_sequential_slots() -> Result<(), String> {
+        use super::super::compile_step::WorkflowBuilder;
+        let mut builder = WorkflowBuilder::new();
+        let slot_a = alloc_workflow_slot(&mut builder)?;
+        let slot_b = alloc_workflow_slot(&mut builder)?;
+        let slot_c = alloc_workflow_slot(&mut builder)?;
+        ensure(slot_a.as_u16() == 0, "first allocated slot should be 0")?;
+        ensure(slot_b.as_u16() == 1, "second allocated slot should be 1")?;
+        ensure(slot_c.as_u16() == 2, "third allocated slot should be 2")
+    }
 }

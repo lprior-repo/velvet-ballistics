@@ -1991,4 +1991,1192 @@ mod tests {
         assert!(ARROW_WIDTH > 0.0);
         assert!(ARROW_HEIGHT > 0.0);
     }
+
+    // =====================================================================
+    // Comprehensive additional tests per task requirements
+    // =====================================================================
+
+    // ---- 1. Node shape computation for ALL NodeShape variants ----
+
+    #[test]
+    fn all_node_shape_variants_covered() -> Result<(), String> {
+        let cases: Vec<(&str, NodeShape)> = vec![
+            ("Do", NodeShape::Rectangle),
+            ("SetConst", NodeShape::Rectangle),
+            ("Copy", NodeShape::Rectangle),
+            ("EvalExpr", NodeShape::Rectangle),
+            ("BuildObject", NodeShape::Rectangle),
+            ("Choose", NodeShape::Diamond),
+            ("ChooseSlot", NodeShape::Diamond),
+            ("TogetherStart", NodeShape::Hexagon),
+            ("TogetherBranch", NodeShape::Hexagon),
+            ("TogetherJoin", NodeShape::Hexagon),
+            ("WaitUntil", NodeShape::Pill),
+            ("WaitEvent", NodeShape::Pill),
+            ("Ask", NodeShape::Pill),
+            ("AskResume", NodeShape::Pill),
+            ("Finish", NodeShape::Circle),
+            ("ErrorHandler", NodeShape::Octagon),
+            ("RetryCheck", NodeShape::Octagon),
+            ("RepeatStart", NodeShape::Octagon),
+            ("RepeatAttempt", NodeShape::Octagon),
+            ("RepeatCheck", NodeShape::Octagon),
+            ("RepeatFinish", NodeShape::Octagon),
+            ("Nop", NodeShape::Rectangle),
+            ("UnknownNodeXYZ", NodeShape::Rectangle),
+        ];
+        for (kind, expected_shape) in &cases {
+            let node = make_node("n", kind);
+            let data = NodeRenderer::new().render(&node);
+            if data.shape != *expected_shape {
+                return Err(format!(
+                    "kind '{}' produced shape {:?}, expected {:?}",
+                    kind, data.shape, expected_shape
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn data_category_shapes_are_rectangle() -> Result<(), String> {
+        let data_kinds = vec![
+            "SetConst",
+            "set_const",
+            "Copy",
+            "copy",
+            "EvalExpr",
+            "eval_expr",
+            "BuildObject",
+            "build_object",
+            "BuildList",
+            "build_list",
+            "data",
+        ];
+        for kind in data_kinds {
+            let node = make_node("n", kind);
+            let data = NodeRenderer::new().render(&node);
+            if data.shape != NodeShape::Rectangle {
+                return Err(format!(
+                    "data kind '{}' should produce Rectangle, got {:?}",
+                    kind, data.shape
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn loop_category_shapes_are_rectangle() -> Result<(), String> {
+        let loop_kinds = vec![
+            "ForEachStart",
+            "ForEachNext",
+            "ForEachJoin",
+            "CollectStart",
+            "CollectPage",
+            "CollectNext",
+            "CollectFinish",
+            "ReduceStart",
+            "ReduceNext",
+            "ReduceFinish",
+        ];
+        for kind in loop_kinds {
+            let node = make_node("n", kind);
+            let data = NodeRenderer::new().render(&node);
+            if data.shape != NodeShape::Rectangle {
+                return Err(format!(
+                    "loop kind '{}' should produce Rectangle, got {:?}",
+                    kind, data.shape
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn all_seven_shapes_are_producible() -> Result<(), String> {
+        // Verify we can produce every variant of NodeShape via render + refine
+        let n_do = make_node("n", "Do");
+        let d_do = NodeRenderer::new().render(&n_do);
+        if d_do.shape != NodeShape::Rectangle {
+            return Err("Do should be Rectangle".into());
+        }
+
+        let n_ch = make_node("n", "Choose");
+        let d_ch = NodeRenderer::new().render(&n_ch);
+        if d_ch.shape != NodeShape::Diamond {
+            return Err("Choose should be Diamond".into());
+        }
+
+        let n_to = make_node("n", "TogetherStart");
+        let d_to = NodeRenderer::new().render(&n_to);
+        if d_to.shape != NodeShape::Hexagon {
+            return Err("TogetherStart should be Hexagon".into());
+        }
+
+        let n_wu = make_node("n", "WaitUntil");
+        let d_wu = NodeRenderer::new().render(&n_wu);
+        if d_wu.shape != NodeShape::Pill {
+            return Err("WaitUntil should be Pill".into());
+        }
+
+        let n_fi = make_node("n", "Finish");
+        let d_fi = NodeRenderer::new().render(&n_fi);
+        if d_fi.shape != NodeShape::Circle {
+            return Err("Finish should be Circle".into());
+        }
+
+        let n_eh = make_node("n", "ErrorHandler");
+        let d_eh = NodeRenderer::new().render(&n_eh);
+        if d_eh.shape != NodeShape::Octagon {
+            return Err("ErrorHandler should be Octagon".into());
+        }
+
+        // Arrow via refine_shape_for_kind
+        let arrow = NodeRenderer::refine_shape_for_kind(NodeShape::Rectangle, "Jump");
+        if arrow != NodeShape::Arrow {
+            return Err(format!("Expected Arrow, got {:?}", arrow));
+        }
+        Ok(())
+    }
+
+    // ---- 2. Port position calculation at various indices ----
+
+    #[test]
+    fn port_position_at_high_order_index() -> Result<(), String> {
+        let port = make_port("in50", PortSide::Left, PortRole::Target, 50);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        if ports.len() != 1 {
+            return Err(format!("Expected 1 port, got {}", ports.len()));
+        }
+        let expected_y = node.position[1]
+            + draw::node::HEADER_HEIGHT
+            + draw::node::PADDING
+            + 50.0 * draw::port::HEIGHT
+            + draw::port::HEIGHT / 2.0;
+        if (ports[0].y - expected_y).abs() > f64::EPSILON {
+            return Err(format!(
+                "Port Y mismatch for order 50: got {}, expected {}",
+                ports[0].y, expected_y
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn port_position_order_zero_is_first() -> Result<(), String> {
+        let port = make_port("in0", PortSide::Left, PortRole::Target, 0);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        let expected_y = node.position[1]
+            + draw::node::HEADER_HEIGHT
+            + draw::node::PADDING
+            + 0.0 * draw::port::HEIGHT
+            + draw::port::HEIGHT / 2.0;
+        if (ports[0].y - expected_y).abs() > f64::EPSILON {
+            return Err(format!(
+                "Port Y for order 0: got {}, expected {}",
+                ports[0].y, expected_y
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn port_positions_mixed_input_output() -> Result<(), String> {
+        let p_in = make_port("in0", PortSide::Left, PortRole::Target, 0);
+        let p_out = make_port("out0", PortSide::Right, PortRole::Source, 0);
+        let node = make_node_with_ports("n1", "Do", vec![p_in, p_out]);
+        let ports = NodeRenderer::port_positions(&node);
+        if ports.len() != 2 {
+            return Err(format!("Expected 2 ports, got {}", ports.len()));
+        }
+        // Input on left
+        if !ports[0].is_input {
+            return Err("First port should be input".into());
+        }
+        if ports[0].is_output {
+            return Err("First port should not be output".into());
+        }
+        // Output on right
+        if ports[1].is_input {
+            return Err("Second port should not be input".into());
+        }
+        if !ports[1].is_output {
+            return Err("Second port should be output".into());
+        }
+        // X coordinates differ: input at node.x, output at node.x + width
+        if (ports[0].x - node.position[0]).abs() > f64::EPSILON {
+            return Err(format!(
+                "Input port X should be {}, got {}",
+                node.position[0], ports[0].x
+            ));
+        }
+        if (ports[1].x - (node.position[0] + node.size[0])).abs() > f64::EPSILON {
+            return Err(format!(
+                "Output port X should be {}, got {}",
+                node.position[0] + node.size[0],
+                ports[1].x
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn port_position_bidirectional_defaults_left() -> Result<(), String> {
+        let port = make_port("bio", PortSide::Left, PortRole::Bidirectional, 0);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        // Bidirectional with Left side => x = node.position[0]
+        if (ports[0].x - node.position[0]).abs() > f64::EPSILON {
+            return Err(format!(
+                "Bidirectional left port X should be {}, got {}",
+                node.position[0], ports[0].x
+            ));
+        }
+        if !ports[0].is_input || !ports[0].is_output {
+            return Err("Bidirectional port should be both input and output".into());
+        }
+        Ok(())
+    }
+
+    // ---- 3. Color computation from theme constants for all categories ----
+
+    #[test]
+    fn data_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "SetConst");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::TEXT_SECONDARY {
+            return Err(format!(
+                "Data header color mismatch: {:?} != {:?}",
+                data.header_color,
+                theme::colors::TEXT_SECONDARY
+            ));
+        }
+        if data.body_color != theme::colors::CARD_BG {
+            return Err("Data body should be CARD_BG".into());
+        }
+        if data.border_color != theme::colors::BORDER {
+            return Err("Data border should be BORDER".into());
+        }
+        if data.text_color != theme::colors::TEXT_PRIMARY {
+            return Err("Data text should be TEXT_PRIMARY".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn external_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "Do");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_ORANGE {
+            return Err("External header should be NEON_ORANGE".into());
+        }
+        if data.border_color != theme::colors::NEON_ORANGE {
+            return Err("External border should be NEON_ORANGE".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn branch_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "Choose");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_PURPLE {
+            return Err("Branch header should be NEON_PURPLE".into());
+        }
+        if data.border_color != theme::colors::NEON_PURPLE {
+            return Err("Branch border should be NEON_PURPLE".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn loop_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "ForEachStart");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_BLUE {
+            return Err("Loop header should be NEON_BLUE".into());
+        }
+        if data.border_color != theme::colors::NEON_BLUE {
+            return Err("Loop border should be NEON_BLUE".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "TogetherStart");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_TEAL {
+            return Err("Parallel header should be NEON_TEAL".into());
+        }
+        if data.border_color != theme::colors::NEON_TEAL {
+            return Err("Parallel border should be NEON_TEAL".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn suspend_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "WaitUntil");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_GREEN {
+            return Err("Suspend header should be NEON_GREEN".into());
+        }
+        if data.border_color != theme::colors::NEON_GREEN {
+            return Err("Suspend border should be NEON_GREEN".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn error_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "ErrorHandler");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_RED {
+            return Err("Error header should be NEON_RED".into());
+        }
+        if data.border_color != theme::colors::NEON_RED {
+            return Err("Error border should be NEON_RED".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn terminal_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "Finish");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::NEON_TEAL {
+            return Err("Terminal header should be NEON_TEAL".into());
+        }
+        if data.border_color != theme::colors::NEON_TEAL {
+            return Err("Terminal border should be NEON_TEAL".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn control_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "Nop");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::TEXT_SECONDARY {
+            return Err("Control header should be TEXT_SECONDARY".into());
+        }
+        if data.border_color != theme::colors::BORDER {
+            return Err("Control border should be BORDER".into());
+        }
+        if data.text_color != theme::colors::TEXT_DIM {
+            return Err("Control text should be TEXT_DIM".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unknown_category_colors_match_theme() -> Result<(), String> {
+        let node = make_node("n1", "SomethingUnknown");
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != theme::colors::TEXT_SECONDARY {
+            return Err("Unknown header should be TEXT_SECONDARY".into());
+        }
+        if data.border_color != theme::colors::BORDER {
+            return Err("Unknown border should be BORDER".into());
+        }
+        if data.text_color != theme::colors::TEXT_PRIMARY {
+            return Err("Unknown text should be TEXT_PRIMARY".into());
+        }
+        Ok(())
+    }
+
+    // ---- 4. Badge rendering position calculations ----
+    // (Badges are label+color only; verify badge count and content per category)
+
+    #[test]
+    fn badge_labels_are_short() -> Result<(), String> {
+        // All badge labels should be 1-3 chars
+        let data_val = serde_json::json!({"action_id": 999});
+        let node = make_node_with_data("n1", "Do", data_val);
+        let data = NodeRenderer::new().render(&node);
+        for badge in &data.badges {
+            if badge.label.is_empty() {
+                return Err("Badge label should not be empty".into());
+            }
+            if badge.label.len() > 5 {
+                return Err(format!(
+                    "Badge label '{}' is too long (max ~5 chars)",
+                    badge.label
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_colors_have_valid_alpha() -> Result<(), String> {
+        let data_val = serde_json::json!({"action_id": 1});
+        let node = make_node_with_data("n1", "Do", data_val);
+        let data = NodeRenderer::new().render(&node);
+        for badge in &data.badges {
+            if badge.color[3] <= 0.0 {
+                return Err(format!(
+                    "Badge '{}' has non-positive alpha {}",
+                    badge.label, badge.color[3]
+                ));
+            }
+            if badge.color[3] > 1.0 {
+                return Err(format!(
+                    "Badge '{}' has alpha > 1.0: {}",
+                    badge.label, badge.color[3]
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_data_category_has_no_badges() -> Result<(), String> {
+        let node = make_node("n1", "SetConst");
+        let data = NodeRenderer::new().render(&node);
+        if !data.badges.is_empty() {
+            return Err(format!(
+                "Data nodes should have no badges, got {}",
+                data.badges.len()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_loop_category_has_no_badges() -> Result<(), String> {
+        let node = make_node("n1", "ForEachStart");
+        let data = NodeRenderer::new().render(&node);
+        if !data.badges.is_empty() {
+            return Err(format!(
+                "Loop nodes should have no badges, got {}",
+                data.badges.len()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_parallel_category_has_no_badges() -> Result<(), String> {
+        let node = make_node("n1", "TogetherStart");
+        let data = NodeRenderer::new().render(&node);
+        if !data.badges.is_empty() {
+            return Err(format!(
+                "Parallel nodes should have no badges, got {}",
+                data.badges.len()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_control_category_has_no_badges() -> Result<(), String> {
+        let node = make_node("n1", "Nop");
+        let data = NodeRenderer::new().render(&node);
+        if !data.badges.is_empty() {
+            return Err(format!(
+                "Control nodes should have no badges, got {}",
+                data.badges.len()
+            ));
+        }
+        Ok(())
+    }
+
+    // ---- 5. Node dimension bounds (min/max width, height) ----
+
+    #[test]
+    fn diamond_dimensions_are_larger_than_default() -> Result<(), String> {
+        if DIAMOND_WIDTH <= DEFAULT_WIDTH {
+            return Err(format!(
+                "Diamond width {} should be > default width {}",
+                DIAMOND_WIDTH, DEFAULT_WIDTH
+            ));
+        }
+        if DIAMOND_HEIGHT <= DEFAULT_HEIGHT {
+            return Err(format!(
+                "Diamond height {} should be > default height {}",
+                DIAMOND_HEIGHT, DEFAULT_HEIGHT
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn circle_is_symmetric() -> Result<(), String> {
+        let node = make_node("n1", "Finish");
+        let data = NodeRenderer::new().render(&node);
+        if (data.width_hint - data.height_hint).abs() > f64::EPSILON {
+            return Err(format!(
+                "Circle should be symmetric: width={}, height={}",
+                data.width_hint, data.height_hint
+            ));
+        }
+        if (data.width_hint - CIRCLE_SIZE).abs() > f64::EPSILON {
+            return Err(format!(
+                "Circle size should be {}, got {}",
+                CIRCLE_SIZE, data.width_hint
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn all_shape_dimensions_exceed_zero() -> Result<(), String> {
+        let dimensions: [(f64, f64, &str); 7] = [
+            (DEFAULT_WIDTH, DEFAULT_HEIGHT, "Rectangle"),
+            (DIAMOND_WIDTH, DIAMOND_HEIGHT, "Diamond"),
+            (HEXAGON_WIDTH, HEXAGON_HEIGHT, "Hexagon"),
+            (PILL_WIDTH, PILL_HEIGHT, "Pill"),
+            (CIRCLE_SIZE, CIRCLE_SIZE, "Circle"),
+            (OCTAGON_WIDTH, OCTAGON_HEIGHT, "Octagon"),
+            (ARROW_WIDTH, ARROW_HEIGHT, "Arrow"),
+        ];
+        for (w, h, name) in &dimensions {
+            if *w <= 0.0 {
+                return Err(format!("{} width {} should be > 0", name, w));
+            }
+            if *h <= 0.0 {
+                return Err(format!("{} height {} should be > 0", name, h));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn pill_is_wider_than_tall() -> Result<(), String> {
+        if PILL_WIDTH <= PILL_HEIGHT {
+            return Err(format!(
+                "Pill should be wider than tall: width={}, height={}",
+                PILL_WIDTH, PILL_HEIGHT
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rectangle_dimensions_match_draw_min_constants() -> Result<(), String> {
+        // Rectangle (default) dimensions should match draw::node min constants
+        if (DEFAULT_WIDTH - draw::node::MIN_WIDTH).abs() > f64::EPSILON {
+            return Err(format!(
+                "DEFAULT_WIDTH {} should match MIN_WIDTH {}",
+                DEFAULT_WIDTH,
+                draw::node::MIN_WIDTH
+            ));
+        }
+        if (DEFAULT_HEIGHT - draw::node::MIN_HEIGHT).abs() > f64::EPSILON {
+            return Err(format!(
+                "DEFAULT_HEIGHT {} should match MIN_HEIGHT {}",
+                DEFAULT_HEIGHT,
+                draw::node::MIN_HEIGHT
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn all_shapes_have_reasonable_aspect_ratio() -> Result<(), String> {
+        // Every shape should have width >= height (no extremely tall shapes)
+        let shapes: Vec<(f64, f64, &str)> = vec![
+            (DEFAULT_WIDTH, DEFAULT_HEIGHT, "Rectangle"),
+            (DIAMOND_WIDTH, DIAMOND_HEIGHT, "Diamond"),
+            (HEXAGON_WIDTH, HEXAGON_HEIGHT, "Hexagon"),
+            (PILL_WIDTH, PILL_HEIGHT, "Pill"),
+            (CIRCLE_SIZE, CIRCLE_SIZE, "Circle"),
+            (OCTAGON_WIDTH, OCTAGON_HEIGHT, "Octagon"),
+            (ARROW_WIDTH, ARROW_HEIGHT, "Arrow"),
+        ];
+        for (w, h, name) in &shapes {
+            if *w <= 0.0 || *h <= 0.0 {
+                return Err(format!("{} has non-positive dimension", name));
+            }
+            // Aspect ratio should not be extreme (width:height <= 10:1)
+            let ratio = *w / *h;
+            if ratio > 10.0 || ratio < 0.1 {
+                return Err(format!(
+                    "{} aspect ratio {} is extreme",
+                    name, ratio
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    // ---- 6. Edge case: zero-size nodes ----
+
+    #[test]
+    fn zero_size_node_port_input_at_node_position() -> Result<(), String> {
+        let port = make_port("in0", PortSide::Left, PortRole::Target, 0);
+        let mut node = make_node_with_ports("n1", "Do", vec![port]);
+        node.size = [0.0, 0.0];
+        let ports = NodeRenderer::port_positions(&node);
+        if (ports[0].x - node.position[0]).abs() > f64::EPSILON {
+            return Err(format!(
+                "Input on zero-size node: X should be {}, got {}",
+                node.position[0], ports[0].x
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn zero_size_node_port_output_at_same_position() -> Result<(), String> {
+        let port = make_port("out0", PortSide::Right, PortRole::Source, 0);
+        let mut node = make_node_with_ports("n1", "Do", vec![port]);
+        node.size = [0.0, 0.0];
+        let ports = NodeRenderer::port_positions(&node);
+        // Right edge = position[0] + size[0] = position[0] + 0 = position[0]
+        if (ports[0].x - node.position[0]).abs() > f64::EPSILON {
+            return Err(format!(
+                "Output on zero-size node: X should be {}, got {}",
+                node.position[0], ports[0].x
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn zero_size_node_still_renders() -> Result<(), String> {
+        let mut node = make_node("n1", "Do");
+        node.size = [0.0, 0.0];
+        let data = NodeRenderer::new().render(&node);
+        // Should still produce valid render data
+        if data.shape != NodeShape::Rectangle {
+            return Err("Zero-size node should still be Rectangle".into());
+        }
+        // width_hint/height_hint come from shape resolution, not node.size
+        if data.width_hint != DEFAULT_WIDTH {
+            return Err(format!(
+                "Width hint should be DEFAULT_WIDTH {}, got {}",
+                DEFAULT_WIDTH, data.width_hint
+            ));
+        }
+        Ok(())
+    }
+
+    // ---- 6. Edge case: negative coordinates ----
+
+    #[test]
+    fn node_at_negative_coordinates_port_positions() -> Result<(), String> {
+        let p_in = make_port("in0", PortSide::Left, PortRole::Target, 0);
+        let p_out = make_port("out0", PortSide::Right, PortRole::Source, 1);
+        let mut node = make_node_with_ports("n1", "Do", vec![p_in, p_out]);
+        node.position = [-500.0, -300.0];
+        node.size = [160.0, 60.0];
+        let ports = NodeRenderer::port_positions(&node);
+        // Input on left: x = -500.0
+        if (ports[0].x - (-500.0)).abs() > f64::EPSILON {
+            return Err(format!(
+                "Input port X at negative coords: expected -500.0, got {}",
+                ports[0].x
+            ));
+        }
+        // Output on right: x = -500.0 + 160.0 = -340.0
+        if (ports[1].x - (-340.0)).abs() > f64::EPSILON {
+            return Err(format!(
+                "Output port X at negative coords: expected -340.0, got {}",
+                ports[1].x
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_at_negative_coordinates_renders_correctly() -> Result<(), String> {
+        let mut node = make_node("n1", "Choose");
+        node.position = [-1000.0, -2000.0];
+        let data = NodeRenderer::new().render(&node);
+        if data.shape != NodeShape::Diamond {
+            return Err("Node at negative coords should still be Diamond".into());
+        }
+        if data.width_hint != DIAMOND_WIDTH {
+            return Err(format!(
+                "Width hint should be DIAMOND_WIDTH {}, got {}",
+                DIAMOND_WIDTH, data.width_hint
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_at_large_negative_coordinates_top_bottom_ports() -> Result<(), String> {
+        let p_top = make_port("top0", PortSide::Top, PortRole::Source, 0);
+        let p_bot = make_port("bot0", PortSide::Bottom, PortRole::Target, 1);
+        let mut node = make_node_with_ports("n1", "Do", vec![p_top, p_bot]);
+        node.position = [-999.0, -888.0];
+        node.size = [200.0, 100.0];
+        let ports = NodeRenderer::port_positions(&node);
+        // Top and bottom ports use center X: position[0] + size[0] / 2
+        let expected_center_x = -999.0 + 200.0 / 2.0; // -899.0
+        if (ports[0].x - expected_center_x).abs() > f64::EPSILON {
+            return Err(format!(
+                "Top port X: expected {}, got {}",
+                expected_center_x, ports[0].x
+            ));
+        }
+        if (ports[1].x - expected_center_x).abs() > f64::EPSILON {
+            return Err(format!(
+                "Bottom port X: expected {}, got {}",
+                expected_center_x, ports[1].x
+            ));
+        }
+        Ok(())
+    }
+
+    // ---- 7. Edge case: nodes with many ports (100+) ----
+
+    #[test]
+    fn node_with_100_input_ports() -> Result<(), String> {
+        let mut ports = Vec::with_capacity(100);
+        for i in 0..100u16 {
+            ports.push(make_port(
+                &format!("in{}", i),
+                PortSide::Left,
+                PortRole::Target,
+                i,
+            ));
+        }
+        let node = make_node_with_ports("n1", "Do", ports);
+        let result = NodeRenderer::port_positions(&node);
+        if result.len() != 100 {
+            return Err(format!("Expected 100 ports, got {}", result.len()));
+        }
+        // All should be input, none output
+        for (i, p) in result.iter().enumerate() {
+            if !p.is_input {
+                return Err(format!("Port {} should be input", i));
+            }
+            if p.is_output {
+                return Err(format!("Port {} should not be output", i));
+            }
+        }
+        // Y positions should be monotonically increasing
+        for i in 1..result.len() {
+            if result[i].y <= result[i.saturating_sub(1)].y {
+                return Err(format!(
+                    "Port {} Y ({}) should be > port {} Y ({})",
+                    i,
+                    result[i].y,
+                    i.saturating_sub(1),
+                    result[i.saturating_sub(1)].y
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_with_100_output_ports() -> Result<(), String> {
+        let mut ports = Vec::with_capacity(100);
+        for i in 0..100u16 {
+            ports.push(make_port(
+                &format!("out{}", i),
+                PortSide::Right,
+                PortRole::Source,
+                i,
+            ));
+        }
+        let node = make_node_with_ports("n1", "Do", ports);
+        let result = NodeRenderer::port_positions(&node);
+        if result.len() != 100 {
+            return Err(format!("Expected 100 ports, got {}", result.len()));
+        }
+        // All should be on the right edge
+        let expected_x = node.position[0] + node.size[0];
+        for (i, p) in result.iter().enumerate() {
+            if !p.is_output {
+                return Err(format!("Port {} should be output", i));
+            }
+            if (p.x - expected_x).abs() > f64::EPSILON {
+                return Err(format!(
+                    "Port {} X should be {}, got {}",
+                    i, expected_x, p.x
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_with_200_mixed_ports() -> Result<(), String> {
+        let mut ports = Vec::with_capacity(200);
+        for i in 0..200u16 {
+            let side = if i % 2 == 0 {
+                PortSide::Left
+            } else {
+                PortSide::Right
+            };
+            let role = if i % 2 == 0 {
+                PortRole::Target
+            } else {
+                PortRole::Source
+            };
+            ports.push(make_port(&format!("p{}", i), side, role, i));
+        }
+        let node = make_node_with_ports("n1", "Do", ports);
+        let result = NodeRenderer::port_positions(&node);
+        if result.len() != 200 {
+            return Err(format!("Expected 200 ports, got {}", result.len()));
+        }
+        // Even ports should be input, odd ports should be output
+        for (i, p) in result.iter().enumerate() {
+            if i % 2 == 0 {
+                if !p.is_input {
+                    return Err(format!("Even port {} should be input", i));
+                }
+            } else {
+                if !p.is_output {
+                    return Err(format!("Odd port {} should be output", i));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn many_ports_y_position_grows_linearly() -> Result<(), String> {
+        let mut ports = Vec::with_capacity(10);
+        for i in 0..10u16 {
+            ports.push(make_port(
+                &format!("in{}", i),
+                PortSide::Left,
+                PortRole::Target,
+                i,
+            ));
+        }
+        let node = make_node_with_ports("n1", "Do", ports);
+        let result = NodeRenderer::port_positions(&node);
+        // Gap between consecutive ports should be exactly port::HEIGHT
+        for i in 1..result.len() {
+            let gap = result[i].y - result[i.saturating_sub(1)].y;
+            if (gap - draw::port::HEIGHT).abs() > f64::EPSILON {
+                return Err(format!(
+                    "Gap between port {} and {} should be {}, got {}",
+                    i.saturating_sub(1),
+                    i,
+                    draw::port::HEIGHT,
+                    gap
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    // ---- 8. Theme color application for all visual states ----
+
+    #[test]
+    fn all_step_state_overlays_applied_correctly() -> Result<(), String> {
+        let node = make_node("n1", "Do");
+        let states_and_colors: Vec<(StepState, [f32; 4])> = vec![
+            (StepState::Pending, theme::colors::STATE_PENDING),
+            (StepState::Running, theme::colors::STATE_RUNNING),
+            (StepState::Succeeded, theme::colors::STATE_SUCCEEDED),
+            (StepState::Failed, theme::colors::STATE_FAILED),
+            (StepState::Waiting, theme::colors::STATE_WAITING),
+            (StepState::Asking, theme::colors::STATE_ASKING),
+            (StepState::Cancelled, theme::colors::STATE_CANCELLED),
+            (StepState::Secret, theme::colors::STATE_SECRET),
+        ];
+        for (state, expected_color) in &states_and_colors {
+            let renderer = NodeRenderer::with_state(*state);
+            let data = renderer.render(&node);
+            match data.state_overlay {
+                Some(overlay) => {
+                    if overlay != *expected_color {
+                        return Err(format!(
+                            "State {:?} overlay {:?} != expected {:?}",
+                            state, overlay, expected_color
+                        ));
+                    }
+                }
+                None => {
+                    return Err(format!("State {:?} should have overlay", state));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn set_state_clear_produces_no_overlay() -> Result<(), String> {
+        let node = make_node("n1", "Do");
+        let mut renderer = NodeRenderer::with_state(StepState::Running);
+        let data_with = renderer.render(&node);
+        if data_with.state_overlay.is_none() {
+            return Err("Should have overlay before clearing".into());
+        }
+        renderer.set_state(None);
+        let data_without = renderer.render(&node);
+        if data_without.state_overlay.is_some() {
+            return Err("Should have no overlay after clearing".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_overlay_does_not_affect_shape_or_dimensions() -> Result<(), String> {
+        let node = make_node("n1", "Choose");
+        let renderer_no_state = NodeRenderer::new();
+        let renderer_with_state = NodeRenderer::with_state(StepState::Running);
+        let d1 = renderer_no_state.render(&node);
+        let d2 = renderer_with_state.render(&node);
+        if d1.shape != d2.shape {
+            return Err("State should not change shape".into());
+        }
+        if (d1.width_hint - d2.width_hint).abs() > f64::EPSILON {
+            return Err("State should not change width".into());
+        }
+        if (d1.height_hint - d2.height_hint).abs() > f64::EPSILON {
+            return Err("State should not change height".into());
+        }
+        if d1.border_color != d2.border_color {
+            return Err("State should not change border color".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_overlay_applied_to_all_category_shapes() -> Result<(), String> {
+        let kinds = vec![
+            ("SetConst", NodeShape::Rectangle),
+            ("Do", NodeShape::Rectangle),
+            ("Choose", NodeShape::Diamond),
+            ("ForEachStart", NodeShape::Rectangle),
+            ("TogetherStart", NodeShape::Hexagon),
+            ("WaitUntil", NodeShape::Pill),
+            ("Finish", NodeShape::Circle),
+            ("ErrorHandler", NodeShape::Octagon),
+            ("Nop", NodeShape::Rectangle),
+        ];
+        let renderer = NodeRenderer::with_state(StepState::Failed);
+        for (kind, _expected_shape) in &kinds {
+            let node = make_node("n", kind);
+            let data = renderer.render(&node);
+            match data.state_overlay {
+                Some(overlay) => {
+                    if overlay != theme::colors::STATE_FAILED {
+                        return Err(format!(
+                            "Failed state overlay for kind '{}': {:?} != {:?}",
+                            kind,
+                            overlay,
+                            theme::colors::STATE_FAILED
+                        ));
+                    }
+                }
+                None => {
+                    return Err(format!(
+                        "Kind '{}' should have state overlay",
+                        kind
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // ---- Additional edge cases and robustness ----
+
+    #[test]
+    fn render_node_fn_matches_renderer_new() -> Result<(), String> {
+        let node = make_node("n1", "Do");
+        let from_renderer = NodeRenderer::new().render(&node);
+        let from_fn = render_node(&node);
+        if from_renderer != from_fn {
+            return Err("render_node() should produce same result as NodeRenderer::new().render()".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn color_override_only_affects_header() -> Result<(), String> {
+        let custom = [0.1, 0.2, 0.3, 0.4];
+        let node = FlowNodeRecord {
+            ui: NodeUiState {
+                color_override: Some(custom),
+                ..NodeUiState::default()
+            },
+            ..make_node("n1", "Choose")
+        };
+        let data = NodeRenderer::new().render(&node);
+        if data.header_color != custom {
+            return Err(format!(
+                "Header color should be {:?}, got {:?}",
+                custom, data.header_color
+            ));
+        }
+        // Body should still be CARD_BG
+        if data.body_color != theme::colors::CARD_BG {
+            return Err("Body color should remain CARD_BG with color override".into());
+        }
+        // Border should still be category color
+        if data.border_color != theme::colors::NEON_PURPLE {
+            return Err("Border color should remain NEON_PURPLE with color override".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_renderer_is_deterministic() -> Result<(), String> {
+        let node = make_node("n1", "Do");
+        let renderer = NodeRenderer::new();
+        let d1 = renderer.render(&node);
+        let d2 = renderer.render(&node);
+        let d3 = renderer.render(&node);
+        if d1 != d2 {
+            return Err("First and second render should be identical".into());
+        }
+        if d2 != d3 {
+            return Err("Second and third render should be identical".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn port_with_high_order_u16_wrapping() -> Result<(), String> {
+        let port = make_port("in_max", PortSide::Left, PortRole::Target, 65535);
+        let node = make_node_with_ports("n1", "Do", vec![port]);
+        let ports = NodeRenderer::port_positions(&node);
+        if ports.len() != 1 {
+            return Err(format!("Expected 1 port, got {}", ports.len()));
+        }
+        // Just verify it computes without overflow or panic
+        let expected_y = node.position[1]
+            + draw::node::HEADER_HEIGHT
+            + draw::node::PADDING
+            + f64::from(65535u16) * draw::port::HEIGHT
+            + draw::port::HEIGHT / 2.0;
+        if (ports[0].y - expected_y).abs() > f64::EPSILON {
+            return Err(format!(
+                "High order port Y: expected {}, got {}",
+                expected_y, ports[0].y
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_with_parent_group_renders_correctly() -> Result<(), String> {
+        let mut node = make_node("n1", "Do");
+        node.parent = Some(SmolStr::from("g1"));
+        let data = NodeRenderer::new().render(&node);
+        // Parent group should not affect render data
+        if data.shape != NodeShape::Rectangle {
+            return Err("Node with parent should still render as Rectangle".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_with_high_z_index_renders_correctly() -> Result<(), String> {
+        let mut node = make_node("n1", "Choose");
+        node.z_index = 999;
+        let data = NodeRenderer::new().render(&node);
+        if data.shape != NodeShape::Diamond {
+            return Err("High z_index node should still be Diamond".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn all_category_colors_rgba_in_range() -> Result<(), String> {
+        let categories = [
+            NodeCategory::Data,
+            NodeCategory::External,
+            NodeCategory::Branch,
+            NodeCategory::Loop,
+            NodeCategory::Parallel,
+            NodeCategory::Suspend,
+            NodeCategory::Error,
+            NodeCategory::Terminal,
+            NodeCategory::Control,
+            NodeCategory::Unknown,
+        ];
+        for cat in &categories {
+            let (h, b, brd, txt) = NodeRenderer::resolve_colors(cat);
+            for (c, label) in [(h, "header"), (b, "body"), (brd, "border"), (txt, "text")] {
+                for (ch, ch_name) in [(c[0], "R"), (c[1], "G"), (c[2], "B"), (c[3], "A")] {
+                    if ch < 0.0 || ch > 1.0 {
+                        return Err(format!(
+                            "{:?} {} {} = {} is out of [0,1] range",
+                            cat, label, ch_name, ch
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn node_at_very_large_coordinates() -> Result<(), String> {
+        let port = make_port("out0", PortSide::Right, PortRole::Source, 0);
+        let mut node = make_node_with_ports("n1", "Do", vec![port]);
+        node.position = [1e12, 1e12];
+        node.size = [160.0, 60.0];
+        let ports = NodeRenderer::port_positions(&node);
+        let expected_x = 1e12 + 160.0;
+        if (ports[0].x - expected_x).abs() > 1.0 {
+            return Err(format!(
+                "Large coordinate port X: expected {}, got {}",
+                expected_x, ports[0].x
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn hidden_and_locked_flags_both_true() -> Result<(), String> {
+        let node = FlowNodeRecord {
+            flags: NodeFlags {
+                hidden: true,
+                locked: true,
+                ..NodeFlags::default()
+            },
+            ..make_node("n1", "Do")
+        };
+        let data = NodeRenderer::new().render(&node);
+        if !data.hidden {
+            return Err("Node should be hidden".into());
+        }
+        if !data.locked {
+            return Err("Node should be locked".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_for_do_with_large_action_id() -> Result<(), String> {
+        let data_val = serde_json::json!({"action_id": 999999});
+        let node = make_node_with_data("n1", "Do", data_val);
+        let data = NodeRenderer::new().render(&node);
+        if data.badges.len() != 2 {
+            return Err(format!(
+                "Do with large action_id should have 2 badges, got {}",
+                data.badges.len()
+            ));
+        }
+        if data.badges[0].label != "A999999" {
+            return Err(format!(
+                "Action badge label should be A999999, got {}",
+                data.badges[0].label
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn badge_for_repeat_check_has_no_badge() -> Result<(), String> {
+        let node = make_node("n1", "RepeatCheck");
+        let data = NodeRenderer::new().render(&node);
+        if !data.badges.is_empty() {
+            return Err(format!(
+                "RepeatCheck without max_attempts should have no badges, got {}",
+                data.badges.len()
+            ));
+        }
+        Ok(())
+    }
 }

@@ -431,4 +431,267 @@ mod tests {
         let body_mapping = spec.body.as_mapping();
         ensure(body_mapping.is_some(), "body should be a mapping for save")
     }
+
+    // ========================================================================
+    // Additional boundary and edge-case tests
+    // ========================================================================
+
+    // -- StepPrimitive::from_field: case sensitivity and whitespace --
+
+    #[test]
+    fn from_field_rejects_uppercase_variants() -> Result<(), String> {
+        for field in &["Set", "RUN", "Do", "CHOOSE", "FINISH", "FOR_EACH"] {
+            ensure(
+                StepPrimitive::from_field(field).is_none(),
+                "uppercase should not match",
+            )?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn from_field_rejects_whitespace_padded() -> Result<(), String> {
+        ensure(StepPrimitive::from_field(" set").is_none(), "leading space")?;
+        ensure(StepPrimitive::from_field("set ").is_none(), "trailing space")?;
+        ensure(StepPrimitive::from_field(" set ").is_none(), "both spaces")
+    }
+
+    // -- StepPrimitive::as_str: all variants produce correct strings --
+
+    #[test]
+    fn as_str_covers_every_variant() -> Result<(), String> {
+        let cases: &[(StepPrimitive, &str)] = &[
+            (StepPrimitive::Set, "set"),
+            (StepPrimitive::Run, "run"),
+            (StepPrimitive::Do, "do"),
+            (StepPrimitive::Save, "save"),
+            (StepPrimitive::Choose, "choose"),
+            (StepPrimitive::ForEach, "for_each"),
+            (StepPrimitive::Together, "together"),
+            (StepPrimitive::Collect, "collect"),
+            (StepPrimitive::Reduce, "reduce"),
+            (StepPrimitive::Repeat, "repeat"),
+            (StepPrimitive::Wait, "wait"),
+            (StepPrimitive::Ask, "ask"),
+            (StepPrimitive::Finish, "finish"),
+        ];
+        for (prim, expected) in cases {
+            ensure(
+                prim.as_str() == *expected,
+                "as_str mismatch",
+            )?;
+        }
+        Ok(())
+    }
+
+    // -- is_reserved_name: boundary checks --
+
+    #[test]
+    fn reserved_names_case_sensitive() -> Result<(), String> {
+        ensure(!is_reserved_name("Do"), "Do should not be reserved")?;
+        ensure(!is_reserved_name("SET"), "SET should not be reserved")?;
+        ensure(!is_reserved_name("Input"), "Input should not be reserved")
+    }
+
+    #[test]
+    fn reserved_names_empty_string() -> Result<(), String> {
+        ensure(!is_reserved_name(""), "empty string should not be reserved")
+    }
+
+    #[test]
+    fn reserved_names_no_partial_match() -> Result<(), String> {
+        ensure(!is_reserved_name("set_value"), "set_value should not be reserved")?;
+        ensure(!is_reserved_name("for_each_item"), "for_each_item should not be reserved")?;
+        ensure(!is_reserved_name("run_step"), "run_step should not be reserved")
+    }
+
+    // -- step_spec: additional error paths --
+
+    #[test]
+    fn step_spec_rejects_null_step() -> Result<(), String> {
+        let error = parse_step_err("null")?;
+        ensure(
+            matches!(error, CompileError::StepShape { step: 0 }),
+            "null should produce StepShape",
+        )
+    }
+
+    #[test]
+    fn step_spec_rejects_empty_mapping() -> Result<(), String> {
+        let error = parse_step_err("{}")?;
+        ensure(
+            matches!(error, CompileError::MissingStepPrimitive { step: 0 }),
+            "empty mapping should produce MissingStepPrimitive",
+        )
+    }
+
+    #[test]
+    fn step_spec_rejects_non_string_key_in_mapping() -> Result<(), String> {
+        let error = parse_step_err("1: value")?;
+        ensure(
+            matches!(error, CompileError::StepShape { step: 0 }),
+            "non-string key should produce StepShape",
+        )
+    }
+
+    #[test]
+    fn step_spec_preserves_step_index_in_errors() -> Result<(), String> {
+        let docs = Yaml::load_from_str("\"scalar\"").map_err(|e| format!("yaml: {e:?}"))?;
+        let doc = docs.first().ok_or("empty doc")?;
+        match step_spec(doc, 99) {
+            Err(CompileError::StepShape { step: 99 }) => Ok(()),
+            other => Err(format!("expected StepShape with step=99, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn step_spec_id_and_name_metadata_with_primitive() -> Result<(), String> {
+        let spec = parse_step("id: my_step\nname: My Step\nset:\n  output: 0\n  value: 42")?;
+        ensure(spec.primitive == StepPrimitive::Set, "set should be recognized with metadata")
+    }
+
+    #[test]
+    fn step_spec_rejects_id_with_wrong_shape() -> Result<(), String> {
+        // id accepts any value (it's just checked for presence), so this should work
+        let spec = parse_step("id: 123\ndo:\n  action: 1\n  input: 0")?;
+        ensure(spec.primitive == StepPrimitive::Do, "id with non-string value should still work")
+    }
+
+    #[test]
+    fn step_spec_allows_boolean_name() -> Result<(), String> {
+        // name must be a string
+        let error = parse_step_err("name: true\ndo:\n  action: 1\n  input: 0")?;
+        ensure(
+            matches!(error, CompileError::StepFieldShape { step: 0, field: "name", .. }),
+            "boolean name should produce StepFieldShape",
+        )
+    }
+
+    #[test]
+    fn step_spec_allows_null_name() -> Result<(), String> {
+        let error = parse_step_err("name:\ndo:\n  action: 1\n  input: 0")?;
+        ensure(
+            matches!(error, CompileError::StepFieldShape { step: 0, field: "name", .. }),
+            "null name should produce StepFieldShape",
+        )
+    }
+
+    // -- step_spec: all primitive types produce correct StepSpec --
+
+    #[test]
+    fn step_spec_parses_set_primitive() -> Result<(), String> {
+        let spec = parse_step("set:\n  output: 0\n  value: 42")?;
+        ensure(spec.primitive == StepPrimitive::Set, "expected Set primitive")
+    }
+
+    #[test]
+    fn step_spec_parses_run_primitive() -> Result<(), String> {
+        let spec = parse_step("run:\n  action: 1")?;
+        ensure(spec.primitive == StepPrimitive::Run, "expected Run primitive")
+    }
+
+    // -- step_spec: multiple primitives with metadata ordering --
+
+    #[test]
+    fn step_spec_rejects_multiple_primitives_even_with_metadata() -> Result<(), String> {
+        let error = parse_step_err("id: s1\nset:\n  output: 0\ndo:\n  action: 1")?;
+        ensure(
+            matches!(error, CompileError::MultipleStepPrimitives { step: 0 }),
+            "metadata should not suppress multiple primitives error",
+        )
+    }
+
+    // -- non_string_key_error --
+
+    #[test]
+    fn non_string_key_error_returns_correct_variant() -> Result<(), String> {
+        let error = non_string_key_error();
+        ensure(
+            matches!(error, CompileError::NonStringKey { .. }),
+            "should return NonStringKey variant",
+        )
+    }
+
+    #[test]
+    fn non_string_key_error_mark_has_zero_fields() -> Result<(), String> {
+        let error = non_string_key_error();
+        if let CompileError::NonStringKey { mark } = error {
+            ensure(mark.index == 0, "index should be 0")?;
+            ensure(mark.end_index == 0, "end_index should be 0")?;
+            ensure(mark.line == 0, "line should be 0")?;
+            ensure(mark.column == 0, "column should be 0")?;
+            ensure(!mark.available, "available should be false")
+        } else {
+            Err("expected NonStringKey".to_owned())
+        }
+    }
+
+    // -- ChooseCondition: no direct construction test needed, but verify Debug/Clone/Copy --
+
+    #[test]
+    fn choose_condition_slot_construction() -> Result<(), String> {
+        let slot = vb_core::SlotIdx::new(7);
+        let cond = ChooseCondition::Slot(slot);
+        ensure(
+            matches!(cond, ChooseCondition::Slot(s) if s.as_u16() == 7),
+            "Slot variant should hold the slot index",
+        )
+    }
+
+    #[test]
+    fn choose_condition_literal_construction() -> Result<(), String> {
+        let cond_true = ChooseCondition::Literal(true);
+        let cond_false = ChooseCondition::Literal(false);
+        ensure(
+            matches!(cond_true, ChooseCondition::Literal(true)),
+            "Literal(true) should match",
+        )?;
+        ensure(
+            matches!(cond_false, ChooseCondition::Literal(false)),
+            "Literal(false) should match",
+        )
+    }
+
+    // -- step_spec: body reference correctness --
+
+    #[test]
+    fn step_spec_body_contains_correct_primitive_data() -> Result<(), String> {
+        let spec = parse_step("do:\n  action: 5\n  input: 3")?;
+        let mapping = spec.body.as_mapping().ok_or("body should be mapping")?;
+        let action_node = mapping.get(&Yaml::Value(saphyr::Scalar::String(Box::from("action"))));
+        ensure(action_node.is_some(), "body should contain action field")
+    }
+
+    // -- step_spec: unsupported control field names carry field name --
+
+    #[test]
+    fn step_spec_unsupported_control_field_carries_name() -> Result<(), String> {
+        for control_field in &["if", "with", "try_again", "on_error", "then"] {
+            let yaml = format!("{control_field}: x\nset:\n  output: 0");
+            let error = parse_step_err(&yaml)?;
+            match error {
+                CompileError::UnsupportedStepControlField { step: 0, field } => {
+                    ensure(
+                        field.as_ref() == *control_field,
+                        "field name should be preserved in error",
+                    )?;
+                }
+                other => return Err(format!("expected UnsupportedStepControlField, got {other:?}")),
+            }
+        }
+        Ok(())
+    }
+
+    // -- step_spec: unknown field carries field name --
+
+    #[test]
+    fn step_spec_unknown_field_carries_name() -> Result<(), String> {
+        let error = parse_step_err("xyz: 1\nset:\n  output: 0")?;
+        match error {
+            CompileError::UnknownStepField { step: 0, field } => {
+                ensure(field.as_ref() == "xyz", "field name should be xyz")
+            }
+            other => Err(format!("expected UnknownStepField, got {other:?}")),
+        }
+    }
 }

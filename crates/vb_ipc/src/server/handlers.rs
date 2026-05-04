@@ -89,20 +89,6 @@ pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         return IpcResponse::BadRequest;
     };
 
-    match runtime.snapshot_run(run_id, 0) {
-        Ok(vb_runtime::shard::InspectResponse::Found(_)) => {}
-        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => {
-            return IpcResponse::RuntimeError {
-                message: String::from("run not found"),
-            };
-        }
-        Err(e) => {
-            return IpcResponse::RuntimeError {
-                message: e.to_string(),
-            };
-        }
-    }
-
     match runtime.cancel_run(run_id) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.get(),
@@ -652,6 +638,10 @@ pub fn handle_get_workflow_graph(
             return IpcResponse::WorkflowResolutionUnsupported;
         }
     };
+
+    if workflow.digest() != digest {
+        return IpcResponse::WorkflowDigestMismatch;
+    }
 
     let node_count = workflow.node_count();
     let mut nodes = Vec::new();

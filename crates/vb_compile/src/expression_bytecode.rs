@@ -60,7 +60,7 @@ struct RejectingReferenceResolver;
 impl ExpressionReferenceResolver for RejectingReferenceResolver {
     fn resolve_reference(&mut self, _reference: &str) -> Result<ExprOp, CompileError> {
         Err(CompileError::ExpressionLoweringUnsupported {
-            feature: "accessor references",
+            feature: "accessor references".into(),
         })
     }
 }
@@ -140,7 +140,7 @@ fn lower_accessor_reference(
     let path = numeric_path_segments(reference, root, slot, path)?;
     let index = u16::try_from(accessors.len()).map_err(|_| {
         CompileError::ExpressionLoweringUnsupported {
-            feature: "accessor table overflow",
+            feature: "accessor table overflow".into(),
         }
     })?;
     accessors.push(AccessorProgram {
@@ -228,7 +228,7 @@ fn lower_literal(
         ExpressionLiteral::I64(value) => ConstValue::I64(*value),
         ExpressionLiteral::Text(_) => {
             return Err(CompileError::ExpressionLoweringUnsupported {
-                feature: "text constants",
+                feature: "text constants".into(),
             });
         }
     };
@@ -494,8 +494,8 @@ mod tests {
 
         match compile_expr_to_bytecode(&expr, &mut constants) {
             Err(CompileError::ExpressionLoweringUnsupported {
-                feature: "accessor references",
-            }) => Ok(()),
+                ref feature,
+            }) if feature.as_ref() == "accessor references" => Ok(()),
             other => Err(format!("unexpected lowering result: {other:?}")),
         }
     }
@@ -655,8 +655,8 @@ mod tests {
             matches!(
                 result,
                 Err(CompileError::ExpressionLoweringUnsupported {
-                    feature: "text constants"
-                })
+                    ref feature
+                }) if feature.as_ref() == "text constants"
             ),
             "text literal did not produce exact text constants diagnostic",
         )
@@ -669,8 +669,8 @@ mod tests {
             matches!(
                 error,
                 CompileError::ExpressionLoweringUnsupported {
-                    feature: "accessor references"
-                }
+                    ref feature
+                } if feature.as_ref() == "accessor references"
             ),
             "accessor without table did not produce accessor references diagnostic",
         )
