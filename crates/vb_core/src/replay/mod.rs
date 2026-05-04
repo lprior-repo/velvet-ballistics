@@ -158,6 +158,11 @@ impl<'a> ReplayEngine<'a> {
     /// Returns `Ok(target_step)` if the target was reached.
     /// Returns `Ok(suspension_point)` if a non-deterministic node blocked progress
     /// before the target was reached.
+    ///
+    /// # Bounded execution
+    ///
+    /// The loop is bounded by `MAX_STEP_BUDGET` to prevent unbounded iteration
+    /// from back-edges (Jump nodes) in a corrupted or adversarial workflow.
     pub fn replay_up_to(
         &self,
         target_step: StepIdx,
@@ -179,10 +184,17 @@ impl<'a> ReplayEngine<'a> {
             })?;
 
         let mut current = entry;
+        let mut remaining = crate::limits::MAX_STEP_BUDGET;
         loop {
             if current == target_step {
                 return Ok(current);
             }
+
+            // Decrement the budget on every iteration to prevent infinite loops
+            // from Jump cycles or corrupted workflow graphs.
+            remaining = remaining.checked_sub(1).ok_or(ReplayError::Internal {
+                reason: "replay step budget exhausted",
+            })?;
 
             let node = match self.plan.node(current) {
                 Some(n) => n,

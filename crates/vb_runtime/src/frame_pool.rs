@@ -737,4 +737,65 @@ mod tests {
         pool_a.release(frame_a);
         assert_eq!(pool_a.available(), 1);
     }
+
+    // =====================================================================
+    // BLACKHAT security review: frame_pool additional adversarial tests
+    // =====================================================================
+
+    #[test]
+    fn frame_pool_take_always_produces_usable_frame_even_when_exhausted() {
+        // Given a pool with capacity 1
+        let mut pool = new_pool(4, 2, 1);
+        // When taking many frames without releasing
+        for i in 1u64..=20 {
+            let frame = pool.take(RunId::new(i), StepIdx::new(0));
+            match frame {
+                Ok(f) => assert_eq!(f.run_id(), RunId::new(i)),
+                Err(e) => {
+                    let msg = format!("frame {i} allocation failed: {e}");
+                    panic!("{msg}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn frame_pool_reused_frame_has_zero_executed_count() {
+        // Given a pool with a frame that had non-zero executed count
+        let mut pool = new_pool(4, 2, 4);
+        let mut frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        for _ in 0..10 {
+            let _ = frame.increment_executed();
+        }
+        assert_eq!(frame.executed(), 10);
+        pool.release(frame);
+
+        // When taking the reused frame
+        let reused = match pool.take(RunId::new(2), StepIdx::new(0)) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        // Then executed count must be zero
+        assert_eq!(reused.executed(), 0, "reused frame must have clean executed counter");
+    }
+
+    #[test]
+    fn frame_pool_capacity_one_never_exceeds_limit() {
+        // Given a pool with capacity 1
+        let mut pool = new_pool(2, 1, 1);
+        // When releasing 100 frames
+        for i in 1u64..=100 {
+            let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+                Ok(f) => f,
+                Err(_) => return,
+            };
+            pool.release(frame);
+        }
+        // Then the pool never exceeds capacity 1
+        assert_eq!(pool.available(), 1);
+        assert_eq!(pool.capacity(), 1);
+    }
 }

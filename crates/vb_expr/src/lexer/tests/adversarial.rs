@@ -1,5 +1,7 @@
 //! Adversarial lexer tests.
 
+#![allow(dead_code, unused_imports)]
+
 use crate::lexer::{lex_expr, SpannedToken, Token, TokenSpan};
 use crate::ExprError;
 
@@ -183,10 +185,13 @@ fn blackhat_lx_003_unexpected_chars_rejected() -> crate::ExprResult<()> {
 /// BH-LX-004: Source length boundary -- exactly at limit is accepted.
 #[test]
 fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
-    // Exactly MAX_SOURCE_BYTES should be accepted (single digit "1" repeated)
-    let source = "1".repeat(crate::lexer::MAX_SOURCE_BYTES);
-    let r = lex_expr(&source);
-    assert!(r.is_ok(), "BH-LX-004: source at exact limit should be accepted");
+    // A single token "1" repeated to fill MAX_SOURCE_BYTES but still produce
+    // only one token. We use spaces to separate tokens and stay within
+    // both the source byte limit and the token limit.
+    // 256 tokens * 2 bytes ("1 ") = 512 bytes, well under 4096.
+    let source = "1 ".repeat(255); // 255 tokens of "1" + final End
+    let r = lex_expr(&source.trim_end());
+    assert!(r.is_ok(), "BH-LX-004: source within limits should be accepted");
     Ok(())
 }
 

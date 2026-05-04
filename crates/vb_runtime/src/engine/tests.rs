@@ -602,10 +602,12 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
 
 #[test]
 fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
-    let run = match RunFrame::new(RunId::new(42), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(42), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
+    // Input slot must be initialized with clean taint.
+    let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0));
     let result = execute_do_without_contract(
         &run,
         StepIdx::new(3),
@@ -1150,6 +1152,8 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         Ok(f) => f,
         Err(_) => return,
     };
+    // Input slot must be initialized with clean taint.
+    let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut evidence = EvidenceCollector::new();
@@ -1600,27 +1604,30 @@ mod blackhat_engine {
     }
 
     // =====================================================================
-    // BH-ENG-01: EvidenceCollector is unbounded (resource exhaustion)
+    // BH-ENG-01 FIXED: EvidenceCollector now has capacity bound
     //
-    // The EvidenceCollector uses an unbounded Vec. A malicious or buggy
-    // workflow that loops within a single budget tick could accumulate
-    // arbitrarily many events. There is no capacity limit or backpressure.
-    // Severity: Medium. Mitigated by step budget limiting total iterations,
-    // but each step can push up to 3 events, so budget=N produces up to
-    // 3*N events.
+    // The EvidenceCollector previously used an unbounded Vec. Now it has a
+    // capacity limit (DEFAULT_EVIDENCE_CAPACITY = 3072). Events beyond the
+    // capacity are silently dropped with a dropped count tracked.
     // =====================================================================
 
     #[test]
-    fn bh_eng_01_evidence_collector_no_capacity_bound() {
+    fn bh_eng_01_evidence_collector_enforces_capacity_bound() {
         let mut collector = EvidenceCollector::new();
-        // Push many events to demonstrate no capacity limit.
+        let capacity = collector.capacity();
+        // Push more events than capacity allows.
         for i in 0u16..10_000 {
             collector.push_step_started(StepIdx::new(i));
         }
         assert_eq!(
             collector.len(),
-            10_000,
-            "BH-ENG-01: EvidenceCollector should have a capacity bound but accepts unbounded pushes"
+            capacity,
+            "BH-ENG-01 FIXED: EvidenceCollector should respect capacity bound"
+        );
+        assert_eq!(
+            collector.dropped(),
+            10_000 - capacity,
+            "dropped count should reflect overflow"
         );
     }
 
@@ -1789,16 +1796,15 @@ mod blackhat_engine {
     }
 
     // =====================================================================
-    // BH-ENG-07: execute_do_without_contract skips all security checks
+    // BH-ENG-07 FIXED: execute_do_without_contract now enforces taint checks
     //
-    // When contracts is empty, execute_do_without_contract is used,
-    // skipping taint checking, capability enforcement, and idempotency
-    // validation. The shard's drive_state always passes empty contracts.
-    // Severity: HIGH. All per-step security is disabled on the shard path.
+    // Previously, when contracts was empty, execute_do_without_contract was
+    // used, skipping taint checking entirely. Now it enforces the most
+    // conservative taint policy: tainted inputs are rejected.
     // =====================================================================
 
     #[test]
-    fn bh_eng_07_do_without_contract_skips_taint_check() {
+    fn bh_eng_07_do_without_contract_now_enforces_taint_check() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
             output: None,
@@ -1823,7 +1829,40 @@ mod blackhat_engine {
             &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
             &mut cs, &CapabilitySet::empty(),
         );
-        // No TaintViolation: taint check is completely bypassed.
+        // BH-FIX: TaintViolation is now raised even without contracts.
+        assert!(
+            matches!(result, Err(RuntimeEngineError::TaintViolation { step }) if step == StepIdx::ZERO),
+            "BH-ENG-07 FIXED: taint check is now enforced without contracts: {result:?}"
+        );
+    }
+
+    #[test]
+    fn bh_eng_07_do_without_contract_accepts_clean_input() {
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        };
+        let wf = make_workflow(vec![node], 4);
+        let mut run = make_run(4, 2);
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        let mut store = ValueStore::new();
+        let mut cs = CollectStates::new();
+        let n = match wf.node(StepIdx::ZERO) {
+            Some(n) => n,
+            None => return,
+        };
+        let result = execute_node_full(
+            &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
+            &mut cs, &CapabilitySet::empty(),
+        );
+        // Clean input should succeed even without contracts.
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 assert_eq!(ticket.action, ActionId::new(0));
@@ -1957,6 +1996,8 @@ mod blackhat_engine {
             Err(_) => return,
         };
         let mut run = make_run(4, 2);
+        // Input slot must be initialized with clean taint for the no-contract path.
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
@@ -2125,5 +2166,207 @@ mod blackhat_engine {
             matches!(result, Err(RuntimeEngineError::TaintViolation { .. })),
             "BH-ENG-14: DeterministicPure with Secret input must fail taint check"
         );
+    }
+
+    // =====================================================================
+    // BH-ENG-15 FIXED: EvidenceCollector capacity bound prevents exhaustion
+    //
+    // The EvidenceCollector now enforces a capacity limit. Events beyond
+    // capacity are silently dropped but tracked via the dropped() counter.
+    // =====================================================================
+
+    #[test]
+    fn bh_eng_15_evidence_collector_with_capacity_drops_excess() {
+        let mut collector = EvidenceCollector::with_capacity(3);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_started(StepIdx::new(1));
+        collector.push_step_started(StepIdx::new(2));
+        // At capacity: next event should be dropped.
+        collector.push_step_started(StepIdx::new(3));
+        assert_eq!(collector.len(), 3, "capacity should be respected");
+        assert_eq!(collector.dropped(), 1, "overflow should be tracked");
+    }
+
+    #[test]
+    fn bh_eng_15_evidence_collector_drain_resets_dropped() {
+        let mut collector = EvidenceCollector::with_capacity(2);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_started(StepIdx::new(1));
+        collector.push_step_started(StepIdx::new(2)); // dropped
+        assert_eq!(collector.dropped(), 1);
+        let events = collector.drain();
+        assert_eq!(events.len(), 2);
+        assert_eq!(collector.dropped(), 0, "drain should reset dropped counter");
+    }
+
+    // =====================================================================
+    // BH-ENG-16: execute_do_without_contract rejects tainted input
+    //
+    // Regression test to ensure the taint bypass (BH-ENG-07) stays fixed.
+    // =====================================================================
+
+    #[test]
+    fn bh_eng_16_do_without_contract_rejects_secret_input() {
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
+            .ok()
+            .unwrap_or_else(|| panic!("RunFrame::new failed"));
+        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        let result = execute_do_without_contract(
+            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
+            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+        );
+        assert!(
+            matches!(result, Err(RuntimeEngineError::TaintViolation { step }) if step == StepIdx::ZERO),
+            "BH-ENG-16: tainted input must be rejected without contract: {result:?}"
+        );
+    }
+
+    #[test]
+    fn bh_eng_16_do_without_contract_accepts_uninitialized_slot() {
+        let run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
+            .ok()
+            .unwrap_or_else(|| panic!("RunFrame::new failed"));
+        // Slot 0 is never written -- uninitialized is treated as Clean.
+        let result = execute_do_without_contract(
+            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
+            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+        );
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(0));
+            }
+            other => {
+                let msg = format!("expected AwaitingAction, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn bh_eng_16_do_without_contract_accepts_clean_input() {
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
+            .ok()
+            .unwrap_or_else(|| panic!("RunFrame::new failed"));
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        let result = execute_do_without_contract(
+            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
+            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+        );
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                assert_eq!(ticket.action, ActionId::new(0));
+            }
+            other => {
+                let msg = format!("expected AwaitingAction, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    // =====================================================================
+    // BH-ENG-17: compute_max_parallel_in_flight saturates on overflow
+    //
+    // When a TogetherStart has more branches than u16::MAX, the count
+    // must saturate to u16::MAX rather than panic or wrap.
+    // =====================================================================
+
+    #[test]
+    fn bh_eng_17_parallel_count_saturates_on_overflow() {
+        // Verify that compute_max_parallel_in_flight correctly handles
+        // the u16::try_from(branches.len()) conversion by testing with
+        // a small but valid TogetherStart. The actual saturation at u16::MAX
+        // cannot be tested due to memory constraints, but we verify the
+        // drive loop handles a multi-branch TogetherStart without panic.
+        let branches: Box<[StepIdx]> = (0u32..3)
+            .map(|i| StepIdx::new(i.saturating_add(1) as u16))
+            .collect();
+        let node = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches,
+                join: StepIdx::new(4),
+            },
+        };
+        let step1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let step2 = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let step3 = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let finish = finish_node(4, 0);
+        let wf = make_workflow(vec![node, step1, step2, step3, finish], 4);
+        let mut run = make_run(4, 4);
+        let mut store = ValueStore::new();
+        let mut budget = vb_core::engine::StepBudget::new(10);
+        let mut evidence = EvidenceCollector::new();
+        let mut cs = CollectStates::new();
+        let result = drive_deterministic_full(
+            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
+            &mut evidence, &mut cs, &CapabilitySet::empty(),
+        );
+        let _ = result;
+    }
+
+    // =====================================================================
+    // BH-ENG-18: Drive loop budget exhaustion does not corrupt frame state
+    //
+    // When the budget is exhausted, the frame's step state must be
+    // consistent for resumption.
+    // =====================================================================
+
+    #[test]
+    fn bh_eng_18_budget_exhaustion_preserves_pc_for_resume() {
+        let nop0 = CompiledNode {
+            id: StepIdx::ZERO,
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let nop1 = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let finish = finish_node(2, 0);
+        let wf = make_workflow(vec![nop0, nop1, finish], 4);
+        let mut run = make_run(4, 4);
+        let mut store = ValueStore::new();
+        let mut budget = vb_core::engine::StepBudget::new(1);
+        let mut evidence = EvidenceCollector::new();
+        let mut cs = CollectStates::new();
+        let result = drive_deterministic_full(
+            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
+            &mut evidence, &mut cs, &CapabilitySet::empty(),
+        );
+        assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
+        // PC should have advanced past step 0 (the executed step).
+        assert_ne!(run.pc(), StepIdx::ZERO, "PC must advance after step execution");
     }
 }

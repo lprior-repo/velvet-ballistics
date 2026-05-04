@@ -1819,4 +1819,228 @@ mod tests {
         );
         Ok(())
     }
+
+    // =========================================================================
+    // BLACKHAT security regression tests -- replay expression evaluation
+    // =========================================================================
+
+    // --- FINDING BH-OPS-01: Division of i64::MIN by -1 must overflow ---
+    //
+    // checked_div correctly returns None for i64::MIN / -1, but we verify
+    // the replay path handles this case.
+
+    #[test]
+    fn blackhat_eval_div_min_by_neg_one_returns_error() -> Result<(), CoreError> {
+        let plan = make_minimal_plan_with_constants(vec![])?;
+        let run = make_frame(4)?;
+        let mut store = ValueStore::new();
+        let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+        let mut taint = Taint::Clean;
+
+        stack
+            .push(SlotValue::I64(i64::MIN))
+            .map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::I64(-1))
+            .map_err(replay_err_to_core)?;
+        let result =
+            eval_replay_op(&plan, &run, &mut store, ExprOp::Div, &mut stack, &mut taint);
+        assert!(
+            matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
+            "BLACKHAT BH-OPS-01: i64::MIN / -1 must overflow"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-02: Subtraction of i64::MIN by 1 must underflow ---
+
+    #[test]
+    fn blackhat_eval_sub_min_by_one_returns_error() -> Result<(), CoreError> {
+        let plan = make_minimal_plan_with_constants(vec![])?;
+        let run = make_frame(4)?;
+        let mut store = ValueStore::new();
+        let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+        let mut taint = Taint::Clean;
+
+        stack
+            .push(SlotValue::I64(i64::MIN))
+            .map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::I64(1))
+            .map_err(replay_err_to_core)?;
+        let result =
+            eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint);
+        assert!(
+            matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
+            "BLACKHAT BH-OPS-02: i64::MIN - 1 must underflow"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-03: Addition of i64::MAX + 1 must overflow ---
+
+    #[test]
+    fn blackhat_eval_add_max_plus_one_returns_error() -> Result<(), CoreError> {
+        let plan = make_minimal_plan_with_constants(vec![])?;
+        let run = make_frame(4)?;
+        let mut store = ValueStore::new();
+        let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+        let mut taint = Taint::Clean;
+
+        stack
+            .push(SlotValue::I64(i64::MAX))
+            .map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::I64(1))
+            .map_err(replay_err_to_core)?;
+        let result =
+            eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
+        assert!(
+            matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
+            "BLACKHAT BH-OPS-03: i64::MAX + 1 must overflow"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-04: Multiplication overflow at boundary values ---
+
+    #[test]
+    fn blackhat_eval_mul_boundary_overflow() -> Result<(), CoreError> {
+        let plan = make_minimal_plan_with_constants(vec![])?;
+        let run = make_frame(4)?;
+        let mut store = ValueStore::new();
+        let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+        let mut taint = Taint::Clean;
+
+        stack
+            .push(SlotValue::I64(i64::MIN))
+            .map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::I64(2))
+            .map_err(replay_err_to_core)?;
+        let result =
+            eval_replay_op(&plan, &run, &mut store, ExprOp::Mul, &mut stack, &mut taint);
+        assert!(
+            matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
+            "BLACKHAT BH-OPS-04: i64::MIN * 2 must overflow"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-05: Taint joins across LoadSlot operations ---
+    //
+    // When two slots are loaded (one Clean, one Secret) and added,
+    // the accumulated taint must be Secret.
+
+    #[test]
+    fn blackhat_taint_joins_across_expression() -> Result<(), CoreError> {
+        let expr = make_expr_program(vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::Add,
+        ])?;
+
+        let plan = make_plan(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Nop,
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                    output: None,
+                    next: None,
+                },
+            ],
+            vec![],
+            vec![expr],
+            vec![],
+        )?;
+
+        let mut run = make_frame(4)?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)?;
+        run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret)?;
+        let mut store = ValueStore::new();
+
+        let (value, taint) =
+            eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
+                .map_err(replay_err_to_core)?;
+
+        assert_eq!(value, SlotValue::I64(30), "BLACKHAT BH-OPS-05: value must be 30");
+        assert_eq!(
+            taint, Taint::Secret,
+            "BLACKHAT BH-OPS-05: taint must be Secret when one operand is Secret"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-06: Expression stack overflow is caught ---
+    //
+    // Pushing more than capacity allows must fail, not corrupt memory.
+
+    #[test]
+    fn blackhat_expression_stack_overflow_is_safe() -> Result<(), CoreError> {
+        let mut stack = ReplayExprStack::new(2).map_err(replay_err_to_core)?;
+        stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
+        stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
+        let result = stack.push(SlotValue::I64(3));
+        assert!(
+            result.is_err(),
+            "BLACKHAT BH-OPS-06: stack overflow must return error, not corrupt"
+        );
+
+        // Verify the stack is still consistent after the failed push
+        let first = stack.pop().map_err(replay_err_to_core)?;
+        assert_eq!(
+            first,
+            SlotValue::I64(2),
+            "BLACKHAT BH-OPS-06: stack must remain consistent after overflow"
+        );
+        Ok(())
+    }
+
+    // --- FINDING BH-OPS-07: Unsupported ops return error, not panic ---
+
+    #[test]
+    fn blackhat_unsupported_ops_return_error_not_panic() -> Result<(), CoreError> {
+        let plan = make_minimal_plan_with_constants(vec![])?;
+        let run = make_frame(4)?;
+        let mut store = ValueStore::new();
+
+        let unsupported_ops = [
+            ExprOp::Contains,
+            ExprOp::StartsWith,
+            ExprOp::EndsWith,
+            ExprOp::Has,
+            ExprOp::Exists,
+            ExprOp::Length,
+            ExprOp::Empty,
+            ExprOp::Append,
+            ExprOp::AppendIf,
+            ExprOp::Merge,
+            ExprOp::Sum,
+            ExprOp::Count,
+            ExprOp::Unique,
+        ];
+
+        for op in unsupported_ops {
+            let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+            let mut taint = Taint::Clean;
+            let result = eval_replay_op(&plan, &run, &mut store, op, &mut stack, &mut taint);
+            assert!(
+                matches!(result, Err(ReplayError::Internal { .. })),
+                "BLACKHAT BH-OPS-07: unsupported op {op:?} must return error, not panic"
+            );
+        }
+        Ok(())
+    }
 }

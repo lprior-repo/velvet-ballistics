@@ -7,6 +7,8 @@ use crate::lexer::{
     BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp, lex_expr, lex_expr_spanned,
 };
 
+mod adversarial;
+
 #[test]
 fn lexes_integer_literal() -> crate::ExprResult<()> {
     let tokens = lex_expr("42")?;

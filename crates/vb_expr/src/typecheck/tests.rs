@@ -1,5 +1,7 @@
 //! BDD typecheck tests.
 
+mod adversarial;
+
 #[allow(unused_imports)]
 use crate::ExprError;
 use crate::lexer::lex_expr;

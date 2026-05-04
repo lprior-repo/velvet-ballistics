@@ -1,5 +1,7 @@
 //! Adversarial parser tests.
 
+#![allow(dead_code, unused_imports)]
+
 use crate::lexer::{lex_expr, BinaryOp, UnaryOp};
 use crate::parser::{parse_expr, ExprAst, ExprHelper, ExprLiteral};
 use crate::ExprError;

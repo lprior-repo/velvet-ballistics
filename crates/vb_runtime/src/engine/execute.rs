@@ -528,6 +528,8 @@ mod tests {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
+        // Input slot must be initialized with clean taint for the no-contract path.
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {

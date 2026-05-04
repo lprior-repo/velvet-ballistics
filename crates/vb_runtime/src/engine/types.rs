@@ -38,40 +38,81 @@ pub enum EvidenceEvent {
     },
 }
 
+/// Default maximum number of evidence events before the collector drops
+/// new events. Each step emits up to 3 events (Started + SlotWritten +
+/// Succeeded), so 3 * step_budget provides a safe upper bound.
+const DEFAULT_EVIDENCE_CAPACITY: usize = 3 * 1024;
+
 /// Bounded collector for evidence events produced during a drive loop.
 ///
 /// Collected and drained once per drive loop iteration by the shard
 /// to emit StepStarted/StepSucceeded/SlotWritten events to the journal.
+/// The collector enforces a capacity limit to prevent unbounded memory
+/// growth from malicious or buggy workflows. When at capacity, new events
+/// are silently dropped (the evidence chain becomes incomplete but the
+/// system remains memory-safe).
 #[derive(Debug)]
 pub struct EvidenceCollector {
     events: Vec<EvidenceEvent>,
+    capacity: usize,
+    dropped: usize,
 }
 
 impl EvidenceCollector {
-    /// Creates a new empty collector.
+    /// Creates a new empty collector with a default capacity bound.
     #[must_use]
     pub fn new() -> Self {
-        Self { events: Vec::new() }
+        Self {
+            events: Vec::new(),
+            capacity: DEFAULT_EVIDENCE_CAPACITY,
+            dropped: 0,
+        }
+    }
+
+    /// Creates a new collector with a specific capacity bound.
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            events: Vec::new(),
+            capacity,
+            dropped: 0,
+        }
     }
 
     /// Records a StepStarted event.
+    /// Silently drops the event if the collector is at capacity.
     pub fn push_step_started(&mut self, step: StepIdx) {
-        self.events.push(EvidenceEvent::StepStarted { step });
+        if self.events.len() < self.capacity {
+            self.events.push(EvidenceEvent::StepStarted { step });
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+        }
     }
 
     /// Records a StepSucceeded event.
+    /// Silently drops the event if the collector is at capacity.
     pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>) {
-        self.events
-            .push(EvidenceEvent::StepSucceeded { step, output });
+        if self.events.len() < self.capacity {
+            self.events
+                .push(EvidenceEvent::StepSucceeded { step, output });
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+        }
     }
 
     /// Records a SlotWritten event.
+    /// Silently drops the event if the collector is at capacity.
     pub fn push_slot_written(&mut self, slot: SlotIdx, value: SlotValue) {
-        self.events.push(EvidenceEvent::SlotWritten { slot, value });
+        if self.events.len() < self.capacity {
+            self.events.push(EvidenceEvent::SlotWritten { slot, value });
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+        }
     }
 
     /// Drains all collected events, returning them for processing.
     pub fn drain(&mut self) -> Vec<EvidenceEvent> {
+        self.dropped = 0;
         core::mem::take(&mut self.events)
     }
 
@@ -85,6 +126,18 @@ impl EvidenceCollector {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
+    }
+
+    /// Returns the number of events dropped due to capacity limits.
+    #[must_use]
+    pub fn dropped(&self) -> usize {
+        self.dropped
+    }
+
+    /// Returns the configured capacity.
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.capacity
     }
 }
 
@@ -489,5 +542,76 @@ mod tests {
         };
         let copy = event;
         assert_eq!(event, copy);
+    }
+
+    // =====================================================================
+    // EvidenceCollector capacity bounding
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_new_has_default_capacity() {
+        let collector = EvidenceCollector::new();
+        assert_eq!(collector.capacity(), 3 * 1024);
+        assert_eq!(collector.dropped(), 0);
+    }
+
+    #[test]
+    fn evidence_collector_with_capacity_sets_custom_capacity() {
+        let collector = EvidenceCollector::with_capacity(10);
+        assert_eq!(collector.capacity(), 10);
+        assert_eq!(collector.dropped(), 0);
+    }
+
+    #[test]
+    fn evidence_collector_drops_events_at_capacity() {
+        let mut collector = EvidenceCollector::with_capacity(2);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_started(StepIdx::new(1));
+        assert_eq!(collector.len(), 2);
+        assert_eq!(collector.dropped(), 0);
+        // Third event exceeds capacity.
+        collector.push_step_started(StepIdx::new(2));
+        assert_eq!(collector.len(), 2, "capacity should be respected");
+        assert_eq!(collector.dropped(), 1, "dropped count should increment");
+    }
+
+    #[test]
+    fn evidence_collector_drops_slot_written_at_capacity() {
+        let mut collector = EvidenceCollector::with_capacity(1);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
+        assert_eq!(collector.len(), 1);
+        assert_eq!(collector.dropped(), 1);
+    }
+
+    #[test]
+    fn evidence_collector_drops_step_succeeded_at_capacity() {
+        let mut collector = EvidenceCollector::with_capacity(1);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_succeeded(StepIdx::new(0), None);
+        assert_eq!(collector.len(), 1);
+        assert_eq!(collector.dropped(), 1);
+    }
+
+    #[test]
+    fn evidence_collector_drain_resets_dropped_counter() {
+        let mut collector = EvidenceCollector::with_capacity(1);
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_step_started(StepIdx::new(1)); // dropped
+        assert_eq!(collector.dropped(), 1);
+        let events = collector.drain();
+        assert_eq!(events.len(), 1);
+        assert_eq!(collector.dropped(), 0, "drain should reset dropped");
+        assert!(collector.is_empty());
+    }
+
+    #[test]
+    fn evidence_collector_dropped_saturates_on_many_drops() {
+        let mut collector = EvidenceCollector::with_capacity(0);
+        for i in 0u16..10_000 {
+            collector.push_step_started(StepIdx::new(i));
+        }
+        assert_eq!(collector.len(), 0, "zero capacity should hold nothing");
+        assert_eq!(collector.dropped(), 10_000, "all events should be dropped");
     }
 }

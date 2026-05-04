@@ -8,6 +8,7 @@ use vb_core::action::{
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::EngineError;
+use vb_core::errors::CoreError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::Taint;
@@ -72,16 +73,30 @@ pub fn execute_do(
     Ok(RuntimeSignal::AwaitingAction(ticket))
 }
 
-#[allow(clippy::unnecessary_wraps)]
 pub fn execute_do_without_contract(
     run: &RunFrame,
     step: StepIdx,
     action: ActionId,
-    _input: SlotIdx,
+    input: SlotIdx,
     seq: SeqNo,
-    _granted: &CapabilitySet,
+    granted: &CapabilitySet,
     retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    // BH-FIX: Even without a contract, we must read input taint and enforce
+    // taint checking. Without a contract we assume the most conservative
+    // idempotency (DeterministicPure), which means secret inputs are rejected.
+    // Uninitialized slots are treated as Clean (no data = no taint).
+    let input_taint = match run.read_taint(input) {
+        Ok(t) => t,
+        Err(CoreError::SlotUninitialized { .. }) => Taint::Clean,
+        Err(e) => return Err(RuntimeEngineError::Core(e)),
+    };
+    if input_taint != Taint::Clean {
+        return Err(RuntimeEngineError::TaintViolation { step });
+    }
+
+    check_capability_for_action(run, action, granted)?;
+
     let ticket = ActionTicket {
         run: run.run_id(),
         step,
@@ -92,6 +107,20 @@ pub fn execute_do_without_contract(
         capacity: retry_policy.max_attempts,
     };
     Ok(RuntimeSignal::AwaitingAction(ticket))
+}
+
+/// Checks whether the action's capability requirements are satisfied.
+/// When no specific capabilities are known (empty contract path), this is a
+/// no-op since we don't know what capabilities the action requires.
+fn check_capability_for_action(
+    _run: &RunFrame,
+    _action: ActionId,
+    _granted: &CapabilitySet,
+) -> RuntimeEngineResult<()> {
+    // Without a contract, we cannot enumerate required_capabilities,
+    // so we cannot enforce capability checks. The admission gate at
+    // run submission time is responsible for granting capabilities.
+    Ok(())
 }
 
 /// Backward-compatible execute_retry_check.

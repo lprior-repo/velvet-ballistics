@@ -6,6 +6,8 @@ use crate::lexer::{BinaryOp, UnaryOp, lex_expr};
 #[allow(unused_imports)]
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral, parse_expr};
 
+mod adversarial;
+
 #[allow(dead_code)]
 fn parse(source: &str) -> crate::ExprResult<ExprAst> {
     let tokens = lex_expr(source)?;

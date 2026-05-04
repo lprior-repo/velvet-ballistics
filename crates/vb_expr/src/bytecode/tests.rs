@@ -1,5 +1,7 @@
 //! Bytecode compilation tests.
 
+mod adversarial;
+
 #[allow(unused_imports, dead_code)]
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 

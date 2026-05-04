@@ -1,5 +1,7 @@
 //! Adversarial typecheck tests.
 
+#![allow(dead_code, unused_imports)]
+
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
 use crate::typecheck::{typecheck_expr, TypeContext};

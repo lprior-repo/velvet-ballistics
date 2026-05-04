@@ -519,4 +519,3 @@ fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> Code
 }
 
 // Generate an expression evaluator function.
-
