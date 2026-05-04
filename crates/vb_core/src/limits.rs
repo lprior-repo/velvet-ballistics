@@ -281,4 +281,65 @@ mod tests {
             "values per run must accommodate at least 1M arena values"
         );
     }
+
+    // --- Type-fit invariants ---
+
+    #[test]
+    fn max_constants_fits_in_u16() {
+        assert!(
+            MAX_CONSTANTS <= usize::from(u16::MAX),
+            "MAX_CONSTANTS must fit in u16 for ConstIdx compatibility"
+        );
+    }
+
+    #[test]
+    fn max_expressions_fits_in_u16() {
+        assert!(
+            MAX_EXPRESSIONS <= usize::from(u16::MAX),
+            "MAX_EXPRESSIONS must fit in u16 for ExprIdx compatibility"
+        );
+    }
+
+    #[test]
+    fn max_accessors_fits_in_u16() {
+        assert!(
+            MAX_ACCESSORS <= usize::from(u16::MAX),
+            "MAX_ACCESSORS must fit in u16 for AccessorIdx compatibility"
+        );
+    }
+
+    #[test]
+    fn max_list_items_per_value_fits_in_u32() {
+        // On any platform we support, u32::MAX (4_294_967_295) is representable
+        // as usize. We check that the constant is at most 4 billion.
+        const U32_MAX_USIZE: usize = 4_294_967_295;
+        assert!(
+            MAX_LIST_ITEMS_PER_VALUE <= U32_MAX_USIZE,
+            "MAX_LIST_ITEMS_PER_VALUE must fit in u32 for runtime storage"
+        );
+    }
+
+    #[test]
+    fn max_step_budget_fits_in_u32() {
+        assert!(
+            MAX_STEP_BUDGET <= u64::from(u32::MAX),
+            "MAX_STEP_BUDGET must fit in u32 for compact runtime representation"
+        );
+    }
+
+    #[test]
+    fn max_run_name_length_under_64k() {
+        assert!(
+            MAX_RUN_NAME_LENGTH < 65_536,
+            "MAX_RUN_NAME_LENGTH must be under 64k for reasonable allocation"
+        );
+    }
+
+    #[test]
+    fn constants_less_than_or_equal_to_slots_per_workflow() {
+        assert!(
+            MAX_CONSTANTS <= MAX_SLOTS_PER_WORKFLOW,
+            "constants must not exceed total slots per workflow"
+        );
+    }
 }

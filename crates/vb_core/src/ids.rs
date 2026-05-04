@@ -972,4 +972,106 @@ mod tests {
 
         assert_eq!(hasher_a.finish(), hasher_b.finish());
     }
+
+    // --- New tests for constants, Debug, Ord, FromStr, Hash ---
+
+    #[test]
+    fn step_idx_zero_constant_is_zero() {
+        assert_eq!(StepIdx::ZERO.get(), 0);
+        assert_eq!(StepIdx::ZERO.as_usize(), 0);
+    }
+
+    #[test]
+    fn step_idx_min_is_zero() {
+        assert_eq!(StepIdx::MIN.get(), 0);
+    }
+
+    #[test]
+    fn step_idx_max_is_u16_max() {
+        assert_eq!(StepIdx::MAX.get(), u16::MAX);
+    }
+
+    #[test]
+    fn action_id_max_u16_is_valid() {
+        use super::ActionId;
+        let id = ActionId::new(u16::MAX);
+        assert_eq!(id.get(), u16::MAX);
+    }
+
+    #[test]
+    fn expr_idx_max_u16_is_valid() {
+        use super::ExprIdx;
+        let idx = ExprIdx::new(u16::MAX);
+        assert_eq!(idx.get(), u16::MAX);
+        assert_eq!(idx.as_usize(), usize::from(u16::MAX));
+    }
+
+    #[test]
+    fn const_idx_max_u16_is_valid() {
+        use super::ConstIdx;
+        let idx = ConstIdx::new(u16::MAX);
+        assert_eq!(idx.get(), u16::MAX);
+        assert_eq!(idx.as_usize(), usize::from(u16::MAX));
+    }
+
+    #[test]
+    fn debug_trait_contains_inner_value() {
+        use super::ExprIdx;
+        let idx = ExprIdx::new(42);
+        let debug = format!("{idx:?}");
+        assert!(
+            debug.contains("42"),
+            "Debug output must contain inner value 42, got: {debug}"
+        );
+    }
+
+    #[test]
+    fn ord_comparison_expr_idx() {
+        use super::ExprIdx;
+        let a = ExprIdx::new(0);
+        let b = ExprIdx::new(100);
+        let c = ExprIdx::new(u16::MAX);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(a < c);
+        assert!(a <= a);
+        assert!(c >= c);
+    }
+
+    #[test]
+    fn ord_comparison_action_id() {
+        use super::ActionId;
+        let a = ActionId::new(0);
+        let b = ActionId::new(1);
+        let c = ActionId::new(u16::MAX);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(a != c);
+    }
+
+    #[test]
+    fn from_str_parses_max_u16_for_action_id() -> Result<(), String> {
+        use super::ActionId;
+        let id: ActionId = "65535"
+            .parse()
+            .map_err(|_| String::from("parse failed"))?;
+        if id.get() != u16::MAX {
+            return Err(String::from("expected u16::MAX"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn hash_consistency_for_equal_step_idx() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let a = StepIdx::new(42);
+        let b = StepIdx::new(42);
+        let mut hasher_a = DefaultHasher::new();
+        let mut hasher_b = DefaultHasher::new();
+        a.hash(&mut hasher_a);
+        b.hash(&mut hasher_b);
+        assert_eq!(hasher_a.finish(), hasher_b.finish());
+    }
 }

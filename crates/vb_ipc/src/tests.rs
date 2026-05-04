@@ -115,6 +115,10 @@ fn command_ids_cover_required_surface() {
     assert_eq!(IpcCommand::from_u16(10), Ok(IpcCommand::Health));
     assert_eq!(IpcCommand::from_u16(11), Ok(IpcCommand::Shutdown));
     assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
+    assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::GetMetrics));
+    assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::GetWorkflowGraph));
+    assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::GetTaintReport));
+    assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::VerifyWorkflow));
     assert_eq!(
         IpcCommand::from_u16(17),
         Err(IpcError::UnknownCommand(17))
@@ -707,6 +711,90 @@ fn payload_roundtrip_preserves_submit_run_inline_variant() {
 }
 
 #[test]
+fn payload_roundtrip_preserves_list_runs_variant() {
+    let payload = IpcPayload::ListRuns {
+        limit: 50,
+        workflow: Some(WorkflowDigest::from_bytes([0xAA; 32])),
+    };
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn payload_roundtrip_preserves_list_runs_no_filter_variant() {
+    let payload = IpcPayload::ListRuns {
+        limit: 10,
+        workflow: None,
+    };
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn payload_roundtrip_preserves_get_metrics_variant() {
+    let payload = IpcPayload::GetMetrics;
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn payload_roundtrip_preserves_get_workflow_graph_variant() {
+    let payload = IpcPayload::GetWorkflowGraph {
+        digest: WorkflowDigest::from_bytes([0xCC; 32]),
+    };
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn payload_roundtrip_preserves_get_taint_report_variant() {
+    let payload = IpcPayload::GetTaintReport {
+        digest: WorkflowDigest::from_bytes([0xDD; 32]),
+    };
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
+fn payload_roundtrip_preserves_verify_workflow_variant() {
+    let payload = IpcPayload::VerifyWorkflow {
+        digest: WorkflowDigest::from_bytes([0xEE; 32]),
+    };
+
+    let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
+    assert_ok!(encoded, "payload should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = decode_payload(&encoded);
+
+    assert_eq!(decoded, Ok(payload));
+}
+
+#[test]
 fn header_decode_rejects_unsupported_version_zero() {
     let encoded = header_bytes(IPC_MAGIC, 0, IpcCommand::Health.as_u16(), 0, 0, 1, 0);
     assert_ok!(encoded, "test header should encode");
@@ -804,6 +892,11 @@ fn ipc_command_as_u16_returns_correct_values() {
     assert_eq!(IpcCommand::DrainTrace.as_u16(), 9);
     assert_eq!(IpcCommand::Health.as_u16(), 10);
     assert_eq!(IpcCommand::Shutdown.as_u16(), 11);
+    assert_eq!(IpcCommand::ListRuns.as_u16(), 12);
+    assert_eq!(IpcCommand::GetMetrics.as_u16(), 13);
+    assert_eq!(IpcCommand::GetWorkflowGraph.as_u16(), 14);
+    assert_eq!(IpcCommand::GetTaintReport.as_u16(), 15);
+    assert_eq!(IpcCommand::VerifyWorkflow.as_u16(), 16);
 }
 
 #[test]
@@ -1710,7 +1803,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=16u16) {
             let parsed = IpcCommand::from_u16(cmd);
             prop_assert_ok!(parsed);
             let Ok(command) = parsed else { return Ok(()) };
@@ -1739,7 +1832,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=11u16) {
+        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=16u16) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(());
             };
@@ -1774,7 +1867,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=11u16, payload_len in 0u32..=1024u32) {
+        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=16u16, payload_len in 0u32..=1024u32) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(());
             };

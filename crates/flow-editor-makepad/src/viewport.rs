@@ -2899,4 +2899,175 @@ mod tests {
         let result = hit_test_edges(&graph, 150.0, 54.0, 10.0, 200);
         assert!(matches!(result, HitResult::Edge(_)));
     }
+
+    // --- New tests for WorldRect, ViewportTransform, Selection, fit_view ---
+
+    #[test]
+    fn world_rect_default_equals_manual_zero() {
+        let manual = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 0.0,
+            h: 0.0,
+        };
+        let default = WorldRect::default();
+        assert_eq!(manual.x, default.x);
+        assert_eq!(manual.y, default.y);
+        assert_eq!(manual.w, default.w);
+        assert_eq!(manual.h, default.h);
+    }
+
+    #[test]
+    fn viewport_transform_identity_has_unit_zoom_and_zero_pan() {
+        let identity = ViewportTransform::identity();
+        assert!((identity.zoom - 1.0).abs() < f64::EPSILON);
+        assert!(identity.pan_x.abs() < f64::EPSILON);
+        assert!(identity.pan_y.abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn selection_default_equals_new() {
+        let default = Selection::default();
+        let new = Selection::new();
+        assert_eq!(default.node_count(), new.node_count());
+        assert_eq!(default.edge_count(), new.edge_count());
+    }
+
+    #[test]
+    fn fit_view_padding_reduces_zoom_vs_no_padding() {
+        let world = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 100.0,
+            h: 100.0,
+        };
+        let no_pad = fit_view(world, 200.0, 200.0, 0.0);
+        let with_pad = fit_view(world, 200.0, 200.0, 0.1);
+        match (no_pad, with_pad) {
+            (Some(np), Some(wp)) => assert!(wp.zoom < np.zoom, "padding must reduce zoom"),
+            _ => panic!("fit_view must return Some for valid inputs"),
+        }
+    }
+
+    #[test]
+    fn fit_view_world_fits_within_canvas_after_transform() {
+        let world = WorldRect {
+            x: -50.0,
+            y: -50.0,
+            w: 100.0,
+            h: 100.0,
+        };
+        let canvas_w = 400.0;
+        let canvas_h = 300.0;
+        let result = fit_view(world, canvas_w, canvas_h, 0.0);
+        if let Some(t) = result {
+            // After transform, world width/height scaled by zoom should fit canvas
+            let scaled_w = world.w * t.zoom;
+            let scaled_h = world.h * t.zoom;
+            assert!(
+                scaled_w <= canvas_w + 1.0,
+                "scaled width {scaled_w} must fit canvas {canvas_w}"
+            );
+            assert!(
+                scaled_h <= canvas_h + 1.0,
+                "scaled height {scaled_h} must fit canvas {canvas_h}"
+            );
+        }
+    }
+
+    #[test]
+    fn fit_view_zero_size_world_bounds_returns_none() {
+        let world = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 0.0,
+            h: 0.0,
+        };
+        let result = fit_view(world, 800.0, 600.0, 0.0);
+        assert!(
+            result.is_none(),
+            "zero-size world bounds should return None"
+        );
+    }
+
+    #[test]
+    fn fit_view_zero_size_world_rejected() {
+        // Alternate name to avoid colliding with existing test at line 849
+        let world = WorldRect {
+            x: 10.0,
+            y: 10.0,
+            w: 0.0,
+            h: 5.0,
+        };
+        let result = fit_view(world, 800.0, 600.0, 0.0);
+        assert!(
+            result.is_none(),
+            "degenerate world (w=0) should return None"
+        );
+    }
+
+    #[test]
+    fn selection_empty_has_zero_counts() {
+        let empty = Selection::new();
+        assert!(empty.is_empty());
+        assert_eq!(empty.node_count(), 0);
+        assert_eq!(empty.edge_count(), 0);
+    }
+
+    #[test]
+    fn selection_single_node_clear_restores_empty() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("n1"));
+        assert_eq!(sel.node_count(), 1);
+        sel.clear();
+        assert!(sel.is_empty());
+        assert_eq!(sel.node_count(), 0);
+        assert_eq!(sel.edge_count(), 0);
+    }
+
+    #[test]
+    fn transform_max_zoom_large_pan_roundtrip() {
+        let t = ViewportTransform {
+            zoom: 10.0,
+            pan_x: 1_000_000.0,
+            pan_y: -500_000.0,
+        };
+        // world_to_screen then screen_to_world should round-trip
+        let (sx, sy) = t.world_to_screen(100.0, 200.0, 0.0, 0.0);
+        let (wx, wy) = t.screen_to_world(sx, sy, 0.0, 0.0);
+        assert!((wx - 100.0).abs() < 1e-6, "world x roundtrip failed");
+        assert!((wy - 200.0).abs() < 1e-6, "world y roundtrip failed");
+    }
+
+    #[test]
+    fn transform_min_zoom_origin_offset_roundtrip() {
+        let t = ViewportTransform {
+            zoom: 0.001,
+            pan_x: -1e8,
+            pan_y: 1e8,
+        };
+        let (sx, sy) = t.world_to_screen(0.0, 0.0, 0.0, 0.0);
+        let (wx, wy) = t.screen_to_world(sx, sy, 0.0, 0.0);
+        assert!((wx - 0.0).abs() < 1e-3, "world x roundtrip near origin failed");
+        assert!((wy - 0.0).abs() < 1e-3, "world y roundtrip near origin failed");
+    }
+
+    #[test]
+    fn viewport_state_roundtrip_extreme_values() {
+        let t = ViewportTransform {
+            zoom: f64::MIN_POSITIVE,
+            pan_x: f64::MAX,
+            pan_y: f64::MIN,
+        };
+        let (sx, sy) = t.world_to_screen(0.0, 0.0, 0.0, 0.0);
+        // Should not NaN
+        assert!(!sx.is_nan(), "screen x must not be NaN");
+        assert!(!sy.is_nan(), "screen y must not be NaN");
+    }
+
+    #[test]
+    fn selection_any_selected_false_when_empty() {
+        let empty = Selection::new();
+        assert!(!empty.any_selected(), "empty selection should report false");
+    }
 }

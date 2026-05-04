@@ -25,6 +25,7 @@ use crate::IpcPayload;
 use crate::IPC_HEADER_LEN;
 use crate::IPC_MAGIC;
 use crate::IPC_VERSION;
+use vb_core::{RunId, WorkflowDigest};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1264,6 +1265,306 @@ fn ipc_payload_health_roundtrip_via_frame() {
     let encoded = postcard::to_allocvec(&payload).expect("encode Health payload");
     let decoded: IpcPayload = postcard::from_bytes(&encoded).expect("decode Health payload");
     assert_eq!(decoded, IpcPayload::Health, "Health payload should round-trip");
+}
+
+// ── IpcResponse serialization roundtrip: AcceptedRun ─────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_accepted_run() {
+    let original = IpcResponse::AcceptedRun { run_id: 42 };
+    let encoded = postcard::to_allocvec(&original).expect("encode AcceptedRun");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode AcceptedRun");
+    assert_eq!(decoded, original, "AcceptedRun roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: ShuttingDown ────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_shutting_down() {
+    let original = IpcResponse::ShuttingDown;
+    let encoded = postcard::to_allocvec(&original).expect("encode ShuttingDown");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode ShuttingDown");
+    assert_eq!(decoded, original, "ShuttingDown roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: TraceCount ──────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_trace_count() {
+    let original = IpcResponse::TraceCount { count: 12345 };
+    let encoded = postcard::to_allocvec(&original).expect("encode TraceCount");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode TraceCount");
+    assert_eq!(decoded, original, "TraceCount roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: Events ──────────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_events_empty() {
+    let original = IpcResponse::Events { events: vec![] };
+    let encoded = postcard::to_allocvec(&original).expect("encode Events");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode Events");
+    assert_eq!(decoded, original, "Events roundtrip should be equal");
+}
+
+#[test]
+fn ipc_response_roundtrip_events_with_items() {
+    let original = IpcResponse::Events {
+        events: vec![
+            crate::IpcTraceEvent {
+                sequence: 1,
+                kind: crate::IpcTraceEventKind::RunSubmitted { run: RunId::new(10) },
+            },
+            crate::IpcTraceEvent {
+                sequence: 2,
+                kind: crate::IpcTraceEventKind::RunFinished { run: RunId::new(10) },
+            },
+        ],
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode Events");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode Events");
+    assert_eq!(decoded, original, "Events roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: Inspected ───────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_inspected() {
+    let original = IpcResponse::Inspected { run_id: 99 };
+    let encoded = postcard::to_allocvec(&original).expect("encode Inspected");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode Inspected");
+    assert_eq!(decoded, original, "Inspected roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: RunList ─────────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_run_list_empty() {
+    let original = IpcResponse::RunList { runs: vec![] };
+    let encoded = postcard::to_allocvec(&original).expect("encode RunList");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode RunList");
+    assert_eq!(decoded, original, "RunList roundtrip should be equal");
+}
+
+#[test]
+fn ipc_response_roundtrip_run_list_with_entries() {
+    let original = IpcResponse::RunList {
+        runs: vec![
+            crate::RunSummary {
+                run_id: RunId::new(1),
+                workflow: WorkflowDigest::from_bytes([0xAA; 32]),
+                state: crate::RunListState::Active,
+                submitted_seq: 100,
+                finished_seq: None,
+                step_count: 5,
+                steps_completed: 2,
+            },
+            crate::RunSummary {
+                run_id: RunId::new(2),
+                workflow: WorkflowDigest::from_bytes([0xBB; 32]),
+                state: crate::RunListState::Finished,
+                submitted_seq: 200,
+                finished_seq: Some(250),
+                step_count: 8,
+                steps_completed: 8,
+            },
+        ],
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode RunList");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode RunList");
+    assert_eq!(decoded, original, "RunList roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: Metrics ─────────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_metrics() {
+    let original = IpcResponse::Metrics(crate::RuntimeMetrics {
+        shards: vec![crate::ShardMetrics {
+            shard_id: 0,
+            active_runs: 3,
+            ready_queue_depth: 1,
+            action_queue_depth: 2,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 256,
+            trace_ring_fill_pct: 12.5_f32,
+            steps_total: 42,
+            actions_total: 7,
+        }],
+        journal: crate::JournalMetrics {
+            writer_queue_depth: 0,
+            total_events: 1000,
+            total_runs: 50,
+        },
+        ipc: crate::IpcMetrics {
+            connected_clients: 2,
+            commands_processed: 200,
+        },
+        totals: crate::AggregateMetrics {
+            runs_active: 3,
+            runs_waiting: 1,
+            runs_failed_total: 5,
+            runs_finished_total: 45,
+        },
+    });
+    let encoded = postcard::to_allocvec(&original).expect("encode Metrics");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode Metrics");
+    assert_eq!(decoded, original, "Metrics roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: VerifyWorkflow ──────────────────────
+
+#[test]
+fn ipc_response_roundtrip_verify_workflow() {
+    let original = IpcResponse::VerifyWorkflow {
+        result: crate::VerificationResult {
+            certificates: vec![
+                crate::CertificateWire {
+                    kind: String::from("gate_01"),
+                    status: String::from("Pass"),
+                    details: String::new(),
+                },
+                crate::CertificateWire {
+                    kind: String::from("gate_02"),
+                    status: String::from("Fail"),
+                    details: String::from("stack depth exceeded"),
+                },
+            ],
+            total_checks: 2,
+            pass_count: 1,
+            fail_count: 1,
+        },
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode VerifyWorkflow");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode VerifyWorkflow");
+    assert_eq!(decoded, original, "VerifyWorkflow roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: TaintReport ─────────────────────────
+
+#[test]
+fn ipc_response_roundtrip_taint_report_safe() {
+    let original = IpcResponse::TaintReport {
+        sources: vec![1, 5],
+        sinks: vec![10],
+        finish_safe: true,
+        paths: vec![],
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode TaintReport");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode TaintReport");
+    assert_eq!(decoded, original, "TaintReport roundtrip should be equal");
+}
+
+#[test]
+fn ipc_response_roundtrip_taint_report_with_paths() {
+    let original = IpcResponse::TaintReport {
+        sources: vec![0],
+        sinks: vec![9],
+        finish_safe: false,
+        paths: vec![
+            crate::TaintPathWire {
+                from: 0,
+                to: 3,
+                status: String::from("warning"),
+            },
+            crate::TaintPathWire {
+                from: 3,
+                to: 9,
+                status: String::from("dangerous"),
+            },
+        ],
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode TaintReport");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode TaintReport");
+    assert_eq!(decoded, original, "TaintReport roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: WorkflowGraph ───────────────────────
+
+#[test]
+fn ipc_response_roundtrip_workflow_graph() {
+    let original = IpcResponse::WorkflowGraph {
+        nodes: vec![
+            crate::NodeDescriptor {
+                step_idx: 0,
+                kind: String::from("Nop"),
+                next: Some(1),
+                title: String::from("start"),
+            },
+            crate::NodeDescriptor {
+                step_idx: 1,
+                kind: String::from("Finish"),
+                next: None,
+                title: String::from("end"),
+            },
+        ],
+        edges: vec![
+            crate::EdgeDescriptor {
+                from: 0,
+                to: 1,
+                label: None,
+                edge_type: String::from("fallthrough"),
+            },
+        ],
+    };
+    let encoded = postcard::to_allocvec(&original).expect("encode WorkflowGraph");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowGraph");
+    assert_eq!(decoded, original, "WorkflowGraph roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: WorkflowResolutionUnsupported ───────
+
+#[test]
+fn ipc_response_roundtrip_workflow_resolution_unsupported() {
+    let original = IpcResponse::WorkflowResolutionUnsupported;
+    let encoded = postcard::to_allocvec(&original).expect("encode WorkflowResolutionUnsupported");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowResolutionUnsupported");
+    assert_eq!(decoded, original, "WorkflowResolutionUnsupported roundtrip should be equal");
+}
+
+// ── IpcResponse serialization roundtrip: WorkflowDigestMismatch ──────────────
+
+#[test]
+fn ipc_response_roundtrip_workflow_digest_mismatch() {
+    let original = IpcResponse::WorkflowDigestMismatch;
+    let encoded = postcard::to_allocvec(&original).expect("encode WorkflowDigestMismatch");
+    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowDigestMismatch");
+    assert_eq!(decoded, original, "WorkflowDigestMismatch roundtrip should be equal");
+}
+
+// ── RunListState serialization roundtrip ─────────────────────────────────────
+
+#[test]
+fn run_list_state_roundtrip_active() {
+    let original = crate::RunListState::Active;
+    let encoded = postcard::to_allocvec(&original).expect("encode Active");
+    let decoded: crate::RunListState = postcard::from_bytes(&encoded).expect("decode Active");
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn run_list_state_roundtrip_finished() {
+    let original = crate::RunListState::Finished;
+    let encoded = postcard::to_allocvec(&original).expect("encode Finished");
+    let decoded: crate::RunListState = postcard::from_bytes(&encoded).expect("decode Finished");
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn run_list_state_roundtrip_failed() {
+    let original = crate::RunListState::Failed;
+    let encoded = postcard::to_allocvec(&original).expect("encode Failed");
+    let decoded: crate::RunListState = postcard::from_bytes(&encoded).expect("decode Failed");
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn run_list_state_roundtrip_cancelled() {
+    let original = crate::RunListState::Cancelled;
+    let encoded = postcard::to_allocvec(&original).expect("encode Cancelled");
+    let decoded: crate::RunListState = postcard::from_bytes(&encoded).expect("decode Cancelled");
+    assert_eq!(decoded, original);
 }
 
 // ── cleanup helpers ──────────────────────────────────────────────────────────

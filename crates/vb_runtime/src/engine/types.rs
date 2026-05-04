@@ -644,4 +644,246 @@ mod tests {
             "BRANCH_LIMIT_EXCEEDED"
         );
     }
+
+    #[test]
+    fn retry_exhausted_has_runtime_code() {
+        let error = RuntimeEngineError::RetryExhausted { action: ActionId::new(7), attempts: 3 };
+        assert_eq!(error.runtime_code(), Some(RuntimeEngineError::RETRY_EXHAUSTED_RUNTIME_CODE));
+        assert_eq!(RuntimeEngineError::RETRY_EXHAUSTED_RUNTIME_CODE, "RETRY_EXHAUSTED");
+    }
+
+    #[test]
+    fn taint_violation_has_no_runtime_code() {
+        let error = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        assert_eq!(error.runtime_code(), None);
+    }
+
+    #[test]
+    fn retry_exhausted_display_contains_action_and_attempts() {
+        let error = RuntimeEngineError::RetryExhausted { action: ActionId::new(42), attempts: 5 };
+        let msg = format!("{error}");
+        assert!(msg.contains("42"), "display should mention action id: '{msg}'");
+        assert!(msg.contains("5"), "display should mention attempts: '{msg}'");
+    }
+
+    #[test]
+    fn taint_violation_display_contains_step() {
+        let error = RuntimeEngineError::TaintViolation { step: StepIdx::new(9) };
+        let msg = format!("{error}");
+        assert!(msg.contains("taint violation"), "display should mention taint violation: '{msg}'");
+    }
+
+    #[test]
+    fn branch_limit_exceeded_display_contains_counts() {
+        let error = RuntimeEngineError::BranchLimitExceeded { max: 100, requested: 200 };
+        let msg = format!("{error}");
+        assert!(msg.contains("100"), "display should contain max: '{msg}'");
+        assert!(msg.contains("200"), "display should contain requested: '{msg}'");
+    }
+
+    #[test]
+    fn retry_exhausted_equality_same_fields() {
+        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn retry_exhausted_inequality_different_attempts() {
+        let a = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 3 };
+        let b = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 5 };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn taint_violation_equality_same_step() {
+        let a = RuntimeEngineError::TaintViolation { step: StepIdx::new(3) };
+        let b = RuntimeEngineError::TaintViolation { step: StepIdx::new(3) };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn taint_violation_inequality_different_step() {
+        let a = RuntimeEngineError::TaintViolation { step: StepIdx::new(1) };
+        let b = RuntimeEngineError::TaintViolation { step: StepIdx::new(2) };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn runtime_engine_error_variants_are_not_equal() {
+        let core = RuntimeEngineError::Core(EngineError::DivisionByZero);
+        let retry = RuntimeEngineError::RetryExhausted { action: ActionId::new(0), attempts: 1 };
+        let taint = RuntimeEngineError::TaintViolation { step: StepIdx::new(0) };
+        let branch = RuntimeEngineError::BranchLimitExceeded { max: 1, requested: 2 };
+        assert_ne!(core, retry);
+        assert_ne!(core, taint);
+        assert_ne!(core, branch);
+        assert_ne!(retry, taint);
+        assert_ne!(retry, branch);
+        assert_ne!(taint, branch);
+    }
+
+    #[test]
+    fn runtime_engine_error_clone_preserves_variant() {
+        let original = RuntimeEngineError::RetryExhausted { action: ActionId::new(10), attempts: 4 };
+        let cloned = original.clone();
+        assert_eq!(cloned, original);
+    }
+
+    #[test]
+    fn runtime_engine_error_debug_contains_variant_name() {
+        let retry = RuntimeEngineError::RetryExhausted { action: ActionId::new(1), attempts: 2 };
+        let debug = format!("{retry:?}");
+        assert!(debug.contains("RetryExhausted"), "expected 'RetryExhausted' in '{debug}'");
+        let taint = RuntimeEngineError::TaintViolation { step: StepIdx::new(5) };
+        let debug = format!("{taint:?}");
+        assert!(debug.contains("TaintViolation"), "expected 'TaintViolation' in '{debug}'");
+    }
+
+    // =====================================================================
+    // EvidenceCollector: SlotWritten content and mixed events
+    // =====================================================================
+
+    #[test]
+    fn evidence_collector_slot_written_preserves_slot_and_value() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_slot_written(SlotIdx::new(3), SlotValue::I64(99));
+        let events = collector.drain();
+        match events.first() {
+            Some(EvidenceEvent::SlotWritten { slot, value }) => {
+                assert_eq!(*slot, SlotIdx::new(3));
+                assert_eq!(*value, SlotValue::I64(99));
+            }
+            other => { let msg = format!("expected SlotWritten, got {other:?}"); panic!("{msg}"); }
+        }
+    }
+
+    #[test]
+    fn evidence_collector_slot_written_bool_value() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_slot_written(SlotIdx::new(0), SlotValue::Bool(true));
+        let events = collector.drain();
+        match events.first() {
+            Some(EvidenceEvent::SlotWritten { value, .. }) => assert_eq!(*value, SlotValue::Bool(true)),
+            other => { let msg = format!("expected SlotWritten, got {other:?}"); panic!("{msg}"); }
+        }
+    }
+
+    #[test]
+    fn evidence_collector_mixed_events_in_order() {
+        let mut collector = EvidenceCollector::new();
+        collector.push_step_started(StepIdx::new(0));
+        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
+        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)));
+        collector.push_step_started(StepIdx::new(1));
+        collector.push_step_succeeded(StepIdx::new(1), None);
+        let events = collector.drain();
+        assert_eq!(events.len(), 5);
+        assert!(matches!(events[0], EvidenceEvent::StepStarted { .. }));
+        assert!(matches!(events[1], EvidenceEvent::SlotWritten { .. }));
+        assert!(matches!(events[2], EvidenceEvent::StepSucceeded { .. }));
+        assert!(matches!(events[3], EvidenceEvent::StepStarted { .. }));
+        assert!(matches!(events[4], EvidenceEvent::StepSucceeded { .. }));
+    }
+
+    #[test]
+    fn evidence_collector_zero_capacity_drops_all() {
+        let mut collector = EvidenceCollector::with_capacity(0);
+        assert_eq!(collector.capacity(), 0);
+        collector.push_step_started(StepIdx::new(0));
+        assert_eq!(collector.len(), 0);
+        assert_eq!(collector.dropped(), 1);
+        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
+        assert_eq!(collector.dropped(), 2);
+        collector.push_step_succeeded(StepIdx::new(0), None);
+        assert_eq!(collector.dropped(), 3);
+    }
+
+    // =====================================================================
+    // RetryPolicy constants and equality
+    // =====================================================================
+
+    #[test]
+    fn retry_policy_never_has_one_attempt() {
+        assert_eq!(RetryPolicy::NEVER.max_attempts, 1);
+        assert_eq!(RetryPolicy::NEVER.base_delay_ms, 0);
+        assert!(!RetryPolicy::NEVER.exponential_backoff);
+    }
+
+    #[test]
+    fn retry_policy_default_has_three_attempts() {
+        assert_eq!(RetryPolicy::DEFAULT.max_attempts, 3);
+        assert_eq!(RetryPolicy::DEFAULT.base_delay_ms, 100);
+        assert!(!RetryPolicy::DEFAULT.exponential_backoff);
+    }
+
+    #[test]
+    fn retry_policy_equality() {
+        let a = RetryPolicy::NEVER;
+        let b = RetryPolicy { max_attempts: 1, base_delay_ms: 0, exponential_backoff: false };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn retry_policy_inequality_different_attempts() {
+        let a = RetryPolicy::NEVER;
+        let b = RetryPolicy { max_attempts: 2, base_delay_ms: 0, exponential_backoff: false };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn retry_policy_inequality_different_backoff() {
+        let a = RetryPolicy::DEFAULT;
+        let b = RetryPolicy { max_attempts: 3, base_delay_ms: 100, exponential_backoff: true };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn retry_policy_copy_semantics() {
+        let a = RetryPolicy::DEFAULT;
+        let b = a;
+        assert_eq!(a, b);
+    }
+
+    // =====================================================================
+    // RuntimeSignal coverage
+    // =====================================================================
+
+    #[test]
+    fn runtime_signal_continue_is_not_finished() {
+        assert_ne!(RuntimeSignal::Continue, RuntimeSignal::Finished(SlotValue::I64(0)));
+    }
+
+    #[test]
+    fn runtime_signal_finished_equality_same_value() {
+        assert_eq!(RuntimeSignal::Finished(SlotValue::I64(42)), RuntimeSignal::Finished(SlotValue::I64(42)));
+    }
+
+    #[test]
+    fn runtime_signal_finished_inequality_different_value() {
+        assert_ne!(RuntimeSignal::Finished(SlotValue::I64(1)), RuntimeSignal::Finished(SlotValue::I64(2)));
+    }
+
+    #[test]
+    fn runtime_signal_all_variants_are_distinct() {
+        let signals = [
+            RuntimeSignal::Continue,
+            RuntimeSignal::Finished(SlotValue::Null),
+            RuntimeSignal::StepBudgetExhausted,
+            RuntimeSignal::AwaitingWait,
+            RuntimeSignal::AwaitingAsk,
+        ];
+        for (i, si) in signals.iter().enumerate() {
+            for (j, sj) in signals.iter().enumerate() {
+                if i != j { assert_ne!(si, sj); }
+            }
+        }
+    }
+
+    #[test]
+    fn runtime_signal_clone_preserves_value() {
+        let original = RuntimeSignal::Finished(SlotValue::Bool(true));
+        let cloned = original.clone();
+        assert_eq!(cloned, original);
+    }
 }
