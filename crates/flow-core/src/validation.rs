@@ -217,7 +217,11 @@ mod tests {
                         PortRole::Source
                     },
                     label: SmolStr::from(*p),
-                    order: i as u16,
+                    order: if let Ok(v) = u16::try_from(i) {
+                        v
+                    } else {
+                        u16::MAX
+                    },
                     cardinality: Cardinality::One,
                     data_type: None,
                 })

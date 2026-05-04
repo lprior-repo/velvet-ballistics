@@ -1344,7 +1344,6 @@ mod tests {
             Point::new(50.0, -100.0),
             Point::new(100.0, 0.0),
         );
-        let len_16 = curve.arc_length(16);
         let len_64 = curve.arc_length(64);
         let len_256 = curve.arc_length(256);
         // More samples should give more accurate (and converging) results

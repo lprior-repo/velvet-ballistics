@@ -381,4 +381,133 @@ mod tests {
         // Data and Control are both secondary text color
         assert_eq!(node_colors::DATA, node_colors::CONTROL);
     }
+
+    // =====================================================================
+    // Additional comprehensive coverage tests
+    // =====================================================================
+
+    // ---- Neon colors are all fully opaque ----
+
+    #[test]
+    fn all_neon_colors_are_opaque() {
+        let neons = [
+            ("NEON_CYAN", colors::NEON_CYAN),
+            ("NEON_MAGENTA", colors::NEON_MAGENTA),
+            ("NEON_YELLOW", colors::NEON_YELLOW),
+            ("NEON_GREEN", colors::NEON_GREEN),
+            ("NEON_RED", colors::NEON_RED),
+            ("NEON_PURPLE", colors::NEON_PURPLE),
+            ("NEON_ORANGE", colors::NEON_ORANGE),
+            ("NEON_TEAL", colors::NEON_TEAL),
+            ("NEON_PINK", colors::NEON_PINK),
+            ("NEON_BLUE", colors::NEON_BLUE),
+        ];
+        for (name, c) in &neons {
+            assert_opaque(*c, name);
+        }
+    }
+
+    // ---- Background colors are dark ----
+
+    #[test]
+    fn all_background_colors_are_dark() {
+        let bgs = [
+            ("CANVAS_BG", colors::CANVAS_BG),
+            ("PANEL_BG", colors::PANEL_BG),
+            ("PANEL_BG_ALT", colors::PANEL_BG_ALT),
+            ("CARD_BG", colors::CARD_BG),
+        ];
+        for (name, c) in &bgs {
+            assert_valid_color(*c, name);
+            assert_opaque(*c, name);
+            // All background components should be below 0.2
+            assert!(c[0] < 0.2, "{name} red should be dark: {}", c[0]);
+            assert!(c[1] < 0.2, "{name} green should be dark: {}", c[1]);
+            assert!(c[2] < 0.2, "{name} blue should be dark: {}", c[2]);
+        }
+    }
+
+    // ---- Neon colors are saturated ----
+
+    #[test]
+    fn neon_colors_are_saturated() {
+        let neons = [
+            colors::NEON_CYAN,
+            colors::NEON_MAGENTA,
+            colors::NEON_YELLOW,
+            colors::NEON_GREEN,
+            colors::NEON_RED,
+            colors::NEON_PURPLE,
+            colors::NEON_ORANGE,
+            colors::NEON_TEAL,
+            colors::NEON_PINK,
+            colors::NEON_BLUE,
+        ];
+        for c in &neons {
+            // At least one channel should be > 0.8 (bright/saturated)
+            assert!(
+                c[0] > 0.8 || c[1] > 0.8 || c[2] > 0.8,
+                "neon color {:?} should have at least one bright channel",
+                c
+            );
+        }
+    }
+
+    // ---- State colors are all valid and opaque ----
+
+    #[test]
+    fn all_state_colors_are_valid_and_opaque() {
+        let states = [
+            ("STATE_SUCCEEDED", colors::STATE_SUCCEEDED),
+            ("STATE_RUNNING", colors::STATE_RUNNING),
+            ("STATE_FAILED", colors::STATE_FAILED),
+            ("STATE_WAITING", colors::STATE_WAITING),
+            ("STATE_ASKING", colors::STATE_ASKING),
+            ("STATE_PENDING", colors::STATE_PENDING),
+            ("STATE_CANCELLED", colors::STATE_CANCELLED),
+            ("STATE_SECRET", colors::STATE_SECRET),
+        ];
+        for (name, c) in &states {
+            assert_valid_color(*c, name);
+            assert_opaque(*c, name);
+        }
+    }
+
+    // ---- Node colors are all distinct from each other (where expected) ----
+
+    #[test]
+    fn node_colors_external_branch_distinct() {
+        assert_ne!(node_colors::EXTERNAL, node_colors::BRANCH);
+    }
+
+    #[test]
+    fn node_colors_suspend_error_distinct() {
+        assert_ne!(node_colors::SUSPEND, node_colors::ERROR);
+    }
+
+    #[test]
+    fn node_colors_terminal_control_distinct() {
+        assert_ne!(node_colors::TERMINAL, node_colors::CONTROL);
+    }
+
+    // ---- Text hierarchy ----
+
+    #[test]
+    fn text_colors_form_brightness_hierarchy() {
+        // TEXT_PRIMARY > TEXT_SECONDARY > TEXT_DIM in brightness
+        let primary_brightness = colors::TEXT_PRIMARY[0];
+        let secondary_brightness = colors::TEXT_SECONDARY[0];
+        let dim_brightness = colors::TEXT_DIM[0];
+        assert!(primary_brightness > secondary_brightness);
+        assert!(secondary_brightness > dim_brightness);
+    }
+
+    // ---- Grid line darker than border ----
+
+    #[test]
+    fn grid_line_is_between_canvas_and_border() {
+        // GRID_LINE should be between CANVAS_BG and BORDER in brightness
+        assert!(colors::GRID_LINE[0] > colors::CANVAS_BG[0]);
+        assert!(colors::GRID_LINE[0] < colors::BORDER[0]);
+    }
 }

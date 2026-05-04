@@ -573,18 +573,22 @@ mod tests {
     // ---- FlowPatch variants ----
 
     #[test]
-    fn patch_insert_node() {
+    fn patch_insert_node() -> Result<(), String> {
         let node = make_node("n1");
         let patch = FlowPatch::InsertNode { node };
-        if let FlowPatch::InsertNode { node: ref n } = patch {
-            assert_eq!(n.id, nid("n1"));
-        } else {
-            panic!("expected InsertNode variant");
+        match &patch {
+            FlowPatch::InsertNode { node: n } => {
+                if n.id != nid("n1") {
+                    return Err(String::from("expected node id n1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected InsertNode variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_update_node() {
+    fn patch_update_node() -> Result<(), String> {
         let changes = NodeChangeSet {
             position: Some([10.0, 20.0]),
             ..NodeChangeSet::default()
@@ -593,37 +597,51 @@ mod tests {
             id: nid("n1"),
             changes,
         };
-        if let FlowPatch::UpdateNode { id, changes } = patch {
-            assert_eq!(id, nid("n1"));
-            assert!(changes.position.is_some());
-        } else {
-            panic!("expected UpdateNode variant");
+        match patch {
+            FlowPatch::UpdateNode { id, changes } => {
+                if id != nid("n1") {
+                    return Err(String::from("expected id n1"));
+                }
+                if changes.position.is_none() {
+                    return Err(String::from("expected position to be set"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected UpdateNode variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_remove_node() {
+    fn patch_remove_node() -> Result<(), String> {
         let patch = FlowPatch::RemoveNode { id: nid("n1") };
-        if let FlowPatch::RemoveNode { id } = patch {
-            assert_eq!(id, nid("n1"));
-        } else {
-            panic!("expected RemoveNode variant");
+        match patch {
+            FlowPatch::RemoveNode { id } => {
+                if id != nid("n1") {
+                    return Err(String::from("expected id n1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected RemoveNode variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_insert_edge() {
+    fn patch_insert_edge() -> Result<(), String> {
         let edge = make_edge("e1", "n1", "n2");
         let patch = FlowPatch::InsertEdge { edge };
-        if let FlowPatch::InsertEdge { edge: ref e } = patch {
-            assert_eq!(e.id, eid("e1"));
-        } else {
-            panic!("expected InsertEdge variant");
+        match &patch {
+            FlowPatch::InsertEdge { edge: e } => {
+                if e.id != eid("e1") {
+                    return Err(String::from("expected edge id e1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected InsertEdge variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_update_edge() {
+    fn patch_update_edge() -> Result<(), String> {
         let changes = EdgeChangeSet {
             label: Some(Some(SmolStr::from("new-label"))),
             ..EdgeChangeSet::default()
@@ -632,37 +650,51 @@ mod tests {
             id: eid("e1"),
             changes,
         };
-        if let FlowPatch::UpdateEdge { id, changes } = patch {
-            assert_eq!(id, eid("e1"));
-            assert!(changes.label.is_some());
-        } else {
-            panic!("expected UpdateEdge variant");
+        match patch {
+            FlowPatch::UpdateEdge { id, changes } => {
+                if id != eid("e1") {
+                    return Err(String::from("expected id e1"));
+                }
+                if changes.label.is_none() {
+                    return Err(String::from("expected label to be set"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected UpdateEdge variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_remove_edge() {
+    fn patch_remove_edge() -> Result<(), String> {
         let patch = FlowPatch::RemoveEdge { id: eid("e1") };
-        if let FlowPatch::RemoveEdge { id } = patch {
-            assert_eq!(id, eid("e1"));
-        } else {
-            panic!("expected RemoveEdge variant");
+        match patch {
+            FlowPatch::RemoveEdge { id } => {
+                if id != eid("e1") {
+                    return Err(String::from("expected id e1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected RemoveEdge variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_insert_group() {
+    fn patch_insert_group() -> Result<(), String> {
         let group = make_group("g1");
         let patch = FlowPatch::InsertGroup { group };
-        if let FlowPatch::InsertGroup { group: ref g } = patch {
-            assert_eq!(g.id, gid("g1"));
-        } else {
-            panic!("expected InsertGroup variant");
+        match &patch {
+            FlowPatch::InsertGroup { group: g } => {
+                if g.id != gid("g1") {
+                    return Err(String::from("expected group id g1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected InsertGroup variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_update_group() {
+    fn patch_update_group() -> Result<(), String> {
         let changes = GroupChangeSet {
             title: Some(SmolStr::from("renamed")),
             ..GroupChangeSet::default()
@@ -671,95 +703,129 @@ mod tests {
             id: gid("g1"),
             changes,
         };
-        if let FlowPatch::UpdateGroup { id, changes } = patch {
-            assert_eq!(id, gid("g1"));
-            assert!(changes.title.is_some());
-        } else {
-            panic!("expected UpdateGroup variant");
+        match patch {
+            FlowPatch::UpdateGroup { id, changes } => {
+                if id != gid("g1") {
+                    return Err(String::from("expected id g1"));
+                }
+                if changes.title.is_none() {
+                    return Err(String::from("expected title to be set"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected UpdateGroup variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_remove_group() {
+    fn patch_remove_group() -> Result<(), String> {
         let patch = FlowPatch::RemoveGroup { id: gid("g1") };
-        if let FlowPatch::RemoveGroup { id } = patch {
-            assert_eq!(id, gid("g1"));
-        } else {
-            panic!("expected RemoveGroup variant");
+        match patch {
+            FlowPatch::RemoveGroup { id } => {
+                if id != gid("g1") {
+                    return Err(String::from("expected id g1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected RemoveGroup variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_set_viewport() {
+    fn patch_set_viewport() -> Result<(), String> {
         let vp = ViewportState {
             pan_x: 10.0,
             pan_y: -5.0,
             zoom: 2.0,
         };
         let patch = FlowPatch::SetViewport { viewport: vp };
-        if let FlowPatch::SetViewport { viewport } = patch {
-            assert!((viewport.pan_x - 10.0).abs() < f64::EPSILON);
-            assert!((viewport.zoom - 2.0).abs() < f64::EPSILON);
-        } else {
-            panic!("expected SetViewport variant");
+        match patch {
+            FlowPatch::SetViewport { viewport } => {
+                if (viewport.pan_x - 10.0).abs() >= f64::EPSILON {
+                    return Err(String::from("pan_x mismatch"));
+                }
+                if (viewport.zoom - 2.0).abs() >= f64::EPSILON {
+                    return Err(String::from("zoom mismatch"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected SetViewport variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_set_entry_node_some() {
+    fn patch_set_entry_node_some() -> Result<(), String> {
         let patch = FlowPatch::SetEntryNode {
             node: Some(nid("n1")),
         };
-        if let FlowPatch::SetEntryNode { node } = patch {
-            assert!(node.is_some());
-        } else {
-            panic!("expected SetEntryNode variant");
+        match patch {
+            FlowPatch::SetEntryNode { node } => {
+                if node.is_none() {
+                    return Err(String::from("expected Some"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected SetEntryNode variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_set_entry_node_none() {
+    fn patch_set_entry_node_none() -> Result<(), String> {
         let patch = FlowPatch::SetEntryNode { node: None };
-        if let FlowPatch::SetEntryNode { node } = patch {
-            assert!(node.is_none());
-        } else {
-            panic!("expected SetEntryNode variant");
+        match patch {
+            FlowPatch::SetEntryNode { node } => {
+                if node.is_some() {
+                    return Err(String::from("expected None"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected SetEntryNode variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_reparent_nodes() {
+    fn patch_reparent_nodes() -> Result<(), String> {
         let patch = FlowPatch::ReparentNodes {
             node_ids: vec![nid("n1"), nid("n2")],
             new_parent: Some(gid("g1")),
         };
-        if let FlowPatch::ReparentNodes {
-            node_ids,
-            new_parent,
-        } = patch
-        {
-            assert_eq!(node_ids.len(), 2);
-            assert!(new_parent.is_some());
-        } else {
-            panic!("expected ReparentNodes variant");
+        match patch {
+            FlowPatch::ReparentNodes {
+                node_ids,
+                new_parent,
+            } => {
+                if node_ids.len() != 2 {
+                    return Err(String::from("expected 2 node_ids"));
+                }
+                if new_parent.is_none() {
+                    return Err(String::from("expected Some parent"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ReparentNodes variant, got {other:?}")),
         }
     }
 
     #[test]
-    fn patch_reparent_nodes_remove_parent() {
+    fn patch_reparent_nodes_remove_parent() -> Result<(), String> {
         let patch = FlowPatch::ReparentNodes {
             node_ids: vec![nid("n1")],
             new_parent: None,
         };
-        if let FlowPatch::ReparentNodes {
-            node_ids,
-            new_parent,
-        } = patch
-        {
-            assert_eq!(node_ids.len(), 1);
-            assert!(new_parent.is_none());
-        } else {
-            panic!("expected ReparentNodes variant");
+        match patch {
+            FlowPatch::ReparentNodes {
+                node_ids,
+                new_parent,
+            } => {
+                if node_ids.len() != 1 {
+                    return Err(String::from("expected 1 node_id"));
+                }
+                if new_parent.is_some() {
+                    return Err(String::from("expected None parent"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ReparentNodes variant, got {other:?}")),
         }
     }
 
@@ -851,7 +917,7 @@ mod tests {
     // ---- FlowCommand ----
 
     #[test]
-    fn command_apply_transaction() {
+    fn command_apply_transaction() -> Result<(), String> {
         let txn = FlowTransaction {
             id: 1,
             label: SmolStr::from("test"),
@@ -860,10 +926,14 @@ mod tests {
             merge_key: None,
         };
         let cmd = FlowCommand::ApplyTransaction(txn);
-        if let FlowCommand::ApplyTransaction(t) = cmd {
-            assert_eq!(t.id, 1);
-        } else {
-            panic!("expected ApplyTransaction");
+        match cmd {
+            FlowCommand::ApplyTransaction(t) => {
+                if t.id != 1 {
+                    return Err(String::from("expected id 1"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ApplyTransaction, got {other:?}")),
         }
     }
 
@@ -884,81 +954,110 @@ mod tests {
     // ---- FlowEvent ----
 
     #[test]
-    fn event_transaction_committed() {
+    fn event_transaction_committed() -> Result<(), String> {
         let summary = TransactionSummary::default();
         let event = FlowEvent::TransactionCommitted { summary };
-        if let FlowEvent::TransactionCommitted { summary } = event {
-            assert_eq!(summary.nodes_added, 0);
-        } else {
-            panic!("expected TransactionCommitted");
+        match event {
+            FlowEvent::TransactionCommitted { summary } => {
+                if summary.nodes_added != 0 {
+                    return Err(String::from("expected 0 nodes_added"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected TransactionCommitted, got {other:?}")),
         }
     }
 
     #[test]
-    fn event_transaction_rejected() {
+    fn event_transaction_rejected() -> Result<(), String> {
         let event = FlowEvent::TransactionRejected {
             reason: String::from("validation failed"),
         };
-        if let FlowEvent::TransactionRejected { reason } = event {
-            assert_eq!(reason, "validation failed");
-        } else {
-            panic!("expected TransactionRejected");
+        match event {
+            FlowEvent::TransactionRejected { reason } => {
+                if reason != "validation failed" {
+                    return Err(format!("unexpected reason: {reason}"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected TransactionRejected, got {other:?}")),
         }
     }
 
     #[test]
-    fn event_selection_changed() {
+    fn event_selection_changed() -> Result<(), String> {
         let sel = SelectionState::default();
         let event = FlowEvent::SelectionChanged(sel);
-        if let FlowEvent::SelectionChanged(s) = event {
-            assert!(s.selected_nodes.is_empty());
-        } else {
-            panic!("expected SelectionChanged");
+        match event {
+            FlowEvent::SelectionChanged(s) => {
+                if !s.selected_nodes.is_empty() {
+                    return Err(String::from("expected empty selection"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected SelectionChanged, got {other:?}")),
         }
     }
 
     #[test]
-    fn event_viewport_changed() {
+    fn event_viewport_changed() -> Result<(), String> {
         let vp = ViewportState::default();
         let event = FlowEvent::ViewportChanged(vp);
-        if let FlowEvent::ViewportChanged(v) = event {
-            assert!((v.zoom - 1.0).abs() < f64::EPSILON);
-        } else {
-            panic!("expected ViewportChanged");
+        match event {
+            FlowEvent::ViewportChanged(v) => {
+                if (v.zoom - 1.0).abs() >= f64::EPSILON {
+                    return Err(String::from("zoom mismatch"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ViewportChanged, got {other:?}")),
         }
     }
 
     #[test]
-    fn event_diagnostics_changed() {
+    fn event_diagnostics_changed() -> Result<(), String> {
         let event = FlowEvent::DiagnosticsChanged(Vec::new());
-        if let FlowEvent::DiagnosticsChanged(d) = event {
-            assert!(d.is_empty());
-        } else {
-            panic!("expected DiagnosticsChanged");
+        match event {
+            FlowEvent::DiagnosticsChanged(d) => {
+                if !d.is_empty() {
+                    return Err(String::from("expected empty diagnostics"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected DiagnosticsChanged, got {other:?}")),
         }
     }
 
     #[test]
-    fn event_connection_proposed() {
+    fn event_connection_proposed() -> Result<(), String> {
         let event = FlowEvent::ConnectionProposed {
             source_node: nid("n1"),
             source_port: SmolStr::from("out"),
             target_node: nid("n2"),
             target_port: SmolStr::from("in"),
         };
-        if let FlowEvent::ConnectionProposed {
-            source_node,
-            source_port,
-            target_node,
-            target_port,
-        } = event
-        {
-            assert_eq!(source_node, nid("n1"));
-            assert_eq!(source_port.as_str(), "out");
-            assert_eq!(target_node, nid("n2"));
-            assert_eq!(target_port.as_str(), "in");
-        } else {
-            panic!("expected ConnectionProposed");
+        match event {
+            FlowEvent::ConnectionProposed {
+                source_node,
+                source_port,
+                target_node,
+                target_port,
+            } => {
+                if source_node != nid("n1") {
+                    return Err(String::from("source_node mismatch"));
+                }
+                if source_port.as_str() != "out" {
+                    return Err(String::from("source_port mismatch"));
+                }
+                if target_node != nid("n2") {
+                    return Err(String::from("target_node mismatch"));
+                }
+                if target_port.as_str() != "in" {
+                    return Err(String::from("target_port mismatch"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected ConnectionProposed, got {other:?}")),
         }
     }
 
@@ -1003,70 +1102,84 @@ mod tests {
     // ---- Patch clone ----
 
     #[test]
-    fn patch_clone_preserves_data() {
+    fn patch_clone_preserves_data() -> Result<(), String> {
         let patch = FlowPatch::InsertNode {
             node: make_node("n1"),
         };
         let cloned = patch.clone();
-        if let FlowPatch::InsertNode { node } = cloned {
-            assert_eq!(node.id, nid("n1"));
-        } else {
-            panic!("expected InsertNode after clone");
+        match cloned {
+            FlowPatch::InsertNode { node } => {
+                if node.id != nid("n1") {
+                    return Err(String::from("id mismatch after clone"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected InsertNode after clone, got {other:?}")),
         }
     }
 
     // ---- Serialization ----
 
     #[test]
-    fn patch_serialization_roundtrip() {
+    fn patch_serialization_roundtrip() -> Result<(), String> {
         let patch = FlowPatch::InsertNode {
             node: make_node("n1"),
         };
-        let json = serde_json::to_string(&patch).expect("serialize");
-        let back: FlowPatch = serde_json::from_str(&json).expect("deserialize");
-        if let FlowPatch::InsertNode { node } = back {
-            assert_eq!(node.id, nid("n1"));
-        } else {
-            panic!("expected InsertNode after roundtrip");
+        let json = serde_json::to_string(&patch).map_err(|e| e.to_string())?;
+        let back: FlowPatch = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        match back {
+            FlowPatch::InsertNode { node } => {
+                if node.id != nid("n1") {
+                    return Err(String::from("id mismatch after roundtrip"));
+                }
+                Ok(())
+            }
+            other => Err(format!("expected InsertNode after roundtrip, got {other:?}")),
         }
     }
 
     #[test]
-    fn node_change_set_serialization_roundtrip() {
+    fn node_change_set_serialization_roundtrip() -> Result<(), String> {
         let cs = NodeChangeSet {
             position: Some([1.0, 2.0]),
             title: Some(SmolStr::from("new-title")),
             ..NodeChangeSet::default()
         };
-        let json = serde_json::to_string(&cs).expect("serialize");
-        let back: NodeChangeSet = serde_json::from_str(&json).expect("deserialize");
-        assert!(back.position.is_some());
-        assert!(back.title.is_some());
-        assert!(back.size.is_none());
+        let json = serde_json::to_string(&cs).map_err(|e| e.to_string())?;
+        let back: NodeChangeSet = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        if back.position.is_none() || back.title.is_none() || back.size.is_some() {
+            return Err(String::from("roundtrip field mismatch"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn edge_change_set_serialization_roundtrip() {
+    fn edge_change_set_serialization_roundtrip() -> Result<(), String> {
         let cs = EdgeChangeSet {
             label: Some(Some(SmolStr::from("label"))),
             ..EdgeChangeSet::default()
         };
-        let json = serde_json::to_string(&cs).expect("serialize");
-        let back: EdgeChangeSet = serde_json::from_str(&json).expect("deserialize");
-        assert!(back.label.is_some());
+        let json = serde_json::to_string(&cs).map_err(|e| e.to_string())?;
+        let back: EdgeChangeSet = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        if back.label.is_none() {
+            return Err(String::from("label lost in roundtrip"));
+        }
+        Ok(())
     }
 
     #[test]
-    fn group_change_set_serialization_roundtrip() {
+    fn group_change_set_serialization_roundtrip() -> Result<(), String> {
         let cs = GroupChangeSet {
             title: Some(SmolStr::from("group-title")),
             bounds: Some([0.0, 0.0, 100.0, 100.0]),
             ..GroupChangeSet::default()
         };
-        let json = serde_json::to_string(&cs).expect("serialize");
-        let back: GroupChangeSet = serde_json::from_str(&json).expect("deserialize");
-        assert!(back.title.is_some());
-        assert!(back.bounds.is_some());
+        let json = serde_json::to_string(&cs).map_err(|e| e.to_string())?;
+        let back: GroupChangeSet = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        if back.title.is_none() || back.bounds.is_none() {
+            return Err(String::from("fields lost in roundtrip"));
+        }
+        Ok(())
     }
 
     // ---- EdgeChangeSet label semantics ----

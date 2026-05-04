@@ -827,18 +827,112 @@ fn bfs_forward(
     result
 }
 
-/// Enqueue the linear successor of a node for BFS traversal.
+/// Collects all successor step indices from a compiled node kind.
+///
+/// This includes branch targets, loop body/done exits, parallel branches,
+/// error handlers, jump targets -- every possible control-flow successor.
+fn all_successors(kind: &vb_core::workflow::CompiledNodeKind) -> Vec<u16> {
+    let mut succs = Vec::new();
+    match kind {
+        vb_core::workflow::CompiledNodeKind::Choose { branches, otherwise } => {
+            for branch in branches {
+                succs.push(branch.target.get());
+            }
+            if let Some(fallback) = otherwise {
+                succs.push(fallback.get());
+            }
+        }
+        vb_core::workflow::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for branch in branches {
+                succs.push(branch.target.get());
+            }
+            if let Some(fallback) = otherwise {
+                succs.push(fallback.get());
+            }
+        }
+        vb_core::workflow::CompiledNodeKind::ForEachStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::ForEachNext { body, done, .. } => {
+            succs.push(body.get());
+            succs.push(done.get());
+        }
+        vb_core::workflow::CompiledNodeKind::TogetherStart { branches, join, .. } => {
+            for branch_step in branches {
+                succs.push(branch_step.get());
+            }
+            succs.push(join.get());
+        }
+        vb_core::workflow::CompiledNodeKind::CollectStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::CollectPage { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::CollectNext { body, done, .. } => {
+            succs.push(body.get());
+            succs.push(done.get());
+        }
+        vb_core::workflow::CompiledNodeKind::ReduceStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::ReduceNext { body, done, .. } => {
+            succs.push(body.get());
+            succs.push(done.get());
+        }
+        vb_core::workflow::CompiledNodeKind::RepeatStart { body, done, .. }
+        | vb_core::workflow::CompiledNodeKind::RepeatAttempt { body, done, .. } => {
+            succs.push(body.get());
+            succs.push(done.get());
+        }
+        vb_core::workflow::CompiledNodeKind::RepeatCheck { done, .. } => {
+            succs.push(done.get());
+        }
+        vb_core::workflow::CompiledNodeKind::ErrorHandler { body, handler, .. } => {
+            succs.push(body.get());
+            succs.push(handler.get());
+        }
+        vb_core::workflow::CompiledNodeKind::Jump { target } => {
+            succs.push(target.get());
+        }
+        // Nodes without explicit multi-target edges; successors
+        // are handled via `node.next` by the caller.
+        vb_core::workflow::CompiledNodeKind::Nop
+        | vb_core::workflow::CompiledNodeKind::SetConst { .. }
+        | vb_core::workflow::CompiledNodeKind::Copy { .. }
+        | vb_core::workflow::CompiledNodeKind::EvalExpr { .. }
+        | vb_core::workflow::CompiledNodeKind::BuildObject { .. }
+        | vb_core::workflow::CompiledNodeKind::BuildList { .. }
+        | vb_core::workflow::CompiledNodeKind::Do { .. }
+        | vb_core::workflow::CompiledNodeKind::ForEachJoin { .. }
+        | vb_core::workflow::CompiledNodeKind::TogetherBranch { .. }
+        | vb_core::workflow::CompiledNodeKind::TogetherJoin { .. }
+        | vb_core::workflow::CompiledNodeKind::CollectFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::ReduceFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::RepeatFinish { .. }
+        | vb_core::workflow::CompiledNodeKind::WaitUntil { .. }
+        | vb_core::workflow::CompiledNodeKind::WaitEvent { .. }
+        | vb_core::workflow::CompiledNodeKind::Ask { .. }
+        | vb_core::workflow::CompiledNodeKind::AskResume { .. }
+        | vb_core::workflow::CompiledNodeKind::RetryCheck { .. }
+        | vb_core::workflow::CompiledNodeKind::Finish { .. } => {}
+    }
+    succs
+}
+
+/// Enqueue all successors (linear next + structural branches) for BFS traversal.
 fn enqueue_successors(
     node: &vb_core::workflow::CompiledNode,
     node_count: usize,
     visited: &mut std::collections::HashSet<u16>,
     queue: &mut std::collections::VecDeque<u16>,
 ) {
+    // Linear successor from node.next
     if let Some(next) = node.next {
         let next_u16 = next.get();
         let next_usize = next.as_usize();
         if next_usize < node_count && visited.insert(next_u16) {
             queue.push_back(next_u16);
+        }
+    }
+
+    // Structural successors (branches, loop targets, error handlers, jumps)
+    for succ in all_successors(&node.kind) {
+        let succ_usize = usize::from(succ);
+        if succ_usize < node_count && visited.insert(succ) {
+            queue.push_back(succ);
         }
     }
 }
@@ -1120,5 +1214,90 @@ mod tests {
                 assert!(false, "expected PayloadError, got {other:?}");
             }
         }
+    }
+
+    // ── all_successors regression tests ──
+
+    #[test]
+    fn all_successors_returns_empty_for_nop() {
+        let kind = vb_core::workflow::CompiledNodeKind::Nop;
+        let succs = all_successors(&kind);
+        assert!(succs.is_empty(), "Nop has no structural successors");
+    }
+
+    #[test]
+    fn all_successors_returns_empty_for_finish() {
+        let kind = vb_core::workflow::CompiledNodeKind::Finish { slot: vb_core::ids::SlotIdx::ZERO };
+        let succs = all_successors(&kind);
+        assert!(succs.is_empty(), "Finish has no structural successors");
+    }
+
+    #[test]
+    fn all_successors_includes_branch_targets_for_choose() {
+        let kind = vb_core::workflow::CompiledNodeKind::Choose {
+            branches: vec![
+                vb_core::workflow::BranchTarget { target: vb_core::ids::StepIdx::new(10) },
+                vb_core::workflow::BranchTarget { target: vb_core::ids::StepIdx::new(20) },
+            ],
+            otherwise: Some(vb_core::ids::StepIdx::new(30)),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&10), "should contain branch target 10");
+        assert!(succs.contains(&20), "should contain branch target 20");
+        assert!(succs.contains(&30), "should contain otherwise target 30");
+        assert_eq!(succs.len(), 3);
+    }
+
+    #[test]
+    fn all_successors_includes_body_and_done_for_foreach_start() {
+        let kind = vb_core::workflow::CompiledNodeKind::ForEachStart {
+            slot: vb_core::ids::SlotIdx::ZERO,
+            body: vb_core::ids::StepIdx::new(5),
+            done: vb_core::ids::StepIdx::new(15),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&5), "should contain body target");
+        assert!(succs.contains(&15), "should contain done target");
+        assert_eq!(succs.len(), 2);
+    }
+
+    #[test]
+    fn all_successors_includes_handler_for_error_handler() {
+        let kind = vb_core::workflow::CompiledNodeKind::ErrorHandler {
+            body: vb_core::ids::StepIdx::new(3),
+            handler: vb_core::ids::StepIdx::new(7),
+            slots: Vec::new(),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&3), "should contain body target");
+        assert!(succs.contains(&7), "should contain handler target");
+        assert_eq!(succs.len(), 2);
+    }
+
+    #[test]
+    fn all_successors_includes_target_for_jump() {
+        let kind = vb_core::workflow::CompiledNodeKind::Jump {
+            target: vb_core::ids::StepIdx::new(42),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&42), "should contain jump target");
+        assert_eq!(succs.len(), 1);
+    }
+
+    #[test]
+    fn all_successors_includes_parallel_branches_for_together_start() {
+        let kind = vb_core::workflow::CompiledNodeKind::TogetherStart {
+            branches: vec![
+                vb_core::ids::StepIdx::new(2),
+                vb_core::ids::StepIdx::new(4),
+            ],
+            join: vb_core::ids::StepIdx::new(6),
+            slots: Vec::new(),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&2), "should contain branch 0");
+        assert!(succs.contains(&4), "should contain branch 1");
+        assert!(succs.contains(&6), "should contain join target");
+        assert_eq!(succs.len(), 3);
     }
 }

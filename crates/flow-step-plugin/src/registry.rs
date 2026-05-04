@@ -825,4 +825,489 @@ mod tests {
             PortCardinality::Many
         ));
     }
+
+    // ========================================================================
+    // Comprehensive registry tests
+    // ========================================================================
+
+    /// All NodeShape variants can be constructed and matched exhaustively.
+    #[test]
+    fn node_shape_all_variants_are_matchable() {
+        let shapes = [
+            NodeShape::RoundedRect,
+            NodeShape::Diamond,
+            NodeShape::Circle,
+            NodeShape::Pill,
+            NodeShape::DoubleRoundedRect,
+        ];
+        for shape in &shapes {
+            let label = match shape {
+                NodeShape::RoundedRect => "rounded-rect",
+                NodeShape::Diamond => "diamond",
+                NodeShape::Circle => "circle",
+                NodeShape::Pill => "pill",
+                NodeShape::DoubleRoundedRect => "double-rounded-rect",
+            };
+            assert!(!label.is_empty());
+        }
+    }
+
+    /// NodeShape Copy trait allows multiple uses.
+    #[test]
+    fn node_shape_copy_allows_reuse() {
+        let shapes = [
+            NodeShape::RoundedRect,
+            NodeShape::Diamond,
+            NodeShape::Circle,
+            NodeShape::Pill,
+            NodeShape::DoubleRoundedRect,
+        ];
+        let copied: Vec<NodeShape> = shapes.to_vec();
+        assert_eq!(copied.len(), shapes.len());
+        for (original, copy) in shapes.iter().zip(copied.iter()) {
+            let orig_label = match original {
+                NodeShape::RoundedRect => 1,
+                NodeShape::Diamond => 2,
+                NodeShape::Circle => 3,
+                NodeShape::Pill => 4,
+                NodeShape::DoubleRoundedRect => 5,
+            };
+            let copy_label = match copy {
+                NodeShape::RoundedRect => 1,
+                NodeShape::Diamond => 2,
+                NodeShape::Circle => 3,
+                NodeShape::Pill => 4,
+                NodeShape::DoubleRoundedRect => 5,
+            };
+            assert_eq!(orig_label, copy_label);
+        }
+    }
+
+    /// PortCardinality Copy and Clone semantics.
+    #[test]
+    fn port_cardinality_copy_and_clone() {
+        let one = PortCardinality::One;
+        let many = PortCardinality::Many;
+        let one2 = one;
+        let many2 = many;
+        assert!(matches!(one2, PortCardinality::One));
+        assert!(matches!(many2, PortCardinality::Many));
+        let one3 = one.clone();
+        let many3 = many.clone();
+        assert!(matches!(one3, PortCardinality::One));
+        assert!(matches!(many3, PortCardinality::Many));
+    }
+
+    /// PortDescriptor clone preserves all fields.
+    #[test]
+    fn port_descriptor_clone_preserves_fields() {
+        let port = PortDescriptor {
+            id: SmolStr::from("in_data"),
+            label: SmolStr::from("Input Data"),
+            cardinality: PortCardinality::Many,
+        };
+        let cloned = port.clone();
+        assert_eq!(cloned.id, port.id);
+        assert_eq!(cloned.label, port.label);
+        assert!(matches!(cloned.cardinality, PortCardinality::Many));
+    }
+
+    /// DefaultPorts with many ports on each side.
+    #[test]
+    fn default_ports_with_multiple_inputs_and_outputs() {
+        let ports = DefaultPorts {
+            inputs: vec![
+                PortDescriptor {
+                    id: SmolStr::from("in_1"),
+                    label: SmolStr::from("Input 1"),
+                    cardinality: PortCardinality::One,
+                },
+                PortDescriptor {
+                    id: SmolStr::from("in_2"),
+                    label: SmolStr::from("Input 2"),
+                    cardinality: PortCardinality::Many,
+                },
+            ],
+            outputs: vec![
+                PortDescriptor {
+                    id: SmolStr::from("out_1"),
+                    label: SmolStr::from("Output 1"),
+                    cardinality: PortCardinality::One,
+                },
+                PortDescriptor {
+                    id: SmolStr::from("out_2"),
+                    label: SmolStr::from("Output 2"),
+                    cardinality: PortCardinality::One,
+                },
+            ],
+        };
+        assert_eq!(ports.inputs.len(), 2);
+        assert_eq!(ports.outputs.len(), 2);
+    }
+
+    /// NodeKindDescriptor debug output includes all relevant fields.
+    #[test]
+    fn node_kind_descriptor_debug_output() {
+        let desc = NodeKindDescriptor {
+            kind: SmolStr::from("custom"),
+            label: SmolStr::from("Custom Node"),
+            category: SmolStr::from("experimental"),
+            default_shape: NodeShape::Diamond,
+            default_ports: DefaultPorts {
+                inputs: vec![],
+                outputs: vec![],
+            },
+            is_terminal: true,
+            is_container: false,
+        };
+        let debug = format!("{desc:?}");
+        assert!(debug.contains("custom"), "debug should contain kind: {debug}");
+        assert!(
+            debug.contains("experimental"),
+            "debug should contain category: {debug}"
+        );
+    }
+
+    /// Register multiple kinds and verify all() returns them in insertion order.
+    #[test]
+    fn registry_all_preserves_insertion_order() {
+        let mut reg = NodeKindRegistry::new();
+        let kinds = ["zebra", "alpha", "middle", "omega"];
+        for &kind in &kinds {
+            reg.register(make_descriptor(kind, kind, "test"));
+        }
+        let all = reg.all();
+        assert_eq!(all.len(), kinds.len());
+        for (i, &expected_kind) in kinds.iter().enumerate() {
+            assert_eq!(
+                all[i].kind.as_str(),
+                expected_kind,
+                "expected kind at index {i} to be {expected_kind}"
+            );
+        }
+    }
+
+    /// get() returns first match when duplicates exist.
+    #[test]
+    fn registry_get_returns_first_of_duplicates() {
+        let mut reg = NodeKindRegistry::new();
+        reg.register(NodeKindDescriptor {
+            kind: SmolStr::from("dup"),
+            label: SmolStr::from("First"),
+            category: SmolStr::from("cat"),
+            default_shape: NodeShape::RoundedRect,
+            default_ports: DefaultPorts {
+                inputs: vec![],
+                outputs: vec![],
+            },
+            is_terminal: false,
+            is_container: false,
+        });
+        reg.register(NodeKindDescriptor {
+            kind: SmolStr::from("dup"),
+            label: SmolStr::from("Second"),
+            category: SmolStr::from("cat"),
+            default_shape: NodeShape::Circle,
+            default_ports: DefaultPorts {
+                inputs: vec![],
+                outputs: vec![],
+            },
+            is_terminal: true,
+            is_container: true,
+        });
+        let found = reg.get("dup");
+        assert!(found.is_some());
+        let desc = match found {
+            Some(d) => d,
+            None => return,
+        };
+        assert_eq!(desc.label.as_str(), "First");
+        assert!(matches!(desc.default_shape, NodeShape::RoundedRect));
+        assert!(!desc.is_terminal);
+    }
+
+    /// Verify all VB kinds have correct shapes.
+    #[test]
+    fn vb_kinds_shape_assignments() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+
+        let expected_shapes: [(&str, NodeShape); 11] = [
+            ("data", NodeShape::RoundedRect),
+            ("external", NodeShape::RoundedRect),
+            ("branch", NodeShape::Diamond),
+            ("terminal", NodeShape::Pill),
+            ("loop", NodeShape::DoubleRoundedRect),
+            ("parallel", NodeShape::DoubleRoundedRect),
+            ("collect", NodeShape::RoundedRect),
+            ("reduce", NodeShape::RoundedRect),
+            ("suspend", NodeShape::RoundedRect),
+            ("error", NodeShape::Pill),
+            ("control", NodeShape::Circle),
+        ];
+        for (kind, expected_shape) in &expected_shapes {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            let d = match desc {
+                Some(val) => val,
+                None => continue,
+            };
+            let matches_shape = match expected_shape {
+                NodeShape::RoundedRect => matches!(d.default_shape, NodeShape::RoundedRect),
+                NodeShape::Diamond => matches!(d.default_shape, NodeShape::Diamond),
+                NodeShape::Circle => matches!(d.default_shape, NodeShape::Circle),
+                NodeShape::Pill => matches!(d.default_shape, NodeShape::Pill),
+                NodeShape::DoubleRoundedRect => {
+                    matches!(d.default_shape, NodeShape::DoubleRoundedRect)
+                }
+            };
+            assert!(matches_shape, "kind {kind:?} should have correct shape");
+        }
+    }
+
+    /// Verify terminal flags for all VB kinds.
+    #[test]
+    fn vb_kinds_terminal_flags() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+
+        let terminal_kinds = ["terminal", "error"];
+        let non_terminal_kinds = [
+            "data", "external", "branch", "loop", "parallel", "collect", "reduce", "suspend",
+            "control",
+        ];
+        for kind in &terminal_kinds {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert!(
+                desc.map_or(false, |d| d.is_terminal),
+                "kind {kind:?} should be terminal"
+            );
+        }
+        for kind in &non_terminal_kinds {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert!(
+                desc.map_or(true, |d| !d.is_terminal),
+                "kind {kind:?} should NOT be terminal"
+            );
+        }
+    }
+
+    /// Verify container flags for all VB kinds.
+    #[test]
+    fn vb_kinds_container_flags() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+
+        let container_kinds = ["loop", "parallel"];
+        let non_container_kinds = [
+            "data", "external", "branch", "terminal", "collect", "reduce", "suspend", "error",
+            "control",
+        ];
+        for kind in &container_kinds {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert!(
+                desc.map_or(false, |d| d.is_container),
+                "kind {kind:?} should be a container"
+            );
+        }
+        for kind in &non_container_kinds {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert!(
+                desc.map_or(true, |d| !d.is_container),
+                "kind {kind:?} should NOT be a container"
+            );
+        }
+    }
+
+    /// Verify categories for all VB kinds.
+    #[test]
+    fn vb_kinds_category_assignments() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+
+        let expected_categories: [(&str, &str); 11] = [
+            ("data", "data"),
+            ("external", "external"),
+            ("branch", "branch"),
+            ("terminal", "terminal"),
+            ("loop", "control"),
+            ("parallel", "control"),
+            ("collect", "data"),
+            ("reduce", "data"),
+            ("suspend", "control"),
+            ("error", "terminal"),
+            ("control", "control"),
+        ];
+        for (kind, expected_cat) in &expected_categories {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert_eq!(
+                desc.map_or("", |d| d.category.as_str()),
+                *expected_cat,
+                "kind {kind:?} should have category {expected_cat:?}"
+            );
+        }
+    }
+
+    /// Loop kind has exactly 2 outputs named "body" and "done".
+    #[test]
+    fn vb_kinds_loop_output_port_ids() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+        let desc = reg.get("loop");
+        assert!(desc.is_some());
+        let d = match desc {
+            Some(val) => val,
+            None => return,
+        };
+        assert_eq!(d.default_ports.outputs.len(), 2);
+        assert_eq!(d.default_ports.outputs[0].id.as_str(), "body");
+        assert_eq!(d.default_ports.outputs[1].id.as_str(), "done");
+    }
+
+    /// Reduce kind has two input ports with specific IDs.
+    #[test]
+    fn vb_kinds_reduce_input_port_ids() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+        let desc = reg.get("reduce");
+        assert!(desc.is_some());
+        let d = match desc {
+            Some(val) => val,
+            None => return,
+        };
+        assert_eq!(d.default_ports.inputs.len(), 2);
+        assert_eq!(d.default_ports.inputs[0].id.as_str(), "items");
+        assert_eq!(d.default_ports.inputs[1].id.as_str(), "initial");
+        assert!(matches!(
+            d.default_ports.inputs[0].cardinality,
+            PortCardinality::Many
+        ));
+        assert!(matches!(
+            d.default_ports.inputs[1].cardinality,
+            PortCardinality::One
+        ));
+    }
+
+    /// NodeKindDescriptor with all shape variants in a single registry.
+    #[test]
+    fn registry_holds_all_shape_variants() {
+        let mut reg = NodeKindRegistry::new();
+        let shapes_and_kinds: [(NodeShape, &str); 5] = [
+            (NodeShape::RoundedRect, "rr"),
+            (NodeShape::Diamond, "dia"),
+            (NodeShape::Circle, "cir"),
+            (NodeShape::Pill, "pill"),
+            (NodeShape::DoubleRoundedRect, "drr"),
+        ];
+        for (shape, kind) in &shapes_and_kinds {
+            reg.register(NodeKindDescriptor {
+                kind: SmolStr::from(*kind),
+                label: SmolStr::from(*kind),
+                category: SmolStr::from("shape-test"),
+                default_shape: *shape,
+                default_ports: DefaultPorts {
+                    inputs: vec![],
+                    outputs: vec![],
+                },
+                is_terminal: false,
+                is_container: false,
+            });
+        }
+        assert_eq!(reg.all().len(), 5);
+        for (_, kind) in &shapes_and_kinds {
+            assert!(reg.get(kind).is_some(), "should find kind {kind}");
+        }
+    }
+
+    /// PortDescriptor with SmolStr fields clones independently.
+    #[test]
+    fn port_descriptor_clone_is_independent() {
+        let port = PortDescriptor {
+            id: SmolStr::from("unique_port"),
+            label: SmolStr::from("My Port"),
+            cardinality: PortCardinality::One,
+        };
+        let mut cloned = port.clone();
+        let original_id = port.id.clone();
+        cloned.id = SmolStr::from("modified");
+        assert_eq!(port.id, original_id);
+        assert_eq!(cloned.id, SmolStr::from("modified"));
+    }
+
+    /// NodeKindRegistry get() on a registry with many entries finds the correct one.
+    #[test]
+    fn registry_get_finds_among_many() {
+        let mut reg = NodeKindRegistry::new();
+        for i in 0..50u32 {
+            reg.register(NodeKindDescriptor {
+                kind: SmolStr::from(format!("kind_{i}")),
+                label: SmolStr::from(format!("Kind {i}")),
+                category: SmolStr::from("test"),
+                default_shape: NodeShape::RoundedRect,
+                default_ports: DefaultPorts {
+                    inputs: vec![],
+                    outputs: vec![],
+                },
+                is_terminal: false,
+                is_container: false,
+            });
+        }
+        let found = reg.get("kind_25");
+        assert!(found.is_some());
+        assert_eq!(found.map_or("", |d| d.label.as_str()), "Kind 25");
+        assert!(reg.get("kind_999").is_none());
+    }
+
+    /// Verify VB kinds labels are human-readable.
+    #[test]
+    fn vb_kinds_labels_are_readable() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+
+        let expected_labels: [(&str, &str); 11] = [
+            ("data", "Data"),
+            ("external", "Action"),
+            ("branch", "Choice"),
+            ("terminal", "Finish"),
+            ("loop", "Loop"),
+            ("parallel", "Parallel"),
+            ("collect", "Collect"),
+            ("reduce", "Reduce"),
+            ("suspend", "Suspend"),
+            ("error", "Error"),
+            ("control", "Control"),
+        ];
+        for (kind, expected_label) in &expected_labels {
+            let desc = reg.get(kind);
+            assert!(desc.is_some(), "missing kind {kind:?}");
+            assert_eq!(
+                desc.map_or("", |d| d.label.as_str()),
+                *expected_label,
+                "kind {kind:?} should have label {expected_label:?}"
+            );
+        }
+    }
+
+    /// VB kinds suspend has correct port configuration.
+    #[test]
+    fn vb_kinds_suspend_port_configuration() {
+        let mut reg = NodeKindRegistry::new();
+        register_vb_kinds(&mut reg);
+        let desc = reg.get("suspend");
+        assert!(desc.is_some());
+        let d = match desc {
+            Some(val) => val,
+            None => return,
+        };
+        assert_eq!(d.default_ports.inputs.len(), 1);
+        assert_eq!(d.default_ports.inputs[0].id.as_str(), "in");
+        assert_eq!(d.default_ports.outputs.len(), 1);
+        assert_eq!(d.default_ports.outputs[0].id.as_str(), "resume");
+    }
+
 }

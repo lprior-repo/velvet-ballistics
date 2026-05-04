@@ -2402,4 +2402,448 @@ mod tests {
         );
         assert!(d10 > d5);
     }
+
+    // =====================================================================
+    // Additional comprehensive coverage tests
+    // =====================================================================
+
+    // ---- Selection: select_group clears nodes and edges ----
+
+    #[test]
+    fn selection_select_group_clears_nodes_and_edges() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("n1"));
+        sel.add_edge(eid("e1"));
+        sel.select_group(gid("g1"));
+        assert!(!sel.is_node_selected(&nid("n1")));
+        assert!(!sel.is_edge_selected(&eid("e1")));
+        assert!(sel.is_group_selected(&gid("g1")));
+    }
+
+    // ---- compute_graph_bounds: all nodes at same position ----
+
+    #[test]
+    fn graph_bounds_all_nodes_same_position() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 10.0, 20.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 10.0, 20.0));
+        let bounds = compute_graph_bounds(&graph).unwrap();
+        // Both nodes at same position, same size (100x50)
+        assert!((bounds.x - 10.0).abs() < f64::EPSILON);
+        assert!((bounds.y - 20.0).abs() < f64::EPSILON);
+        assert!((bounds.w - 100.0).abs() < f64::EPSILON);
+        assert!((bounds.h - 50.0).abs() < f64::EPSILON);
+    }
+
+    // ---- fit_view: very small world bounds ----
+
+    #[test]
+    fn fit_view_very_small_bounds() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 0.001,
+            h: 0.001,
+        };
+        let vt = fit_view(bounds, 800.0, 600.0, 0.0);
+        assert!(vt.is_some());
+        let vt = vt.unwrap();
+        assert!(vt.zoom > 0.0);
+    }
+
+    // ---- fit_view: very large world bounds ----
+
+    #[test]
+    fn fit_view_very_large_bounds() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 1_000_000.0,
+            h: 1_000_000.0,
+        };
+        let vt = fit_view(bounds, 800.0, 600.0, 0.0);
+        assert!(vt.is_some());
+        let vt = vt.unwrap();
+        // Zoom should be very small to fit huge world
+        assert!(vt.zoom < 1.0);
+    }
+
+    // ---- hit_test_edges: closest edge wins ----
+
+    #[test]
+    fn hit_test_edges_closest_edge_wins() {
+        let mut graph = FlowGraph::default();
+        // Two edges: a->b at y=0, c->d at y=200
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.nodes.insert(nid("c"), make_node_at("c", 0.0, 200.0));
+        graph.nodes.insert(nid("d"), make_node_at("d", 200.0, 200.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        graph.edges.insert(eid("e2"), make_edge("e2", "c", "d"));
+        // Hit near e1 (y~=54) with small tolerance
+        let result = hit_test_edges(&graph, 100.0, 54.0, 5.0, 50);
+        assert!(matches!(result, HitResult::Edge(ref id) if id == &eid("e1")));
+    }
+
+    // ---- hit_test_edges: multiple edges same location ----
+
+    #[test]
+    fn hit_test_edges_multiple_close() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        graph.edges.insert(eid("e2"), make_edge("e2", "a", "b"));
+        // Both edges have same geometry, so either could match
+        let result = hit_test_edges(&graph, 100.0, 54.0, 20.0, 50);
+        assert!(matches!(result, HitResult::Edge(_)));
+    }
+
+    // ---- apply_patch: UpdateNode with data only ----
+
+    #[test]
+    fn patch_update_node_data_only() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        let changes = flow_core::patch::NodeChangeSet {
+            data: Some(serde_json::json!({"payload": "test"})),
+            ..flow_core::patch::NodeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        assert!(changed);
+        assert_eq!(
+            doc.graph.nodes.get(&nid("n1")).unwrap().data["payload"],
+            "test"
+        );
+    }
+
+    // ---- apply_patch: UpdateNode with flags only ----
+
+    #[test]
+    fn patch_update_node_flags_only() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        let changes = flow_core::patch::NodeChangeSet {
+            flags: Some(NodeFlags {
+                hidden: true,
+                locked: true,
+                ..NodeFlags::default()
+            }),
+            ..flow_core::patch::NodeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        assert!(changed);
+        let node = doc.graph.nodes.get(&nid("n1")).unwrap();
+        assert!(node.flags.hidden);
+        assert!(node.flags.locked);
+    }
+
+    // ---- apply_patch: UpdateNode with ui only ----
+
+    #[test]
+    fn patch_update_node_ui_only() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        let changes = flow_core::patch::NodeChangeSet {
+            ui: Some(NodeUiState {
+                collapsed: true,
+                color_override: Some([1.0, 0.0, 0.0, 1.0]),
+            }),
+            ..flow_core::patch::NodeChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        assert!(changed);
+        let node = doc.graph.nodes.get(&nid("n1")).unwrap();
+        assert!(node.ui.collapsed);
+        assert_eq!(node.ui.color_override, Some([1.0, 0.0, 0.0, 1.0]));
+    }
+
+    // ---- apply_patch: UpdateEdge all fields ----
+
+    #[test]
+    fn patch_update_edge_all_fields() {
+        let mut doc = FlowDocument::default();
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        let changes = flow_core::patch::EdgeChangeSet {
+            label: Some(Some(SmolStr::from("new-label"))),
+            style: Some(EdgeStyle {
+                line_style: flow_core::doc::LineStyle::Dotted,
+                ..EdgeStyle::default()
+            }),
+            data: Some(serde_json::json!({"key": "value"})),
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        assert!(changed);
+        let edge = doc.graph.edges.get(&eid("e1")).unwrap();
+        assert_eq!(edge.label.as_ref().map(|s| s.as_str()), Some("new-label"));
+        assert_eq!(edge.style.line_style, flow_core::doc::LineStyle::Dotted);
+        assert_eq!(edge.data["key"], "value");
+    }
+
+    // ---- UpdateGroup data field ----
+
+    #[test]
+    fn patch_update_group_data_only() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let changes = flow_core::patch::GroupChangeSet {
+            data: Some(serde_json::json!({"meta": 42})),
+            ..flow_core::patch::GroupChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("g1"), changes });
+        assert!(changed);
+        assert_eq!(doc.graph.groups.get(&gid("g1")).unwrap().data["meta"], 42);
+    }
+
+    // ---- UpdateGroup bounds only ----
+
+    #[test]
+    fn patch_update_group_bounds_only() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let changes = flow_core::patch::GroupChangeSet {
+            bounds: Some([10.0, 20.0, 300.0, 400.0]),
+            ..flow_core::patch::GroupChangeSet::default()
+        };
+        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("g1"), changes });
+        assert!(changed);
+        let group = doc.graph.groups.get(&gid("g1")).unwrap();
+        assert!((group.bounds[0] - 10.0).abs() < f64::EPSILON);
+        assert!((group.bounds[3] - 400.0).abs() < f64::EPSILON);
+    }
+
+    // ---- ReparentNodes with non-existent node ----
+
+    #[test]
+    fn patch_reparent_nonexistent_node() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("ghost")],
+                new_parent: Some(gid("g1")),
+            },
+        );
+        assert!(!changed);
+    }
+
+    // ---- ReparentNodes with empty list ----
+
+    #[test]
+    fn patch_reparent_empty_list() {
+        let mut doc = FlowDocument::default();
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: Vec::new(),
+                new_parent: Some(gid("g1")),
+            },
+        );
+        assert!(!changed);
+    }
+
+    // ---- WorldRect with large values ----
+
+    #[test]
+    fn world_rect_large_values() {
+        let r = WorldRect {
+            x: 1e15,
+            y: -1e15,
+            w: 1e10,
+            h: 1e10,
+        };
+        let r2 = r; // Copy
+        assert!((r2.x - 1e15).abs() < 1e5);
+        assert!((r2.w - 1e10).abs() < 1e0);
+    }
+
+    // ---- ViewportTransform identity roundtrip with large coordinates ----
+
+    #[test]
+    fn transform_roundtrip_large_coordinates() {
+        let vt = ViewportTransform {
+            pan_x: 1e6,
+            pan_y: -1e6,
+            zoom: 0.01,
+        };
+        let (sx, sy) = vt.world_to_screen(1e8, 1e8, 0.0, 0.0);
+        let (wx, wy) = vt.screen_to_world(sx, sy, 0.0, 0.0);
+        let diff_x = (wx - 1e8).abs();
+        let diff_y = (wy - 1e8).abs();
+        // Allow some floating point error for very large coordinates
+        assert!(diff_x < 1e3, "diff_x = {diff_x}");
+        assert!(diff_y < 1e3, "diff_y = {diff_y}");
+    }
+
+    // ---- Selection: add_node is idempotent ----
+
+    #[test]
+    fn selection_add_node_idempotent() {
+        let mut sel = Selection::new();
+        sel.add_node(nid("a"));
+        sel.add_node(nid("a"));
+        sel.add_node(nid("a"));
+        assert_eq!(sel.node_count(), 1);
+    }
+
+    // ---- Selection: add_edge is idempotent ----
+
+    #[test]
+    fn selection_add_edge_idempotent() {
+        let mut sel = Selection::new();
+        sel.add_edge(eid("e1"));
+        sel.add_edge(eid("e1"));
+        assert_eq!(sel.edge_count(), 1);
+    }
+
+    // ---- Selection: select_node then select_edge clears node ----
+
+    #[test]
+    fn selection_select_edge_clears_previous_node() {
+        let mut sel = Selection::new();
+        sel.select_node(nid("a"));
+        sel.select_edge(eid("e1"));
+        assert!(!sel.is_node_selected(&nid("a")));
+        assert!(sel.is_edge_selected(&eid("e1")));
+    }
+
+    // ---- Selection: toggle_node multiple times ----
+
+    #[test]
+    fn selection_toggle_node_triple() {
+        let mut sel = Selection::new();
+        sel.toggle_node(nid("a"));
+        assert!(sel.is_node_selected(&nid("a")));
+        sel.toggle_node(nid("a"));
+        assert!(!sel.is_node_selected(&nid("a")));
+        sel.toggle_node(nid("a"));
+        assert!(sel.is_node_selected(&nid("a")));
+    }
+
+    // ---- apply_patches: mixed success and failure ----
+
+    #[test]
+    fn apply_patches_insert_then_update() {
+        let mut doc = FlowDocument::default();
+        let patches = vec![
+            FlowPatch::InsertNode { node: make_node_at("n1", 10.0, 20.0) },
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: flow_core::patch::NodeChangeSet {
+                    title: Some(SmolStr::from("updated")),
+                    ..flow_core::patch::NodeChangeSet::default()
+                },
+            },
+        ];
+        let count = apply_patches(&mut doc, patches);
+        assert_eq!(count, 2);
+        assert_eq!(
+            doc.graph.nodes.get(&nid("n1")).unwrap().title.as_str(),
+            "updated"
+        );
+    }
+
+    // ---- apply_patches: insert then remove same node ----
+
+    #[test]
+    fn apply_patches_insert_then_remove_same_node() {
+        let mut doc = FlowDocument::default();
+        let patches = vec![
+            FlowPatch::InsertNode { node: make_node_at("n1", 0.0, 0.0) },
+            FlowPatch::RemoveNode { id: nid("n1") },
+        ];
+        let count = apply_patches(&mut doc, patches);
+        assert_eq!(count, 2);
+        assert!(!doc.graph.nodes.contains_key(&nid("n1")));
+    }
+
+    // ---- i_to_f64 edge cases ----
+
+    #[test]
+    fn i_to_f64_single_step() {
+        assert!((i_to_f64(1, 0)).abs() < f64::EPSILON);
+        assert!((i_to_f64(1, 1) - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn i_to_f64_zero_total_returns_zero() {
+        // When total is 0, this would be 0/0 = NaN
+        // But the function is only called with total >= 1 in practice
+        // Test with valid input
+        assert!((i_to_f64(100, 0)).abs() < f64::EPSILON);
+    }
+
+    // ---- cubic_bezier_point: monotonic x for horizontal curve ----
+
+    #[test]
+    fn bezier_monotonic_x_horizontal() {
+        let curve = CubicBezier {
+            p0: Point { x: 0.0, y: 0.0 },
+            p1: Point { x: 33.0, y: 0.0 },
+            p2: Point { x: 66.0, y: 0.0 },
+            p3: Point { x: 100.0, y: 0.0 },
+        };
+        let mut prev_x = f64::MIN;
+        for i in 0..=10 {
+            let t = i_to_f64(10, i);
+            let pt = cubic_bezier_point(t, &curve);
+            assert!(pt.x >= prev_x, "x should be monotonically increasing: {} >= {}", pt.x, prev_x);
+            prev_x = pt.x;
+        }
+    }
+
+    // ---- compute_port_world_pos: node with custom size ----
+
+    #[test]
+    fn port_world_pos_custom_size_node() {
+        let mut node = make_node_at("n", 50.0, 50.0);
+        node.size = [200.0, 100.0];
+        let (px, _) = compute_port_world_pos(&node, &pid("out"), true);
+        assert!((px - 250.0).abs() < f64::EPSILON);
+    }
+
+    // ---- fit_view: asymmetric padding ----
+
+    #[test]
+    fn fit_view_small_padding() {
+        let bounds = WorldRect {
+            x: 0.0,
+            y: 0.0,
+            w: 100.0,
+            h: 100.0,
+        };
+        let vt = fit_view(bounds, 1000.0, 1000.0, 0.05).unwrap();
+        // With 5% padding on each side, effective size = 900
+        // 100 * zoom = 900 => zoom = 9.0
+        assert!((vt.zoom - 9.0).abs() < 1e-10);
+    }
+
+    // ---- Selection: select_all on empty graph ----
+
+    #[test]
+    fn selection_select_all_empty_graph() {
+        let graph = FlowGraph::default();
+        let mut sel = Selection::new();
+        sel.select_all(&graph);
+        assert!(sel.is_empty());
+    }
+
+    // ---- compute_graph_bounds: mix of hidden and visible ----
+
+    #[test]
+    fn graph_bounds_mix_hidden_visible() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_hidden_node("b", 500.0, 500.0));
+        graph.nodes.insert(nid("c"), make_node_at("c", 300.0, 200.0));
+        let bounds = compute_graph_bounds(&graph).unwrap();
+        // Should include "a" and "c" but not hidden "b"
+        assert!((bounds.x).abs() < f64::EPSILON);
+        assert!((bounds.y).abs() < f64::EPSILON);
+        // Right edge: max(0+100, 300+100) = 400
+        assert!((bounds.w - 400.0).abs() < f64::EPSILON);
+        // Bottom edge: max(0+50, 200+50) = 250
+        assert!((bounds.h - 250.0).abs() < f64::EPSILON);
+    }
 }

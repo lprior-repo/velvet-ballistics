@@ -112,13 +112,17 @@ fn push_count(_op: &ExprOp) -> u8 {
 
 /// Returns the net stack effect of a single expression opcode.
 ///
-/// Uses `u8::into()` for safe widening conversion to i16 (infallible), then
+/// Uses `i16::from()` for safe widening conversion (infallible), then
 /// computes the net effect. Since push is always 1 and pop is 0..=3, the
 /// result is always in i8 range (-2..=1).
+///
+/// Explicit match is used instead of `unwrap_or` / `unwrap_or_default` to
+/// comply with the "no unwrap" engineering rule, even though these methods
+/// are safe (they return a default on `Err`, they don't panic).
+#[allow(clippy::manual_unwrap_or, clippy::manual_unwrap_or_default)]
 fn stack_effect(_op: &ExprOp) -> i8 {
     let pop: i16 = i16::from(pop_count(_op));
     let push: i16 = i16::from(push_count(_op));
-    // push is always 1, pop is 0..=3, so net is 1..=-2 (always fits in i8).
     let net = push.saturating_sub(pop);
     // Convert back to i8: net is in [-2, 1], always fits.
     match i8::try_from(net) {
@@ -2298,8 +2302,15 @@ mod tests {
         let parts = make_parts(nodes, 1);
         let contracts = vec![vb_core::action::ActionContract {
             id: ActionId::new(99),
-            input_schema: Box::new([]),
-            output_schema: None,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: vb_core::action::Idempotency::DeterministicPure,
+            side_effect: vb_core::action::SideEffect::None,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         }];
         let result = validate_gate_12_action_contract_completeness(&parts, &contracts);
         assert!(

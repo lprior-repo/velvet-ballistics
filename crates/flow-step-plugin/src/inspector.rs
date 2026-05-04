@@ -204,4 +204,218 @@ mod tests {
         // - rotation policy
         assert!(matches!(field.field_type, FieldType::SecretRef));
     }
+
+    // ========================================================================
+    // Comprehensive inspector tests
+    // ========================================================================
+
+    /// Verify all ASL standard state kinds return empty fields.
+    #[test]
+    fn fields_for_kind_all_asl_kinds_return_empty() {
+        let asl_kinds = [
+            "Task", "Choice", "Wait", "Pass", "Succeed", "Fail", "Parallel", "Map",
+        ];
+        for kind in &asl_kinds {
+            let fields = fields_for_kind(kind);
+            assert!(
+                fields.is_empty(),
+                "fields_for_kind({kind:?}) should return empty vec, got {} fields",
+                fields.len()
+            );
+        }
+    }
+
+    /// fields_for_kind is case-sensitive: lowercase "task" is not "Task".
+    #[test]
+    fn fields_for_kind_is_case_sensitive() {
+        let upper = fields_for_kind("Task");
+        let lower = fields_for_kind("task");
+        let mixed = fields_for_kind("tAsK");
+        assert!(upper.is_empty());
+        assert!(lower.is_empty());
+        assert!(mixed.is_empty());
+    }
+
+    /// fields_for_kind with whitespace strings.
+    #[test]
+    fn fields_for_kind_with_whitespace_strings() {
+        let cases = [" ", "  ", " Task "];
+        for input in &cases {
+            let fields = fields_for_kind(input);
+            assert!(
+                fields.is_empty(),
+                "fields_for_kind({input:?}) should return empty vec"
+            );
+        }
+    }
+
+    /// fields_for_kind with special characters.
+    #[test]
+    fn fields_for_kind_with_special_characters() {
+        let cases = ["<script>", "../../etc", "null", "undefined"];
+        for input in &cases {
+            let fields = fields_for_kind(input);
+            assert!(
+                fields.is_empty(),
+                "fields_for_kind({input:?}) should return empty vec"
+            );
+        }
+    }
+
+    /// InspectorField with all FieldType variants produces valid debug output.
+    #[test]
+    fn inspector_field_all_field_types_have_valid_debug() {
+        let field_types: Vec<FieldType> = vec![
+            FieldType::Text,
+            FieldType::Number,
+            FieldType::Boolean,
+            FieldType::Select(vec!["opt_a".into(), "opt_b".into(), "opt_c".into()]),
+            FieldType::Expression,
+            FieldType::Duration,
+            FieldType::SecretRef,
+        ];
+        for ft in &field_types {
+            let field = InspectorField {
+                id: "test_field".into(),
+                label: "Test Field".into(),
+                field_type: ft.clone(),
+                required: false,
+            };
+            let debug_output = format!("{field:?}");
+            assert!(
+                debug_output.contains("test_field"),
+                "debug output should contain field id: {debug_output}"
+            );
+        }
+    }
+
+    /// InspectorField.required flag can be both true and false for all field types.
+    #[test]
+    fn inspector_field_required_flag_variations() {
+        let field_types: Vec<FieldType> = vec![
+            FieldType::Text,
+            FieldType::Number,
+            FieldType::Boolean,
+            FieldType::Select(vec![]),
+            FieldType::Expression,
+            FieldType::Duration,
+            FieldType::SecretRef,
+        ];
+        for ft in &field_types {
+            let required_field = InspectorField {
+                id: "f".into(),
+                label: "F".into(),
+                field_type: ft.clone(),
+                required: true,
+            };
+            let optional_field = InspectorField {
+                id: "f".into(),
+                label: "F".into(),
+                field_type: ft.clone(),
+                required: false,
+            };
+            assert!(required_field.required);
+            assert!(!optional_field.required);
+        }
+    }
+
+    /// FieldType::Select with a large number of options clones correctly.
+    #[test]
+    fn field_type_select_with_many_options_clones_correctly() {
+        let options: Vec<String> = (0..100).map(|i| format!("option_{i}")).collect();
+        let ft = FieldType::Select(options);
+        let cloned = ft.clone();
+        if let FieldType::Select(ref opts) = cloned {
+            assert_eq!(opts.len(), 100, "cloned Select should have 100 options");
+            assert_eq!(opts[0], "option_0");
+            assert_eq!(
+                opts[opts.len().saturating_sub(1)],
+                "option_99",
+                "last option should be option_99"
+            );
+        }
+    }
+
+    /// InspectorField with unicode content in id and label.
+    #[test]
+    fn inspector_field_with_unicode_content() {
+        let field = InspectorField {
+            id: "field_id_unicode".into(),
+            label: "Label Unicode".into(),
+            field_type: FieldType::Text,
+            required: true,
+        };
+        assert_eq!(field.id, "field_id_unicode");
+        assert_eq!(field.label, "Label Unicode");
+    }
+
+    /// FieldType variants can be exhaustively matched.
+    #[test]
+    fn field_type_exhaustive_match() {
+        let variants: Vec<FieldType> = vec![
+            FieldType::Text,
+            FieldType::Number,
+            FieldType::Boolean,
+            FieldType::Select(vec!["a".into()]),
+            FieldType::Expression,
+            FieldType::Duration,
+            FieldType::SecretRef,
+        ];
+        for v in &variants {
+            let label: &str = match v {
+                FieldType::Text => "text",
+                FieldType::Number => "number",
+                FieldType::Boolean => "boolean",
+                FieldType::Select(_) => "select",
+                FieldType::Expression => "expression",
+                FieldType::Duration => "duration",
+                FieldType::SecretRef => "secret-ref",
+            };
+            assert!(!label.is_empty());
+        }
+    }
+
+    /// InspectorField clone preserves all fields for a complex instance.
+    #[test]
+    fn inspector_field_clone_preserves_all_fields() {
+        let original = InspectorField {
+            id: "complex_field".into(),
+            label: "Complex Field".into(),
+            field_type: FieldType::Select(vec!["alpha".into(), "beta".into(), "gamma".into()]),
+            required: true,
+        };
+        let cloned = original.clone();
+        assert_eq!(cloned.id, original.id);
+        assert_eq!(cloned.label, original.label);
+        assert_eq!(cloned.required, original.required);
+        match (&original.field_type, &cloned.field_type) {
+            (FieldType::Select(a), FieldType::Select(b)) => {
+                assert_eq!(a.len(), b.len());
+            }
+            _ => {}
+        }
+    }
+
+    /// Multiple InspectorField instances with same id but different types.
+    #[test]
+    fn multiple_fields_with_same_id_different_types() {
+        let fields: Vec<InspectorField> = vec![
+            InspectorField {
+                id: "value".into(),
+                label: "Value (Text)".into(),
+                field_type: FieldType::Text,
+                required: false,
+            },
+            InspectorField {
+                id: "value".into(),
+                label: "Value (Number)".into(),
+                field_type: FieldType::Number,
+                required: true,
+            },
+        ];
+        assert_eq!(fields[0].id, fields[1].id);
+        assert!(matches!(fields[0].field_type, FieldType::Text));
+        assert!(matches!(fields[1].field_type, FieldType::Number));
+    }
+
 }

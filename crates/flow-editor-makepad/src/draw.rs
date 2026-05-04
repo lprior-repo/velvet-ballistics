@@ -223,4 +223,61 @@ mod tests {
         assert!(node::PADDING < node::MIN_WIDTH);
         assert!(node::PADDING < node::MIN_HEIGHT);
     }
+
+    // =====================================================================
+    // Additional comprehensive coverage tests
+    // =====================================================================
+
+    // ---- Cross-module consistency ----
+
+    #[test]
+    fn viewport_zoom_range_allows_full_dezoom() {
+        // ZOOM_MIN should allow seeing the entire grid
+        assert!(viewport::ZOOM_MIN < 1.0);
+    }
+
+    #[test]
+    fn viewport_zoom_range_allows_deep_zoom() {
+        // ZOOM_MAX should allow zooming well beyond default
+        assert!(viewport::ZOOM_MAX > 4.0);
+    }
+
+    #[test]
+    fn edge_width_compatible_with_port_radius() {
+        // Default edge width should be thinner than port diameter
+        let edge_w = f64::from(edge::DEFAULT_WIDTH);
+        assert!(edge_w < port::RADIUS * 2.0);
+    }
+
+    #[test]
+    fn grid_minor_divides_evenly_into_major() {
+        let ratio = grid::MAJOR_SPACING / grid::MINOR_SPACING;
+        let ratio_int = ratio.round() as i64;
+        assert!(ratio_int > 0);
+        let reconstructed = grid::MINOR_SPACING * ratio_int as f64;
+        let diff = (reconstructed - grid::MAJOR_SPACING).abs();
+        assert!(diff < 1e-10);
+    }
+
+    #[test]
+    fn node_badge_size_smaller_than_header() {
+        assert!(node::BADGE_SIZE < node::HEADER_HEIGHT);
+    }
+
+    #[test]
+    fn click_threshold_is_small() {
+        // CLICK_THRESHOLD should be a small pixel value (not a large one)
+        assert!(viewport::CLICK_THRESHOLD < 10.0);
+    }
+
+    #[test]
+    fn particle_size_smaller_than_hit_size() {
+        assert!(edge::PARTICLE_SIZE < port::HIT_SIZE);
+    }
+
+    #[test]
+    fn border_radius_smaller_than_min_dimension() {
+        assert!(node::BORDER_RADIUS < node::MIN_WIDTH / 2.0);
+        assert!(node::BORDER_RADIUS < node::MIN_HEIGHT / 2.0);
+    }
 }
