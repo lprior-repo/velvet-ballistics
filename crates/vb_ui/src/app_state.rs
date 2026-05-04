@@ -4,6 +4,7 @@
 //! Manages which of the five primary screens is active and holds the
 //! per-screen data payloads that the UI reads during rendering.
 
+use crate::replay::timeline::TimelineStrip;
 use crate::system::screen::SystemScreen;
 
 /// The 5 primary screens of the mission control UI.
@@ -41,6 +42,9 @@ pub struct ReplayData {
     pub playback_speed: f64,
     pub current_step: Option<u16>,
     pub step_state: Option<String>,
+    /// Timeline strip built from journal events. Holds event markers with
+    /// labels, colors, and sequence info for chip rendering.
+    pub timeline_strip: TimelineStrip,
 }
 
 /// System Overview screen data.
@@ -83,7 +87,7 @@ pub struct CertCardStatus {
 }
 
 impl CertCardStatus {
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             badge_text: String::from("--"),
             field1: String::from("--"),
@@ -224,6 +228,7 @@ impl ReplayData {
             playback_speed: 1.0,
             current_step: None,
             step_state: None,
+            timeline_strip: TimelineStrip::new(),
         }
     }
 

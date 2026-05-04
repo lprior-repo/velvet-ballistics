@@ -194,7 +194,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, kind)| CompiledNode {
-                id: StepIdx::new(i as u16),
+                id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
                 output: None,
                 next: None,
                 on_error: None,

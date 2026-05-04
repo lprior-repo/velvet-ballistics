@@ -456,7 +456,7 @@ pub enum ControllerEvent {
 /// Some fields required by `JournalEvent` are not present in the IPC trace
 /// event and are filled with placeholder defaults. The core state-machine
 /// fields (run, seq, step, slot) are preserved faithfully.
-fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
+pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
     let seq = EventSeq::new(trace.sequence);
     match trace.kind {
         IpcTraceEventKind::RunSubmitted { run } => Some(JournalEvent::RunAccepted {

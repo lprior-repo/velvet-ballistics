@@ -1350,7 +1350,10 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::StructuralValidity);
         assert!(structural.is_some());
-        let cert = structural.unwrap_or_else(|| panic!("structural cert missing"));
+        let Some(cert) = structural else {
+            assert!(false, "structural cert missing");
+            return;
+        };
         assert!(
             matches!(cert.status, CertificateStatus::Fail(_)),
             "expected Fail for empty nodes, got {:?}",
@@ -1367,8 +1370,12 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::StructuralValidity);
         assert!(structural.is_some());
+        let Some(structural) = structural else {
+            assert!(false, "cert missing");
+            return;
+        };
         assert!(matches!(
-            structural.unwrap_or_else(|| panic!("cert missing")).status,
+            structural.status,
             CertificateStatus::Pass
         ));
 
@@ -1378,7 +1385,11 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::StrictDurability);
         assert!(durability.is_some());
-        let dur_status = &durability.unwrap_or_else(|| panic!("cert missing")).status;
+        let Some(durability) = durability else {
+            assert!(false, "cert missing");
+            return;
+        };
+        let dur_status = &durability.status;
         // A single Finish node with no error handlers/on_error produces Warn.
         assert!(
             matches!(
@@ -1395,10 +1406,12 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::Reachability);
         assert!(reachability.is_some());
+        let Some(reachability) = reachability else {
+            assert!(false, "cert missing");
+            return;
+        };
         assert!(matches!(
-            reachability
-                .unwrap_or_else(|| panic!("cert missing"))
-                .status,
+            reachability.status,
             CertificateStatus::Pass
         ));
     }
@@ -1446,10 +1459,12 @@ mod tests {
             .iter()
             .find(|c| c.kind == CertificateKind::Reachability);
         assert!(reachability.is_some());
+        let Some(reachability) = reachability else {
+            assert!(false, "cert missing");
+            return;
+        };
         assert!(matches!(
-            reachability
-                .unwrap_or_else(|| panic!("cert missing"))
-                .status,
+            reachability.status,
             CertificateStatus::Fail(_)
         ));
     }
@@ -1522,7 +1537,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "structural_validity");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("valid"));
     }
@@ -1535,7 +1553,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "structural_validity");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("empty"));
     }
@@ -1550,7 +1571,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "structural_validity");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("exceeds"));
     }
@@ -1577,7 +1601,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "structural_validity");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("mismatch"));
     }
@@ -1592,7 +1619,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "bounded_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
     }
 
@@ -1606,7 +1636,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "bounded_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("max_steps"));
     }
@@ -1621,7 +1654,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "bounded_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("max_slots"));
     }
@@ -1652,7 +1688,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "bounded_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("exceeds"));
     }
@@ -1667,7 +1706,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "secret_to_result_leak");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("no secret"));
     }
@@ -1715,7 +1757,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "secret_to_result_leak");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail);
         assert!(c.detail.contains("Finish"));
     }
@@ -1773,7 +1818,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "strict_durability_eligibility");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("error handler"));
     }
@@ -1821,7 +1869,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "strict_durability_eligibility");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Warn);
         assert!(c.detail.contains("error handler"));
     }
@@ -1836,7 +1887,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "action_idempotency");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("no Do nodes"));
     }
@@ -1884,7 +1938,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "action_idempotency");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Warn);
         assert!(c.detail.contains("retry"));
     }
@@ -1899,7 +1956,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "worst_case_memory_budget");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("64"));
     }
@@ -1914,7 +1974,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "worst_case_memory_budget");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("zero"));
     }
@@ -1932,7 +1995,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "worst_case_memory_budget");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Warn);
         assert!(c.detail.contains("exceeds"));
     }
@@ -1947,7 +2013,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "max_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("within"));
     }
@@ -1981,7 +2050,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "max_transitions");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Fail, "detail: {}", c.detail);
         assert!(
             c.detail.contains("max_steps"),
@@ -2000,7 +2072,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "max_action_calls");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Pass);
         assert!(c.detail.contains("0 Do node"));
     }
@@ -2053,7 +2128,10 @@ mod tests {
             .iter()
             .find(|c| c.name == "max_action_calls");
         assert!(check.is_some());
-        let c = check.unwrap_or_else(|| panic!("check missing"));
+        let Some(c) = check else {
+            assert!(false, "check missing");
+            return;
+        };
         assert_eq!(c.status, CheckStatus::Warn);
         assert!(c.detail.contains("5 Do nodes"));
     }

@@ -274,7 +274,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, kind)| CompiledNode {
-                id: StepIdx::new(i as u16),
+                id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
                 output: None,
                 next: None,
                 on_error: None,
@@ -547,7 +547,10 @@ mod tests {
             .iter()
             .find(|m| m.label == "node_count / max_steps");
         assert!(node_metric.is_some());
-        let m = node_metric.unwrap_or_else(|| panic!("metric missing"));
+        let Some(m) = node_metric else {
+            assert!(false, "metric missing");
+            return;
+        };
         assert_eq!(m.status, ResourceStatus::AtLimit);
     }
 
@@ -573,8 +576,12 @@ mod tests {
             .iter()
             .find(|m| m.label == "node_count / max_steps");
         assert!(node_metric.is_some());
+        let Some(node_metric) = node_metric else {
+            assert!(false, "metric missing");
+            return;
+        };
         assert_eq!(
-            node_metric.unwrap_or_else(|| panic!("metric missing")).status,
+            node_metric.status,
             ResourceStatus::ExceedsLimit
         );
 
@@ -583,8 +590,12 @@ mod tests {
             .iter()
             .find(|m| m.label == "slot_count / max_slots");
         assert!(slot_metric.is_some());
+        let Some(slot_metric) = slot_metric else {
+            assert!(false, "metric missing");
+            return;
+        };
         assert_eq!(
-            slot_metric.unwrap_or_else(|| panic!("metric missing")).status,
+            slot_metric.status,
             ResourceStatus::ExceedsLimit
         );
     }
