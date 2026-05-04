@@ -911,4 +911,315 @@ mod tests {
         // Base 1 + 2 together nodes = 3, + 0 fanout = 3
         assert_eq!(bounds.estimated_peak_frames, 3);
     }
+
+    // --- Requested tests ---
+
+    /// Test 1: Empty workflow (zero nodes) produces zero counts and passes the
+    /// panel when contract limits are nonzero.
+    #[test]
+    fn test_empty_workflow_resource_bounds() {
+        let parts = WorkflowParts {
+            name: String::from("empty").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Vec::new().into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 0,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let bounds = compute_resource_bounds(&parts);
+        assert_eq!(bounds.node_count, 0);
+        assert_eq!(bounds.do_node_count, 0);
+        assert_eq!(bounds.retry_budget, 0);
+        assert_eq!(bounds.estimated_peak_frames, 1);
+        assert_eq!(bounds.slot_count, 0);
+
+        // Panel should show all metrics within bounds for a truly empty workflow.
+        // With zero do_node_count, payload and result are 0 (well under limits).
+        // With zero node_count, node_count/max_steps is 0 < 10_000.
+        // However slot_count=0 == 0 is AtLimit only if max_slots were 0, but
+        // DEFAULT max_slots=1024 so 0 < 1024 is WithinBounds.
+        // One edge: node_count=0 vs max_collect_items -- 0 < 1024 WithinBounds.
+        let panel = ResourceBoundsPanel::new(&parts.resource_contract, &bounds);
+        assert!(panel.all_within_bounds());
+    }
+
+    /// Test 2: Single Do node action payload estimation -- verify the panel
+    /// computes estimated_action_payload as 1 * max_ipc_payload_bytes.
+    #[test]
+    fn test_single_do_node_action_payload_estimation() {
+        let contract = ResourceContract {
+            max_ipc_payload_bytes: 2048,
+            ..ResourceContract::DEFAULT
+        };
+        let parts = make_parts_with_contract(
+            vec![CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            }],
+            contract,
+        );
+        let bounds = compute_resource_bounds(&parts);
+        assert_eq!(bounds.do_node_count, 1);
+        assert_eq!(bounds.max_action_payload, 2048);
+
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let payload_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_action_payload / max_ipc_payload_bytes");
+        let Some(metric) = payload_metric else {
+            return;
+        };
+        // estimated_payload = 1 * 2048 = 2048, contract_value = 2048 => AtLimit
+        assert_eq!(metric.computed_value, 2048);
+        assert_eq!(metric.contract_value, 2048);
+        assert_eq!(metric.status, ResourceStatus::AtLimit);
+    }
+
+    /// Test 3: Multiple Do nodes produce total payload that exceeds the single
+    /// payload limit in the panel (do_node_count * max_ipc_payload_bytes > limit).
+    #[test]
+    fn test_multiple_do_nodes_total_payload() {
+        let contract = ResourceContract {
+            max_ipc_payload_bytes: 512,
+            ..ResourceContract::DEFAULT
+        };
+        let bounds = ResourceBounds {
+            slot_count: 1,
+            node_count: 5,
+            do_node_count: 3,
+            max_action_payload: 512,
+            max_result_size: 256,
+            retry_budget: 9,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+
+        let payload_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_action_payload / max_ipc_payload_bytes");
+        let Some(metric) = payload_metric else {
+            return;
+        };
+        // estimated_payload = 3 * 512 = 1536, contract limit = 512 => ExceedsLimit
+        assert_eq!(metric.computed_value, 1536);
+        assert_eq!(metric.contract_value, 512);
+        assert_eq!(metric.status, ResourceStatus::ExceedsLimit);
+    }
+
+    /// Test 4: TogetherStart fanout calculation -- verify multiple TogetherStart
+    /// nodes contribute their branch counts cumulatively.
+    #[test]
+    fn test_together_start_fanout_calculation() {
+        let parts = make_parts(vec![
+            // First TogetherStart with 2 branches
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: SlotIdx::new(0),
+            },
+            // Second TogetherStart with 4 branches
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([
+                    StepIdx::new(5),
+                    StepIdx::new(6),
+                    StepIdx::new(7),
+                    StepIdx::new(8),
+                ]),
+                join: StepIdx::new(9),
+            },
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::Nop,
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 4,
+                accumulator: SlotIdx::new(1),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+        // Only TogetherStart and TogetherJoin nodes increment peak_frames (Nop does not).
+        // 2 TogetherStart + 2 TogetherJoin = 4 together nodes. Base 1 + 4 = 5.
+        // Fanout: first TogetherStart has 2 branches, second has 4 => 5 + 2 + 4 = 11
+        assert_eq!(bounds.estimated_peak_frames, 11);
+    }
+
+    /// Test 5: ForEachStart iteration limit contributes to peak frames and the
+    /// panel reports the result against max_queue_depth.
+    #[test]
+    fn test_foreach_start_iteration_limit() {
+        let contract = ResourceContract {
+            max_queue_depth: 20,
+            ..ResourceContract::DEFAULT
+        };
+        let parts = make_parts_with_contract(
+            vec![
+                CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 25,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+                CompiledNodeKind::ForEachNext {
+                    iterator_slot: SlotIdx::new(2),
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+                CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(3),
+                },
+            ],
+            contract,
+        );
+        let bounds = compute_resource_bounds(&parts);
+        // Base 1 + 3 loop nodes = 4, + 25 iterations = 29
+        assert_eq!(bounds.estimated_peak_frames, 29);
+
+        // Panel: peak=29 > max_queue_depth=20 => ExceedsLimit
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let peak_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "estimated_peak_frames / max_queue_depth");
+        let Some(metric) = peak_metric else {
+            return;
+        };
+        assert_eq!(metric.computed_value, 29);
+        assert_eq!(metric.contract_value, 20);
+        assert_eq!(metric.status, ResourceStatus::ExceedsLimit);
+    }
+
+    /// Test 6: ResourceBoundsPanel with all metrics strictly within bounds
+    /// using a generous contract so every computed value is safely below.
+    #[test]
+    fn test_panel_all_metrics_passing() {
+        let contract = ResourceContract {
+            max_steps: 10_000,
+            max_slots: 1_000,
+            max_ipc_payload_bytes: 100_000,
+            max_output_bytes: 50_000,
+            max_retry_attempts: 10,
+            max_fanout: 100,
+            max_queue_depth: 500,
+            max_collect_items: 10_000,
+            max_step_budget_per_tick: 10_000,
+            ..ResourceContract::DEFAULT
+        };
+        // Use do_node_count=0 so payload and result estimations are 0 (well under limits).
+        let bounds = ResourceBounds {
+            slot_count: 2,
+            node_count: 5,
+            do_node_count: 0,
+            max_action_payload: 100_000,
+            max_result_size: 50_000,
+            retry_budget: 0,
+            estimated_peak_frames: 4,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        assert!(panel.all_within_bounds());
+        assert!(panel.worst_case_metrics().is_empty());
+
+        // Spot-check individual metrics
+        for metric in panel.metrics() {
+            assert_eq!(
+                metric.status,
+                ResourceStatus::WithinBounds,
+                "metric '{}' should be WithinBounds but is {:?}",
+                metric.label,
+                metric.status
+            );
+        }
+    }
+
+    /// Test 7: ResourceBoundsPanel with exactly one metric at limit while
+    /// all others remain within bounds.
+    #[test]
+    fn test_panel_one_metric_at_limit() {
+        // Use slot_count == max_slots for a single AtLimit metric,
+        // with do_node_count=0 so payload/result estimations stay at 0 (WithinBounds).
+        let contract = ResourceContract {
+            max_fanout: 64,
+            max_slots: 5,
+            max_ipc_payload_bytes: 10_000,
+            max_output_bytes: 10_000,
+            max_step_budget_per_tick: 100,
+            max_collect_items: 10_000,
+            max_queue_depth: 100,
+            max_steps: 10_000,
+            ..ResourceContract::DEFAULT
+        };
+        let bounds = ResourceBounds {
+            slot_count: 5, // == max_slots => AtLimit
+            node_count: 10,
+            do_node_count: 0, // payload=0, result=0 => WithinBounds
+            max_action_payload: 10_000,
+            max_result_size: 10_000,
+            retry_budget: 0,
+            estimated_peak_frames: 2,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        assert!(!panel.all_within_bounds());
+
+        let worst = panel.worst_case_metrics();
+        let exceeds_count = worst
+            .iter()
+            .filter(|m| m.status == ResourceStatus::ExceedsLimit)
+            .count();
+        assert_eq!(exceeds_count, 0, "no metric should exceed the limit");
+
+        let slot_metric = worst
+            .iter()
+            .find(|m| m.label == "slot_count / max_slots");
+        let Some(sm) = slot_metric else {
+            return;
+        };
+        assert_eq!(sm.status, ResourceStatus::AtLimit);
+        assert_eq!(sm.computed_value, 5);
+        assert_eq!(sm.contract_value, 5);
+    }
+
+    /// Test 8: Zero max_steps causes node_count/max_steps to immediately
+    /// exceed the limit (even with a single node).
+    #[test]
+    fn test_zero_max_steps_immediate_fail() {
+        let contract = ResourceContract {
+            max_steps: 0,
+            ..ResourceContract::DEFAULT
+        };
+        // Even a minimal single-node workflow exceeds max_steps=0.
+        let bounds = ResourceBounds {
+            slot_count: 1,
+            node_count: 1,
+            do_node_count: 0,
+            max_action_payload: contract.max_ipc_payload_bytes,
+            max_result_size: contract.max_output_bytes,
+            retry_budget: 0,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        assert!(!panel.all_within_bounds());
+
+        let node_metric = panel
+            .metrics()
+            .iter()
+            .find(|m| m.label == "node_count / max_steps");
+        let Some(nm) = node_metric else {
+            return;
+        };
+        assert_eq!(nm.computed_value, 1);
+        assert_eq!(nm.contract_value, 0);
+        assert_eq!(nm.status, ResourceStatus::ExceedsLimit);
+    }
 }

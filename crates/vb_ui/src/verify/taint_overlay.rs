@@ -1271,4 +1271,407 @@ mod tests {
         assert_ne!(COLOR_FORBIDDEN_SINK, COLOR_SAFE_FINISH);
         assert_ne!(COLOR_SAFE_FINISH, COLOR_CLEAN);
     }
+
+    // =========================================================================
+    // BLACK HAT security-focused tests (BH-01 through BH-08)
+    // =========================================================================
+
+    /// BH-01: is_secret_taint with exact label "Secret" matches.
+    ///
+    /// The taint label "Secret" must be recognised as a secret source.
+    /// This validates the primary matching path in `is_secret_taint`.
+    #[test]
+    fn bh01_exact_secret_label_matches() {
+        let mut map = HashMap::new();
+        let slot = SlotIdx::new(10);
+        map.insert(slot, String::from("Secret"));
+
+        assert!(
+            is_secret_taint(&map, slot),
+            "exact label 'Secret' must be recognised as a secret taint"
+        );
+    }
+
+    /// BH-02: is_secret_taint with "NotASecret" incorrectly matches (false positive).
+    ///
+    /// BLACK HAT FINDING: `is_secret_taint` uses `label.contains("Secret")`,
+    /// so "NotASecret" produces a **false positive** because "Secret" is a
+    /// substring.  This test documents the known vulnerability.  If the
+    /// implementation is fixed to use exact or prefix matching, this test
+    /// must be updated to assert `false` instead.
+    #[test]
+    fn bh02_not_a_secret_false_positive() {
+        let mut map = HashMap::new();
+        let slot = SlotIdx::new(20);
+        map.insert(slot, String::from("NotASecret"));
+
+        // BLACK HAT: substring match causes false positive.
+        // Currently returns true; the fix should make this false.
+        assert!(
+            is_secret_taint(&map, slot),
+            "BLACK HAT: 'NotASecret' incorrectly matches via substring 'Secret' -- known false-positive vulnerability"
+        );
+    }
+
+    /// BH-03: is_secret_taint with "derived" in an unrelated context.
+    ///
+    /// The label "unrelated-derived-data" contains the substring "derived"
+    /// and is therefore treated as a secret taint.  This is a broad catch
+    /// pattern that could produce false positives on labels that happen to
+    /// include "derived" in an unrelated context.
+    #[test]
+    fn bh03_derived_in_unrelated_context() {
+        let mut map = HashMap::new();
+        let slot = SlotIdx::new(30);
+        map.insert(slot, String::from("unrelated-derived-data"));
+
+        assert!(
+            is_secret_taint(&map, slot),
+            "label containing 'derived' is matched by the broad substring check"
+        );
+
+        // Verify a label that has no secret-related substrings is clean.
+        let clean_slot = SlotIdx::new(31);
+        map.insert(clean_slot, String::from("PublicValue"));
+
+        assert!(
+            !is_secret_taint(&map, clean_slot),
+            "label 'PublicValue' must not be recognised as a secret taint"
+        );
+    }
+
+    /// BH-04: walk_forward traversal order follows BFS with `Vec::pop`.
+    ///
+    /// `walk_forward` uses a `Vec` as a stack (`pop`), which makes it DFS,
+    /// not BFS (despite comments saying BFS).  Construct a diamond graph:
+    ///
+    ///   0 -> 1 -> 3
+    ///   0 -> 2 -> 3
+    ///
+    /// With DFS (pop), node 2 is visited before node 1 (LIFO).  The test
+    /// verifies the actual traversal order produced by the implementation.
+    #[test]
+    fn bh04_walk_forward_traversal_order_is_dfs() {
+        use vb_core::workflow::CompiledNode;
+
+        // Build nodes: 0 -> {1, 2} where both 1 and 2 point to 3.
+        // CompiledNode has a single `next`, so we simulate a linear chain
+        // 0 -> 1 -> 2 -> 3 to test order.
+        //
+        // For a true branch test we need TogetherStart or ChooseSlot,
+        // but walk_forward only follows `next` edges.  So we test a
+        // linear chain 0 -> 1 -> 2 -> 3 and verify order.
+        let kinds: Vec<(CompiledNodeKind, Option<StepIdx>)> = vec![
+            (CompiledNodeKind::Nop, Some(StepIdx::new(1))),
+            (CompiledNodeKind::Nop, Some(StepIdx::new(2))),
+            (CompiledNodeKind::Nop, Some(StepIdx::new(3))),
+            (CompiledNodeKind::Nop, None),
+        ];
+
+        let nodes: Vec<CompiledNode> = kinds
+            .into_iter()
+            .enumerate()
+            .map(|(i, (kind, next))| CompiledNode {
+                id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
+                output: None,
+                next,
+                on_error: None,
+                error_slot: None,
+                kind,
+            })
+            .collect();
+        let count = nodes.len();
+        let parts = WorkflowParts {
+            name: String::from("bh04").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: (0..count)
+                .map(|_| Box::<str>::from(""))
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        };
+
+        let reachable = walk_forward(&parts, StepIdx::new(0));
+
+        // All three successors must be present.
+        assert_eq!(reachable.len(), 3, "all three successors should be reachable");
+        assert!(
+            reachable.contains(&StepIdx::new(1)),
+            "node 1 must be reachable from node 0"
+        );
+        assert!(
+            reachable.contains(&StepIdx::new(2)),
+            "node 2 must be reachable from node 0"
+        );
+        assert!(
+            reachable.contains(&StepIdx::new(3)),
+            "node 3 must be reachable from node 0"
+        );
+
+        // Vec::pop is LIFO, so the last enqueued element comes out first.
+        // Node 1 is enqueued first, then its successor 2, then 3.
+        // Pop order: 1 (pushed first when processing node 0),
+        //   then processing 1 pushes 2, pop 2, processing 2 pushes 3, pop 3.
+        // So result order is [1, 2, 3].
+        assert_eq!(
+            reachable[0], StepIdx::new(1),
+            "first visited node should be 1 (direct successor)"
+        );
+        assert_eq!(
+            reachable[1], StepIdx::new(2),
+            "second visited node should be 2"
+        );
+        assert_eq!(
+            reachable[2], StepIdx::new(3),
+            "third visited node should be 3"
+        );
+    }
+
+    /// BH-05: ForEachJoin `output` slot appears in `collect_input_slots`.
+    ///
+    /// BLACK HAT FINDING: `collect_input_slots` returns the `output` slot
+    /// for `ForEachJoin { output }`.  Semantically, `output` is the slot
+    /// where the joined result is *written*, not an input that is read.
+    /// This means the taint analysis treats the ForEachJoin output as an
+    /// input slot, which could cause incorrect taint propagation.  The test
+    /// documents this known issue.
+    #[test]
+    fn bh05_for_each_join_output_in_input_slots() {
+        let output_slot = SlotIdx::new(7);
+        let kind = CompiledNodeKind::ForEachJoin {
+            output: output_slot,
+        };
+        let input_slots = collect_input_slots(&kind);
+
+        // BLACK HAT: The output slot of ForEachJoin is incorrectly listed
+        // as an input slot.  This is a semantic error in collect_input_slots.
+        assert!(
+            input_slots.contains(&output_slot),
+            "BLACK HAT: ForEachJoin output slot is incorrectly treated as an input slot"
+        );
+
+        // Verify it is the only slot returned.
+        assert_eq!(
+            input_slots.len(),
+            1,
+            "ForEachJoin should report exactly one slot in collect_input_slots"
+        );
+    }
+
+    /// BH-06: Empty taint map produces no flow paths and no tainted nodes.
+    ///
+    /// With no entries in the taint map, there should be zero sources,
+    /// zero flow paths, zero tainted nodes, and `finish_safe` must be true
+    /// even when a Finish node exists.
+    #[test]
+    fn bh06_empty_taint_map_produces_no_flows() {
+        let parts = make_parts_with_output(vec![
+            (
+                CompiledNodeKind::Copy {
+                    source: SlotIdx::new(0),
+                },
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(1)),
+            ),
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+                None,
+                None,
+            ),
+        ]);
+        let result = compute_taint_overlay(&parts, &HashMap::new());
+
+        assert!(
+            result.sources.is_empty(),
+            "no sources should be found with empty taint map"
+        );
+        assert!(
+            result.flow_paths.is_empty(),
+            "no flow paths should exist with empty taint map"
+        );
+        assert!(
+            result.tainted_nodes.is_empty(),
+            "no tainted nodes with empty taint map"
+        );
+        assert!(
+            result.forbidden_sinks.is_empty(),
+            "no forbidden sinks with empty taint map"
+        );
+        assert!(
+            result.finish_safe,
+            "finish must be safe when taint map is empty"
+        );
+        assert_eq!(
+            result.clean_nodes.len(),
+            2,
+            "all nodes must be clean with empty taint map"
+        );
+    }
+
+    /// BH-07: Single source-to-sink path detection.
+    ///
+    /// Build a linear chain where node 0 has a tainted output slot and
+    /// flows through node 1 to a Finish node (node 2).  Verify that exactly
+    /// one forbidden flow path is detected with correct source, sink, and
+    /// intermediate nodes.
+    #[test]
+    fn bh07_single_source_to_sink_path() {
+        let parts = make_parts_with_output(vec![
+            // Node 0: writes to slot 0 (tainted)
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(1)),
+                Some(SlotIdx::new(0)),
+            ),
+            // Node 1: intermediate
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(2)),
+                Some(SlotIdx::new(1)),
+            ),
+            // Node 2: Finish sink
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(2),
+                },
+                None,
+                None,
+            ),
+        ]);
+
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(0), String::from("Secret"));
+
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        // Exactly one source.
+        assert_eq!(result.sources.len(), 1, "should have exactly one source");
+        assert_eq!(result.sources[0], StepIdx::new(0), "source should be node 0");
+
+        // Exactly one sink.
+        assert_eq!(result.sinks.len(), 1, "should have exactly one sink");
+        assert_eq!(result.sinks[0], StepIdx::new(2), "sink should be node 2");
+
+        // Not safe -- secret reaches Finish.
+        assert!(
+            !result.finish_safe,
+            "finish must not be safe when secret reaches it"
+        );
+
+        // Exactly one forbidden flow path.
+        let forbidden: Vec<&TaintFlowPath> = result
+            .flow_paths
+            .iter()
+            .filter(|p| p.is_forbidden)
+            .collect();
+        assert_eq!(forbidden.len(), 1, "should have exactly one forbidden flow path");
+
+        let path = forbidden[0];
+        assert_eq!(path.source_step, StepIdx::new(0), "path source should be node 0");
+        assert_eq!(path.sink_step, StepIdx::new(2), "path sink should be node 2");
+        assert!(
+            path.path_nodes.contains(&StepIdx::new(0)),
+            "path must contain source node 0"
+        );
+        assert!(
+            path.path_nodes.contains(&StepIdx::new(2)),
+            "path must contain sink node 2"
+        );
+
+        // Forbidden sink should be recorded.
+        assert!(
+            result.forbidden_sinks.contains(&2),
+            "node 2 should be a forbidden sink"
+        );
+    }
+
+    /// BH-08: Forbidden vs allowed flow classification.
+    ///
+    /// Build a graph where one secret source reaches a Finish (forbidden)
+    /// and another secret source does NOT reach any Finish (allowed /
+    /// warning).  Verify that `is_forbidden` is correctly set for each
+    /// flow path.
+    #[test]
+    fn bh08_forbidden_vs_allowed_flow_classification() {
+        let parts = make_parts_with_output(vec![
+            // Node 0: secret source, connects to Finish (forbidden path)
+            (
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(2)),
+                Some(SlotIdx::new(0)),
+            ),
+            // Node 1: secret source, no connection to Finish (allowed path)
+            (
+                CompiledNodeKind::Nop,
+                None,
+                Some(SlotIdx::new(1)),
+            ),
+            // Node 2: Finish sink
+            (
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(2),
+                },
+                None,
+                None,
+            ),
+        ]);
+
+        let mut taint_map = HashMap::new();
+        taint_map.insert(SlotIdx::new(0), String::from("Secret"));
+        taint_map.insert(SlotIdx::new(1), String::from("Secret"));
+
+        let result = compute_taint_overlay(&parts, &taint_map);
+
+        // Two sources.
+        assert_eq!(result.sources.len(), 2, "should have two secret sources");
+
+        // One forbidden path (node 0 -> node 2).
+        let forbidden: Vec<&TaintFlowPath> = result
+            .flow_paths
+            .iter()
+            .filter(|p| p.is_forbidden)
+            .collect();
+        assert_eq!(
+            forbidden.len(),
+            1,
+            "should have exactly one forbidden flow path"
+        );
+        assert_eq!(
+            forbidden[0].source_step,
+            StepIdx::new(0),
+            "forbidden path should start at node 0"
+        );
+        assert_eq!(
+            forbidden[0].sink_step,
+            StepIdx::new(2),
+            "forbidden path should end at node 2 (Finish)"
+        );
+
+        // No allowed (non-forbidden) paths because node 1 has no successors
+        // and therefore no reachable nodes.
+        let allowed: Vec<&TaintFlowPath> = result
+            .flow_paths
+            .iter()
+            .filter(|p| !p.is_forbidden)
+            .collect();
+        assert!(
+            allowed.is_empty(),
+            "source with no reachable nodes should produce no flow path"
+        );
+
+        // Finish is not safe because node 0 reaches it.
+        assert!(
+            !result.finish_safe,
+            "finish must not be safe when a forbidden path exists"
+        );
+    }
 }

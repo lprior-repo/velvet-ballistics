@@ -378,6 +378,7 @@ pub fn handle_verify_workflow(
         ("gate_09_slot_references", vb_validate::gates::validate_gate_09_slot_references(&parts)),
         ("gate_10_node_kind_specific", vb_validate::gates::validate_gate_10_node_kind_specific(&parts)),
         ("gate_11_loop_body_graph", vb_validate::gates::validate_gate_11_loop_body_graph(&parts)),
+        ("gate_12_action_contract_completeness", vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &[])),
         ("gate_13_no_slot_cycles", vb_validate::gates::validate_gate_13_no_slot_cycles(&parts)),
         ("gate_14_slot_type_consistency", vb_validate::gates::validate_gate_14_slot_type_consistency(&parts)),
         ("gate_15_determinism_proof", vb_validate::gates::validate_gate_15_determinism_proof(&parts)),

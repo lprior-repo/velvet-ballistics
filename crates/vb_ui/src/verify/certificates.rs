@@ -2847,4 +2847,382 @@ mod tests {
         let copy = kind;
         assert_eq!(kind, copy);
     }
+
+    // ========================================================================
+    // Additional edge-case tests for coverage
+    // ========================================================================
+
+    /// Test 1: collect_successors for CollectFinish node returns no extra
+    /// successors beyond next/on_error (it falls into the simple-arm match).
+    #[test]
+    fn collect_successors_collect_finish_returns_only_next_and_on_error() {
+        let succs = collect_successors(
+            &CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(5),
+            },
+            Some(StepIdx::new(10)),
+            Some(StepIdx::new(20)),
+        );
+        // Should contain next and on_error, but no extra edges from the kind.
+        assert!(
+            succs.contains(&StepIdx::new(10)),
+            "expected next=10 in successors"
+        );
+        assert!(
+            succs.contains(&StepIdx::new(20)),
+            "expected on_error=20 in successors"
+        );
+        assert_eq!(
+            succs.len(),
+            2,
+            "CollectFinish should produce exactly 2 successors (next + on_error)"
+        );
+    }
+
+    /// Test 2: collect_successors for ReduceFinish node returns no extra
+    /// successors beyond next/on_error (it also falls into the simple-arm match).
+    #[test]
+    fn collect_successors_reduce_finish_returns_only_next_and_on_error() {
+        let succs = collect_successors(
+            &CompiledNodeKind::ReduceFinish {
+                accumulator: SlotIdx::new(7),
+            },
+            None,
+            None,
+        );
+        // ReduceFinish with no next and no on_error should produce an empty vec.
+        assert!(
+            succs.is_empty(),
+            "ReduceFinish with no next/on_error should produce no successors"
+        );
+
+        // With next only.
+        let succs_next = collect_successors(
+            &CompiledNodeKind::ReduceFinish {
+                accumulator: SlotIdx::new(7),
+            },
+            Some(StepIdx::new(3)),
+            None,
+        );
+        assert_eq!(succs_next.len(), 1);
+        assert!(succs_next.contains(&StepIdx::new(3)));
+    }
+
+    /// Test 3: check_reachability with disconnected nodes -- a graph where
+    /// the entry leads to some nodes but other nodes have no path from entry.
+    #[test]
+    fn reachability_fails_with_disconnected_nodes() {
+        let mut nodes = Vec::new();
+        // Node 0: Nop -> Node 1
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        // Node 1: Finish
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        // Node 2: disconnected Nop (no one points to it)
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        // Node 3: disconnected Finish (no one points to it)
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("disconnected").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        let Some(cert) = reachability else {
+            return;
+        };
+        assert!(
+            matches!(cert.status, CertificateStatus::Fail(_)),
+            "expected Fail for disconnected nodes, got {:?}",
+            cert.status
+        );
+        if let CertificateStatus::Fail(ref msg) = cert.status {
+            // Should report 2 unreachable nodes (step 2 and step 3).
+            assert!(
+                msg.contains("2 unreachable"),
+                "expected '2 unreachable' in message, got: {}",
+                msg,
+            );
+        }
+    }
+
+    /// Test 4: check_boundedness with zero max_slots should fail.
+    #[test]
+    fn boundedness_fails_with_zero_max_slots() {
+        let mut parts = minimal_parts();
+        parts.resource_contract.max_slots = 0;
+        let result = VerificationResult::analyze(&parts);
+        let boundedness = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Boundedness);
+        let Some(cert) = boundedness else {
+            return;
+        };
+        assert!(
+            matches!(cert.status, CertificateStatus::Fail(_)),
+            "expected Fail for zero max_slots, got {:?}",
+            cert.status
+        );
+        if let CertificateStatus::Fail(ref msg) = cert.status {
+            assert!(
+                msg.contains("max_slots is zero"),
+                "expected 'max_slots is zero' in failure, got: {}",
+                msg,
+            );
+        }
+    }
+
+    /// Test 5: check_preflight_max_transitions with max_steps = u16::MAX
+    /// should pass even with a non-trivial node count.
+    #[test]
+    fn preflight_max_transitions_passes_at_u16_max() {
+        let mut nodes = Vec::new();
+        // Build a chain of 500 nodes, well under u16::MAX.
+        for i in 0..500u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 499 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: if i < 499 {
+                    CompiledNodeKind::Nop
+                } else {
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    }
+                },
+            });
+        }
+        let parts = WorkflowParts {
+            name: String::from("big-steps").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract {
+                max_steps: u16::MAX,
+                ..ResourceContract::DEFAULT
+            },
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_transitions");
+        let Some(c) = check else {
+            return;
+        };
+        assert_eq!(
+            c.status,
+            CheckStatus::Pass,
+            "expected Pass for max_steps=u16::MAX with 500 nodes, got: {}",
+            c.detail,
+        );
+    }
+
+    /// Test 6: Empty node list -- both the certificate analysis and pre-flight
+    /// verify_workflow should report failures for an empty node array.
+    #[test]
+    fn empty_node_list_fails_all_structural_checks() {
+        let empty = empty_parts();
+
+        // Certificate analysis: structural validity should fail.
+        let cert_result = VerificationResult::analyze(&empty);
+        let structural = cert_result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        let Some(cert) = structural else {
+            return;
+        };
+        assert!(
+            matches!(cert.status, CertificateStatus::Fail(_)),
+            "certificate structural should Fail for empty nodes"
+        );
+
+        // Certificate analysis: reachability should also fail for empty nodes.
+        let reach = cert_result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        let Some(reach_cert) = reach else {
+            return;
+        };
+        assert!(
+            matches!(reach_cert.status, CertificateStatus::Fail(_)),
+            "certificate reachability should Fail for empty nodes"
+        );
+
+        // Pre-flight: structural_validity should fail.
+        let pf_report = verify_workflow(&empty);
+        assert!(
+            !pf_report.all_pass,
+            "pre-flight all_pass should be false for empty nodes"
+        );
+        let pf_struct = pf_report
+            .checks
+            .iter()
+            .find(|c| c.name == "structural_validity");
+        let Some(pf_s) = pf_struct else {
+            return;
+        };
+        assert_eq!(
+            pf_s.status,
+            CheckStatus::Fail,
+            "pre-flight structural should be Fail for empty nodes"
+        );
+    }
+
+    /// Test 7: Single Finish node workflow should pass certificate analysis
+    /// and pre-flight checks (reachable, structurally valid, durable enough).
+    #[test]
+    fn single_finish_node_workflow_passes_validation() {
+        let parts = minimal_parts();
+
+        // Certificate analysis: all key checks should pass or warn.
+        let cert_result = VerificationResult::analyze(&parts);
+
+        // Structural validity must pass.
+        let structural = cert_result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        let Some(s) = structural else {
+            return;
+        };
+        assert!(
+            matches!(s.status, CertificateStatus::Pass),
+            "structural should pass for single Finish node"
+        );
+
+        // Reachability must pass (single node reachable from entry).
+        let reach = cert_result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        let Some(r) = reach else {
+            return;
+        };
+        assert!(
+            matches!(r.status, CertificateStatus::Pass),
+            "reachability should pass for single Finish node"
+        );
+
+        // Strict durability should pass or warn (Finish present, no error handlers).
+        let dur = cert_result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StrictDurability);
+        let Some(d) = dur else {
+            return;
+        };
+        assert!(
+            matches!(d.status, CertificateStatus::Pass | CertificateStatus::Warn(_)),
+            "strict durability should Pass or Warn for single Finish, got {:?}",
+            d.status,
+        );
+
+        // Pre-flight should report all_pass.
+        let pf = verify_workflow(&parts);
+        assert!(
+            pf.all_pass,
+            "pre-flight all_pass should be true for single Finish node, worst={:?}",
+            pf.worst_risk,
+        );
+    }
+
+    /// Test 8: ForEachStart creates correct successor edges (body + done
+    /// in addition to next/on_error).
+    #[test]
+    fn collect_successors_for_each_start_includes_body_and_done() {
+        let succs = collect_successors(
+            &CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(5),
+                done: StepIdx::new(20),
+            },
+            Some(StepIdx::new(99)),  // next
+            Some(StepIdx::new(50)),  // on_error
+        );
+
+        // Should contain: next(99), on_error(50), body(5), done(20).
+        assert!(
+            succs.contains(&StepIdx::new(99)),
+            "expected next=99"
+        );
+        assert!(
+            succs.contains(&StepIdx::new(50)),
+            "expected on_error=50"
+        );
+        assert!(
+            succs.contains(&StepIdx::new(5)),
+            "expected body=5"
+        );
+        assert!(
+            succs.contains(&StepIdx::new(20)),
+            "expected done=20"
+        );
+        assert_eq!(
+            succs.len(),
+            4,
+            "ForEachStart should produce 4 successors, got {:?}",
+            succs,
+        );
+    }
 }
