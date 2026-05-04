@@ -1501,4 +1501,182 @@ mod tests {
             Some(&StepState::Running)
         );
     }
+
+    // =====================================================================
+    // BLACK HAT security and correctness review tests
+    // =====================================================================
+
+    // -- STATE BH-1: saturating_add_one never overflows (LOW) --
+    //
+    // The saturating_add_one helper correctly handles u32::MAX by returning
+    // u32::MAX (saturating). This prevents counter overflow.
+    #[test]
+    fn blackhat_saturating_add_one_at_max_returns_max() {
+        assert_eq!(super::saturating_add_one(u32::MAX), u32::MAX);
+        assert_eq!(super::saturating_add_one(0), 1);
+        assert_eq!(super::saturating_add_one(100), 101);
+    }
+
+    // -- STATE BH-2: counter overflow protection via saturating_add_one (HIGH) --
+    //
+    // Even with u32::MAX - 1 steps_completed, applying another StepSucceeded
+    // should saturate at u32::MAX rather than overflowing.
+    #[test]
+    fn blackhat_steps_completed_saturates_at_max() {
+        let mut state = ReplayState::initial();
+        state.steps_completed = u32::MAX;
+        let next = state.apply_event(&step_succeeded(0, 0, 1));
+        assert_eq!(
+            next.steps_completed, u32::MAX,
+            "steps_completed must saturate at u32::MAX"
+        );
+    }
+
+    // -- STATE BH-3: StepSucceeded overwrites any previous step state (MEDIUM) --
+    //
+    // Applying StepSucceeded to a step that was never StepStarted (no StepStarted
+    // event) still sets it to Succeeded and increments the counter. The state
+    // machine does not enforce that steps must be Started before Succeeded.
+    // This could produce incorrect replay states if the journal is corrupted.
+    #[test]
+    fn blackhat_step_succeeded_without_started_still_succeeds() {
+        let init = ReplayState::initial();
+        // Apply StepSucceeded without ever applying StepStarted.
+        let next = init.apply_event(&step_succeeded(0, 0, 1));
+        assert_eq!(
+            next.step_states.get(&StepIdx::new(0)),
+            Some(&StepState::Succeeded),
+            "StepSucceeded without StepStarted should still set Succeeded"
+        );
+        assert_eq!(next.steps_completed, 1);
+    }
+
+    // -- STATE BH-4: ActionScheduled without StepStarted is allowed (MEDIUM) --
+    //
+    // The state machine does not validate that an action belongs to a step
+    // that was started. Actions can be scheduled for non-existent steps.
+    #[test]
+    fn blackhat_action_scheduled_for_nonexistent_step() {
+        let init = ReplayState::initial();
+        let next = init.apply_event(&action_scheduled(99, 0, 1));
+        assert_eq!(next.actions_dispatched, 1);
+        // The step itself was never started.
+        assert!(
+            next.step_states.get(&StepIdx::new(99)).is_none(),
+            "step should not appear in step_states without StepStarted"
+        );
+    }
+
+    // -- STATE BH-5: multiple RunFailed events increment steps_failed (LOW) --
+    //
+    // If somehow multiple RunFailed events appear (only possible in corrupted
+    // journals since the terminal guard prevents events after the first), the
+    // first sets is_terminal=true and all subsequent events are ignored.
+    // The terminal guard prevents counter corruption.
+    #[test]
+    fn blackhat_multiple_terminal_events_only_first_applies() {
+        let init = ReplayState::initial();
+        let s1 = init.apply_event(&run_failed(1));
+        assert_eq!(s1.steps_failed, 1);
+        assert!(s1.is_terminal);
+
+        // Second terminal event is ignored due to terminal guard.
+        let s2 = s1.apply_event(&run_failed(2));
+        assert_eq!(s2.steps_failed, 1, "second RunFailed must not increment steps_failed");
+        assert_eq!(s2.at_seq.get(), 1, "second RunFailed must not update at_seq");
+    }
+
+    // -- STATE BH-6: SlotWritten with entry API does not overwrite (MEDIUM) --
+    //
+    // SlotWritten uses entry().or_insert_with() which means if a slot already
+    // has a value, SlotWritten will NOT update it. This is documented behavior
+    // but could be surprising if a slot is written twice with different values.
+    #[test]
+    fn blackhat_slot_written_does_not_overwrite_existing_value() {
+        let mut state = ReplayState::initial();
+        state.slot_values.insert(SlotIdx::new(5), String::from("original"));
+        let next = state.apply_event(&slot_written(5, 1));
+        assert_eq!(
+            next.slot_values.get(&SlotIdx::new(5)),
+            Some(&String::from("original")),
+            "SlotWritten must not overwrite existing value"
+        );
+    }
+
+    // -- STATE BH-7: StepSucceeded DOES overwrite slot value (MEDIUM) --
+    //
+    // Unlike SlotWritten, StepSucceeded always inserts (overwrites) the output
+    // slot value with "<written>". This creates an inconsistency: SlotWritten
+    // preserves existing values but StepSucceeded does not.
+    #[test]
+    fn blackhat_step_succeeded_overwrites_slot_value() {
+        let mut state = ReplayState::initial();
+        state.slot_values.insert(SlotIdx::new(0), String::from("custom"));
+        let next = state.apply_event(&step_succeeded(0, 0, 1));
+        // Output slot 0 should be overwritten to "<written>".
+        assert_eq!(
+            next.slot_values.get(&SlotIdx::new(0)),
+            Some(&String::from("<written>")),
+            "StepSucceeded should overwrite existing slot value"
+        );
+    }
+
+    // -- STATE BH-8: ReplayBookmark position is u64, session position is u64 (LOW) --
+    //
+    // The ReplayBookmark and ReplaySessionState use u64 for position while
+    // the controller uses u32. This mismatch means session state could hold
+    // positions that overflow the controller's u32. No data flows between
+    // them currently, but the type mismatch is a future risk.
+    #[test]
+    fn blackhat_session_position_is_u64_while_controller_is_u32() {
+        let mut session = ReplaySessionState::new();
+        session.seek_to(u64::MAX);
+        assert_eq!(session.current_position(), u64::MAX);
+    }
+
+    // -- STATE BH-9: bookmarks_at near u64::MAX saturates (LOW) --
+    //
+    // bookmarks_at uses saturating_add for the high bound, so position near
+    // u64::MAX doesn't overflow but saturates, which is correct.
+    #[test]
+    fn blackhat_bookmarks_at_near_max_position_saturates() {
+        let mut session = ReplaySessionState::new();
+        session.current_position = u64::MAX;
+        session.add_bookmark(String::from("edge"), 0);
+
+        let found = session.bookmarks_at(u64::MAX);
+        assert_eq!(found.len(), 1, "bookmark at u64::MAX should be found");
+    }
+
+    // -- STATE BH-10: NaN playback speed is rejected (LOW) --
+    //
+    // set_playback_speed correctly rejects NaN and clamps to minimum.
+    #[test]
+    fn blackhat_nan_playback_speed_rejected() {
+        let mut session = ReplaySessionState::new();
+        session.set_playback_speed(f32::NAN);
+        assert!(!session.playback_speed().is_nan());
+        assert!((session.playback_speed() - 0.1).abs() < f32::EPSILON);
+    }
+
+    // -- STATE BH-11: Inf playback speed is clamped (LOW) --
+    //
+    // Infinity speed should be clamped to MAX_SPEED (10.0).
+    #[test]
+    fn blackhat_inf_playback_speed_clamped() {
+        let mut session = ReplaySessionState::new();
+        session.set_playback_speed(f32::INFINITY);
+        assert!(session.playback_speed().is_finite());
+        assert!((session.playback_speed() - 10.0).abs() < f32::EPSILON);
+    }
+
+    // -- STATE BH-12: negative playback speed is clamped (LOW) --
+    //
+    // Negative speed should be clamped to MIN_SPEED (0.1).
+    #[test]
+    fn blackhat_negative_playback_speed_clamped() {
+        let mut session = ReplaySessionState::new();
+        session.set_playback_speed(-5.0);
+        assert!((session.playback_speed() - 0.1).abs() < f32::EPSILON);
+    }
 }
