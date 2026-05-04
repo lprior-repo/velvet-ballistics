@@ -138,6 +138,18 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Incident {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
+    Submit {
+        workflow: PathBuf,
+        input_bin: PathBuf,
+        db: PathBuf,
+        durability: DurabilityMode,
+        output: OutputFormat,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -201,6 +213,8 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "answer" => parse_answer(args),
         "graph" => parse_graph(args),
         "diff" => parse_diff(args),
+        "incident" => parse_incident(args),
+        "submit" => parse_submit(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }
@@ -449,6 +463,35 @@ fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
         run_a,
         run_b,
         db: PathBuf::from(db),
+        output,
+    })
+}
+
+fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Incident {
+        run_id,
+        db: PathBuf::from(db),
+        output,
+    })
+}
+
+fn parse_submit(args: &[OsString]) -> Result<Command, ParseError> {
+    let workflow = positional(args, 2, "workflow.yaml")?;
+    let input_bin =
+        named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let durability_raw =
+        named_flag(args, "--durability").ok_or(ParseError::MissingArgument("--durability"))?;
+    let durability = parse_durability(&durability_raw)?;
+    let output = parse_output_format(args);
+    Ok(Command::Submit {
+        workflow,
+        input_bin: PathBuf::from(input_bin),
+        db: PathBuf::from(db),
+        durability,
         output,
     })
 }

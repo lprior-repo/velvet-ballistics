@@ -59,6 +59,7 @@ commands:
   answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
   graph      <workflow.yaml> [--json|--jsonl]          Output control flow graph in DOT format
   diff       <run_a> <run_b> --db <path> [--json|--jsonl]  Compare two runs
+  incident   <run_id> --db <path> [--json|--jsonl]     Black-box failure report
   help                                                Print this message
   version                                             Print version
 
@@ -135,6 +136,11 @@ fn main() -> ExitCode {
             db,
             output,
         }) => cmd_diff(&run_a, &run_b, &db, output),
+        Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
+        Ok(Command::Submit { .. }) => {
+            errln!("submit command not yet implemented");
+            CliExitCode::RuntimeFailed.into()
+        }
         Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
     }
 }
@@ -668,6 +674,7 @@ fn cmd_run(
     }
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
+
 
 /// Executes a single step in isolation using `step_once`.
 fn cmd_run_step(
@@ -2232,6 +2239,212 @@ fn cmd_answer(
     CliExitCode::RuntimeFailed.into()
 }
 
+fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error opening journal at {}: {e}", db.display())
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    let events = match journal.events_for_run(rid) {
+        Ok(evts) => evts,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading events for run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading events for run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    if events.is_empty() {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("no events found for run {run_id}")
+                }),
+                output,
+            );
+        } else {
+            errln!("no events found for run {run_id}");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
+    // Collect data from events: find failure, track completed actions, find failed step.
+    let mut failure_found = false;
+    let mut failure_code = String::new();
+    let mut failed_at_step: Option<u16> = None;
+    let mut side_effects: Vec<serde_json::Value> = Vec::new();
+    let mut last_step_started: Option<u16> = None;
+
+    for event in &events {
+        match event {
+            vb_storage::JournalEvent::StepStarted { step, .. } => {
+                last_step_started = Some(step.get());
+            }
+            vb_storage::JournalEvent::ActionCompletedEvent { step, action, .. } => {
+                side_effects.push(serde_json::json!({
+                    "step": step.get(),
+                    "action": action.get(),
+                    "certainty": "confirmed"
+                }));
+            }
+            vb_storage::JournalEvent::ActionFailedEvent { step, action, .. } => {
+                side_effects.push(serde_json::json!({
+                    "step": step.get(),
+                    "action": action.get(),
+                    "certainty": "failed"
+                }));
+            }
+            vb_storage::JournalEvent::RunFailedEvent { .. } => {
+                failure_found = true;
+                failure_code = "RunFailed".to_string();
+                failed_at_step = last_step_started;
+            }
+            vb_storage::JournalEvent::RunCancelled { .. } => {
+                failure_found = true;
+                failure_code = "RunCancelled".to_string();
+                failed_at_step = last_step_started;
+            }
+            _ => {}
+        }
+    }
+
+    // Build repair hints based on failure type.
+    let repair_hints = build_repair_hints(&failure_code, &side_effects, failed_at_step);
+
+    let failed_step_val = failed_at_step
+        .map(|s| serde_json::Value::Number(serde_json::Number::from(s)))
+        .unwrap_or(serde_json::Value::Null);
+
+    let report = serde_json::json!({
+        "run_id": run_id,
+        "failure_code": failure_code,
+        "failed_at_step": failed_step_val,
+        "side_effects": side_effects,
+        "repair_hints": repair_hints,
+    });
+
+    match output {
+        OutputFormat::Json => {
+            let json_str = serde_json::to_string_pretty(&report).unwrap_or_default();
+            outln!("{json_str}");
+        }
+        OutputFormat::Jsonl => {
+            let json_str = serde_json::to_string(&report).unwrap_or_default();
+            outln!("{json_str}");
+        }
+        OutputFormat::Text => {
+            outln!("incident report for run {run_id}");
+            outln!("  failure_code:  {failure_code}");
+            match failed_at_step {
+                Some(step) => outln!("  failed_at_step: {step}"),
+                None => outln!("  failed_at_step: unknown"),
+            }
+            outln!("  side_effects:");
+            if side_effects.is_empty() {
+                outln!("    (none)");
+            } else {
+                for se in &side_effects {
+                    let step = se["step"];
+                    let action = se["action"];
+                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
+                    outln!("    step={step} action={action} certainty={certainty}");
+                }
+            }
+            outln!("  repair_hints:");
+            for hint in &repair_hints {
+                let hint_str = hint.as_str().unwrap_or("unknown");
+                outln!("    - {hint_str}");
+            }
+        }
+    }
+
+    if failure_found {
+        CliExitCode::Success.into()
+    } else {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("run {run_id} has no failure event; not an incident")
+                }),
+                output,
+            );
+        } else {
+            errln!("run {run_id} has no failure event; not an incident");
+        }
+        CliExitCode::StorageError.into()
+    }
+}
+
+/// Build repair hints based on the failure code, side effects, and failed step.
+fn build_repair_hints(
+    failure_code: &str,
+    side_effects: &[serde_json::Value],
+    failed_at_step: Option<u16>,
+) -> Vec<serde_json::Value> {
+    let mut hints: Vec<serde_json::Value> = Vec::new();
+
+    match failure_code {
+        "RunFailed" => {
+            hints.push(serde_json::Value::String(
+                "investigate step output and engine logs for the failed step".to_string(),
+            ));
+            if !side_effects.is_empty() {
+                hints.push(serde_json::Value::String(
+                    "review side effects that completed before failure for compensating actions"
+                        .to_string(),
+                ));
+            }
+            if let Some(step) = failed_at_step {
+                hints.push(serde_json::Value::String(format!(
+                    "consider retry from step {step} using the retry command"
+                )));
+            }
+        }
+        "RunCancelled" => {
+            hints.push(serde_json::Value::String(
+                "run was cancelled; check if cancellation was intentional".to_string(),
+            ));
+            if !side_effects.is_empty() {
+                hints.push(serde_json::Value::String(
+                    "review completed side effects for partial cleanup needs".to_string(),
+                ));
+            }
+        }
+        _ => {}
+    }
+
+    hints
+}
+
 fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid_a = match parse_run_id(run_a) {
         Ok(id) => id,
@@ -3246,7 +3459,6 @@ fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 
     CliExitCode::Success.into()
 }
-
 fn node_kind_label(kind: &vb_core::CompiledNodeKind) -> &'static str {
     match kind {
         vb_core::CompiledNodeKind::Nop => "nop",
