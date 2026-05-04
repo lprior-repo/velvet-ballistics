@@ -8377,4 +8377,782 @@ mod tests {
         );
         Ok(())
     }
+
+    // =======================================================================
+    // Edge-case tests for generated-mode workflow compilation
+    // =======================================================================
+
+    /// Helper: build a workflow with entry pointing to a Finish node and nothing else.
+    /// This represents the "empty workflow" edge case: entry -> finish.
+    fn empty_entry_finish_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_empty_entry_finish"),
+            digest: WorkflowDigest::from_bytes([0xE0; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow with a single SetConst step -> Finish.
+    fn single_step_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_single_step"),
+            digest: WorkflowDigest::from_bytes([0xE1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(99)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow containing a ForEachStart node.
+    fn foreach_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_foreach"),
+            digest: WorkflowDigest::from_bytes([0xE2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 10,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(2),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow containing a TogetherStart node.
+    fn edge_case_together_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_together"),
+            digest: WorkflowDigest::from_bytes([0xE3; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::TogetherStart {
+                        branches: vec![StepIdx::new(1)].into_boxed_slice(),
+                        join: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::TogetherBranch {
+                        branch: 0,
+                        entry: StepIdx::new(1),
+                        join: StepIdx::new(2),
+                        accumulator: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::TogetherJoin {
+                        branch_count: 1,
+                        accumulator: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow containing a RepeatStart node (which is unsupported).
+    fn edge_case_repeat_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_repeat"),
+            digest: WorkflowDigest::from_bytes([0xE4; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RepeatStart {
+                        max_attempts: 3,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RepeatAttempt {
+                        attempt_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RepeatFinish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow with a WaitUntil step.
+    fn edge_case_wait_until_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_wait_until"),
+            digest: WorkflowDigest::from_bytes([0xE5; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::WaitUntil {
+                        deadline_slot: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(100)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow with an Ask step followed by an AskResume step.
+    fn edge_case_ask_resume_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_ask_resume"),
+            digest: WorkflowDigest::from_bytes([0xE6; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Ask {
+                        prompt: SlotIdx::new(0),
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::AskResume {
+                        answer: SlotIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow with a ChooseSlot node using slot-based conditions.
+    fn edge_case_choose_slot_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_choose_slot"),
+            digest: WorkflowDigest::from_bytes([0xE7; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ChooseSlot {
+                        branches: vec![vb_core::SlotBranch {
+                            condition: SlotIdx::new(0),
+                            target: StepIdx::new(2),
+                        }]
+                        .into_boxed_slice(),
+                        otherwise: Some(StepIdx::new(3)),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Bool(true), ConstValue::I64(1), ConstValue::I64(2)]
+                .into_boxed_slice(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    /// Helper: build a workflow with a Do node and a RetryCheck step.
+    fn do_with_retry_check_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_do_retry"),
+            digest: WorkflowDigest::from_bytes([0xE8; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Do {
+                        action: ActionId::new(10),
+                        input: SlotIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck {
+                        policy_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        exhausted: StepIdx::new(4),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(0), ConstValue::I64(1)].into_boxed_slice(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    // --- Test 1: Empty workflow (entry -> finish, no intermediate steps) ---
+
+    #[test]
+    fn edge_case_empty_workflow_entry_finish_only() -> Result<(), String> {
+        let workflow = empty_entry_finish_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // The generated source must contain exactly one step function (the Finish node)
+        let step_count = source.lines().filter(|l| l.trim().starts_with("fn step_")).count();
+        assert_eq!(
+            step_count, 1,
+            "empty workflow should produce exactly 1 step function, got {step_count}"
+        );
+
+        // The drive function must start at entry=0
+        assert!(
+            source.contains("let mut pc: u16 = 0;"),
+            "drive should start at pc=0 for empty workflow"
+        );
+
+        // The single step must be a Finish that reads from slot 0
+        assert!(
+            source.contains("StepOutcome::Finished"),
+            "empty workflow must have a Finished outcome"
+        );
+
+        // Semantic equivalence check must pass
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // --- Test 2: Single step workflow (SetConst -> Finish) ---
+
+    #[test]
+    fn edge_case_single_step_workflow() -> Result<(), String> {
+        let workflow = single_step_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Must produce exactly 2 step functions (SetConst + Finish)
+        let step_count = source.lines().filter(|l| l.trim().starts_with("fn step_")).count();
+        assert_eq!(
+            step_count, 2,
+            "single step workflow should produce exactly 2 step functions, got {step_count}"
+        );
+
+        // The first step must write a constant
+        assert!(
+            source.contains("fn step_0"),
+            "first step must be step_0"
+        );
+        assert!(
+            source.contains("write_slot") && source.contains("read_const(0)"),
+            "step_0 must write constant 0 to a slot"
+        );
+
+        // The constant pool must contain I64(99)
+        assert!(
+            source.contains("I64(99)"),
+            "constant pool must contain the I64(99) constant"
+        );
+
+        // Semantic check must pass
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // --- Test 3: ForEach loop is rejected by generated mode ---
+
+    #[test]
+    fn edge_case_foreach_loop_rejected_by_generated_mode() -> Result<(), String> {
+        let workflow = foreach_workflow()?;
+        let result = emit_rust_workflow(&workflow);
+
+        assert!(
+            result.is_err(),
+            "ForEach workflows must be rejected by generated mode"
+        );
+        let err = result.err().ok_or("expected an error but got none")?;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
+            "ForEach rejection must mention unsupported IR, got: {msg}"
+        );
+        assert!(
+            msg.contains("ForEachStart"),
+            "ForEach rejection must identify ForEachStart as the unsupported feature, got: {msg}"
+        );
+        Ok(())
+    }
+
+    // --- Test 4: Together parallel is rejected by generated mode ---
+
+    #[test]
+    fn edge_case_together_parallel_rejected_by_generated_mode() -> Result<(), String> {
+        let workflow = edge_case_together_workflow()?;
+        let result = emit_rust_workflow(&workflow);
+
+        assert!(
+            result.is_err(),
+            "Together workflows must be rejected by generated mode"
+        );
+        let err = result.err().ok_or("expected an error but got none")?;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
+            "Together rejection must mention unsupported IR, got: {msg}"
+        );
+        assert!(
+            msg.contains("TogetherStart"),
+            "Together rejection must identify TogetherStart as the unsupported feature, got: {msg}"
+        );
+        Ok(())
+    }
+
+    // --- Test 5: Repeat with retry is rejected by generated mode ---
+
+    #[test]
+    fn edge_case_repeat_with_retry_rejected_by_generated_mode() -> Result<(), String> {
+        let workflow = edge_case_repeat_workflow()?;
+        let result = emit_rust_workflow(&workflow);
+
+        assert!(
+            result.is_err(),
+            "Repeat workflows must be rejected by generated mode"
+        );
+        let err = result.err().ok_or("expected an error but got none")?;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
+            "Repeat rejection must mention unsupported IR, got: {msg}"
+        );
+        assert!(
+            msg.contains("RepeatStart"),
+            "Repeat rejection must identify RepeatStart as the unsupported feature, got: {msg}"
+        );
+        Ok(())
+    }
+
+    // --- Test 6: WaitUntil step generates correct code ---
+
+    #[test]
+    fn edge_case_wait_until_step_generates_wait_code() -> Result<(), String> {
+        let workflow = edge_case_wait_until_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Must contain a step_1 function for the WaitUntil node
+        assert!(
+            source.contains("fn step_1"),
+            "WaitUntil must produce step_1 function"
+        );
+
+        // WaitUntil must read the deadline slot
+        assert!(
+            source.contains("let _deadline = read_slot(slots, 0)"),
+            "WaitUntil must read the deadline from slot 0"
+        );
+
+        // Must contain a Continue to step_2 after the wait
+        assert!(
+            source.contains("StepOutcome::Continue(2)"),
+            "WaitUntil must continue to step 2"
+        );
+
+        // Semantic check
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // --- Test 7: Ask step generates ask/resume pair ---
+
+    #[test]
+    fn edge_case_ask_step_generates_ask_resume_pair() -> Result<(), String> {
+        let workflow = edge_case_ask_resume_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Must contain step_1 for the Ask node and step_2 for AskResume
+        assert!(
+            source.contains("fn step_1"),
+            "Ask node must produce step_1 function"
+        );
+        assert!(
+            source.contains("fn step_2"),
+            "AskResume node must produce step_2 function"
+        );
+
+        // Ask must read the prompt slot
+        assert!(
+            source.contains("let _prompt = read_slot(slots, 0)"),
+            "Ask step must read prompt from slot 0"
+        );
+
+        // AskResume must reference answer slot
+        assert!(
+            source.contains("let _answer_slot: u16 = 1"),
+            "AskResume must reference answer slot 1"
+        );
+
+        // Semantic check
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // --- Test 8: Choose with slot condition generates ChooseSlot not Choose ---
+
+    #[test]
+    fn edge_case_choose_slot_generates_slot_based_branching() -> Result<(), String> {
+        let workflow = edge_case_choose_slot_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Must NOT use eval_expr_ for ChooseSlot (it uses read_slot instead)
+        assert!(
+            source.contains("read_slot(slots, 0)?.is_true()"),
+            "ChooseSlot must branch by reading slot 0 directly, not via expression"
+        );
+
+        // Must contain a fallback to the otherwise target (step_3)
+        assert!(
+            source.contains("StepOutcome::Continue(3)"),
+            "ChooseSlot otherwise must continue to step 3"
+        );
+
+        // The true branch must go to step_2
+        assert!(
+            source.contains("StepOutcome::Continue(2)"),
+            "ChooseSlot branch must continue to step 2 when condition is true"
+        );
+
+        // Semantic check
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // --- Test 9: Action contract for Do node with retry policy ---
+
+    #[test]
+    fn edge_case_do_node_with_retry_check_generates_contract() -> Result<(), String> {
+        let workflow = do_with_retry_check_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // The Do node (step_1) must produce an action boundary for action 10
+        assert!(
+            source.contains("action_id: 10"),
+            "Do node must reference action_id 10"
+        );
+        assert!(
+            source.contains("Action boundary: action_id=10"),
+            "Do node must emit action boundary comment"
+        );
+
+        // The RetryCheck node (step_2) must read the policy slot
+        assert!(
+            source.contains("let _policy = read_slot(slots, 0)"),
+            "RetryCheck must read policy from slot 0"
+        );
+
+        // RetryCheck must compare retry count to CONTRACT_MAX_RETRY_ATTEMPTS
+        assert!(
+            source.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
+            "RetryCheck must reference CONTRACT_MAX_RETRY_ATTEMPTS"
+        );
+
+        // RetryCheck must have branch targets for retry body and exhausted path
+        assert!(
+            source.contains("StepOutcome::Continue(1)")
+                && source.contains("StepOutcome::Continue(4)"),
+            "RetryCheck must branch to body (step 1) or exhausted (step 4)"
+        );
+
+        // Action dispatch must register action 10
+        assert!(
+            source.contains("10 => Ok(())"),
+            "action dispatch must include arm for action 10"
+        );
+
+        // Semantic check
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
 }
