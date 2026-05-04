@@ -22,6 +22,19 @@ pub struct VerificationWarning {
     pub gate: u8,
 }
 
+impl VerificationWarning {
+    /// Minimum valid gate value (inclusive).
+    pub const MIN_GATE: u8 = 1;
+    /// Maximum valid gate value (inclusive).
+    pub const MAX_GATE: u8 = 13;
+
+    /// Returns `true` if the `gate` field falls within the valid 1-13 range.
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
+    }
+}
+
 impl fmt::Display for VerificationWarning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -307,5 +320,45 @@ mod tests {
         assert_eq!(cloned.code, 55);
         assert_eq!(&*cloned.message, "cloneable warning");
         assert_eq!(cloned.gate, 9);
+    }
+
+    #[test]
+    fn is_valid_rejects_gate_zero() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("zero gate"),
+            gate: 0,
+        };
+        assert!(!w.is_valid());
+    }
+
+    #[test]
+    fn is_valid_accepts_gate_one() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("min gate"),
+            gate: VerificationWarning::MIN_GATE,
+        };
+        assert!(w.is_valid());
+    }
+
+    #[test]
+    fn is_valid_accepts_gate_thirteen() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("max gate"),
+            gate: VerificationWarning::MAX_GATE,
+        };
+        assert!(w.is_valid());
+    }
+
+    #[test]
+    fn is_valid_rejects_gate_fourteen() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("above max gate"),
+            gate: 14,
+        };
+        assert!(!w.is_valid());
     }
 }
