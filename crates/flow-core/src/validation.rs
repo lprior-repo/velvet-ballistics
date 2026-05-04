@@ -2405,6 +2405,37 @@ mod tests {
     }
 
     #[test]
+    fn graph_limits_exact_max_nodes_no_diagnostic() {
+        let mut doc = FlowDocument::default();
+        // Insert exactly MAX_GRAPH_NODES = 10_000 minimal nodes
+        let count = 10_000usize;
+        for i in 0..count {
+            let name = format!("n{i}");
+            doc.graph.nodes.insert(
+                nid(&name),
+                FlowNodeRecord {
+                    id: nid(&name),
+                    kind: SmolStr::from("test"),
+                    title: SmolStr::from(&name),
+                    position: [0.0, 0.0],
+                    size: [10.0, 10.0],
+                    z_index: 0,
+                    parent: None,
+                    ports: vec![],
+                    flags: NodeFlags::default(),
+                    data: serde_json::Value::Null,
+                    ui: NodeUiState::default(),
+                },
+            );
+        }
+        let diags = GraphLimitsValidator.validate(&doc);
+        assert!(
+            !diags.iter().any(|d| d.code.as_str() == "graph-limit-nodes-exceeded"),
+            "graph at exactly MAX_GRAPH_NODES should produce no nodes-exceeded diagnostic, got: {diags:?}"
+        );
+    }
+
+    #[test]
     fn graph_limits_edges_exceeded() {
         let mut doc = FlowDocument::default();
         // Need a source node and a target node for edge records

@@ -87,6 +87,22 @@ pub enum RepairAction {
     ManualIntervention,
 }
 
+impl RepairAction {
+    /// Return a static display label for this repair action.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::IncreaseTimeout => "IncreaseTimeout",
+            Self::ReducePayload => "ReducePayload",
+            Self::AddRetryBackoff => "AddRetryBackoff",
+            Self::PinIdempotency => "PinIdempotency",
+            Self::FixSecretLeak => "FixSecretLeak",
+            Self::AdjustBudget => "AdjustBudget",
+            Self::RestartRun => "RestartRun",
+            Self::ManualIntervention => "ManualIntervention",
+        }
+    }
+}
+
 pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
     let mut suggestions = Vec::new();
     match &incident.failure_code {
