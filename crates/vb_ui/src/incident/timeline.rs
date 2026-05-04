@@ -464,4 +464,411 @@ mod tests {
         assert_eq!(IncidentSeverity::Warning.label_str(), "WARN");
         assert_eq!(IncidentSeverity::Info.label_str(), "INFO");
     }
+
+    // -- Color/theming: verify cyberpunk palette values --
+
+    #[test]
+    fn test_severity_color_critical_palette() {
+        // Critical = #ff073a => R=1.0, G=0.027, B=0.227, A=1.0
+        let color = IncidentSeverity::Critical.severity_color();
+        assert!((color[0] - 1.0_f32).abs() < f32::EPSILON);
+        assert!((color[1] - 0.027_f32).abs() < f32::EPSILON);
+        assert!((color[2] - 0.227_f32).abs() < f32::EPSILON);
+        assert!((color[3] - 1.0_f32).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_severity_color_major_palette() {
+        // Major = #ff8800 => R=1.0, G=0.533, B=0.0, A=1.0
+        let color = IncidentSeverity::Major.severity_color();
+        assert!((color[0] - 1.0_f32).abs() < f32::EPSILON);
+        assert!((color[1] - 0.533_f32).abs() < f32::EPSILON);
+        assert!((color[2]).abs() < f32::EPSILON);
+        assert!((color[3] - 1.0_f32).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_severity_color_minor_palette() {
+        // Minor = #888888 => R=0.533, G=0.533, B=0.533, A=1.0
+        let color = IncidentSeverity::Minor.severity_color();
+        assert!((color[0] - 0.533_f32).abs() < f32::EPSILON);
+        assert!((color[1] - 0.533_f32).abs() < f32::EPSILON);
+        assert!((color[2] - 0.533_f32).abs() < f32::EPSILON);
+        assert!((color[3] - 1.0_f32).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_severity_color_warning_palette() {
+        // Warning = #ffe600 => R=1.0, G=0.902, B=0.0, A=1.0
+        let color = IncidentSeverity::Warning.severity_color();
+        assert!((color[0] - 1.0_f32).abs() < f32::EPSILON);
+        assert!((color[1] - 0.902_f32).abs() < f32::EPSILON);
+        assert!((color[2]).abs() < f32::EPSILON);
+        assert!((color[3] - 1.0_f32).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_severity_color_info_palette() {
+        // Info = #00f5ff => R=0.0, G=0.961, B=1.0, A=1.0
+        let color = IncidentSeverity::Info.severity_color();
+        assert!((color[0]).abs() < f32::EPSILON);
+        assert!((color[1] - 0.961_f32).abs() < f32::EPSILON);
+        assert!((color[2] - 1.0_f32).abs() < f32::EPSILON);
+        assert!((color[3] - 1.0_f32).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_from_record_inherits_correct_color_for_each_severity() {
+        for (severity, expected_color) in [
+            (IncidentSeverity::Critical, IncidentSeverity::Critical.severity_color()),
+            (IncidentSeverity::Major, IncidentSeverity::Major.severity_color()),
+            (IncidentSeverity::Minor, IncidentSeverity::Minor.severity_color()),
+            (IncidentSeverity::Warning, IncidentSeverity::Warning.severity_color()),
+            (IncidentSeverity::Info, IncidentSeverity::Info.severity_color()),
+        ] {
+            let record = make_record(
+                1,
+                0,
+                severity,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000,
+            );
+            let entry = TimelineEntry::from_record(&record);
+            assert_eq!(entry.color, expected_color, "color mismatch for {severity:?}");
+        }
+    }
+
+    // -- Boundary conditions: step index boundaries --
+
+    #[test]
+    fn test_step_at_max_u16() {
+        let record = make_record(
+            1,
+            u16::MAX,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            1_000_000,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        assert_eq!(entry.step, u16::MAX);
+        assert!(entry.label.contains("step=65535"));
+    }
+
+    #[test]
+    fn test_step_at_zero() {
+        let record = make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Safe,
+            1_000_000,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        assert_eq!(entry.step, 0);
+        assert!(entry.label.contains("step=0"));
+    }
+
+    #[test]
+    fn test_timestamp_at_max_u64() {
+        let record = make_record(
+            1,
+            0,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            u64::MAX,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        assert_eq!(entry.timestamp_us, u64::MAX);
+        // time_label should not panic with u64::MAX
+        let label = entry.time_label();
+        assert!(!label.is_empty());
+    }
+
+    // -- Max events: many entries --
+
+    #[test]
+    fn test_many_entries_preserves_order() {
+        let count: usize = 500;
+        let records: Vec<IncidentRecord> = (0..count)
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    u16::try_from(i % u16::MAX as usize).unwrap_or(0),
+                    IncidentSeverity::Info,
+                    FailureCode::ActionTimeout,
+                    ReplaySafety::Safe,
+                    u64::try_from(i * 1_000).unwrap_or(u64::MAX),
+                )
+            })
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.entries.len(), count);
+        // Entries sorted by timestamp => run_id goes 0, 1, 2, ..., count-1
+        for (idx, entry) in timeline.entries.iter().enumerate() {
+            let expected_run = u64::try_from(idx).unwrap_or(u64::MAX);
+            assert_eq!(entry.run_id, expected_run, "wrong order at index {idx}");
+        }
+        assert_eq!(timeline.earliest_us, 0);
+        let expected_latest = u64::try_from(count - 1).unwrap_or(u64::MAX)
+            .checked_mul(1_000)
+            .unwrap_or(u64::MAX);
+        assert_eq!(timeline.latest_us, expected_latest);
+    }
+
+    #[test]
+    fn test_many_entries_with_duplicate_timestamps() {
+        // Multiple records at the same timestamp should all be present
+        let records: Vec<IncidentRecord> = (0..100)
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    0,
+                    IncidentSeverity::Warning,
+                    FailureCode::ActionTimeout,
+                    ReplaySafety::Safe,
+                    5_000_000, // all same timestamp
+                )
+            })
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.entries.len(), 100);
+        assert_eq!(timeline.earliest_us, 5_000_000);
+        assert_eq!(timeline.latest_us, 5_000_000);
+        assert_eq!(timeline.duration_ms(), 0);
+    }
+
+    // -- Event ordering: reverse insertion preserves sort --
+
+    #[test]
+    fn test_from_records_reverse_insertion_is_sorted() {
+        let mut records: Vec<IncidentRecord> = (0..50)
+            .rev()
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    0,
+                    IncidentSeverity::Info,
+                    FailureCode::ActionTimeout,
+                    ReplaySafety::Safe,
+                    u64::try_from(i * 10_000).unwrap_or(u64::MAX),
+                )
+            })
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        // Verify monotonic non-decreasing timestamps
+        for window in timeline.entries.windows(2) {
+            assert!(
+                window[0].timestamp_us <= window[1].timestamp_us,
+                "entries not sorted: {} > {}",
+                window[0].timestamp_us,
+                window[1].timestamp_us,
+            );
+        }
+        // Consume records to suppress unused_mut warning
+        records.clear();
+    }
+
+    // -- Filter composition: chaining filters --
+
+    #[test]
+    fn test_filter_by_run_then_severity() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
+            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 3_000_000),
+            make_record(1, 2, IncidentSeverity::Critical, FailureCode::BudgetExceeded, ReplaySafety::Safe, 4_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        let run1 = timeline.filter_by_run(1);
+        let run1_criticals = run1.filter_by_severity(IncidentSeverity::Critical);
+        assert_eq!(run1_criticals.entries.len(), 2);
+        assert!(run1_criticals.entries.iter().all(|e| e.run_id == 1));
+        assert!(run1_criticals.entries.iter().all(|e| e.severity == IncidentSeverity::Critical));
+    }
+
+    #[test]
+    fn test_filter_by_severity_then_run() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
+            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 2_000_000),
+            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 3_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        let criticals = timeline.filter_by_severity(IncidentSeverity::Critical);
+        let run1_criticals = criticals.filter_by_run(1);
+        assert_eq!(run1_criticals.entries.len(), 1);
+        assert_eq!(run1_criticals.entries[0].run_id, 1);
+        assert_eq!(run1_criticals.entries[0].failure_code, FailureCode::TaintLeak);
+    }
+
+    // -- Edge cases: all same severity --
+
+    #[test]
+    fn test_all_critical_timeline() {
+        let records: Vec<IncidentRecord> = (0..10)
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    0,
+                    IncidentSeverity::Critical,
+                    FailureCode::TaintLeak,
+                    ReplaySafety::Safe,
+                    u64::try_from(i * 100_000).unwrap_or(u64::MAX),
+                )
+            })
+            .collect();
+        let timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.critical_count(), 10);
+        assert_eq!(timeline.entries.len(), 10);
+        assert!(!timeline.has_unsafe_replay());
+    }
+
+    // -- has_unsafe_replay with Unknown variant --
+
+    #[test]
+    fn test_has_unsafe_replay_unknown_variant() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
+            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Unknown, 2_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        // Unknown is not Safe, so has_unsafe_replay should be true
+        assert!(timeline.has_unsafe_replay());
+    }
+
+    // -- Label formatting: verify all severity labels appear --
+
+    #[test]
+    fn test_label_contains_correct_severity_abbrev_for_all_variants() {
+        let cases: Vec<(IncidentSeverity, &'static str)> = vec![
+            (IncidentSeverity::Critical, "CRIT"),
+            (IncidentSeverity::Major, "MAJ"),
+            (IncidentSeverity::Minor, "MIN"),
+            (IncidentSeverity::Warning, "WARN"),
+            (IncidentSeverity::Info, "INFO"),
+        ];
+        for (severity, abbrev) in cases {
+            let record = make_record(
+                99,
+                5,
+                severity,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000,
+            );
+            let entry = TimelineEntry::from_record(&record);
+            assert!(
+                entry.label.contains(abbrev),
+                "label {:?} missing abbreviation {abbrev}",
+                entry.label,
+            );
+        }
+    }
+
+    // -- Failure code as_str in label --
+
+    #[test]
+    fn test_label_uses_failure_code_as_str() {
+        let record = make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::BudgetExceeded,
+            ReplaySafety::Safe,
+            1_000,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        // BudgetExceeded.as_str() returns "StepBudgetExhausted"
+        assert!(entry.label.contains("StepBudgetExhausted"));
+    }
+
+    #[test]
+    fn test_label_uses_taint_leak_as_str() {
+        let record = make_record(
+            1,
+            0,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            1_000,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        // TaintLeak.as_str() returns "TaintViolation"
+        assert!(entry.label.contains("TaintViolation"));
+    }
+
+    // -- duration_ms boundary: identical timestamps --
+
+    #[test]
+    fn test_duration_ms_single_entry_zero() {
+        let records = vec![make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Safe,
+            9_999_999,
+        )];
+        let timeline = IncidentTimeline::from_records(&records);
+        assert_eq!(timeline.duration_ms(), 0);
+    }
+
+    // -- critical_count on filtered timeline --
+
+    #[test]
+    fn test_critical_count_after_filter() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
+            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 3_000_000),
+            make_record(2, 1, IncidentSeverity::Critical, FailureCode::BudgetExceeded, ReplaySafety::UnsafeSideEffect, 4_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        let run2 = timeline.filter_by_run(2);
+        assert_eq!(run2.critical_count(), 2);
+        assert!(run2.has_unsafe_replay());
+    }
+
+    // -- Clone consistency --
+
+    #[test]
+    fn test_timeline_clone_is_identical() {
+        let records = vec![
+            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
+            make_record(2, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+        ];
+        let timeline = IncidentTimeline::from_records(&records);
+        let cloned = timeline.clone();
+        assert_eq!(cloned.entries.len(), timeline.entries.len());
+        assert_eq!(cloned.earliest_us, timeline.earliest_us);
+        assert_eq!(cloned.latest_us, timeline.latest_us);
+        assert_eq!(cloned.duration_ms(), timeline.duration_ms());
+        assert_eq!(cloned.critical_count(), timeline.critical_count());
+    }
+
+    #[test]
+    fn test_entry_clone_is_identical() {
+        let record = make_record(
+            42,
+            7,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            3_000_000,
+        );
+        let entry = TimelineEntry::from_record(&record);
+        let cloned = entry.clone();
+        assert_eq!(cloned.timestamp_us, entry.timestamp_us);
+        assert_eq!(cloned.run_id, entry.run_id);
+        assert_eq!(cloned.step, entry.step);
+        assert_eq!(cloned.severity, entry.severity);
+        assert_eq!(cloned.failure_code, entry.failure_code);
+        assert_eq!(cloned.label, entry.label);
+        assert_eq!(cloned.color, entry.color);
+        assert_eq!(cloned.replay_safe, entry.replay_safe);
+    }
 }

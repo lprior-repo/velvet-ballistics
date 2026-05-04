@@ -4,6 +4,8 @@
 //! Manages which of the five primary screens is active and holds the
 //! per-screen data payloads that the UI reads during rendering.
 
+use crate::system::screen::SystemScreen;
+
 /// The 5 primary screens of the mission control UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
@@ -26,6 +28,9 @@ pub struct AppState {
     pub incident: IncidentData,
     pub verification: VerificationData,
     pub workflow: WorkflowData,
+    /// Rich system screen model (topology, metrics, alerts, ticker, queues).
+    /// Used by the renderer to produce `SystemFrame` data for the Makepad UI.
+    pub system_screen: SystemScreen,
 }
 
 /// Replay Theater screen data.
@@ -91,6 +96,7 @@ impl AppState {
             incident: IncidentData::new(),
             verification: VerificationData::new(),
             workflow: WorkflowData::new(),
+            system_screen: SystemScreen::new(),
         }
     }
 
@@ -126,6 +132,24 @@ impl AppState {
             // Neon red: #ff073a → (1.0, 0.03, 0.23, 1)
             Screen::IncidentConsole => [1.0, 0.03, 0.23, 1.0],
         }
+    }
+
+    /// Re-derive the lightweight `SystemData` summary fields from the rich
+    /// `SystemScreen` model. Call this after updating `system_screen` with
+    /// fresh metrics so that the summary struct stays consistent.
+    pub fn sync_system_from_screen(&mut self) {
+        let metrics = self.system_screen.metrics();
+        self.system.shard_count =
+            u32::try_from(metrics.shards.len()).unwrap_or(u32::MAX);
+        self.system.total_active_runs = metrics.total_active_runs;
+        self.system.total_queue_depth = metrics
+            .total_ready_queue_depth
+            .saturating_add(metrics.total_action_queue_depth);
+        self.system.overall_health = match metrics.overall_health {
+            crate::system::metrics::HealthStatus::Healthy => HealthLevel::Healthy,
+            crate::system::metrics::HealthStatus::Degraded => HealthLevel::Degraded,
+            crate::system::metrics::HealthStatus::Critical => HealthLevel::Critical,
+        };
     }
 }
 

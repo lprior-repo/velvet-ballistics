@@ -32,6 +32,8 @@ pub fn format_queue_depth(depth: u32, capacity: u32) -> QueueStatus {
 pub struct ShardSummaryLine {
     /// Shard index.
     pub shard_id: u32,
+    /// Original health status enum for pattern matching.
+    pub health: HealthStatus,
     /// Formatted health label: `"Healthy"`, `"Degraded"`, or `"Critical"`.
     pub health_label: String,
     /// Formatted queue string: `"{ready}/{action}"`.
@@ -170,6 +172,7 @@ impl SystemScreen {
 
             lines.push(ShardSummaryLine {
                 shard_id: shard.shard_id,
+                health: shard.health,
                 health_label,
                 queue_label,
                 frame_label,

@@ -1,4 +1,3 @@
-pub mod app_state;
 pub mod ipc_bridge;
 
 pub use makepad_widgets;
@@ -1563,6 +1562,55 @@ impl MatchEvent for VbApp {
 }
 
 // ---------------------------------------------------------------------------
+// Colour helpers for Makepad script_apply_eval (requires hex string format)
+// ---------------------------------------------------------------------------
+
+/// Convert a `StatusBadge` to a Makepad-compatible hex colour string.
+fn status_badge_hex(badge: vb_ui::system::renderer::StatusBadge) -> String {
+    let c = badge.color();
+    rgba_to_hex(c)
+}
+
+/// Convert a linear RGBA `[f32; 4]` colour to a `#rrggbb` hex string
+/// suitable for the Makepad DSL `color` property.
+fn rgba_to_html_hex(rgba: [f32; 4]) -> String {
+    let r = f32_to_u8_color(rgba[0]);
+    let g = f32_to_u8_color(rgba[1]);
+    let b = f32_to_u8_color(rgba[2]);
+    format!("#{r:02x}{g:02x}{b:02x}")
+}
+
+/// Alias kept for readability — same as `rgba_to_html_hex`.
+fn rgba_to_hex(rgba: [f32; 4]) -> String {
+    rgba_to_html_hex(rgba)
+}
+
+/// Convert a 0.0–1.0 float colour channel to a `u8` in `[0, 255]`.
+///
+/// Uses integer arithmetic to avoid all float-to-int casts.
+fn f32_to_u8_color(channel: f32) -> u8 {
+    // Clamp to [0.0, 1.0] then scale to [0, 255] using pure integer math.
+    // Multiply by 255.0 and round to nearest integer via add-and-truncate.
+    let scaled = f64::from(channel).clamp(0.0, 1.0) * 255.0;
+    // Add 0.5 for rounding, then truncate via floor (always valid since
+    // scaled is in [0.0, 255.0]).
+    let floored = (scaled + 0.5).floor();
+    // floored is in [0.0, 255.5]. We need to convert to u8 without `as`.
+    // Strategy: decompose into integer part via repeated subtraction.
+    let mut remaining = floored;
+    let mut result = 0u8;
+    for bit in (0u32..8).rev() {
+        let threshold = 1u32 << bit;
+        let threshold_f = f64::from(threshold);
+        if remaining >= threshold_f {
+            remaining -= threshold_f;
+            result = result.saturating_add(u8::try_from(threshold).unwrap_or(0));
+        }
+    }
+    result
+}
+
+// ---------------------------------------------------------------------------
 // Dynamic state binding methods
 // ---------------------------------------------------------------------------
 
@@ -1681,12 +1729,218 @@ impl VbApp {
     }
 
     /// Synchronizes System Overview screen state to UI labels.
+    ///
+    /// Builds a full [`SystemFrame`] from the rich `SystemScreen` model via
+    /// [`SystemFrameBuilder`] and pushes the derived text and colour data
+    /// into the Makepad widget tree.
     fn sync_system_state(&mut self, cx: &mut Cx) {
+        use vb_ui::system::renderer::{StatusBadge, SystemFrameBuilder};
+
+        // Keep the lightweight summary fields consistent.
+        self.app_state.sync_system_from_screen();
+
         let lanes_hint = self.app_state.system.lanes_hint_text();
 
         script_apply_eval!(cx, self.ui, {
             lanes_hint.text: #(lanes_hint)
         });
+
+        // Build a full render frame from the system screen.
+        let frame = SystemFrameBuilder::new(&self.app_state.system_screen).build_frame();
+
+        // -- Topology panel: push shard card data ----------------------------
+        let shard_summaries = self.app_state.system_screen.shard_summary();
+        let metrics_shards = &self.app_state.system_screen.metrics().shards;
+
+        for idx in 0..4usize {
+            let summary = shard_summaries.get(idx);
+            let _topo_shard = frame.topology.shard_rects.get(idx);
+
+            if let (Some(shard), Some(_)) = (summary, _topo_shard) {
+                let name_text = format!("Shard {}", shard.shard_id);
+                let status_text = shard.health_label.to_uppercase();
+                let status_color = status_badge_hex(
+                    match shard.health_label.as_str() {
+                        "Critical" => StatusBadge::Critical,
+                        "Degraded" => StatusBadge::Degraded,
+                        _ => StatusBadge::Healthy,
+                    },
+                );
+                let active_runs = metrics_shards
+                    .get(idx)
+                    .map_or(0, |s| s.active_runs);
+                let fields_line = format!(
+                    "active: {active_runs} runs  queue: {}  frame: {}",
+                    shard.queue_label, shard.frame_label,
+                );
+                let trace_line = format!("trace fill: {}", shard.trace_label);
+
+                let pressure_suffix = if shard.queue_status
+                    == vb_ui::system::queue_monitor::QueueStatus::Critical
+                {
+                    " (CRITICAL)"
+                } else if shard.queue_status
+                    == vb_ui::system::queue_monitor::QueueStatus::Pressured
+                {
+                    " (PRESSURED)"
+                } else {
+                    ""
+                };
+                let lane_label = format!(
+                    "Shard {} — {active_runs} runs{pressure_suffix}",
+                    shard.shard_id,
+                );
+
+                match idx {
+                    0 => {
+                        let sc = status_color.clone();
+                        let sc2 = sc.clone();
+                        script_apply_eval!(cx, self.ui, {
+                            shard_0.sh_name.text: #(name_text)
+                            shard_0.sh_name.draw_text.color: #(sc)
+                            shard_0.sh_status.text: #(status_text)
+                            shard_0.sh_status.draw_text.color: #(sc2)
+                            shard_0.sh1.text: #(fields_line)
+                            shard_0.sh2.text: #(trace_line)
+                            lane_0.lane_0_label.text: #(lane_label)
+                            lane_0.lane_0_label.draw_text.color: #(status_color)
+                        });
+                    }
+                    1 => {
+                        let sc = status_color.clone();
+                        let sc2 = sc.clone();
+                        script_apply_eval!(cx, self.ui, {
+                            shard_1.sh_name.text: #(name_text)
+                            shard_1.sh_name.draw_text.color: #(sc)
+                            shard_1.sh_status.text: #(status_text)
+                            shard_1.sh_status.draw_text.color: #(sc2)
+                            shard_1.sh1.text: #(fields_line)
+                            shard_1.sh2.text: #(trace_line)
+                            lane_1.lane_1_label.text: #(lane_label)
+                            lane_1.lane_1_label.draw_text.color: #(status_color)
+                        });
+                    }
+                    2 => {
+                        let sc = status_color.clone();
+                        let sc2 = sc.clone();
+                        script_apply_eval!(cx, self.ui, {
+                            shard_2.sh_name.text: #(name_text)
+                            shard_2.sh_name.draw_text.color: #(sc)
+                            shard_2.sh_status.text: #(status_text)
+                            shard_2.sh_status.draw_text.color: #(sc2)
+                            shard_2.sh1.text: #(fields_line)
+                            shard_2.sh2.text: #(trace_line)
+                            lane_2.lane_2_label.text: #(lane_label)
+                            lane_2.lane_2_label.draw_text.color: #(status_color)
+                        });
+                    }
+                    3 => {
+                        let sc = status_color.clone();
+                        let sc2 = sc.clone();
+                        script_apply_eval!(cx, self.ui, {
+                            shard_3.sh_name.text: #(name_text)
+                            shard_3.sh_name.draw_text.color: #(sc)
+                            shard_3.sh_status.text: #(status_text)
+                            shard_3.sh_status.draw_text.color: #(sc2)
+                            shard_3.sh1.text: #(fields_line)
+                            shard_3.sh2.text: #(trace_line)
+                            lane_3.lane_3_label.text: #(lane_label)
+                            lane_3.lane_3_label.draw_text.color: #(status_color)
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // -- Alerts panel: push first 4 alert lines -------------------------
+        for idx in 0..4usize {
+            let alert = frame.alerts.lines.get(idx);
+            let Some(alert) = alert else { continue };
+            let msg = alert.message.clone();
+            let src = alert.source.clone();
+            let dot_color = rgba_to_hex(alert.color);
+            let title_color = dot_color.clone();
+            match idx {
+                0 => {
+                    script_apply_eval!(cx, self.ui, {
+                        alert_1.alert_dot.draw_text.color: #(dot_color)
+                        alert_1.alert_title.text: #(msg)
+                        alert_1.alert_title.draw_text.color: #(title_color)
+                        alert_1.alert_detail.text: #(src)
+                    });
+                }
+                1 => {
+                    script_apply_eval!(cx, self.ui, {
+                        alert_2.alert_dot.draw_text.color: #(dot_color)
+                        alert_2.alert_title.text: #(msg)
+                        alert_2.alert_title.draw_text.color: #(title_color)
+                        alert_2.alert_detail.text: #(src)
+                    });
+                }
+                2 => {
+                    script_apply_eval!(cx, self.ui, {
+                        alert_3.alert_dot.draw_text.color: #(dot_color)
+                        alert_3.alert_title.text: #(msg)
+                        alert_3.alert_title.draw_text.color: #(title_color)
+                        alert_3.alert_detail.text: #(src)
+                    });
+                }
+                3 => {
+                    script_apply_eval!(cx, self.ui, {
+                        alert_4.alert_dot.draw_text.color: #(dot_color)
+                        alert_4.alert_title.text: #(msg)
+                        alert_4.alert_title.draw_text.color: #(title_color)
+                        alert_4.alert_detail.text: #(src)
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        // -- Ticker panel: push first 5 ticker events -----------------------
+        for idx in 0..5usize {
+            let event = frame.ticker.lines.get(idx);
+            let Some(event) = event else { continue };
+            let event_text = format!(
+                "[{}] {} — {}",
+                event.timestamp_label, event.kind_label, event.summary
+            );
+            let event_color = rgba_to_hex(event.color);
+            match idx {
+                0 => {
+                    script_apply_eval!(cx, self.ui, {
+                        tk1.text: #(event_text)
+                        tk1.draw_text.color: #(event_color)
+                    });
+                }
+                1 => {
+                    script_apply_eval!(cx, self.ui, {
+                        tk2.text: #(event_text)
+                        tk2.draw_text.color: #(event_color)
+                    });
+                }
+                2 => {
+                    script_apply_eval!(cx, self.ui, {
+                        tk3.text: #(event_text)
+                        tk3.draw_text.color: #(event_color)
+                    });
+                }
+                3 => {
+                    script_apply_eval!(cx, self.ui, {
+                        tk4.text: #(event_text)
+                        tk4.draw_text.color: #(event_color)
+                    });
+                }
+                4 => {
+                    script_apply_eval!(cx, self.ui, {
+                        tk5.text: #(event_text)
+                        tk5.draw_text.color: #(event_color)
+                    });
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Synchronizes Workflow Graph screen state to UI labels.
