@@ -344,7 +344,7 @@ impl WorkflowDigest {
 
 #[cfg(test)]
 mod tests {
-    use super::{RunId, SlotIdx, StepIdx, WorkflowId};
+    use super::{RunId, SeqNo, SlotIdx, StepIdx, WorkflowId};
 
     #[test]
     fn workflow_id_get_returns_inner_value() {
@@ -627,5 +627,349 @@ mod tests {
         use super::FanoutLimit;
         let limit = FanoutLimit::new(1000);
         assert_eq!(limit.as_usize(), 1000);
+    }
+
+    // =========================================================================
+    // Edge-case tests — ID types: ordering, FromStr, BranchIdx, MaxAttempts,
+    // RetryCount, BranchCount, FanoutLimit, WorkflowDigest
+    // =========================================================================
+
+    // --- Ordering comparisons ---
+
+    #[test]
+    fn step_idx_ordering() {
+        let a = StepIdx::new(0);
+        let b = StepIdx::new(1);
+        let c = StepIdx::new(u16::MAX);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(a < c);
+        assert!(a <= a);
+        assert!(c >= c);
+    }
+
+    #[test]
+    fn slot_idx_ordering() {
+        let a = SlotIdx::new(0);
+        let b = SlotIdx::new(100);
+        let c = SlotIdx::new(u16::MAX);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(a != c);
+    }
+
+    #[test]
+    fn seq_no_ordering() {
+        let a = SeqNo::new(0);
+        let b = SeqNo::new(u64::MAX);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn run_id_ordering() {
+        let a = RunId::new(0);
+        let b = RunId::new(u64::MAX);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn workflow_id_ordering() {
+        let a = WorkflowId::new(0);
+        let b = WorkflowId::new(u32::MAX);
+        assert!(a < b);
+    }
+
+    // --- FromStr parsing edge cases ---
+
+    #[test]
+    fn from_str_parses_zero() -> Result<(), String> {
+        let idx: StepIdx = "0".parse().map_err(|_| String::from("parse failed"))?;
+        if idx.get() != 0 {
+            return Err(String::from("expected 0"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn from_str_parses_max_u16() -> Result<(), String> {
+        let idx: SlotIdx = "65535".parse().map_err(|_| String::from("parse failed"))?;
+        if idx.get() != u16::MAX {
+            return Err(String::from("expected u16::MAX"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn from_str_parses_max_u32() -> Result<(), String> {
+        let id: WorkflowId = "4294967295".parse().map_err(|_| String::from("parse failed"))?;
+        if id.get() != u32::MAX {
+            return Err(String::from("expected u32::MAX"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn from_str_parses_max_u64() -> Result<(), String> {
+        let id: RunId = "18446744073709551615".parse().map_err(|_| String::from("parse failed"))?;
+        if id.get() != u64::MAX {
+            return Err(String::from("expected u64::MAX"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn from_str_rejects_empty_string() {
+        let result: Result<StepIdx, _> = "".parse();
+        assert!(result.is_err(), "empty string must fail to parse");
+    }
+
+    #[test]
+    fn from_str_rejects_negative() {
+        let result: Result<StepIdx, _> = "-1".parse();
+        assert!(result.is_err(), "negative string must fail to parse");
+    }
+
+    #[test]
+    fn from_str_rejects_overflow_for_u16() {
+        let result: Result<StepIdx, _> = "65536".parse();
+        assert!(result.is_err(), "u16 overflow must fail to parse");
+    }
+
+    #[test]
+    fn from_str_rejects_overflow_for_u32() {
+        let result: Result<WorkflowId, _> = "4294967296".parse();
+        assert!(result.is_err(), "u32 overflow must fail to parse");
+    }
+
+    #[test]
+    fn from_str_rejects_leading_whitespace() {
+        let result: Result<StepIdx, _> = " 42".parse();
+        assert!(result.is_err(), "leading whitespace must fail");
+    }
+
+    // --- BranchIdx edge cases ---
+
+    #[test]
+    fn branch_idx_zero_is_first() {
+        use super::BranchIdx;
+        let idx = BranchIdx::new(0);
+        assert!(idx.is_first());
+        assert_eq!(idx.get(), 0);
+    }
+
+    #[test]
+    fn branch_idx_one_is_not_first() {
+        use super::BranchIdx;
+        let idx = BranchIdx::new(1);
+        assert!(!idx.is_first());
+    }
+
+    #[test]
+    fn branch_idx_max_value() {
+        use super::BranchIdx;
+        let idx = BranchIdx::new(u16::MAX);
+        assert!(!idx.is_first());
+        assert_eq!(idx.get(), u16::MAX);
+    }
+
+    #[test]
+    fn branch_idx_from_u16() {
+        use super::BranchIdx;
+        let idx = BranchIdx::from(7u16);
+        assert_eq!(idx.get(), 7);
+    }
+
+    // --- MaxAttempts edge cases ---
+
+    #[test]
+    fn max_attempts_one_is_valid() -> Result<(), String> {
+        use super::MaxAttempts;
+        let attempts = MaxAttempts::try_new(1).map_err(|e| e.to_string())?;
+        assert_eq!(attempts.get(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn max_attempts_max_u16_is_valid() -> Result<(), String> {
+        use super::MaxAttempts;
+        let attempts = MaxAttempts::try_new(u16::MAX).map_err(|e| e.to_string())?;
+        assert_eq!(attempts.get(), u16::MAX);
+        Ok(())
+    }
+
+    #[test]
+    fn max_attempts_zero_is_rejected() {
+        use super::MaxAttempts;
+        let result = MaxAttempts::try_new(0);
+        assert!(result.is_err(), "max_attempts=0 must be rejected");
+    }
+
+    // --- RetryCount edge cases ---
+
+    #[test]
+    fn retry_count_zero_is_valid() {
+        use super::RetryCount;
+        let count = RetryCount::new(0);
+        assert_eq!(count.get(), 0);
+    }
+
+    #[test]
+    fn retry_count_next_increments() {
+        use super::RetryCount;
+        let count = RetryCount::new(0);
+        let next = count.next();
+        assert_eq!(next.get(), 1);
+    }
+
+    #[test]
+    fn retry_count_next_saturates_at_max() {
+        use super::RetryCount;
+        let count = RetryCount::new(u16::MAX);
+        let next = count.next();
+        assert_eq!(next.get(), u16::MAX);
+    }
+
+    #[test]
+    fn retry_count_max_u16() {
+        use super::RetryCount;
+        let count = RetryCount::new(u16::MAX);
+        assert_eq!(count.get(), u16::MAX);
+    }
+
+    // --- BranchCount edge cases ---
+
+    #[test]
+    fn branch_count_zero_is_valid() {
+        use super::BranchCount;
+        let count = BranchCount::new(0);
+        assert_eq!(count.get(), 0);
+    }
+
+    #[test]
+    fn branch_count_max_u16() {
+        use super::BranchCount;
+        let count = BranchCount::new(u16::MAX);
+        assert_eq!(count.get(), u16::MAX);
+    }
+
+    #[test]
+    fn branch_count_from_u16() {
+        use super::BranchCount;
+        let count = BranchCount::from(5u16);
+        assert_eq!(count.get(), 5);
+    }
+
+    // --- FanoutLimit edge cases ---
+
+    #[test]
+    fn fanout_limit_from_u32() {
+        use super::FanoutLimit;
+        let limit = FanoutLimit::from(100u32);
+        assert_eq!(limit.get(), 100);
+    }
+
+    #[test]
+    fn fanout_limit_zero_get() {
+        use super::FanoutLimit;
+        let limit = FanoutLimit::new(0);
+        assert_eq!(limit.get(), 0);
+    }
+
+    // --- WorkflowDigest edge cases ---
+
+    #[test]
+    fn workflow_digest_equality() {
+        use super::WorkflowDigest;
+        let a = WorkflowDigest::from_bytes([0xFF; 32]);
+        let b = WorkflowDigest::from_bytes([0xFF; 32]);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn workflow_digest_inequality() {
+        use super::WorkflowDigest;
+        let a = WorkflowDigest::from_bytes([0x00; 32]);
+        let b = WorkflowDigest::from_bytes([0xFF; 32]);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn workflow_digest_single_byte_difference() {
+        use super::WorkflowDigest;
+        let mut bytes_a = [0u8; 32];
+        let bytes_b = [0u8; 32];
+        bytes_a[31] = 1;
+        let a = WorkflowDigest::from_bytes(bytes_a);
+        let b = WorkflowDigest::from_bytes(bytes_b);
+        assert_ne!(a, b);
+    }
+
+    // --- AccessorIdx checked arithmetic ---
+
+    #[test]
+    fn accessor_idx_as_usize_boundary() {
+        use super::AccessorIdx;
+        let idx = AccessorIdx::new(0);
+        assert_eq!(idx.as_usize(), 0);
+        let idx_max = AccessorIdx::new(u16::MAX);
+        assert_eq!(idx_max.as_usize(), usize::from(u16::MAX));
+    }
+
+    // --- ExprIdx checked arithmetic ---
+
+    #[test]
+    fn expr_idx_as_usize_boundary() {
+        use super::ExprIdx;
+        let idx = ExprIdx::new(0);
+        assert_eq!(idx.as_usize(), 0);
+        let idx_max = ExprIdx::new(u16::MAX);
+        assert_eq!(idx_max.as_usize(), usize::from(u16::MAX));
+    }
+
+    // --- ConstIdx as_usize boundary ---
+
+    #[test]
+    fn const_idx_as_usize_boundary() {
+        use super::ConstIdx;
+        let idx = ConstIdx::new(0);
+        assert_eq!(idx.as_usize(), 0);
+        let idx_max = ConstIdx::new(u16::MAX);
+        assert_eq!(idx_max.as_usize(), usize::from(u16::MAX));
+    }
+
+    // --- Copy and Clone for all ID types ---
+
+    #[test]
+    fn id_types_copy_trait() {
+        let step = StepIdx::new(42);
+        let step_copy = step;
+        assert_eq!(step, step_copy);
+
+        let slot = SlotIdx::new(7);
+        let slot_copy = slot;
+        assert_eq!(slot, slot_copy);
+
+        let run = RunId::new(99);
+        let run_copy = run;
+        assert_eq!(run, run_copy);
+    }
+
+    // --- Hash consistency for WorkflowDigest ---
+
+    #[test]
+    fn workflow_digest_hash_consistency() {
+        use super::WorkflowDigest;
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let a = WorkflowDigest::from_bytes([0xAB; 32]);
+        let b = WorkflowDigest::from_bytes([0xAB; 32]);
+
+        let mut hasher_a = DefaultHasher::new();
+        let mut hasher_b = DefaultHasher::new();
+        a.hash(&mut hasher_a);
+        b.hash(&mut hasher_b);
+
+        assert_eq!(hasher_a.finish(), hasher_b.finish());
     }
 }
