@@ -178,6 +178,36 @@ fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
     }
 }
 
+fn report_storage_open_error(e: &vb_storage::JournalError, db: &std::path::Path, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": format!("error opening journal at {}: {e}", db.display())
+            }),
+            output,
+        );
+    } else {
+        errln!("error opening journal at {}: {e}", db.display());
+    }
+}
+
+fn read_journal_events(
+    run_id: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> Result<Vec<vb_storage::JournalEvent>, ExitCode> {
+    let rid = parse_run_id(run_id)?;
+    let journal = vb_storage::FjallJournal::open(db, None)
+        .map_err(|e| { report_storage_open_error(&e, db, output); CliExitCode::StorageError.into() })?;
+    journal.events_for_run(rid).map_err(|e| {
+        if output != OutputFormat::Text {
+            json_error(&serde_json::json!({ "success": false, "error": format!("error reading run {run_id}: {e}") }), output);
+        } else { errln!("error reading run {run_id}: {e}"); }
+        CliExitCode::StorageError.into()
+    })
+}
+
 // --- Command implementations ---
 
 fn cmd_verify(
@@ -849,6 +879,33 @@ fn compile_bytes(bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, ExitCode> {
         Err(errors) => {
             for err in &errors.0 {
                 errln!("compile error: {err}");
+            }
+            Err(CliExitCode::CompileFailed.into())
+        }
+    }
+}
+
+fn compile_bytes_json(
+    bytes: &[u8],
+    output: OutputFormat,
+) -> Result<vb_core::CompiledWorkflow, ExitCode> {
+    match vb_compile::compile_workflow(bytes) {
+        Ok(c) => Ok(c),
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": "compilation failed",
+                        "errors": error_msgs
+                    }),
+                    output,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
             }
             Err(CliExitCode::CompileFailed.into())
         }
@@ -1807,22 +1864,9 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 
 
 fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
-        Ok(id) => id,
-        Err(code) => return code,
-    };
-    let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(e) => { report_storage_open_error(&e, db, output); return CliExitCode::StorageError.into(); }
-    };
-    let events = match journal.events_for_run(rid) {
+    let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(&serde_json::json!({ "success": false, "error": format!("error reading trace for run {run_id}: {e}") }), output);
-            } else { errln!("error reading trace for run {run_id}: {e}"); }
-            return CliExitCode::StorageError.into();
-        }
+        Err(code) => return code,
     };
     let trace = commands_journal::build_trace(&events);
     if trace.is_empty() {
@@ -1862,275 +1906,76 @@ fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Valu
     serde_json::Value::Object(map)
 }
 
-fn cmd_retry
 fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
-        Ok(id) => id,
+    let events = match read_journal_events(run_id, db, output) {
+        Ok(ev) => ev,
         Err(code) => return code,
     };
-
-    let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error opening journal at {}: {e}", db.display());
-            }
-            return CliExitCode::StorageError.into();
+    if events.is_empty() {
+        if output != OutputFormat::Text {
+            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }), output);
+        } else { errln!("run {run_id}: no events found"); }
+        return CliExitCode::StorageError.into();
+    }
+    let analysis = commands_journal::analyze_retry(&events);
+    if !analysis.can_retry {
+        if output != OutputFormat::Text {
+            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }), output);
+        } else { errln!("run {run_id} {}", analysis.reason); }
+        return CliExitCode::ValidationFailed.into();
+    }
+    let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
+    if output != OutputFormat::Text {
+        json_out(&serde_json::json!({
+            "run_id": run_id, "failed_at_step": analysis.failed_at_step,
+            "last_successful_step": analysis.last_successful_step,
+            "resume_from_step": resume_step, "events": events.len()
+        }), output);
+    } else {
+        match (analysis.failed_at_step, analysis.last_successful_step) {
+            (Some(fail), Some(last)) => outln!("Run {run_id} failed at step {fail}. Last successful: step {last}."),
+            (Some(fail), None) => outln!("Run {run_id} failed at step {fail}. No successful steps recorded."),
+            (None, Some(last)) => outln!("Run {run_id} failed. Last successful: step {last}."),
+            (None, None) => outln!("Run {run_id} failed. No step progress recorded."),
         }
-    };
-
-    match journal.events_for_run(rid) {
-        Ok(events) => {
-            if events.is_empty() {
-                if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("run {run_id} not found")
-                        }),
-                        output,
-                    );
-                } else {
-                    errln!("run {run_id}: no events found");
-                }
-                return CliExitCode::StorageError.into();
-            }
-
-            // Find the last StepSucceeded step and the failure point
-            let mut last_successful_step: Option<u16> = None;
-            let mut failed_step: Option<u16> = None;
-            for event in &events {
-                match event {
-                    vb_storage::JournalEvent::StepSucceeded { step, .. } => {
-                        last_successful_step = Some(step.get());
-                    }
-                    vb_storage::JournalEvent::ActionFailedEvent { step, .. } => {
-                        failed_step = Some(step.get());
-                    }
-                    vb_storage::JournalEvent::RunFailedEvent { .. } => {
-                        // Terminal failure marker
-                    }
-                    _ => {}
-                }
-            }
-
-            // Determine terminal status
-            let terminal = events.last();
-            let is_failed = matches!(
-                terminal,
-                Some(vb_storage::JournalEvent::RunFailedEvent { .. })
-                    | Some(vb_storage::JournalEvent::RunCancelled { .. })
-            );
-
-            if !is_failed {
-                if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("run {run_id} did not fail (no retry needed)")
-                        }),
-                        output,
-                    );
-                } else {
-                    errln!("run {run_id} did not fail; retry is not applicable");
-                }
-                return CliExitCode::ValidationFailed.into();
-            }
-
-            let failure_step = failed_step.or(last_successful_step.map(|s| s.saturating_add(1)));
-            let resume_step = last_successful_step.map(|s| s.saturating_add(1));
-
-            if output != OutputFormat::Text {
-                json_out(
-                    &serde_json::json!({
-                        "run_id": run_id,
-                        "failed_at_step": failure_step,
-                        "last_successful_step": last_successful_step,
-                        "resume_from_step": resume_step,
-                        "events": events.len()
-                    }),
-                    output,
-                );
-            } else {
-                match (failure_step, last_successful_step) {
-                    (Some(fail), Some(last)) => {
-                        outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.");
-                    }
-                    (Some(fail), None) => {
-                        outln!("Run {run_id} failed at step {fail}. No successful steps recorded.");
-                    }
-                    (None, Some(last)) => {
-                        outln!("Run {run_id} failed. Last successful: step {last}.");
-                    }
-                    (None, None) => {
-                        outln!("Run {run_id} failed. No step progress recorded.");
-                    }
-                }
-                match resume_step {
-                    Some(step) => {
-                        outln!("Retry would resume from step {step} with recovered state.");
-                    }
-                    None => {
-                        outln!("Retry would resume from the beginning.");
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error reading run {run_id}: {e}")
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error reading run {run_id}: {e}");
-            }
-            return CliExitCode::StorageError.into();
+        match resume_step {
+            Some(step) => outln!("Retry would resume from step {step} with recovered state."),
+            None => outln!("Retry would resume from the beginning."),
         }
     }
-
     ExitCode::SUCCESS
 }
 
 fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
-        Ok(id) => id,
+    let events = match read_journal_events(run_id, db, output) {
+        Ok(ev) => ev,
         Err(code) => return code,
     };
-
-    let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error opening journal at {}: {e}", db.display());
-            }
-            return CliExitCode::StorageError.into();
-        }
-    };
-
-    match journal.events_for_run(rid) {
-        Ok(events) => {
-            if events.is_empty() {
-                if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("run {run_id} not found")
-                        }),
-                        output,
-                    );
-                } else {
-                    errln!("run {run_id}: no events found");
-                }
-                return CliExitCode::StorageError.into();
-            }
-
-            // Scan for suspension indicators: WaitScheduled or AskScheduled
-            // These indicate the run was suspended at that step.
-            let mut suspended_at_step: Option<u16> = None;
-            for event in &events {
-                match event {
-                    vb_storage::JournalEvent::WaitScheduledEvent { step, .. } => {
-                        suspended_at_step = Some(step.get());
-                    }
-                    vb_storage::JournalEvent::AskScheduledEvent { step, .. } => {
-                        suspended_at_step = Some(step.get());
-                    }
-                    _ => {}
-                }
-            }
-
-            // Check terminal status - the run must not be finished/failed/cancelled
-            let terminal = events.last();
-            let is_terminal = matches!(
-                terminal,
-                Some(vb_storage::JournalEvent::RunFinished { .. })
-                    | Some(vb_storage::JournalEvent::RunFailedEvent { .. })
-                    | Some(vb_storage::JournalEvent::RunCancelled { .. })
-            );
-
-            if is_terminal {
-                let status = match terminal {
-                    Some(vb_storage::JournalEvent::RunFinished { .. }) => "finished",
-                    Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => "failed",
-                    Some(vb_storage::JournalEvent::RunCancelled { .. }) => "cancelled",
-                    _ => "unknown",
-                };
-                if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("run {run_id} is {status}, not suspended")
-                        }),
-                        output,
-                    );
-                } else {
-                    errln!("run {run_id} is {status}, not suspended; resume is not applicable");
-                }
-                return CliExitCode::ValidationFailed.into();
-            }
-
-            let resume_step = suspended_at_step;
-
-            if output != OutputFormat::Text {
-                json_out(
-                    &serde_json::json!({
-                        "run_id": run_id,
-                        "suspended_at_step": suspended_at_step,
-                        "status": "suspended",
-                        "resume_from_step": resume_step,
-                        "events": events.len()
-                    }),
-                    output,
-                );
-            } else {
-                match resume_step {
-                    Some(step) => {
-                        outln!(
-                            "Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."
-                        );
-                    }
-                    None => {
-                        outln!("Run {run_id} is active but no explicit suspension point found. Resume would continue from current state.");
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error reading run {run_id}: {e}")
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error reading run {run_id}: {e}");
-            }
-            return CliExitCode::StorageError.into();
+    if events.is_empty() {
+        if output != OutputFormat::Text {
+            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }), output);
+        } else { errln!("run {run_id}: no events found"); }
+        return CliExitCode::StorageError.into();
+    }
+    let analysis = commands_journal::analyze_resume(&events);
+    if !analysis.can_resume {
+        if output != OutputFormat::Text {
+            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }), output);
+        } else { errln!("run {run_id} {}", analysis.reason); }
+        return CliExitCode::ValidationFailed.into();
+    }
+    let resume_step = analysis.suspended_at_step;
+    if output != OutputFormat::Text {
+        json_out(&serde_json::json!({
+            "run_id": run_id, "suspended_at_step": analysis.suspended_at_step,
+            "status": "suspended", "resume_from_step": resume_step, "events": events.len()
+        }), output);
+    } else {
+        match resume_step {
+            Some(step) => outln!("Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."),
+            None => outln!("Run {run_id} is active but no explicit suspension point found. Resume would continue from current state."),
         }
     }
-
     ExitCode::SUCCESS
 }
 
@@ -3003,303 +2848,6 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     }
 
     CliExitCode::Success.into()
-}
-
-    let compiled = match vb_compile::compile_workflow(&bytes) {
-        Ok(c) => c,
-        Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
-                    output,
-                );
-            } else {
-                for err in &errors.0 {
-                    errln!("compile error: {err}");
-                }
-            }
-            return CliExitCode::CompileFailed.into();
-        }
-    };
-
-    let node_count = compiled.node_count();
-    let mut total_actions: usize = 0;
-    let mut total_branches: usize = 0;
-    let mut trace_lines: Vec<serde_json::Value> = Vec::new();
-
-    for i in 0..node_count {
-        let step = vb_core::StepIdx::new(i);
-        let node = match compiled.node(step) {
-            Some(n) => n,
-            None => continue,
-        };
-
-        let step_name = compiled
-            .step_name(step)
-            .map(String::from)
-            .or_else(|| node.next.map(|n| format!("Step {}", n.get())));
-
-        let description = describe_node_for_simulate(&node.kind, &mut total_actions, &mut total_branches);
-
-        let next_info = match (node.next, &step_name) {
-            (Some(nxt), _) => format!(" -> Step {}", nxt.get()),
-            (None, Some(name)) => format!(" ({name})"),
-            (None, None) => String::new(),
-        };
-
-        if output == OutputFormat::Text {
-            outln!("Step {i}: {description}{next_info}");
-        }
-
-        trace_lines.push(serde_json::json!({
-            "step": i,
-            "kind": node_kind_label(&node.kind),
-            "description": description,
-        }));
-    }
-
-    if output != OutputFormat::Text {
-        json_out(
-            &serde_json::json!({
-                "success": true,
-                "total_steps": node_count,
-                "total_actions": total_actions,
-                "total_branches": total_branches,
-                "trace": trace_lines
-            }),
-            output,
-        );
-    } else {
-        outln!("");
-        outln!("simulation summary");
-        outln!("  steps:    {node_count}");
-        outln!("  actions:  {total_actions}");
-        outln!("  branches: {total_branches}");
-        outln!("dry-run complete");
-    }
-
-    CliExitCode::Success.into()
-}
-
-fn describe_node_for_simulate(
-    kind: &vb_core::CompiledNodeKind,
-    action_count: &mut usize,
-    branch_count: &mut usize,
-) -> String {
-    match kind {
-        vb_core::CompiledNodeKind::Nop => "Entry".to_string(),
-        vb_core::CompiledNodeKind::SetConst { .. } => "Set constant value".to_string(),
-        vb_core::CompiledNodeKind::Copy { .. } => "Copy slot".to_string(),
-        vb_core::CompiledNodeKind::EvalExpr { .. } => "Evaluate expression".to_string(),
-        vb_core::CompiledNodeKind::BuildObject { fields } => {
-            format!("Build object ({} fields)", fields.len())
-        }
-        vb_core::CompiledNodeKind::BuildList { items } => {
-            format!("Build list ({} items)", items.len())
-        }
-        vb_core::CompiledNodeKind::Do { action, .. } => {
-            *action_count = match action_count.checked_add(1) {
-                Some(c) => c,
-                None => *action_count,
-            };
-            format!("Do action {} -- would execute action", action.get())
-        }
-        vb_core::CompiledNodeKind::Choose { branches, .. } => {
-            let count = branches.len();
-            *branch_count = match branch_count.checked_add(count) {
-                Some(c) => c,
-                None => *branch_count,
-            };
-            format!("Choose ({count} branches)")
-        }
-        vb_core::CompiledNodeKind::ChooseSlot { branches, .. } => {
-            let count = branches.len();
-            *branch_count = match branch_count.checked_add(count) {
-                Some(c) => c,
-                None => *branch_count,
-            };
-            format!("ChooseSlot ({count} branches)")
-        }
-        vb_core::CompiledNodeKind::ForEachStart { limit, .. } => {
-            format!("ForEach (limit {limit})")
-        }
-        vb_core::CompiledNodeKind::ForEachNext { .. } => "ForEach advance".to_string(),
-        vb_core::CompiledNodeKind::ForEachJoin { .. } => "ForEach join".to_string(),
-        vb_core::CompiledNodeKind::TogetherStart { branches, .. } => {
-            format!("Together ({} branches)", branches.len())
-        }
-        vb_core::CompiledNodeKind::TogetherBranch { branch, .. } => {
-            format!("Together branch {branch}")
-        }
-        vb_core::CompiledNodeKind::TogetherJoin { .. } => "Together join".to_string(),
-        vb_core::CompiledNodeKind::CollectStart { limit, .. } => {
-            format!("Collect (limit {limit})")
-        }
-        vb_core::CompiledNodeKind::CollectPage { .. } => "Collect page".to_string(),
-        vb_core::CompiledNodeKind::CollectNext { .. } => "Collect next".to_string(),
-        vb_core::CompiledNodeKind::CollectFinish { .. } => "Collect finish".to_string(),
-        vb_core::CompiledNodeKind::ReduceStart { .. } => "Reduce start".to_string(),
-        vb_core::CompiledNodeKind::ReduceNext { .. } => "Reduce advance".to_string(),
-        vb_core::CompiledNodeKind::ReduceFinish { .. } => "Reduce finish".to_string(),
-        vb_core::CompiledNodeKind::RepeatStart { max_attempts, .. } => {
-            format!("Repeat (max {max_attempts} attempts)")
-        }
-        vb_core::CompiledNodeKind::RepeatAttempt { .. } => "Repeat attempt".to_string(),
-        vb_core::CompiledNodeKind::RepeatCheck { .. } => "Repeat check".to_string(),
-        vb_core::CompiledNodeKind::RepeatFinish { .. } => "Repeat finish".to_string(),
-        vb_core::CompiledNodeKind::WaitUntil { .. } => "WaitUntil -- would suspend".to_string(),
-        vb_core::CompiledNodeKind::WaitEvent { .. } => "WaitEvent -- would suspend".to_string(),
-        vb_core::CompiledNodeKind::Ask { .. } => "Ask -- would suspend for input".to_string(),
-        vb_core::CompiledNodeKind::AskResume { .. } => "AskResume".to_string(),
-        vb_core::CompiledNodeKind::RetryCheck { .. } => "RetryCheck".to_string(),
-        vb_core::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler".to_string(),
-        vb_core::CompiledNodeKind::Jump { .. } => "Jump".to_string(),
-        vb_core::CompiledNodeKind::Finish { .. } => "Finish -- would complete run".to_string(),
-    }
-}
-
-fn node_kind_label(kind: &vb_core::CompiledNodeKind) -> &'static str {
-    match kind {
-        vb_core::CompiledNodeKind::Nop => "nop",
-        vb_core::CompiledNodeKind::SetConst { .. } => "set_const",
-        vb_core::CompiledNodeKind::Copy { .. } => "copy",
-        vb_core::CompiledNodeKind::EvalExpr { .. } => "eval_expr",
-        vb_core::CompiledNodeKind::BuildObject { .. } => "build_object",
-        vb_core::CompiledNodeKind::BuildList { .. } => "build_list",
-        vb_core::CompiledNodeKind::Do { .. } => "do",
-        vb_core::CompiledNodeKind::Choose { .. } => "choose",
-        vb_core::CompiledNodeKind::ChooseSlot { .. } => "choose_slot",
-        vb_core::CompiledNodeKind::ForEachStart { .. } => "for_each_start",
-        vb_core::CompiledNodeKind::ForEachNext { .. } => "for_each_next",
-        vb_core::CompiledNodeKind::ForEachJoin { .. } => "for_each_join",
-        vb_core::CompiledNodeKind::TogetherStart { .. } => "together_start",
-        vb_core::CompiledNodeKind::TogetherBranch { .. } => "together_branch",
-        vb_core::CompiledNodeKind::TogetherJoin { .. } => "together_join",
-        vb_core::CompiledNodeKind::CollectStart { .. } => "collect_start",
-        vb_core::CompiledNodeKind::CollectPage { .. } => "collect_page",
-        vb_core::CompiledNodeKind::CollectNext { .. } => "collect_next",
-        vb_core::CompiledNodeKind::CollectFinish { .. } => "collect_finish",
-        vb_core::CompiledNodeKind::ReduceStart { .. } => "reduce_start",
-        vb_core::CompiledNodeKind::ReduceNext { .. } => "reduce_next",
-        vb_core::CompiledNodeKind::ReduceFinish { .. } => "reduce_finish",
-        vb_core::CompiledNodeKind::RepeatStart { .. } => "repeat_start",
-        vb_core::CompiledNodeKind::RepeatAttempt { .. } => "repeat_attempt",
-        vb_core::CompiledNodeKind::RepeatCheck { .. } => "repeat_check",
-        vb_core::CompiledNodeKind::RepeatFinish { .. } => "repeat_finish",
-        vb_core::CompiledNodeKind::WaitUntil { .. } => "wait_until",
-        vb_core::CompiledNodeKind::WaitEvent { .. } => "wait_event",
-        vb_core::CompiledNodeKind::Ask { .. } => "ask",
-        vb_core::CompiledNodeKind::AskResume { .. } => "ask_resume",
-        vb_core::CompiledNodeKind::RetryCheck { .. } => "retry_check",
-        vb_core::CompiledNodeKind::ErrorHandler { .. } => "error_handler",
-        vb_core::CompiledNodeKind::Jump { .. } => "jump",
-        vb_core::CompiledNodeKind::Finish { .. } => "finish",
-    }
-}
-
-fn collect_kind_edges(
-    node_idx: u16,
-    kind: &vb_core::CompiledNodeKind,
-) -> Vec<(u16, u16, String)> {
-    let mut edges: Vec<(u16, u16, String)> = Vec::new();
-    match kind {
-        vb_core::CompiledNodeKind::Choose { branches, otherwise } => {
-            for branch in branches.iter() {
-                edges.push((node_idx, branch.target.get(), String::new()));
-            }
-            if let Some(fallback) = otherwise {
-                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
-            }
-        }
-        vb_core::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
-            for branch in branches.iter() {
-                edges.push((node_idx, branch.target.get(), String::new()));
-            }
-            if let Some(fallback) = otherwise {
-                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
-            }
-        }
-        vb_core::CompiledNodeKind::ForEachStart { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::ForEachNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::TogetherStart { branches, join } => {
-            for branch_step in branches.iter() {
-                edges.push((node_idx, branch_step.get(), "branch".to_string()));
-            }
-            edges.push((node_idx, join.get(), "join".to_string()));
-        }
-        vb_core::CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            edges.push((node_idx, entry.get(), "entry".to_string()));
-            edges.push((node_idx, join.get(), "join".to_string()));
-        }
-        vb_core::CompiledNodeKind::TogetherJoin { .. } => {}
-        vb_core::CompiledNodeKind::CollectStart { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::CollectPage { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::CollectNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::CollectFinish { .. } => {}
-        vb_core::CompiledNodeKind::ReduceStart { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::ReduceNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::ReduceFinish { .. } => {}
-        vb_core::CompiledNodeKind::RepeatStart { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::RepeatAttempt { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::RepeatCheck { done, .. } => {
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        vb_core::CompiledNodeKind::RepeatFinish { .. } => {}
-        vb_core::CompiledNodeKind::ErrorHandler { body, handler, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, handler.get(), "handler".to_string()));
-        }
-        vb_core::CompiledNodeKind::Jump { target } => {
-            edges.push((node_idx, target.get(), String::new()));
-        }
-        vb_core::CompiledNodeKind::ForEachJoin { .. }
-        | vb_core::CompiledNodeKind::Nop
-        | vb_core::CompiledNodeKind::SetConst { .. }
-        | vb_core::CompiledNodeKind::Copy { .. }
-        | vb_core::CompiledNodeKind::EvalExpr { .. }
-        | vb_core::CompiledNodeKind::BuildObject { .. }
-        | vb_core::CompiledNodeKind::BuildList { .. }
-        | vb_core::CompiledNodeKind::Do { .. }
-        | vb_core::CompiledNodeKind::WaitUntil { .. }
-        | vb_core::CompiledNodeKind::WaitEvent { .. }
-        | vb_core::CompiledNodeKind::Ask { .. }
-        | vb_core::CompiledNodeKind::AskResume { .. }
-        | vb_core::CompiledNodeKind::RetryCheck { .. }
-        | vb_core::CompiledNodeKind::Finish { .. } => {}
-    }
-    edges
 }
 
 fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {

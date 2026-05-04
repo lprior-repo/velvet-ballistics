@@ -16,7 +16,8 @@ pub(crate) struct TraceEntry {
     pub event_type: &'static str,
     pub step: Option<u16>,
     pub seq: u64,
-    pub detail: String,
+    /// Extra key-value pairs for JSON output (variant-specific fields).
+    pub extra_json: Vec<(&'static str, serde_json::Value)>,
 }
 
 /// Scan a slice of journal events and return one structured entry per event.
@@ -35,98 +36,109 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             event_type: "RunAccepted",
             step: None,
             seq: seq.get(),
-            detail: format!("run={} workflow={:?}", run.get(), workflow),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("workflow", serde_json::Value::from(format!("{workflow:?}"))),
+            ],
         },
         JournalEvent::StepStarted { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "StepStarted",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
-        JournalEvent::StepSucceeded { seq, step, output, .. } => TraceEntry {
+        JournalEvent::StepSucceeded {
+            seq, step, output, ..
+        } => TraceEntry {
             index: idx,
             event_type: "StepSucceeded",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: format!("output={}", output.get()),
+            extra_json: vec![("output", serde_json::Value::from(output.get()))],
         },
-        JournalEvent::ActionScheduled { seq, step, action, .. } => TraceEntry {
+        JournalEvent::ActionScheduled {
+            seq, step, action, ..
+        } => TraceEntry {
             index: idx,
             event_type: "ActionScheduled",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: format!("action={}", action.get()),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
-        JournalEvent::ActionCompletedEvent { seq, step, action, .. } => TraceEntry {
+        JournalEvent::ActionCompletedEvent {
+            seq, step, action, ..
+        } => TraceEntry {
             index: idx,
             event_type: "ActionCompleted",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: format!("action={}", action.get()),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
-        JournalEvent::ActionFailedEvent { seq, step, action, .. } => TraceEntry {
+        JournalEvent::ActionFailedEvent {
+            seq, step, action, ..
+        } => TraceEntry {
             index: idx,
             event_type: "ActionFailed",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: format!("action={}", action.get()),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
         JournalEvent::SlotWrittenEvent { seq, slot, .. } => TraceEntry {
             index: idx,
             event_type: "SlotWritten",
             step: None,
             seq: seq.get(),
-            detail: format!("slot={}", slot.get()),
+            extra_json: vec![("slot", serde_json::Value::from(slot.get()))],
         },
         JournalEvent::WaitScheduledEvent { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "WaitScheduled",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
         JournalEvent::AskScheduledEvent { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "AskScheduled",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
         JournalEvent::AskAnsweredEvent { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "AskAnswered",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
         JournalEvent::RetryScheduledEvent { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "RetryScheduled",
             step: Some(step.get()),
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
         JournalEvent::RunCancelled { seq, .. } => TraceEntry {
             index: idx,
             event_type: "RunCancelled",
             step: None,
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
         JournalEvent::RunFinished { seq, result, .. } => TraceEntry {
             index: idx,
             event_type: "RunFinished",
             step: None,
             seq: seq.get(),
-            detail: format!("result={}", result.get()),
+            extra_json: vec![("result", serde_json::Value::from(result.get()))],
         },
         JournalEvent::RunFailedEvent { seq, .. } => TraceEntry {
             index: idx,
             event_type: "RunFailed",
             step: None,
             seq: seq.get(),
-            detail: String::new(),
+            extra_json: vec![],
         },
     }
 }
