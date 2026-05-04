@@ -333,71 +333,6 @@ fn budget_together_start_fanout() {
     assert!(budget.is_some(), "together start fanout mismatch");
 }
 
-const fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
-    ResourceContract {
-        max_steps,
-        max_slots,
-        max_constants: 1,
-        max_accessors: 0,
-        max_expressions: 0,
-        max_expr_stack: 0,
-        max_step_budget_per_tick: 1,
-        max_input_bytes: 1,
-        max_output_bytes: 1,
-        max_blob_bytes: 1,
-        max_ipc_payload_bytes: 1,
-        max_retry_attempts: 0,
-        max_fanout: 64,
-        max_collect_items: 0,
-        max_queue_depth: 1,
-        max_journal_batch_bytes: 1,
-    }
-}
-
-const fn test_budget(
-    max_total_steps: u64,
-    max_total_slots: u64,
-    max_fanout: u16,
-    max_nesting_depth: u16,
-) -> WholeWorkflowBudget {
-    WholeWorkflowBudget {
-        max_total_steps,
-        max_total_slots,
-        max_fanout,
-        max_nesting_depth,
-        max_steps_executable: 0,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-    }
-}
-
-const fn test_policy(
-    max_total_steps: u64,
-    max_total_slots: u64,
-    max_fanout: u16,
-    max_nesting_depth: u16,
-) -> BoundednessPolicy {
-    BoundednessPolicy {
-        max_total_steps,
-        max_total_slots,
-        max_fanout,
-        max_nesting_depth,
-        absolute_max_action_tickets: 100_000,
-        absolute_max_parallel: 256,
-        absolute_max_run_time_seconds: 2_592_000,
-        absolute_max_result_bytes: 262_144,
-        absolute_max_steps_executable: 1_000_000,
-    }
-}
 
 #[test]
 fn budget_single_node_workflow() {
@@ -1212,6 +1147,72 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
 // Comprehensive test coverage for budget.rs
 // =========================================================================
 
+const fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
+    ResourceContract {
+        max_steps,
+        max_slots,
+        max_constants: 1,
+        max_accessors: 0,
+        max_expressions: 0,
+        max_expr_stack: 0,
+        max_step_budget_per_tick: 1,
+        max_input_bytes: 1,
+        max_output_bytes: 1,
+        max_blob_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_retry_attempts: 0,
+        max_fanout: 64,
+        max_collect_items: 0,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+    }
+}
+
+const fn test_budget(
+    max_total_steps: u64,
+    max_total_slots: u64,
+    max_fanout: u16,
+    max_nesting_depth: u16,
+) -> WholeWorkflowBudget {
+    WholeWorkflowBudget {
+        max_total_steps,
+        max_total_slots,
+        max_fanout,
+        max_nesting_depth,
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+    }
+}
+
+const fn test_policy(
+    max_total_steps: u64,
+    max_total_slots: u64,
+    max_fanout: u16,
+    max_nesting_depth: u16,
+) -> BoundednessPolicy {
+    BoundednessPolicy {
+        max_total_steps,
+        max_total_slots,
+        max_fanout,
+        max_nesting_depth,
+        absolute_max_action_tickets: 100_000,
+        absolute_max_parallel: 256,
+        absolute_max_run_time_seconds: 2_592_000,
+        absolute_max_result_bytes: 262_144,
+        absolute_max_steps_executable: 1_000_000,
+    }
+}
+
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
     T: core::fmt::Debug + PartialEq,
@@ -1223,7 +1224,6 @@ where
     }
 }
 
-// Helper: single-node Finish workflow.
 fn single_node_workflow() -> Vec<CompiledNode> {
     vec![CompiledNode {
         id: StepIdx::new(0),

@@ -1031,5 +1031,6 @@ fn update_workflow_metrics(
     }
 }
 
+#[cfg(test)]
 mod tests;
 

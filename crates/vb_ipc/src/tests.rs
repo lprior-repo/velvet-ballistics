@@ -2,11 +2,9 @@
 
 use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
-// Re-export test helpers from the parent scope.
-use crate::error::IpcError;
-use crate::ingress::{BoundedPayload, IngressFrame, MaxPayloadBytes, MemoryIngress, QueueCapacity};
-use crate::ipc_types::{
-    decode_frame, decode_payload, encode_payload, IpcCommand, IpcFrameHeader, IpcPayload,
+use crate::{
+    decode_frame, decode_payload, encode_payload, BoundedPayload, IngressFrame, IpcCommand,
+    IpcError, IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
     SubmitRunPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION,
 };
 use bytes::Bytes;
@@ -116,7 +114,11 @@ fn command_ids_cover_required_surface() {
     assert_eq!(IpcCommand::from_u16(9), Ok(IpcCommand::DrainTrace));
     assert_eq!(IpcCommand::from_u16(10), Ok(IpcCommand::Health));
     assert_eq!(IpcCommand::from_u16(11), Ok(IpcCommand::Shutdown));
-    assert_eq!(IpcCommand::from_u16(12), Err(IpcError::UnknownCommand(12)));
+    assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
+    assert_eq!(
+        IpcCommand::from_u16(17),
+        Err(IpcError::UnknownCommand(17))
+    );
 }
 
 #[test]
@@ -1336,7 +1338,7 @@ fn adversarial_ipc_frame_new_rejects_mismatched_lengths() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
     let short_payload = Bytes::from(vec![0u8; 5]);
 
-    let result = crate::ipc_types::IpcFrame::new(header, short_payload, MaxPayloadBytes::DEFAULT);
+    let result = crate::IpcFrame::new(header, short_payload, MaxPayloadBytes::DEFAULT);
 
     assert_eq!(
         result,
@@ -1353,7 +1355,7 @@ fn adversarial_ipc_frame_new_rejects_oversized_payload() {
     let payload = Bytes::from(vec![0u8; 100]);
     let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
 
-    let result = crate::ipc_types::IpcFrame::new(header, payload, tiny_max);
+    let result = crate::IpcFrame::new(header, payload, tiny_max);
 
     assert_eq!(
         result,
@@ -1532,11 +1534,11 @@ fn frame_validation_unrecognized_command_id_returns_typed_error() {
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
-    header_bytes[6..8].copy_from_slice(&13u16.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&99u16.to_le_bytes());
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(result, Err(IpcError::UnknownCommand(13)));
+    assert_eq!(result, Err(IpcError::UnknownCommand(99)));
 }
 
 #[test]

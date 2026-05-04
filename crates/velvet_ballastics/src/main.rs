@@ -3259,5 +3259,6 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
     }
 }
 
+#[cfg(test)]
 #[path = "main_tests.rs"]
 mod tests;
