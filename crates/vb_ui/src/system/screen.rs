@@ -220,6 +220,12 @@ impl SystemScreen {
         self.metrics.overall_health
     }
 
+    /// Read-only slice of per-shard queue monitors.
+    #[must_use]
+    pub fn queue_monitors(&self) -> &[QueueMonitor] {
+        &self.queue_monitors
+    }
+
     /// Worst queue status across all shards.
     #[must_use]
     pub fn worst_queue_status(&self) -> QueueStatus {

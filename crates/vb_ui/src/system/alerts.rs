@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::Instant;
 
 // ---------------------------------------------------------------------------
@@ -162,7 +163,7 @@ impl AlertRoute {
 ///
 /// Two alerts with the same `(source, fingerprint)` pair are considered
 /// duplicates and only the first is retained by `AlertRouter`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AlertDedupKey {
     pub source: String,
     pub fingerprint: u64,
@@ -211,7 +212,7 @@ pub struct SystemAlert {
 pub struct AlertRouter {
     alerts: Vec<SystemAlert>,
     next_id: u64,
-    dedup_keys: Vec<AlertDedupKey>,
+    dedup_keys: HashSet<AlertDedupKey>,
     max_alerts: usize,
 }
 
@@ -225,7 +226,7 @@ impl AlertRouter {
         Self {
             alerts: Vec::new(),
             next_id: 1,
-            dedup_keys: Vec::new(),
+            dedup_keys: HashSet::new(),
             max_alerts,
         }
     }
@@ -252,11 +253,18 @@ impl AlertRouter {
             return None;
         }
 
+        // Guard: if next_id has saturated to u64::MAX, we cannot assign a
+        // unique ID, so reject the alert to avoid duplicate IDs that would
+        // break acknowledge().
+        if self.next_id == u64::MAX {
+            return None;
+        }
+
         let key = AlertDedupKey {
             source: source.clone(),
             fingerprint,
         };
-        if self.dedup_keys.iter().any(|k| k == &key) {
+        if self.dedup_keys.contains(&key) {
             return None;
         }
 
@@ -264,7 +272,7 @@ impl AlertRouter {
         let id = self.next_id;
         self.next_id = self.next_id.saturating_add(1);
 
-        self.dedup_keys.push(key);
+        self.dedup_keys.insert(key);
         self.alerts.push(SystemAlert {
             id,
             severity,
@@ -318,17 +326,45 @@ impl AlertRouter {
     /// alerts are removed so that a future `route_alert` with the same
     /// `(source, fingerprint)` will be accepted again.
     pub fn trim(&mut self) {
-        while self.alerts.len() > self.max_alerts {
-            // Find the oldest acknowledged alert.
-            let Some(idx) = self.alerts.iter().position(|a| a.acknowledged) else {
-                // No acknowledged alerts to trim; stop.
-                break;
-            };
+        if self.alerts.len() <= self.max_alerts {
+            return;
+        }
 
-            let removed = self.alerts.remove(idx);
-            // Remove matching dedup key.
-            self.dedup_keys
-                .retain(|k| !(k.source == removed.source && k.fingerprint == removed.fingerprint));
+        // Safe: we just checked alerts.len() > max_alerts.
+        #[allow(clippy::arithmetic_side_effects)]
+        let excess = self.alerts.len() - self.max_alerts;
+
+        // Collect indices of acknowledged alerts, limited to the excess count,
+        // preferring the oldest (lowest index) first.
+        let mut acked_indices: Vec<usize> = self
+            .alerts
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| a.acknowledged)
+            .map(|(i, _)| i)
+            .take(excess)
+            .collect();
+
+        // Nothing to trim -- no acknowledged alerts.
+        if acked_indices.is_empty() {
+            return;
+        }
+
+        // Remove dedup keys for evicted alerts.
+        for &idx in &acked_indices {
+            // Safe: idx came from a valid enumerate() over self.alerts.
+            #[allow(clippy::indexing_slicing)]
+            let alert = &self.alerts[idx];
+            self.dedup_keys.remove(&AlertDedupKey {
+                source: alert.source.clone(),
+                fingerprint: alert.fingerprint,
+            });
+        }
+
+        // Remove in reverse index order to keep earlier indices valid.
+        acked_indices.reverse();
+        for idx in acked_indices {
+            self.alerts.remove(idx);
         }
     }
 
@@ -964,9 +1000,9 @@ mod tests {
     }
 
     #[test]
-    fn router_next_id_saturates_without_overflow() {
+    fn router_next_id_saturates_returns_none() {
         let mut router = AlertRouter::new(10);
-        // Manually push next_id to near-max to test saturating behavior.
+        // Manually push next_id to max to test saturation guard.
         router.next_id = u64::MAX;
         let id = router.route_alert(
             AlertSeverity::Info,
@@ -975,8 +1011,11 @@ mod tests {
             1,
             100,
         );
-        // First call gets u64::MAX; next_id saturates to u64::MAX.
-        assert_eq!(id, Some(u64::MAX));
+        // At u64::MAX the guard triggers: no unique ID can be assigned.
+        assert_eq!(id, None);
+        assert_eq!(router.len(), 0);
+
+        // Second call also returns None — still saturated.
         let id2 = router.route_alert(
             AlertSeverity::Info,
             "msg2".to_string(),
@@ -984,8 +1023,7 @@ mod tests {
             2,
             200,
         );
-        // Both alerts got the same ID due to saturation, but the second was not
-        // a duplicate (different source/fingerprint).
-        assert_eq!(id2, Some(u64::MAX));
+        assert_eq!(id2, None);
+        assert_eq!(router.len(), 0);
     }
 }

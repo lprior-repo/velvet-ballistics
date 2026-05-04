@@ -5,7 +5,7 @@
 //! compiled workflow. The types here complement the overlay rendering in
 //! `taint_overlay.rs` by offering structured, queryable taint graphs.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::theme::colors;
 
@@ -172,13 +172,23 @@ impl TaintGraph {
             slots.insert(source.slot);
         }
 
-        // Walk propagations transitively from source slots.
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for prop in &self.propagations {
-                if slots.contains(&prop.from_slot) && slots.insert(prop.to_slot) {
-                    changed = true;
+        // Build forward adjacency for BFS: from_slot -> list of to_slots.
+        let mut forward: HashMap<u32, Vec<u32>> = HashMap::new();
+        for prop in &self.propagations {
+            forward
+                .entry(prop.from_slot)
+                .or_default()
+                .push(prop.to_slot);
+        }
+
+        // BFS from source slots through the propagation graph.
+        let mut queue: VecDeque<u32> = slots.iter().copied().collect();
+        while let Some(current) = queue.pop_front() {
+            if let Some(neighbors) = forward.get(&current) {
+                for &neighbor in neighbors {
+                    if slots.insert(neighbor) {
+                        queue.push_back(neighbor);
+                    }
                 }
             }
         }
@@ -226,11 +236,12 @@ impl TaintGraph {
         let mut parent: HashMap<u32, &TaintPropagation> = HashMap::new();
         let mut visited: HashSet<u32> = HashSet::new();
         visited.insert(slot);
-        let mut queue: Vec<u32> = vec![slot];
+        let mut queue: VecDeque<u32> = VecDeque::new();
+        queue.push_back(slot);
 
         let mut found_source: Option<u32> = None;
 
-        while let Some(current) = queue.pop() {
+        while let Some(current) = queue.pop_front() {
             if source_slots.contains(&current) && current != slot {
                 found_source = Some(current);
                 break;
@@ -239,9 +250,9 @@ impl TaintGraph {
             if let Some(preds) = incoming.get(&current) {
                 for prop in preds {
                     if visited.insert(prop.from_slot) {
-                        // Map to_slot -> propagation for reconstruction
-                        parent.insert(current, *prop);
-                        queue.push(prop.from_slot);
+                        // Map predecessor node -> propagation for reconstruction
+                        parent.insert(prop.from_slot, *prop);
+                        queue.push_back(prop.from_slot);
                     }
                 }
             }
@@ -258,17 +269,15 @@ impl TaintGraph {
             return Vec::new();
         };
 
-        // Reconstruct path from slot back to source.
+        // Reconstruct path from source to slot by following parent entries.
+        // Each parent entry maps a node to the propagation edge that discovered it,
+        // so walking from source_slot forward via prop.to_slot yields the shortest path.
         let mut path: Vec<TaintPropagation> = Vec::new();
-        let mut current = slot;
+        let mut current = source_slot;
         while let Some(&prop) = parent.get(&current) {
             path.push(prop.clone());
-            current = prop.from_slot;
-            if current == source_slot {
-                break;
-            }
+            current = prop.to_slot;
         }
-        path.reverse();
         path
     }
 

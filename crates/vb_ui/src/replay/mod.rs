@@ -4,6 +4,7 @@
 //! debugging by scrubbing to any event boundary.
 
 pub mod controller;
+pub mod diff_engine;
 pub mod engine;
 pub mod graph_overlay;
 pub mod slot_panel;

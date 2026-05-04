@@ -8,6 +8,21 @@ pub enum RepairKind {
     ReducePayload,
     PinIdempotency,
     FixSecretLeak,
+    ManualInvestigation,
+}
+
+impl RepairKind {
+    /// Return a static display label for this repair kind.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::IncreaseTimeout => "IncreaseTimeout",
+            Self::AddRetryBackoff => "AddRetryBackoff",
+            Self::ReducePayload => "ReducePayload",
+            Self::PinIdempotency => "PinIdempotency",
+            Self::FixSecretLeak => "FixSecretLeak",
+            Self::ManualInvestigation => "ManualInvestigation",
+        }
+    }
 }
 
 /// Confidence level for a repair suggestion.
@@ -104,7 +119,7 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
         }
         FailureCode::StepPanicked => {
             suggestions.push(RepairSuggestion {
-                kind: RepairKind::AddRetryBackoff,
+                kind: RepairKind::ManualInvestigation,
                 action: RepairAction::ManualIntervention,
                 description: "Step panicked - investigate the step logic and fix the bug".into(),
                 confidence: 0.5,
@@ -215,7 +230,7 @@ pub fn suggest_repairs_for_record(record: &IncidentRecord) -> Vec<RepairSuggesti
             ),
         },
         FailureCode::StepPanicked => RepairSuggestion {
-            kind: RepairKind::AddRetryBackoff,
+            kind: RepairKind::ManualInvestigation,
             action: RepairAction::ManualIntervention,
             description: String::from("investigate panic cause"),
             confidence: 0.9,
