@@ -977,4 +977,444 @@ mod tests {
         assert_ne!(ReplayRisk::Safe, ReplayRisk::Unsafe);
         let _debug = format!("{:?}", ReplayRisk::HighRisk);
     }
+
+    // =========================================================================
+    // Test 21: Multiple RetryCheck nodes each tracked independently.
+    //
+    // Two RetryCheck nodes pointing at two different Do nodes. Both Do nodes
+    // should appear in the reconciliation_risk detail string.
+    // =========================================================================
+    #[test]
+    fn multiple_retry_checks_each_tracked() {
+        let nodes = vec![
+            // RetryCheck #0 -> retries Do at step 2
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(2),
+                    exhausted: StepIdx::new(6),
+                },
+            ),
+            // RetryCheck #1 -> retries Do at step 3
+            make_node(
+                1,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(1),
+                    body: StepIdx::new(3),
+                    exhausted: StepIdx::new(6),
+                },
+            ),
+            make_do_node(2, 10, 0), // retry-exposed Do #1
+            make_do_node(3, 11, 1), // retry-exposed Do #2
+            make_node(4, CompiledNodeKind::Nop),
+            make_node(5, CompiledNodeKind::Nop),
+            make_node(
+                6,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        assert!(recon.is_some());
+        let Some(recon) = recon else {
+            return;
+        };
+        assert!(!recon.passed, "two RetryCheck targets should fail reconciliation");
+        assert!(recon.detail.contains("2 Do node(s)"));
+        assert!(
+            recon.detail.contains("step(s) 2") && recon.detail.contains("3"),
+            "detail should reference both Do node step ids: {:?}",
+            recon.detail
+        );
+    }
+
+    // =========================================================================
+    // Test 22: Replay risk level LowRisk with only journal_before_dispatch failure.
+    //
+    // A single non-reconciliation, non-timeout failure should classify as LowRisk.
+    // =========================================================================
+    #[test]
+    fn replay_risk_low_from_journal_failure_only() {
+        // Construct a panel where only journal_before_dispatch fails.
+        let panel = DurabilityPanel {
+            checks: vec![
+                DurabilityCheck {
+                    label: String::from("journal_before_dispatch"),
+                    passed: false,
+                    detail: String::from("1 Do node(s) without on_error handler: step(s) 0"),
+                },
+                DurabilityCheck {
+                    label: String::from("completion_before_mutation"),
+                    passed: true,
+                    detail: String::from("all 1 Do nodes ensure completion before mutation"),
+                },
+                DurabilityCheck {
+                    label: String::from("reconciliation_risk"),
+                    passed: true,
+                    detail: String::from("no retry-exposed Do nodes"),
+                },
+                DurabilityCheck {
+                    label: String::from("timeout_coverage"),
+                    passed: true,
+                    detail: String::from("all 1 Do nodes have timeout coverage"),
+                },
+            ],
+        };
+        assert!(!panel.passed());
+        assert_eq!(panel.replay_risk_level(), ReplayRisk::LowRisk);
+    }
+
+    // =========================================================================
+    // Test 23: failed_checks returns the correct indices.
+    //
+    // Build a panel with a known pattern of passes and failures and verify that
+    // failed_checks() returns exactly the failing indices.
+    // =========================================================================
+    #[test]
+    fn failed_checks_returns_correct_indices() {
+        // Index 0: pass, Index 1: fail, Index 2: fail, Index 3: pass
+        let panel = DurabilityPanel {
+            checks: vec![
+                DurabilityCheck {
+                    label: String::from("journal_before_dispatch"),
+                    passed: true,
+                    detail: String::from("ok"),
+                },
+                DurabilityCheck {
+                    label: String::from("completion_before_mutation"),
+                    passed: false,
+                    detail: String::from("missing"),
+                },
+                DurabilityCheck {
+                    label: String::from("reconciliation_risk"),
+                    passed: false,
+                    detail: String::from("retry concern"),
+                },
+                DurabilityCheck {
+                    label: String::from("timeout_coverage"),
+                    passed: true,
+                    detail: String::from("ok"),
+                },
+            ],
+        };
+        let failed = panel.failed_checks();
+        assert_eq!(failed.len(), 2, "expected exactly 2 failed checks");
+        let Some(&first) = failed.get(0) else {
+            return;
+        };
+        let Some(&second) = failed.get(1) else {
+            return;
+        };
+        assert_eq!(first, 1, "index 1 should be failed (completion_before_mutation)");
+        assert_eq!(second, 2, "index 2 should be failed (reconciliation_risk)");
+        // Verify the labels at those indices match what we expect.
+        let Some(check_1) = panel.checks().get(first) else {
+            return;
+        };
+        assert_eq!(check_1.label, "completion_before_mutation");
+        let Some(check_2) = panel.checks().get(second) else {
+            return;
+        };
+        assert_eq!(check_2.label, "reconciliation_risk");
+    }
+
+    // =========================================================================
+    // Test 24: Do node with on_error AND inside ErrorHandler body is not
+    // double-counted for timeout coverage.
+    //
+    // A Do node that has its own on_error handler AND is also referenced as
+    // the body of an ErrorHandler node should still pass timeout_coverage
+    // exactly once -- it should not appear in the uncovered list.
+    // =========================================================================
+    #[test]
+    fn do_node_with_on_error_and_error_handler_body_not_double_counted() {
+        let nodes = vec![
+            // ErrorHandler wraps the Do at step 1
+            make_node(
+                0,
+                CompiledNodeKind::ErrorHandler {
+                    body: StepIdx::new(1),
+                    handler: StepIdx::new(2),
+                    error_slot: None,
+                },
+            ),
+            // Do node at step 1 also has its own on_error pointing to step 3
+            make_do_node_with_error_handler(1, 10, 0, 3),
+            make_node(2, CompiledNodeKind::Nop),
+            make_node(3, CompiledNodeKind::Nop),
+            make_node(
+                4,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        // The Do node has on_error, so journal and completion should pass.
+        assert!(panel.passed(), "all checks should pass: {:?}", panel.checks());
+        // Verify timeout_coverage specifically passes.
+        let timeout = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "timeout_coverage");
+        assert!(timeout.is_some());
+        let Some(timeout) = timeout else {
+            return;
+        };
+        assert!(
+            timeout.passed,
+            "Do with on_error inside ErrorHandler body should pass timeout coverage"
+        );
+        assert_eq!(panel.replay_risk_level(), ReplayRisk::Safe);
+    }
+
+    // =========================================================================
+    // Test 25: Empty workflow from_workflow returns clean panel with all
+    // checks passing and specific detail messages.
+    // =========================================================================
+    #[test]
+    fn empty_workflow_returns_clean_panel_with_details() {
+        let panel = DurabilityPanel::from_workflow(&[]);
+        assert!(panel.passed());
+        assert!(panel.failed_checks().is_empty());
+        assert_eq!(panel.replay_risk_level(), ReplayRisk::Safe);
+        // Verify each check has the expected "empty workflow" detail message.
+        let checks = panel.checks();
+        assert_eq!(checks.len(), 4);
+
+        let journal = checks.iter().find(|c| c.label == "journal_before_dispatch");
+        assert!(journal.is_some());
+        let Some(journal) = journal else { return };
+        assert!(journal.passed);
+        assert!(journal.detail.contains("empty workflow"));
+
+        let completion = checks.iter().find(|c| c.label == "completion_before_mutation");
+        assert!(completion.is_some());
+        let Some(completion) = completion else { return };
+        assert!(completion.passed);
+        assert!(completion.detail.contains("empty workflow"));
+
+        let recon = checks.iter().find(|c| c.label == "reconciliation_risk");
+        assert!(recon.is_some());
+        let Some(recon) = recon else { return };
+        assert!(recon.passed);
+        assert!(recon.detail.contains("no retry-exposed Do nodes"));
+
+        let timeout = checks.iter().find(|c| c.label == "timeout_coverage");
+        assert!(timeout.is_some());
+        let Some(timeout) = timeout else { return };
+        assert!(timeout.passed);
+        assert!(timeout.detail.contains("empty workflow"));
+    }
+
+    // =========================================================================
+    // Test 26: All four risk levels exercised from real workflows.
+    //
+    // Safe:   fully safe workflow with on_error handlers.
+    // LowRisk:  one non-reconciliation, non-timeout failure (journal_only).
+    // HighRisk: reconciliation_risk failure alone.
+    // Unsafe:   both reconciliation_risk AND timeout_coverage failures.
+    // =========================================================================
+    #[test]
+    fn all_risk_levels_from_real_workflows() {
+        // --- Safe: Do node with on_error, no RetryCheck ---
+        let safe_nodes = vec![
+            make_do_node_with_error_handler(0, 1, 0, 2),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+            make_node(2, CompiledNodeKind::Nop),
+        ];
+        let safe_panel = DurabilityPanel::from_workflow(&safe_nodes);
+        assert_eq!(
+            safe_panel.replay_risk_level(),
+            ReplayRisk::Safe,
+            "safe workflow should be Safe"
+        );
+
+        // --- LowRisk: exactly one non-reconciliation, non-timeout failure.
+        // journal_before_dispatch fails and completion_before_mutation also fails
+        // (2 failures, both non-reconciliation non-timeout => HighRisk), so we
+        // cannot achieve LowRisk from a real workflow because those two checks are
+        // structurally coupled (both check for on_error). Construct manually:
+        let low_panel = DurabilityPanel {
+            checks: vec![
+                DurabilityCheck {
+                    label: String::from("journal_before_dispatch"),
+                    passed: false,
+                    detail: String::from("single failure"),
+                },
+                DurabilityCheck {
+                    label: String::from("completion_before_mutation"),
+                    passed: true,
+                    detail: String::from("ok"),
+                },
+                DurabilityCheck {
+                    label: String::from("reconciliation_risk"),
+                    passed: true,
+                    detail: String::from("ok"),
+                },
+                DurabilityCheck {
+                    label: String::from("timeout_coverage"),
+                    passed: true,
+                    detail: String::from("ok"),
+                },
+            ],
+        };
+        assert_eq!(
+            low_panel.replay_risk_level(),
+            ReplayRisk::LowRisk,
+            "single non-reconciliation, non-timeout failure should be LowRisk"
+        );
+
+        // --- HighRisk: RetryCheck targeting a Do without idempotency ---
+        let high_risk_nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(3),
+                },
+            ),
+            make_do_node_with_error_handler(1, 10, 0, 5), // has on_error so journal/completion/timeout pass
+            make_node(5, CompiledNodeKind::Nop),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let high_panel = DurabilityPanel::from_workflow(&high_risk_nodes);
+        assert_eq!(
+            high_panel.replay_risk_level(),
+            ReplayRisk::HighRisk,
+            "reconciliation failure alone should be HighRisk"
+        );
+
+        // --- Unsafe: RetryCheck targeting Do + no timeout coverage ---
+        let unsafe_nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(3),
+                },
+            ),
+            make_do_node(1, 10, 0), // No on_error, no ErrorHandler/RepeatStart wrap
+            make_node(2, CompiledNodeKind::Nop),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let unsafe_panel = DurabilityPanel::from_workflow(&unsafe_nodes);
+        assert_eq!(
+            unsafe_panel.replay_risk_level(),
+            ReplayRisk::Unsafe,
+            "reconciliation + timeout failure should be Unsafe"
+        );
+    }
+
+    // =========================================================================
+    // Test 27: RetryCheck targeting a non-Do node (Nop) does not flag
+    // reconciliation_risk, even though the target exists.
+    // =========================================================================
+    #[test]
+    fn retry_check_targeting_non_do_node_no_reconciliation_risk() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1), // targets a Nop, not a Do
+                    exhausted: StepIdx::new(2),
+                },
+            ),
+            make_node(1, CompiledNodeKind::Nop), // not a Do node
+            make_node(
+                2,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        assert!(recon.is_some());
+        let Some(recon) = recon else {
+            return;
+        };
+        assert!(
+            recon.passed,
+            "RetryCheck targeting a non-Do node should not flag reconciliation risk"
+        );
+        assert!(recon.detail.contains("no Do nodes under retry paths"));
+    }
+
+    // =========================================================================
+    // Test 28: Do node inside ForEachStart body still requires its own
+    // on_error for journal_before_dispatch and completion_before_mutation.
+    // ForEachStart is not a recognized timeout wrapper, so the Do node
+    // should fail timeout_coverage unless it has on_error.
+    // =========================================================================
+    #[test]
+    fn do_node_in_foreach_start_still_needs_own_error_handling() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 10,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            ),
+            make_do_node(1, 10, 0), // No on_error, ForEachStart is not a timeout wrapper
+            make_node(
+                2,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        // journal_before_dispatch and completion_before_mutation should fail.
+        let journal = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        assert!(journal.is_some());
+        let Some(journal) = journal else { return };
+        assert!(!journal.passed, "Do in ForEachStart should still fail journal check");
+
+        // timeout_coverage should also fail since ForEachStart is not recognized.
+        let timeout = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "timeout_coverage");
+        assert!(timeout.is_some());
+        let Some(timeout) = timeout else { return };
+        assert!(
+            !timeout.passed,
+            "Do in ForEachStart without on_error should fail timeout coverage"
+        );
+    }
 }
