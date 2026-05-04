@@ -160,7 +160,14 @@ impl IpcAppWiring {
                 events.trace_drained = true;
             }
             IpcReply::Healthy => {
-                app_state.system.overall_health = HealthLevel::Healthy;
+                // Only upgrade to Healthy; never downgrade from Degraded/Critical
+                // set by an authoritative Metrics reply.
+                if !matches!(
+                    app_state.system.overall_health,
+                    HealthLevel::Degraded | HealthLevel::Critical
+                ) {
+                    app_state.system.overall_health = HealthLevel::Healthy;
+                }
                 events.health_checked = true;
             }
             IpcReply::ShuttingDown => {

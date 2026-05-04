@@ -740,4 +740,164 @@ mod tests {
         // Base 1 + 6 loop nodes = 7, + 5 + 3 = 15 iterations total = 15
         assert_eq!(bounds.estimated_peak_frames, 15);
     }
+
+    // --- Additional edge-case tests ---
+
+    #[test]
+    fn test_bounds_no_nodes_zero_everything() {
+        let parts = WorkflowParts {
+            name: String::from("zero-nodes").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Vec::new().into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 0,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let bounds = compute_resource_bounds(&parts);
+        assert_eq!(bounds.node_count, 0);
+        assert_eq!(bounds.do_node_count, 0);
+        assert_eq!(bounds.retry_budget, 0);
+        assert_eq!(bounds.estimated_peak_frames, 1);
+        assert_eq!(bounds.slot_count, 0);
+    }
+
+    #[test]
+    fn test_bounds_retry_budget_with_multiple_do_nodes() {
+        let contract = ResourceContract {
+            max_retry_attempts: 10,
+            ..ResourceContract::DEFAULT
+        };
+        let parts = make_parts_with_contract(
+            vec![
+                CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+                CompiledNodeKind::Do {
+                    action: ActionId::new(2),
+                    input: SlotIdx::new(1),
+                },
+                CompiledNodeKind::Do {
+                    action: ActionId::new(3),
+                    input: SlotIdx::new(2),
+                },
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ],
+            contract,
+        );
+        let bounds = compute_resource_bounds(&parts);
+        assert_eq!(bounds.do_node_count, 3);
+        assert_eq!(bounds.retry_budget, 30); // 3 * 10
+    }
+
+    #[test]
+    fn test_resource_bounds_clone_and_eq() {
+        let a = ResourceBounds {
+            slot_count: 4,
+            node_count: 10,
+            do_node_count: 2,
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: 6,
+            estimated_peak_frames: 3,
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_panel_worst_case_metrics_mixed() {
+        let contract = ResourceContract {
+            max_steps: 10,
+            max_slots: 4,
+            max_ipc_payload_bytes: 1024,
+            max_output_bytes: 512,
+            max_retry_attempts: 3,
+            max_fanout: 2,
+            max_queue_depth: 5,
+            max_collect_items: 20,
+            max_step_budget_per_tick: 100,
+            ..ResourceContract::DEFAULT
+        };
+        // node_count=5 < max_steps=10 -> WithinBounds
+        // do_node_count=3 > max_fanout=2 -> ExceedsLimit
+        let bounds = ResourceBounds {
+            slot_count: 4,
+            node_count: 5,
+            do_node_count: 3,
+            max_action_payload: 1024,
+            max_result_size: 512,
+            retry_budget: 9,
+            estimated_peak_frames: 1,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        assert!(!panel.all_within_bounds());
+        let worst = panel.worst_case_metrics();
+        assert!(!worst.is_empty());
+        // At least the fanout metric should be ExceedsLimit.
+        let fanout_metric = worst.iter().find(|m| m.label == "do_node_count / max_fanout");
+        assert!(fanout_metric.is_some());
+        let fm = fanout_metric.ok_or("missing").ok();
+        if let Some(m) = fm {
+            assert_eq!(m.status, ResourceStatus::ExceedsLimit);
+        }
+    }
+
+    #[test]
+    fn test_resource_status_ordering() {
+        assert_ne!(ResourceStatus::WithinBounds, ResourceStatus::AtLimit);
+        assert_ne!(ResourceStatus::AtLimit, ResourceStatus::ExceedsLimit);
+        assert_ne!(ResourceStatus::WithinBounds, ResourceStatus::ExceedsLimit);
+    }
+
+    #[test]
+    fn test_classify_large_values() {
+        assert_eq!(classify(u64::MAX, u64::MAX), ResourceStatus::AtLimit);
+        assert_eq!(classify(0, u64::MAX), ResourceStatus::WithinBounds);
+        assert_eq!(classify(u64::MAX, 0), ResourceStatus::ExceedsLimit);
+    }
+
+    #[test]
+    fn test_panel_metrics_labels() {
+        let contract = ResourceContract::DEFAULT;
+        let bounds = ResourceBounds {
+            slot_count: 4,
+            node_count: 10,
+            do_node_count: 2,
+            max_action_payload: contract.max_ipc_payload_bytes,
+            max_result_size: contract.max_output_bytes,
+            retry_budget: 6,
+            estimated_peak_frames: 3,
+        };
+        let panel = ResourceBoundsPanel::new(&contract, &bounds);
+        let labels: Vec<&str> = panel.metrics().iter().map(|m| m.label).collect();
+        assert!(labels.contains(&"node_count / max_steps"));
+        assert!(labels.contains(&"slot_count / max_slots"));
+        assert!(labels.contains(&"retry_budget"));
+        assert!(labels.contains(&"estimated_peak_frames / max_queue_depth"));
+    }
+
+    #[test]
+    fn test_compute_bounds_together_with_zero_branches() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::TogetherStart {
+                branches: Box::new([]),
+                join: StepIdx::new(1),
+            },
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 0,
+                accumulator: SlotIdx::new(0),
+            },
+        ]);
+        let bounds = compute_resource_bounds(&parts);
+        // Base 1 + 2 together nodes = 3, + 0 fanout = 3
+        assert_eq!(bounds.estimated_peak_frames, 3);
+    }
 }

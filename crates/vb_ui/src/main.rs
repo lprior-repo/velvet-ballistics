@@ -1481,7 +1481,7 @@ impl MatchEvent for VbApp {
         // sync calls for the affected subsystems.
         let wiring_events = self.ipc_wiring.poll(&mut self.app_state);
 
-        if wiring_events.metrics_updated || wiring_events.connection_changed {
+        if wiring_events.metrics_updated || wiring_events.connection_changed || wiring_events.health_checked {
             self.sync_system_state(cx);
         }
         if wiring_events.verification_updated || wiring_events.taint_report_updated {
@@ -1492,6 +1492,7 @@ impl MatchEvent for VbApp {
             || wiring_events.events_arrived
             || wiring_events.trace_drained
         {
+            let _events = self.ipc_wiring.drain_events();
             self.sync_replay_state(cx);
         }
         if wiring_events.workflow_graph_updated {

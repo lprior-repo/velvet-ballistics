@@ -512,4 +512,156 @@ mod tests {
         // Truncated to u32::MAX due to overflow.
         assert_eq!(reports[0].timeout_ms, Some(u32::MAX));
     }
+
+    // Test 13: classify_idempotency for all variants.
+    #[test]
+    fn classify_idempotency_all_variants() {
+        let pure_contract = make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe);
+        assert_eq!(
+            classify_idempotency(&pure_contract),
+            IdempotencyClass::DeterministicPure
+        );
+
+        let at_least_once = make_contract(2, 1000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired);
+        assert_eq!(
+            classify_idempotency(&at_least_once),
+            IdempotencyClass::AtLeastOnce
+        );
+
+        let idempotent_ext = make_contract(3, 1000, Idempotency::IdempotentExternal, RetrySafety::Safe);
+        assert_eq!(
+            classify_idempotency(&idempotent_ext),
+            IdempotencyClass::AtLeastOnce
+        );
+    }
+
+    // Test 14: compute_strict_eligibility requires all conditions.
+    #[test]
+    fn compute_strict_eligibility_all_conditions_required() {
+        // All conditions met: DeterministicPure, has_timeout, no issues.
+        assert!(compute_strict_eligibility(
+            IdempotencyClass::DeterministicPure,
+            true,
+            &[],
+        ));
+
+        // Missing timeout.
+        assert!(!compute_strict_eligibility(
+            IdempotencyClass::DeterministicPure,
+            false,
+            &[],
+        ));
+
+        // Not DeterministicPure.
+        assert!(!compute_strict_eligibility(
+            IdempotencyClass::AtLeastOnce,
+            true,
+            &[],
+        ));
+
+        // Unknown idempotency.
+        assert!(!compute_strict_eligibility(
+            IdempotencyClass::Unknown,
+            true,
+            &[],
+        ));
+
+        // Has issues.
+        assert!(!compute_strict_eligibility(
+            IdempotencyClass::DeterministicPure,
+            true,
+            &[PolicyIssue::UnsafeRetry],
+        ));
+    }
+
+    // Test 15: find_contract returns None for unknown action.
+    #[test]
+    fn find_contract_returns_none_for_unknown() {
+        let contracts = vec![make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        assert!(find_contract(ActionId::new(999), &contracts).is_none());
+    }
+
+    // Test 16: find_contract returns None for empty slice.
+    #[test]
+    fn find_contract_returns_none_for_empty() {
+        assert!(find_contract(ActionId::new(0), &[]).is_none());
+    }
+
+    // Test 17: ActionPolicyReport fields are populated correctly.
+    #[test]
+    fn action_policy_report_fields_correct() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(42),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(42, 3000, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].action_id, 42);
+        assert_eq!(reports[0].idempotency_class, IdempotencyClass::DeterministicPure);
+        assert!(reports[0].has_timeout);
+        assert_eq!(reports[0].timeout_ms, Some(3000));
+        assert!(reports[0].strict_eligible);
+        assert!(reports[0].issues.is_empty());
+    }
+
+    // Test 18: DeterministicPure with zero timeout has MissingTimeout issue.
+    #[test]
+    fn deterministic_pure_zero_timeout_has_missing_timeout() {
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let contracts = vec![make_contract(1, 0, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        let reports = analyze_action_policies(&parts, &contracts);
+        assert_eq!(reports.len(), 1);
+        assert!(!reports[0].has_timeout);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(!reports[0].strict_eligible);
+    }
+
+    // Test 19: All issue types can coexist.
+    #[test]
+    fn all_issues_can_coexist() {
+        // Unknown idempotency (no contract) -> MissingIdempotency + MissingTimeout
+        let parts = make_parts(vec![
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ]);
+        let reports = analyze_action_policies(&parts, &[]);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingTimeout));
+        assert!(reports[0].issues.contains(&PolicyIssue::MissingIdempotency));
+    }
+
+    // Test 20: IdempotencyClass derive traits.
+    #[test]
+    fn idempotency_class_equality() {
+        assert_eq!(IdempotencyClass::DeterministicPure, IdempotencyClass::DeterministicPure);
+        assert_eq!(IdempotencyClass::AtLeastOnce, IdempotencyClass::AtLeastOnce);
+        assert_eq!(IdempotencyClass::Unknown, IdempotencyClass::Unknown);
+        assert_ne!(IdempotencyClass::DeterministicPure, IdempotencyClass::AtLeastOnce);
+    }
+
+    // Test 21: PolicyIssue derive traits.
+    #[test]
+    fn policy_issue_equality() {
+        assert_eq!(PolicyIssue::MissingTimeout, PolicyIssue::MissingTimeout);
+        assert_ne!(PolicyIssue::MissingTimeout, PolicyIssue::UnsafeRetry);
+    }
 }

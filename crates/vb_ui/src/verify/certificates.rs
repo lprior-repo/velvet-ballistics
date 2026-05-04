@@ -2105,4 +2105,668 @@ mod tests {
     fn check_status_merge_worst_pass_pass() {
         assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Pass), CheckStatus::Pass);
     }
+
+    // ========================================================================
+    // Certificate analysis: additional edge-case tests
+    // ========================================================================
+
+    #[test]
+    fn analysis_entry_out_of_bounds_fails_structural() {
+        let mut parts = minimal_parts();
+        parts.entry = StepIdx::new(200);
+        let result = VerificationResult::analyze(&parts);
+        let structural = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        assert!(structural.is_some());
+        let cert = structural.ok_or("missing").ok();
+        if let Some(c) = cert {
+            assert!(matches!(c.status, CertificateStatus::Fail(_)));
+        }
+    }
+
+    #[test]
+    fn analysis_node_id_mismatch_fails_structural() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(99), // mismatch: position 0 has id 99
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("id-mismatch").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let structural = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StructuralValidity);
+        assert!(structural.is_some());
+        assert!(matches!(
+            structural.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_zero_max_steps_fails_boundedness() {
+        let mut parts = minimal_parts();
+        parts.resource_contract.max_steps = 0;
+        let result = VerificationResult::analyze(&parts);
+        let boundedness = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Boundedness);
+        assert!(boundedness.is_some());
+        assert!(matches!(
+            boundedness.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_node_count_exceeds_max_steps_fails_boundedness() {
+        let mut parts = minimal_parts();
+        parts.resource_contract.max_steps = 1;
+        // Add extra nodes beyond max_steps.
+        let mut nodes = Vec::new();
+        for i in 0..5u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 4 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+        nodes[4].kind = CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        };
+        parts.nodes = nodes.into_boxed_slice();
+        let result = VerificationResult::analyze(&parts);
+        let boundedness = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Boundedness);
+        assert!(boundedness.is_some());
+        assert!(matches!(
+            boundedness.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_slot_count_exceeds_max_slots_fails_resource_bounds() {
+        let mut parts = minimal_parts();
+        parts.slot_count = 5000;
+        parts.resource_contract.max_slots = 100;
+        let result = VerificationResult::analyze(&parts);
+        let rb = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::ResourceBounds);
+        assert!(rb.is_some());
+        assert!(matches!(
+            rb.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_no_finish_node_fails_strict_durability() {
+        let mut nodes = Vec::new();
+        for i in 0..3u16 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: if i < 2 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+        let parts = WorkflowParts {
+            name: String::from("no-finish").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let dur = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::StrictDurability);
+        assert!(dur.is_some());
+        assert!(matches!(
+            dur.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_do_node_without_retry_or_error_warns_action_policy() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("do-no-retry").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ap = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::ActionPolicy);
+        assert!(ap.is_some());
+        assert!(matches!(
+            ap.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Warn(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_taint_flow_warns_for_contained_sources() {
+        // WaitEvent node without path to Finish (no next edge).
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("contained-secret").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let tf = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::TaintFlow);
+        assert!(tf.is_some());
+        // WaitEvent at step 0 has no outgoing edge, so source is contained -> Warn
+        assert!(matches!(
+            tf.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Warn(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_properly_nested_loops_pass() {
+        // Outer loop: step 0 to step 4, inner loop: step 1 to step 3.
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(2),
+                item_slot: SlotIdx::new(3),
+                limit: 3,
+                body: StepIdx::new(2),
+                done: StepIdx::new(3),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("nested-loops").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 8,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        assert!(ln.is_some());
+        assert!(matches!(
+            ln.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Pass,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_improperly_nested_loops_fail() {
+        // Outer loop: step 0 to step 3, inner loop: step 1 to step 5 (extends past outer).
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(2),
+                limit: 3,
+                page_size: 10,
+                body: StepIdx::new(2),
+                done: StepIdx::new(5),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(5),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(6),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("bad-nesting").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 8,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        assert!(ln.is_some());
+        assert!(matches!(
+            ln.ok_or("missing").ok(),
+            Some(Certificate {
+                status: CertificateStatus::Fail(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn analysis_collect_successors_for_jump_node() {
+        let succs = collect_successors(
+            &CompiledNodeKind::Jump {
+                target: StepIdx::new(7),
+            },
+            None,
+            None,
+        );
+        assert!(succs.contains(&StepIdx::new(7)));
+    }
+
+    #[test]
+    fn analysis_collect_successors_for_together_start() {
+        let succs = collect_successors(
+            &CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+            None,
+            None,
+        );
+        assert!(succs.contains(&StepIdx::new(1)));
+        assert!(succs.contains(&StepIdx::new(2)));
+        assert!(succs.contains(&StepIdx::new(3)));
+    }
+
+    #[test]
+    fn analysis_collect_successors_includes_on_error() {
+        let succs = collect_successors(
+            &CompiledNodeKind::Nop,
+            Some(StepIdx::new(1)),
+            Some(StepIdx::new(5)),
+        );
+        assert!(succs.contains(&StepIdx::new(1)));
+        assert!(succs.contains(&StepIdx::new(5)));
+    }
+
+    #[test]
+    fn preflight_bounded_transitions_zero_budget_fails() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_step_budget_per_tick = 0;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "bounded_transitions");
+        assert!(check.is_some());
+        let c = check.ok_or("missing").ok();
+        if let Some(ch) = c {
+            assert_eq!(ch.status, CheckStatus::Fail);
+            assert!(ch.detail.contains("budget_per_tick"));
+        }
+    }
+
+    #[test]
+    fn preflight_max_transitions_zero_steps_fails() {
+        let mut parts = preflight_minimal_parts();
+        parts.resource_contract.max_steps = 0;
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "max_transitions");
+        assert!(check.is_some());
+        let c = check.ok_or("missing").ok();
+        if let Some(ch) = c {
+            assert_eq!(ch.status, CheckStatus::Fail);
+        }
+    }
+
+    #[test]
+    fn preflight_strict_durability_no_finish_fails() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        let parts = WorkflowParts {
+            name: String::from("no-finish-pf").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "strict_durability_eligibility");
+        assert!(check.is_some());
+        let c = check.ok_or("missing").ok();
+        if let Some(ch) = c {
+            assert_eq!(ch.status, CheckStatus::Fail);
+        }
+    }
+
+    #[test]
+    fn preflight_action_idempotency_with_retry_check_passes() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(1),
+                body: StepIdx::new(0),
+                exhausted: StepIdx::new(2),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("with-retry").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let report = verify_workflow(&parts);
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "action_idempotency");
+        assert!(check.is_some());
+        let c = check.ok_or("missing").ok();
+        if let Some(ch) = c {
+            assert_eq!(ch.status, CheckStatus::Pass);
+        }
+    }
+
+    #[test]
+    fn analysis_certificate_status_equality() {
+        assert_eq!(CertificateStatus::Pass, CertificateStatus::Pass);
+        assert_eq!(
+            CertificateStatus::Fail(String::from("x")),
+            CertificateStatus::Fail(String::from("x"))
+        );
+        assert_ne!(
+            CertificateStatus::Fail(String::from("a")),
+            CertificateStatus::Fail(String::from("b"))
+        );
+    }
+
+    #[test]
+    fn analysis_certificate_kind_copy_equality() {
+        let kind = CertificateKind::TaintFlow;
+        let copy = kind;
+        assert_eq!(kind, copy);
+    }
 }
