@@ -1050,4 +1050,696 @@ mod tests {
         let run_ids: Vec<u64> = screen.incidents().iter().map(|i| i.run_id).collect();
         assert_eq!(run_ids, vec![10, 20, 30], "incidents should maintain insertion order");
     }
+
+    // =========================================================================
+    // select_incident, selected_incident, dismiss_selected, detail_sections
+    // =========================================================================
+
+    // -- select_incident tests --
+
+    #[test]
+    fn test_select_incident_valid_index() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "b");
+        let result = screen.select_incident(1);
+        assert!(result.is_some());
+        assert_eq!(result.map(|i| i.run_id), Some(2));
+    }
+
+    #[test]
+    fn test_select_incident_first_index() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(10, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(20, None, FailureCode::TaintLeak, "l");
+        let result = screen.select_incident(0);
+        assert!(result.is_some());
+        assert_eq!(result.map(|i| i.run_id), Some(10));
+    }
+
+    #[test]
+    fn test_select_incident_out_of_bounds_returns_none() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        let result = screen.select_incident(5);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_select_incident_empty_screen_returns_none() {
+        let mut screen = IncidentScreen::new();
+        let result = screen.select_incident(0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_select_incident_changes_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "b");
+        screen.select_incident(0);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(1));
+        screen.select_incident(1);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(2));
+    }
+
+    #[test]
+    fn test_select_incident_reselect_same_index() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(42, None, FailureCode::ActionTimeout, "t");
+        let first_run_id = screen.select_incident(0).map(|i| i.run_id);
+        drop(first_run_id);
+        let second_run_id = screen.select_incident(0).map(|i| i.run_id);
+        assert!(second_run_id.is_some());
+    }
+
+    #[test]
+    fn test_select_incident_returns_reference_to_selected() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(99, Some("step-x"), FailureCode::ActionTimeout, "timeout");
+        let incident = screen.select_incident(0);
+        assert!(incident.is_some());
+        let inc = incident.map_or(false, |i| {
+            i.run_id == 99 && i.step_name.as_deref() == Some("step-x")
+        });
+        assert!(inc);
+    }
+
+    // -- selected_incident tests --
+
+    #[test]
+    fn test_selected_incident_none_when_no_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        assert!(screen.selected_incident().is_none());
+    }
+
+    #[test]
+    fn test_selected_incident_none_on_empty_screen() {
+        let screen = IncidentScreen::new();
+        assert!(screen.selected_incident().is_none());
+    }
+
+    #[test]
+    fn test_selected_incident_after_select() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(7, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(0);
+        let selected = screen.selected_incident();
+        assert!(selected.is_some());
+        assert_eq!(selected.map(|i| i.run_id), Some(7));
+        assert_eq!(selected.map(|i| i.failure_code.clone()), Some(FailureCode::TaintLeak));
+    }
+
+    #[test]
+    fn test_selected_incident_after_legacy_select() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(3, None, FailureCode::BudgetExceeded, "b");
+        screen.select(0);
+        let selected = screen.selected_incident();
+        assert!(selected.is_some());
+        assert_eq!(selected.map(|i| i.run_id), Some(3));
+    }
+
+    #[test]
+    fn test_selected_incident_after_dismiss_becomes_none() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        assert!(screen.selected_incident().is_some());
+        screen.dismiss(0);
+        assert!(screen.selected_incident().is_none());
+    }
+
+    // -- dismiss_selected tests --
+
+    #[test]
+    fn test_dismiss_selected_with_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "b");
+        screen.select_incident(0);
+        let dismissed = screen.dismiss_selected();
+        assert!(dismissed);
+        assert_eq!(screen.active_count(), 1);
+        assert!(screen.selected_incident().is_none());
+    }
+
+    #[test]
+    fn test_dismiss_selected_no_selection_returns_false() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        let dismissed = screen.dismiss_selected();
+        assert!(!dismissed);
+        assert_eq!(screen.active_count(), 1);
+    }
+
+    #[test]
+    fn test_dismiss_selected_empty_screen_returns_false() {
+        let mut screen = IncidentScreen::new();
+        let dismissed = screen.dismiss_selected();
+        assert!(!dismissed);
+    }
+
+    #[test]
+    fn test_dismiss_selected_clears_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(1);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(2));
+        let dismissed = screen.dismiss_selected();
+        assert!(dismissed);
+        assert!(screen.selected_incident().is_none());
+    }
+
+    #[test]
+    fn test_dismiss_selected_reduces_count() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(10, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(20, None, FailureCode::BudgetExceeded, "b");
+        screen.process_run_failure(30, None, FailureCode::TaintLeak, "l");
+        screen.select_incident(1);
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 2);
+    }
+
+    #[test]
+    fn test_dismiss_selected_twice_second_fails() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+        assert!(!screen.dismiss_selected(), "second dismiss with no selection should return false");
+    }
+
+    #[test]
+    fn test_dismiss_selected_then_select_another() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "l");
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 1);
+        screen.select_incident(0);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(2));
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 0);
+    }
+
+    #[test]
+    fn test_dismiss_selected_all_incidents_one_by_one() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "a");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "b");
+        screen.process_run_failure(3, None, FailureCode::TaintLeak, "c");
+        screen.select_incident(2);
+        assert!(screen.dismiss_selected());
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 0);
+        assert!(screen.selected_incident().is_none());
+    }
+
+    // -- detail_sections tests --
+
+    #[test]
+    fn test_detail_sections_no_selection_returns_empty() {
+        let screen = IncidentScreen::new();
+        let sections = screen.detail_sections();
+        assert!(sections.cause.is_none());
+        assert!(sections.timeline.is_empty());
+        assert!(sections.state_diff.is_empty());
+        assert!(sections.repair_suggestions.is_empty());
+        assert!(!sections.replay_safe);
+        assert_eq!(sections.side_effect_certainty, SideEffectCertainty::None);
+    }
+
+    #[test]
+    fn test_detail_sections_empty_screen_returns_empty() {
+        let screen = IncidentScreen::new();
+        let sections = screen.detail_sections();
+        assert!(sections.cause.is_none());
+    }
+
+    #[test]
+    fn test_detail_sections_with_selected_incident_has_cause() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(42, Some("step-fetch"), FailureCode::ActionTimeout, "timed out");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let cause = sections.cause.as_ref();
+        assert!(cause.is_some());
+        let c = cause.map_or(false, |v| {
+            v.run_id == 42
+                && v.error_message.contains("timed out")
+                && v.severity == IncidentSeverity::Major
+                && v.step_name.as_deref() == Some("step-fetch")
+                && v.category == "action"
+                && v.failure_code == FailureCode::ActionTimeout
+        });
+        assert!(c);
+    }
+
+    #[test]
+    fn test_detail_sections_timeline_entries() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert!(!sections.timeline.is_empty());
+        assert_eq!(sections.timeline.first().map(|e| e.seq), Some(0));
+        assert_eq!(
+            sections.timeline.first().map(|e| e.event_kind),
+            Some(TimelineEventKind::FailureObserved)
+        );
+        assert!(sections.timeline.first().map_or(false, |e| !e.description.is_empty()));
+    }
+
+    #[test]
+    fn test_detail_sections_replay_divergence_timeline() {
+        let mut screen = IncidentScreen::new();
+        screen.process_replay_divergence(100, "expected-val", "actual-val");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert_eq!(sections.timeline.len(), 2);
+        assert_eq!(sections.timeline.first().map(|e| e.event_kind), Some(TimelineEventKind::FailureObserved));
+        assert_eq!(sections.timeline.get(1).map(|e| e.event_kind), Some(TimelineEventKind::ReplayDivergence));
+    }
+
+    #[test]
+    fn test_detail_sections_replay_safe_flag() {
+        let mut screen = IncidentScreen::new();
+        // ActionTimeout is replay_safe
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert!(sections.replay_safe);
+
+        // TaintLeak is not replay_safe
+        screen.dismiss(0);
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(0);
+        let sections2 = screen.detail_sections();
+        assert!(!sections2.replay_safe);
+    }
+
+    #[test]
+    fn test_detail_sections_side_effect_certainty() {
+        let mut screen = IncidentScreen::new();
+        // ActionTimeout => SideEffectCertainty::None
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert_eq!(sections.side_effect_certainty, SideEffectCertainty::None);
+
+        // ActionFailed => SideEffectCertainty::Unknown
+        screen.process_run_failure(2, None, FailureCode::ActionFailed("db".into()), "db error");
+        screen.select_incident(1);
+        let sections2 = screen.detail_sections();
+        assert_eq!(sections2.side_effect_certainty, SideEffectCertainty::Unknown);
+
+        // TaintLeak => SideEffectCertainty::Certain
+        screen.process_run_failure(3, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(2);
+        let sections3 = screen.detail_sections();
+        assert_eq!(sections3.side_effect_certainty, SideEffectCertainty::Certain);
+    }
+
+    #[test]
+    fn test_detail_sections_repair_suggestions() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert!(!sections.repair_suggestions.is_empty());
+        assert!(sections.repair_suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+    }
+
+    #[test]
+    fn test_detail_sections_repair_suggestions_taint_leak() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert!(sections.repair_suggestions.iter().any(|s| s.kind == RepairKind::FixSecretLeak));
+    }
+
+    #[test]
+    fn test_detail_sections_state_diff_empty_by_default() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert!(sections.state_diff.is_empty());
+    }
+
+    #[test]
+    fn test_detail_sections_switching_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(0);
+        let sections1 = screen.detail_sections();
+        assert_eq!(sections1.cause.as_ref().map(|c| c.run_id), Some(1));
+        assert!(sections1.replay_safe);
+
+        screen.select_incident(1);
+        let sections2 = screen.detail_sections();
+        assert_eq!(sections2.cause.as_ref().map(|c| c.run_id), Some(2));
+        assert!(!sections2.replay_safe);
+    }
+
+    #[test]
+    fn test_detail_sections_cause_category_matches_failure_code() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let cause = sections.cause.as_ref();
+        assert!(cause.is_some());
+        assert_eq!(cause.map(|c| c.category.as_str()), Some("security"));
+    }
+
+    #[test]
+    fn test_detail_sections_cause_severity_matches() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ValidationError("bad".into()), "v");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let cause = sections.cause.as_ref();
+        assert!(cause.is_some());
+        assert_eq!(cause.map(|c| c.severity), Some(IncidentSeverity::Minor));
+    }
+
+    #[test]
+    fn test_detail_sections_after_dismiss_selected_returns_empty() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let _ = screen.detail_sections();
+        assert!(screen.dismiss_selected());
+        let sections = screen.detail_sections();
+        assert!(sections.cause.is_none());
+        assert!(sections.timeline.is_empty());
+    }
+
+    #[test]
+    fn test_detail_sections_timeline_entry_has_timestamp_micros() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let first = sections.timeline.first();
+        assert!(first.is_some());
+        // timestamp_micros should be a valid u64 (we just verify it exists)
+        let _micros = first.map(|e| e.timestamp_micros);
+    }
+
+    #[test]
+    fn test_detail_sections_all_failure_codes_produce_cause() {
+        let codes = [
+            FailureCode::ActionTimeout,
+            FailureCode::ActionFailed("err".into()),
+            FailureCode::BudgetExceeded,
+            FailureCode::StepPanicked,
+            FailureCode::ValidationError("bad".into()),
+            FailureCode::TaintLeak,
+            FailureCode::ReplayDivergence,
+            FailureCode::Unknown("x".into()),
+        ];
+        for code in &codes {
+            let mut screen = IncidentScreen::new();
+            screen.process_run_failure(1, Some("step"), code.clone(), "error");
+            screen.select_incident(0);
+            let sections = screen.detail_sections();
+            assert!(
+                sections.cause.is_some(),
+                "cause should be present for {:?}",
+                code
+            );
+            assert!(
+                !sections.repair_suggestions.is_empty(),
+                "repair suggestions should exist for {:?}",
+                code
+            );
+        }
+    }
+
+    #[test]
+    fn test_detail_sections_incident_without_step_name() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let cause = sections.cause.as_ref();
+        assert!(cause.is_some());
+        assert!(cause.map_or(false, |c| c.step_name.is_none()));
+    }
+
+    #[test]
+    fn test_detail_sections_incident_with_step_name() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, Some("deploy-step"), FailureCode::BudgetExceeded, "budget");
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        let cause = sections.cause.as_ref();
+        assert!(cause.is_some());
+        assert_eq!(cause.map(|c| c.step_name.as_deref()), Some(Some("deploy-step")));
+    }
+
+    // =========================================================================
+    // IncidentCauseView, IncidentTimelineEntry, IncidentSlotDiff construction
+    // =========================================================================
+
+    #[test]
+    fn test_incident_cause_view_fields() {
+        let cause = super::super::types::IncidentCauseView {
+            category: String::from("action"),
+            failure_code: FailureCode::ActionTimeout,
+            error_message: String::from("timed out"),
+            severity: IncidentSeverity::Major,
+            step_name: Some(String::from("fetch")),
+            run_id: 42,
+        };
+        assert_eq!(cause.category, "action");
+        assert_eq!(cause.failure_code, FailureCode::ActionTimeout);
+        assert_eq!(cause.error_message, "timed out");
+        assert_eq!(cause.severity, IncidentSeverity::Major);
+        assert_eq!(cause.step_name.as_deref(), Some("fetch"));
+        assert_eq!(cause.run_id, 42);
+    }
+
+    #[test]
+    fn test_incident_cause_view_clone() {
+        let cause = super::super::types::IncidentCauseView {
+            category: String::from("security"),
+            failure_code: FailureCode::TaintLeak,
+            error_message: String::from("leak detected"),
+            severity: IncidentSeverity::Critical,
+            step_name: None,
+            run_id: 1,
+        };
+        let cloned = cause.clone();
+        assert_eq!(cloned.category, cause.category);
+        assert_eq!(cloned.failure_code, cause.failure_code);
+        assert_eq!(cloned.error_message, cause.error_message);
+        assert_eq!(cloned.severity, cause.severity);
+        assert_eq!(cloned.step_name, cause.step_name);
+        assert_eq!(cloned.run_id, cause.run_id);
+    }
+
+    #[test]
+    fn test_incident_timeline_entry_fields() {
+        let entry = super::super::types::IncidentTimelineEntry {
+            seq: 5,
+            description: String::from("retry attempted"),
+            timestamp_micros: 1_000_000,
+            event_kind: TimelineEventKind::RetryAttempted,
+        };
+        assert_eq!(entry.seq, 5);
+        assert_eq!(entry.description, "retry attempted");
+        assert_eq!(entry.timestamp_micros, 1_000_000);
+        assert_eq!(entry.event_kind, TimelineEventKind::RetryAttempted);
+    }
+
+    #[test]
+    fn test_incident_timeline_entry_clone() {
+        let entry = super::super::types::IncidentTimelineEntry {
+            seq: 3,
+            description: String::from("failure observed"),
+            timestamp_micros: 500_000,
+            event_kind: TimelineEventKind::FailureObserved,
+        };
+        let cloned = entry.clone();
+        assert_eq!(cloned.seq, entry.seq);
+        assert_eq!(cloned.description, entry.description);
+        assert_eq!(cloned.timestamp_micros, entry.timestamp_micros);
+        assert_eq!(cloned.event_kind, entry.event_kind);
+    }
+
+    #[test]
+    fn test_incident_slot_diff_fields() {
+        let diff = super::super::types::IncidentSlotDiff {
+            slot_index: 7,
+            value_before: String::from("old"),
+            value_after: String::from("new"),
+            change_label: String::from("modified"),
+        };
+        assert_eq!(diff.slot_index, 7);
+        assert_eq!(diff.value_before, "old");
+        assert_eq!(diff.value_after, "new");
+        assert_eq!(diff.change_label, "modified");
+    }
+
+    #[test]
+    fn test_incident_slot_diff_unchanged() {
+        let diff = super::super::types::IncidentSlotDiff {
+            slot_index: 1,
+            value_before: String::from("same"),
+            value_after: String::from("same"),
+            change_label: String::from("unchanged"),
+        };
+        assert_eq!(diff.value_before, diff.value_after);
+        assert_eq!(diff.change_label, "unchanged");
+    }
+
+    #[test]
+    fn test_incident_slot_diff_clone() {
+        let diff = super::super::types::IncidentSlotDiff {
+            slot_index: 2,
+            value_before: String::from("before"),
+            value_after: String::from("after"),
+            change_label: String::from("modified"),
+        };
+        let cloned = diff.clone();
+        assert_eq!(cloned.slot_index, diff.slot_index);
+        assert_eq!(cloned.value_before, diff.value_before);
+        assert_eq!(cloned.value_after, diff.value_after);
+        assert_eq!(cloned.change_label, diff.change_label);
+    }
+
+    #[test]
+    fn test_incident_detail_sections_default_fields() {
+        let sections = super::super::types::IncidentDetailSections {
+            cause: None,
+            timeline: Vec::new(),
+            state_diff: Vec::new(),
+            repair_suggestions: Vec::new(),
+            replay_safe: false,
+            side_effect_certainty: SideEffectCertainty::None,
+        };
+        assert!(sections.cause.is_none());
+        assert!(sections.timeline.is_empty());
+        assert!(sections.state_diff.is_empty());
+        assert!(sections.repair_suggestions.is_empty());
+        assert!(!sections.replay_safe);
+        assert_eq!(sections.side_effect_certainty, SideEffectCertainty::None);
+    }
+
+    #[test]
+    fn test_incident_detail_sections_clone() {
+        let sections = super::super::types::IncidentDetailSections {
+            cause: Some(super::super::types::IncidentCauseView {
+                category: String::from("action"),
+                failure_code: FailureCode::ActionTimeout,
+                error_message: String::from("err"),
+                severity: IncidentSeverity::Major,
+                step_name: None,
+                run_id: 1,
+            }),
+            timeline: vec![super::super::types::IncidentTimelineEntry {
+                seq: 0,
+                description: String::from("event"),
+                timestamp_micros: 100,
+                event_kind: TimelineEventKind::FailureObserved,
+            }],
+            state_diff: Vec::new(),
+            repair_suggestions: Vec::new(),
+            replay_safe: true,
+            side_effect_certainty: SideEffectCertainty::None,
+        };
+        let cloned = sections.clone();
+        assert!(cloned.cause.is_some());
+        assert_eq!(cloned.timeline.len(), 1);
+        assert_eq!(cloned.replay_safe, sections.replay_safe);
+        assert_eq!(cloned.side_effect_certainty, sections.side_effect_certainty);
+    }
+
+    // =========================================================================
+    // Interaction tests: select + dismiss + detail round-trips
+    // =========================================================================
+
+    #[test]
+    fn test_select_then_dismiss_selected_then_select_remaining() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "a");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "b");
+        screen.process_run_failure(3, None, FailureCode::TaintLeak, "c");
+
+        // Select middle one
+        screen.select_incident(1);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(2));
+
+        // Dismiss it
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 2);
+
+        // Select the new first one (was index 0, still index 0)
+        screen.select_incident(0);
+        assert_eq!(screen.selected_incident().map(|i| i.run_id), Some(1));
+    }
+
+    #[test]
+    fn test_detail_sections_after_multiple_dismissals() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "a");
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "b");
+
+        // Dismiss first via dismiss_selected
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+
+        // Now only one left, select it
+        screen.select_incident(0);
+        let sections = screen.detail_sections();
+        assert_eq!(sections.cause.as_ref().map(|c| c.run_id), Some(2));
+        assert!(!sections.replay_safe);
+    }
+
+    #[test]
+    fn test_select_incident_after_all_dismissed() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        assert!(screen.dismiss_selected());
+        assert_eq!(screen.active_count(), 0);
+
+        let result = screen.select_incident(0);
+        assert!(result.is_none());
+        let sections = screen.detail_sections();
+        assert!(sections.cause.is_none());
+    }
+
+    #[test]
+    fn test_detail_sections_with_mixed_incidents() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, Some("deploy"), FailureCode::ActionFailed("net".into()), "network error");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "budget");
+        screen.process_replay_divergence(3, "expected", "actual");
+
+        // Select the replay divergence (2 timeline entries)
+        screen.select_incident(2);
+        let sections = screen.detail_sections();
+        assert_eq!(sections.timeline.len(), 2);
+        assert!(!sections.replay_safe);
+
+        // Select the budget exceeded
+        screen.select_incident(1);
+        let sections2 = screen.detail_sections();
+        assert!(sections2.replay_safe);
+        assert_eq!(sections2.side_effect_certainty, SideEffectCertainty::None);
+    }
 }

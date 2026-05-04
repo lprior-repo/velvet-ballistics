@@ -834,4 +834,131 @@ mod tests {
         assert_eq!(d.step_changes.len(), 2); // both steps changed from Pending
         assert!(!d.slot_changes.is_empty());
     }
+
+    // =====================================================================
+    // BLACK HAT security and correctness review tests
+    // =====================================================================
+
+    // -- ENGINE BH-1: diff_taint uses hardcoded "Clean" default (MEDIUM) --
+    //
+    // The diff_taint function uses string literal "Clean" as the default for
+    // missing taint entries. If the taint representation ever changes from
+    // "Clean" to something else in the state machine, this diff would produce
+    // incorrect "Clean -> ActualValue" transitions for newly-tainted slots.
+    // The default should be a shared constant.
+    //
+    // Severity: MEDIUM -- correctness risk if taint representation changes.
+    #[test]
+    fn blackhat_diff_taint_uses_clean_default_for_missing() {
+        let run = RunId::new(1);
+        let slot = SlotIdx::new(10);
+        let events = vec![make_run_accepted(run, 1), make_slot_written(run, 2, slot)];
+        let engine = ReplayEngine::from_events(events);
+
+        // State 0 has no taint. State 2 also has no taint.
+        // Diff should be empty.
+        let d = engine.diff(0, 2);
+        assert!(
+            d.taint_changes.is_empty(),
+            "no taint changes when neither state has taint"
+        );
+    }
+
+    // -- ENGINE BH-2: diff with swapped from/to order (LOW) --
+    //
+    // diff(from, to) with from > to returns a "reverse" diff. The step_changes
+    // would show old_state as the later state and new_state as the earlier one.
+    // This is semantically valid but could confuse callers expecting forward diffs.
+    #[test]
+    fn blackhat_diff_reverse_order_produces_reverse_transitions() {
+        let run = RunId::new(1);
+        let step = StepIdx::new(0);
+        let events = vec![
+            make_run_accepted(run, 1),
+            make_step_started(run, 2, step),
+            make_step_succeeded(run, 3, step, SlotIdx::new(0)),
+        ];
+        let engine = ReplayEngine::from_events(events);
+
+        // Diff backwards: from state 3 (Succeeded) to state 0 (initial/Pending).
+        let d = engine.diff(3, 0);
+        assert_eq!(d.step_changes.len(), 1);
+        let (_, old, new) = d.step_changes[0];
+        // "old" is state 3's view (Succeeded), "new" is state 0's view (Pending).
+        assert_eq!(old, StepState::Succeeded);
+        assert_eq!(new, StepState::Pending);
+    }
+
+    // -- ENGINE BH-3: from_events with unsorted events (LOW) --
+    //
+    // The documentation says events MUST be sorted by ascending seq number,
+    // but from_events does not verify this. Unsorted events would produce
+    // incorrect state snapshots. This test documents the precondition.
+    #[test]
+    fn blackhat_from_events_unsorted_produces_incorrect_at_seq() {
+        let run = RunId::new(1);
+        // Deliberately provide events out of order.
+        let events = vec![
+            make_step_started(run, 5, StepIdx::new(0)),
+            make_run_accepted(run, 1),
+        ];
+        let engine = ReplayEngine::from_events(events);
+
+        // State 1 (after first event, seq=5) has at_seq=5 but no run_id set.
+        let s1 = engine.state_at(1);
+        assert!(s1.is_some());
+        let s1 = s1;
+        assert_eq!(s1.as_ref().map(|s| s.at_seq.get()), Some(5));
+        // run_id should still be ZERO because RunAccepted hasn't been applied yet.
+        assert_eq!(s1.as_ref().map(|s| s.run_id), Some(RunId::ZERO));
+
+        // State 2 (after second event, seq=1) has at_seq=1 and run_id set.
+        let s2 = engine.state_at(2);
+        assert_eq!(s2.as_ref().map(|s| s.at_seq.get()), Some(1));
+        assert_eq!(s2.as_ref().map(|s| s.run_id), Some(run));
+    }
+
+    // -- ENGINE BH-4: saturating_add on Vec::with_capacity (LOW) --
+    //
+    // from_events uses events.len().saturating_add(1) for the states Vec
+    // capacity. For very large event lists, this could saturate at usize::MAX
+    // and the Vec allocation would likely fail. This is a theoretical concern.
+    #[test]
+    fn blackhat_from_events_empty_allocates_one_state() {
+        let engine = ReplayEngine::from_events(vec![]);
+        assert_eq!(engine.state_count(), 1);
+        assert_eq!(engine.event_count(), 0);
+    }
+
+    // -- ENGINE BH-5: find_failure returns first failure across types (LOW) --
+    //
+    // find_failure returns the first event that is either ActionFailedEvent
+    // or RunFailedEvent, regardless of which appears first. This is correct.
+    #[test]
+    fn blackhat_find_failure_returns_run_failed_if_no_action_failed() {
+        let run = RunId::new(1);
+        let events = vec![
+            make_run_accepted(run, 1),
+            make_step_started(run, 2, StepIdx::new(0)),
+            make_run_failed(run, 3),
+        ];
+        let engine = ReplayEngine::from_events(events);
+        assert_eq!(engine.find_failure(), Some(2));
+    }
+
+    // -- ENGINE BH-6: diff with out-of-bounds returns empty (LOW) --
+    //
+    // Calling diff with an out-of-bounds index returns an empty diff rather
+    // than panicking. This is correct defensive behavior.
+    #[test]
+    fn blackhat_diff_both_out_of_bounds_returns_empty() {
+        let run = RunId::new(1);
+        let events = vec![make_run_accepted(run, 1)];
+        let engine = ReplayEngine::from_events(events);
+
+        let d = engine.diff(99, 100);
+        assert!(d.step_changes.is_empty());
+        assert!(d.slot_changes.is_empty());
+        assert!(d.taint_changes.is_empty());
+    }
 }

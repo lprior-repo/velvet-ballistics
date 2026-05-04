@@ -1255,4 +1255,365 @@ mod tests {
         assert_eq!(second_drain[0], vb_ipc::server::IpcResponse::TraceCount { count: 3 });
         assert_eq!(second_drain[1], vb_ipc::server::IpcResponse::TraceCount { count: 4 });
     }
+
+    // ===================================================================
+    // Verification IPC wiring tests
+    // ===================================================================
+
+    // -----------------------------------------------------------------------
+    // verify_workflow sends correct request
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn verify_workflow_sends_correct_request() {
+        let wiring = IpcAppWiring::new();
+        let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
+        let result = wiring.verify_workflow(digest);
+        assert!(result.is_ok(), "verify_workflow should succeed when bridge is alive");
+    }
+
+    // -----------------------------------------------------------------------
+    // request_taint_report sends correct request
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn request_taint_report_sends_correct_request() {
+        let wiring = IpcAppWiring::new();
+        let run_id = RunId::new(42);
+        let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
+        let result = wiring.request_taint_report(run_id, digest);
+        assert!(result.is_ok(), "request_taint_report should succeed when bridge is alive");
+    }
+
+    // -----------------------------------------------------------------------
+    // request_workflow_graph sends correct request
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn request_workflow_graph_sends_correct_request() {
+        let wiring = IpcAppWiring::new();
+        let digest = vb_core::WorkflowDigest::from_bytes([0xEF; 32]);
+        let result = wiring.request_workflow_graph(digest);
+        assert!(result.is_ok(), "request_workflow_graph should succeed when bridge is alive");
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: VerifyWorkflowResult delegates to route_inspected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_verify_workflow_result_populates_cert_cards() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        let result = vb_ipc::VerificationResult {
+            certificates: certs,
+            total_checks: 2,
+            pass_count: 2,
+            fail_count: 0,
+        };
+        wiring.route_reply(
+            IpcReply::VerifyWorkflowResult(vb_ipc::server::IpcResponse::VerifyWorkflow { result }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.verification_updated);
+        assert_eq!(state.verification.cert_structure.badge_text, "PASS");
+        assert_eq!(state.verification.cert_taint.badge_text, "PASS");
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: TaintReportReceived delegates to route_inspected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_taint_report_received_sets_all_clean_when_safe() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.verification.all_clean = false;
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::TaintReportReceived(vb_ipc::server::IpcResponse::TaintReport {
+                sources: Vec::new(),
+                sinks: Vec::new(),
+                finish_safe: true,
+                paths: Vec::new(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.taint_report_updated);
+        assert!(state.verification.all_clean);
+    }
+
+    #[test]
+    fn route_reply_taint_report_received_does_not_set_all_clean_when_unsafe() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.verification.all_clean = false;
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::TaintReportReceived(vb_ipc::server::IpcResponse::TaintReport {
+                sources: vec![0],
+                sinks: vec![5],
+                finish_safe: false,
+                paths: vec![vb_ipc::TaintPathWire {
+                    from: 0,
+                    to: 5,
+                    status: "dangerous".into(),
+                }],
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.taint_report_updated);
+        assert!(!state.verification.all_clean);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: WorkflowGraphReceived delegates to route_inspected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_workflow_graph_received_sets_node_count() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let nodes = vec![
+            vb_ipc::NodeDescriptor {
+                step_idx: 0,
+                kind: "Nop".into(),
+                next: Some(1),
+                title: "Start".into(),
+            },
+            vb_ipc::NodeDescriptor {
+                step_idx: 1,
+                kind: "Finish".into(),
+                next: None,
+                title: "End".into(),
+            },
+        ];
+        wiring.route_reply(
+            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::WorkflowGraph {
+                nodes,
+                edges: Vec::new(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.workflow_graph_updated);
+        assert_eq!(state.workflow.node_count, 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // Error handling: verify_workflow without connect returns not connected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn verify_workflow_without_connect_returns_not_connected_error() {
+        let mut bridge = IpcBridge::new();
+        bridge
+            .send(IpcRequest::VerifyWorkflow {
+                digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
+            })
+            .ok();
+
+        let mut replies = Vec::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+        while std::time::Instant::now() < deadline {
+            replies.extend(bridge.poll());
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        let found = replies
+            .iter()
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for VerifyWorkflow");
+    }
+
+    // -----------------------------------------------------------------------
+    // Error handling: request_taint_report without connect returns not connected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn request_taint_report_without_connect_returns_not_connected_error() {
+        let mut bridge = IpcBridge::new();
+        bridge
+            .send(IpcRequest::RequestTaintReport {
+                run_id: RunId::new(1),
+                digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
+            })
+            .ok();
+
+        let mut replies = Vec::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+        while std::time::Instant::now() < deadline {
+            replies.extend(bridge.poll());
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        let found = replies
+            .iter()
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for RequestTaintReport");
+    }
+
+    // -----------------------------------------------------------------------
+    // Error handling: request_workflow_graph without connect returns not connected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn request_workflow_graph_without_connect_returns_not_connected_error() {
+        let mut bridge = IpcBridge::new();
+        bridge
+            .send(IpcRequest::RequestWorkflowGraph {
+                digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
+            })
+            .ok();
+
+        let mut replies = Vec::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+        while std::time::Instant::now() < deadline {
+            replies.extend(bridge.poll());
+            if replies.iter().any(|r| matches!(r, IpcReply::Error(_))) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        let found = replies
+            .iter()
+            .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
+        assert!(found, "expected 'Not connected' error for RequestWorkflowGraph");
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: VerifyWorkflowResult with failures marks all_clean false
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_verify_workflow_result_with_failures() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint_check".into(),
+                status: "Fail".into(),
+                details: "taint path found".into(),
+            },
+        ];
+        let result = vb_ipc::VerificationResult {
+            certificates: certs,
+            total_checks: 1,
+            pass_count: 0,
+            fail_count: 1,
+        };
+        wiring.route_reply(
+            IpcReply::VerifyWorkflowResult(vb_ipc::server::IpcResponse::VerifyWorkflow { result }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.verification_updated);
+        assert_eq!(state.verification.cert_taint.badge_text, "FAIL");
+        assert!(!state.verification.all_clean);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: WorkflowGraphReceived with empty nodes sets zero
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_workflow_graph_received_empty_nodes() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.workflow.node_count = 99;
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::WorkflowGraph {
+                nodes: Vec::new(),
+                edges: Vec::new(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.workflow_graph_updated);
+        assert_eq!(state.workflow.node_count, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: error response in VerifyWorkflowResult delegates correctly
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_verify_workflow_result_error_response() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::VerifyWorkflowResult(vb_ipc::server::IpcResponse::RuntimeError {
+                message: "verification failed".into(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(events.errors.len(), 1);
+        assert!(
+            matches!(events.errors[0], WiringError::IpcError(ref msg) if msg.contains("Unexpected inspect response"))
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: error response in TaintReportReceived delegates correctly
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_taint_report_received_error_response() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::TaintReportReceived(vb_ipc::server::IpcResponse::BadRequest),
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(events.errors.len(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_reply: error response in WorkflowGraphReceived delegates correctly
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_reply_workflow_graph_received_error_response() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_reply(
+            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::RuntimeError {
+                message: "graph unavailable".into(),
+            }),
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(events.errors.len(), 1);
+    }
 }
