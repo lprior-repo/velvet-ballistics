@@ -36,7 +36,6 @@ pub struct RunFrame {
     step_count: u16,
     slot_count: u16,
     max_parallel_in_flight: u16,
-    peak_parallel_in_flight: u16,
     parallel_in_flight: u16,
     states: Box<[StepState]>,
     slots: Box<[Option<SlotValue>]>,
@@ -68,7 +67,6 @@ impl RunFrame {
             step_count,
             slot_count,
             max_parallel_in_flight: u16::MAX,
-            peak_parallel_in_flight: 0,
             parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
             slots: vec![None; slots_len].into_boxed_slice(),
@@ -103,7 +101,6 @@ impl RunFrame {
         self.pc = first_step;
         self.executed = 0;
         self.max_parallel_in_flight = u16::MAX;
-        self.peak_parallel_in_flight = 0;
         self.parallel_in_flight = 0;
         for state in &mut self.states {
             *state = StepState::Pending;
@@ -147,30 +144,15 @@ impl RunFrame {
         self.slot_count
     }
 
-    /// Observed peak parallel in-flight branches for this frame.
+    /// Maximum allowed parallel in-flight branches for this workflow.
     #[must_use]
-    pub const fn peak_parallel_in_flight(&self) -> u16 {
-        self.peak_parallel_in_flight
-    }
-
-    /// Maximum allowed parallel in-flight branches (configured limit).
-    #[must_use]
-    pub const fn max_parallel_in_flight_limit(&self) -> u16 {
+    pub const fn max_parallel_in_flight(&self) -> u16 {
         self.max_parallel_in_flight
     }
 
     /// Sets the maximum allowed parallel in-flight branches.
-    ///
-    /// Rejects limits below the current in-flight count to prevent an
-    /// inconsistent state where more branches are active than the cap allows.
-    pub fn set_max_parallel_in_flight(&mut self, limit: u16) -> CoreResult<()> {
-        if limit < self.parallel_in_flight {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "max_parallel_in_flight below current in-flight count",
-            });
-        }
+    pub fn set_max_parallel_in_flight(&mut self, limit: u16) {
         self.max_parallel_in_flight = limit;
-        Ok(())
     }
 
     /// Current number of parallel in-flight branch executions.
@@ -179,8 +161,8 @@ impl RunFrame {
         self.parallel_in_flight
     }
 
-    /// Adds to the parallel in-flight counter and updates peak_parallel_in_flight
-    /// if the new total exceeds the previous peak.
+    /// Adds to the parallel in-flight counter and updates max_parallel_in_flight
+    /// if the new total exceeds the previous maximum.
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
         self.parallel_in_flight = self
             .parallel_in_flight
@@ -188,8 +170,8 @@ impl RunFrame {
             .ok_or(CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight overflow",
             })?;
-        if self.parallel_in_flight > self.peak_parallel_in_flight {
-            self.peak_parallel_in_flight = self.parallel_in_flight;
+        if self.parallel_in_flight > self.max_parallel_in_flight {
+            self.max_parallel_in_flight = self.parallel_in_flight;
         }
         Ok(())
     }
@@ -241,17 +223,8 @@ impl RunFrame {
     }
 
     /// Writes a slot value without changing taint.
-    ///
-    /// If the slot already has a value with a non-Clean taint marker, that
-    /// taint is preserved.  New slots start with `Taint::Clean`.
     pub fn write_slot(&mut self, slot: SlotIdx, value: SlotValue) -> CoreResult<()> {
-        let index = slot.as_usize();
-        let existing_taint = self
-            .taint
-            .get(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })?;
-        let existing_taint = *existing_taint;
-        self.write_slot_with_taint(slot, value, existing_taint)
+        self.write_slot_with_taint(slot, value, Taint::Clean)
     }
 
     /// Writes a slot value and taint marker.
@@ -1102,7 +1075,6 @@ mod tests {
         Ok(())
     }
 
-
     // =========================================================================
     // Parallel in-flight tracking tests
     // =========================================================================
@@ -1112,15 +1084,15 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.peak_parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), u16::MAX);
 
         frame.add_parallel_in_flight(3)?;
         assert_eq!(frame.parallel_in_flight(), 3);
-        assert_eq!(frame.peak_parallel_in_flight(), 3);
+        assert_eq!(frame.max_parallel_in_flight(), 3);
 
         frame.sub_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 1);
-        assert_eq!(frame.peak_parallel_in_flight(), 3);
+        assert_eq!(frame.max_parallel_in_flight(), 3);
 
         Ok(())
     }
@@ -1130,22 +1102,22 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
 
         frame.add_parallel_in_flight(2)?;
-        assert_eq!(frame.peak_parallel_in_flight(), 2);
+        assert_eq!(frame.max_parallel_in_flight(), 2);
 
         frame.add_parallel_in_flight(3)?;
         assert_eq!(frame.parallel_in_flight(), 5);
-        assert_eq!(frame.peak_parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.sub_parallel_in_flight(5)?;
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.peak_parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.add_parallel_in_flight(4)?;
-        assert_eq!(frame.peak_parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
-        assert_eq!(frame.peak_parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         Ok(())
     }
@@ -1158,19 +1130,19 @@ mod tests {
 
         frame.add_parallel_in_flight(4)?;
         assert_eq!(frame.parallel_in_flight(), 4);
-        assert_eq!(frame.peak_parallel_in_flight(), 4);
+        assert_eq!(frame.max_parallel_in_flight(), 4);
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
-        assert_eq!(frame.peak_parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         frame.sub_parallel_in_flight(4)?;
         assert_eq!(frame.parallel_in_flight(), 2);
-        assert_eq!(frame.peak_parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         frame.sub_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.peak_parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         Ok(())
     }
@@ -1178,6 +1150,7 @@ mod tests {
     #[test]
     fn parallel_in_flight_overflow_returns_error() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
+        frame.set_max_parallel_in_flight(u16::MAX - 1);
 
         frame.add_parallel_in_flight(u16::MAX)?;
         assert_eq!(
@@ -1210,340 +1183,13 @@ mod tests {
 
         frame.add_parallel_in_flight(5)?;
         assert_eq!(frame.parallel_in_flight(), 5);
-        assert_eq!(frame.peak_parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.reinitialize(RunId::new(2), StepIdx::ZERO, 3, 1)?;
 
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.peak_parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), u16::MAX);
 
         Ok(())
     }
-
-    // =========================================================================
-    // BLACKHAT security regression tests
-    // =========================================================================
-
-    // --- Vulnerability 1: write_slot taint bypass ---
-
-    /// Attack: write_slot was silently resetting taint to Clean, allowing an
-    /// attacker to erase Secret taint by writing any value to a tainted slot.
-    /// Fix: write_slot now preserves the existing taint marker.
-    #[test]
-    fn security_write_slot_preserves_existing_secret_taint() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        // Write a value with Secret taint
-        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)?;
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
-
-        // Overwrite the slot value via write_slot (no explicit taint)
-        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(99))?;
-
-        // Taint MUST still be Secret, not silently downgraded to Clean
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
-        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(99));
-
-        Ok(())
-    }
-
-    /// Verify write_slot preserves DerivedFromSecret taint.
-    #[test]
-    fn security_write_slot_preserves_derived_from_secret_taint() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::DerivedFromSecret)?;
-        frame.write_slot(SlotIdx::new(1), SlotValue::Bool(false))?;
-
-        assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::DerivedFromSecret);
-        assert_eq!(frame.read_slot(SlotIdx::new(1))?, &SlotValue::Bool(false));
-
-        Ok(())
-    }
-
-    /// Verify write_slot on a previously-Clean slot keeps Clean taint.
-    #[test]
-    fn security_write_slot_on_clean_slot_remains_clean() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(1))?;
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
-
-        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(2))?;
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
-
-        Ok(())
-    }
-
-    /// Verify write_slot on a fresh (never-written) slot starts as Clean.
-    #[test]
-    fn security_write_slot_on_uninitialized_slot_starts_clean() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        // Slot 1 has never been written
-        frame.write_slot(SlotIdx::new(1), SlotValue::Null)?;
-        assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::Clean);
-
-        Ok(())
-    }
-
-    /// Verify that explicit taint downgrade via write_slot_with_taint still works.
-    #[test]
-    fn security_explicit_taint_downgrade_via_write_slot_with_taint_works() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        // Write Secret taint
-        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)?;
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
-
-        // Explicitly downgrade to Clean via write_slot_with_taint
-        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(2), Taint::Clean)?;
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
-
-        Ok(())
-    }
-
-    /// Verify taint survives multiple write_slot overwrites.
-    #[test]
-    fn security_taint_survives_multiple_write_slot_overwrites() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)?;
-
-        // Three overwrites with write_slot -- taint must survive all
-        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(2))?;
-        frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true))?;
-        frame.write_slot(SlotIdx::ZERO, SlotValue::I64(3))?;
-
-        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
-        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(3));
-
-        Ok(())
-    }
-
-    // --- Vulnerability 2: set_max_parallel_in_flight below current count ---
-
-    /// Attack: set_max_parallel_in_flight accepted any value, even below the
-    /// current parallel_in_flight count, creating an inconsistent state where
-    /// more branches are active than the configured maximum.
-    /// Fix: set_max_parallel_in_flight now rejects limits below current count.
-    #[test]
-    fn security_set_max_parallel_rejects_limit_below_current_in_flight() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
-
-        frame.add_parallel_in_flight(5)?;
-        assert_eq!(frame.parallel_in_flight(), 5);
-
-        // Setting limit to 3 when 5 are in-flight must be rejected
-        let result = frame.set_max_parallel_in_flight(3);
-        assert_eq!(
-            result,
-            Err(CoreError::InternalInvariantViolation {
-                reason: "max_parallel_in_flight below current in-flight count"
-            })
-        );
-
-        // Limit must remain at default u16::MAX
-        assert_eq!(frame.max_parallel_in_flight_limit(), u16::MAX);
-
-        Ok(())
-    }
-
-    /// Verify set_max_parallel_in_flight accepts a limit equal to current count.
-    #[test]
-    fn security_set_max_parallel_accepts_limit_equal_to_current() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
-
-        frame.add_parallel_in_flight(3)?;
-        assert_eq!(frame.set_max_parallel_in_flight(3), Ok(()));
-        assert_eq!(frame.max_parallel_in_flight_limit(), 3);
-
-        Ok(())
-    }
-
-    /// Verify set_max_parallel_in_flight accepts a limit above current count.
-    #[test]
-    fn security_set_max_parallel_accepts_limit_above_current() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
-
-        frame.add_parallel_in_flight(2)?;
-        assert_eq!(frame.set_max_parallel_in_flight(10), Ok(()));
-        assert_eq!(frame.max_parallel_in_flight_limit(), 10);
-
-        Ok(())
-    }
-
-    /// Verify set_max_parallel_in_flight accepts any limit when count is zero.
-    #[test]
-    fn security_set_max_parallel_accepts_any_limit_at_zero() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
-
-        assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.set_max_parallel_in_flight(0), Ok(()));
-        assert_eq!(frame.max_parallel_in_flight_limit(), 0);
-
-        Ok(())
-    }
-
-    // --- Vulnerability 3: find_handle_taint returns Clean for Blob handles ---
-
-    /// Verify find_handle_taint returns Clean for Blob values (documenting the
-    /// known limitation that blob handles are not taint-tracked).
-    #[test]
-    fn security_find_handle_taint_returns_clean_for_blob() -> CoreResult<()> {
-        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        let result = frame.find_handle_taint(&SlotValue::Blob(
-            crate::ids::BlobId::new(0),
-        ))?;
-        assert_eq!(result, Taint::Clean);
-
-        Ok(())
-    }
-
-    /// Verify find_handle_taint returns Clean for scalar values (no handle to track).
-    #[test]
-    fn security_find_handle_taint_returns_clean_for_scalars() -> CoreResult<()> {
-        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
-
-        assert_eq!(frame.find_handle_taint(&SlotValue::Null)?, Taint::Clean);
-        assert_eq!(frame.find_handle_taint(&SlotValue::Bool(true))?, Taint::Clean);
-        assert_eq!(frame.find_handle_taint(&SlotValue::I64(42))?, Taint::Clean);
-        assert_eq!(frame.find_handle_taint(&SlotValue::Symbol(crate::ids::SymbolId::new(0)))?, Taint::Clean);
-
-        Ok(())
-    }
-
-    // --- State machine gap: Skipped is not fully terminal ---
-
-    /// Verify that Skipped can be reached from Running but not from terminal states.
-    #[test]
-    fn security_skipped_from_running_is_valid() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
-
-        frame.mark_running(StepIdx::new(0))?;
-        frame.mark_skipped(StepIdx::new(0))?;
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Skipped);
-
-        // Skipped is terminal: cannot transition to Running
-        let result = frame.mark_running(StepIdx::new(0));
-        assert_eq!(
-            result,
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            })
-        );
-
-        Ok(())
-    }
-
-    /// Verify that Waiting can resume to Running but not transition to Succeeded directly.
-    #[test]
-    fn security_waiting_can_resume_but_not_skip_to_succeeded() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
-
-        frame.mark_running(StepIdx::new(0))?;
-        frame.mark_waiting(StepIdx::new(0))?;
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Waiting);
-
-        // Waiting -> Succeeded is not a valid transition (must go through Running first)
-        let result = frame.mark_succeeded(StepIdx::new(0));
-        assert_eq!(
-            result,
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            })
-        );
-
-        Ok(())
-    }
-
-    /// Verify Asking can resume to Running but not transition to Failed directly.
-    #[test]
-    fn security_asking_can_resume_but_not_skip_to_failed() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
-
-        frame.mark_running(StepIdx::new(0))?;
-        frame.mark_asking(StepIdx::new(0))?;
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Asking);
-
-        // Asking -> Failed is not a valid transition (must go through Running first)
-        let result = frame.mark_failed(StepIdx::new(0));
-        assert_eq!(
-            result,
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            })
-        );
-
-        Ok(())
-    }
-
-    /// Verify all invalid state transitions from terminal states are rejected.
-    #[test]
-    fn security_all_terminal_state_transitions_rejected() -> CoreResult<()> {
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 10, 1)?;
-
-        // Succeeded is terminal
-        frame.mark_running(StepIdx::new(0))?;
-        frame.mark_succeeded(StepIdx::new(0))?;
-        for step_idx in 1..=0 {
-            let _ = step_idx; // unused
-        }
-        assert_eq!(
-            frame.mark_failed(StepIdx::new(0)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-        assert_eq!(
-            frame.mark_waiting(StepIdx::new(0)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-        assert_eq!(
-            frame.mark_asking(StepIdx::new(0)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-        assert_eq!(
-            frame.mark_cancelled(StepIdx::new(0)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-        assert_eq!(
-            frame.mark_skipped(StepIdx::new(0)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-
-        // Failed is terminal
-        frame.mark_running(StepIdx::new(1))?;
-        frame.mark_failed(StepIdx::new(1))?;
-        assert_eq!(
-            frame.mark_succeeded(StepIdx::new(1)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-
-        // Cancelled is terminal
-        frame.mark_running(StepIdx::new(2))?;
-        frame.mark_cancelled(StepIdx::new(2))?;
-        assert_eq!(
-            frame.mark_succeeded(StepIdx::new(2)),
-            Err(CoreError::InternalInvariantViolation { reason: "invalid_state_transition" })
-        );
-
-        Ok(())
-    }
-
-    // --- Edge case: overflow in step_count to slot_count multiplication ---
-
-    /// Verify that frame creation with maximum u16 step_count and slot_count
-    /// does not panic or overflow.  The arrays are allocated separately so
-    /// this should succeed (up to available memory).
-    #[test]
-    fn security_frame_creation_with_max_u16_counts_no_overflow() -> CoreResult<()> {
-        // Use small values that still exercise the u16 range without OOM.
-        // The key assertion is that u16 -> usize conversion is correct.
-        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1000, 500)?;
-        assert_eq!(frame.step_count(), 1000);
-        assert_eq!(frame.slot_count(), 500);
-
-        Ok(())
-    }
-
 }

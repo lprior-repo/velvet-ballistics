@@ -957,7 +957,8 @@ fn compute_child_depth(
         | CompiledNodeKind::ReduceNext { .. }
         | CompiledNodeKind::RepeatStart { .. }
         | CompiledNodeKind::RepeatAttempt { .. }
-        | CompiledNodeKind::TogetherStart { .. } => {
+        | CompiledNodeKind::TogetherStart { .. }
+        | CompiledNodeKind::TogetherBranch { .. } => {
             let new_depth = current_depth.saturating_add(1);
             if new_depth > *max_nesting_depth {
                 *max_nesting_depth = new_depth;
