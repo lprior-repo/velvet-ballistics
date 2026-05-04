@@ -69,6 +69,23 @@ pub enum IpcRequest {
         /// Maximum records to return.
         max_records: u32,
     },
+    /// Verify a compiled workflow and retrieve certificates.
+    VerifyWorkflow {
+        /// Compiled workflow digest to verify.
+        digest: WorkflowDigest,
+    },
+    /// Request taint analysis for a run's workflow.
+    RequestTaintReport {
+        /// Run whose workflow should be analyzed.
+        run_id: RunId,
+        /// Compiled workflow digest to analyze.
+        digest: WorkflowDigest,
+    },
+    /// Request graph data for a compiled workflow.
+    RequestWorkflowGraph {
+        /// Compiled workflow digest to look up.
+        digest: WorkflowDigest,
+    },
     /// Probe runtime health.
     Health,
     /// Request graceful shutdown.
@@ -102,6 +119,12 @@ pub enum IpcReply {
     Error(String),
     /// Request type not yet implemented.
     NotImplemented(String),
+    /// Verification workflow result received.
+    VerifyWorkflowResult(IpcResponse),
+    /// Taint report received.
+    TaintReportReceived(IpcResponse),
+    /// Workflow graph received.
+    WorkflowGraphReceived(IpcResponse),
 }
 
 /// Thread-safe bridge that owns the communication channels.
@@ -407,6 +430,75 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                         Ok(response) => {
                             if let Err(err) = tx.send(reply_from_drain_trace(response)) {
                                 eprintln!("failed to send drain-trace reply: {:?}", err);
+                            }
+                        }
+                        Err(e) => {
+                            if let Err(err) = tx.send(IpcReply::Error(e)) {
+                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            }
+                        }
+                    }
+                } else {
+                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    }
+                }
+            }
+
+            IpcRequest::VerifyWorkflow { digest } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::VerifyWorkflow { digest };
+                    match send_and_recv(c, IpcCommand::VerifyWorkflow, corr, &payload) {
+                        Ok(response) => {
+                            if let Err(err) = tx.send(IpcReply::VerifyWorkflowResult(response)) {
+                                eprintln!("failed to send verify-workflow reply: {:?}", err);
+                            }
+                        }
+                        Err(e) => {
+                            if let Err(err) = tx.send(IpcReply::Error(e)) {
+                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            }
+                        }
+                    }
+                } else {
+                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    }
+                }
+            }
+
+            IpcRequest::RequestTaintReport { run_id: _, digest } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::GetTaintReport { digest };
+                    match send_and_recv(c, IpcCommand::GetTaintReport, corr, &payload) {
+                        Ok(response) => {
+                            if let Err(err) = tx.send(IpcReply::TaintReportReceived(response)) {
+                                eprintln!("failed to send taint-report reply: {:?}", err);
+                            }
+                        }
+                        Err(e) => {
+                            if let Err(err) = tx.send(IpcReply::Error(e)) {
+                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            }
+                        }
+                    }
+                } else {
+                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    }
+                }
+            }
+
+            IpcRequest::RequestWorkflowGraph { digest } => {
+                if let Some(ref mut c) = client {
+                    let corr = next_correlation(&mut correlation);
+                    let payload = IpcPayload::GetWorkflowGraph { digest };
+                    match send_and_recv(c, IpcCommand::GetWorkflowGraph, corr, &payload) {
+                        Ok(response) => {
+                            if let Err(err) = tx.send(IpcReply::WorkflowGraphReceived(response)) {
+                                eprintln!("failed to send workflow-graph reply: {:?}", err);
                             }
                         }
                         Err(e) => {

@@ -73,6 +73,11 @@ impl IncidentConsole {
         self.selected.and_then(|i| self.incidents.get(i))
     }
 
+    /// Returns the index of the currently selected incident, if any.
+    pub fn selected_index(&self) -> Option<usize> {
+        self.selected
+    }
+
     pub fn selected_suggestions(&self) -> Vec<RepairSuggestion> {
         self.selected().map(suggest_repairs).unwrap_or_default()
     }

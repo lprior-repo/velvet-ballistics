@@ -3,6 +3,11 @@
 //! Each [`ShardLane`] captures a point-in-time snapshot of one shard's queue
 //! depths, frame pool usage, and trace ring fill. [`ActivityLanes`] aggregates
 //! lanes and provides cross-shard totals and load rankings.
+//!
+//! [`LaneSegment`] models a single per-run segment within a shard lane, with
+//! proportional width and a colour derived from the run state. The
+//! [`LaneSegmentBuilder`] produces `Vec<LaneSegment>` per shard from
+//! [`ShardMetrics`] snapshots.
 
 use vb_ipc::ShardMetrics;
 
@@ -126,6 +131,180 @@ impl ActivityLanes {
 impl Default for ActivityLanes {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Per-run lane segment model
+// ---------------------------------------------------------------------------
+
+/// Classification of a run's current state for colour mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunState {
+    /// Actively executing a step.
+    Running,
+    /// Waiting for an action to complete.
+    Waiting,
+    /// In a degraded or pressured state (slow queue, high fill).
+    Degraded,
+    /// Failed or in a critical state.
+    Critical,
+}
+
+impl RunState {
+    /// Return the theme colour for this run state.
+    ///
+    /// Colours are the same neon palette used throughout the renderer:
+    /// - Running  -> NEON_CYAN
+    /// - Waiting  -> NEON_BLUE
+    /// - Degraded -> NEON_YELLOW
+    /// - Critical -> NEON_RED
+    #[must_use]
+    pub const fn color(self) -> [f32; 4] {
+        match self {
+            Self::Running => [0.0, 0.961, 1.0, 1.0],
+            Self::Waiting => [0.176, 0.420, 1.0, 1.0],
+            Self::Degraded => [1.0, 0.902, 0.0, 1.0],
+            Self::Critical => [1.0, 0.027, 0.227, 1.0],
+        }
+    }
+
+    /// Classify a run's state from shard-level metrics and the run's
+    /// proportional queue contribution.
+    ///
+    /// `queue_ratio` is this run's share of the shard's combined queue depth
+    /// (0.0 to 1.0). Runs that consume a high share of a pressured queue are
+    /// classified as Degraded or Critical.
+    fn from_metrics_and_ratio(m: &ShardMetrics, queue_ratio: f32) -> Self {
+        let pool_ratio = if m.frame_pool_total > 0 {
+            f64::from(m.frame_pool_total.saturating_sub(m.frame_pool_free))
+                / f64::from(m.frame_pool_total)
+        } else {
+            0.0
+        };
+
+        // Critical: frame pool almost exhausted OR trace ring near capacity
+        // AND this run consumes a large portion of the queue.
+        if (pool_ratio >= 0.8 || m.trace_ring_fill_pct >= 90.0) && queue_ratio >= 0.3 {
+            return Self::Critical;
+        }
+
+        // Degraded: pool under pressure or high trace, run has moderate share.
+        if (pool_ratio >= 0.5 || m.trace_ring_fill_pct >= 70.0) && queue_ratio >= 0.2 {
+            return Self::Degraded;
+        }
+
+        // Waiting: the shard has significant action queue depth relative to ready.
+        // If action queue > ready queue, most runs are waiting.
+        if m.action_queue_depth > m.ready_queue_depth {
+            return Self::Waiting;
+        }
+
+        Self::Running
+    }
+}
+
+/// A single per-run segment within a shard activity lane.
+///
+/// Each segment represents one active run's proportional contribution to the
+/// lane's visual width. The `width_ratio` values for all segments in a lane
+/// sum to approximately 1.0.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LaneSegment {
+    /// Synthetic run identifier.
+    pub run_id: u64,
+    /// Proportional width within the lane (0.0 -- 1.0).
+    pub width_ratio: f32,
+    /// RGBA colour derived from [`RunState`].
+    pub state_color: [f32; 4],
+    /// Short display label (e.g. `"R8172"`).
+    pub label: String,
+}
+
+/// Builder that produces per-shard lane segments from [`ShardMetrics`].
+///
+/// Each active run receives a proportional segment based on its queue
+/// contribution. When per-run queue data is unavailable (the IPC metrics only
+/// expose aggregate counts), the builder distributes the combined queue depth
+/// evenly across active runs.
+///
+/// # Edge cases
+///
+/// - Zero active runs: produces an empty `Vec`.
+/// - Zero combined queue depth with active runs: each run gets equal width.
+/// - Runs exceeding a reasonable lane capacity: all still receive segments.
+pub struct LaneSegmentBuilder;
+
+/// Base offset for synthetic run IDs so they don't collide with low-valued
+/// real IDs during testing.
+const SYNTHETIC_RUN_ID_OFFSET: u64 = 80_000;
+
+/// Lossy f64-to-f32 conversion. The queue depths and ratios involved are
+/// always small enough that the precision loss is immaterial (well within
+/// the f32 mantissa range for values in [0, 1]).
+#[allow(clippy::cast_precision_loss, clippy::as_conversions)]
+fn f64_to_f32(v: f64) -> f32 {
+    v as f32
+}
+
+impl LaneSegmentBuilder {
+    /// Build lane segments for a single shard from its metrics.
+    ///
+    /// Returns one [`LaneSegment`] per active run, with proportional widths
+    /// that sum to approximately 1.0.
+    #[must_use]
+    pub fn build(m: &ShardMetrics) -> Vec<LaneSegment> {
+        let active = m.active_runs;
+        if active == 0 {
+            return Vec::new();
+        }
+
+        let active_f = f64::from(active);
+        // Each run gets an equal share of lane width since we lack
+        // per-run queue breakdowns from the IPC layer.
+        let equal_share_f64 = 1.0 / active_f;
+
+        let capacity = match usize::try_from(active) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+
+        let mut segments = Vec::with_capacity(capacity);
+        let mut accumulated_f64 = 0.0_f64;
+
+        for i in 0..active {
+            let run_id = SYNTHETIC_RUN_ID_OFFSET
+                .saturating_add(u64::from(m.shard_id).saturating_mul(10_000))
+                .saturating_add(u64::from(i));
+
+            let is_last = i.saturating_add(1) == active;
+            let width_f64 = if is_last {
+                // Last segment absorbs rounding residual so total is exactly 1.0.
+                1.0 - accumulated_f64
+            } else {
+                equal_share_f64
+            };
+
+            let width_ratio = f64_to_f32(width_f64);
+
+            // Each run's queue share is equal when we lack per-run data.
+            let queue_ratio = f64_to_f32(equal_share_f64);
+
+            let state = RunState::from_metrics_and_ratio(m, queue_ratio);
+
+            accumulated_f64 += width_f64;
+
+            let clamped = if width_ratio < 0.0 { 0.0 } else { width_ratio };
+
+            segments.push(LaneSegment {
+                run_id,
+                width_ratio: clamped,
+                state_color: state.color(),
+                label: format!("R{}", run_id),
+            });
+        }
+
+        segments
     }
 }
 
@@ -1035,5 +1214,304 @@ mod tests {
         assert_eq!(lanes.total_active_runs(), 2 + 6 + 1);
         assert_eq!(lanes.total_ready_queue(), 3 + 14 + 2);
         assert_eq!(lanes.total_action_queue(), 5 + 18 + 3);
+    }
+
+    // --- LaneSegment / LaneSegmentBuilder tests ---
+
+    #[test]
+    fn segment_builder_empty_shard_produces_no_segments() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert!(segments.is_empty());
+    }
+
+    #[test]
+    fn segment_builder_single_run_gets_full_width() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 1,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 1);
+        assert!((segments[0].width_ratio - 1.0).abs() < 0.001);
+        assert_eq!(segments[0].label, format!("R{}", segments[0].run_id));
+    }
+
+    #[test]
+    fn segment_builder_multiple_runs_proportional_widths_sum_to_one() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 4,
+            ready_queue_depth: 10,
+            action_queue_depth: 10,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 4);
+
+        let total: f32 = segments.iter().map(|s| s.width_ratio).sum();
+        assert!(
+            (total - 1.0).abs() < 0.001,
+            "width ratios must sum to ~1.0, got {}",
+            total
+        );
+
+        // Each non-last segment should have equal width.
+        for seg in &segments[..3] {
+            assert!(
+                (seg.width_ratio - 0.25).abs() < 0.001,
+                "expected 0.25, got {}",
+                seg.width_ratio
+            );
+        }
+    }
+
+    #[test]
+    fn segment_builder_color_mapping_matches_theme_state_colors() {
+        // Running state: action_queue <= ready_queue, pool healthy, trace low.
+        let running_m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 20,
+            action_queue_depth: 10,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let running_segments = LaneSegmentBuilder::build(&running_m);
+        let running_color = RunState::Running.color();
+        assert_eq!(running_segments.len(), 2);
+        assert_eq!(running_segments[0].state_color, running_color);
+
+        // Waiting state: action_queue > ready_queue.
+        let waiting_m = ShardMetrics {
+            shard_id: 1,
+            active_runs: 3,
+            ready_queue_depth: 5,
+            action_queue_depth: 50,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let waiting_segments = LaneSegmentBuilder::build(&waiting_m);
+        let waiting_color = RunState::Waiting.color();
+        assert_eq!(waiting_segments.len(), 3);
+        assert_eq!(waiting_segments[0].state_color, waiting_color);
+
+        // Critical state: pool exhausted AND queue ratio >= 0.3.
+        let critical_m = ShardMetrics {
+            shard_id: 2,
+            active_runs: 1,
+            ready_queue_depth: 50,
+            action_queue_depth: 50,
+            timer_count: 0,
+            frame_pool_free: 2,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 50.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let critical_segments = LaneSegmentBuilder::build(&critical_m);
+        let critical_color = RunState::Critical.color();
+        assert_eq!(critical_segments.len(), 1);
+        assert_eq!(critical_segments[0].state_color, critical_color);
+    }
+
+    #[test]
+    fn segment_builder_zero_queue_depth_runs_get_equal_width() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 3,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 3);
+
+        let total: f32 = segments.iter().map(|s| s.width_ratio).sum();
+        assert!(
+            (total - 1.0).abs() < 0.001,
+            "width ratios must sum to ~1.0, got {}",
+            total
+        );
+
+        // All segments should be Running since no queue pressure.
+        let running_color = RunState::Running.color();
+        for seg in &segments {
+            assert_eq!(seg.state_color, running_color);
+        }
+    }
+
+    #[test]
+    fn segment_builder_labels_use_run_id() {
+        let m = ShardMetrics {
+            shard_id: 2,
+            active_runs: 2,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 2);
+        for seg in &segments {
+            assert!(
+                seg.label.starts_with('R'),
+                "label should start with 'R', got '{}'",
+                seg.label
+            );
+        }
+    }
+
+    #[test]
+    fn segment_builder_run_ids_are_unique_per_shard() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let ids: Vec<u64> = segments.iter().map(|s| s.run_id).collect();
+        let mut sorted = ids.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(ids.len(), sorted.len(), "run IDs must be unique");
+    }
+
+    #[test]
+    fn segment_builder_degraded_state_from_trace_ring() {
+        // trace >= 70.0 and queue_ratio >= 0.2 should yield Degraded.
+        // With 3 runs, each gets queue_ratio = 1/3 ~ 0.33 >= 0.2.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 3,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 70,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 75.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let degraded_color = RunState::Degraded.color();
+        assert_eq!(segments[0].state_color, degraded_color);
+    }
+
+    #[test]
+    fn segment_builder_width_ratios_non_negative() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 7,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        for seg in &segments {
+            assert!(
+                seg.width_ratio >= 0.0,
+                "width_ratio must be non-negative, got {}",
+                seg.width_ratio
+            );
+        }
+    }
+
+    #[test]
+    fn run_state_color_running_matches_neon_cyan() {
+        assert_eq!(RunState::Running.color(), [0.0, 0.961, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn run_state_color_waiting_matches_neon_blue() {
+        assert_eq!(RunState::Waiting.color(), [0.176, 0.420, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn run_state_color_degraded_matches_neon_yellow() {
+        assert_eq!(RunState::Degraded.color(), [1.0, 0.902, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn run_state_color_critical_matches_neon_red() {
+        assert_eq!(RunState::Critical.color(), [1.0, 0.027, 0.227, 1.0]);
+    }
+
+    #[test]
+    fn segment_builder_many_runs_all_get_segments() {
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 50,
+            ready_queue_depth: 100,
+            action_queue_depth: 100,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 50);
+
+        let total: f32 = segments.iter().map(|s| s.width_ratio).sum();
+        assert!(
+            (total - 1.0).abs() < 0.01,
+            "width ratios must sum to ~1.0 for 50 runs, got {}",
+            total
+        );
     }
 }

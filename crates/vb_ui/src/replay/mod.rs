@@ -11,6 +11,7 @@ pub mod slot_panel;
 pub mod state;
 pub mod ticket_panel;
 pub mod timeline;
+pub mod transport;
 pub mod types;
 
 pub use controller::{ControllerEvent, PlaybackState, ReplayController, convert_trace_events, trace_to_journal};
@@ -20,6 +21,7 @@ pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};
 pub use state::{ReplayBookmark, ReplaySessionState, ReplayState, TerminalKind};
 pub use ticket_panel::{ActionTicketDisplay, SideEffectCertainty};
 pub use timeline::{TimelineEvent, TimelineStrip};
+pub use transport::{Bookmark, TransportAction, TransportController, TransportState};
 pub use types::{
     PlaybackSpeed, ReplayDiff, ReplayEvent, ReplayEventType, ReplaySlotByteDiff, ReplaySnapshot,
     ReplayStepDetail, ReplayStepStatus, TaintDiff,

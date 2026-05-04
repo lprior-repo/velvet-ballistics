@@ -375,7 +375,10 @@ impl ReplayController {
             | IpcReply::RunCancelled(_)
             | IpcReply::TraceCount(_)
             | IpcReply::Healthy
-            | IpcReply::ShuttingDown => {}
+            | IpcReply::ShuttingDown
+            | IpcReply::VerifyWorkflowResult(_)
+            | IpcReply::TaintReportReceived(_)
+            | IpcReply::WorkflowGraphReceived(_) => {}
         }
     }
 

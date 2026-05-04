@@ -89,6 +89,30 @@ impl IpcAppWiring {
             .map_err(|e| format!("IPC drain-trace request failed: {e}"))
     }
 
+    /// Triggers live verification for the given compiled workflow digest.
+    ///
+    /// The caller is responsible for resolving a workflow name to its digest
+    /// before calling this method (typically from `AppState::selected_workflow_digest`).
+    pub fn verify_workflow(&self, digest: vb_core::WorkflowDigest) -> Result<(), String> {
+        self.bridge
+            .send(IpcRequest::VerifyWorkflow { digest })
+            .map_err(|e| format!("IPC verify-workflow request failed: {e}"))
+    }
+
+    /// Requests taint analysis for the given run's associated workflow.
+    pub fn request_taint_report(&self, run_id: RunId, digest: vb_core::WorkflowDigest) -> Result<(), String> {
+        self.bridge
+            .send(IpcRequest::RequestTaintReport { run_id, digest })
+            .map_err(|e| format!("IPC taint-report request failed: {e}"))
+    }
+
+    /// Requests graph data for the given compiled workflow digest.
+    pub fn request_workflow_graph(&self, digest: vb_core::WorkflowDigest) -> Result<(), String> {
+        self.bridge
+            .send(IpcRequest::RequestWorkflowGraph { digest })
+            .map_err(|e| format!("IPC workflow-graph request failed: {e}"))
+    }
+
     /// Returns whether the underlying bridge is connected.
     pub fn is_connected(&self) -> bool {
         self.bridge.is_connected()
@@ -182,6 +206,15 @@ impl IpcAppWiring {
                 events
                     .errors
                     .push(WiringError::IpcError(format!("Not implemented: {msg}")));
+            }
+            IpcReply::VerifyWorkflowResult(response) => {
+                self.route_inspected(response, app_state, events);
+            }
+            IpcReply::TaintReportReceived(response) => {
+                self.route_inspected(response, app_state, events);
+            }
+            IpcReply::WorkflowGraphReceived(response) => {
+                self.route_inspected(response, app_state, events);
             }
         }
     }

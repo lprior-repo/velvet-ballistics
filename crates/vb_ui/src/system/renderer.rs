@@ -8,6 +8,7 @@
 //! All colours use the cyberpunk neon palette (linear RGBA).
 
 use crate::system::alerts::AlertSeverity;
+use crate::system::lanes::{LaneSegment, LaneSegmentBuilder};
 use crate::system::map::{ShardRect, ShardStatus, SystemMapLayout};
 use crate::system::metrics::HealthStatus;
 use crate::system::queue_monitor::{QueueMonitor, QueueStatus};
@@ -392,6 +393,33 @@ impl<'a> SystemFrameBuilder<'a> {
             total_action,
             worst_status,
         }
+    }
+
+    /// Build per-shard lane segments from the screen's shard metrics.
+    ///
+    /// Returns a `Vec<Vec<LaneSegment>>` where each inner `Vec` corresponds
+    /// to one shard lane and contains one segment per active run.
+    #[must_use]
+    pub fn build_lane_segments(&self, screen: &SystemScreen) -> Vec<Vec<LaneSegment>> {
+        let metrics = screen.metrics();
+        let mut result = Vec::with_capacity(metrics.shards.len());
+        for shard in &metrics.shards {
+            // Reconstruct a minimal ShardMetrics for the builder.
+            let m = vb_ipc::ShardMetrics {
+                shard_id: shard.shard_id,
+                active_runs: shard.active_runs,
+                ready_queue_depth: shard.ready_queue_depth,
+                action_queue_depth: shard.action_queue_depth,
+                timer_count: shard.timer_count,
+                frame_pool_free: shard.frame_pool_free,
+                frame_pool_total: shard.frame_pool_total,
+                trace_ring_fill_pct: shard.trace_ring_fill_pct,
+                steps_total: 0,
+                actions_total: 0,
+            };
+            result.push(LaneSegmentBuilder::build(&m));
+        }
+        result
     }
 
     /// Build the complete system frame by calling all four builders.

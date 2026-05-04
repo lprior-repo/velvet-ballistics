@@ -3,8 +3,9 @@ use std::time::Instant;
 use super::console::IncidentConsole;
 use super::repair::{suggest_repairs, RepairSuggestion};
 use super::types::{
-    FailureCode, FailureDetail, Incident, IncidentContext, IncidentSeverity, IncidentType,
-    SideEffectCertainty, TimelineEntry, TimelineEventKind,
+    FailureCode, FailureDetail, Incident, IncidentCauseView, IncidentContext,
+    IncidentDetailSections, IncidentSeverity, IncidentSlotDiff, IncidentTimelineEntry,
+    IncidentType, SideEffectCertainty, TimelineEntry, TimelineEventKind,
 };
 
 /// Screen orchestrator that wraps an [`IncidentConsole`] and provides
@@ -291,6 +292,119 @@ impl IncidentScreen {
             .iter()
             .filter(|inc| inc.severity == severity)
             .collect()
+    }
+
+    // -----------------------------------------------------------------------
+    // Click-handler and tab-switching methods
+    // -----------------------------------------------------------------------
+
+    /// Select an incident by index and return a reference to it.
+    /// Returns `None` if the index is out of bounds.
+    pub fn select_incident(&mut self, index: usize) -> Option<&Incident> {
+        let incidents = self.console.legacy_incidents();
+        if incidents.get(index).is_some() {
+            self.console.select(index);
+            return self.console.selected();
+        }
+        None
+    }
+
+    /// Return a reference to the currently selected incident, if any.
+    pub fn selected_incident(&self) -> Option<&Incident> {
+        self.console.selected()
+    }
+
+    /// Dismiss the currently selected incident and return true if something
+    /// was actually dismissed. Clears the selection.
+    pub fn dismiss_selected(&mut self) -> bool {
+        let selected_index = self.console.selected_index();
+        match selected_index {
+            Some(idx) => {
+                let had_incident = self.console.legacy_incidents().get(idx).is_some();
+                if had_incident {
+                    self.console.dismiss(idx);
+                    return true;
+                }
+                false
+            }
+            None => false,
+        }
+    }
+
+    /// Return the aggregated detail sections for the currently selected
+    /// incident. If no incident is selected, all fields are empty/None.
+    pub fn detail_sections(&self) -> IncidentDetailSections {
+        let selected = match self.console.selected() {
+            Some(inc) => inc,
+            None => {
+                return IncidentDetailSections {
+                    cause: None,
+                    timeline: Vec::new(),
+                    state_diff: Vec::new(),
+                    repair_suggestions: Vec::new(),
+                    replay_safe: false,
+                    side_effect_certainty: SideEffectCertainty::None,
+                };
+            }
+        };
+
+        let cause = IncidentCauseView {
+            category: String::from(selected.failure_code.category()),
+            failure_code: selected.failure_code.clone(),
+            error_message: selected.error_message.clone(),
+            severity: selected.severity,
+            step_name: selected.step_name.clone(),
+            run_id: selected.run_id,
+        };
+
+        let timeline: Vec<IncidentTimelineEntry> = selected
+            .timeline
+            .iter()
+            .map(|entry| IncidentTimelineEntry {
+                seq: entry.seq,
+                description: entry.description.clone(),
+                timestamp_micros: entry.timestamp_micros,
+                event_kind: entry.event_kind,
+            })
+            .collect();
+
+        let state_diff: Vec<IncidentSlotDiff> = selected
+            .context
+            .slot_values_before
+            .iter()
+            .map(|(slot_index, value_before)| {
+                let matching_taint = selected
+                    .context
+                    .taint_changes
+                    .iter()
+                    .find(|(idx, _)| *idx == *slot_index);
+                let value_after = matching_taint
+                    .map(|(_, v)| v.clone())
+                    .unwrap_or_default();
+                let change_label = if value_before == &value_after {
+                    String::from("unchanged")
+                } else {
+                    String::from("modified")
+                };
+                IncidentSlotDiff {
+                    slot_index: *slot_index,
+                    value_before: value_before.clone(),
+                    value_after,
+                    change_label,
+                }
+            })
+            .collect();
+
+        let repair_suggestions = suggest_repairs(selected);
+
+        IncidentDetailSections {
+            cause: Some(cause),
+            timeline,
+            state_diff,
+            repair_suggestions,
+            replay_safe: selected.replay_safe,
+            side_effect_certainty: selected.side_effect_certainty,
+        }
     }
 }
 

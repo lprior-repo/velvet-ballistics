@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use super::repair::RepairSuggestion;
+
 /// Classification of the incident category.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IncidentType {
@@ -168,6 +170,70 @@ impl ReplaySafety {
     pub fn is_safe(&self) -> bool {
         matches!(self, Self::Safe)
     }
+}
+
+/// View model for the cause section of an incident detail panel.
+/// Provides a structured breakdown of why an incident occurred.
+#[derive(Debug, Clone)]
+pub struct IncidentCauseView {
+    /// Human-readable label for the failure code category.
+    pub category: String,
+    /// Structured failure code for programmatic access.
+    pub failure_code: FailureCode,
+    /// The error message associated with the incident.
+    pub error_message: String,
+    /// Severity of the incident.
+    pub severity: IncidentSeverity,
+    /// Optional step name where the failure occurred.
+    pub step_name: Option<String>,
+    /// Run identifier for the failed run.
+    pub run_id: u64,
+}
+
+/// View model for a single entry in the incident detail timeline.
+/// Derived from the base [`TimelineEntry`] but with display-oriented fields.
+#[derive(Debug, Clone)]
+pub struct IncidentTimelineEntry {
+    /// Sequence number for ordering.
+    pub seq: u32,
+    /// Human-readable description of the event.
+    pub description: String,
+    /// Timestamp in microseconds since epoch.
+    pub timestamp_micros: u64,
+    /// Classification of the event kind.
+    pub event_kind: TimelineEventKind,
+}
+
+/// View model representing the diff of a single slot value before/after the
+/// incident. Used in the detail panel's state-diff section.
+#[derive(Debug, Clone)]
+pub struct IncidentSlotDiff {
+    /// Slot index that changed.
+    pub slot_index: u16,
+    /// Value of the slot before the incident (empty string if unknown).
+    pub value_before: String,
+    /// Value of the slot after the incident (empty string if unknown).
+    pub value_after: String,
+    /// Label describing the nature of the change.
+    pub change_label: String,
+}
+
+/// Aggregated detail sections for the currently selected incident.
+/// Returned by [`IncidentScreen::detail_sections`] for tab-based rendering.
+#[derive(Debug, Clone)]
+pub struct IncidentDetailSections {
+    /// Structured cause information, if an incident is selected.
+    pub cause: Option<IncidentCauseView>,
+    /// Chronological timeline of events for the incident.
+    pub timeline: Vec<IncidentTimelineEntry>,
+    /// Slot value changes observed during the incident.
+    pub state_diff: Vec<IncidentSlotDiff>,
+    /// Repair suggestions for the incident.
+    pub repair_suggestions: Vec<RepairSuggestion>,
+    /// Whether the incident is safe to replay.
+    pub replay_safe: bool,
+    /// Side-effect certainty classification.
+    pub side_effect_certainty: SideEffectCertainty,
 }
 
 /// Lightweight incident record for Phase 5A tracking.
