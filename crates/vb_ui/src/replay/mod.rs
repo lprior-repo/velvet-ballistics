@@ -7,6 +7,7 @@ pub mod controller;
 pub mod diff_engine;
 pub mod engine;
 pub mod graph_overlay;
+pub mod screen;
 pub mod slot_panel;
 pub mod state;
 pub mod ticket_panel;
@@ -17,6 +18,11 @@ pub mod types;
 pub use controller::{ControllerEvent, PlaybackState, ReplayController, convert_trace_events, trace_to_journal};
 pub use engine::ReplayEngine;
 pub use graph_overlay::{GraphOverlay, NodeOverlay, NodeOverlayState, OverlayBadge, OverlayConfig};
+pub use screen::{
+    GraphNode, InspectorCard, InspectorField, JumpChip, ReplayTheaterScreen, TransportBar,
+    TransportButton, BORDER, CANVAS_BG, CARD_BG, NEON_CYAN, NEON_GREEN, NEON_ORANGE, NEON_RED,
+    PANEL_BG, TEXT_DIM, TEXT_PRIMARY, TEXT_SECONDARY,
+};
 pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};
 pub use state::{ReplayBookmark, ReplaySessionState, ReplayState, TerminalKind};
 pub use ticket_panel::{ActionTicketDisplay, SideEffectCertainty};

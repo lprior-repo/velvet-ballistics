@@ -607,4 +607,287 @@ mod tests {
         let f2 = ticker.filtered_events();
         assert_eq!(f1.len(), f2.len());
     }
+
+    // =========================================================================
+    // Additional comprehensive coverage tests
+    // =========================================================================
+
+    #[test]
+    fn ticker_event_clone_preserves_fields() {
+        let evt = TickerEvent {
+            seq: 42,
+            shard: 3,
+            run_id: Some(999),
+            kind: TickerEventKind::ActionCompleted,
+            summary: "test event".to_string(),
+        };
+        let cloned = evt.clone();
+        assert_eq!(cloned.seq, 42);
+        assert_eq!(cloned.shard, 3);
+        assert_eq!(cloned.run_id, Some(999));
+        assert_eq!(cloned.kind, TickerEventKind::ActionCompleted);
+        assert_eq!(cloned.summary, "test event");
+    }
+
+    #[test]
+    fn ticker_event_debug_format() {
+        let evt = TickerEvent {
+            seq: 1,
+            shard: 0,
+            run_id: None,
+            kind: TickerEventKind::RunAccepted,
+            summary: "hello".to_string(),
+        };
+        let debug = format!("{evt:?}");
+        assert!(debug.contains("seq"));
+        assert!(debug.contains("shard"));
+    }
+
+    #[test]
+    fn ticker_event_kind_equality() {
+        assert_eq!(TickerEventKind::RunAccepted, TickerEventKind::RunAccepted);
+        assert_ne!(TickerEventKind::RunAccepted, TickerEventKind::RunFailed);
+    }
+
+    #[test]
+    fn ticker_event_kind_copy() {
+        let kind = TickerEventKind::StepStarted;
+        let copied = kind;
+        assert_eq!(kind, copied);
+    }
+
+    #[test]
+    fn ticker_event_kind_hash_consistency() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(TickerEventKind::RunAccepted);
+        set.insert(TickerEventKind::RunAccepted);
+        assert_eq!(set.len(), 1);
+        set.insert(TickerEventKind::RunFailed);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn push_events_maintain_insertion_order() {
+        let mut ticker = EventTicker::new(10);
+        for i in 0..5u64 {
+            ticker.push(TickerEvent {
+                seq: i,
+                shard: 0,
+                run_id: None,
+                kind: TickerEventKind::StepStarted,
+                summary: format!("step-{i}"),
+            });
+        }
+        let events = ticker.events();
+        for (idx, evt) in events.iter().enumerate() {
+            assert_eq!(
+                evt.seq,
+                u64::try_from(idx).unwrap_or(u64::MAX),
+                "events must be in insertion order"
+            );
+        }
+    }
+
+    #[test]
+    fn set_shard_filter_none_removes_filter() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 1, TickerEventKind::StepStarted));
+
+        ticker.set_shard_filter(Some(0));
+        assert_eq!(ticker.filtered_events().len(), 1);
+
+        ticker.set_shard_filter(None);
+        assert_eq!(ticker.filtered_events().len(), 2);
+    }
+
+    #[test]
+    fn set_run_filter_none_removes_filter() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event_with_run(1, 0, Some(100), TickerEventKind::RunAccepted));
+        ticker.push(make_event_with_run(2, 0, Some(200), TickerEventKind::StepStarted));
+
+        ticker.set_run_filter(Some(100));
+        assert_eq!(ticker.filtered_events().len(), 1);
+
+        ticker.set_run_filter(None);
+        assert_eq!(ticker.filtered_events().len(), 2);
+    }
+
+    #[test]
+    fn set_kind_filter_empty_set_removes_filter() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 0, TickerEventKind::StepStarted));
+
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunAccepted);
+        ticker.set_kind_filter(kinds);
+        assert_eq!(ticker.filtered_events().len(), 1);
+
+        ticker.set_kind_filter(HashSet::new());
+        assert_eq!(ticker.filtered_events().len(), 2);
+    }
+
+    #[test]
+    fn combined_filters_all_three_simultaneously() {
+        let mut ticker = EventTicker::new(20);
+        ticker.push(make_event_with_run(1, 0, Some(10), TickerEventKind::RunAccepted));
+        ticker.push(make_event_with_run(2, 0, Some(10), TickerEventKind::StepStarted));
+        ticker.push(make_event_with_run(3, 1, Some(10), TickerEventKind::RunAccepted));
+        ticker.push(make_event_with_run(4, 0, Some(20), TickerEventKind::RunAccepted));
+        ticker.push(make_event_with_run(5, 0, Some(10), TickerEventKind::ActionFailed));
+
+        // Shard 0, run 10, kind RunAccepted -> only event 1
+        ticker.set_shard_filter(Some(0));
+        ticker.set_run_filter(Some(10));
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunAccepted);
+        ticker.set_kind_filter(kinds);
+
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].seq, 1);
+    }
+
+    #[test]
+    fn event_color_all_kinds_have_nonzero_alpha() {
+        let all_kinds = [
+            TickerEventKind::RunAccepted,
+            TickerEventKind::StepStarted,
+            TickerEventKind::StepSucceeded,
+            TickerEventKind::ActionScheduled,
+            TickerEventKind::ActionCompleted,
+            TickerEventKind::ActionFailed,
+            TickerEventKind::RunFinished,
+            TickerEventKind::RunFailed,
+            TickerEventKind::Other,
+        ];
+        for kind in all_kinds {
+            let color = EventTicker::event_color(kind);
+            assert!(
+                color[3] > 0.0,
+                "alpha for {kind:?} must be nonzero"
+            );
+        }
+    }
+
+    #[test]
+    fn event_color_action_completed_is_teal() {
+        let color = EventTicker::event_color(TickerEventKind::ActionCompleted);
+        assert!(color[0] > 0.0 && color[0] < 0.5);
+        assert!(color[1] > 0.9);
+        assert!(color[2] > 0.9);
+    }
+
+    #[test]
+    fn event_color_action_scheduled_is_blue() {
+        let color = EventTicker::event_color(TickerEventKind::ActionScheduled);
+        assert!(color[0] > 0.3 && color[0] < 0.6);
+        assert!(color[1] > 0.4 && color[1] < 0.6);
+        assert!((color[2] - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn event_color_run_finished_is_light_green() {
+        let color = EventTicker::event_color(TickerEventKind::RunFinished);
+        assert!(color[0] > 0.4);
+        assert!((color[1] - 1.0).abs() < f32::EPSILON);
+        assert!(color[2] > 0.4);
+    }
+
+    #[test]
+    fn new_ticker_has_no_filters_active() {
+        let ticker = EventTicker::new(10);
+        // filtered_events with no filters returns all events (which is none).
+        assert!(ticker.filtered_events().is_empty());
+    }
+
+    #[test]
+    fn filter_events_does_not_mutate_underlying_buffer() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(make_event(1, 0, TickerEventKind::RunAccepted));
+        ticker.push(make_event(2, 1, TickerEventKind::StepStarted));
+        ticker.push(make_event(3, 0, TickerEventKind::StepSucceeded));
+
+        ticker.set_shard_filter(Some(0));
+        let _ = ticker.filtered_events();
+        // Original buffer should be unchanged.
+        assert_eq!(ticker.events().len(), 3);
+    }
+
+    #[test]
+    fn repeated_push_and_filter_cycle() {
+        let mut ticker = EventTicker::new(5);
+        for round in 0u64..3 {
+            ticker.push(make_event(
+                round,
+                0,
+                TickerEventKind::RunAccepted,
+            ));
+        }
+        ticker.set_shard_filter(Some(0));
+        let filtered = ticker.filtered_events();
+        assert_eq!(filtered.len(), 3);
+
+        ticker.clear_filters();
+        ticker.set_shard_filter(Some(99));
+        assert!(ticker.filtered_events().is_empty());
+    }
+
+    #[test]
+    fn ticker_with_large_capacity_accepts_many_events() {
+        let mut ticker = EventTicker::new(10_000);
+        for i in 0..500u64 {
+            ticker.push(make_event(i, 0, TickerEventKind::StepStarted));
+        }
+        assert_eq!(ticker.events().len(), 500);
+    }
+
+    #[test]
+    fn filter_shard_with_no_matching_events() {
+        let mut ticker = EventTicker::new(10);
+        // All events are on shard 0.
+        for i in 0..5u64 {
+            ticker.push(make_event(i, 0, TickerEventKind::StepStarted));
+        }
+        // Filter for shard 99 -> no matches.
+        ticker.set_shard_filter(Some(99));
+        assert!(ticker.filtered_events().is_empty());
+    }
+
+    #[test]
+    fn filter_kind_with_no_matching_events() {
+        let mut ticker = EventTicker::new(10);
+        for i in 0..5u64 {
+            ticker.push(make_event(i, 0, TickerEventKind::RunAccepted));
+        }
+        let mut kinds = HashSet::new();
+        kinds.insert(TickerEventKind::RunFailed);
+        ticker.set_kind_filter(kinds);
+        assert!(ticker.filtered_events().is_empty());
+    }
+
+    #[test]
+    fn make_event_helper_produces_correct_run_id_pattern() {
+        // Even seq -> Some(seq * 10), odd seq -> None
+        let even_evt = make_event(4, 0, TickerEventKind::RunAccepted);
+        assert_eq!(even_evt.run_id, Some(40));
+        let odd_evt = make_event(3, 0, TickerEventKind::RunAccepted);
+        assert_eq!(odd_evt.run_id, None);
+    }
+
+    #[test]
+    fn ticker_event_summary_field_preserved() {
+        let mut ticker = EventTicker::new(10);
+        ticker.push(TickerEvent {
+            seq: 1,
+            shard: 0,
+            run_id: None,
+            kind: TickerEventKind::Other,
+            summary: "custom summary text".to_string(),
+        });
+        assert_eq!(ticker.events()[0].summary, "custom summary text");
+    }
 }

@@ -1514,4 +1514,399 @@ mod tests {
             total
         );
     }
+
+    // =========================================================================
+    // Additional comprehensive coverage tests
+    // =========================================================================
+
+    #[test]
+    fn segment_builder_last_segment_absorbs_rounding_residual() {
+        // With 3 runs, each gets 1/3. The last segment absorbs residual so
+        // the total is exactly 1.0 in f64 before the f64->f32 conversion.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 3,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 3);
+        let total: f32 = segments.iter().map(|s| s.width_ratio).sum();
+        assert!(
+            (total - 1.0).abs() < 0.01,
+            "total width must be ~1.0, got {}",
+            total
+        );
+        // The last segment's width may differ slightly from the others.
+        assert!(segments[2].width_ratio > 0.0);
+    }
+
+    #[test]
+    fn segment_builder_run_id_includes_shard_offset() {
+        // Run IDs should be SYNTHETIC_RUN_ID_OFFSET + shard_id * 10_000 + i.
+        let m = ShardMetrics {
+            shard_id: 2,
+            active_runs: 3,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 3);
+        let expected_base = SYNTHETIC_RUN_ID_OFFSET
+            .saturating_add(u64::from(2u32).saturating_mul(10_000));
+        assert_eq!(segments[0].run_id, expected_base);
+        assert_eq!(
+            segments[1].run_id,
+            expected_base.saturating_add(1)
+        );
+        assert_eq!(
+            segments[2].run_id,
+            expected_base.saturating_add(2)
+        );
+    }
+
+    #[test]
+    fn shard_lane_equality_works() {
+        let lane_a = ShardLane {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 3,
+            frame_pool_free: 40,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 25.0,
+            steps_per_second: 0,
+        };
+        let lane_b = ShardLane {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 3,
+            frame_pool_free: 40,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 25.0,
+            steps_per_second: 0,
+        };
+        assert_eq!(lane_a, lane_b);
+    }
+
+    #[test]
+    fn shard_lane_inequality_by_shard_id() {
+        let lane_a = ShardLane {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 3,
+            frame_pool_free: 40,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 25.0,
+            steps_per_second: 0,
+        };
+        let lane_b = ShardLane {
+            shard_id: 1,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 3,
+            frame_pool_free: 40,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 25.0,
+            steps_per_second: 0,
+        };
+        assert_ne!(lane_a, lane_b);
+    }
+
+    #[test]
+    fn activity_lanes_equality_works() {
+        let a = ActivityLanes::new();
+        let b = ActivityLanes::new();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn activity_lanes_inequality_after_update() {
+        let mut a = ActivityLanes::new();
+        let b = ActivityLanes::new();
+        a.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 1,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn run_state_debug_format() {
+        assert!(format!("{:?}", RunState::Running).contains("Running"));
+        assert!(format!("{:?}", RunState::Waiting).contains("Waiting"));
+        assert!(format!("{:?}", RunState::Degraded).contains("Degraded"));
+        assert!(format!("{:?}", RunState::Critical).contains("Critical"));
+    }
+
+    #[test]
+    fn run_state_copy_and_equality() {
+        let state = RunState::Running;
+        let copied = state;
+        assert_eq!(state, copied);
+        assert_ne!(state, RunState::Critical);
+    }
+
+    #[test]
+    fn lane_segment_equality_works() {
+        let a = LaneSegment {
+            run_id: 1,
+            width_ratio: 0.5,
+            state_color: [0.0, 0.0, 0.0, 1.0],
+            label: "R1".to_string(),
+        };
+        let b = LaneSegment {
+            run_id: 1,
+            width_ratio: 0.5,
+            state_color: [0.0, 0.0, 0.0, 1.0],
+            label: "R1".to_string(),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn segment_builder_critical_from_pool_exhaustion() {
+        // Pool ratio >= 0.8 AND queue_ratio >= 0.3 -> Critical.
+        // With 2 runs, each gets queue_ratio = 0.5 >= 0.3.
+        // frame_pool_free = 10 out of 100 -> pool_ratio = 0.9 >= 0.8.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 10,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let critical_color = RunState::Critical.color();
+        assert_eq!(segments[0].state_color, critical_color);
+    }
+
+    #[test]
+    fn segment_builder_critical_from_trace_ring_high() {
+        // trace_ring_fill_pct >= 90.0 AND queue_ratio >= 0.3 -> Critical.
+        // With 2 runs, each gets queue_ratio = 0.5 >= 0.3.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 50,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 95.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let critical_color = RunState::Critical.color();
+        assert_eq!(segments[0].state_color, critical_color);
+    }
+
+    #[test]
+    fn segment_builder_waiting_from_action_queue_greater_than_ready() {
+        // action_queue_depth > ready_queue_depth -> Waiting.
+        // Pool and trace are healthy so no Critical/Degraded.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 5,
+            action_queue_depth: 50,
+            timer_count: 0,
+            frame_pool_free: 95,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let waiting_color = RunState::Waiting.color();
+        assert_eq!(segments[0].state_color, waiting_color);
+    }
+
+    #[test]
+    fn segment_builder_running_when_all_conditions_healthy() {
+        // No pool pressure, low trace, action <= ready -> Running.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 20,
+            action_queue_depth: 10,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        let running_color = RunState::Running.color();
+        assert_eq!(segments[0].state_color, running_color);
+    }
+
+    #[test]
+    fn segment_builder_with_zero_frame_pool_total() {
+        // frame_pool_total == 0 -> pool_ratio = 0.0, so no pool pressure.
+        // If action <= ready and trace < 70, state should be Running.
+        let m = ShardMetrics {
+            shard_id: 0,
+            active_runs: 2,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 0,
+            frame_pool_total: 0,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 2);
+        let running_color = RunState::Running.color();
+        assert_eq!(segments[0].state_color, running_color);
+    }
+
+    #[test]
+    fn segment_builder_with_high_shard_id() {
+        let m = ShardMetrics {
+            shard_id: 255,
+            active_runs: 2,
+            ready_queue_depth: 10,
+            action_queue_depth: 5,
+            timer_count: 0,
+            frame_pool_free: 90,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 20.0,
+            steps_total: 0,
+            actions_total: 0,
+        };
+        let segments = LaneSegmentBuilder::build(&m);
+        assert_eq!(segments.len(), 2);
+        let expected_base = SYNTHETIC_RUN_ID_OFFSET
+            .saturating_add(u64::from(255u32).saturating_mul(10_000));
+        assert_eq!(segments[0].run_id, expected_base);
+    }
+
+    #[test]
+    fn avg_trace_fill_single_lane_matches_exactly() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 50,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 100.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        let avg = lanes.avg_trace_fill();
+        assert!((avg - 100.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn most_loaded_shard_with_single_shard() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 5,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 0.0,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        assert_eq!(lanes.most_loaded_shard(), Some(0));
+    }
+
+    #[test]
+    fn trace_ring_fill_pct_carried_from_metrics() {
+        let mut lanes = ActivityLanes::new();
+        lanes.update_from_metrics(&ShardMetrics {
+            shard_id: 0,
+            active_runs: 0,
+            ready_queue_depth: 0,
+            action_queue_depth: 0,
+            timer_count: 0,
+            frame_pool_free: 100,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 67.8,
+            steps_total: 0,
+            actions_total: 0,
+        });
+        let Some(lane) = lanes.lanes().get(0) else { return };
+        assert!((lane.trace_ring_fill_pct - 67.8).abs() < 0.01);
+    }
+
+    #[test]
+    fn shard_lane_debug_contains_fields() {
+        let lane = ShardLane {
+            shard_id: 5,
+            active_runs: 3,
+            ready_queue_depth: 10,
+            action_queue_depth: 20,
+            timer_count: 1,
+            frame_pool_free: 50,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 42.0,
+            steps_per_second: 99,
+        };
+        let debug = format!("{lane:?}");
+        assert!(debug.contains("shard_id"));
+        assert!(debug.contains("active_runs"));
+    }
+
+    #[test]
+    fn activity_lanes_debug_format() {
+        let lanes = ActivityLanes::new();
+        let debug = format!("{lanes:?}");
+        assert!(debug.contains("ActivityLanes") || debug.contains("lanes"));
+    }
+
+    #[test]
+    fn lane_segment_debug_format() {
+        let seg = LaneSegment {
+            run_id: 42,
+            width_ratio: 0.25,
+            state_color: RunState::Running.color(),
+            label: "R42".to_string(),
+        };
+        let debug = format!("{seg:?}");
+        assert!(debug.contains("run_id") || debug.contains("42"));
+    }
 }

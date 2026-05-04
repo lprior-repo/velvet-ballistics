@@ -51,7 +51,8 @@ pub fn drive_deterministic_full(
     granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let max_parallel = compute_max_parallel_in_flight(plan);
-    run.set_max_parallel_in_flight(max_parallel);
+    run.set_max_parallel_in_flight(max_parallel)
+        .map_err(RuntimeEngineError::Core)?;
 
     loop {
         if !budget.try_take().map_err(RuntimeEngineError::Core)? {

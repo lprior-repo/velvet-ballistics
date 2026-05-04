@@ -609,4 +609,236 @@ mod tests {
     fn blackhat_rows_for_zero_cols_returns_one() {
         assert_eq!(SystemMapLayout::rows_for(100, 0), 1);
     }
+
+    // =========================================================================
+    // Additional comprehensive coverage tests
+    // =========================================================================
+
+    #[test]
+    fn shard_status_is_worse_than_active_not_worse_than_overloaded() {
+        assert!(!ShardStatus::Active.is_worse_than(ShardStatus::Overloaded));
+    }
+
+    #[test]
+    fn shard_status_is_worse_than_idle_not_worse_than_active() {
+        assert!(!ShardStatus::Idle.is_worse_than(ShardStatus::Active));
+    }
+
+    #[test]
+    fn shard_status_is_worse_than_overloaded_is_worse_than_all() {
+        assert!(ShardStatus::Overloaded.is_worse_than(ShardStatus::Active));
+        assert!(ShardStatus::Overloaded.is_worse_than(ShardStatus::Idle));
+    }
+
+    #[test]
+    fn shard_status_is_worse_than_active_is_worse_than_idle() {
+        assert!(ShardStatus::Active.is_worse_than(ShardStatus::Idle));
+    }
+
+    #[test]
+    fn f32_to_u32_clamps_negative_to_zero() {
+        assert_eq!(f32_to_u32(-1.0), 0);
+        assert_eq!(f32_to_u32(-0.001), 0);
+    }
+
+    #[test]
+    fn f32_to_u32_clamps_very_large_to_u32_max() {
+        assert_eq!(f32_to_u32(16_777_216.0), u32::MAX);
+        assert_eq!(f32_to_u32(1e10), u32::MAX);
+    }
+
+    #[test]
+    fn f32_to_u32_rounds_correctly() {
+        assert_eq!(f32_to_u32(1.4), 1);
+        assert_eq!(f32_to_u32(1.5), 2);
+        assert_eq!(f32_to_u32(1.6), 2);
+        assert_eq!(f32_to_u32(0.0), 0);
+        assert_eq!(f32_to_u32(100.0), 100);
+    }
+
+    #[test]
+    fn int_to_f32_converts_small_values_losslessly() {
+        assert!((int_to_f32(0) - 0.0).abs() < f32::EPSILON);
+        assert!((int_to_f32(1) - 1.0).abs() < f32::EPSILON);
+        assert!((int_to_f32(100) - 100.0).abs() < f32::EPSILON);
+        assert!((int_to_f32(1000) - 1000.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn layout_two_shards_side_by_side_in_wide_viewport() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 1, 10, 0, 0),
+                ShardNode::new(1, 1, 10, 0, 0),
+            ],
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 1000.0, 500.0);
+        assert_eq!(rects.len(), 2);
+        // Second shard should start at x > 0 (next column).
+        assert!(rects[1].x > 0.0);
+        // Both should have same y (row 0).
+        assert!((rects[0].y - 0.0).abs() < f32::EPSILON);
+        assert!((rects[1].y - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn layout_exact_grid_four_shards_two_by_two() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 1, 10, 0, 0),
+                ShardNode::new(1, 1, 10, 0, 0),
+                ShardNode::new(2, 1, 10, 0, 0),
+                ShardNode::new(3, 1, 10, 0, 0),
+            ],
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 200.0, 200.0);
+        assert_eq!(rects.len(), 4);
+        // Verify all positions are finite and non-negative.
+        for r in &rects {
+            assert!(r.x.is_finite());
+            assert!(r.y.is_finite());
+            assert!(r.x >= 0.0);
+            assert!(r.y >= 0.0);
+            assert!(r.w > 0.0);
+            assert!(r.h > 0.0);
+        }
+        // Verify no overlapping: first row and second row have different y.
+        // Items in same row should have different x.
+        assert!((rects[0].y - rects[1].y).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn optimal_columns_for_square_viewport() {
+        let cols = SystemMapLayout::optimal_columns(9, 100.0, 100.0);
+        // sqrt(9 * 1.0) = 3.0, ceil = 3.
+        assert_eq!(cols, 3);
+    }
+
+    #[test]
+    fn optimal_columns_for_one_shard_is_one() {
+        let cols = SystemMapLayout::optimal_columns(1, 800.0, 600.0);
+        assert_eq!(cols, 1);
+    }
+
+    #[test]
+    fn rows_for_exact_division() {
+        assert_eq!(SystemMapLayout::rows_for(9, 3), 3);
+        assert_eq!(SystemMapLayout::rows_for(4, 2), 2);
+        assert_eq!(SystemMapLayout::rows_for(1, 1), 1);
+    }
+
+    #[test]
+    fn rows_for_remainder_adds_extra_row() {
+        assert_eq!(SystemMapLayout::rows_for(7, 3), 3);
+        assert_eq!(SystemMapLayout::rows_for(10, 3), 4);
+        assert_eq!(SystemMapLayout::rows_for(5, 2), 3);
+    }
+
+    #[test]
+    fn shard_node_preserves_all_fields() {
+        let node = ShardNode::new(42, 3, 10, 7, 9);
+        assert_eq!(node.shard_id, 42);
+        assert_eq!(node.active_runs, 3);
+        assert_eq!(node.max_runs, 10);
+        assert_eq!(node.status, ShardStatus::Active);
+        assert_eq!(node.ready_depth, 7);
+        assert_eq!(node.action_depth, 9);
+    }
+
+    #[test]
+    fn shard_node_active_when_runs_nonzero_and_below_max() {
+        let node = ShardNode::new(0, 1, 100, 0, 0);
+        assert_eq!(node.status, ShardStatus::Active);
+
+        let node = ShardNode::new(0, 99, 100, 0, 0);
+        assert_eq!(node.status, ShardStatus::Active);
+    }
+
+    #[test]
+    fn topology_total_pending_actions_with_zero_depths() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 1, 10, 0, 0),
+                ShardNode::new(1, 2, 10, 0, 0),
+            ],
+        };
+        assert_eq!(topo.total_pending_actions(), 0);
+    }
+
+    #[test]
+    fn layout_preserves_shard_ordering() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(10, 0, 5, 0, 0),  // Idle
+                ShardNode::new(20, 2, 5, 0, 0),  // Active
+                ShardNode::new(30, 5, 5, 0, 0),  // Overloaded
+                ShardNode::new(40, 0, 5, 0, 0),  // Idle
+            ],
+        };
+        let rects = SystemMapLayout::compute_layout(&topo, 400.0, 300.0);
+        let ids: Vec<u32> = rects.iter().map(|r| r.shard_id).collect();
+        assert_eq!(ids, vec![10, 20, 30, 40]);
+    }
+
+    #[test]
+    fn layout_cell_dimensions_sum_to_bounds() {
+        let topo = SystemTopology {
+            shards: vec![
+                ShardNode::new(0, 1, 10, 0, 0),
+                ShardNode::new(1, 1, 10, 0, 0),
+            ],
+        };
+        let width = 800.0_f32;
+        let rects = SystemMapLayout::compute_layout(&topo, width, 600.0);
+        assert_eq!(rects.len(), 2);
+        // All cells should have the same width.
+        assert!((rects[0].w - rects[1].w).abs() < f32::EPSILON);
+        // Total covered width equals viewport width.
+        let _covered = rects[0].x + rects[0].w + (rects[1].x - rects[0].x - rects[0].w) + rects[1].w;
+        // Due to grid layout: covered = cols * cell_w = width
+        let total_cell_width = rects[0].w + (width - rects[0].w - rects[1].w) + rects[1].w;
+        let _ = total_cell_width; // Just verify cells are consistent.
+        assert!((rects[0].w + rects[1].x - rects[0].x).abs() < f32::EPSILON
+            || (rects[0].w * 2.0 - width).abs() < 1.0);
+    }
+
+    #[test]
+    fn topology_clone_preserves_data() {
+        let topo = SystemTopology {
+            shards: vec![ShardNode::new(0, 5, 10, 3, 7)],
+        };
+        let cloned = topo.clone();
+        assert_eq!(cloned.shards.len(), 1);
+        assert_eq!(cloned.total_active_runs(), 5);
+        assert_eq!(cloned.total_pending_actions(), 10);
+    }
+
+    #[test]
+    fn shard_node_debug_format_contains_fields() {
+        let node = ShardNode::new(99, 1, 10, 5, 3);
+        let debug_str = format!("{node:?}");
+        assert!(debug_str.contains("shard_id"));
+        assert!(debug_str.contains("active_runs"));
+    }
+
+    #[test]
+    fn shard_rect_debug_format() {
+        let rect = ShardRect {
+            shard_id: 5,
+            x: 10.0,
+            y: 20.0,
+            w: 100.0,
+            h: 50.0,
+            color: [1.0, 0.0, 0.0, 1.0],
+        };
+        let debug_str = format!("{rect:?}");
+        assert!(debug_str.contains("shard_id"));
+    }
+
+    #[test]
+    fn shard_status_debug_variants() {
+        assert!(format!("{:?}", ShardStatus::Active).contains("Active"));
+        assert!(format!("{:?}", ShardStatus::Idle).contains("Idle"));
+        assert!(format!("{:?}", ShardStatus::Overloaded).contains("Overloaded"));
+    }
 }

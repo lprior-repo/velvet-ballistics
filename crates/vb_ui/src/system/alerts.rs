@@ -1181,4 +1181,564 @@ mod tests {
         mgr.dismiss(0);
         assert_eq!(mgr.active()[0].message, "alert-2");
     }
+
+    // =========================================================================
+    // Additional comprehensive coverage tests
+    // =========================================================================
+
+    #[test]
+    fn alert_struct_fields_preserved() {
+        let ts = Instant::now();
+        let alert = Alert {
+            severity: AlertSeverity::Warning,
+            kind: AlertKind::SecretLeak,
+            message: "secret exposed".to_string(),
+            run_id: Some(123),
+            shard_id: Some(5),
+            timestamp: ts,
+        };
+        assert_eq!(alert.severity, AlertSeverity::Warning);
+        assert_eq!(alert.kind, AlertKind::SecretLeak);
+        assert_eq!(alert.message, "secret exposed");
+        assert_eq!(alert.run_id, Some(123));
+        assert_eq!(alert.shard_id, Some(5));
+        assert_eq!(alert.timestamp, ts);
+    }
+
+    #[test]
+    fn alert_clone_preserves_data() {
+        let alert = Alert {
+            severity: AlertSeverity::Critical,
+            kind: AlertKind::ReplayDivergence,
+            message: "divergence detected".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        };
+        let cloned = alert.clone();
+        assert_eq!(cloned.severity, alert.severity);
+        assert_eq!(cloned.kind, alert.kind);
+        assert_eq!(cloned.message, alert.message);
+    }
+
+    #[test]
+    fn alert_debug_format_contains_fields() {
+        let alert = Alert {
+            severity: AlertSeverity::Info,
+            kind: AlertKind::JournalLag,
+            message: "lagging".to_string(),
+            run_id: Some(1),
+            shard_id: Some(2),
+            timestamp: Instant::now(),
+        };
+        let debug = format!("{alert:?}");
+        assert!(debug.contains("severity"));
+        assert!(debug.contains("message"));
+    }
+
+    #[test]
+    fn alert_severity_ordering() {
+        assert!(AlertSeverity::Critical.priority() > AlertSeverity::Warning.priority());
+        assert!(AlertSeverity::Warning.priority() > AlertSeverity::Info.priority());
+    }
+
+    #[test]
+    fn alert_severity_copy_and_equality() {
+        let sev = AlertSeverity::Warning;
+        let copied = sev;
+        assert_eq!(sev, copied);
+        assert_ne!(sev, AlertSeverity::Critical);
+    }
+
+    #[test]
+    fn alert_severity_debug_format() {
+        assert!(format!("{:?}", AlertSeverity::Info).contains("Info"));
+        assert!(format!("{:?}", AlertSeverity::Warning).contains("Warning"));
+        assert!(format!("{:?}", AlertSeverity::Critical).contains("Critical"));
+    }
+
+    #[test]
+    fn alert_kind_variants_exist() {
+        let kinds = [
+            AlertKind::QueuePressure,
+            AlertKind::RunFailed,
+            AlertKind::ReplayDivergence,
+            AlertKind::JournalLag,
+            AlertKind::SecretLeak,
+            AlertKind::ShardOverloaded,
+        ];
+        // Verify Copy, Clone, PartialEq, Eq, Debug all work.
+        for kind in kinds {
+            let copied = kind;
+            assert_eq!(kind, copied);
+            let _ = format!("{kind:?}");
+        }
+        // Verify all are distinct.
+        for i in 0..kinds.len() {
+            for j in (i + 1)..kinds.len() {
+                assert_ne!(kinds[i], kinds[j]);
+            }
+        }
+    }
+
+    #[test]
+    fn alert_manager_dismiss_last_element() {
+        let mut mgr = AlertManager::new(10);
+        mgr.add(info_alert("first"));
+        mgr.add(info_alert("second"));
+        mgr.add(info_alert("third"));
+        mgr.dismiss(2);
+        assert_eq!(mgr.active().len(), 2);
+        assert_eq!(mgr.active()[0].message, "first");
+        assert_eq!(mgr.active()[1].message, "second");
+    }
+
+    #[test]
+    fn alert_manager_dismiss_only_element() {
+        let mut mgr = AlertManager::new(10);
+        mgr.add(info_alert("only"));
+        mgr.dismiss(0);
+        assert!(mgr.active().is_empty());
+    }
+
+    #[test]
+    fn alert_manager_add_multiple_severities() {
+        let mut mgr = AlertManager::new(10);
+        mgr.add(Alert {
+            severity: AlertSeverity::Info,
+            kind: AlertKind::QueuePressure,
+            message: "info".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        });
+        mgr.add(Alert {
+            severity: AlertSeverity::Warning,
+            kind: AlertKind::JournalLag,
+            message: "warning".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        });
+        mgr.add(Alert {
+            severity: AlertSeverity::Critical,
+            kind: AlertKind::RunFailed,
+            message: "critical".to_string(),
+            run_id: Some(1),
+            shard_id: Some(0),
+            timestamp: Instant::now(),
+        });
+        assert_eq!(mgr.active().len(), 3);
+        assert_eq!(mgr.critical_count(), 1);
+    }
+
+    #[test]
+    fn alert_dedup_key_equality_and_hash() {
+        let key1 = AlertDedupKey {
+            source: "shard-0".to_string(),
+            fingerprint: 42,
+        };
+        let key2 = AlertDedupKey {
+            source: "shard-0".to_string(),
+            fingerprint: 42,
+        };
+        assert_eq!(key1, key2);
+
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(key1.clone());
+        assert!(set.contains(&key2));
+    }
+
+    #[test]
+    fn alert_dedup_key_inequality() {
+        let key1 = AlertDedupKey {
+            source: "shard-0".to_string(),
+            fingerprint: 42,
+        };
+        let key2 = AlertDedupKey {
+            source: "shard-1".to_string(),
+            fingerprint: 42,
+        };
+        let key3 = AlertDedupKey {
+            source: "shard-0".to_string(),
+            fingerprint: 99,
+        };
+        assert_ne!(key1, key2);
+        assert_ne!(key1, key3);
+    }
+
+    #[test]
+    fn alert_dedup_key_debug_format() {
+        let key = AlertDedupKey {
+            source: "test".to_string(),
+            fingerprint: 123,
+        };
+        let debug = format!("{key:?}");
+        assert!(debug.contains("source"));
+        assert!(debug.contains("fingerprint"));
+    }
+
+    #[test]
+    fn system_alert_fields_preserved() {
+        let alert = SystemAlert {
+            id: 42,
+            severity: AlertSeverity::Warning,
+            message: "something is off".to_string(),
+            source: "monitor".to_string(),
+            fingerprint: 0xDEAD_BEEF,
+            route: AlertRoute::Notification,
+            timestamp_us: 1_700_000_000,
+            acknowledged: false,
+        };
+        assert_eq!(alert.id, 42);
+        assert_eq!(alert.severity, AlertSeverity::Warning);
+        assert_eq!(alert.message, "something is off");
+        assert_eq!(alert.source, "monitor");
+        assert_eq!(alert.fingerprint, 0xDEAD_BEEF);
+        assert_eq!(alert.route, AlertRoute::Notification);
+        assert_eq!(alert.timestamp_us, 1_700_000_000);
+        assert!(!alert.acknowledged);
+    }
+
+    #[test]
+    fn system_alert_debug_format() {
+        let alert = SystemAlert {
+            id: 1,
+            severity: AlertSeverity::Critical,
+            message: "test".to_string(),
+            source: "src".to_string(),
+            fingerprint: 0,
+            route: AlertRoute::Pager,
+            timestamp_us: 0,
+            acknowledged: true,
+        };
+        let debug = format!("{alert:?}");
+        assert!(debug.contains("id"));
+        assert!(debug.contains("acknowledged"));
+    }
+
+    #[test]
+    fn alert_route_debug_variants() {
+        assert!(format!("{:?}", AlertRoute::Dashboard).contains("Dashboard"));
+        assert!(format!("{:?}", AlertRoute::Notification).contains("Notification"));
+        assert!(format!("{:?}", AlertRoute::Pager).contains("Pager"));
+    }
+
+    #[test]
+    fn alert_route_copy_and_equality() {
+        let route = AlertRoute::Notification;
+        let copied = route;
+        assert_eq!(route, copied);
+        assert_ne!(route, AlertRoute::Dashboard);
+        assert_ne!(route, AlertRoute::Pager);
+    }
+
+    #[test]
+    fn router_alerts_by_severity_on_empty_router() {
+        let router = AlertRouter::new(10);
+        assert!(router.alerts_by_severity(AlertSeverity::Info).is_empty());
+        assert!(router.alerts_by_severity(AlertSeverity::Warning).is_empty());
+        assert!(router.alerts_by_severity(AlertSeverity::Critical).is_empty());
+    }
+
+    #[test]
+    fn router_route_alert_increments_id_starting_at_one() {
+        let mut router = AlertRouter::new(10);
+        let ids: Vec<Option<u64>> = (0..5)
+            .map(|i| {
+                router.route_alert(
+                    AlertSeverity::Info,
+                    format!("msg-{i}"),
+                    format!("src-{i}"),
+                    u64::from(i),
+                    i * 100,
+                )
+            })
+            .collect();
+        assert_eq!(ids, vec![Some(1), Some(2), Some(3), Some(4), Some(5)]);
+    }
+
+    #[test]
+    fn router_acknowledge_marks_correct_alert_only() {
+        let mut router = AlertRouter::new(10);
+        router.route_alert(AlertSeverity::Info, "a".to_string(), "s".to_string(), 1, 100);
+        router.route_alert(AlertSeverity::Info, "b".to_string(), "s".to_string(), 2, 200);
+        router.route_alert(AlertSeverity::Info, "c".to_string(), "s".to_string(), 3, 300);
+
+        // Acknowledge only id=2.
+        assert!(router.acknowledge(2));
+        assert!(!router.alerts()[0].acknowledged);
+        assert!(router.alerts()[1].acknowledged);
+        assert!(!router.alerts()[2].acknowledged);
+    }
+
+    #[test]
+    fn router_trim_with_multiple_acknowledged() {
+        let mut router = AlertRouter::new(3);
+        // Add 4 alerts to exceed capacity.
+        for i in 0..4u64 {
+            router.route_alert(
+                AlertSeverity::Info,
+                format!("msg-{i}"),
+                format!("src-{i}"),
+                i,
+                i * 100,
+            );
+        }
+        // Acknowledge first two (oldest).
+        router.acknowledge(1);
+        router.acknowledge(2);
+
+        router.trim();
+        // Should have removed 1 acknowledged alert (excess = 4 - 3 = 1).
+        assert_eq!(router.len(), 3);
+        // Alert id=1 should be gone, id=2 may remain.
+        let ids: Vec<u64> = router.alerts().iter().map(|a| a.id).collect();
+        assert!(!ids.contains(&1), "id=1 should have been trimmed");
+    }
+
+    #[test]
+    fn router_trim_noop_at_exact_capacity() {
+        let mut router = AlertRouter::new(3);
+        for i in 0..3u64 {
+            router.route_alert(
+                AlertSeverity::Info,
+                format!("msg-{i}"),
+                format!("src-{i}"),
+                i,
+                i * 100,
+            );
+        }
+        router.acknowledge(1);
+        router.trim();
+        assert_eq!(router.len(), 3);
+    }
+
+    #[test]
+    fn router_unacknowledged_criticals_all_are_criticals() {
+        let mut router = AlertRouter::new(10);
+        router.route_alert(AlertSeverity::Critical, "c1".to_string(), "a".to_string(), 1, 100);
+        router.route_alert(AlertSeverity::Critical, "c2".to_string(), "b".to_string(), 2, 200);
+        let unacked = router.unacknowledged_criticals();
+        assert_eq!(unacked.len(), 2);
+        for alert in unacked {
+            assert_eq!(alert.severity, AlertSeverity::Critical);
+            assert!(!alert.acknowledged);
+        }
+    }
+
+    #[test]
+    fn router_alerts_preserves_insertion_order() {
+        let mut router = AlertRouter::new(10);
+        let severities = [
+            AlertSeverity::Info,
+            AlertSeverity::Critical,
+            AlertSeverity::Warning,
+            AlertSeverity::Info,
+        ];
+        for (i, &sev) in severities.iter().enumerate() {
+            router.route_alert(
+                sev,
+                format!("msg-{i}"),
+                format!("src-{i}"),
+                u64::try_from(i).unwrap_or(u64::MAX),
+                100,
+            );
+        }
+        let alerts = router.alerts();
+        assert_eq!(alerts.len(), 4);
+        assert_eq!(alerts[0].severity, AlertSeverity::Info);
+        assert_eq!(alerts[1].severity, AlertSeverity::Critical);
+        assert_eq!(alerts[2].severity, AlertSeverity::Warning);
+        assert_eq!(alerts[3].severity, AlertSeverity::Info);
+    }
+
+    #[test]
+    fn router_same_source_different_fingerprint_both_accepted() {
+        let mut router = AlertRouter::new(10);
+        let id1 = router.route_alert(
+            AlertSeverity::Info,
+            "msg1".to_string(),
+            "same-source".to_string(),
+            1,
+            100,
+        );
+        let id2 = router.route_alert(
+            AlertSeverity::Warning,
+            "msg2".to_string(),
+            "same-source".to_string(),
+            2,
+            200,
+        );
+        assert_eq!(id1, Some(1));
+        assert_eq!(id2, Some(2));
+        assert_eq!(router.len(), 2);
+    }
+
+    #[test]
+    fn router_dedup_after_trim_allows_reroute() {
+        let mut router = AlertRouter::new(2);
+        router.route_alert(AlertSeverity::Info, "msg".to_string(), "src".to_string(), 42, 100);
+        router.acknowledge(1);
+
+        // Exceed capacity so trim will evict.
+        router.route_alert(AlertSeverity::Warning, "w1".to_string(), "s2".to_string(), 10, 200);
+        router.route_alert(AlertSeverity::Critical, "c1".to_string(), "s3".to_string(), 11, 300);
+
+        router.trim();
+        // The acknowledged alert should be trimmed, removing its dedup key.
+        // Re-routing same (source, fingerprint) should succeed.
+        let id = router.route_alert(
+            AlertSeverity::Info,
+            "msg again".to_string(),
+            "src".to_string(),
+            42,
+            400,
+        );
+        assert!(id.is_some());
+    }
+
+    #[test]
+    fn router_len_and_is_empty_consistent() {
+        let mut router = AlertRouter::new(5);
+        assert!(router.is_empty());
+        assert_eq!(router.len(), 0);
+
+        router.route_alert(AlertSeverity::Info, "msg".to_string(), "s".to_string(), 1, 100);
+        assert!(!router.is_empty());
+        assert_eq!(router.len(), 1);
+    }
+
+    #[test]
+    fn alert_manager_eviction_at_boundary() {
+        let mut mgr = AlertManager::new(3);
+        mgr.add(info_alert("a"));
+        mgr.add(info_alert("b"));
+        mgr.add(info_alert("c"));
+        // At capacity -- no eviction yet.
+        assert_eq!(mgr.active().len(), 3);
+        // Add one more -> evicts oldest.
+        mgr.add(info_alert("d"));
+        assert_eq!(mgr.active().len(), 3);
+        assert_eq!(mgr.active()[0].message, "b");
+        assert_eq!(mgr.active()[2].message, "d");
+    }
+
+    #[test]
+    fn alert_manager_critical_count_zero_when_no_criticals() {
+        let mut mgr = AlertManager::new(10);
+        mgr.add(info_alert("info only"));
+        assert_eq!(mgr.critical_count(), 0);
+    }
+
+    #[test]
+    fn alert_manager_all_severity_types_counted() {
+        let mut mgr = AlertManager::new(10);
+        mgr.add(Alert {
+            severity: AlertSeverity::Info,
+            kind: AlertKind::QueuePressure,
+            message: "info".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        });
+        mgr.add(Alert {
+            severity: AlertSeverity::Critical,
+            kind: AlertKind::RunFailed,
+            message: "crit1".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        });
+        mgr.add(Alert {
+            severity: AlertSeverity::Warning,
+            kind: AlertKind::JournalLag,
+            message: "warn".to_string(),
+            run_id: None,
+            shard_id: None,
+            timestamp: Instant::now(),
+        });
+        mgr.add(Alert {
+            severity: AlertSeverity::Critical,
+            kind: AlertKind::ShardOverloaded,
+            message: "crit2".to_string(),
+            run_id: Some(5),
+            shard_id: Some(1),
+            timestamp: Instant::now(),
+        });
+        assert_eq!(mgr.active().len(), 4);
+        assert_eq!(mgr.critical_count(), 2);
+    }
+
+    #[test]
+    fn router_alert_timestamp_preserved() {
+        let mut router = AlertRouter::new(10);
+        router.route_alert(
+            AlertSeverity::Info,
+            "msg".to_string(),
+            "src".to_string(),
+            1,
+            1_234_567_890,
+        );
+        assert_eq!(router.alerts()[0].timestamp_us, 1_234_567_890);
+    }
+
+    #[test]
+    fn router_route_alert_with_all_severity_routes() {
+        let mut router = AlertRouter::new(10);
+
+        let id_info = router.route_alert(
+            AlertSeverity::Info,
+            "info msg".to_string(),
+            "src".to_string(),
+            1,
+            100,
+        );
+        assert_eq!(id_info, Some(1));
+        assert_eq!(router.alerts()[0].route, AlertRoute::Dashboard);
+
+        let id_warn = router.route_alert(
+            AlertSeverity::Warning,
+            "warn msg".to_string(),
+            "src2".to_string(),
+            2,
+            200,
+        );
+        assert_eq!(id_warn, Some(2));
+        assert_eq!(router.alerts()[1].route, AlertRoute::Notification);
+
+        let id_crit = router.route_alert(
+            AlertSeverity::Critical,
+            "crit msg".to_string(),
+            "src3".to_string(),
+            3,
+            300,
+        );
+        assert_eq!(id_crit, Some(3));
+        assert_eq!(router.alerts()[2].route, AlertRoute::Pager);
+    }
+
+    #[test]
+    fn router_dedup_same_source_same_fingerprint_different_severity() {
+        let mut router = AlertRouter::new(10);
+        let id1 = router.route_alert(
+            AlertSeverity::Info,
+            "msg1".to_string(),
+            "src".to_string(),
+            42,
+            100,
+        );
+        // Same (source, fingerprint) -> deduped even with different severity.
+        let id2 = router.route_alert(
+            AlertSeverity::Critical,
+            "msg2".to_string(),
+            "src".to_string(),
+            42,
+            200,
+        );
+        assert_eq!(id1, Some(1));
+        assert_eq!(id2, None);
+        assert_eq!(router.len(), 1);
+    }
 }

@@ -126,9 +126,15 @@ impl FanoutLimit {
     }
 
     /// Converts to `usize` for checked comparison with collection sizes.
+    ///
+    /// On platforms where `usize` is at least 32 bits this always succeeds.
+    /// On exotic narrower platforms the value saturates to `usize::MAX`.
     #[must_use]
     pub fn as_usize(self) -> usize {
-        usize::try_from(self.0).unwrap_or(usize::MAX)
+        match usize::try_from(self.0) {
+            Ok(v) => v,
+            Err(_) => usize::MAX,
+        }
     }
 }
 
@@ -593,5 +599,33 @@ mod tests {
         use super::WorkflowDigest;
         let digest = WorkflowDigest::from_bytes([0u8; 32]);
         assert_eq!(digest.as_bytes(), [0u8; 32]);
+    }
+
+    // =========================================================================
+    // BLACKHAT security regression tests — IDs
+    // =========================================================================
+
+    // --- FanoutLimit::as_usize does not use unwrap_or ---
+
+    #[test]
+    fn fanout_limit_as_usize_zero() {
+        use super::FanoutLimit;
+        let limit = FanoutLimit::new(0);
+        assert_eq!(limit.as_usize(), 0);
+    }
+
+    #[test]
+    fn fanout_limit_as_usize_max_u32() {
+        use super::FanoutLimit;
+        let limit = FanoutLimit::new(u32::MAX);
+        // On all current platforms u32 fits in usize
+        assert_eq!(limit.as_usize(), u32::MAX as usize);
+    }
+
+    #[test]
+    fn fanout_limit_as_usize_typical_value() {
+        use super::FanoutLimit;
+        let limit = FanoutLimit::new(1000);
+        assert_eq!(limit.as_usize(), 1000);
     }
 }
