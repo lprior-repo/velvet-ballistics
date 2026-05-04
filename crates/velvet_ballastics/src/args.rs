@@ -907,4 +907,44 @@ mod tests {
             assert_eq!(output, OutputFormat::Json);
         }
     }
+
+    #[test]
+    fn parse_diff_requires_both_run_ids_and_db() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics", "diff", "1", "2", "--db", "test-db",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Diff { .. })),
+            "unexpected: {parsed:?}"
+        );
+        if let Ok(Command::Diff { run_a, run_b, db, output }) = parsed {
+            assert_eq!(run_a, "1");
+            assert_eq!(run_b, "2");
+            assert_eq!(db, PathBuf::from("test-db"));
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_diff_accepts_json_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics", "diff", "10", "20", "--db", "test-db", "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Diff { .. })),
+            "unexpected: {parsed:?}"
+        );
+        if let Ok(Command::Diff { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_diff_requires_db_flag() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "diff", "1", "2"]));
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--db"))),
+            "unexpected: {parsed:?}"
+        );
+    }
 }
