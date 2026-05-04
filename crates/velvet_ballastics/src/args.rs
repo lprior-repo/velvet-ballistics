@@ -363,60 +363,47 @@ fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
-fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
+/// Common arguments for commands that operate on a run database entry.
+struct RunDbArgs {
+    run_id: String,
+    db: PathBuf,
+    output: OutputFormat,
+}
+
+fn parse_run_db_args(args: &[OsString]) -> Result<RunDbArgs, ParseError> {
     let run_id = positional_str(args, 2, "run_id")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
-    Ok(Command::Events {
+    Ok(RunDbArgs {
         run_id,
         db: PathBuf::from(db),
         output,
     })
+}
+
+fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Events { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Replay {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Replay { run_id: a.run_id, db: a.db, output: a.output })
 }
 
-
 fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Trace {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Trace { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Retry {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Retry { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Resume {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Resume { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
@@ -473,14 +460,8 @@ fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = parse_output_format(args);
-    Ok(Command::Incident {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
+    let a = parse_run_db_args(args)?;
+    Ok(Command::Incident { run_id: a.run_id, db: a.db, output: a.output })
 }
 
 fn parse_simulate(args: &[OsString]) -> Result<Command, ParseError> {
