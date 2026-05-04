@@ -5,7 +5,7 @@
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SeqNo, SlotIdx};
+use vb_core::ids::{FanoutLimit, SeqNo, SlotIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
@@ -64,7 +64,7 @@ pub fn execute_node_full(
             store,
             *input,
             *item_slot,
-            *limit,
+            FanoutLimit::new(*limit),
             *body,
             *done,
             node.output,

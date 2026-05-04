@@ -2,7 +2,7 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
@@ -16,18 +16,17 @@ pub fn for_each_start(
     store: &mut ValueStore,
     input: SlotIdx,
     item_slot: SlotIdx,
-    limit: u32,
+    limit: impl Into<FanoutLimit>,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
+    let limit = limit.into();
     let list_id = expect_list(*run.read_slot(input)?)?;
     let input_taint = run.read_taint(input)?;
     let items = store.list(list_id)?;
     let item_count = items.len();
-    let limit_count = usize::try_from(limit).map_err(|_| EngineError::IterationLimitExceeded {
-        resource: "for_each_limit",
-    })?;
+    let limit_count = limit.as_usize();
     if item_count > limit_count {
         return Err(EngineError::IterationLimitExceeded {
             resource: "for_each_limit",
@@ -118,7 +117,7 @@ mod tests {
         let item_slot = SlotIdx::new(1);
         let output_slot = SlotIdx::new(2);
         let body = StepIdx::new(1);
-        let done = StepIdx::new(2);
+        let _done = StepIdx::new(2);
         list_in_slot(
             &mut run,
             &mut store,
@@ -131,9 +130,9 @@ mod tests {
             &mut store,
             input,
             item_slot,
-            100,
+            FanoutLimit::new(100),
             body,
-            done,
+            StepIdx::new(2),
             Some(output_slot),
         );
 
@@ -163,7 +162,7 @@ mod tests {
             &mut store,
             input,
             item_slot,
-            100,
+            FanoutLimit::new(100),
             body,
             done,
             Some(output_slot),
@@ -323,14 +322,16 @@ mod tests {
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
         );
         // When calling for_each_start with limit=2
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
         let result = for_each_start(
             &mut run,
             &mut store,
             input,
             item_slot,
-            2,
-            StepIdx::new(1),
-            StepIdx::new(2),
+            FanoutLimit::new(2),
+            body,
+            done,
             Some(output_slot),
         );
         // Then it returns IterationLimitExceeded
@@ -1912,7 +1913,7 @@ mod tests {
             &mut store,
             input,
             item_slot,
-            u32::MAX,
+            FanoutLimit::new(u32::MAX),
             body,
             StepIdx::new(2),
             Some(output_slot),
@@ -1933,7 +1934,7 @@ mod tests {
         let iterator_slot = SlotIdx::new(2);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        let limit: u32 = 64;
+        let limit = FanoutLimit::new(64);
 
         let original = vec![
             SlotValue::I64(10),

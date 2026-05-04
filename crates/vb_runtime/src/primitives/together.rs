@@ -2,7 +2,7 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{BranchCount, BranchIdx, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, join_taint};
 use vb_core::value_store::ValueStore;
 
@@ -61,13 +61,14 @@ pub fn together_start(
 pub fn together_branch(
     run: &mut RunFrame,
     store: &mut ValueStore,
-    branch: u16,
+    branch: impl Into<BranchIdx>,
     entry: StepIdx,
     _join: StepIdx,
     accumulator: SlotIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    if branch > 0 {
+    let branch = branch.into();
+    if !branch.is_first() {
         let branch_output = require_output(output, run.pc())?;
         let previous_result = *run.read_slot(branch_output)?;
         append_to_accumulator(run, store, accumulator, previous_result, branch_output)?;
@@ -76,21 +77,17 @@ pub fn together_branch(
 }
 
 /// Executes TogetherJoin: waits for all branches and merges results.
-///
-/// In the synchronous model, all branches have already completed in
-/// order. TogetherJoin reads the last branch result from the output
-/// slot, appends it to the accumulator list, and writes the final
-/// merged list to the output slot.
 pub fn together_join(
     run: &mut RunFrame,
     store: &mut ValueStore,
-    branch_count: u16,
+    branch_count: impl Into<BranchCount>,
     accumulator: SlotIdx,
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    run.sub_parallel_in_flight(branch_count)?;
+    let branch_count = branch_count.into();
+    run.sub_parallel_in_flight(branch_count.get())?;
     let out = require_output(output, step)?;
     // Read the accumulator list built by together_branch invocations.
     let acc_value = *run.read_slot(accumulator)?;
@@ -149,6 +146,7 @@ fn append_to_accumulator(
 mod tests {
     use super::*;
     use crate::test_harness::list_in_slot;
+    use vb_core::ids::BranchIdx;
     use vb_core::value::Taint;
     use vb_core::value_store::ValueStore;
 
@@ -186,15 +184,15 @@ mod tests {
         let accumulator = SlotIdx::new(0);
         let output = SlotIdx::new(1);
         let entry = StepIdx::new(3);
-        let join = StepIdx::new(4);
+        let _join = StepIdx::new(4);
         list_in_slot(&mut run, &mut store, accumulator, vec![]);
 
         let result = together_branch(
             &mut run,
             &mut store,
-            0,
-            entry,
-            join,
+            1,
+            StepIdx::new(3),
+            StepIdx::new(4),
             accumulator,
             Some(output),
         );
@@ -375,11 +373,11 @@ mod tests {
         let result = together_branch(
             &mut run,
             &mut store,
-            1,
-            StepIdx::new(3),
-            StepIdx::new(4),
+            BranchIdx::new(0),
+            entry,
+            _join,
             accumulator,
-            None,
+            Some(output),
         );
         // Then it returns MissingOutputSlot
         match result {
