@@ -4,10 +4,14 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use super::*;
     use vb_core::value_store::ValueStore;
-    use vb_core::{ConstIdx, ExprOp, SlotIdx};
+    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
     use vb_core::value::Taint;
+    use crate::parser::ExprHelper;
+    use crate::{ExprError, ExprResult};
+    use crate::eval::{eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op};
+    use crate::lexer::{BinaryOp, UnaryOp};
+    use vb_core::limits::MAX_EXPRESSION_STACK;
 
     fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
         ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::StackOverflow {

@@ -1,13 +1,14 @@
 //! Bounded stack-based expression bytecode evaluator.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::value_store::ValueStore;
 use vb_core::{ConstValue, ExprOp, ExprProgram, SlotValue};
 
-use crate::lexer::{BinaryOp, UnaryOp};
-use crate::parser::ExprHelper;
-use crate::{ExprError, ExprResult};
+pub use crate::lexer::{BinaryOp, UnaryOp};
+pub use crate::parser::ExprHelper;
+pub use crate::{ExprError, ExprResult};
+pub use vb_core::limits::MAX_EXPRESSION_STACK;
 
 /// Evaluates a compiled expression program against slot and constant pools.
 ///
