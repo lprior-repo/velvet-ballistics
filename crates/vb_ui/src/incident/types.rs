@@ -652,4 +652,134 @@ mod tests {
     fn category_unknown() {
         assert_eq!(FailureCode::Unknown(String::from("?")).category(), "internal");
     }
+
+    // ---------------------------------------------------------------------------
+    // H. IncidentSeverity ordering via color channel dominance — 5 tests
+    //     Verifies the logical ordering Critical > Major > Warning > Info by
+    //     checking that higher-severity colors have stronger red channels and
+    //     lower-severity colors shift toward green/blue.
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn severity_color_critical_has_strongest_red() {
+        let [critical_r, ..] = IncidentSeverity::Critical.severity_color();
+        let [major_r, ..] = IncidentSeverity::Major.severity_color();
+        let [warning_r, ..] = IncidentSeverity::Warning.severity_color();
+        let [minor_r, ..] = IncidentSeverity::Minor.severity_color();
+        let [info_r, ..] = IncidentSeverity::Info.severity_color();
+        // All severity colors should have red >= 0, and Critical should dominate
+        assert!(critical_r >= major_r, "Critical red ({critical_r}) should be >= Major red ({major_r})");
+        assert!(major_r >= warning_r, "Major red ({major_r}) should be >= Warning red ({warning_r})");
+        assert!(warning_r > minor_r, "Warning red ({warning_r}) should be > Minor red ({minor_r})");
+        assert!(minor_r > info_r, "Minor red ({minor_r}) should be > Info red ({info_r})");
+    }
+
+    #[test]
+    fn severity_color_info_is_cyan_dominant() {
+        let [r, g, b, ..] = IncidentSeverity::Info.severity_color();
+        assert!(r < 0.1_f32, "Info should have near-zero red");
+        assert!(g > 0.9_f32, "Info should have strong green");
+        assert!(b > 0.9_f32, "Info should have strong blue");
+    }
+
+    #[test]
+    fn severity_color_minor_is_gray_neutral() {
+        let [r, g, b, ..] = IncidentSeverity::Minor.severity_color();
+        let diff_rg = (r - g).abs();
+        let diff_gb = (g - b).abs();
+        assert!(diff_rg < 0.01_f32, "Minor should have equal R and G");
+        assert!(diff_gb < 0.01_f32, "Minor should have equal G and B");
+    }
+
+    #[test]
+    fn severity_color_warning_is_yellow_range() {
+        let [r, g, b, ..] = IncidentSeverity::Warning.severity_color();
+        assert!(r > 0.9_f32, "Warning red should be strong");
+        assert!(g > 0.8_f32, "Warning green should be strong");
+        assert!(b < 0.1_f32, "Warning blue should be near zero");
+    }
+
+    #[test]
+    fn severity_color_major_is_orange_range() {
+        let [r, g, b, ..] = IncidentSeverity::Major.severity_color();
+        assert!(r > 0.9_f32, "Major red should be strong");
+        assert!(g > 0.3_f32 && g < 0.7_f32, "Major green should be moderate (orange)");
+        assert!(b < 0.1_f32, "Major blue should be near zero");
+    }
+
+    // ---------------------------------------------------------------------------
+    // I. FailureCode display formatting — boundary values — 3 tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn failure_code_action_failed_empty_string_label() {
+        assert_eq!(FailureCode::ActionFailed(String::new()).as_str(), "ActionFailed");
+    }
+
+    #[test]
+    fn failure_code_validation_error_empty_string_label() {
+        assert_eq!(FailureCode::ValidationError(String::new()).as_str(), "ValidationError");
+    }
+
+    #[test]
+    fn failure_code_unknown_empty_string_label() {
+        assert_eq!(FailureCode::Unknown(String::new()).as_str(), "InternalError");
+    }
+
+    // ---------------------------------------------------------------------------
+    // J. ReplaySafety behavioral default — only Safe is safe — 1 test
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn replay_safety_only_safe_variant_passes_is_safe() {
+        let all_variants = [ReplaySafety::Safe, ReplaySafety::UnsafeSideEffect, ReplaySafety::Unknown];
+        let safe_count = all_variants.iter().filter(|v| v.is_safe()).count();
+        assert_eq!(safe_count, 1, "exactly one variant should be safe");
+        assert!(ReplaySafety::Safe.is_safe(), "the Safe variant must be the one that is safe");
+    }
+
+    // ---------------------------------------------------------------------------
+    // K. IncidentRecord field access patterns — 2 tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn incident_record_all_fields_accessible_after_construction() {
+        let record = IncidentRecord {
+            run_id: 55_u64,
+            shard_id: 3_u32,
+            step: 12_u16,
+            failure_code: FailureCode::ActionTimeout,
+            severity: IncidentSeverity::Major,
+            replay_safety: ReplaySafety::Safe,
+            timestamp_us: 7_777_777_u64,
+            detail: String::from("field access test"),
+        };
+        assert_eq!(record.run_id, 55);
+        assert_eq!(record.shard_id, 3);
+        assert_eq!(record.step, 12);
+        assert_eq!(record.failure_code.as_str(), "ActionTimeout");
+        assert_eq!(record.severity, IncidentSeverity::Major);
+        assert!(record.replay_safety.is_safe());
+        assert_eq!(record.timestamp_us, 7_777_777);
+        assert_eq!(record.detail, "field access test");
+    }
+
+    #[test]
+    fn incident_record_failure_code_clone_preserves_category() {
+        let record = IncidentRecord {
+            run_id: 1_u64,
+            shard_id: 0_u32,
+            step: 0_u16,
+            failure_code: FailureCode::ActionFailed(String::from("net")),
+            severity: IncidentSeverity::Critical,
+            replay_safety: ReplaySafety::Unknown,
+            timestamp_us: 100_u64,
+            detail: String::from("clone test"),
+        };
+        let cloned_code = record.failure_code.clone();
+        assert_eq!(cloned_code.as_str(), "ActionFailed");
+        assert_eq!(cloned_code.category(), "action");
+        // Original still accessible
+        assert_eq!(record.failure_code.as_str(), "ActionFailed");
+    }
 }

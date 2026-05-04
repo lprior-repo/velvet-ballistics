@@ -500,4 +500,245 @@ mod tests {
         assert!(formatted.contains("Object(ObjectId(8472))"));
         assert!(formatted.contains("Null -> Object(ObjectId(8472))"));
     }
+
+    // -------------------------------------------------------------------------
+    // Additional tests for coverage
+    // -------------------------------------------------------------------------
+
+    /// SlotDiffPanel built from `from_event` against an empty current map
+    /// with `SlotValue::I64(0)` should record a Created diff.
+    #[test]
+    fn from_event_empty_slots_creates_zero_value() {
+        let event = make_slot_written_event(0, SlotValue::I64(0), 1);
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 1);
+        let Some(entry) = panel.entries().get(0) else {
+            return;
+        };
+        assert_eq!(entry.slot, SlotIdx::new(0));
+        assert_eq!(entry.diff, SlotDiff::Created(String::from("I64(0)")));
+    }
+
+    /// Multiple sequential `from_event` calls each produce independent panels;
+    /// applying them to a progressively-updated slot map simulates a replay.
+    #[test]
+    fn from_event_multiple_slot_writes_progressive() {
+        let mut current = HashMap::new();
+
+        // First write: slot 10 created with Bool(true)
+        let ev1 = make_slot_written_event(10, SlotValue::Bool(true), 100);
+        let panel1 = SlotDiffPanel::from_event(&ev1, &current);
+        assert!(panel1.has_changes());
+        assert_eq!(panel1.event_seq(), 100);
+        let Some(e1) = panel1.entries().get(0) else {
+            return;
+        };
+        assert_eq!(e1.slot, SlotIdx::new(10));
+        assert_eq!(e1.diff, SlotDiff::Created(String::from("Bool(true)")));
+
+        // Update the current state
+        current.insert(SlotIdx::new(10), SlotValue::Bool(true));
+
+        // Second write: slot 10 modified to Bool(false)
+        let ev2 = make_slot_written_event(10, SlotValue::Bool(false), 200);
+        let panel2 = SlotDiffPanel::from_event(&ev2, &current);
+        assert!(panel2.has_changes());
+        let Some(e2) = panel2.entries().get(0) else {
+            return;
+        };
+        assert_eq!(
+            e2.diff,
+            SlotDiff::Modified {
+                old: String::from("Bool(true)"),
+                new: String::from("Bool(false)"),
+            }
+        );
+
+        // Third write: slot 20 created
+        current.insert(SlotIdx::new(10), SlotValue::Bool(false));
+        let ev3 = make_slot_written_event(20, SlotValue::Null, 300);
+        let panel3 = SlotDiffPanel::from_event(&ev3, &current);
+        assert!(panel3.has_changes());
+        assert_eq!(panel3.entries().len(), 1);
+        let Some(e3) = panel3.entries().get(0) else {
+            return;
+        };
+        assert_eq!(e3.slot, SlotIdx::new(20));
+        assert_eq!(e3.diff, SlotDiff::Created(String::from("Null")));
+    }
+
+    /// When `diff_between` is given multiple slots, the returned entries
+    /// must contain exactly the slots that changed -- no duplicates, no extras.
+    /// This verifies slot index correctness and that ordering is deterministic
+    /// enough to find all expected slots.
+    #[test]
+    fn diff_between_slot_index_set_correctness() {
+        let before = slot_map(&[
+            (1, SlotValue::I64(10)),
+            (3, SlotValue::I64(30)),
+            (5, SlotValue::I64(50)),
+        ]);
+        let after = slot_map(&[
+            (1, SlotValue::I64(11)),
+            (3, SlotValue::I64(30)), // unchanged -- should NOT appear
+            (7, SlotValue::I64(70)),
+        ]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 3);
+
+        let slots: Vec<u16> = panel
+            .entries()
+            .iter()
+            .map(|e| e.slot.get())
+            .collect();
+
+        // Slot 1 modified, slot 5 deleted, slot 7 created
+        assert!(slots.contains(&1));
+        assert!(slots.contains(&5));
+        assert!(slots.contains(&7));
+        // Slot 3 did not change
+        assert!(!slots.contains(&3));
+    }
+
+    /// `diff_between` must not report a diff when both states have the same
+    /// value for the same slot, even when other slots differ.
+    #[test]
+    fn diff_between_same_value_no_diff_across_mixed_slots() {
+        let before = slot_map(&[
+            (2, SlotValue::Bool(false)),
+            (4, SlotValue::I64(999)),
+            (6, SlotValue::Null),
+        ]);
+        // Only slot 2 changes; slots 4 and 6 stay the same.
+        let after = slot_map(&[
+            (2, SlotValue::Bool(true)),
+            (4, SlotValue::I64(999)),
+            (6, SlotValue::Null),
+        ]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert_eq!(panel.entries().len(), 1);
+        let Some(entry) = panel.entries().get(0) else {
+            return;
+        };
+        assert_eq!(entry.slot, SlotIdx::new(2));
+        assert!(matches!(entry.diff, SlotDiff::Modified { .. }));
+    }
+
+    /// Using the maximum `SlotIdx` value (`u16::MAX`) should work correctly
+    /// in both `from_event` and `diff_between`.
+    #[test]
+    fn boundary_max_slot_index() {
+        let max_slot = u16::MAX;
+
+        // from_event with max slot index
+        let event = make_slot_written_event(max_slot, SlotValue::I64(42), 1);
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(panel.has_changes());
+        let Some(entry) = panel.entries().get(0) else {
+            return;
+        };
+        assert_eq!(entry.slot.get(), max_slot);
+
+        // diff_between with max slot index
+        let before = HashMap::new();
+        let after = slot_map(&[(max_slot, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(panel.has_changes());
+        let Some(entry) = panel.entries().get(0) else {
+            return;
+        };
+        assert_eq!(entry.slot.get(), max_slot);
+        assert_eq!(entry.diff, SlotDiff::Created(String::from("I64(42)")));
+    }
+
+    /// The `SlotDiff::TaintChanged` variant should format correctly and
+    /// participate in equality checks, enabling taint propagation tracking
+    /// at the diff-entry level.
+    #[test]
+    fn taint_changed_diff_entry_equality_and_formatting() {
+        let entry_a = DiffEntry {
+            slot: SlotIdx::new(3),
+            diff: SlotDiff::TaintChanged {
+                old: String::from("Clean"),
+                new: String::from("Secret"),
+            },
+        };
+        let entry_b = DiffEntry {
+            slot: SlotIdx::new(3),
+            diff: SlotDiff::TaintChanged {
+                old: String::from("Clean"),
+                new: String::from("Secret"),
+            },
+        };
+        assert_eq!(entry_a, entry_b);
+
+        let formatted = SlotDiffPanel::format_entry(&entry_a);
+        assert_eq!(formatted, "SlotIdx(3): taint Clean -> Secret");
+
+        // Verify inequality when new taint differs
+        let entry_c = DiffEntry {
+            slot: SlotIdx::new(3),
+            diff: SlotDiff::TaintChanged {
+                old: String::from("Clean"),
+                new: String::from("Tainted"),
+            },
+        };
+        assert_ne!(entry_a, entry_c);
+    }
+
+    /// A panel constructed manually with mixed `SlotDiff` variants
+    /// (Created, Modified, Deleted, TaintChanged) reports `has_changes`
+    /// and each entry formats without panic.
+    #[test]
+    fn mixed_diff_variants_panel_has_changes_and_formats() {
+        let entries = vec![
+            DiffEntry {
+                slot: SlotIdx::new(1),
+                diff: SlotDiff::Created(String::from("I64(7)")),
+            },
+            DiffEntry {
+                slot: SlotIdx::new(2),
+                diff: SlotDiff::Modified {
+                    old: String::from("Bool(true)"),
+                    new: String::from("Bool(false)"),
+                },
+            },
+            DiffEntry {
+                slot: SlotIdx::new(3),
+                diff: SlotDiff::Deleted(String::from("Null")),
+            },
+            DiffEntry {
+                slot: SlotIdx::new(4),
+                diff: SlotDiff::TaintChanged {
+                    old: String::from("Public"),
+                    new: String::from("Private"),
+                },
+            },
+        ];
+
+        let panel = SlotDiffPanel {
+            entries,
+            event_seq: 55,
+        };
+
+        assert!(panel.has_changes());
+        assert_eq!(panel.entries().len(), 4);
+        assert_eq!(panel.event_seq(), 55);
+
+        // Verify all entries format successfully
+        for entry in panel.entries() {
+            let formatted = SlotDiffPanel::format_entry(entry);
+            assert!(!formatted.is_empty());
+        }
+
+        let Some(first_entry) = panel.entries().get(0) else {
+            return;
+        };
+        let f0 = SlotDiffPanel::format_entry(first_entry);
+        assert!(f0.contains("<created>"));
+    }
 }

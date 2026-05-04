@@ -721,4 +721,146 @@ mod tests {
         assert_eq!(screen.incidents().first().unwrap().id, 1);
         assert_eq!(screen.incidents().get(1).unwrap().id, 2);
     }
+
+    // ---------------------------------------------------------------------------
+    // summary_text tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_summary_text_empty() {
+        let screen = IncidentScreen::new();
+        assert_eq!(screen.summary_text(), "0 incidents");
+    }
+
+    #[test]
+    fn test_summary_text_single_critical() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        assert_eq!(screen.summary_text(), "1 incidents: 1 Critical");
+    }
+
+    #[test]
+    fn test_summary_text_single_error() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        assert_eq!(screen.summary_text(), "1 incidents: 1 Error");
+    }
+
+    #[test]
+    fn test_summary_text_single_minor() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ValidationError("v".into()), "v");
+        assert_eq!(screen.summary_text(), "1 incidents: 1 Minor");
+    }
+
+    #[test]
+    fn test_summary_text_mixed_severities() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        screen.process_run_failure(2, None, FailureCode::ActionTimeout, "timeout");
+        screen.process_run_failure(3, None, FailureCode::ValidationError("v".into()), "v");
+        let text = screen.summary_text();
+        assert!(text.starts_with("3 incidents:"), "actual: {text}");
+        assert!(text.contains("1 Critical"), "actual: {text}");
+        assert!(text.contains("1 Error"), "actual: {text}");
+        assert!(text.contains("1 Minor"), "actual: {text}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // has_critical tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_has_critical_empty() {
+        let screen = IncidentScreen::new();
+        assert!(!screen.has_critical());
+    }
+
+    #[test]
+    fn test_has_critical_true() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        assert!(screen.has_critical());
+    }
+
+    #[test]
+    fn test_has_critical_false_when_only_major() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        assert!(!screen.has_critical());
+    }
+
+    #[test]
+    fn test_has_critical_mixed_with_critical() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.process_run_failure(2, None, FailureCode::TaintLeak, "leak");
+        screen.process_run_failure(3, None, FailureCode::BudgetExceeded, "budget");
+        assert!(screen.has_critical());
+    }
+
+    #[test]
+    fn test_has_critical_after_dismiss() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        assert!(screen.has_critical());
+        screen.dismiss(0);
+        assert!(!screen.has_critical());
+    }
+
+    // ---------------------------------------------------------------------------
+    // filter_by_severity tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_filter_by_severity_empty() {
+        let screen = IncidentScreen::new();
+        let result = screen.filter_by_severity(IncidentSeverity::Critical);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_filter_by_severity_single_match() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        let result = screen.filter_by_severity(IncidentSeverity::Critical);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].run_id, 1);
+    }
+
+    #[test]
+    fn test_filter_by_severity_no_match() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        let result = screen.filter_by_severity(IncidentSeverity::Critical);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_filter_by_severity_multiple_of_same() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak1");
+        screen.process_run_failure(2, None, FailureCode::StepPanicked, "panic");
+        screen.process_run_failure(3, None, FailureCode::ActionTimeout, "timeout");
+        let result = screen.filter_by_severity(IncidentSeverity::Critical);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_by_severity_major() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
+        screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "budget");
+        screen.process_run_failure(3, None, FailureCode::TaintLeak, "leak");
+        let result = screen.filter_by_severity(IncidentSeverity::Major);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_by_severity_minor() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ValidationError("v".into()), "v");
+        let result = screen.filter_by_severity(IncidentSeverity::Minor);
+        assert_eq!(result.len(), 1);
+    }
 }
