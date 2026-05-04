@@ -1035,7 +1035,7 @@ fn update_workflow_metrics(
 mod tests {
     use super::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
     use crate::engine::StepBudget;
-    use crate::ids::{ExprIdx, SlotIdx, StepIdx};
+    use crate::ids::{ActionId, ExprIdx, SlotIdx, StepIdx};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
     };

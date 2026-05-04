@@ -625,6 +625,7 @@ dependencies = [
  "makepad-widgets",
  "serde",
  "serde_json",
+ "smol_str",
 ]
 
 [[package]]

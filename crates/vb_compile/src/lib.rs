@@ -10101,4 +10101,310 @@ steps:
         }
     }
 
+    // =========================================================================
+    // BLACKHAT security regression tests
+    // =========================================================================
+
+    /// BLACKHAT: SlotCompiler slot_count overflow is caught.
+    ///
+    /// SEVERITY: MEDIUM (prevents slot index overflow)
+    /// DESCRIPTION: SlotCompiler::slot_count() converts the max_slot+1 to u16.
+    /// If max_slot is u16::MAX (65535), then max_slot+1 overflows to 0 in usize
+    /// but the checked_add prevents this and returns an error.
+    #[test]
+    fn blackhat_slot_compiler_overflow_caught() -> Result<(), String> {
+        let mut compiler = SlotCompiler::new();
+        // Record a slot at u16::MAX - 1 = 65534
+        compiler.record_slot(SlotIdx::new(u16::MAX - 1));
+        // slot_count should be 65535 (u16::MAX - 1 + 1 = 65535)
+        let count = compiler.slot_count().map_err(|e| e.to_string())?;
+        assert_eq!(count, u16::MAX, "blackhat: slot_count should be u16::MAX");
+
+        // Now record a slot at u16::MAX = 65535
+        compiler.record_slot(SlotIdx::new(u16::MAX));
+        // slot_count should overflow: 65535 + 1 = 65536 > u16::MAX
+        match compiler.slot_count() {
+            Err(_) => Ok(()), // Expected: overflow detected
+            Ok(count) => Err(format!(
+                "blackhat: expected overflow error, got {count}"
+            )),
+        }
+    }
+
+    /// BLACKHAT: lower_together accepts empty branch list.
+    ///
+    /// SEVERITY: INFORMATIONAL
+    /// DESCRIPTION: lower_together with zero branches should compile without error.
+    #[test]
+    fn blackhat_together_zero_branches_compiles() -> Result<(), String> {
+        let mut compiler = SlotCompiler::new();
+        let result = lower_together(
+            StepIdx::new(0),
+            vec![],
+            StepIdx::new(1),
+            &mut compiler,
+        );
+        assert!(
+            result.is_ok(),
+            "blackhat: together with 0 branches should compile"
+        );
+        Ok(())
+    }
+
+    /// BLACKHAT: compile rejects source exceeding byte limit.
+    ///
+    /// SEVERITY: HIGH (resource exhaustion prevention)
+    /// DESCRIPTION: The YamlLimits max_source_bytes prevents memory exhaustion
+    /// from huge YAML payloads.
+    #[test]
+    fn blackhat_source_too_large_rejected() -> Result<(), String> {
+        let limits = YamlLimits {
+            max_source_bytes: 10,
+            ..YamlLimits::default()
+        };
+        let compiler = YamlCompiler::new(limits);
+        let source = b"version: velvet-ballastics/v1\nname: test\n"; // 39 bytes
+        match compiler.compile(source) {
+            Err(errors) => {
+                let first = errors.first().ok_or("empty errors")?;
+                match first {
+                    CompileError::SourceTooLarge { actual, limit } => {
+                        if *actual > *limit {
+                            Ok(())
+                        } else {
+                            Err(format!("expected actual > limit, got {actual} > {limit}"))
+                        }
+                    }
+                    _ => Err(format!("expected SourceTooLarge, got {first:?}")),
+                }
+            }
+            Ok(_) => Err("compile should reject oversized source".into()),
+        }
+    }
+
+    /// BLACKHAT: compile rejects duplicate YAML mapping keys.
+    ///
+    /// SEVERITY: HIGH (prevents key-confusion attacks)
+    /// DESCRIPTION: Duplicate YAML mapping keys could allow an attacker to
+    /// override security-critical fields. The compiler explicitly rejects them.
+    #[test]
+    fn blackhat_duplicate_yaml_keys_rejected() -> Result<(), String> {
+        let source = b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        match YamlCompiler::default().compile(source) {
+            Err(errors) => {
+                let first = errors.first().ok_or("empty errors")?;
+                match first {
+                    CompileError::DuplicateKey { key, .. } => {
+                        assert_eq!(key.as_ref(), "version", "blackhat: duplicate key should be 'version'");
+                        Ok(())
+                    }
+                    _ => Err(format!("expected DuplicateKey, got {first:?}")),
+                }
+            }
+            Ok(_) => Err("compile should reject duplicate keys".into()),
+        }
+    }
+
+    /// BLACKHAT: compile rejects wrong version string (velvet-ballistics is invalid).
+    ///
+    /// SEVERITY: HIGH (prevents version-confusion attacks)
+    /// DESCRIPTION: Only "velvet-ballastics/v1" is accepted per CLAUDE.md canonical naming.
+    #[test]
+    fn blackhat_wrong_version_rejected() -> Result<(), String> {
+        let source = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        match YamlCompiler::default().compile(source) {
+            Err(errors) => {
+                let first = errors.first().ok_or("empty errors")?;
+                match first {
+                    CompileError::InvalidVersion { actual } => {
+                        assert_eq!(actual.as_ref(), "velvet-ballistics/v1");
+                        Ok(())
+                    }
+                    _ => Err(format!("expected InvalidVersion, got {first:?}")),
+                }
+            }
+            Ok(_) => Err("compile should reject wrong version".into()),
+        }
+    }
+
+    /// BLACKHAT: lower_ask checks for step index overflow.
+    ///
+    /// SEVERITY: MEDIUM (prevents step index wraparound)
+    /// DESCRIPTION: lower_ask uses id.checked_add(1) to compute the resume step
+    /// index. If the step ID is u16::MAX, the checked_add returns None and
+    /// the function returns an error.
+    #[test]
+    fn blackhat_ask_step_overflow_rejected() -> Result<(), String> {
+        let mut compiler = SlotCompiler::new();
+        let result = lower_ask(
+            StepIdx::new(u16::MAX), // step ID at max
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+            None,
+            &mut compiler,
+        );
+        match result {
+            Err(CompileError::PrimitiveLoweringLimitExceeded { primitive, .. }) => {
+                assert_eq!(primitive, "ask");
+                Ok(())
+            }
+            Ok(_) => Err("blackhat: ask at u16::MAX step should fail".into()),
+            Err(other) => Err(format!("unexpected error: {other:?}")),
+        }
+    }
+
+    /// BLACKHAT: validate_branch_route rejects empty branches without otherwise.
+    ///
+    /// SEVERITY: MEDIUM (prevents degenerate branch tables)
+    /// DESCRIPTION: A choose with no branches and no otherwise target would be
+    /// a dead end. validate_branch_route rejects this.
+    #[test]
+    fn blackhat_empty_branch_without_otherwise_rejected() -> Result<(), String> {
+        let mut compiler = SlotCompiler::new();
+        let result = lower_choose(
+            StepIdx::new(0),
+            vec![], // empty branches
+            None,   // no otherwise
+            &mut compiler,
+        );
+        match result {
+            Err(CompileError::Workflow(vb_core::WorkflowError::EmptyBranchTable)) => Ok(()),
+            Ok(_) => Err("blackhat: empty branch table should be rejected".into()),
+            Err(other) => Err(format!("unexpected error: {other:?}")),
+        }
+    }
+
+    /// BLACKHAT: SlotCompiler push_constant overflow NOT detected beyond u16::MAX.
+    ///
+    /// SEVERITY: MEDIUM — constant pool can exceed u16::MAX entries.
+    /// DESCRIPTION: SlotCompiler::push_constant does NOT enforce a u16 cap on
+    /// the constant pool size. The pool can grow beyond 65535 entries, meaning
+    /// the u16 index used to reference constants may silently wrap or truncate.
+    /// This test documents the gap.
+    #[test]
+    fn blackhat_constant_pool_overflow_not_detected() {
+        let mut compiler = SlotCompiler::new();
+        // Push 65536 constants — the 65536th should ideally fail but doesn't.
+        for i in 0..=u16::MAX {
+            let _ = compiler.push_constant(ConstValue::I64(i.into()));
+        }
+        // BUG: pool has 65536 entries but u16 index can only address 65535.
+        // Documenting that the overflow is NOT caught at compile time.
+    }
+
+    /// BLACKHAT: check_idempotency_gates rejects unsafe side-effecting actions.
+    ///
+    /// SEVERITY: HIGH (prevents unsafe retry of side-effecting actions)
+    /// DESCRIPTION: An action with SideEffect::Writes and RetrySafety::Unsafe
+    /// must be rejected by the idempotency gate.
+    #[test]
+    fn blackhat_unsafe_side_effecting_action_rejected() -> Result<(), String> {
+        use vb_core::{ActionContract, Idempotency, RetrySafety, SideEffect};
+        let contracts = vec![ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::Unsafe,
+            idempotency: Idempotency::DeterministicPure,
+            required_capabilities: Box::new([]),
+        }];
+        match super::check_idempotency_gates(&contracts) {
+            Err(errors) => {
+                let first = errors.first().ok_or("empty errors")?;
+                match first {
+                    CompileError::IdempotencyViolation { action, .. } => {
+                        assert_eq!(*action, ActionId::new(0));
+                        Ok(())
+                    }
+                    _ => Err(format!("expected IdempotencyViolation, got {first:?}")),
+                }
+            }
+            Ok(_) => Err("blackhat: unsafe side-effecting action should be rejected".into()),
+        }
+    }
+
+    /// BLACKHAT: check_idempotency_gates rejects AtLeastOnceExternal side effects.
+    ///
+    /// SEVERITY: HIGH (prevents at-least-once delivery without idempotent retry)
+    /// DESCRIPTION: A side-effecting action with Idempotency::AtLeastOnceExternal
+    /// is rejected because it cannot guarantee exactly-once semantics.
+    #[test]
+    fn blackhat_at_least_once_external_side_effect_rejected() -> Result<(), String> {
+        use vb_core::{ActionContract, Idempotency, RetrySafety, SideEffect};
+        let contracts = vec![ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::Safe,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            required_capabilities: Box::new([]),
+        }];
+        match super::check_idempotency_gates(&contracts) {
+            Err(errors) => {
+                let first = errors.first().ok_or("empty errors")?;
+                match first {
+                    CompileError::IdempotencyViolation { action, .. } => {
+                        assert_eq!(*action, ActionId::new(1));
+                        Ok(())
+                    }
+                    _ => Err(format!("expected IdempotencyViolation, got {first:?}")),
+                }
+            }
+            Ok(_) => Err("blackhat: AtLeastOnceExternal side-effecting should be rejected".into()),
+        }
+    }
+
+    /// BLACKHAT: check_idempotency_gates accepts pure actions regardless of settings.
+    ///
+    /// SEVERITY: INFORMATIONAL (correctness verification)
+    /// DESCRIPTION: Actions with SideEffect::None always pass the idempotency gate.
+    #[test]
+    fn blackhat_pure_action_always_passes_idempotency() -> Result<(), String> {
+        use vb_core::{ActionContract, Idempotency, RetrySafety, SideEffect};
+        let contracts = vec![ActionContract {
+            id: ActionId::new(2),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Unsafe,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            required_capabilities: Box::new([]),
+        }];
+        super::check_idempotency_gates(&contracts).map_err(|e| e.to_string())
+    }
+
+    /// BLACKHAT: lower_repeat checks step index overflow for attempt_slot.
+    ///
+    /// SEVERITY: MEDIUM (prevents slot index wraparound)
+    /// DESCRIPTION: lower_repeat computes attempt_slot as step_id + 1 using
+    /// checked arithmetic. If step_id is u16::MAX, this should fail.
+    #[test]
+    fn blackhat_repeat_step_overflow_rejected() -> Result<(), String> {
+        let mut compiler = SlotCompiler::new();
+        let result = lower_repeat(
+            StepIdx::new(u16::MAX),
+            3,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            &mut compiler,
+        );
+        match result {
+            Err(CompileError::StepIndexOutOfRange { .. }) => Ok(()),
+            Err(CompileError::SlotIndexOutOfRange { .. }) => Ok(()),
+            Ok(_) => Err("blackhat: repeat at u16::MAX step should fail".into()),
+            Err(other) => Err(format!("unexpected error: {other:?}")),
+        }
+    }
+
 }
