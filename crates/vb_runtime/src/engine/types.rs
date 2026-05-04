@@ -624,4 +624,24 @@ mod tests {
         assert_eq!(collector.len(), 0, "zero capacity should hold nothing");
         assert_eq!(collector.dropped(), 10_000, "all events should be dropped");
     }
+
+    // =====================================================================
+    // RuntimeEngineError runtime codes
+    // =====================================================================
+
+    #[test]
+    fn branch_limit_exceeded_has_runtime_code() {
+        let error = RuntimeEngineError::BranchLimitExceeded {
+            max: 65535,
+            requested: 70000,
+        };
+        assert_eq!(
+            error.runtime_code(),
+            Some(RuntimeEngineError::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE)
+        );
+        assert_eq!(
+            RuntimeEngineError::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE,
+            "BRANCH_LIMIT_EXCEEDED"
+        );
+    }
 }

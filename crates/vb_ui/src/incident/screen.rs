@@ -334,6 +334,132 @@ impl StateDiffPanel {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Repair suggestion display (Phase 5B: clickable suggestion items)
+// ---------------------------------------------------------------------------
+
+/// A single clickable repair suggestion item for display in the incident
+/// detail panel. Each item wraps a [`RepairSuggestion`] with display-oriented
+/// metadata (badge color, action label, short description) suitable for
+/// rendering as an interactive chip or list entry.
+#[derive(Debug, Clone)]
+pub struct SuggestionItem {
+    /// The underlying repair suggestion.
+    pub suggestion: RepairSuggestion,
+    /// Short human-readable action label derived from [`FailureKind`].
+    pub action_label: String,
+    /// Badge color for the suggestion chip.
+    pub badge_color: &'static str,
+    /// Summary text shown in the clickable item.
+    pub summary: String,
+}
+
+impl SuggestionItem {
+    /// Return the display label for this suggestion's repair kind.
+    pub fn kind_label(&self) -> &'static str {
+        self.suggestion.kind.as_str()
+    }
+
+    /// Return the confidence percentage as a display string (e.g. "90%").
+    pub fn confidence_display(&self) -> String {
+        let pct = (self.suggestion.confidence * 100.0_f32).round();
+        format!("{}%", pct.clamp(0.0_f32, 100.0_f32))
+    }
+
+    /// Return true if this suggestion has high confidence.
+    pub fn is_high_confidence(&self) -> bool {
+        matches!(self.suggestion.confidence_level, super::repair::RepairConfidence::High)
+    }
+}
+
+/// Generate a short, actionable repair description for a [`FailureKind`].
+/// Returns the user-facing suggestion text matching the Phase 5B contract.
+pub fn suggest_repairs_for_failure_kind(kind: &FailureKind) -> &'static str {
+    match kind {
+        FailureKind::ActionTimeout => "Increase timeout or check downstream service",
+        FailureKind::ActionFailed => "Investigate action failure and retry if replay-safe",
+        FailureKind::RunFailed => "Review run failure and check system state",
+        FailureKind::RetryExhausted => "Check external service availability",
+        FailureKind::TaintViolation => "Add sanitization step before Finish",
+        FailureKind::InternalError => "Contact support for internal error investigation",
+    }
+}
+
+/// Build clickable [`SuggestionItem`] entries for a given [`FailureKind`],
+/// combining the failure-kind suggestion with any additional suggestions
+/// from the underlying [`RepairSuggestion`] list.
+pub fn build_suggestion_items(
+    kind: &FailureKind,
+    repair_suggestions: Vec<RepairSuggestion>,
+) -> Vec<SuggestionItem> {
+    let kind_summary = suggest_repairs_for_failure_kind(kind);
+    let badge_color = failure_kind_color(kind);
+
+    let mut items = Vec::new();
+
+    // Primary suggestion derived from FailureKind
+    if let Some(primary) = repair_suggestions.first() {
+        items.push(SuggestionItem {
+            suggestion: primary.clone(),
+            action_label: String::from(kind.label()),
+            badge_color,
+            summary: String::from(kind_summary),
+        });
+    }
+
+    // Additional suggestions as secondary items
+    for suggestion in repair_suggestions.iter().skip(1) {
+        items.push(SuggestionItem {
+            suggestion: suggestion.clone(),
+            action_label: String::from(kind.label()),
+            badge_color: NEON_TEAL,
+            summary: suggestion.description.clone(),
+        });
+    }
+
+    items
+}
+
+/// Build suggestion items for a [`FailureCode`] by mapping it to the
+/// corresponding [`FailureKind`] and generating repair suggestions.
+pub fn suggestion_items_for_failure_code(
+    failure_code: &super::types::FailureCode,
+) -> Vec<SuggestionItem> {
+    let kind = match failure_code {
+        super::types::FailureCode::ActionTimeout => FailureKind::ActionTimeout,
+        super::types::FailureCode::ActionFailed(_) => FailureKind::ActionFailed,
+        super::types::FailureCode::BudgetExceeded => FailureKind::RunFailed,
+        super::types::FailureCode::StepPanicked => FailureKind::InternalError,
+        super::types::FailureCode::ValidationError(_) => FailureKind::InternalError,
+        super::types::FailureCode::TaintLeak => FailureKind::TaintViolation,
+        super::types::FailureCode::ReplayDivergence => FailureKind::RunFailed,
+        super::types::FailureCode::Unknown(_) => FailureKind::InternalError,
+    };
+    let dummy_incident = super::types::Incident {
+        id: 0,
+        incident_type: super::types::IncidentType::ActionFailure,
+        severity: super::types::IncidentSeverity::Info,
+        failure_code: failure_code.clone(),
+        run_id: 0,
+        workflow_name: String::new(),
+        step_id: None,
+        step_name: None,
+        error_message: String::new(),
+        replay_safe: true,
+        side_effect_certainty: super::types::SideEffectCertainty::None,
+        timestamp: std::time::Instant::now(),
+        context: super::types::IncidentContext {
+            slot_values_before: Vec::new(),
+            taint_changes: Vec::new(),
+            action_attempts: 0,
+            last_action_idempotency_key: None,
+        },
+        timeline: Vec::new(),
+    };
+    let repairs = suggest_repairs(&dummy_incident);
+    build_suggestion_items(&kind, repairs)
+}
+
 /// Screen orchestrator that wraps an [`IncidentConsole`] and provides
 /// high-level operations for processing failures and querying incident data.
 pub struct IncidentScreen {
@@ -563,6 +689,24 @@ impl IncidentScreen {
 
     /// Return repair suggestions for the currently selected incident.
     pub fn selected_suggestions(&self) -> Vec<RepairSuggestion> { self.console.selected_suggestions() }
+
+    /// Return clickable [`SuggestionItem`] entries for the currently selected
+    /// incident. Returns an empty vec if no incident is selected.
+    pub fn selected_suggestion_items(&self) -> Vec<SuggestionItem> {
+        match self.console.selected() {
+            Some(incident) => suggestion_items_for_failure_code(&incident.failure_code),
+            None => Vec::new(),
+        }
+    }
+
+    /// Return clickable [`SuggestionItem`] entries for the incident at the
+    /// given index. Returns an empty vec if the index is out of bounds.
+    pub fn suggestion_items(&self, incident_index: usize) -> Vec<SuggestionItem> {
+        match self.console.legacy_incidents().get(incident_index) {
+            Some(incident) => suggestion_items_for_failure_code(&incident.failure_code),
+            None => Vec::new(),
+        }
+    }
 
     /// Return a human-readable summary of all incidents, e.g.
     /// "3 incidents: 1 Critical, 1 Error, 1 Warning".
@@ -2817,5 +2961,257 @@ mod tests {
         };
         assert!(panel.has_taint_changes());
         assert!(!panel.has_value_changes(), "values are same but taint changed");
+    }
+
+    // =========================================================================
+    // suggest_repairs_for_failure_kind tests
+    // =========================================================================
+
+    #[test]
+    fn test_suggest_repairs_for_failure_kind_action_timeout() {
+        assert_eq!(
+            suggest_repairs_for_failure_kind(&FailureKind::ActionTimeout),
+            "Increase timeout or check downstream service",
+        );
+    }
+
+    #[test]
+    fn test_suggest_repairs_for_failure_kind_retry_exhausted() {
+        assert_eq!(
+            suggest_repairs_for_failure_kind(&FailureKind::RetryExhausted),
+            "Check external service availability",
+        );
+    }
+
+    #[test]
+    fn test_suggest_repairs_for_failure_kind_taint_violation() {
+        assert_eq!(
+            suggest_repairs_for_failure_kind(&FailureKind::TaintViolation),
+            "Add sanitization step before Finish",
+        );
+    }
+
+    #[test]
+    fn test_suggest_repairs_for_failure_kind_all_variants_non_empty() {
+        let variants = [
+            FailureKind::ActionTimeout,
+            FailureKind::ActionFailed,
+            FailureKind::RunFailed,
+            FailureKind::RetryExhausted,
+            FailureKind::TaintViolation,
+            FailureKind::InternalError,
+        ];
+        for kind in &variants {
+            let suggestion = suggest_repairs_for_failure_kind(kind);
+            assert!(!suggestion.is_empty(), "suggestion must be non-empty for {:?}", kind);
+        }
+    }
+
+    // =========================================================================
+    // SuggestionItem tests
+    // =========================================================================
+
+    #[test]
+    fn test_suggestion_item_kind_label() {
+        let item = SuggestionItem {
+            suggestion: super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::IncreaseTimeout,
+                description: String::from("test"),
+                action: super::super::repair::RepairAction::IncreaseTimeout,
+                confidence: 0.9,
+                confidence_level: super::super::repair::RepairConfidence::High,
+                rationale: String::from("test"),
+            },
+            action_label: String::from("ACTION_TIMEOUT"),
+            badge_color: NEON_ORANGE,
+            summary: String::from("Increase timeout or check downstream service"),
+        };
+        assert_eq!(item.kind_label(), "IncreaseTimeout");
+    }
+
+    #[test]
+    fn test_suggestion_item_confidence_display() {
+        let item = SuggestionItem {
+            suggestion: super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::FixSecretLeak,
+                description: String::from("test"),
+                action: super::super::repair::RepairAction::FixSecretLeak,
+                confidence: 0.85,
+                confidence_level: super::super::repair::RepairConfidence::High,
+                rationale: String::from("test"),
+            },
+            action_label: String::from("TAINT_VIOLATION"),
+            badge_color: NEON_MAGENTA,
+            summary: String::from("Add sanitization step before Finish"),
+        };
+        assert_eq!(item.confidence_display(), "85%");
+    }
+
+    #[test]
+    fn test_suggestion_item_is_high_confidence() {
+        let item = SuggestionItem {
+            suggestion: super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::FixSecretLeak,
+                description: String::from("test"),
+                action: super::super::repair::RepairAction::FixSecretLeak,
+                confidence: 0.9,
+                confidence_level: super::super::repair::RepairConfidence::High,
+                rationale: String::from("test"),
+            },
+            action_label: String::from("TAINT_VIOLATION"),
+            badge_color: NEON_MAGENTA,
+            summary: String::from("test"),
+        };
+        assert!(item.is_high_confidence());
+    }
+
+    #[test]
+    fn test_suggestion_item_is_not_high_confidence_for_low() {
+        let item = SuggestionItem {
+            suggestion: super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::PinIdempotency,
+                description: String::from("test"),
+                action: super::super::repair::RepairAction::ManualIntervention,
+                confidence: 0.3,
+                confidence_level: super::super::repair::RepairConfidence::Low,
+                rationale: String::from("test"),
+            },
+            action_label: String::from("INTERNAL_ERROR"),
+            badge_color: TEXT_DIM,
+            summary: String::from("test"),
+        };
+        assert!(!item.is_high_confidence());
+    }
+
+    // =========================================================================
+    // build_suggestion_items tests
+    // =========================================================================
+
+    #[test]
+    fn test_build_suggestion_items_empty_suggestions() {
+        let items = build_suggestion_items(&FailureKind::ActionTimeout, Vec::new());
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn test_build_suggestion_items_primary_uses_kind_summary() {
+        let suggestions = vec![super::super::repair::RepairSuggestion {
+            kind: super::super::repair::RepairKind::IncreaseTimeout,
+            description: String::from("test"),
+            action: super::super::repair::RepairAction::IncreaseTimeout,
+            confidence: 0.9,
+            confidence_level: super::super::repair::RepairConfidence::High,
+            rationale: String::from("test"),
+        }];
+        let items = build_suggestion_items(&FailureKind::ActionTimeout, suggestions);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].summary, "Increase timeout or check downstream service");
+        assert_eq!(items[0].badge_color, NEON_ORANGE);
+    }
+
+    #[test]
+    fn test_build_suggestion_items_secondary_uses_teal() {
+        let suggestions = vec![
+            super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::IncreaseTimeout,
+                description: String::from("primary"),
+                action: super::super::repair::RepairAction::IncreaseTimeout,
+                confidence: 0.9,
+                confidence_level: super::super::repair::RepairConfidence::High,
+                rationale: String::from("test"),
+            },
+            super::super::repair::RepairSuggestion {
+                kind: super::super::repair::RepairKind::AddRetryBackoff,
+                description: String::from("secondary desc"),
+                action: super::super::repair::RepairAction::AddRetryBackoff,
+                confidence: 0.7,
+                confidence_level: super::super::repair::RepairConfidence::Medium,
+                rationale: String::from("test"),
+            },
+        ];
+        let items = build_suggestion_items(&FailureKind::ActionTimeout, suggestions);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].badge_color, NEON_TEAL);
+        assert_eq!(items[1].summary, "secondary desc");
+    }
+
+    // =========================================================================
+    // suggestion_items_for_failure_code tests
+    // =========================================================================
+
+    #[test]
+    fn test_suggestion_items_for_action_timeout() {
+        let items = suggestion_items_for_failure_code(&FailureCode::ActionTimeout);
+        assert!(!items.is_empty());
+        assert!(items[0].summary.contains("Increase timeout"));
+    }
+
+    #[test]
+    fn test_suggestion_items_for_taint_leak() {
+        let items = suggestion_items_for_failure_code(&FailureCode::TaintLeak);
+        assert!(!items.is_empty());
+        assert!(items[0].summary.contains("sanitization"));
+    }
+
+    #[test]
+    fn test_suggestion_items_for_budget_exceeded() {
+        let items = suggestion_items_for_failure_code(&FailureCode::BudgetExceeded);
+        assert!(!items.is_empty());
+    }
+
+    #[test]
+    fn test_suggestion_items_for_all_failure_codes() {
+        let codes = [
+            FailureCode::ActionTimeout,
+            FailureCode::ActionFailed("err".into()),
+            FailureCode::BudgetExceeded,
+            FailureCode::StepPanicked,
+            FailureCode::ValidationError("v".into()),
+            FailureCode::TaintLeak,
+            FailureCode::ReplayDivergence,
+            FailureCode::Unknown("x".into()),
+        ];
+        for code in &codes {
+            let items = suggestion_items_for_failure_code(code);
+            assert!(!items.is_empty(), "must produce items for {:?}", code);
+        }
+    }
+
+    // =========================================================================
+    // IncidentScreen suggestion_items / selected_suggestion_items tests
+    // =========================================================================
+
+    #[test]
+    fn test_selected_suggestion_items_empty_when_no_selection() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        let items = screen.selected_suggestion_items();
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn test_selected_suggestion_items_returns_items_after_select() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
+        screen.select_incident(0);
+        let items = screen.selected_suggestion_items();
+        assert!(!items.is_empty());
+        assert!(items[0].summary.contains("Increase timeout"));
+    }
+
+    #[test]
+    fn test_suggestion_items_by_index() {
+        let mut screen = IncidentScreen::new();
+        screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
+        let items = screen.suggestion_items(0);
+        assert!(!items.is_empty());
+        assert!(items[0].summary.contains("sanitization"));
+    }
+
+    #[test]
+    fn test_suggestion_items_by_index_out_of_bounds() {
+        let screen = IncidentScreen::new();
+        let items = screen.suggestion_items(0);
+        assert!(items.is_empty());
     }
 }

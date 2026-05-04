@@ -970,6 +970,22 @@ mod tests {
     }
 
     // ---------------------------------------------------------------------------
+    // RepairAction::as_str
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_repair_action_as_str_all_variants() {
+        assert_eq!(RepairAction::IncreaseTimeout.as_str(), "IncreaseTimeout");
+        assert_eq!(RepairAction::ReducePayload.as_str(), "ReducePayload");
+        assert_eq!(RepairAction::AddRetryBackoff.as_str(), "AddRetryBackoff");
+        assert_eq!(RepairAction::PinIdempotency.as_str(), "PinIdempotency");
+        assert_eq!(RepairAction::FixSecretLeak.as_str(), "FixSecretLeak");
+        assert_eq!(RepairAction::AdjustBudget.as_str(), "AdjustBudget");
+        assert_eq!(RepairAction::RestartRun.as_str(), "RestartRun");
+        assert_eq!(RepairAction::ManualIntervention.as_str(), "ManualIntervention");
+    }
+
+    // ---------------------------------------------------------------------------
     // RepairAction equality checks (all variants distinct)
     // ---------------------------------------------------------------------------
 

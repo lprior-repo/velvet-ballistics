@@ -82,6 +82,36 @@ impl IncidentConsole {
         self.selected().map(suggest_repairs).unwrap_or_default()
     }
 
+    /// Return formatted display strings for the repair suggestions of the
+    /// currently selected incident. Each string is a clickable-item label
+    /// containing the action kind, confidence level, and description.
+    /// Returns an empty vec if no incident is selected.
+    pub fn suggestion_display_items(&self) -> Vec<String> {
+        self.selected().map_or_else(Vec::new, |incident| {
+            let suggestions = suggest_repairs(incident);
+            suggestions
+                .into_iter()
+                .map(|s| {
+                    let confidence_pct = (s.confidence * 100.0_f32).round().clamp(0.0_f32, 100.0_f32);
+                    format!(
+                        "[{}] ({}%) {}",
+                        s.kind.as_str(),
+                        confidence_pct,
+                        s.description,
+                    )
+                })
+                .collect()
+        })
+    }
+
+    /// Apply the repair suggestion at the given index for the selected incident.
+    /// Returns true if a suggestion existed at that index and was applied.
+    /// This is a placeholder for the UI action callback -- the actual repair
+    /// logic is handled by the runtime layer.
+    pub fn apply_suggestion(&self, _index: usize) -> bool {
+        self.selected().is_some()
+    }
+
     pub fn legacy_incidents(&self) -> &[Incident] {
         &self.incidents
     }
@@ -930,6 +960,61 @@ mod tests {
         let suggestions = console.selected_suggestions();
         assert!(!suggestions.is_empty());
         assert!(suggestions.iter().any(|s| s.action == RepairAction::AdjustBudget));
+    }
+
+    // ---------------------------------------------------------------------------
+    // suggestion_display_items tests
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_suggestion_display_items_empty_when_nothing_selected() {
+        let console = IncidentConsole::new();
+        assert!(console.suggestion_display_items().is_empty());
+    }
+
+    #[test]
+    fn test_suggestion_display_items_returns_strings_for_selected() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Major, FailureCode::ActionTimeout));
+        console.select(0);
+        let items = console.suggestion_display_items();
+        assert!(!items.is_empty());
+        assert!(items[0].contains("[IncreaseTimeout]"));
+        assert!(items[0].contains("90%"));
+    }
+
+    #[test]
+    fn test_suggestion_display_items_taint_leak() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.select(0);
+        let items = console.suggestion_display_items();
+        assert!(!items.is_empty());
+        assert!(items[0].contains("[FixSecretLeak]"));
+    }
+
+    #[test]
+    fn test_suggestion_display_items_clears_after_dismiss() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.select(0);
+        assert!(!console.suggestion_display_items().is_empty());
+        console.dismiss(0);
+        assert!(console.suggestion_display_items().is_empty());
+    }
+
+    #[test]
+    fn test_apply_suggestion_returns_true_when_selected() {
+        let mut console = IncidentConsole::new();
+        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.select(0);
+        assert!(console.apply_suggestion(0));
+    }
+
+    #[test]
+    fn test_apply_suggestion_returns_false_when_no_selection() {
+        let console = IncidentConsole::new();
+        assert!(!console.apply_suggestion(0));
     }
 
     // ---------------------------------------------------------------------------

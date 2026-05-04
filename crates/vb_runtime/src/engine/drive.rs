@@ -153,7 +153,7 @@ mod tests {
     use vb_core::value_store::ValueStore;
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotBranch, WorkflowParts};
     use crate::engine::drive::{drive_deterministic_full, drive_with_actions};
-    use crate::engine::types::{EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal};
+    use crate::engine::types::{EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal};
     use crate::primitives::collect::CollectStates;
 
     fn cn(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
@@ -596,5 +596,158 @@ mod tests {
             other => return Err(format!("expected Finished(I64(42)), got {other:?}")),
         }
         Ok(())
+    }
+
+    // =====================================================================
+    // BranchLimitExceeded error variant tests
+    // =====================================================================
+
+    /// Verify that BranchLimitExceeded error carries the correct max and
+    /// requested values. The error is a defense-in-depth guard in
+    /// compute_max_parallel_in_flight: workflow validation rejects fanout > 64
+    /// at construction time, so the u16::MAX branch limit cannot be reached
+    /// through the public API. We test the error variant directly.
+    #[test]
+    fn branch_limit_exceeded_fields_are_correct() {
+        let max_val = usize::from(u16::MAX);
+        let requested = usize::from(u16::MAX).saturating_add(1);
+        let error = RuntimeEngineError::BranchLimitExceeded {
+            max: max_val,
+            requested,
+        };
+        match error {
+            RuntimeEngineError::BranchLimitExceeded {
+                max: got_max,
+                requested: got_req,
+            } => {
+                assert_eq!(got_max, max_val, "max should be u16::MAX as usize");
+                assert_eq!(got_req, requested, "requested should be u16::MAX + 1");
+            }
+            other => {
+                let msg = format!("expected BranchLimitExceeded, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    /// Verify that BranchLimitExceeded error display message contains both the
+    /// max and requested count.
+    #[test]
+    fn branch_limit_exceeded_display_message() {
+        let max_val = usize::from(u16::MAX);
+        let requested = usize::from(u16::MAX).saturating_add(1);
+        let error = RuntimeEngineError::BranchLimitExceeded {
+            max: max_val,
+            requested,
+        };
+        let msg = format!("{error}");
+        assert!(
+            msg.contains(&max_val.to_string()),
+            "display should contain max value: '{msg}'"
+        );
+        assert!(
+            msg.contains(&requested.to_string()),
+            "display should contain requested value: '{msg}'"
+        );
+    }
+
+    /// Verify that BranchLimitExceeded returns the correct runtime code
+    /// from runtime_code().
+    #[test]
+    fn branch_limit_exceeded_runtime_code_is_set() {
+        let error = RuntimeEngineError::BranchLimitExceeded {
+            max: usize::from(u16::MAX),
+            requested: usize::from(u16::MAX).saturating_add(1),
+        };
+        match error.runtime_code() {
+            Some(code) => assert_eq!(
+                code,
+                RuntimeEngineError::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE,
+                "BranchLimitExceeded should return its dedicated runtime code"
+            ),
+            None => {
+                let msg = "BranchLimitExceeded should have a runtime code";
+                panic!("{msg}");
+            }
+        }
+    }
+
+    /// Verify that compute_max_parallel_in_flight returns the correct u16
+    /// branch count for a valid TogetherStart workflow with 2 branches.
+    /// This confirms the function works correctly for the happy path
+    /// (BranchLimitExceeded is the error path for > u16::MAX branches).
+    #[test]
+    fn compute_max_parallel_returns_branch_count_for_valid_workflow() -> Result<(), String> {
+        use crate::engine::drive::compute_max_parallel_in_flight;
+        let wf = mkwf(
+            vec![tog(0, Box::from([1u16, 2]), 3), fin(1, 1), fin(2, 1), fin(3, 1)],
+            2,
+        )?;
+        let result = compute_max_parallel_in_flight(&wf).map_err(|e| format!("{e}"))?;
+        assert_eq!(result, 2, "max parallel should equal the TogetherStart branch count");
+        Ok(())
+    }
+
+    /// Verify that compute_max_parallel_in_flight returns BranchLimitExceeded
+    /// when a TogetherStart node has more than u16::MAX branches.
+    ///
+    /// Workflow validation limits fanout to 64, so this path cannot be reached
+    /// through the public API. We construct the workflow via
+    /// `from_parts_unchecked` to bypass validation and exercise the
+    /// defense-in-depth guard in compute_max_parallel_in_flight.
+    #[test]
+    fn compute_max_parallel_rejects_branch_count_exceeding_u16_max() {
+        use crate::engine::drive::compute_max_parallel_in_flight;
+
+        let branch_count = usize::from(u16::MAX).saturating_add(1);
+        let branches: Box<[StepIdx]> = std::iter::repeat(StepIdx::new(0))
+            .take(branch_count)
+            .collect();
+
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches,
+                join: StepIdx::new(0),
+            },
+        };
+
+        let parts = WorkflowParts {
+            name: "bh_branch_limit".into(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::from([Box::from("s0")]),
+        };
+        let wf = CompiledWorkflow::from_parts_unchecked(parts);
+
+        let result = compute_max_parallel_in_flight(&wf);
+        match result {
+            Err(RuntimeEngineError::BranchLimitExceeded { max, requested }) => {
+                assert_eq!(
+                    max,
+                    usize::from(u16::MAX),
+                    "max should be u16::MAX as usize"
+                );
+                assert_eq!(
+                    requested, branch_count,
+                    "requested should match the TogetherStart branch count"
+                );
+            }
+            other => {
+                let msg = format!("expected BranchLimitExceeded, got {other:?}");
+                panic!("{msg}");
+            }
+        }
     }
 }

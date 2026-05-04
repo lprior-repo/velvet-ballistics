@@ -49,6 +49,27 @@ impl CompiledWorkflow {
         })
     }
 
+    /// Creates a compiled workflow without validation.
+    ///
+    /// Enabled by the `test-util` feature. For test use only.
+    /// Production code must use [`try_from_parts`].
+    #[cfg(feature = "test-util")]
+    pub fn from_parts_unchecked(parts: WorkflowParts) -> Self {
+        Self {
+            name: parts.name,
+            digest: parts.digest,
+            nodes: parts.nodes,
+            expressions: parts.expressions,
+            accessors: parts.accessors,
+            constants: parts.constants,
+            slot_count: parts.slot_count,
+            symbols_count: parts.symbols_count,
+            entry: parts.entry,
+            resource_contract: parts.resource_contract,
+            step_names: parts.step_names,
+        }
+    }
+
     /// Workflow name retained for cold diagnostics.
     #[must_use]
     pub const fn name(&self) -> &str {
