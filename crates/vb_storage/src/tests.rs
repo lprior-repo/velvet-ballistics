@@ -4796,7 +4796,7 @@ mod tests {
         let enc = encode_record(
             MAGIC_INDEX_RECORD,
             RecordKind::RunHeader,
-            record.run.as_u64(),
+            record.run.get(),
             &record,
             MAX_RUN_HEADER_BYTES,
         )

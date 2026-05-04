@@ -571,4 +571,655 @@ mod tests {
         };
         assert_eq!(frame_pool_used_pct(&shard), 100);
     }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::Inspected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_inspected_sets_selected_run_and_flag() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Inspected { run_id: 99 },
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(state.selected_run_id, Some(99));
+        assert!(events.inspected);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::RunList
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_run_list_updates_active_runs() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let runs = vec![
+            vb_ipc::RunSummary {
+                run_id: vb_core::ids::RunId::new(1),
+                workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+                state: vb_ipc::RunListState::Active,
+                submitted_seq: 0,
+                finished_seq: None,
+                step_count: 5,
+                steps_completed: 2,
+            },
+            vb_ipc::RunSummary {
+                run_id: vb_core::ids::RunId::new(2),
+                workflow: vb_core::WorkflowDigest::from_bytes([1; 32]),
+                state: vb_ipc::RunListState::Finished,
+                submitted_seq: 10,
+                finished_seq: Some(20),
+                step_count: 3,
+                steps_completed: 3,
+            },
+        ];
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::RunList { runs },
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(state.system.total_active_runs, 2);
+        assert!(events.run_list_updated);
+    }
+
+    #[test]
+    fn route_inspected_run_list_empty_sets_zero() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.system.total_active_runs = 10;
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::RunList { runs: Vec::new() },
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(state.system.total_active_runs, 0);
+        assert!(events.run_list_updated);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::Metrics
+    // -----------------------------------------------------------------------
+
+    fn healthy_shard(shard_id: u32) -> vb_ipc::ShardMetrics {
+        vb_ipc::ShardMetrics {
+            shard_id,
+            active_runs: 5,
+            ready_queue_depth: 3,
+            action_queue_depth: 2,
+            timer_count: 1,
+            frame_pool_free: 80,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 10.0,
+            steps_total: 100,
+            actions_total: 50,
+        }
+    }
+
+    fn degraded_shard(shard_id: u32) -> vb_ipc::ShardMetrics {
+        vb_ipc::ShardMetrics {
+            shard_id,
+            active_runs: 5,
+            ready_queue_depth: 25,
+            action_queue_depth: 2,
+            timer_count: 1,
+            frame_pool_free: 20,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 50.0,
+            steps_total: 100,
+            actions_total: 50,
+        }
+    }
+
+    fn critical_shard(shard_id: u32) -> vb_ipc::ShardMetrics {
+        vb_ipc::ShardMetrics {
+            shard_id,
+            active_runs: 5,
+            ready_queue_depth: 60,
+            action_queue_depth: 2,
+            timer_count: 1,
+            frame_pool_free: 5,
+            frame_pool_total: 100,
+            trace_ring_fill_pct: 90.0,
+            steps_total: 100,
+            actions_total: 50,
+        }
+    }
+
+    fn make_metrics(shards: Vec<vb_ipc::ShardMetrics>, runs_active: u32) -> vb_ipc::RuntimeMetrics {
+        vb_ipc::RuntimeMetrics {
+            shards,
+            journal: vb_ipc::JournalMetrics {
+                writer_queue_depth: 0,
+                total_events: 0,
+                total_runs: 0,
+            },
+            ipc: vb_ipc::IpcMetrics {
+                connected_clients: 1,
+                commands_processed: 0,
+            },
+            totals: vb_ipc::AggregateMetrics {
+                runs_active,
+                runs_waiting: 0,
+                runs_failed_total: 0,
+                runs_finished_total: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn route_inspected_metrics_healthy_shard() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let metrics = make_metrics(vec![healthy_shard(0)], 5);
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Metrics(metrics),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.metrics_updated);
+        assert_eq!(state.system.shard_count, 1);
+        assert_eq!(state.system.total_active_runs, 5);
+        assert_eq!(state.system.total_queue_depth, 3);
+        assert_eq!(state.system.overall_health, HealthLevel::Healthy);
+    }
+
+    #[test]
+    fn route_inspected_metrics_degraded_shard() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let metrics = make_metrics(vec![degraded_shard(0)], 5);
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Metrics(metrics),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.metrics_updated);
+        assert_eq!(state.system.overall_health, HealthLevel::Degraded);
+    }
+
+    #[test]
+    fn route_inspected_metrics_critical_shard() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let metrics = make_metrics(vec![critical_shard(0)], 5);
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Metrics(metrics),
+            &mut state,
+            &mut events,
+        );
+        assert!(events.metrics_updated);
+        assert_eq!(state.system.overall_health, HealthLevel::Critical);
+    }
+
+    #[test]
+    fn route_inspected_metrics_worst_health_wins() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let metrics = make_metrics(vec![healthy_shard(0), critical_shard(1)], 10);
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Metrics(metrics),
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(state.system.overall_health, HealthLevel::Critical);
+    }
+
+    #[test]
+    fn route_inspected_metrics_queue_depth_sums_across_shards() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let mut shard_a = healthy_shard(0);
+        shard_a.ready_queue_depth = 10;
+        let mut shard_b = healthy_shard(1);
+        shard_b.ready_queue_depth = 20;
+        let metrics = make_metrics(vec![shard_a, shard_b], 10);
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Metrics(metrics),
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(state.system.total_queue_depth, 30);
+        assert_eq!(state.system.shard_count, 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::VerifyWorkflow
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_verify_workflow_populates_cert_cards() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_07_expression_stack_depth".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        let result = vb_ipc::VerificationResult {
+            certificates: certs,
+            total_checks: 2,
+            pass_count: 2,
+            fail_count: 0,
+        };
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::VerifyWorkflow { result },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.verification_updated);
+        assert_eq!(state.verification.cert_structure.badge_text, "PASS");
+        assert_eq!(state.verification.cert_bounded.badge_text, "PASS");
+    }
+
+    #[test]
+    fn route_inspected_verify_workflow_with_failures() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint_check".into(),
+                status: "Fail".into(),
+                details: "taint path found".into(),
+            },
+        ];
+        let result = vb_ipc::VerificationResult {
+            certificates: certs,
+            total_checks: 1,
+            pass_count: 0,
+            fail_count: 1,
+        };
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::VerifyWorkflow { result },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.verification_updated);
+        assert_eq!(state.verification.cert_taint.badge_text, "FAIL");
+        assert!(!state.verification.all_clean);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::TaintReport
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_taint_report_safe_sets_all_clean() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.verification.all_clean = false;
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::TaintReport {
+                sources: Vec::new(),
+                sinks: Vec::new(),
+                finish_safe: true,
+                paths: Vec::new(),
+            },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.taint_report_updated);
+        assert!(state.verification.all_clean);
+    }
+
+    #[test]
+    fn route_inspected_taint_report_unsafe_does_not_set_all_clean() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        state.verification.all_clean = false;
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::TaintReport {
+                sources: vec![0],
+                sinks: vec![5],
+                finish_safe: false,
+                paths: vec![vb_ipc::TaintPathWire {
+                    from: 0,
+                    to: 5,
+                    status: "dangerous".into(),
+                }],
+            },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.taint_report_updated);
+        assert!(!state.verification.all_clean);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: IpcResponse::WorkflowGraph
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_workflow_graph_sets_node_count() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        let nodes = vec![
+            vb_ipc::NodeDescriptor {
+                step_idx: 0,
+                kind: "Nop".into(),
+                next: Some(1),
+                title: "Start".into(),
+            },
+            vb_ipc::NodeDescriptor {
+                step_idx: 1,
+                kind: "Do".into(),
+                next: Some(2),
+                title: "Process".into(),
+            },
+            vb_ipc::NodeDescriptor {
+                step_idx: 2,
+                kind: "Finish".into(),
+                next: None,
+                title: "End".into(),
+            },
+        ];
+        let edges = vec![vb_ipc::EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: Some("fallthrough".into()),
+            edge_type: "fallthrough".into(),
+        }];
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::WorkflowGraph { nodes, edges },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.workflow_graph_updated);
+        assert_eq!(state.workflow.node_count, 3);
+    }
+
+    #[test]
+    fn route_inspected_workflow_graph_empty_nodes() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::WorkflowGraph {
+                nodes: Vec::new(),
+                edges: Vec::new(),
+            },
+            &mut state,
+            &mut events,
+        );
+        assert!(events.workflow_graph_updated);
+        assert_eq!(state.workflow.node_count, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // route_inspected: unexpected variant produces error
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn route_inspected_unexpected_variant_pushes_error() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::Healthy,
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(events.errors.len(), 1);
+        assert!(
+            matches!(events.errors[0], WiringError::IpcError(ref msg) if msg.contains("Unexpected inspect response"))
+        );
+    }
+
+    #[test]
+    fn route_inspected_bad_request_pushes_error() {
+        let mut wiring = IpcAppWiring::new();
+        let mut state = AppState::new();
+        let mut events = WiringEvents::default();
+        wiring.route_inspected(
+            vb_ipc::server::IpcResponse::BadRequest,
+            &mut state,
+            &mut events,
+        );
+        assert_eq!(events.errors.len(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // WiringEvents::any_changed() — all flag combinations
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn any_changed_connection_changed() {
+        let events = WiringEvents {
+            connection_changed: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_run_accepted() {
+        let events = WiringEvents {
+            run_accepted: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_run_cancelled() {
+        let events = WiringEvents {
+            run_cancelled: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_inspected() {
+        let events = WiringEvents {
+            inspected: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_events_arrived() {
+        let events = WiringEvents {
+            events_arrived: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_trace_drained() {
+        let events = WiringEvents {
+            trace_drained: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_health_checked() {
+        let events = WiringEvents {
+            health_checked: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_metrics_updated() {
+        let events = WiringEvents {
+            metrics_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_run_list_updated() {
+        let events = WiringEvents {
+            run_list_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_verification_updated() {
+        let events = WiringEvents {
+            verification_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_taint_report_updated() {
+        let events = WiringEvents {
+            taint_report_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_workflow_graph_updated() {
+        let events = WiringEvents {
+            workflow_graph_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_with_errors() {
+        let events = WiringEvents {
+            errors: vec![WiringError::IpcError("err".into())],
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_multiple_flags_set() {
+        let events = WiringEvents {
+            connection_changed: true,
+            run_accepted: true,
+            metrics_updated: true,
+            ..WiringEvents::default()
+        };
+        assert!(events.any_changed());
+    }
+
+    #[test]
+    fn any_changed_false_only_when_all_clear() {
+        let events = WiringEvents {
+            connected: true,
+            disconnected: true,
+            shutting_down: true,
+            events_buffered: 5,
+            ..WiringEvents::default()
+        };
+        // connected, disconnected, shutting_down, events_buffered are NOT
+        // checked by any_changed; only the specific change flags matter.
+        assert!(!events.any_changed());
+    }
+
+    // -----------------------------------------------------------------------
+    // events_buffered counter increments correctly
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn events_buffered_counter_increments_per_events_reply() {
+        let mut wiring = IpcAppWiring::new();
+        let _ = &mut wiring;
+
+        // Simulate what route_reply does for IpcReply::Events: count in
+        // events_buffered. Since we cannot inject IpcReply::Events through
+        // the bridge without a server, test the counter logic directly.
+        let mut events = WiringEvents::default();
+        for _ in 0..3 {
+            events.events_arrived = true;
+            events.events_buffered = events.events_buffered.saturating_add(1);
+        }
+        assert_eq!(events.events_buffered, 3);
+    }
+
+    #[test]
+    fn events_buffered_counter_starts_at_zero() {
+        let events = WiringEvents::default();
+        assert_eq!(events.events_buffered, 0);
+    }
+
+    #[test]
+    fn events_buffered_saturating_add_does_not_overflow() {
+        let mut count: usize = usize::MAX;
+        count = count.saturating_add(1);
+        assert_eq!(count, usize::MAX);
+    }
+
+    // -----------------------------------------------------------------------
+    // drain_events returns items in FIFO order
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn drain_events_returns_items_in_fifo_order() {
+        let mut wiring = IpcAppWiring::new();
+
+        let response_a = vb_ipc::server::IpcResponse::TraceCount { count: 10 };
+        let response_b = vb_ipc::server::IpcResponse::TraceCount { count: 20 };
+        let response_c = vb_ipc::server::IpcResponse::TraceCount { count: 30 };
+
+        wiring.events_buffer.push(response_a.clone());
+        wiring.events_buffer.push(response_b.clone());
+        wiring.events_buffer.push(response_c.clone());
+
+        let drained = wiring.drain_events();
+        assert_eq!(drained.len(), 3);
+        assert_eq!(drained[0], response_a);
+        assert_eq!(drained[1], response_b);
+        assert_eq!(drained[2], response_c);
+    }
+
+    #[test]
+    fn drain_events_fifo_after_partial_drain() {
+        let mut wiring = IpcAppWiring::new();
+
+        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 1 });
+        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 2 });
+
+        let first_drain = wiring.drain_events();
+        assert_eq!(first_drain.len(), 2);
+
+        // After drain, push more and verify FIFO again.
+        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 3 });
+        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 4 });
+
+        let second_drain = wiring.drain_events();
+        assert_eq!(second_drain.len(), 2);
+        assert_eq!(second_drain[0], vb_ipc::server::IpcResponse::TraceCount { count: 3 });
+        assert_eq!(second_drain[1], vb_ipc::server::IpcResponse::TraceCount { count: 4 });
+    }
 }

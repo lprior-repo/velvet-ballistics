@@ -555,4 +555,345 @@ mod tests {
             );
         }
     }
+
+    // --- Test 23: Node category RGB channels in unit range ---
+
+    #[test]
+    fn node_category_rgb_channels_in_unit_range() {
+        let colors: Vec<(&str, [f32; 4])> = vec![
+            ("DATA", node_category::DATA),
+            ("EXTERNAL", node_category::EXTERNAL),
+            ("BRANCH", node_category::BRANCH),
+            ("LOOP", node_category::LOOP),
+            ("PARALLEL", node_category::PARALLEL),
+            ("COLLECT", node_category::COLLECT),
+            ("REDUCE", node_category::REDUCE),
+            ("SUSPEND", node_category::SUSPEND),
+            ("ERROR", node_category::ERROR),
+            ("TERMINAL", node_category::TERMINAL),
+            ("CONTROL", node_category::CONTROL),
+        ];
+        for (name, rgba) in colors {
+            for ch in 0..3 {
+                assert!(
+                    rgba[ch] >= 0.0 && rgba[ch] <= 1.0,
+                    "node_category::{name} channel {ch} = {} is outside [0.0, 1.0]",
+                    rgba[ch]
+                );
+            }
+        }
+    }
+
+    // --- Test 24: Node header RGB channels in unit range ---
+
+    #[test]
+    fn node_header_rgb_channels_in_unit_range() {
+        let colors: Vec<(&str, [f32; 4])> = vec![
+            ("DATA", node_header::DATA),
+            ("EXTERNAL", node_header::EXTERNAL),
+            ("BRANCH", node_header::BRANCH),
+            ("LOOP", node_header::LOOP),
+            ("PARALLEL", node_header::PARALLEL),
+            ("COLLECT", node_header::COLLECT),
+            ("REDUCE", node_header::REDUCE),
+            ("SUSPEND", node_header::SUSPEND),
+            ("ERROR", node_header::ERROR),
+            ("TERMINAL", node_header::TERMINAL),
+            ("CONTROL", node_header::CONTROL),
+        ];
+        for (name, rgba) in colors {
+            for ch in 0..3 {
+                assert!(
+                    rgba[ch] >= 0.0 && rgba[ch] <= 1.0,
+                    "node_header::{name} channel {ch} = {} is outside [0.0, 1.0]",
+                    rgba[ch]
+                );
+            }
+        }
+    }
+
+    // --- Test 25: State colors all have alpha 1.0 ---
+
+    #[test]
+    fn state_colors_all_have_alpha_one() {
+        for (name, rgba) in all_state_colors() {
+            assert_eq!(
+                rgba[3], 1.0,
+                "state::{name} should have alpha 1.0, got {}",
+                rgba[3]
+            );
+        }
+    }
+
+    // --- Test 26: State color RGB channels in unit range ---
+
+    #[test]
+    fn state_colors_rgb_channels_in_unit_range() {
+        for (name, rgba) in all_state_colors() {
+            for ch in 0..3 {
+                assert!(
+                    rgba[ch] >= 0.0 && rgba[ch] <= 1.0,
+                    "state::{name} channel {ch} = {} is outside [0.0, 1.0]",
+                    rgba[ch]
+                );
+            }
+        }
+    }
+
+    // --- Test 27: Pressure colors all have alpha 1.0 ---
+
+    #[test]
+    fn pressure_colors_all_have_alpha_one() {
+        let levels = [
+            ("LOW", pressure::LOW),
+            ("MEDIUM", pressure::MEDIUM),
+            ("HIGH", pressure::HIGH),
+            ("CRITICAL", pressure::CRITICAL),
+        ];
+        for (name, rgba) in levels {
+            assert_eq!(
+                rgba[3], 1.0,
+                "pressure::{name} should have alpha 1.0, got {}",
+                rgba[3]
+            );
+        }
+    }
+
+    // --- Test 28: SKIPPED and CANCELLED intentionally share text::DIM ---
+
+    #[test]
+    fn skipped_and_cancelled_both_use_text_dim() {
+        assert_eq!(state::SKIPPED, text::DIM, "SKIPPED should be text::DIM");
+        assert_eq!(state::CANCELLED, text::DIM, "CANCELLED should be text::DIM");
+    }
+
+    // --- Test 29: Hex strings have valid format ---
+
+    fn is_valid_hex_color(s: &str) -> bool {
+        if s.len() != 7 {
+            return false;
+        }
+        let bytes = s.as_bytes();
+        if bytes[0] != b'#' {
+            return false;
+        }
+        for byte in bytes.iter().skip(1) {
+            if !byte.is_ascii_hexdigit() {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn hex_strings_have_valid_format() {
+        let hex_colors: Vec<(&str, &str)> = vec![
+            ("CANVAS_BG", hex::CANVAS_BG),
+            ("PANEL_BG", hex::PANEL_BG),
+            ("CARD_BG", hex::CARD_BG),
+            ("BORDER", hex::BORDER),
+            ("NEON_CYAN", hex::NEON_CYAN),
+            ("NEON_MAGENTA", hex::NEON_MAGENTA),
+            ("NEON_YELLOW", hex::NEON_YELLOW),
+            ("NEON_GREEN", hex::NEON_GREEN),
+            ("NEON_RED", hex::NEON_RED),
+            ("NEON_PURPLE", hex::NEON_PURPLE),
+            ("NEON_ORANGE", hex::NEON_ORANGE),
+            ("NEON_TEAL", hex::NEON_TEAL),
+            ("NEON_BLUE", hex::NEON_BLUE),
+            ("TEXT_PRIMARY", hex::TEXT_PRIMARY),
+            ("TEXT_SECONDARY", hex::TEXT_SECONDARY),
+            ("TEXT_DIM", hex::TEXT_DIM),
+        ];
+        for (name, s) in hex_colors {
+            assert!(
+                is_valid_hex_color(s),
+                "hex::{name} = '{s}' is not a valid hex color (#RRGGBB)"
+            );
+        }
+    }
+
+    // --- Test 30: Neon purple matches its documented hex code ---
+
+    #[test]
+    fn neon_purple_matches_hex_spec() {
+        // #b14dff => R=177, G=77, B=255
+        let expected: [f32; 4] = [177.0 / 255.0, 77.0 / 255.0, 1.0, 1.0];
+        for ch in 0..4 {
+            let diff = (neon::PURPLE[ch] - expected[ch]).abs();
+            assert!(
+                diff < 0.01,
+                "neon::PURPLE[{ch}] = {} differs from expected {} by {}",
+                neon::PURPLE[ch],
+                expected[ch],
+                diff
+            );
+        }
+    }
+
+    // --- Test 31: Neon orange matches its documented hex code ---
+
+    #[test]
+    fn neon_orange_matches_hex_spec() {
+        // #ff6b00 => R=255, G=107, B=0
+        let expected: [f32; 4] = [1.0, 107.0 / 255.0, 0.0, 1.0];
+        for ch in 0..4 {
+            let diff = (neon::ORANGE[ch] - expected[ch]).abs();
+            assert!(
+                diff < 0.01,
+                "neon::ORANGE[{ch}] = {} differs from expected {} by {}",
+                neon::ORANGE[ch],
+                expected[ch],
+                diff
+            );
+        }
+    }
+
+    // --- Test 32: Neon blue matches its documented hex code ---
+
+    #[test]
+    fn neon_blue_matches_hex_spec() {
+        // #2d6bff => R=45, G=107, B=255
+        let expected: [f32; 4] = [45.0 / 255.0, 107.0 / 255.0, 1.0, 1.0];
+        for ch in 0..4 {
+            let diff = (neon::BLUE[ch] - expected[ch]).abs();
+            assert!(
+                diff < 0.01,
+                "neon::BLUE[{ch}] = {} differs from expected {} by {}",
+                neon::BLUE[ch],
+                expected[ch],
+                diff
+            );
+        }
+    }
+
+    // --- Test 33: Neon teal matches its documented hex code ---
+
+    #[test]
+    fn neon_teal_matches_hex_spec() {
+        // #00e5c7 => R=0, G=229, B=199
+        let expected: [f32; 4] = [0.0, 229.0 / 255.0, 199.0 / 255.0, 1.0];
+        for ch in 0..4 {
+            let diff = (neon::TEAL[ch] - expected[ch]).abs();
+            assert!(
+                diff < 0.01,
+                "neon::TEAL[{ch}] = {} differs from expected {} by {}",
+                neon::TEAL[ch],
+                expected[ch],
+                diff
+            );
+        }
+    }
+
+    // --- Test 34: Neon pink matches its documented hex code ---
+
+    #[test]
+    fn neon_pink_matches_hex_spec() {
+        // #ff2d7b => R=255, G=45, B=123
+        let expected: [f32; 4] = [1.0, 45.0 / 255.0, 123.0 / 255.0, 1.0];
+        for ch in 0..4 {
+            let diff = (neon::PINK[ch] - expected[ch]).abs();
+            assert!(
+                diff < 0.01,
+                "neon::PINK[{ch}] = {} differs from expected {} by {}",
+                neon::PINK[ch],
+                expected[ch],
+                diff
+            );
+        }
+    }
+
+    // --- Test 35: Text colors have expected relative brightness ---
+
+    #[test]
+    fn text_brightness_ordering() {
+        let primary_lum = luminance(text::PRIMARY);
+        let secondary_lum = luminance(text::SECONDARY);
+        let dim_lum = luminance(text::DIM);
+        assert!(
+            primary_lum > secondary_lum,
+            "text::PRIMARY luminance ({primary_lum}) should be > text::SECONDARY ({secondary_lum})"
+        );
+        assert!(
+            secondary_lum > dim_lum,
+            "text::SECONDARY luminance ({secondary_lum}) should be > text::DIM ({dim_lum})"
+        );
+    }
+
+    // --- Test 36: CARD_HOVER is brighter than CARD ---
+
+    #[test]
+    fn card_hover_is_brighter_than_card() {
+        let card_lum = luminance(bg::CARD);
+        let hover_lum = luminance(bg::CARD_HOVER);
+        assert!(
+            hover_lum > card_lum,
+            "CARD_HOVER luminance ({hover_lum}) should be > CARD ({card_lum})"
+        );
+    }
+
+    // --- Test 37: BORDER_BRIGHT is brighter than BORDER ---
+
+    #[test]
+    fn border_bright_is_brighter_than_border() {
+        let border_lum = luminance(bg::BORDER);
+        let bright_lum = luminance(bg::BORDER_BRIGHT);
+        assert!(
+            bright_lum > border_lum,
+            "BORDER_BRIGHT luminance ({bright_lum}) should be > BORDER ({border_lum})"
+        );
+    }
+
+    // --- Test 38: All neon colors are distinct ---
+
+    #[test]
+    fn neon_colors_are_mutually_distinct() {
+        let neon_colors = all_neon_colors();
+        for i in 0..neon_colors.len() {
+            for j in (i + 1)..neon_colors.len() {
+                let (name_i, color_i) = neon_colors[i];
+                let (name_j, color_j) = neon_colors[j];
+                assert_ne!(
+                    color_i, color_j,
+                    "neon::{name_i} and neon::{name_j} should be distinct colors"
+                );
+            }
+        }
+    }
+
+    // --- Test 39: PANEL_ALT is brighter than PANEL ---
+
+    #[test]
+    fn panel_alt_is_brighter_than_panel() {
+        let panel_lum = luminance(bg::PANEL);
+        let alt_lum = luminance(bg::PANEL_ALT);
+        assert!(
+            alt_lum > panel_lum,
+            "PANEL_ALT luminance ({alt_lum}) should be > PANEL ({panel_lum})"
+        );
+    }
+
+    // --- Test 40: Text RGB channels in unit range ---
+
+    #[test]
+    fn text_colors_rgb_channels_in_unit_range() {
+        let text_colors: Vec<(&str, [f32; 4])> = vec![
+            ("PRIMARY", text::PRIMARY),
+            ("SECONDARY", text::SECONDARY),
+            ("DIM", text::DIM),
+            ("ACCENT", text::ACCENT),
+            ("SUCCESS", text::SUCCESS),
+            ("ERROR", text::ERROR),
+            ("WARNING", text::WARNING),
+        ];
+        for (name, rgba) in text_colors {
+            for ch in 0..3 {
+                assert!(
+                    rgba[ch] >= 0.0 && rgba[ch] <= 1.0,
+                    "text::{name} channel {ch} = {} is outside [0.0, 1.0]",
+                    rgba[ch]
+                );
+            }
+        }
+    }
 }

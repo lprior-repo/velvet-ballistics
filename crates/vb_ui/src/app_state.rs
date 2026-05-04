@@ -1054,4 +1054,409 @@ mod tests {
         // queue_depth = 300 + 125 = 425
         assert_eq!(state.system.total_queue_depth, 425);
     }
+
+    // ===================================================================
+    // Additional comprehensive tests
+    // ===================================================================
+
+    // -----------------------------------------------------------------------
+    // populate_cert_cards with various certificate results
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn populate_cert_cards_all_pass() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_10_structure_alloc".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_07_expression_stack_depth".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_08_resources".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_12_action".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_14_action_policy".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_11_durability".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_15_durability_replay".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert!(vd.all_clean);
+        assert_eq!(vd.total_checks, 9);
+        assert_eq!(vd.pass_count, 9);
+        assert_eq!(vd.fail_count, 0);
+        assert_eq!(vd.cert_structure.badge_text, "PASS");
+        assert_eq!(vd.cert_bounded.badge_text, "PASS");
+        assert_eq!(vd.cert_resources.badge_text, "PASS");
+        assert_eq!(vd.cert_taint.badge_text, "PASS");
+        assert_eq!(vd.cert_action.badge_text, "PASS");
+        assert_eq!(vd.cert_durability.badge_text, "PASS");
+    }
+
+    #[test]
+    fn populate_cert_cards_mixed_pass_fail() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_07_expression_stack_depth".into(),
+                status: "Fail".into(),
+                details: "stack overflow".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert!(!vd.all_clean);
+        assert_eq!(vd.total_checks, 2);
+        assert_eq!(vd.pass_count, 1);
+        assert_eq!(vd.fail_count, 1);
+        assert_eq!(vd.cert_structure.badge_text, "PASS");
+        assert_eq!(vd.cert_bounded.badge_text, "FAIL");
+    }
+
+    #[test]
+    fn populate_cert_cards_all_fail() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure".into(),
+                status: "Fail".into(),
+                details: "bad structure".into(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint".into(),
+                status: "Fail".into(),
+                details: "taint leak".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert!(!vd.all_clean);
+        assert_eq!(vd.pass_count, 0);
+        assert_eq!(vd.fail_count, 2);
+        assert_eq!(vd.cert_structure.badge_text, "FAIL");
+        assert_eq!(vd.cert_taint.badge_text, "FAIL");
+        // Panels with no matching certs should show "--"
+        assert_eq!(vd.cert_bounded.badge_text, "--");
+        assert_eq!(vd.cert_resources.badge_text, "--");
+    }
+
+    #[test]
+    fn populate_cert_cards_unrelated_gates_ignored() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_99_unknown".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        // Unknown gate does not match any panel prefix
+        assert_eq!(vd.cert_structure.badge_text, "--");
+        assert_eq!(vd.cert_bounded.badge_text, "--");
+        assert_eq!(vd.cert_resources.badge_text, "--");
+        assert_eq!(vd.cert_taint.badge_text, "--");
+        assert_eq!(vd.cert_action.badge_text, "--");
+        assert_eq!(vd.cert_durability.badge_text, "--");
+        // But it still counts as a check (non-"Pass" counts toward fail)
+        assert_eq!(vd.total_checks, 1);
+    }
+
+    #[test]
+    fn populate_cert_cards_panel_field_text() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure_a".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_10_structure_b".into(),
+                status: "Fail".into(),
+                details: "broken".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        let card = &vd.cert_structure;
+        assert_eq!(card.badge_text, "FAIL");
+        assert_eq!(card.field1, "total: 2");
+        assert_eq!(card.field2, "pass: 1");
+        assert_eq!(card.field3, "fail: 1");
+        assert_eq!(card.field4, "--");
+    }
+
+    // -----------------------------------------------------------------------
+    // VerificationState methods
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn verification_data_status_badge_all_clean_from_certs() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_structure".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert_eq!(vd.status_badge_text(), "PASS (all panels clean)");
+    }
+
+    #[test]
+    fn verification_data_status_badge_with_failures_from_certs() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_07_expr".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_13_taint".into(),
+                status: "Fail".into(),
+                details: "leak".into(),
+            },
+            vb_ipc::CertificateWire {
+                kind: "gate_08_res".into(),
+                status: "Fail".into(),
+                details: "overflow".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert!(!vd.all_clean);
+        let text = vd.status_badge_text();
+        // 3 total, 2 fail -> clean = 3 - 2 - 0 = 1
+        assert!(text.contains("FAIL"));
+        assert!(text.contains("1/3 panels clean"));
+    }
+
+    #[test]
+    fn verification_data_worst_risk_from_certs() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_check".into(),
+                status: "Fail".into(),
+                details: "bad".into(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert_eq!(vd.worst_risk_text(), "HIGH RISK");
+    }
+
+    #[test]
+    fn verification_data_worst_risk_clean_from_certs() {
+        let mut vd = VerificationData::new();
+        let certs = vec![
+            vb_ipc::CertificateWire {
+                kind: "gate_09_check".into(),
+                status: "Pass".into(),
+                details: String::new(),
+            },
+        ];
+        vd.populate_cert_cards(&certs);
+        assert_eq!(vd.worst_risk_text(), "CLEAN");
+    }
+
+    // -----------------------------------------------------------------------
+    // CertCardStatus methods
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn cert_card_status_empty_values() {
+        let card = CertCardStatus::empty();
+        assert_eq!(card.badge_text, "--");
+        assert_eq!(card.field1, "--");
+        assert_eq!(card.field2, "--");
+        assert_eq!(card.field3, "--");
+        assert_eq!(card.field4, "--");
+    }
+
+    #[test]
+    fn cert_card_status_badge_color_pass() {
+        let card = CertCardStatus {
+            badge_text: "PASS".into(),
+            field1: String::new(),
+            field2: String::new(),
+            field3: String::new(),
+            field4: String::new(),
+        };
+        assert_eq!(card.badge_color(), "#39ff14");
+        assert_eq!(card.field_color(), "#39ff14");
+    }
+
+    #[test]
+    fn cert_card_status_badge_color_warn() {
+        let card = CertCardStatus {
+            badge_text: "WARN".into(),
+            field1: String::new(),
+            field2: String::new(),
+            field3: String::new(),
+            field4: String::new(),
+        };
+        assert_eq!(card.badge_color(), "#ffe600");
+        assert_eq!(card.field_color(), "#ffe600");
+    }
+
+    #[test]
+    fn cert_card_status_badge_color_fail() {
+        let card = CertCardStatus {
+            badge_text: "FAIL".into(),
+            field1: String::new(),
+            field2: String::new(),
+            field3: String::new(),
+            field4: String::new(),
+        };
+        assert_eq!(card.badge_color(), "#ff073a");
+        assert_eq!(card.field_color(), "#ff073a");
+    }
+
+    #[test]
+    fn cert_card_status_badge_color_unknown() {
+        let card = CertCardStatus {
+            badge_text: "--".into(),
+            field1: String::new(),
+            field2: String::new(),
+            field3: String::new(),
+            field4: String::new(),
+        };
+        assert_eq!(card.badge_color(), "#555577");
+        assert_eq!(card.field_color(), "#555577");
+    }
+
+    // -----------------------------------------------------------------------
+    // SystemState health transitions
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn system_state_health_transition_healthy_to_degraded() {
+        let mut state = AppState::new();
+        assert_eq!(state.system.overall_health, HealthLevel::Healthy);
+        state.system.overall_health = HealthLevel::Degraded;
+        assert_eq!(state.system.overall_health, HealthLevel::Degraded);
+        assert_eq!(state.system.health_text(), "DEGRADED");
+    }
+
+    #[test]
+    fn system_state_health_transition_degraded_to_critical() {
+        let mut state = AppState::new();
+        state.system.overall_health = HealthLevel::Degraded;
+        state.system.overall_health = HealthLevel::Critical;
+        assert_eq!(state.system.overall_health, HealthLevel::Critical);
+        assert_eq!(state.system.health_text(), "CRITICAL");
+    }
+
+    #[test]
+    fn system_state_health_transition_critical_back_to_healthy() {
+        let mut state = AppState::new();
+        state.system.overall_health = HealthLevel::Critical;
+        state.system.overall_health = HealthLevel::Healthy;
+        assert_eq!(state.system.overall_health, HealthLevel::Healthy);
+        assert_eq!(state.system.health_text(), "HEALTHY");
+    }
+
+    #[test]
+    fn system_state_lanes_hint_updates_with_new_values() {
+        let mut state = AppState::new();
+        assert_eq!(
+            state.system.lanes_hint_text(),
+            "0 active runs across 0 shards"
+        );
+        state.system.total_active_runs = 15;
+        state.system.shard_count = 4;
+        assert_eq!(
+            state.system.lanes_hint_text(),
+            "15 active runs across 4 shards"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AppState::new() default values — additional coverage
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn app_state_new_last_ipc_error_is_none() {
+        let state = AppState::new();
+        assert!(state.last_ipc_error.is_none());
+    }
+
+    #[test]
+    fn app_state_new_replay_defaults() {
+        let state = AppState::new();
+        assert_eq!(state.replay.playback_position, 0);
+        assert_eq!(state.replay.total_events, 0);
+        assert!(!state.replay.is_playing);
+        assert!((state.replay.playback_speed - 1.0).abs() < f64::EPSILON);
+        assert!(state.replay.current_step.is_none());
+        assert!(state.replay.step_state.is_none());
+        assert_eq!(state.replay.event_count_text(), "0 events");
+        assert_eq!(state.replay.speed_text(), "1.0x");
+    }
+
+    #[test]
+    fn app_state_new_incident_defaults() {
+        let state = AppState::new();
+        assert_eq!(state.incident.active_incidents, 0);
+        assert_eq!(state.incident.critical_count, 0);
+        assert_eq!(state.incident.warning_count, 0);
+        assert!(state.incident.selected_incident.is_none());
+    }
+
+    #[test]
+    fn app_state_new_workflow_defaults() {
+        let state = AppState::new();
+        assert!(state.workflow.name.is_none());
+        assert_eq!(state.workflow.node_count, 0);
+        assert_eq!(state.workflow.display_name(), "unknown");
+        assert_eq!(state.workflow.node_hint(), "0 nodes");
+    }
+
+    #[test]
+    fn app_state_new_verification_cert_cards_are_empty() {
+        let state = AppState::new();
+        assert_eq!(state.verification.cert_structure.badge_text, "--");
+        assert_eq!(state.verification.cert_bounded.badge_text, "--");
+        assert_eq!(state.verification.cert_resources.badge_text, "--");
+        assert_eq!(state.verification.cert_taint.badge_text, "--");
+        assert_eq!(state.verification.cert_action.badge_text, "--");
+        assert_eq!(state.verification.cert_durability.badge_text, "--");
+    }
 }

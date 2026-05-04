@@ -741,4 +741,286 @@ mod tests {
         let f0 = SlotDiffPanel::format_entry(first_entry);
         assert!(f0.contains("<created>"));
     }
+
+    // =========================================================================
+    // BLACK HAT security and correctness findings
+    // =========================================================================
+
+    /// FINDING 1 — MEDIUM: Value comparison via Debug format string.
+    ///
+    /// `from_event` and `diff_between` compare slot values by formatting them
+    /// with `{:?}` and comparing the resulting strings, instead of using the
+    /// `PartialEq` implementation on `SlotValue`. This is fragile because:
+    ///
+    /// - `Debug` formatting is not a stability guarantee; it can change across
+    ///   Rust editions or `FiniteF64` refactors.
+    /// - Two semantically equal values could theoretically produce different
+    ///   debug strings (e.g. if `FiniteF64`'s `Debug` changes formatting).
+    /// - The comparison allocates two strings per slot, when a simple
+    ///   `old_val == new_val` would be both correct and allocation-free.
+    ///
+    /// This test demonstrates that the comparison *currently* works, but
+    /// highlights the fragility of the approach. The real fix is to replace
+    /// string comparison with `PartialEq`.
+    #[test]
+    fn finding_1_debug_format_comparison_is_fragile() {
+        // Same value compared via Debug formatting -- works today but is not
+        // guaranteed by any contract.
+        let before = slot_map(&[(1, SlotValue::I64(42))]);
+        let after = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(
+            !panel.has_changes(),
+            "identical values must produce no diff"
+        );
+
+        // Demonstrate the alternative: direct equality.
+        let v1 = SlotValue::I64(42);
+        let v2 = SlotValue::I64(42);
+        assert_eq!(v1, v2, "SlotValue PartialEq should be used instead of Debug");
+    }
+
+    /// FINDING 2 — MEDIUM: TaintChanged variant is dead code.
+    ///
+    /// The `SlotDiff::TaintChanged` variant is defined and has formatting
+    /// support, but neither `from_event` nor `diff_between` ever produces it.
+    /// The `current_slots: &HashMap<SlotIdx, SlotValue>` parameter does not
+    /// carry taint metadata, so taint changes are structurally invisible to
+    /// the diff engine. This means taint propagation regressions will silently
+    /// pass the diff panel without detection.
+    ///
+    /// Impact: A slot whose value stays the same but whose taint label changes
+    /// from `Clean` to `Secret` is invisible to the replay diff panel, which
+    /// could cause security reviewers to miss taint leaks.
+    #[test]
+    fn finding_2_taint_changed_is_never_produced() {
+        // diff_between only looks at SlotValue, which has no taint.
+        // TaintChanged can never be emitted.
+        let before = slot_map(&[(1, SlotValue::I64(42))]);
+        let after = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        for entry in panel.entries() {
+            assert!(
+                !matches!(entry.diff, SlotDiff::TaintChanged { .. }),
+                "TaintChanged is never produced by diff_between"
+            );
+        }
+
+        // from_event also cannot produce TaintChanged -- it only checks
+        // value equality via Debug formatting.
+        let event = make_slot_written_event(1, SlotValue::I64(42), 1);
+        let current = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        for entry in panel.entries() {
+            assert!(
+                !matches!(entry.diff, SlotDiff::TaintChanged { .. }),
+                "TaintChanged is never produced by from_event"
+            );
+        }
+    }
+
+    /// FINDING 3 — MEDIUM: Silent data loss on deserialization failure.
+    ///
+    /// In `from_event`, if `postcard::from_bytes(bytes)` returns `Err` (e.g.
+    /// corrupted journal bytes, schema evolution mismatch), the method silently
+    /// returns an empty panel. There is no log, no error return, and no
+    /// indicator that data was lost. A caller consuming replay events would
+    /// never know that a slot write was dropped.
+    ///
+    /// This test verifies the current silent behavior and demonstrates that
+    /// corrupted bytes produce no diff, no error indicator, and a valid
+    /// event_seq -- making the data loss invisible.
+    #[test]
+    fn finding_3_silent_data_loss_on_deserialization_failure() {
+        // Construct a SlotWrittenEvent with invalid postcard bytes.
+        let event = JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(99),
+            slot: SlotIdx::new(5),
+            value: Some(vec![0xFF, 0xFE, 0xFD, 0xFC]), // garbage bytes
+        };
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+
+        // The slot write is silently dropped -- no diff, no error.
+        assert!(
+            !panel.has_changes(),
+            "corrupted bytes silently produce empty panel"
+        );
+        // But the event_seq is still set, making it look like a valid empty
+        // event rather than a failure.
+        assert_eq!(
+            panel.event_seq(), 99,
+            "event_seq is set even though data was lost"
+        );
+    }
+
+    /// FINDING 4 — MEDIUM: from_event does not detect slot deletion.
+    ///
+    /// When `SlotWrittenEvent` carries `value: None`, the method returns an
+    /// empty panel. However, semantically, a `SlotWrittenEvent` with `None`
+    /// could represent a slot being cleared or deleted. If the slot existed
+    /// in `current_slots`, this deletion goes undetected.
+    ///
+    /// This test shows that deleting a slot via `value: None` produces no
+    /// `SlotDiff::Deleted` entry, even though the slot was present before.
+    #[test]
+    fn finding_4_slot_deletion_via_none_value_is_invisible() {
+        let event = JournalEvent::SlotWrittenEvent {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(50),
+            slot: SlotIdx::new(10),
+            value: None, // represents deletion or clearing
+        };
+        // Slot 10 exists in current state.
+        let current = slot_map(&[(10, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+
+        // No Deleted diff is produced -- the deletion is invisible.
+        assert!(
+            !panel.has_changes(),
+            "slot deletion via value:None is silently ignored"
+        );
+        assert_eq!(panel.entries().len(), 0);
+    }
+
+    /// FINDING 5 — LOW: event_seq truncation silently collapses distinct events.
+    ///
+    /// When `EventSeq` exceeds `u32::MAX` (>4_294_967_295), the sequence is
+    /// silently saturated to `u32::MAX`. Two events with sequences
+    /// `u32::MAX + 1` and `u32::MAX + 2` would both appear as `event_seq:
+    /// u32::MAX`, making them indistinguishable in the panel. This is a
+    /// design trade-off (u32 field) but should be documented.
+    #[test]
+    fn finding_5_seq_truncation_collapses_distinct_events() {
+        let seq_a = u64::from(u32::MAX) + 1; // 4_294_967_296
+        let seq_b = u64::from(u32::MAX) + 2; // 4_294_967_297
+
+        let event_a = make_slot_written_event(1, SlotValue::I64(1), seq_a);
+        let event_b = make_slot_written_event(2, SlotValue::I64(2), seq_b);
+
+        let panel_a = SlotDiffPanel::from_event(&event_a, &HashMap::new());
+        let panel_b = SlotDiffPanel::from_event(&event_b, &HashMap::new());
+
+        // Both panels have the same event_seq due to saturation.
+        assert_eq!(panel_a.event_seq(), u32::MAX);
+        assert_eq!(panel_b.event_seq(), u32::MAX);
+        // They are indistinguishable by event_seq.
+        assert_eq!(
+            panel_a.event_seq(), panel_b.event_seq(),
+            "distinct sequences collapse to the same u32::MAX"
+        );
+    }
+
+    /// FINDING 6 — LOW: diff_between ordering is nondeterministic.
+    ///
+    /// The `diff_between` method iterates `HashMap`, which has no guaranteed
+    /// order. Entries in the result are in arbitrary order. Callers that need
+    /// deterministic output (e.g. for snapshot testing or audit logs) will get
+    /// inconsistent ordering. The entries should be sorted by slot index for
+    /// determinism.
+    #[test]
+    fn finding_6_diff_between_ordering_is_nondeterministic() {
+        // Create two states with enough slots that HashMap iteration order
+        // may vary. The test verifies the set is correct but ordering is not.
+        let before = HashMap::new();
+        let after = slot_map(&[
+            (1, SlotValue::I64(1)),
+            (2, SlotValue::I64(2)),
+            (3, SlotValue::I64(3)),
+            (4, SlotValue::I64(4)),
+            (5, SlotValue::I64(5)),
+            (6, SlotValue::I64(6)),
+            (7, SlotValue::I64(7)),
+            (8, SlotValue::I64(8)),
+        ]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+
+        // All entries are present.
+        assert_eq!(panel.entries().len(), 8);
+
+        // Check that slot indices are NOT guaranteed to be sorted.
+        // If they happen to be sorted, this test passes vacuously.
+        // The point is: there is no sorting contract.
+        let slots: Vec<u16> = panel.entries().iter().map(|e| e.slot.get()).collect();
+        let mut sorted_slots = slots.clone();
+        sorted_slots.sort();
+
+        // This assertion documents that ordering is unsorted (HashMap order).
+        // If by coincidence the HashMap order matches sorted order, the test
+        // still passes -- the finding is about the *lack* of a contract.
+        assert_eq!(slots.len(), sorted_slots.len());
+    }
+
+    /// FINDING 7 — LOW: diff_between correctly distinguishes type variants.
+    ///
+    /// Because comparison is via `Debug` formatting, `SlotValue::Null` and
+    /// `SlotValue::I64(0)` have different Debug representations, so this
+    /// is correctly detected. This test verifies the current behavior is
+    /// correct but notes the dependency on Debug formatting.
+    #[test]
+    fn finding_7_debug_format_distinguishes_all_variants() {
+        let before = slot_map(&[(1, SlotValue::Null)]);
+        let after = slot_map(&[(1, SlotValue::I64(0))]);
+        let panel = SlotDiffPanel::diff_between(&before, &after);
+        assert!(
+            panel.has_changes(),
+            "Null vs I64(0) must be detected as a change"
+        );
+        assert_eq!(panel.entries().len(), 1);
+        let Some(entry) = panel.entries().get(0) else {
+            return;
+        };
+        assert!(matches!(entry.diff, SlotDiff::Modified { .. }));
+    }
+
+    /// FINDING 8 — MEDIUM: from_event uses Debug formatting instead of PartialEq.
+    ///
+    /// `from_event` uses `format!("{old_val:?}") == format!("{new_val:?}")`
+    /// to detect equality, bypassing `PartialEq`. If two `SlotValue` variants
+    /// ever produce the same `Debug` string despite being unequal (or vice
+    /// versa), this would produce incorrect diffs. More importantly, the
+    /// string comparison is both slower and less correct than structural
+    /// equality.
+    #[test]
+    fn finding_8_from_event_uses_debug_instead_of_partial_eq() {
+        // SlotValue::I64(42) == SlotValue::I64(42) via PartialEq
+        let event = make_slot_written_event(1, SlotValue::I64(42), 10);
+        let current = slot_map(&[(1, SlotValue::I64(42))]);
+        let panel = SlotDiffPanel::from_event(&event, &current);
+
+        // Currently correct because Debug and PartialEq agree for I64.
+        assert!(!panel.has_changes());
+
+        // But the comparison path is string-based, not structural.
+        let v1 = SlotValue::I64(42);
+        let v2 = SlotValue::I64(42);
+        // PartialEq should be the source of truth:
+        assert_eq!(v1, v2);
+        // Debug format happens to agree:
+        assert_eq!(format!("{v1:?}"), format!("{v2:?}"));
+    }
+
+    /// FINDING 9 — LOW: from_event only processes SlotWrittenEvent.
+    ///
+    /// Events like `StepSucceeded` (which carries an output slot index) are
+    /// ignored by `from_event`. This means slot writes that occur as part of
+    /// step completion are invisible unless they also emit a separate
+    /// `SlotWrittenEvent`. If the journal only records `StepSucceeded`, slot
+    /// diffs will be incomplete.
+    #[test]
+    fn finding_9_step_succeeded_ignored_by_from_event() {
+        let event = JournalEvent::StepSucceeded {
+            run: vb_core::ids::RunId::new(1),
+            seq: EventSeq::new(10),
+            step: vb_core::ids::StepIdx::new(0),
+            output: SlotIdx::new(5),
+        };
+        let current = HashMap::new();
+        let panel = SlotDiffPanel::from_event(&event, &current);
+        assert!(
+            !panel.has_changes(),
+            "StepSucceeded is silently ignored even though it references a slot"
+        );
+    }
 }

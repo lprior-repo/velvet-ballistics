@@ -1855,4 +1855,242 @@ mod tests {
             };
         }
     }
+
+    // =========================================================================
+    // BLACK HAT findings (BH-D01 through BH-D05)
+    // =========================================================================
+
+    /// BH-D01 [HIGH]: LowRisk is unreachable from real workflows because
+    /// journal_before_dispatch and completion_before_mutation are structurally
+    /// coupled.
+    ///
+    /// Both checks test the exact same condition (presence of on_error handler
+    /// on Do nodes). In a real workflow from `from_workflow`, they always fail
+    /// together or pass together. When they fail, fail_count is at least 2,
+    /// which triggers the `fail_count > 1 => HighRisk` path, bypassing
+    /// LowRisk entirely.
+    #[test]
+    fn bhd01_low_risk_unreachable_from_real_workflow() {
+        let nodes = vec![
+            make_do_node(0, 1, 0),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+
+        let journal_failed = panel
+            .checks()
+            .iter()
+            .any(|c| c.label == "journal_before_dispatch" && !c.passed);
+        let completion_failed = panel
+            .checks()
+            .iter()
+            .any(|c| c.label == "completion_before_mutation" && !c.passed);
+
+        assert!(journal_failed, "journal should fail for unprotected Do node");
+        assert!(
+            completion_failed,
+            "completion should fail for unprotected Do node"
+        );
+
+        let failed = panel.failed_checks();
+        assert!(
+            failed.len() >= 2,
+            "at least 2 checks should fail due to structural coupling"
+        );
+        assert_eq!(
+            panel.replay_risk_level(),
+            ReplayRisk::HighRisk,
+            "BLACK HAT [HIGH]: fail_count >= 2 from coupled checks produces HighRisk, \
+             making LowRisk unreachable from real workflows"
+        );
+
+        let no_do_nodes = vec![
+            make_node(0, CompiledNodeKind::Nop),
+            make_node(
+                1,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let safe_panel = DurabilityPanel::from_workflow(&no_do_nodes);
+        assert_eq!(
+            safe_panel.replay_risk_level(),
+            ReplayRisk::Safe,
+            "workflow without Do nodes is always Safe"
+        );
+    }
+
+    /// BH-D02 [MEDIUM]: RetryCheck matches by StepIdx (node.id), not array
+    /// index.
+    #[test]
+    fn bhd02_retry_check_matches_by_step_idx_not_array_position() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(5),
+                    exhausted: StepIdx::new(10),
+                },
+            ),
+            make_do_node(1, 10, 0),
+            make_do_node(5, 20, 1),
+            make_node(
+                10,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        let Some(recon) = recon else { return };
+
+        assert!(
+            !recon.passed,
+            "reconciliation should fail for Do node at step idx 5"
+        );
+        assert!(
+            recon.detail.contains("step(s) 5"),
+            "should flag step 5 only, got: {:?}",
+            recon.detail
+        );
+        // Step 1 should NOT appear in the step list. The detail is
+        // "1 Do node(s) ... step(s) 5" so "1" appears as count but "5"
+        // is the only step id in the step list. Verify the step list
+        // does not contain "1" by checking "step(s) 1" is absent.
+        assert!(
+            !recon.detail.contains("step(s) 1"),
+            "should NOT flag step 1 in step list, got: {:?}",
+            recon.detail
+        );
+    }
+
+    /// BH-D03 [MEDIUM]: RetryCheck `exhausted` target is not retry-exposed.
+    #[test]
+    fn bhd03_retry_check_exhausted_target_not_flagged() {
+        let nodes = vec![
+            make_node(
+                0,
+                CompiledNodeKind::RetryCheck {
+                    policy_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(2),
+                },
+            ),
+            make_do_node(1, 10, 0),
+            make_do_node(2, 20, 1),
+            make_node(
+                3,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            ),
+        ];
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let recon = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "reconciliation_risk");
+        let Some(recon) = recon else { return };
+
+        assert!(!recon.passed);
+        assert!(
+            recon.detail.contains("1 Do node(s)"),
+            "got: {:?}",
+            recon.detail
+        );
+        assert!(
+            recon.detail.contains("step(s) 1"),
+            "got: {:?}",
+            recon.detail
+        );
+    }
+
+    /// BH-D04 [LOW]: Many unprotected Do nodes all appear in detail.
+    #[test]
+    fn bhd04_many_unprotected_do_nodes_all_listed() {
+        let mut nodes = Vec::new();
+        for i in 0u16..10 {
+            nodes.push(make_do_node(i, u16::from(i), 0));
+        }
+        nodes.push(make_node(
+            10,
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        ));
+
+        let panel = DurabilityPanel::from_workflow(&nodes);
+        let journal = panel
+            .checks()
+            .iter()
+            .find(|c| c.label == "journal_before_dispatch");
+        let Some(journal) = journal else { return };
+
+        assert!(!journal.passed);
+        assert!(
+            journal.detail.contains("10 Do node(s)"),
+            "got: {:?}",
+            journal.detail
+        );
+        for i in 0u16..10 {
+            assert!(
+                journal.detail.contains(&i.to_string()),
+                "step {} missing, got: {:?}",
+                i,
+                journal.detail
+            );
+        }
+    }
+
+    /// BH-D05 [LOW]: ReplayRisk escalation ordering.
+    #[test]
+    fn bhd05_risk_levels_escalate_monotonically() {
+        let safe = DurabilityPanel { checks: vec![] };
+        assert_eq!(safe.replay_risk_level(), ReplayRisk::Safe);
+
+        let low = DurabilityPanel {
+            checks: vec![DurabilityCheck {
+                label: String::from("journal_before_dispatch"),
+                passed: false,
+                detail: String::from("fail"),
+            }],
+        };
+        assert_eq!(low.replay_risk_level(), ReplayRisk::LowRisk);
+
+        let high = DurabilityPanel {
+            checks: vec![DurabilityCheck {
+                label: String::from("reconciliation_risk"),
+                passed: false,
+                detail: String::from("fail"),
+            }],
+        };
+        assert_eq!(high.replay_risk_level(), ReplayRisk::HighRisk);
+
+        let unsafe_panel = DurabilityPanel {
+            checks: vec![
+                DurabilityCheck {
+                    label: String::from("reconciliation_risk"),
+                    passed: false,
+                    detail: String::from("fail"),
+                },
+                DurabilityCheck {
+                    label: String::from("timeout_coverage"),
+                    passed: false,
+                    detail: String::from("fail"),
+                },
+            ],
+        };
+        assert_eq!(unsafe_panel.replay_risk_level(), ReplayRisk::Unsafe);
+    }
 }

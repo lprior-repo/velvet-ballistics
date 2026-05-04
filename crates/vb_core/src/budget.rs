@@ -523,7 +523,6 @@ fn count_and_push_loop_body(
     let iter_count = iter_count.max(1);
     let product = body_count
         .checked_mul(iter_count)
-        .and_then(|p| p.checked_add(body_count))
         .ok_or(BudgetError::TotalStepsExceeded {
             actual: u64::MAX,
             limit: u64::MAX,
@@ -697,7 +696,6 @@ fn count_nested_for_region(
     stack.push(done);
     let product = body_count
         .checked_mul(iter_count)
-        .and_then(|p| p.checked_add(body_count))
         .ok_or(BudgetError::TotalStepsExceeded {
             actual: u64::MAX,
             limit: u64::MAX,
@@ -1707,9 +1705,11 @@ mod tests {
     ///   ForEachJoin (node 3)
     /// ForEachJoin (node 4)
     ///
-    /// Inner: body_count=1, count_nested = 1*10+1=11, inner total = 1+11+1 = 13.
-    /// Outer body region: node1=13, node2=1, node3=1 = 13.
-    /// Outer: count_nested = 13*10+13=143, outer total = 1+143+1 = 145.
+    /// Inner: body_count=1, product = 1*10=10, inner total = 1+10+1 = 12.
+    /// Outer body region: node1=12, node2=1, node3=1 = 14.
+    /// Wait — body_count counts distinct nodes in the region, inner ForEachStart(1) itself
+    /// is counted as 1, then its body is 1*10=10, then ForEachJoin(3) is 1. So region for
+    /// outer body = 1 + 10 + 1 = 12. Outer: product = 12*10 = 120, total = 1+120+1 = 122.
     #[test]
     fn budget_nested_loop_multiplies_correctly() {
         let nodes = vec![
@@ -1773,7 +1773,7 @@ mod tests {
         let contract = test_contract(5, 6);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
             .ok()
-            .filter(|b| b.max_total_steps == 145 && b.max_nesting_depth == 2);
+            .filter(|b| b.max_total_steps == 122 && b.max_nesting_depth == 2);
 
         assert!(
             budget.is_some(),

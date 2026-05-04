@@ -839,4 +839,260 @@ mod tests {
         assert_eq!(pos[1], MARGIN_TOP);
         assert!(result.groups.is_empty());
     }
+
+    // -----------------------------------------------------------------------
+    // Black hat security and correctness review tests
+    // -----------------------------------------------------------------------
+
+    /// MEDIUM: Group bounds can produce negative x/y coordinates when node
+    /// positions are near zero and GROUP_PADDING exceeds the coordinate.
+    /// compute_group_bounds subtracts GROUP_PADDING unconditionally, so a
+    /// node at (0, 0) with any non-zero size produces negative bounds.
+    #[test]
+    fn blackhat_group_bounds_can_produce_negative_origin() {
+        // Place a single node in a group at the default position (MARGIN_LEFT,
+        // MARGIN_TOP). The group x will be MARGIN_LEFT - 50/2 - GROUP_PADDING.
+        // With MARGIN_LEFT=80, width=100, GROUP_PADDING=40:
+        //   left = 80 - 50 = 30, so x = 30 - 40 = -10.
+        let nodes = vec![LayoutNode {
+            id: String::from("a"),
+            width: 100.0,
+            height: 60.0,
+            group: Some(String::from("g1")),
+        }];
+        let result = compute_layout(&nodes, &[], "a");
+
+        let bounds = match result.groups.get("g1") {
+            Some(b) => b,
+            None => return,
+        };
+        // MARGIN_LEFT=80, node width=100, half=50
+        // left = 80 - 50 = 30, x = 30 - 40 = -10
+        assert!(
+            bounds.x < 0.0,
+            "group x should be negative when node left edge < GROUP_PADDING, got {}",
+            bounds.x,
+        );
+    }
+
+    /// HIGH: BFS-based layering diverges on cyclic graphs. The BFS uses
+    /// `candidate > existing` to decide whether to re-enqueue a successor.
+    /// With a cycle (a -> b -> a), the depth keeps increasing until it
+    /// saturates at usize::MAX. On a 64-bit platform, usize::MAX is
+    /// ~18 quintillion, so the BFS will effectively never terminate.
+    ///
+    /// This test verifies that a DAG-like structure with a forward-only
+    /// redundant edge (not a true cycle) completes correctly, while
+    /// documenting the cycle vulnerability. A true cycle test would hang.
+    #[test]
+    fn blackhat_forward_redundant_edge_completes_but_cycle_would_hang() {
+        // This is NOT a cycle: a -> b -> c with a shortcut a -> c.
+        // Longest path wins: c gets depth 2 via a -> b -> c.
+        let nodes = vec![node("a"), node("b"), node("c")];
+        let edges = vec![edge("a", "b"), edge("b", "c"), edge("a", "c")];
+        let result = compute_layout(&nodes, &edges, "a");
+
+        assert_eq!(result.positions.len(), 3);
+        let x_a = match result.positions.get("a") {
+            Some(p) => p[0],
+            None => return,
+        };
+        let x_b = match result.positions.get("b") {
+            Some(p) => p[0],
+            None => return,
+        };
+        let x_c = match result.positions.get("c") {
+            Some(p) => p[0],
+            None => return,
+        };
+        // a -> b -> c is the longest path; c should be at column 2.
+        assert!(x_b > x_a, "b should be right of a");
+        assert!(x_c > x_b, "c should be right of b (longest path wins)");
+
+        // NOTE: A true cycle a -> b, b -> a would cause the BFS to run
+        // for usize::MAX iterations before the depth saturates. This is a
+        // HIGH severity denial-of-service vulnerability. The fix would be
+        // to either: (1) track visited nodes and skip re-enqueue on second
+        // visit, or (2) cap the depth at a reasonable maximum, or
+        // (3) detect cycles and reject cyclic input.
+    }
+
+    /// LOW: Node with negative dimensions. Layout does not validate that
+    /// width/height are non-negative. Negative dimensions produce negative
+    /// group bounds extents.
+    #[test]
+    fn blackhat_negative_size_node_still_gets_position() {
+        let nodes = vec![LayoutNode {
+            id: String::from("neg"),
+            width: -50.0,
+            height: -30.0,
+            group: None,
+        }];
+        let result = compute_layout(&nodes, &[], "neg");
+
+        assert_eq!(result.positions.len(), 1);
+        let pos = match result.positions.get("neg") {
+            Some(p) => p,
+            None => return,
+        };
+        assert_eq!(pos[0], MARGIN_LEFT);
+        assert_eq!(pos[1], MARGIN_TOP);
+    }
+
+    /// LOW: Duplicate node IDs. The code builds a HashMap which deduplicates
+    /// by ID, so the last node wins. Positions map will also only have one
+    /// entry. This is arguably correct but could silently drop nodes.
+    #[test]
+    fn blackhat_duplicate_node_ids_produce_single_position() {
+        let nodes = vec![
+            LayoutNode {
+                id: String::from("dup"),
+                width: 100.0,
+                height: 60.0,
+                group: None,
+            },
+            LayoutNode {
+                id: String::from("dup"),
+                width: 200.0,
+                height: 80.0,
+                group: None,
+            },
+        ];
+        let result = compute_layout(&nodes, &[], "dup");
+
+        // HashMap deduplicates -- only one position for "dup".
+        assert_eq!(
+            result.positions.len(),
+            1,
+            "duplicate node IDs should produce exactly one position",
+        );
+    }
+
+    /// LOW: Many disconnected nodes all get finite positions.
+    #[test]
+    fn blackhat_many_disconnected_nodes_all_finite() {
+        let nodes: Vec<LayoutNode> = (0..50)
+            .map(|i| LayoutNode {
+                id: format!("island-{i}"),
+                width: 100.0,
+                height: 60.0,
+                group: None,
+            })
+            .collect();
+        let result = compute_layout(&nodes, &[], "island-0");
+
+        assert_eq!(result.positions.len(), 50);
+        for (id, pos) in &result.positions {
+            assert!(
+                pos[0].is_finite() && pos[1].is_finite(),
+                "position for {id} must be finite",
+            );
+        }
+    }
+
+    /// MEDIUM: Group with nodes having NaN dimensions. The group
+    /// bounds calculation subtracts half_w/half_h from position. If width
+    /// or height is NaN, the min/max tracking is corrupted because NaN
+    /// comparisons always return false, bypassing the safety guard.
+    #[test]
+    fn blackhat_nan_dimension_node_corrupts_group_bounds() {
+        let nodes = vec![LayoutNode {
+            id: String::from("nan_node"),
+            width: f64::NAN,
+            height: f64::NAN,
+            group: Some(String::from("g_nan")),
+        }];
+        let result = compute_layout(&nodes, &[], "nan_node");
+
+        // NaN comparisons: left/right/top/bottom are all NaN.
+        // NaN < f64::MAX is false, so min_x stays f64::MAX.
+        // But NaN == f64::MAX is also false, so the guard `min_x == f64::MAX`
+        // does NOT catch this. The group may be emitted with NaN bounds.
+        let bounds = result.groups.get("g_nan");
+        // Either the group should be absent, or its bounds should be documented
+        // as potentially containing NaN.
+        if let Some(b) = bounds {
+            // If present, at least verify we can observe the NaN corruption.
+            let has_nan = !b.x.is_finite() || !b.y.is_finite()
+                || !b.width.is_finite() || !b.height.is_finite();
+            assert!(
+                has_nan,
+                "NaN dimensions should produce NaN bounds or absent group, \
+                 got x={}, y={}, w={}, h={}",
+                b.x, b.y, b.width, b.height,
+            );
+        }
+        // The key finding: NaN node dimensions bypass the safety guard
+        // and produce a group with NaN-filled bounds.
+    }
+
+    /// LOW: Many duplicate edges produce same layout as single edge.
+    #[test]
+    fn blackhat_many_duplicate_edges_same_layout() {
+        let nodes = vec![node("a"), node("b")];
+        let edges_single = vec![edge("a", "b")];
+        let mut edges_many = Vec::new();
+        for _ in 0..100 {
+            edges_many.push(edge("a", "b"));
+        }
+        let result_single = compute_layout(&nodes, &edges_single, "a");
+        let result_many = compute_layout(&nodes, &edges_many, "a");
+
+        assert_eq!(
+            result_single.positions["a"],
+            result_many.positions["a"],
+            "duplicate edges should not affect layout",
+        );
+        assert_eq!(
+            result_single.positions["b"],
+            result_many.positions["b"],
+            "duplicate edges should not affect layout",
+        );
+    }
+
+    /// LOW: Nodes with very long IDs should still work.
+    #[test]
+    fn blackhat_very_long_node_id_works() {
+        let long_id = "x".repeat(10000);
+        let nodes = vec![LayoutNode {
+            id: long_id.clone(),
+            width: 100.0,
+            height: 60.0,
+            group: None,
+        }];
+        let result = compute_layout(&nodes, &[], &long_id);
+
+        assert_eq!(result.positions.len(), 1);
+        assert!(result.positions.contains_key(&long_id));
+    }
+
+    /// LOW: Missing entry with many nodes -- all should be at column 0 with
+    /// distinct y values.
+    #[test]
+    fn blackhat_missing_entry_many_nodes_all_column_zero_distinct_y() {
+        let nodes: Vec<LayoutNode> = (0..10)
+            .map(|i| LayoutNode {
+                id: format!("n{i}"),
+                width: 100.0,
+                height: 60.0,
+                group: None,
+            })
+            .collect();
+        let result = compute_layout(&nodes, &[], "nonexistent");
+
+        assert_eq!(result.positions.len(), 10);
+        // All should be at column 0.
+        for (id, pos) in &result.positions {
+            assert_eq!(pos[0], MARGIN_LEFT, "{id} should be at column 0");
+        }
+        // All y values should be distinct.
+        let ys: Vec<f64> = (0..10)
+            .filter_map(|i| result.positions.get(&format!("n{i}")).map(|p| p[1]))
+            .collect();
+        for i in 0..ys.len() {
+            for j in (i + 1)..ys.len() {
+                assert_ne!(ys[i], ys[j], "y values must be distinct");
+            }
+        }
+    }
 }
