@@ -5144,3 +5144,227 @@ fn shard_submit_finish_then_inspect_counters() {
         Some(InspectResponse::NotFound { run, correlation: 5 })
     );
 }
+
+// =======================================================================
+// Edge-case tests for ShardConfig, PendingTimerKind, PendingTimer,
+// AskTicket, AskAnswer, InspectSnapshot, and InspectResponse
+// =======================================================================
+
+#[test]
+fn shard_config_default_uses_strict_policy() {
+    let config = ShardConfig::default();
+    assert_eq!(config.policy, vb_core::policy::RuntimePolicy::Strict);
+}
+
+#[test]
+fn shard_config_copy_preserves_independent_snapshot() {
+    let original = ShardConfig::default();
+    let copy = original;
+    // Mutating a derived config must not affect the original;
+    // since ShardConfig is Copy, both are independent values.
+    assert_eq!(copy.command_queue_capacity, original.command_queue_capacity);
+    assert_eq!(copy.trace_capacity, original.trace_capacity);
+    assert_eq!(copy.step_budget_per_tick, original.step_budget_per_tick);
+    assert_eq!(copy.max_active_runs, original.max_active_runs);
+    assert_eq!(copy.policy, original.policy);
+}
+
+#[test]
+fn shard_config_debug_format_contains_field_names() {
+    let config = ShardConfig::default();
+    let debug_str = format!("{config:?}");
+    // Debug output should contain the struct name and field identifiers.
+    assert!(
+        debug_str.contains("ShardConfig"),
+        "Debug output should contain struct name: {debug_str}"
+    );
+    assert!(
+        debug_str.contains("command_queue_capacity"),
+        "Debug output should contain command_queue_capacity: {debug_str}"
+    );
+    assert!(
+        debug_str.contains("trace_capacity"),
+        "Debug output should contain trace_capacity: {debug_str}"
+    );
+    assert!(
+        debug_str.contains("step_budget_per_tick"),
+        "Debug output should contain step_budget_per_tick: {debug_str}"
+    );
+    assert!(
+        debug_str.contains("max_active_runs"),
+        "Debug output should contain max_active_runs: {debug_str}"
+    );
+}
+
+#[test]
+fn shard_config_new_accepts_zero_trace_capacity() {
+    // trace_capacity is not validated by ShardConfig::new; zero is accepted.
+    let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    assert!(result.is_ok());
+    let config = match result {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    assert_eq!(config.trace_capacity, 0);
+}
+
+#[test]
+fn shard_config_new_accepts_zero_step_budget() {
+    // step_budget_per_tick is not validated; zero is accepted.
+    let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    assert!(result.is_ok());
+    let config = match result {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    assert_eq!(config.step_budget_per_tick, 0);
+}
+
+#[test]
+fn shard_config_new_accepts_max_step_budget() {
+    let result = ShardConfig::new(1, 1, u64::MAX, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    assert!(result.is_ok());
+    let config = match result {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    assert_eq!(config.step_budget_per_tick, u64::MAX);
+}
+
+#[test]
+fn pending_timer_kind_equality_and_inequality() {
+    assert_eq!(
+        super::types::PendingTimerKind::Wait,
+        super::types::PendingTimerKind::Wait
+    );
+    assert_eq!(
+        super::types::PendingTimerKind::Ask,
+        super::types::PendingTimerKind::Ask
+    );
+    assert_ne!(
+        super::types::PendingTimerKind::Wait,
+        super::types::PendingTimerKind::Ask
+    );
+}
+
+#[test]
+fn pending_timer_kind_debug_format() {
+    let wait = super::types::PendingTimerKind::Wait;
+    let ask = super::types::PendingTimerKind::Ask;
+    let wait_debug = format!("{wait:?}");
+    let ask_debug = format!("{ask:?}");
+    assert!(
+        wait_debug.contains("Wait"),
+        "Wait debug should contain 'Wait': {wait_debug}"
+    );
+    assert!(
+        ask_debug.contains("Ask"),
+        "Ask debug should contain 'Ask': {ask_debug}"
+    );
+}
+
+#[test]
+fn pending_timer_equality_same_fields() {
+    let a = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(3),
+        kind: super::types::PendingTimerKind::Wait,
+    };
+    let b = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(3),
+        kind: super::types::PendingTimerKind::Wait,
+    };
+    assert_eq!(a, b);
+}
+
+#[test]
+fn pending_timer_inequality_different_step() {
+    let a = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(1),
+        kind: super::types::PendingTimerKind::Ask,
+    };
+    let b = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(2),
+        kind: super::types::PendingTimerKind::Ask,
+    };
+    assert_ne!(a, b);
+}
+
+#[test]
+fn pending_timer_inequality_different_kind() {
+    let a = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(5),
+        kind: super::types::PendingTimerKind::Wait,
+    };
+    let b = super::types::PendingTimer {
+        step: vb_core::ids::StepIdx::new(5),
+        kind: super::types::PendingTimerKind::Ask,
+    };
+    assert_ne!(a, b);
+}
+
+#[test]
+fn ask_ticket_equality_and_inequality() {
+    let a = AskTicket {
+        run: super::RunId::new(10),
+        ask_step: vb_core::ids::StepIdx::new(1),
+        resume_step: vb_core::ids::StepIdx::new(2),
+    };
+    let b = AskTicket {
+        run: super::RunId::new(10),
+        ask_step: vb_core::ids::StepIdx::new(1),
+        resume_step: vb_core::ids::StepIdx::new(2),
+    };
+    assert_eq!(a, b);
+
+    // Different run
+    let c = AskTicket {
+        run: super::RunId::new(11),
+        ask_step: vb_core::ids::StepIdx::new(1),
+        resume_step: vb_core::ids::StepIdx::new(2),
+    };
+    assert_ne!(a, c);
+
+    // Different ask_step
+    let d = AskTicket {
+        run: super::RunId::new(10),
+        ask_step: vb_core::ids::StepIdx::new(99),
+        resume_step: vb_core::ids::StepIdx::new(2),
+    };
+    assert_ne!(a, d);
+
+    // Different resume_step
+    let e = AskTicket {
+        run: super::RunId::new(10),
+        ask_step: vb_core::ids::StepIdx::new(1),
+        resume_step: vb_core::ids::StepIdx::new(99),
+    };
+    assert_ne!(a, e);
+}
+
+#[test]
+fn inspect_snapshot_equality_and_debug() {
+    let snap = InspectSnapshot {
+        run: super::RunId::new(42),
+        correlation: 7,
+        pc: vb_core::ids::StepIdx::new(3),
+        executed: 100,
+    };
+    let snap2 = InspectSnapshot {
+        run: super::RunId::new(42),
+        correlation: 7,
+        pc: vb_core::ids::StepIdx::new(3),
+        executed: 100,
+    };
+    assert_eq!(snap, snap2);
+
+    let debug_str = format!("{snap:?}");
+    assert!(
+        debug_str.contains("InspectSnapshot"),
+        "Debug should contain InspectSnapshot: {debug_str}"
+    );
+}
+
+#[test]
+fn max_command_queue_capacity_is_65536() {
+    assert_eq!(MAX_COMMAND_QUEUE_CAPACITY, 65_536);
+}
