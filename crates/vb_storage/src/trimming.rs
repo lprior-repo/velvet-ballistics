@@ -75,14 +75,12 @@ impl FjallJournal {
 
         for item in self.run_snapshot.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
-            if key.len() < 9 {
+            if key.len() < 17 {
                 continue;
             }
-            let seq_bytes = &key[9..17];
-            let seq_u64 = u64::from_be_bytes([
-                seq_bytes[0], seq_bytes[1], seq_bytes[2], seq_bytes[3],
-                seq_bytes[4], seq_bytes[5], seq_bytes[6], seq_bytes[7],
-            ]);
+            let slice = key.get(9..17).ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_u64 = u64::from_be_bytes(seq_bytes);
             let seq = EventSeq::new(seq_u64);
             latest = Some(match latest {
                 Some(current) if current.get() >= seq_u64 => current,
@@ -118,15 +116,13 @@ impl FjallJournal {
             if key.len() < 17 {
                 continue;
             }
-            let seq_bytes = &key[9..17];
-            let seq_u64 = u64::from_be_bytes([
-                seq_bytes[0], seq_bytes[1], seq_bytes[2], seq_bytes[3],
-                seq_bytes[4], seq_bytes[5], seq_bytes[6], seq_bytes[7],
-            ]);
+            let slice = key.get(9..17).ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
                 batch.remove(&self.events, key.to_vec());
-                deleted_count += 1;
+                deleted_count = deleted_count.saturating_add(1);
             }
         }
 
@@ -215,10 +211,10 @@ fn snapshot_prefix_key(run: RunId) -> [u8; 9] {
 mod tests {
     use super::*;
     use crate::{
-        EventSeq, JournalEvent, RunSnapshot,
+        EventSeq, JournalEvent, RunHeaderRecord, RunSnapshot,
         constants::DIGEST_BYTES,
     };
-    use vb_core::{RunId, StepIdx, WorkflowDigest};
+    use vb_core::{RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -240,6 +236,17 @@ mod tests {
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
         }
+    }
+
+    fn write_header(journal: &FjallJournal, run: RunId, digest: WorkflowDigest) {
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(0),
+            compiled_digest: digest,
+            status: 0,
+            accepted_at_ms: 0,
+        };
+        journal.put_run_header(&header).expect("header write should succeed");
     }
 
     #[test]
@@ -359,6 +366,7 @@ mod tests {
             })
             .collect();
         journal.append_strict_batch(&events).expect("batch should succeed");
+        write_header(&journal, run, digest);
 
         let snapshot = RunSnapshot {
             run,
@@ -389,9 +397,11 @@ mod tests {
 
         let events_a = [make_event(run_a, 0), make_step_started(run_a, 1, 0)];
         journal.append_strict_batch(&events_a).expect("batch A should succeed");
+        write_header(&journal, run_a, digest);
 
         let events_b = [make_event(run_b, 0), make_step_started(run_b, 1, 0)];
         journal.append_strict_batch(&events_b).expect("batch B should succeed");
+        write_header(&journal, run_b, digest);
 
         let snapshot_a = RunSnapshot {
             run: run_a,

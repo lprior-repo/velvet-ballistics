@@ -268,8 +268,22 @@ impl FjallJournal {
 
     /// Replays one run's events in contiguous per-run sequence order.
     pub fn events_for_run(&self, run: vb_core::RunId) -> Result<Vec<JournalEvent>, JournalError> {
+        let start_seq = self
+            .latest_snapshot_seq(run)
+            .ok()
+            .flatten()
+            .unwrap_or(EventSeq::new(0));
+        self.events_for_run_from(run, start_seq)
+    }
+
+    /// Returns events for a run starting from a given sequence, with validation.
+    fn events_for_run_from(
+        &self,
+        run: vb_core::RunId,
+        start_seq: EventSeq,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
         let mut replay = Vec::new();
-        let mut expected = EventSeq::new(0);
+        let mut expected = start_seq;
         let snap = self.database.snapshot();
 
         for item in snap.prefix(&self.events, run_prefix_key(run)?) {
