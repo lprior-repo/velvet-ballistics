@@ -71,7 +71,8 @@ pub use codec::{
 
 // Admission
 pub use admission::{
-    AcceptedArtifact, VerificationProof, admit_compiled_artifact, submit_artifact,
+    AcceptedArtifact, VerificationProof, VerificationWarning, admit_compiled_artifact,
+    submit_artifact,
 };
 
 // ============================================================================

@@ -2,9 +2,35 @@
 //!
 //! Provides artifact submission and admission flows with policy-controlled durability.
 
+use std::fmt;
+
 use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
 
 use crate::journal::FjallJournal;
+
+/// A soft verification failure that does not block admission but should be reported.
+///
+/// Each warning is associated with a specific verification gate (1-13 range) and
+/// carries a numeric code and human-readable message.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct VerificationWarning {
+    /// Numeric code identifying the specific warning condition.
+    pub code: u32,
+    /// Human-readable description of the warning.
+    pub message: Box<str>,
+    /// Which verification gate produced this warning (1-13 range).
+    pub gate: u8,
+}
+
+impl fmt::Display for VerificationWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "gate {}: [{}] {}",
+            self.gate, self.code, self.message
+        )
+    }
+}
 
 /// Proof that artifact verification passed at admission time.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -15,6 +41,8 @@ pub struct VerificationProof {
     pub gate_count: u8,
     /// Whether the proof was durably persisted (SyncAll).
     pub durable: bool,
+    /// Soft verification failures encountered during admission.
+    pub warnings: Vec<VerificationWarning>,
 }
 
 impl VerificationProof {
@@ -25,6 +53,7 @@ impl VerificationProof {
             digest,
             gate_count,
             durable,
+            warnings: Vec::new(),
         }
     }
 }
@@ -168,4 +197,115 @@ pub fn admit_compiled_artifact(
     journal.put_compiled_ir(&record)?;
 
     Ok(workflow.digest())
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::assertions_on_constants,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verification_warning_display_formats_gate_code_message() {
+        let warning = VerificationWarning {
+            code: 42,
+            message: Box::from("deprecated action kind"),
+            gate: 3,
+        };
+        assert_eq!(
+            format!("{warning}"),
+            "gate 3: [42] deprecated action kind"
+        );
+    }
+
+    #[test]
+    fn verification_warning_equality_works() {
+        let a = VerificationWarning {
+            code: 1,
+            message: Box::from("alpha"),
+            gate: 2,
+        };
+        let b = VerificationWarning {
+            code: 1,
+            message: Box::from("alpha"),
+            gate: 2,
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn verification_warning_inequality_different_code() {
+        let a = VerificationWarning {
+            code: 1,
+            message: Box::from("alpha"),
+            gate: 2,
+        };
+        let b = VerificationWarning {
+            code: 99,
+            message: Box::from("alpha"),
+            gate: 2,
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn verification_warning_inequality_different_gate() {
+        let a = VerificationWarning {
+            code: 1,
+            message: Box::from("alpha"),
+            gate: 1,
+        };
+        let b = VerificationWarning {
+            code: 1,
+            message: Box::from("alpha"),
+            gate: 13,
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn verification_proof_new_initializes_empty_warnings() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let proof = VerificationProof::new(digest, 2, true);
+        assert!(proof.warnings.is_empty());
+        assert_eq!(proof.gate_count, 2);
+        assert!(proof.durable);
+    }
+
+    #[test]
+    fn verification_proof_warnings_can_be_populated() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let mut proof = VerificationProof::new(digest, 5, false);
+        proof.warnings.push(VerificationWarning {
+            code: 100,
+            message: Box::from("soft check advisory"),
+            gate: 7,
+        });
+        proof.warnings.push(VerificationWarning {
+            code: 200,
+            message: Box::from("boundary advisory"),
+            gate: 11,
+        });
+        assert_eq!(proof.warnings.len(), 2);
+        assert_eq!(proof.warnings[0].gate, 7);
+        assert_eq!(proof.warnings[1].code, 200);
+    }
+
+    #[test]
+    fn verification_warning_clone_preserves_fields() {
+        let original = VerificationWarning {
+            code: 55,
+            message: Box::from("cloneable warning"),
+            gate: 9,
+        };
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+        assert_eq!(cloned.code, 55);
+        assert_eq!(&*cloned.message, "cloneable warning");
+        assert_eq!(cloned.gate, 9);
+    }
 }
