@@ -31,6 +31,28 @@ fn ipc_error_response(error: crate::IpcError) -> IpcResponse {
     }
 }
 
+/// Maximum length for a sanitized runtime error message returned to IPC clients.
+const MAX_RUNTIME_ERROR_LEN: usize = 256;
+
+/// Sanitizes a runtime error message before returning it to an IPC client.
+///
+/// Truncates the message to a fixed maximum length to prevent accidental
+/// leakage of large internal diagnostics over the IPC channel.  The truncation
+/// preserves the first `MAX_RUNTIME_ERROR_LEN` characters and appends an
+/// ellipsis indicator when the original message was longer.
+fn sanitize_runtime_error(e: &dyn std::fmt::Display) -> String {
+    let full = e.to_string();
+    if full.len() <= MAX_RUNTIME_ERROR_LEN {
+        return full;
+    }
+    let mut truncated: String = full
+        .chars()
+        .take(MAX_RUNTIME_ERROR_LEN)
+        .collect();
+    truncated.push_str("...");
+    truncated
+}
+
 /// Handles a ping/health request.
 pub fn handle_ping() -> IpcResponse {
     IpcResponse::Healthy
@@ -46,7 +68,7 @@ pub fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
     match runtime.shutdown_graceful() {
         Ok(()) => IpcResponse::ShuttingDown,
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -94,7 +116,7 @@ pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -114,7 +136,7 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
             message: String::from("run not found"),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -132,7 +154,7 @@ pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
     match runtime.list_events(run_id) {
         Ok(events) => typed_events_response(&events, from_sequence),
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -164,7 +186,7 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -195,7 +217,7 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
             run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -227,7 +249,7 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
             run_id: run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
@@ -261,7 +283,7 @@ pub fn submit_resolved_workflow(
             run_id: submit.run_id.get(),
         },
         Err(e) => IpcResponse::RuntimeError {
-            message: e.to_string(),
+            message: sanitize_runtime_error(&e),
         },
     }
 }
