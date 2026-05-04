@@ -3,6 +3,7 @@
 //! Node execution dispatch for all compiled node kinds.
 
 use vb_core::action::ActionContract;
+use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SeqNo, SlotIdx};
 use vb_core::value::SlotValue;
@@ -48,6 +49,7 @@ pub fn execute_node_full(
     contracts: &[ActionContract],
     retry_policy: RetryPolicy,
     collect_states: &mut CollectStates,
+    granted: &CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &node.kind {
         CompiledNodeKind::ForEachStart {
@@ -314,7 +316,7 @@ pub fn execute_node_full(
         CompiledNodeKind::Do { action, input } => {
             let seq = SeqNo::new(run.executed());
             if contracts.is_empty() {
-                execute_do_without_contract(run, node.id, *action, *input, seq)
+                execute_do_without_contract(run, node.id, *action, *input, seq, granted)
             } else {
                 execute_do(
                     run,
@@ -324,6 +326,7 @@ pub fn execute_node_full(
                     seq,
                     resolve_contract(*action, contracts)?,
                     contracts,
+                    granted,
                 )
             }
         }

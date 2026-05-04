@@ -6,11 +6,13 @@ use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
     Idempotency, propagate_action_taint,
 };
+use vb_core::capability::CapabilitySet;
 use vb_core::engine::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::Taint;
 
+use crate::admission::check_capability;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
 /// Backward-compatible execute_do.
@@ -20,8 +22,9 @@ pub fn execute_do(
     action: ActionId,
     input: SlotIdx,
     seq: SeqNo,
-    _contract: &ActionContract,
+    contract: &ActionContract,
     registry_contracts: &[ActionContract],
+    granted: &CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let action_index = usize::from(action.get());
     let resolved = registry_contracts
@@ -32,6 +35,16 @@ pub fn execute_do(
     let input_taint = run.read_taint(input).map_err(RuntimeEngineError::Core)?;
     if resolved.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
         return Err(RuntimeEngineError::TaintViolation { step });
+    }
+
+    for required in resolved.required_capabilities.iter() {
+        if let Err(e) = check_capability(action, required, granted) {
+            return Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
+                action,
+                required: e.required,
+                granted: e.granted,
+            }));
+        }
     }
 
     let output_taint = propagate_action_taint(resolved.idempotency, input_taint);
@@ -59,6 +72,7 @@ pub fn execute_do_without_contract(
     action: ActionId,
     _input: SlotIdx,
     seq: SeqNo,
+    _granted: &CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let ticket = ActionTicket {
         run: run.run_id(),
@@ -447,5 +461,71 @@ mod tests {
         let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
         let result = resolve_contract(ActionId::new(2), &contracts);
         assert!(result.is_ok());
+    }
+
+    // =====================================================================
+    // execute_do capability checking
+    // =====================================================================
+
+    fn make_contract_with_capability(action_id: ActionId, cap: Capability) -> ActionContract {
+        ActionContract {
+            id: action_id,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::ReadOnly,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([cap]),
+        }
+    }
+
+    #[test]
+    fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
+        let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let action = ActionId::new(0);
+        let required_cap = Capability::new("secrets".into(), action);
+        let contract = make_contract_with_capability(action, required_cap);
+        let granted = CapabilitySet::empty();
+
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            action,
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &contract,
+            &[contract.clone()],
+            &granted,
+        );
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { .. })));
+    }
+
+    #[test]
+    fn execute_do_succeeds_when_required_capability_is_granted() {
+        let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let action = ActionId::new(0);
+        let required_cap = Capability::new("secrets".into(), action);
+        let contract = make_contract_with_capability(action, required_cap);
+        let granted = CapabilitySet::from_grants(Box::new([Capability::new("secrets".into(), action)]));
+
+        let result = execute_do(
+            &run,
+            StepIdx::new(0),
+            action,
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &contract,
+            &[contract.clone()],
+            &granted,
+        );
+
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), RuntimeSignal::AwaitingAction(_)));
     }
 }

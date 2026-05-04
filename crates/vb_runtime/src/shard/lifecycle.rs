@@ -116,16 +116,17 @@ impl Shard {
             .mark_succeeded(ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+        let encoded_value =
+            postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
             slot: output.output_slot,
+            value: encoded_value.clone(),
         });
         self.trace_ring.push(TraceEvent::ActionCompleted {
             run,
             step: ticket.step,
         });
-        let encoded_value =
-            postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.journal.append(RuntimeJournalEvent::SlotWritten {
             run,
             slot: output.output_slot,

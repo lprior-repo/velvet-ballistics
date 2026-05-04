@@ -219,30 +219,26 @@ impl Shard {
                 }
                 EvidenceEvent::StepSucceeded { step, output } => {
                     if let Some(slot) = output {
-                        self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
-                        if let Some(state) = self.runs.get(&run) {
+                        let encoded = if let Some(state) = self.runs.get(&run) {
                             if let Ok(value) = state.frame.read_slot(slot) {
-                                let encoded = postcard::to_allocvec(&value)
-                                    .map_err(|_| RuntimeError::EncodeFailed)?;
-                                self.journal.append(RuntimeJournalEvent::SlotWritten {
-                                    run,
-                                    slot,
-                                    value: encoded,
-                                })?;
+                                postcard::to_allocvec(value)
+                                    .map_err(|_| RuntimeError::EncodeFailed)?
                             } else {
-                                self.journal.append(RuntimeJournalEvent::SlotWritten {
-                                    run,
-                                    slot,
-                                    value: vec![],
-                                })?;
+                                Vec::new()
                             }
                         } else {
-                            self.journal.append(RuntimeJournalEvent::SlotWritten {
-                                run,
-                                slot,
-                                value: vec![],
-                            })?;
-                        }
+                            Vec::new()
+                        };
+                        self.trace_ring.push(TraceEvent::SlotWritten {
+                            run,
+                            slot,
+                            value: encoded.clone(),
+                        });
+                        self.journal.append(RuntimeJournalEvent::SlotWritten {
+                            run,
+                            slot,
+                            value: encoded,
+                        })?;
                     }
                     self.journal.append(RuntimeJournalEvent::StepSucceeded {
                         run,
@@ -251,9 +247,13 @@ impl Shard {
                     })?;
                 }
                 EvidenceEvent::SlotWritten { slot, value } => {
-                    self.trace_ring.push(TraceEvent::SlotWritten { run, slot });
-                    let encoded = postcard::to_allocvec(&value)
-                        .map_err(|_| RuntimeError::EncodeFailed)?;
+                    let encoded =
+                        postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+                    self.trace_ring.push(TraceEvent::SlotWritten {
+                        run,
+                        slot,
+                        value: encoded.clone(),
+                    });
                     self.journal.append(RuntimeJournalEvent::SlotWritten {
                         run,
                         slot,

@@ -590,7 +590,12 @@ pub enum IpcTraceEventKind {
     /// A step completed execution.
     StepEnded { run: RunId, step: StepIdx },
     /// A slot was written.
-    SlotWritten { run: RunId, slot: SlotIdx },
+    SlotWritten {
+        run: RunId,
+        slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded SlotValue).
+        value: Vec<u8>,
+    },
     /// An action was scheduled.
     ActionScheduled { run: RunId, step: StepIdx },
     /// An action completed.

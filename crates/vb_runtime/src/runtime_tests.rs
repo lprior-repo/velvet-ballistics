@@ -387,6 +387,7 @@ fn do_action_completion_writes_output_and_journals_events() {
         Ok(ref evts) if evts.contains(&TraceEvent::SlotWritten {
             run,
             slot: SlotIdx::new(1),
+            value: Vec::new(),
         }) && evts.contains(&TraceEvent::ActionCompleted {
             run,
             step: StepIdx::ZERO,

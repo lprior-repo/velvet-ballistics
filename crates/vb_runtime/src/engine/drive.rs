@@ -48,7 +48,7 @@ pub fn drive_deterministic_full(
     retry_policy: RetryPolicy,
     evidence: &mut EvidenceCollector,
     collect_states: &mut CollectStates,
-    _granted: &vb_core::capability::CapabilitySet,
+    granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let max_parallel = compute_max_parallel_in_flight(plan);
     run.set_max_parallel_in_flight(max_parallel);
@@ -76,6 +76,7 @@ pub fn drive_deterministic_full(
             contracts,
             retry_policy,
             collect_states,
+            granted,
         )?;
 
         match mark_step_after_signal(run, pc, &signal) {

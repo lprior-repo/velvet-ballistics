@@ -122,7 +122,7 @@ fn trace_event_run_id_returns_correct_run_for_all_variants() {
     let slot = SlotIdx::new(3);
     assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
     assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
-    assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+    assert_eq!(TraceEvent::SlotWritten { run, slot, value: Vec::new() }.run_id(), run);
     assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
     assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
     assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);
@@ -306,7 +306,7 @@ fn trace_event_run_id_all_variants() {
     let slot = SlotIdx::new(2);
     assert_eq!(TraceEvent::StepStarted { run, step }.run_id(), run);
     assert_eq!(TraceEvent::StepEnded { run, step }.run_id(), run);
-    assert_eq!(TraceEvent::SlotWritten { run, slot }.run_id(), run);
+    assert_eq!(TraceEvent::SlotWritten { run, slot, value: Vec::new() }.run_id(), run);
     assert_eq!(TraceEvent::ActionScheduled { run, step }.run_id(), run);
     assert_eq!(TraceEvent::ActionCompleted { run, step }.run_id(), run);
     assert_eq!(TraceEvent::RunSubmitted { run }.run_id(), run);

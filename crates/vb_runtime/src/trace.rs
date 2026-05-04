@@ -162,6 +162,8 @@ pub enum TraceEvent {
         run: RunId,
         /// Slot index.
         slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded SlotValue).
+        value: Vec<u8>,
     },
     /// An action was scheduled.
     ActionScheduled {

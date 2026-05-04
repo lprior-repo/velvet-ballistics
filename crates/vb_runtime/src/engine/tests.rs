@@ -602,6 +602,7 @@ fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
         ActionId::new(7),
         SlotIdx::new(0),
         SeqNo::new(5),
+        &vb_core::capability::CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {

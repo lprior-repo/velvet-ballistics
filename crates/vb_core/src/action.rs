@@ -143,6 +143,8 @@ pub struct ActionTicket {
     pub attempt: u16,
     /// Idempotency key for deduplication and replay.
     pub idempotency_key: u128,
+    /// Maximum attempts allowed (capacity bound from retry policy).
+    pub capacity: u16,
 }
 
 /// Successful action result with output value and metadata.
@@ -412,6 +414,7 @@ pub fn issue_action_ticket(
     action: ActionId,
     attempt: u16,
     idempotency_key: u128,
+    capacity: u16,
 ) -> ActionTicket {
     ActionTicket {
         run,
@@ -420,6 +423,7 @@ pub fn issue_action_ticket(
         action,
         attempt,
         idempotency_key,
+        capacity,
     }
 }
 

@@ -138,6 +138,12 @@ impl CompiledWorkflow {
             step_names: self.step_names.clone(),
         }
     }
+    pub(crate) fn error_handler_for_body(&self, body_step: StepIdx) -> Option<&CompiledNode> {
+        self.nodes.iter().find(|node| {
+            matches!(node.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == body_step)
+        })
+    }
+
 }
 
 /// Explicit compiled resource bounds accepted at run admission.

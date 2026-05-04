@@ -3425,6 +3425,7 @@ fn shard_action_completed_full_writes_slot_and_advances() {
         .any(|e| *e == TraceEvent::SlotWritten {
             run,
             slot: SlotIdx::new(0),
+            value: Vec::new(),
         });
     assert_eq!(found_action, true);
     assert_eq!(found_slot, true);

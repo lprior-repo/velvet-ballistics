@@ -36,6 +36,7 @@ pub struct RunFrame {
     step_count: u16,
     slot_count: u16,
     max_parallel_in_flight: u16,
+    peak_parallel_in_flight: u16,
     parallel_in_flight: u16,
     states: Box<[StepState]>,
     slots: Box<[Option<SlotValue>]>,
@@ -67,6 +68,7 @@ impl RunFrame {
             step_count,
             slot_count,
             max_parallel_in_flight: u16::MAX,
+            peak_parallel_in_flight: 0,
             parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
             slots: vec![None; slots_len].into_boxed_slice(),
@@ -101,6 +103,7 @@ impl RunFrame {
         self.pc = first_step;
         self.executed = 0;
         self.max_parallel_in_flight = u16::MAX;
+        self.peak_parallel_in_flight = 0;
         self.parallel_in_flight = 0;
         for state in &mut self.states {
             *state = StepState::Pending;
@@ -144,10 +147,10 @@ impl RunFrame {
         self.slot_count
     }
 
-    /// Maximum allowed parallel in-flight branches for this workflow.
+    /// Observed peak parallel in-flight branches for this frame.
     #[must_use]
     pub const fn max_parallel_in_flight(&self) -> u16 {
-        self.max_parallel_in_flight
+        self.peak_parallel_in_flight
     }
 
     /// Sets the maximum allowed parallel in-flight branches.
@@ -161,26 +164,23 @@ impl RunFrame {
         self.parallel_in_flight
     }
 
-    /// Adds to the parallel in-flight counter.
+    /// Adds to the parallel in-flight counter and updates peak_parallel_in_flight
+    /// if the new total exceeds the previous peak.
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
-        if self.max_parallel_in_flight == u16::MAX {
-            return Ok(());
-        }
         self.parallel_in_flight = self
             .parallel_in_flight
             .checked_add(count)
             .ok_or(CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight overflow",
             })?;
+        if self.parallel_in_flight > self.peak_parallel_in_flight {
+            self.peak_parallel_in_flight = self.parallel_in_flight;
+        }
         Ok(())
     }
 
     /// Subtracts from the parallel in-flight counter.
-    /// If max_parallel_in_flight is u16::MAX (unlimited), skip tracking.
     pub fn sub_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
-        if self.max_parallel_in_flight == u16::MAX {
-            return Ok(());
-        }
         self.parallel_in_flight = self
             .parallel_in_flight
             .checked_sub(count)
@@ -1077,4 +1077,123 @@ mod tests {
 
         Ok(())
     }
+
+
+    // =========================================================================
+    // Parallel in-flight tracking tests
+    // =========================================================================
+
+    #[test]
+    fn parallel_in_flight_tracks_peak_when_spawning_branches() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
+
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 0);
+
+        frame.add_parallel_in_flight(3)?;
+        assert_eq!(frame.parallel_in_flight(), 3);
+        assert_eq!(frame.max_parallel_in_flight(), 3);
+
+        frame.sub_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 1);
+        assert_eq!(frame.max_parallel_in_flight(), 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_updates_max_on_new_peak() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
+
+        frame.add_parallel_in_flight(2)?;
+        assert_eq!(frame.max_parallel_in_flight(), 2);
+
+        frame.add_parallel_in_flight(3)?;
+        assert_eq!(frame.parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        frame.sub_parallel_in_flight(5)?;
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        frame.add_parallel_in_flight(4)?;
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        frame.add_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_together_start_join_lifecycle() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 10, 1)?;
+
+        assert_eq!(frame.parallel_in_flight(), 0);
+
+        frame.add_parallel_in_flight(4)?;
+        assert_eq!(frame.parallel_in_flight(), 4);
+        assert_eq!(frame.max_parallel_in_flight(), 4);
+
+        frame.add_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
+
+        frame.sub_parallel_in_flight(4)?;
+        assert_eq!(frame.parallel_in_flight(), 2);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
+
+        frame.sub_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_overflow_returns_error() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
+
+        frame.add_parallel_in_flight(u16::MAX)?;
+        assert_eq!(
+            frame.add_parallel_in_flight(2),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "parallel_in_flight overflow"
+            })
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_underflow_returns_error() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
+
+        assert_eq!(
+            frame.sub_parallel_in_flight(1),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "parallel_in_flight underflow"
+            })
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_reinitialize_resets_tracking() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
+
+        frame.add_parallel_in_flight(5)?;
+        assert_eq!(frame.parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        frame.reinitialize(RunId::new(2), StepIdx::ZERO, 3, 1)?;
+
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 0);
+
+        Ok(())
+    }
+
 }

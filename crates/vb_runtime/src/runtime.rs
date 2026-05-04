@@ -771,6 +771,7 @@ mod tests {
             Ok(ref evts) if evts.contains(&TraceEvent::SlotWritten {
                 run,
                 slot: SlotIdx::new(1),
+                value: Vec::new(),
             }) && evts.contains(&TraceEvent::ActionCompleted {
                 run,
                 step: StepIdx::ZERO,

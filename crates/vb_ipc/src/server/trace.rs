@@ -71,9 +71,10 @@ pub fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
             run: *run,
             step: *step,
         },
-        TraceEvent::SlotWritten { run, slot } => IpcTraceEventKind::SlotWritten {
+        TraceEvent::SlotWritten { run, slot, value } => IpcTraceEventKind::SlotWritten {
             run: *run,
             slot: *slot,
+            value: value.clone(),
         },
         TraceEvent::ActionScheduled { run, step } => IpcTraceEventKind::ActionScheduled {
             run: *run,

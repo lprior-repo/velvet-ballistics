@@ -132,6 +132,12 @@ pub(crate) enum Command {
         workflow: PathBuf,
         output: OutputFormat,
     },
+    Diff {
+        run_a: String,
+        run_b: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,6 +200,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "doctor" => parse_doctor(args),
         "answer" => parse_answer(args),
         "graph" => parse_graph(args),
+        "diff" => parse_diff(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }
@@ -431,6 +438,19 @@ fn parse_graph(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
     let output = parse_output_format(args);
     Ok(Command::Graph { workflow, output })
+}
+
+fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_a = positional_str(args, 2, "run_a")?;
+    let run_b = positional_str(args, 3, "run_b")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Diff {
+        run_a,
+        run_b,
+        db: PathBuf::from(db),
+        output,
+    })
 }
 
 fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
