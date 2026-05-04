@@ -317,7 +317,7 @@ pub fn execute_node_full(
         CompiledNodeKind::Do { action, input } => {
             let seq = SeqNo::new(run.executed());
             if contracts.is_empty() {
-                execute_do_without_contract(run, node.id, *action, *input, seq, granted)
+                execute_do_without_contract(run, node.id, *action, *input, seq, granted, retry_policy)
             } else {
                 execute_do(
                     run,
@@ -328,6 +328,7 @@ pub fn execute_node_full(
                     resolve_contract(*action, contracts)?,
                     contracts,
                     granted,
+                    retry_policy,
                 )
             }
         }

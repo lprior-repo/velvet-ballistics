@@ -489,6 +489,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         contract_ref,
         &registry_contracts,
         &CapabilitySet::empty(),
+        RetryPolicy::DEFAULT,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -548,6 +549,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         contract_ref,
         &registry_contracts,
         &CapabilitySet::empty(),
+        RetryPolicy::DEFAULT,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -586,6 +588,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         &dummy_contract,
         &empty_contracts,
         &CapabilitySet::empty(),
+        RetryPolicy::DEFAULT,
     );
     assert_eq!(
         result,
@@ -610,6 +613,7 @@ fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
         SlotIdx::new(0),
         SeqNo::new(5),
         &vb_core::capability::CapabilitySet::empty(),
+        RetryPolicy::DEFAULT,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -634,7 +638,7 @@ fn make_original_ticket() -> ActionTicket {
         action: ActionId::new(7),
         attempt: 3,
         idempotency_key: compute_idempotency_key(RunId::new(1), SeqNo::new(10), ActionId::new(7)),
-        capacity: 1,
+        capacity: 5,
     }
 }
 
@@ -1338,7 +1342,7 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         action: ActionId::new(3),
         attempt: 2,
         idempotency_key: 100,
-        capacity: 1,
+        capacity: 4,
     };
     let result = resume_action_outcome(&mut run, &outcome, &original);
     match result {
@@ -1394,6 +1398,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         contract_ref,
         &registry,
         &CapabilitySet::empty(),
+        RetryPolicy::DEFAULT,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {

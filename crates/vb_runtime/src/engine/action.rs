@@ -15,7 +15,6 @@ use vb_core::value::Taint;
 use crate::admission::check_capability;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
-/// Backward-compatible execute_do.
 #[allow(clippy::too_many_arguments)]
 pub fn execute_do(
     run: &RunFrame,
@@ -26,6 +25,7 @@ pub fn execute_do(
     _contract: &ActionContract,
     registry_contracts: &[ActionContract],
     granted: &CapabilitySet,
+    retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let action_index = usize::from(action.get());
     let resolved = registry_contracts
@@ -62,7 +62,7 @@ pub fn execute_do(
         action,
         attempt: 1,
         idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
-        capacity: 1,
+        capacity: retry_policy.max_attempts,
     };
 
     if output_taint == Taint::Clean && input_taint != Taint::Clean {
@@ -80,6 +80,7 @@ pub fn execute_do_without_contract(
     _input: SlotIdx,
     seq: SeqNo,
     _granted: &CapabilitySet,
+    retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let ticket = ActionTicket {
         run: run.run_id(),
@@ -88,7 +89,7 @@ pub fn execute_do_without_contract(
         action,
         attempt: 1,
         idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
-        capacity: 1,
+        capacity: retry_policy.max_attempts,
     };
     Ok(RuntimeSignal::AwaitingAction(ticket))
 }
@@ -136,7 +137,9 @@ pub fn resume_action_outcome(
         }
         ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(*ticket)),
         ActionOutcome::Failed(failure) => {
-            if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
+            if failure.retry_policy == vb_core::action::RetryPolicy::Retryable
+                && original_ticket.attempt < original_ticket.capacity
+            {
                 let next_seq = original_ticket
                     .seq
                     .checked_add(1)
@@ -164,6 +167,11 @@ pub fn resume_action_outcome(
                     idempotency_key,
                     capacity: original_ticket.capacity,
                 }))
+            } else if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
+                Err(RuntimeEngineError::RetryExhausted {
+                    action: original_ticket.action,
+                    attempts: original_ticket.attempt,
+                })
             } else {
                 Err(RuntimeEngineError::Core(
                     EngineError::UnsupportedPrimitive {
@@ -510,6 +518,7 @@ mod tests {
             &contract,
             &[contract.clone()],
             &granted,
+            RetryPolicy::NEVER,
         );
 
         assert!(result.is_err());
@@ -535,9 +544,107 @@ mod tests {
             &contract,
             &[contract.clone()],
             &granted,
+            RetryPolicy::DEFAULT,
         );
 
         assert!(result.is_ok());
         assert!(matches!(result.unwrap(), RuntimeSignal::AwaitingAction(_)));
+    }
+
+    // =====================================================================
+    // resume_action_outcome capacity gate
+    // =====================================================================
+
+    #[test]
+    fn resume_retries_when_attempt_below_capacity() {
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 3,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: vb_core::action::RetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        match result {
+            Ok(RuntimeSignal::AwaitingAction(retry)) => {
+                assert_eq!(retry.attempt, 2);
+                assert_eq!(retry.capacity, 3);
+            }
+            other => {
+                let msg = format!("expected AwaitingAction, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn resume_returns_retry_exhausted_when_capacity_reached() {
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 3,
+            idempotency_key: 0,
+            capacity: 3,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: vb_core::action::RetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        match result {
+            Err(RuntimeEngineError::RetryExhausted { action, attempts }) => {
+                assert_eq!(action, ActionId::new(5));
+                assert_eq!(attempts, 3);
+            }
+            other => {
+                let msg = format!("expected RetryExhausted, got {other:?}");
+                panic!("{msg}");
+            }
+        }
+    }
+
+    #[test]
+    fn resume_capacity_one_never_retries() {
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
+        };
+        let failure = ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: vb_core::action::RetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        };
+        let outcome = ActionOutcome::Failed(failure);
+        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        assert!(
+            matches!(result, Err(RuntimeEngineError::RetryExhausted { .. })),
+            "capacity=1 must reject retry: {result:?}"
+        );
     }
 }
