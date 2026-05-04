@@ -495,7 +495,7 @@ fn cmd_compile(
         }
         EmitTarget::Yaml => {
             let parts = compiled.to_parts();
-            let yaml_str = match serde_yaml::to_string(&parts) {
+            let yaml_str = match serde_saphyr::to_string(&parts) {
                 Ok(s) => s,
                 Err(e) => {
                     if output != OutputFormat::Text {
