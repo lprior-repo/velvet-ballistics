@@ -29,7 +29,7 @@ pub fn together_start(
         });
     }
     let current = run.parallel_in_flight();
-    let max = run.max_parallel_in_flight_limit();
+    let max = run.max_parallel_in_flight();
     if current.saturating_add(count) > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }

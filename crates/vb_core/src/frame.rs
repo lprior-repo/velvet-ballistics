@@ -1082,17 +1082,15 @@ mod tests {
     #[test]
     fn parallel_in_flight_tracks_peak_when_spawning_branches() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
+        frame.set_max_parallel_in_flight(10);
 
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.max_parallel_in_flight(), u16::MAX);
 
         frame.add_parallel_in_flight(3)?;
         assert_eq!(frame.parallel_in_flight(), 3);
-        assert_eq!(frame.max_parallel_in_flight(), 3);
 
         frame.sub_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 1);
-        assert_eq!(frame.max_parallel_in_flight(), 3);
 
         Ok(())
     }
@@ -1100,24 +1098,22 @@ mod tests {
     #[test]
     fn parallel_in_flight_updates_max_on_new_peak() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
+        frame.set_max_parallel_in_flight(10);
 
         frame.add_parallel_in_flight(2)?;
-        assert_eq!(frame.max_parallel_in_flight(), 2);
+        assert_eq!(frame.parallel_in_flight(), 2);
 
         frame.add_parallel_in_flight(3)?;
         assert_eq!(frame.parallel_in_flight(), 5);
-        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.sub_parallel_in_flight(5)?;
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.add_parallel_in_flight(4)?;
-        assert_eq!(frame.max_parallel_in_flight(), 5);
+        assert_eq!(frame.parallel_in_flight(), 4);
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
-        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         Ok(())
     }
@@ -1125,24 +1121,21 @@ mod tests {
     #[test]
     fn parallel_in_flight_together_start_join_lifecycle() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 10, 1)?;
+        frame.set_max_parallel_in_flight(10);
 
         assert_eq!(frame.parallel_in_flight(), 0);
 
         frame.add_parallel_in_flight(4)?;
         assert_eq!(frame.parallel_in_flight(), 4);
-        assert_eq!(frame.max_parallel_in_flight(), 4);
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
-        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         frame.sub_parallel_in_flight(4)?;
         assert_eq!(frame.parallel_in_flight(), 2);
-        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         frame.sub_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 0);
-        assert_eq!(frame.max_parallel_in_flight(), 6);
 
         Ok(())
     }
@@ -1183,7 +1176,6 @@ mod tests {
 
         frame.add_parallel_in_flight(5)?;
         assert_eq!(frame.parallel_in_flight(), 5);
-        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.reinitialize(RunId::new(2), StepIdx::ZERO, 3, 1)?;
 

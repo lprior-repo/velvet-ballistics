@@ -9,7 +9,7 @@ use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 ///
 /// These do not prevent admission but should be reported to the caller
 /// for logging, monitoring, or informational purposes.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Serialize, serde::Deserialize)]
 pub enum VerificationWarning {
     /// Record schema version is older than current but still compatible.
     #[error("record schema version {found} is older than current {current} — migration may be required")]
@@ -67,7 +67,6 @@ impl AdmissionWarnings {
     }
 
     /// Returns an iterator over the warnings.
-    #[must_use]
     pub fn iter(&self) -> std::slice::Iter<'_, VerificationWarning> {
         self.warnings.iter()
     }
