@@ -84,8 +84,17 @@ impl ReplayState {
     ///
     /// The returned state is a clone of `self` with mutations applied
     /// according to the event variant.
+    ///
+    /// If `self` is already in a terminal state (`is_terminal == true`),
+    /// the event is ignored and a clone of `self` is returned unchanged.
+    /// This prevents counter corruption from late-arriving events after
+    /// `RunCancelled`, `RunFailed`, or `RunFinished`.
     #[must_use]
     pub fn apply_event(&self, event: &JournalEvent) -> Self {
+        if self.is_terminal {
+            return self.clone();
+        }
+
         let mut next = self.clone();
         next.at_seq = event.seq();
 

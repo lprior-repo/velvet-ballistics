@@ -92,23 +92,34 @@ impl TimelineStrip {
     }
 
     /// Appends journal events to the strip, preserving existing events and
-    /// cursor position.
+    /// cursor position.  Duplicate events (same `seq` as an existing event)
+    /// are silently dropped.
     pub fn extend_from_journal(&mut self, events: &[JournalEvent]) {
-        let new_timeline: Vec<TimelineEvent> = events
-            .iter()
-            .map(|je| {
-                let (kind_str, step) = journal_event_info(je);
-                let color = Self::event_color(&kind_str);
-                TimelineEvent {
-                    seq: u32::try_from(je.seq().get()).unwrap_or(u32::MAX),
-                    event_kind: kind_str,
-                    step_id: step,
-                    timestamp_micros: 0,
-                    color,
-                }
-            })
-            .collect();
-        self.events.extend(new_timeline);
+        for je in events {
+            let seq = u32::try_from(je.seq().get()).unwrap_or(u32::MAX);
+            // Binary search: events are sorted by seq, so use partition_point.
+            let already_present = self
+                .events
+                .binary_search_by(|e| e.seq.cmp(&seq))
+                .is_ok();
+            if already_present {
+                continue;
+            }
+            let (kind_str, step) = journal_event_info(je);
+            let color = Self::event_color(&kind_str);
+            let event = TimelineEvent {
+                seq,
+                event_kind: kind_str,
+                step_id: step,
+                timestamp_micros: 0,
+                color,
+            };
+            // Insert in sorted position to maintain seq ordering.
+            let insert_at = self
+                .events
+                .partition_point(|e| e.seq < seq);
+            self.events.insert(insert_at, event);
+        }
     }
 
     /// Appends pre-converted timeline events to the strip, preserving existing
