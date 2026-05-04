@@ -339,8 +339,12 @@ fn apply_single(
             let node = doc.graph.nodes.get_mut(id).ok_or_else(|| PatchError {
                 message: format!("node '{}' not found for update", id),
             })?;
+            let inverse = capture_node_inverse(node, changes);
             apply_node_changes(node, changes);
-            Ok(None)
+            Ok(Some(FlowPatch::UpdateNode {
+                id: id.clone(),
+                changes: inverse,
+            }))
         }
 
         FlowPatch::RemoveNode { id } => {
@@ -381,8 +385,12 @@ fn apply_single(
             let edge = doc.graph.edges.get_mut(id).ok_or_else(|| PatchError {
                 message: format!("edge '{}' not found for update", id),
             })?;
+            let inverse = capture_edge_inverse(edge, changes);
             apply_edge_changes(edge, changes);
-            Ok(None)
+            Ok(Some(FlowPatch::UpdateEdge {
+                id: id.clone(),
+                changes: inverse,
+            }))
         }
 
         FlowPatch::RemoveEdge { id } => {
@@ -413,8 +421,12 @@ fn apply_single(
             let group = doc.graph.groups.get_mut(id).ok_or_else(|| PatchError {
                 message: format!("group '{}' not found for update", id),
             })?;
+            let inverse = capture_group_inverse(group, changes);
             apply_group_changes(group, changes);
-            Ok(None)
+            Ok(Some(FlowPatch::UpdateGroup {
+                id: id.clone(),
+                changes: inverse,
+            }))
         }
 
         FlowPatch::RemoveGroup { id } => {
@@ -449,14 +461,53 @@ fn apply_single(
             node_ids,
             new_parent,
         } => {
+            let mut old_parents: Vec<(NodeId, Option<GroupId>)> = Vec::new();
             for nid in node_ids {
-                let node = doc.graph.nodes.get_mut(nid).ok_or_else(|| PatchError {
+                let node = doc.graph.nodes.get(nid).ok_or_else(|| PatchError {
                     message: format!("node '{}' not found for reparent", nid),
                 })?;
-                node.parent = new_parent.clone();
+                old_parents.push((nid.clone(), node.parent.clone()));
             }
-            Ok(None)
+            for (nid, _) in &old_parents {
+                if let Some(node) = doc.graph.nodes.get_mut(nid) {
+                    node.parent = new_parent.clone();
+                }
+            }
+            let inverse_parent = old_parents.first().and_then(|(_, p)| p.clone());
+            let inverse_ids: Vec<NodeId> = old_parents.iter().map(|(n, _)| n.clone()).collect();
+            Ok(Some(FlowPatch::ReparentNodes {
+                node_ids: inverse_ids,
+                new_parent: inverse_parent,
+            }))
         }
+    }
+}
+
+fn capture_node_inverse(node: &FlowNodeRecord, changes: &NodeChangeSet) -> NodeChangeSet {
+    NodeChangeSet {
+        position: changes.position.map(|_| node.position),
+        size: changes.size.map(|_| node.size),
+        title: changes.title.as_ref().map(|_| node.title.clone()),
+        kind: changes.kind.as_ref().map(|_| node.kind.clone()),
+        data: changes.data.as_ref().map(|_| node.data.clone()),
+        flags: changes.flags.as_ref().map(|_| node.flags.clone()),
+        ui: changes.ui.as_ref().map(|_| node.ui.clone()),
+    }
+}
+
+fn capture_edge_inverse(edge: &FlowEdgeRecord, changes: &EdgeChangeSet) -> EdgeChangeSet {
+    EdgeChangeSet {
+        label: changes.label.as_ref().map(|_| edge.label.clone()),
+        style: changes.style.as_ref().map(|_| edge.style.clone()),
+        data: changes.data.as_ref().map(|_| edge.data.clone()),
+    }
+}
+
+fn capture_group_inverse(group: &FlowGroupRecord, changes: &GroupChangeSet) -> GroupChangeSet {
+    GroupChangeSet {
+        title: changes.title.as_ref().map(|_| group.title.clone()),
+        bounds: changes.bounds.map(|_| group.bounds),
+        data: changes.data.as_ref().map(|_| group.data.clone()),
     }
 }
 
@@ -2607,8 +2658,11 @@ mod tests {
             },
         );
         assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "new-title"));
-        // UpdateNode returns None inverse so undo frame is empty -- nothing to undo
-        // The undo/redo stacks reflect this
+        // UpdateNode now returns an inverse patch so undo/redo should work
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "n1"));
+        let _ = engine.redo(&mut doc);
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "new-title"));
     }
 
     #[test]
@@ -2661,5 +2715,161 @@ mod tests {
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("g1") });
         assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent.is_none()));
         assert!(doc.graph.nodes.get(&nid("n2")).is_some_and(|n| n.parent == Some(gid("g2"))));
+    }
+
+    // =========================================================================
+    // REGRESSION: undo/redo for Update* patches (was Ok(None))
+    // =========================================================================
+
+    #[test]
+    fn bh_update_node_returns_inverse_patch() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([42.0, 84.0]),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(result.is_ok());
+        assert!(result.ok().flatten().is_some());
+    }
+
+    #[test]
+    fn bh_undo_update_node_restores_position() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([99.0, 88.0]),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 99.0).abs() < f64::EPSILON));
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0]).abs() < f64::EPSILON));
+    }
+
+    #[test]
+    fn bh_undo_update_edge_restores_label() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        doc.graph.nodes.insert(nid("n2"), make_node("n2"));
+        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes: EdgeChangeSet {
+                    label: Some(Some(SmolStr::from("new-label"))),
+                    ..EdgeChangeSet::default()
+                },
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.edges.get(&eid("e1")).is_some_and(|e| e.label.is_none()));
+    }
+
+    #[test]
+    fn bh_undo_update_group_restores_title() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes: GroupChangeSet {
+                    title: Some(SmolStr::from("renamed")),
+                    ..GroupChangeSet::default()
+                },
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.groups.get(&gid("g1")).is_some_and(|g| g.title.as_str() == "g1"));
+    }
+
+    #[test]
+    fn bh_undo_reparent_restores_old_parent() {
+        let mut doc = FlowDocument::default();
+        doc.graph.groups.insert(gid("g1"), make_group("g1"));
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::ReparentNodes {
+                node_ids: vec![nid("n1")],
+                new_parent: Some(gid("g1")),
+            },
+        );
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent == Some(gid("g1"))));
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent.is_none()));
+    }
+
+    #[test]
+    fn bh_undo_update_node_multiple_fields() {
+        let mut doc = FlowDocument::default();
+        doc.graph.nodes.insert(nid("n1"), make_node("n1"));
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    position: Some([10.0, 20.0]),
+                    title: Some(SmolStr::from("new-title")),
+                    flags: Some(NodeFlags { locked: true, ..NodeFlags::default() }),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        let _ = engine.undo(&mut doc);
+        let node = doc.graph.nodes.get(&nid("n1"));
+        assert!(node.is_some_and(|n| (n.position[0]).abs() < f64::EPSILON));
+        assert!(node.is_some_and(|n| n.title.as_str() == "n1"));
+        assert!(node.is_some_and(|n| !n.flags.locked));
+    }
+
+    #[test]
+    fn bh_inverse_only_captures_changed_fields() {
+        let mut doc = FlowDocument::default();
+        let mut node = make_node("n1");
+        node.title = SmolStr::from("original");
+        node.position = [10.0, 20.0];
+        doc.graph.nodes.insert(nid("n1"), node);
+        let mut engine = PatchEngine::new();
+        engine.begin_undo_frame();
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes: NodeChangeSet {
+                    title: Some(SmolStr::from("changed")),
+                    ..NodeChangeSet::default()
+                },
+            },
+        );
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON));
+        let _ = engine.undo(&mut doc);
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "original"));
+        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON));
     }
 }

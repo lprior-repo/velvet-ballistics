@@ -11,5 +11,8 @@
 pub mod canvas;
 pub mod node_mapping;
 
-pub use canvas::{EdgePath, ViewportRect, WorkflowCanvas};
+pub use canvas::{
+    EdgePath, EdgeType, NodeBadge, ViewportRect, WorkflowCanvas, WorkflowEdge, WorkflowGraph,
+    WorkflowNode, build_graph,
+};
 pub use node_mapping::{NodeCategory, NodeShape, NodeVisual, node_kind_to_visual};

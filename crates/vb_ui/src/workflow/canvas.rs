@@ -1,18 +1,29 @@
-//! Workflow canvas -- viewport, selection, focus-jump, and edge path computation.
+//! Workflow canvas -- viewport, selection, focus-jump, edge path computation,
+//! and the graph data model (Phase 4A, read-only).
 //!
-//! The [`WorkflowCanvas`] holds a flow document and its computed layout, tracks
-//! viewport state (pan, zoom), node selection, and provides methods to compute
-//! visible node rectangles, center the viewport on a specific node, and build
-//! edge paths between connected nodes.
+//! This module provides two layers:
+//!
+//! 1. **Viewport canvas** ([`WorkflowCanvas`]) -- holds a flow document with
+//!    computed layout, tracks viewport state (pan, zoom), node selection, and
+//!    provides methods for visible node rectangles, focus-jump, and edge paths.
+//!
+//! 2. **Graph data model** ([`WorkflowGraph`], [`WorkflowNode`], [`WorkflowEdge`],
+//!    [`EdgeType`], [`NodeBadge`]) -- the read-only topology extracted from
+//!    compiled IR by [`build_graph`]. Nodes carry visual properties and badges;
+//!    edges carry semantic types and labels.
 
 #[cfg(test)]
 use std::collections::HashMap;
 
+use vb_core::ids::StepIdx;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
+
 use crate::graph_builder::FlowDocument;
 use crate::layout::{self, LayoutEdge, LayoutNode, LayoutResult};
+use crate::workflow::node_mapping::{node_kind_to_visual, NodeVisual};
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants (viewport)
 // ---------------------------------------------------------------------------
 
 /// Default zoom level (1.0 = 100%).
@@ -25,7 +36,7 @@ const MAX_ZOOM: f64 = 5.0;
 const BEZIER_OFFSET: f64 = 60.0;
 
 // ---------------------------------------------------------------------------
-// Viewport rectangle
+// ViewportRect
 // ---------------------------------------------------------------------------
 
 /// Axis-aligned rectangle describing the visible viewport region in world
@@ -64,7 +75,7 @@ impl ViewportRect {
 }
 
 // ---------------------------------------------------------------------------
-// Edge path
+// EdgePath (viewport rendering)
 // ---------------------------------------------------------------------------
 
 /// A cubic Bezier edge path between two node centres.
@@ -85,7 +96,107 @@ pub struct EdgePath {
 }
 
 // ---------------------------------------------------------------------------
-// WorkflowCanvas
+// EdgeType (graph data model)
+// ---------------------------------------------------------------------------
+
+/// Semantic classification of an edge in the workflow graph.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EdgeType {
+    /// Normal sequential transition via `node.next`.
+    Sequential,
+    /// Branch condition edge from a Choose/ChooseSlot node.
+    Branch {
+        /// Zero-based index of the branch within the branch table.
+        condition_index: usize,
+    },
+    /// Error handler route via `node.on_error` or ErrorHandler.
+    ErrorRoute,
+    /// Retry loop back-edge (RetryCheck -> body, RepeatStart -> body, etc.).
+    RetryRoute,
+    /// Parallel/loop join convergence edge.
+    JoinRoute,
+}
+
+// ---------------------------------------------------------------------------
+// NodeBadge (graph data model)
+// ---------------------------------------------------------------------------
+
+/// A small overlay badge on a workflow graph node.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NodeBadge {
+    /// Action ID badge (Do nodes only): "A17".
+    ActionId(u16),
+    /// Retry maximum attempts badge: "R3".
+    RetryMax(u16),
+    /// Timeout in seconds badge: "T5s".
+    Timeout(u32),
+    /// Secret-sensitive data flows through this node.
+    SecretSensitive,
+    /// Strict-durable guarantee applies to this node.
+    StrictDurable,
+    /// Recent failures in the last N runs: "!2".
+    RecentFailures(u32),
+}
+
+// ---------------------------------------------------------------------------
+// WorkflowEdge (graph data model)
+// ---------------------------------------------------------------------------
+
+/// A directed edge between two nodes in the workflow graph.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WorkflowEdge {
+    /// Source step index.
+    pub from_step: StepIdx,
+    /// Target step index.
+    pub to_step: StepIdx,
+    /// Semantic edge type.
+    pub edge_type: EdgeType,
+    /// Optional display label (e.g. condition name, "retry", "error").
+    pub label: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// WorkflowNode (graph data model)
+// ---------------------------------------------------------------------------
+
+/// A single node in the workflow graph data model.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WorkflowNode {
+    /// Step index in the compiled node array.
+    pub step_idx: StepIdx,
+    /// Human-readable kind name (e.g. "Do", "Choose", "Finish").
+    pub kind_name: String,
+    /// Visual properties from the node mapping table.
+    pub visual: NodeVisual,
+    /// Computed layout position (None until layout is computed).
+    pub position: Option<(f64, f64)>,
+    /// Overlay badges for this node.
+    pub badges: Vec<NodeBadge>,
+}
+
+// ---------------------------------------------------------------------------
+// WorkflowGraph (graph data model)
+// ---------------------------------------------------------------------------
+
+/// The complete workflow graph data model for canvas rendering.
+///
+/// Constructed from a [`CompiledWorkflow`] by [`build_graph`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct WorkflowGraph {
+    /// Nodes in the graph (indexed by compiled node order).
+    pub nodes: Vec<WorkflowNode>,
+    /// Edges between nodes.
+    pub edges: Vec<WorkflowEdge>,
+    /// Entry step index.
+    pub entry_step: StepIdx,
+    /// Number of runtime slots required.
+    pub slot_count: u16,
+    /// Workflow name.
+    pub workflow_name: String,
+}
+
+// ---------------------------------------------------------------------------
+// WorkflowCanvas (viewport)
 // ---------------------------------------------------------------------------
 
 /// The workflow authoring canvas.
@@ -320,7 +431,7 @@ impl WorkflowCanvas {
     }
 
     // -----------------------------------------------------------------------
-    // Private helpers
+    // Private helpers (viewport)
     // -----------------------------------------------------------------------
 
     /// Resolve a node ID string to its step index, position, and size.
@@ -380,16 +491,392 @@ impl WorkflowCanvas {
 }
 
 // ---------------------------------------------------------------------------
+// Graph construction (Phase 4A)
+// ---------------------------------------------------------------------------
+
+/// Build a [`WorkflowGraph`] from a compiled workflow.
+///
+/// Walks the compiled node array, creates a [`WorkflowNode`] for each entry
+/// with visual mapping and badges, then emits [`WorkflowEdge`] entries for
+/// every control-flow target: sequential `next`, branch targets, loop
+/// body/done, error handlers, retry back-edges, and parallel join routes.
+///
+/// The graph is read-only -- mutation happens by rebuilding from updated IR.
+#[must_use]
+pub fn build_graph(workflow: &CompiledWorkflow) -> WorkflowGraph {
+    let parts = workflow.to_parts();
+    let mut nodes = Vec::new();
+    let mut edges = Vec::new();
+
+    // Phase 1: build nodes.
+    for compiled in parts.nodes.iter() {
+        let step_idx = compiled.id;
+        let visual = node_kind_to_visual(&compiled.kind);
+        let kind_name = visual.label.clone();
+        let badges = build_badges(compiled, parts.resource_contract.max_retry_attempts);
+
+        nodes.push(WorkflowNode {
+            step_idx,
+            kind_name,
+            visual,
+            position: None,
+            badges,
+        });
+
+        // Phase 2a: sequential next edge.
+        if let Some(next) = compiled.next {
+            let label = if is_loop_back_edge(step_idx, next, &parts.nodes) {
+                Some(String::from("loop"))
+            } else {
+                None
+            };
+            let edge_type = classify_sequential_edge(step_idx, next, &parts.nodes);
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: next,
+                edge_type,
+                label,
+            });
+        }
+
+        // Phase 2b: kind-specific edges.
+        emit_kind_edges(step_idx, &compiled.kind, &mut edges);
+    }
+
+    WorkflowGraph {
+        nodes,
+        edges,
+        entry_step: parts.entry,
+        slot_count: parts.slot_count,
+        workflow_name: parts.name.into_string(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers (graph construction)
+// ---------------------------------------------------------------------------
+
+/// Build badge list for a compiled node.
+fn build_badges(node: &CompiledNode, max_retry_attempts: u16) -> Vec<NodeBadge> {
+    let mut badges = Vec::new();
+
+    match &node.kind {
+        CompiledNodeKind::Do { action, .. } => {
+            badges.push(NodeBadge::ActionId(action.get()));
+        }
+        CompiledNodeKind::RepeatStart { max_attempts, .. } => {
+            badges.push(NodeBadge::RetryMax(*max_attempts));
+        }
+        CompiledNodeKind::RetryCheck { .. } => {
+            badges.push(NodeBadge::RetryMax(max_retry_attempts));
+        }
+        _ => {}
+    }
+
+    badges
+}
+
+/// Determine whether a `next` edge goes backward (indicating a loop).
+fn is_loop_back_edge(from: StepIdx, to: StepIdx, nodes: &[CompiledNode]) -> bool {
+    // A back-edge goes to a step with index <= from.
+    if to.get() > from.get() {
+        return false;
+    }
+    // Confirm the target is a loop-entry node kind.
+    let target_node = match nodes.get(to.as_usize()) {
+        Some(n) => n,
+        None => return false,
+    };
+    matches!(
+        target_node.kind,
+        CompiledNodeKind::ForEachNext { .. }
+            | CompiledNodeKind::ForEachStart { .. }
+            | CompiledNodeKind::RepeatAttempt { .. }
+            | CompiledNodeKind::RepeatCheck { .. }
+            | CompiledNodeKind::CollectNext { .. }
+            | CompiledNodeKind::CollectPage { .. }
+            | CompiledNodeKind::ReduceNext { .. }
+    )
+}
+
+/// Classify a sequential `next` edge.
+fn classify_sequential_edge(
+    from: StepIdx,
+    to: StepIdx,
+    nodes: &[CompiledNode],
+) -> EdgeType {
+    if is_loop_back_edge(from, to, nodes) {
+        return EdgeType::RetryRoute;
+    }
+
+    // Check if the target is a join/convergence node.
+    let target_node = match nodes.get(to.as_usize()) {
+        Some(n) => n,
+        None => return EdgeType::Sequential,
+    };
+
+    if matches!(
+        target_node.kind,
+        CompiledNodeKind::ForEachJoin { .. }
+            | CompiledNodeKind::TogetherJoin { .. }
+            | CompiledNodeKind::CollectFinish { .. }
+            | CompiledNodeKind::ReduceFinish { .. }
+            | CompiledNodeKind::RepeatFinish { .. }
+    ) {
+        return EdgeType::JoinRoute;
+    }
+
+    EdgeType::Sequential
+}
+
+/// Emit edges specific to node kinds (branches, loops, error handlers, etc.).
+fn emit_kind_edges(
+    step_idx: StepIdx,
+    kind: &CompiledNodeKind,
+    edges: &mut Vec<WorkflowEdge>,
+) {
+    match kind {
+        // -- Branch edges --
+        CompiledNodeKind::Choose { branches, otherwise } => {
+            for (i, branch) in branches.iter().enumerate() {
+                edges.push(WorkflowEdge {
+                    from_step: step_idx,
+                    to_step: branch.target,
+                    edge_type: EdgeType::Branch { condition_index: i },
+                    label: Some(format!("cond-{i}")),
+                });
+            }
+            if let Some(fallback) = otherwise {
+                edges.push(WorkflowEdge {
+                    from_step: step_idx,
+                    to_step: *fallback,
+                    edge_type: EdgeType::Branch {
+                        condition_index: branches.len(),
+                    },
+                    label: Some(String::from("otherwise")),
+                });
+            }
+        }
+
+        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for (i, branch) in branches.iter().enumerate() {
+                edges.push(WorkflowEdge {
+                    from_step: step_idx,
+                    to_step: branch.target,
+                    edge_type: EdgeType::Branch { condition_index: i },
+                    label: Some(format!("slot-cond-{i}")),
+                });
+            }
+            if let Some(fallback) = otherwise {
+                edges.push(WorkflowEdge {
+                    from_step: step_idx,
+                    to_step: *fallback,
+                    edge_type: EdgeType::Branch {
+                        condition_index: branches.len(),
+                    },
+                    label: Some(String::from("otherwise")),
+                });
+            }
+        }
+
+        // -- Loop edges --
+        CompiledNodeKind::ForEachStart { body, done, .. }
+        | CompiledNodeKind::CollectStart { body, done, .. }
+        | CompiledNodeKind::ReduceStart { body, done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::Sequential,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        CompiledNodeKind::ForEachNext { body, done, .. }
+        | CompiledNodeKind::CollectNext { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::RetryRoute,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        CompiledNodeKind::CollectPage { body, done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::RetryRoute,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        // -- Repeat / Retry --
+        CompiledNodeKind::RepeatStart { body, done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::RetryRoute,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        CompiledNodeKind::RepeatAttempt { body, done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::RetryRoute,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        CompiledNodeKind::RepeatCheck { done, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *done,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("done")),
+            });
+        }
+
+        CompiledNodeKind::RetryCheck {
+            body,
+            exhausted,
+            ..
+        } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::RetryRoute,
+                label: Some(String::from("retry")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *exhausted,
+                edge_type: EdgeType::ErrorRoute,
+                label: Some(String::from("exhausted")),
+            });
+        }
+
+        // -- Parallel --
+        CompiledNodeKind::TogetherStart { branches, join } => {
+            for (i, branch_entry) in branches.iter().enumerate() {
+                edges.push(WorkflowEdge {
+                    from_step: step_idx,
+                    to_step: *branch_entry,
+                    edge_type: EdgeType::Sequential,
+                    label: Some(format!("branch-{i}")),
+                });
+            }
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *join,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("join")),
+            });
+        }
+
+        CompiledNodeKind::TogetherBranch { join, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *join,
+                edge_type: EdgeType::JoinRoute,
+                label: Some(String::from("join")),
+            });
+        }
+
+        // -- Error handler --
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *body,
+                edge_type: EdgeType::Sequential,
+                label: Some(String::from("body")),
+            });
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *handler,
+                edge_type: EdgeType::ErrorRoute,
+                label: Some(String::from("handler")),
+            });
+        }
+
+        // -- Jump --
+        CompiledNodeKind::Jump { target } => {
+            edges.push(WorkflowEdge {
+                from_step: step_idx,
+                to_step: *target,
+                edge_type: EdgeType::Sequential,
+                label: Some(String::from("jump")),
+            });
+        }
+
+        // -- Nodes with no additional kind-specific edges --
+        CompiledNodeKind::Nop
+        | CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::CollectFinish { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. }
+        | CompiledNodeKind::Finish { .. } => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
+    };
 
-    use crate::graph_builder::build_document;
-    use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+    // =======================================================================
+    // Helpers
+    // =======================================================================
 
     fn make_nop_node(id: u16, next: Option<u16>) -> CompiledNode {
         CompiledNode {
@@ -415,30 +902,224 @@ mod tests {
         }
     }
 
+    fn make_do_node(id: u16, action: u16, input_slot: u16, next: Option<u16>) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: next.map(StepIdx::new),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(action),
+                input: SlotIdx::new(input_slot),
+            },
+        }
+    }
+
+    fn make_choose_node(id: u16, targets: &[u16], otherwise: Option<u16>) -> CompiledNode {
+        use vb_core::workflow::ExprBranch;
+        let branches: Vec<ExprBranch> = targets
+            .iter()
+            .enumerate()
+            .map(|(i, &t)| ExprBranch {
+                condition: ExprIdx::new(u16::try_from(i.saturating_add(100)).unwrap_or(u16::MAX)),
+                target: StepIdx::new(t),
+            })
+            .collect();
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: branches.into_boxed_slice(),
+                otherwise: otherwise.map(StepIdx::new),
+            },
+        }
+    }
+
+    fn make_error_handler_node(id: u16, body: u16, handler: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(body),
+                handler: StepIdx::new(handler),
+                error_slot: None,
+            },
+        }
+    }
+
     fn make_simple_parts(nodes: Vec<CompiledNode>, entry: u16) -> WorkflowParts {
         let node_count = nodes.len();
         let step_names: Vec<Box<str>> = (0..node_count)
             .map(|i| format!("step-{i}").into_boxed_str())
             .collect();
+
+        // Scan nodes for max ConstIdx and ExprIdx referenced so we provide
+        // enough dummy entries for validation.
+        let mut max_const: usize = 0;
+        let mut max_expr: usize = 0;
+        for node in &nodes {
+            match &node.kind {
+                CompiledNodeKind::SetConst { value } => {
+                    max_const = max_const.max(value.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ReduceStart { initial, .. } => {
+                    max_const = max_const.max(initial.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::EvalExpr { expr } => {
+                    max_expr = max_expr.max(expr.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::Choose { branches, .. } => {
+                    for branch in branches.iter() {
+                        max_expr = max_expr.max(branch.condition.as_usize().saturating_add(1));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let constants: Vec<vb_core::value::ConstValue> = (0..max_const)
+            .map(|_| vb_core::value::ConstValue::Null)
+            .collect();
+        let expressions: Vec<vb_core::workflow::ExprProgram> = (0..max_expr)
+            .map(|_| {
+                // Minimal valid expression: push one slot value, leaving depth=1.
+                vb_core::workflow::ExprProgram::try_from_ops(
+                    Box::new([vb_core::workflow::ExprOp::LoadSlot(SlotIdx::new(0))]),
+                )
+                .expect("minimal expression should be valid")
+            })
+            .collect();
+
+        // Determine slot count from nodes.
+        let mut max_slot: usize = 4;
+        for node in &nodes {
+            if let Some(slot) = node.output {
+                max_slot = max_slot.max(slot.as_usize().saturating_add(1));
+            }
+            if let Some(slot) = node.error_slot {
+                max_slot = max_slot.max(slot.as_usize().saturating_add(1));
+            }
+            match &node.kind {
+                CompiledNodeKind::Copy { source } => {
+                    max_slot = max_slot.max(source.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::Do { input, .. } => {
+                    max_slot = max_slot.max(input.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ForEachStart { input, item_slot, .. } => {
+                    max_slot = max_slot.max(input.as_usize().saturating_add(1));
+                    max_slot = max_slot.max(item_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ForEachNext { iterator_slot, .. } => {
+                    max_slot = max_slot.max(iterator_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ForEachJoin { output } => {
+                    max_slot = max_slot.max(output.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::RepeatAttempt { attempt_slot, .. } => {
+                    max_slot = max_slot.max(attempt_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::RepeatCheck { attempt_slot, .. } => {
+                    max_slot = max_slot.max(attempt_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::RepeatFinish { result } => {
+                    max_slot = max_slot.max(result.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::RetryCheck { policy_slot, .. } => {
+                    max_slot = max_slot.max(policy_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::CollectStart { source, .. } => {
+                    max_slot = max_slot.max(source.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::CollectPage { collector_slot, .. } => {
+                    max_slot = max_slot.max(collector_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::CollectNext { collector_slot, .. } => {
+                    max_slot = max_slot.max(collector_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::CollectFinish { collector_slot } => {
+                    max_slot = max_slot.max(collector_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ReduceStart { input, accumulator, .. } => {
+                    max_slot = max_slot.max(input.as_usize().saturating_add(1));
+                    max_slot = max_slot.max(accumulator.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ReduceNext { iterator_slot, accumulator, .. } => {
+                    max_slot = max_slot.max(iterator_slot.as_usize().saturating_add(1));
+                    max_slot = max_slot.max(accumulator.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ReduceFinish { accumulator } => {
+                    max_slot = max_slot.max(accumulator.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::WaitUntil { deadline_slot } => {
+                    max_slot = max_slot.max(deadline_slot.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+                    max_slot = max_slot.max(event.as_usize().saturating_add(1));
+                    if let Some(ts) = timeout_slot {
+                        max_slot = max_slot.max(ts.as_usize().saturating_add(1));
+                    }
+                }
+                CompiledNodeKind::Ask { prompt, timeout_slot } => {
+                    max_slot = max_slot.max(prompt.as_usize().saturating_add(1));
+                    if let Some(ts) = timeout_slot {
+                        max_slot = max_slot.max(ts.as_usize().saturating_add(1));
+                    }
+                }
+                CompiledNodeKind::AskResume { answer } => {
+                    max_slot = max_slot.max(answer.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::Finish { result } => {
+                    max_slot = max_slot.max(result.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::ChooseSlot { branches, .. } => {
+                    for branch in branches.iter() {
+                        max_slot = max_slot.max(branch.condition.as_usize().saturating_add(1));
+                    }
+                }
+                CompiledNodeKind::TogetherBranch { accumulator, .. } => {
+                    max_slot = max_slot.max(accumulator.as_usize().saturating_add(1));
+                }
+                CompiledNodeKind::TogetherJoin { accumulator, .. } => {
+                    max_slot = max_slot.max(accumulator.as_usize().saturating_add(1));
+                }
+                _ => {}
+            }
+        }
+        let slot_count = u16::try_from(max_slot).unwrap_or(u16::MAX);
+
         WorkflowParts {
-            name: String::from("test").into_boxed_str(),
+            name: String::from("test-workflow").into_boxed_str(),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: nodes.into_boxed_slice(),
-            expressions: Vec::new().into_boxed_slice(),
+            expressions: expressions.into_boxed_slice(),
             accessors: Vec::new().into_boxed_slice(),
-            constants: Vec::new().into_boxed_slice(),
-            slot_count: 4,
+            constants: constants.into_boxed_slice(),
+            slot_count,
             symbols_count: 0,
             entry: StepIdx::new(entry),
-            resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+            resource_contract: ResourceContract::DEFAULT,
             step_names: step_names.into_boxed_slice(),
         }
+    }
+
+    fn build_graph_from_parts(parts: WorkflowParts) -> WorkflowGraph {
+        let workflow = CompiledWorkflow::try_from_parts(parts)
+            .expect("test parts should be valid");
+        build_graph(&workflow)
     }
 
     fn make_empty_document() -> FlowDocument {
         let node = make_finish_node(0, 0);
         let parts = make_simple_parts(vec![node], 0);
-        build_document(&parts)
+        crate::graph_builder::build_document(&parts)
     }
 
     fn make_chain_document() -> FlowDocument {
@@ -446,8 +1127,12 @@ mod tests {
         let n1 = make_nop_node(1, Some(2));
         let n2 = make_finish_node(2, 0);
         let parts = make_simple_parts(vec![n0, n1, n2], 0);
-        build_document(&parts)
+        crate::graph_builder::build_document(&parts)
     }
+
+    // =======================================================================
+    // Viewport tests (preserved from original canvas.rs)
+    // =======================================================================
 
     #[test]
     fn new_canvas_has_default_viewport_state() {
@@ -471,13 +1156,10 @@ mod tests {
     fn set_zoom_clamps_to_range() {
         let doc = make_empty_document();
         let mut canvas = WorkflowCanvas::new(doc);
-
         canvas.set_zoom(0.01);
         assert!((canvas.zoom() - MIN_ZOOM).abs() < f64::EPSILON);
-
         canvas.set_zoom(100.0);
         assert!((canvas.zoom() - MAX_ZOOM).abs() < f64::EPSILON);
-
         canvas.set_zoom(2.0);
         assert!((canvas.zoom() - 2.0).abs() < f64::EPSILON);
     }
@@ -499,46 +1181,27 @@ mod tests {
         let mut canvas = WorkflowCanvas::new(doc);
         canvas.set_pan(50.0, 100.0);
         canvas.set_zoom(2.0);
-
         let vr = canvas.viewport_rect(800.0, 600.0);
         assert!((vr.x - 50.0).abs() < f64::EPSILON);
         assert!((vr.y - 100.0).abs() < f64::EPSILON);
-        // At zoom 2.0, screen coords are halved in world space.
         assert!((vr.width - 400.0).abs() < f64::EPSILON);
         assert!((vr.height - 300.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn viewport_rect_intersects_overlapping() {
-        let vr = ViewportRect {
-            x: 0.0,
-            y: 0.0,
-            width: 100.0,
-            height: 100.0,
-        };
-        // Partially overlapping.
+        let vr = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
         assert!(vr.intersects(50.0, 50.0, 100.0, 100.0));
-        // Fully inside.
         assert!(vr.intersects(10.0, 10.0, 20.0, 20.0));
-        // Same rect.
         assert!(vr.intersects(0.0, 0.0, 100.0, 100.0));
     }
 
     #[test]
     fn viewport_rect_no_intersection_when_disjoint() {
-        let vr = ViewportRect {
-            x: 0.0,
-            y: 0.0,
-            width: 100.0,
-            height: 100.0,
-        };
-        // Completely to the right.
+        let vr = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
         assert!(!vr.intersects(200.0, 0.0, 100.0, 100.0));
-        // Completely below.
         assert!(!vr.intersects(0.0, 200.0, 100.0, 100.0));
-        // Completely above.
         assert!(!vr.intersects(0.0, -200.0, 100.0, 100.0));
-        // Completely to the left.
         assert!(!vr.intersects(-200.0, 0.0, 100.0, 100.0));
     }
 
@@ -546,14 +1209,7 @@ mod tests {
     fn visible_nodes_returns_intersecting_nodes() {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
-
-        // Use a large viewport that should contain all nodes.
-        let viewport = ViewportRect {
-            x: -1000.0,
-            y: -1000.0,
-            width: 5000.0,
-            height: 5000.0,
-        };
+        let viewport = ViewportRect { x: -1000.0, y: -1000.0, width: 5000.0, height: 5000.0 };
         let visible = canvas.visible_nodes(&viewport);
         assert_eq!(visible.len(), 3);
     }
@@ -562,14 +1218,7 @@ mod tests {
     fn visible_nodes_excludes_offscreen_nodes() {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
-
-        // Use a tiny viewport far away from all nodes.
-        let viewport = ViewportRect {
-            x: -10000.0,
-            y: -10000.0,
-            width: 1.0,
-            height: 1.0,
-        };
+        let viewport = ViewportRect { x: -10000.0, y: -10000.0, width: 1.0, height: 1.0 };
         let visible = canvas.visible_nodes(&viewport);
         assert!(visible.is_empty());
     }
@@ -578,16 +1227,10 @@ mod tests {
     fn focus_jump_centers_on_node() {
         let doc = make_chain_document();
         let mut canvas = WorkflowCanvas::new(doc);
-
         let positions = canvas.test_positions();
-        let target_pos = positions.get(&1).copied();
-        assert!(target_pos.is_some());
-        let target_pos = target_pos.unwrap_or([0.0; 2]);
-
+        let target_pos = positions.get(&1).copied().unwrap_or([0.0; 2]);
         let ok = canvas.focus_jump(1, 800.0, 600.0);
         assert!(ok);
-
-        // Pan should center the node.
         let inv_zoom = 1.0 / canvas.zoom();
         let expected_x = target_pos[0] - 800.0 * inv_zoom / 2.0;
         let expected_y = target_pos[1] - 600.0 * inv_zoom / 2.0;
@@ -599,7 +1242,6 @@ mod tests {
     fn focus_jump_returns_false_for_invalid_step() {
         let doc = make_chain_document();
         let mut canvas = WorkflowCanvas::new(doc);
-
         let ok = canvas.focus_jump(999, 800.0, 600.0);
         assert!(!ok);
     }
@@ -608,20 +1250,12 @@ mod tests {
     fn compute_edge_paths_produces_paths_for_chain() {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
-
         let paths = canvas.compute_edge_paths();
-        // Two edges: step-0 -> step-1 (next), step-1 -> step-2 (next).
         assert_eq!(paths.len(), 2);
-
-        // Verify first edge goes from step 0 to step 1.
         let first = &paths[0];
         assert_eq!(first.source_step, 0);
         assert_eq!(first.target_step, 1);
-
-        // Start should be to the right of the source centre.
         assert!(first.start[0] > 0.0);
-        // End should be to the left of the target centre.
-        // The target node is further right, so end.x > start.x.
         assert!(first.end[0] > first.start[0]);
     }
 
@@ -629,13 +1263,10 @@ mod tests {
     fn edge_path_control_points_are_between_start_and_end() {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
-
         let paths = canvas.compute_edge_paths();
         for path in &paths {
-            // cp1.x should be between start.x and end.x.
             assert!(path.cp1[0] >= path.start[0]);
             assert!(path.cp2[0] <= path.end[0]);
-            // Control points should not be past the endpoints.
             assert!(path.cp1[0] <= path.end[0]);
             assert!(path.cp2[0] >= path.start[0]);
         }
@@ -646,20 +1277,9 @@ mod tests {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
         let positions = canvas.test_positions();
-
-        let p0 = positions.get(&0).copied();
-        let p1 = positions.get(&1).copied();
-        let p2 = positions.get(&2).copied();
-
-        assert!(p0.is_some());
-        assert!(p1.is_some());
-        assert!(p2.is_some());
-
-        let p0 = p0.unwrap_or([0.0; 2]);
-        let p1 = p1.unwrap_or([0.0; 2]);
-        let p2 = p2.unwrap_or([0.0; 2]);
-
-        // Nodes should be laid out left to right.
+        let p0 = positions.get(&0).copied().unwrap_or([0.0; 2]);
+        let p1 = positions.get(&1).copied().unwrap_or([0.0; 2]);
+        let p2 = positions.get(&2).copied().unwrap_or([0.0; 2]);
         assert!(p0[0] < p1[0]);
         assert!(p1[0] < p2[0]);
     }
@@ -678,21 +1298,12 @@ mod tests {
         assert_eq!(canvas.node_count(), 3);
     }
 
-    // -----------------------------------------------------------------------
-    // Additional tests
-    // -----------------------------------------------------------------------
-
     #[test]
     fn viewport_at_min_zoom_covers_large_area() {
         let doc = make_empty_document();
         let mut canvas = WorkflowCanvas::new(doc);
-        canvas.set_zoom(MIN_ZOOM); // 0.1
-
-        let screen_w = 800.0;
-        let screen_h = 600.0;
-        let vr = canvas.viewport_rect(screen_w, screen_h);
-
-        // inv_zoom = 1 / 0.1 = 10.0, so world coverage is 8000 x 6000.
+        canvas.set_zoom(MIN_ZOOM);
+        let vr = canvas.viewport_rect(800.0, 600.0);
         assert!((vr.width - 8000.0).abs() < f64::EPSILON);
         assert!((vr.height - 6000.0).abs() < f64::EPSILON);
     }
@@ -701,19 +1312,13 @@ mod tests {
     fn focus_jump_with_zoom_accounts_for_inv_zoom() {
         let doc = make_chain_document();
         let mut canvas = WorkflowCanvas::new(doc);
-
-        // Zoom in so inv_zoom = 2.0.
         canvas.set_zoom(0.5);
-
         let positions = canvas.test_positions();
         let Some(target_pos) = positions.get(&1).copied() else {
             return;
         };
-
         let ok = canvas.focus_jump(1, 800.0, 600.0);
         assert!(ok);
-
-        // inv_zoom = 1 / 0.5 = 2.0
         let inv_zoom = 1.0 / canvas.zoom();
         let expected_x = target_pos[0] - 800.0 * inv_zoom / 2.0;
         let expected_y = target_pos[1] - 600.0 * inv_zoom / 2.0;
@@ -742,21 +1347,12 @@ mod tests {
     fn empty_document_has_zero_edge_paths() {
         let doc = make_empty_document();
         let canvas = WorkflowCanvas::new(doc);
-        let paths = canvas.compute_edge_paths();
-        assert!(paths.is_empty());
+        assert!(canvas.compute_edge_paths().is_empty());
     }
 
     #[test]
     fn viewport_intersects_edge_touching_rect() {
-        // Two rects that touch at exactly the boundary edge should NOT
-        // intersect (the `<=` means touching edges are excluded).
-        let vr = ViewportRect {
-            x: 0.0,
-            y: 0.0,
-            width: 100.0,
-            height: 100.0,
-        };
-        // Right edge of other starts exactly at right edge of viewport.
+        let vr = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
         assert!(!vr.intersects(100.0, 0.0, 50.0, 50.0));
     }
 
@@ -766,9 +1362,7 @@ mod tests {
         let mut canvas = WorkflowCanvas::new(doc);
         let ok = canvas.focus_jump(0, 800.0, 600.0);
         assert!(ok);
-        // Pan should have moved from (0, 0) to center the node.
         let (px, py) = canvas.pan();
-        // Just verify pan actually changed (node position is non-zero in layout).
         let positions = canvas.test_positions();
         let Some(pos) = positions.get(&0).copied() else {
             return;
@@ -776,5 +1370,585 @@ mod tests {
         let inv_zoom = 1.0 / canvas.zoom();
         assert!((px - (pos[0] - 400.0 * inv_zoom)).abs() < 0.01);
         assert!((py - (pos[1] - 300.0 * inv_zoom)).abs() < 0.01);
+    }
+
+    // =======================================================================
+    // Graph data model tests (Phase 4A)
+    // =======================================================================
+
+    #[test]
+    fn graph_single_finish_node_produces_one_node() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes.len(), 1);
+    }
+
+    #[test]
+    fn graph_single_finish_node_has_no_edges() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn graph_chain_of_three_produces_two_edges() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 2);
+    }
+
+    #[test]
+    fn graph_chain_edges_are_sequential() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        for edge in &graph.edges {
+            assert_eq!(edge.edge_type, EdgeType::Sequential);
+        }
+    }
+
+    #[test]
+    fn graph_entry_step_matches_parts() {
+        let parts = make_simple_parts(
+            vec![make_nop_node(0, Some(1)), make_finish_node(1, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.entry_step, StepIdx::new(0));
+    }
+
+    #[test]
+    fn graph_slot_count_matches_parts() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.slot_count, 4);
+    }
+
+    #[test]
+    fn graph_workflow_name_matches_parts() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.workflow_name, "test-workflow");
+    }
+
+    #[test]
+    fn graph_do_node_gets_action_id_badge() {
+        let parts = make_simple_parts(
+            vec![make_do_node(0, 17, 0, Some(1)), make_finish_node(1, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.nodes[0].badges.iter().any(|b| *b == NodeBadge::ActionId(17)));
+    }
+
+    #[test]
+    fn graph_do_node_kind_name_is_do() {
+        let parts = make_simple_parts(
+            vec![make_do_node(0, 1, 0, Some(1)), make_finish_node(1, 0)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].kind_name, "Do");
+    }
+
+    #[test]
+    fn graph_finish_node_kind_name_is_finish() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].kind_name, "Finish");
+    }
+
+    #[test]
+    fn graph_node_position_is_none_before_layout() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.nodes[0].position.is_none());
+    }
+
+    #[test]
+    fn graph_node_step_idx_matches_compiled_id() {
+        let parts = make_simple_parts(
+            vec![
+                make_nop_node(0, Some(1)),
+                make_nop_node(1, Some(2)),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.nodes[0].step_idx, StepIdx::new(0));
+        assert_eq!(graph.nodes[1].step_idx, StepIdx::new(1));
+        assert_eq!(graph.nodes[2].step_idx, StepIdx::new(2));
+    }
+
+    #[test]
+    fn graph_choose_node_produces_branch_edges() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1, 2], Some(3)),
+                make_finish_node(1, 0),
+                make_finish_node(2, 0),
+                make_finish_node(3, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let count = graph.edges.iter().filter(|e| matches!(e.edge_type, EdgeType::Branch { .. })).count();
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn graph_branch_edge_condition_index_is_correct() {
+        let parts = make_simple_parts(
+            vec![
+                make_choose_node(0, &[1, 2], Some(3)),
+                make_finish_node(1, 0),
+                make_finish_node(2, 0),
+                make_finish_node(3, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let branches: Vec<&WorkflowEdge> = graph.edges.iter().filter(|e| matches!(e.edge_type, EdgeType::Branch { .. })).collect();
+        assert_eq!(branches[0].edge_type, EdgeType::Branch { condition_index: 0 });
+        assert_eq!(branches[0].to_step, StepIdx::new(1));
+        assert_eq!(branches[1].edge_type, EdgeType::Branch { condition_index: 1 });
+        assert_eq!(branches[1].to_step, StepIdx::new(2));
+        assert_eq!(branches[2].edge_type, EdgeType::Branch { condition_index: 2 });
+        assert_eq!(branches[2].to_step, StepIdx::new(3));
+    }
+
+    #[test]
+    fn graph_branch_edges_have_labels() {
+        let parts = make_simple_parts(vec![make_choose_node(0, &[1], None), make_finish_node(1, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.first().is_some_and(|e| e.label.is_some()));
+    }
+
+    #[test]
+    fn graph_error_handler_produces_error_route() {
+        let parts = make_simple_parts(
+            vec![make_error_handler_node(0, 1, 2), make_nop_node(1, None), make_nop_node(2, None)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let errs: Vec<&WorkflowEdge> = graph.edges.iter().filter(|e| e.edge_type == EdgeType::ErrorRoute).collect();
+        assert_eq!(errs.len(), 1);
+        assert_eq!(errs[0].label, Some(String::from("handler")));
+    }
+
+    #[test]
+    fn graph_error_handler_produces_body_edge() {
+        let parts = make_simple_parts(
+            vec![make_error_handler_node(0, 1, 2), make_nop_node(1, None), make_nop_node(2, None)],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let bodies: Vec<&WorkflowEdge> = graph.edges.iter().filter(|e| e.label == Some(String::from("body"))).collect();
+        assert_eq!(bodies.len(), 1);
+        assert_eq!(bodies[0].to_step, StepIdx::new(1));
+    }
+
+    #[test]
+    fn graph_node_badge_equality() {
+        assert_eq!(NodeBadge::ActionId(5), NodeBadge::ActionId(5));
+        assert_ne!(NodeBadge::ActionId(5), NodeBadge::ActionId(6));
+        assert_eq!(NodeBadge::SecretSensitive, NodeBadge::SecretSensitive);
+        assert_ne!(NodeBadge::SecretSensitive, NodeBadge::StrictDurable);
+    }
+
+    #[test]
+    fn graph_edge_type_equality() {
+        assert_eq!(EdgeType::Sequential, EdgeType::Sequential);
+        assert_eq!(EdgeType::Branch { condition_index: 0 }, EdgeType::Branch { condition_index: 0 });
+        assert_ne!(EdgeType::Branch { condition_index: 0 }, EdgeType::Branch { condition_index: 1 });
+        assert_ne!(EdgeType::ErrorRoute, EdgeType::RetryRoute);
+    }
+
+    #[test]
+    fn graph_workflow_graph_clone_roundtrip() {
+        let parts = make_simple_parts(vec![make_nop_node(0, Some(1)), make_finish_node(1, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        let cloned = graph.clone();
+        assert_eq!(cloned.nodes.len(), graph.nodes.len());
+        assert_eq!(cloned.edges.len(), graph.edges.len());
+        assert_eq!(cloned.workflow_name, graph.workflow_name);
+        assert_eq!(cloned.entry_step, graph.entry_step);
+        assert_eq!(cloned.slot_count, graph.slot_count);
+    }
+
+    #[test]
+    fn graph_retry_check_produces_retry_and_exhausted() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::new(0), body: StepIdx::new(1), exhausted: StepIdx::new(2) },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.iter().filter(|e| e.edge_type == EdgeType::RetryRoute).count(), 1);
+        assert_eq!(graph.edges.iter().filter(|e| e.edge_type == EdgeType::ErrorRoute).count(), 1);
+    }
+
+    #[test]
+    fn graph_repeat_start_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatStart { max_attempts: 3, body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_repeat_start_gets_retry_max_badge() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatStart { max_attempts: 5, body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.nodes[0].badges.iter().any(|b| *b == NodeBadge::RetryMax(5)));
+    }
+
+    #[test]
+    fn graph_foreach_start_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart { input: SlotIdx::new(0), item_slot: SlotIdx::new(1), limit: 10, body: StepIdx::new(1), done: StepIdx::new(2) },
+                },
+                make_nop_node(1, None),
+                make_finish_node(2, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("body"))).count(), 1);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("done"))).count(), 1);
+    }
+
+    #[test]
+    fn graph_together_start_produces_branch_and_join() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::TogetherStart { branches: Box::new([StepIdx::new(1), StepIdx::new(2)]), join: StepIdx::new(3) },
+                },
+                make_nop_node(1, None),
+                make_nop_node(2, None),
+                make_finish_node(3, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("branch-0")) || e.label == Some(String::from("branch-1"))).count(), 2);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("join"))).count(), 1);
+    }
+
+    #[test]
+    fn graph_nop_node_has_no_badges() {
+        let parts = make_simple_parts(vec![make_nop_node(0, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.nodes[0].badges.is_empty());
+    }
+
+    #[test]
+    fn graph_workflow_node_clone_roundtrip() {
+        let node = WorkflowNode {
+            step_idx: StepIdx::new(42), kind_name: String::from("Do"),
+            visual: node_kind_to_visual(&CompiledNodeKind::Nop), position: Some((100.0, 200.0)),
+            badges: vec![NodeBadge::ActionId(7)],
+        };
+        let cloned = node.clone();
+        assert_eq!(cloned.step_idx, node.step_idx);
+        assert_eq!(cloned.kind_name, node.kind_name);
+        assert_eq!(cloned.position, node.position);
+        assert_eq!(cloned.badges, node.badges);
+    }
+
+    #[test]
+    fn graph_workflow_edge_clone_roundtrip() {
+        let edge = WorkflowEdge {
+            from_step: StepIdx::new(0), to_step: StepIdx::new(1),
+            edge_type: EdgeType::Branch { condition_index: 3 }, label: Some(String::from("cond-3")),
+        };
+        let cloned = edge.clone();
+        assert_eq!(cloned.from_step, edge.from_step);
+        assert_eq!(cloned.to_step, edge.to_step);
+        assert_eq!(cloned.edge_type, edge.edge_type);
+        assert_eq!(cloned.label, edge.label);
+    }
+
+    #[test]
+    fn graph_node_badge_debug_output() {
+        let badge = NodeBadge::ActionId(17);
+        let debug_str = format!("{badge:?}");
+        assert!(debug_str.contains("ActionId"));
+        assert!(debug_str.contains("17"));
+    }
+
+    #[test]
+    fn graph_edge_type_debug_output() {
+        let debug_str = format!("{:?}", EdgeType::RetryRoute);
+        assert!(debug_str.contains("RetryRoute"));
+    }
+
+    #[test]
+    fn graph_on_error_field_produces_no_separate_edge() {
+        let mut node = make_nop_node(0, Some(1));
+        node.on_error = Some(StepIdx::new(2));
+        let parts = make_simple_parts(vec![node, make_finish_node(1, 0), make_nop_node(2, None)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].edge_type, EdgeType::Sequential);
+    }
+
+    #[test]
+    fn graph_jump_node_produces_jump_edge() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Jump { target: StepIdx::new(1) } },
+                make_finish_node(1, 0),
+            ],
+            0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].label, Some(String::from("jump")));
+        assert_eq!(graph.edges[0].to_step, StepIdx::new(1));
+    }
+
+    #[test]
+    fn graph_collect_start_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit: 10, page_size: 5, body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_reduce_start_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ReduceStart { input: SlotIdx::new(0), accumulator: SlotIdx::new(1), initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_together_branch_produces_join() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::TogetherBranch { branch: 0, entry: StepIdx::new(1), join: StepIdx::new(2), accumulator: SlotIdx::new(0) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        let joins: Vec<&WorkflowEdge> = graph.edges.iter().filter(|e| e.label == Some(String::from("join"))).collect();
+        assert_eq!(joins.len(), 1);
+        assert_eq!(joins[0].to_step, StepIdx::new(2));
+    }
+
+    #[test]
+    fn graph_choose_otherwise_label() {
+        let parts = make_simple_parts(vec![make_choose_node(0, &[1], Some(2)), make_finish_node(1, 0), make_finish_node(2, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        let oth = graph.edges.iter().find(|e| e.label == Some(String::from("otherwise")));
+        assert!(oth.is_some());
+        assert_eq!(oth.map(|e| e.to_step), Some(StepIdx::new(2)));
+    }
+
+    #[test]
+    fn graph_node_visual_matches_kind() {
+        let parts = make_simple_parts(vec![make_do_node(0, 1, 0, Some(1)), make_finish_node(1, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        use crate::workflow::node_mapping::{NodeCategory, NodeShape, NEON_ORANGE, NEON_TEAL};
+        assert_eq!(graph.nodes[0].visual.category, NodeCategory::External);
+        assert_eq!(graph.nodes[0].visual.shape, NodeShape::RoundedRect);
+        assert_eq!(graph.nodes[0].visual.color, NEON_ORANGE);
+        assert_eq!(graph.nodes[1].visual.category, NodeCategory::Terminal);
+        assert_eq!(graph.nodes[1].visual.shape, NodeShape::Pill);
+        assert_eq!(graph.nodes[1].visual.color, NEON_TEAL);
+    }
+
+    #[test]
+    fn graph_all_node_badge_variants_constructible() {
+        let _a = NodeBadge::ActionId(1);
+        let _r = NodeBadge::RetryMax(3);
+        let _t = NodeBadge::Timeout(30);
+        let _s = NodeBadge::SecretSensitive;
+        let _d = NodeBadge::StrictDurable;
+        let _f = NodeBadge::RecentFailures(5);
+    }
+
+    #[test]
+    fn graph_all_edge_type_variants_constructible() {
+        let _s = EdgeType::Sequential;
+        let _b = EdgeType::Branch { condition_index: 0 };
+        let _e = EdgeType::ErrorRoute;
+        let _r = EdgeType::RetryRoute;
+        let _j = EdgeType::JoinRoute;
+    }
+
+    #[test]
+    fn graph_workflow_node_debug() {
+        let node = WorkflowNode { step_idx: StepIdx::new(0), kind_name: String::from("Nop"), visual: node_kind_to_visual(&CompiledNodeKind::Nop), position: None, badges: vec![] };
+        assert!(format!("{node:?}").contains("Nop"));
+    }
+
+    #[test]
+    fn graph_workflow_edge_debug() {
+        let edge = WorkflowEdge { from_step: StepIdx::new(0), to_step: StepIdx::new(1), edge_type: EdgeType::JoinRoute, label: None };
+        assert!(format!("{edge:?}").contains("JoinRoute"));
+    }
+
+    #[test]
+    fn graph_workflow_graph_debug() {
+        let parts = make_simple_parts(vec![make_finish_node(0, 0)], 0);
+        let graph = build_graph_from_parts(parts);
+        assert!(format!("{graph:?}").contains("test-workflow"));
+    }
+
+    #[test]
+    fn graph_repeat_attempt_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatAttempt { attempt_slot: SlotIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_repeat_check_produces_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RepeatCheck { attempt_slot: SlotIdx::new(0), done: StepIdx::new(1) } },
+                make_finish_node(1, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_collect_page_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::CollectPage { collector_slot: SlotIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_reduce_next_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ReduceNext { iterator_slot: SlotIdx::new(0), accumulator: SlotIdx::new(1), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("body"))));
+        assert!(graph.edges.iter().any(|e| e.label == Some(String::from("done"))));
+    }
+
+    #[test]
+    fn graph_choose_slot_produces_branch_edges() {
+        use vb_core::workflow::SlotBranch;
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ChooseSlot { branches: Box::new([SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) }]), otherwise: Some(StepIdx::new(2)) } },
+                make_finish_node(1, 0), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.iter().filter(|e| matches!(e.edge_type, EdgeType::Branch { .. })).count(), 2);
+    }
+
+    #[test]
+    fn graph_retry_check_gets_retry_max_badge() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::new(0), body: StepIdx::new(1), exhausted: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert!(graph.nodes[0].badges.iter().any(|b| *b == NodeBadge::RetryMax(3)));
+    }
+
+    #[test]
+    fn graph_foreach_next_produces_body_and_done() {
+        let parts = make_simple_parts(
+            vec![
+                CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None,
+                    kind: CompiledNodeKind::ForEachNext { iterator_slot: SlotIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2) } },
+                make_nop_node(1, None), make_finish_node(2, 0),
+            ], 0,
+        );
+        let graph = build_graph_from_parts(parts);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("body"))).count(), 1);
+        assert_eq!(graph.edges.iter().filter(|e| e.label == Some(String::from("done"))).count(), 1);
     }
 }

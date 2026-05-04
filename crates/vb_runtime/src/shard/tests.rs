@@ -4550,3 +4550,597 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
         }
     }
 }
+
+// =========================================================================
+// Additional lifecycle coverage: submit/cancel/resume/inspect boundaries,
+// capacity enforcement, and state machine edge cases.
+// =========================================================================
+
+/// Submit multiple runs, cancel some, inspect the remainder -- verify counters.
+#[test]
+fn shard_submit_cancel_inspect_mixed_lifecycle() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(wf_suspend) = suspended_workflow() else { return };
+    let Some(wf_finish) = finished_workflow() else { return };
+
+    // Submit a finishing run (completes immediately)
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(900),
+            workflow: wf_finish,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Submit a suspended run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(901),
+            workflow: wf_suspend,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Cancel the suspended run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: super::RunId::new(901),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Inspect the finished run (should be NotFound since it completed)
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run: super::RunId::new(900),
+            correlation: 1,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.take_inspect_response(),
+        Some(InspectResponse::NotFound {
+            run: super::RunId::new(900),
+            correlation: 1,
+        })
+    );
+
+    // Counters: 2 submitted, 1 completed, 1 failed (cancelled)
+    assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+/// SubmitWithInputs with empty inputs behaves identically to Submit.
+#[test]
+fn shard_submit_with_empty_inputs_matches_submit() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else { return };
+    let run = super::RunId::new(910);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs: Box::from([]),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+/// Verify that active_run_count tracks correctly across submit, cancel, and finish.
+#[test]
+fn shard_active_run_count_across_lifecycle() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.active_run_count(), 0);
+
+    // Submit a suspended run -> count = 1
+    let Some(wf) = suspended_workflow() else { return };
+    let run_a = super::RunId::new(920);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run_a,
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.active_run_count(), 1);
+
+    // Submit another suspended run -> count = 2
+    let Some(wf2) = suspended_workflow() else { return };
+    let run_b = super::RunId::new(921);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run_b,
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.active_run_count(), 2);
+
+    // Cancel one -> count = 1
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run_a }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.active_run_count(), 1);
+
+    // Cancel the other -> count = 0
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run_b }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.active_run_count(), 0);
+}
+
+/// After cancelling all runs, new submissions are accepted even at capacity boundary.
+#[test]
+fn shard_submit_after_full_cancel_resets_capacity() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+
+    // Fill to capacity
+    let Some(wf1) = suspended_workflow() else { return };
+    let run1 = super::RunId::new(930);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run1,
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Over capacity should fail
+    let Some(wf2) = suspended_workflow() else { return };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(931),
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
+    );
+
+    // Cancel and re-submit should work
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1 }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    let Some(wf3) = finished_workflow() else { return };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(932),
+            workflow: wf3,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+/// Verify that inspect for a currently active suspended run returns the
+/// correct pc and correlation.
+#[test]
+fn shard_inspect_active_run_returns_correct_state() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else { return };
+    let run = super::RunId::new(940);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 42,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    match shard.take_inspect_response() {
+        Some(InspectResponse::Found(snap)) => {
+            assert_eq!(snap.run, run);
+            assert_eq!(snap.correlation, 42);
+            // Suspended on Do node at step 0
+            assert_eq!(snap.pc, vb_core::ids::StepIdx::ZERO);
+            // executed may be 0 or more depending on when the counter is
+            // recorded relative to the suspension point.
+        }
+        other => assert_eq!(other, None),
+    }
+}
+
+/// Resubmitting with SubmitWithInputs after cancel works.
+#[test]
+fn shard_submit_with_inputs_after_cancel() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else { return };
+    let run = super::RunId::new(950);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Resubmit with inputs
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+/// Multiple inspections of the same active run without taking intermediate
+/// responses all succeed.
+#[test]
+fn shard_repeated_inspect_same_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else { return };
+    let run = super::RunId::new(960);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // First inspect
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let first = shard.take_inspect_response();
+    assert_eq!(first.is_some(), true);
+
+    // Second inspect
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 2,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    match shard.take_inspect_response() {
+        Some(InspectResponse::Found(snap)) => {
+            assert_eq!(snap.run, run);
+            assert_eq!(snap.correlation, 2);
+        }
+        other => assert_eq!(other, None),
+    }
+}
+
+/// Submit + Resume enqueued before tick processes both in sequence.
+#[test]
+fn shard_commands_for_pending_but_unprocessed_run() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else { return };
+    let run = super::RunId::new(970);
+
+    // Enqueue Submit + Resume without ticking in between
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+
+    // First tick processes Submit -> run becomes active (suspended on Do)
+    assert_eq!(shard.tick(), Ok(true));
+    // Second tick processes Resume -> run re-drives and re-suspends on Do
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.active_run_count(), 1);
+}
+
+/// Frame pool metrics reflect submissions and completions.
+#[test]
+fn shard_frame_pool_metrics_after_submit_and_finish() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+
+    // Initially no pools
+    let (free, total) = shard.frame_pool_metrics();
+    assert_eq!(free, 0);
+    assert_eq!(total, 0);
+
+    // Submit a finished workflow -> pool created and frame returned
+    let Some(wf) = finished_workflow() else { return };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(980),
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+    let (free_after, total_after) = shard.frame_pool_metrics();
+    assert!(free_after >= 1, "expected at least 1 free frame, got {free_after}");
+    assert!(total_after >= 1, "expected at least 1 total capacity, got {total_after}");
+}
+
+/// Verify that snapshot_run returns NotFound after a run finishes via
+/// error handler routing.
+#[test]
+fn shard_snapshot_after_error_handler_finish() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(wf) = action_with_error_handler_workflow() else { return };
+    let run = super::RunId::new(990);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail the action to route to handler, which then completes
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let failure = vb_core::action::ActionFailure {
+        code: vb_core::ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::NonRetryable,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+    // Snapshot should return NotFound
+    let response = shard.snapshot_run(run, 1);
+    assert_eq!(
+        response,
+        InspectResponse::NotFound {
+            run,
+            correlation: 1,
+        }
+    );
+}
+
+/// Capacity boundary: submit, cancel, then new submit in same tick sequence.
+#[test]
+fn shard_capacity_one_submit_cancel_submit_sequence() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 8,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+
+    // Submit + tick -> suspended
+    let Some(wf1) = suspended_workflow() else { return };
+    let run1 = super::RunId::new(1000);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run1,
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Cancel + tick
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1 }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    // New submit should succeed (capacity freed)
+    let Some(wf2) = finished_workflow() else { return };
+    let run2 = super::RunId::new(1001);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run2,
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+}
+
+/// Verify that PendingTimer fields are correct after timed wait submission.
+#[test]
+fn shard_pending_timer_fields_are_correct() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else { return };
+    let run = super::RunId::new(1010);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let timer = shard.pending_timers.get(&run).copied();
+    match timer {
+        Some(t) => {
+            assert_eq!(t.step, vb_core::ids::StepIdx::new(1)); // WaitUntil is at step 1
+            assert_eq!(t.kind, super::types::PendingTimerKind::Wait);
+        }
+        None => assert!(false, "expected pending timer"),
+    }
+}
+
+/// AskAnswer with I64 value completes the ask workflow correctly.
+#[test]
+fn shard_ask_answered_with_i64_value() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = ask_then_finish_workflow() else { return };
+    let run = super::RunId::new(1020);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: vb_core::ids::StepIdx::new(2),
+            resume_step: vb_core::ids::StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::I64(12345),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Run should complete
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(shard.pending_timers.len(), 0);
+}
+
+/// ShardConfig::new at the max command queue capacity boundary succeeds.
+#[test]
+fn shard_config_new_at_max_capacity_boundary() {
+    let result = ShardConfig::new(
+        MAX_COMMAND_QUEUE_CAPACITY,
+        16,
+        100,
+        4,
+        vb_core::policy::RuntimePolicy::Relaxed,
+    );
+    assert_eq!(result.is_ok(), true);
+    let config = result.ok();
+    assert_eq!(
+        config.map(|c| c.command_queue_capacity),
+        Some(MAX_COMMAND_QUEUE_CAPACITY)
+    );
+}
+
+/// ShardConfig::new at the minimum valid capacity (1) succeeds.
+#[test]
+fn shard_config_new_at_minimum_capacity() {
+    let result = ShardConfig::new(1, 0, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    assert_eq!(result.is_ok(), true);
+}
+
+/// Submit a finished workflow, then inspect it -- counters correct.
+#[test]
+fn shard_submit_finish_then_inspect_counters() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(wf) = finished_workflow() else { return };
+    let run = super::RunId::new(1030);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+    // Inspect the finished run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 5,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.take_inspect_response(),
+        Some(InspectResponse::NotFound { run, correlation: 5 })
+    );
+}

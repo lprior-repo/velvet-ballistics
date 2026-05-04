@@ -8,6 +8,332 @@ use super::types::{
     IncidentType, SideEffectCertainty, TimelineEntry, TimelineEventKind,
 };
 
+// ---------------------------------------------------------------------------
+// Cyberpunk color constants (Phase 5A)
+// ---------------------------------------------------------------------------
+
+/// Canvas background: `#0a0a12`.
+pub const CANVAS_BG: &str = "#0a0a12";
+/// Panel background: `#12121f`.
+pub const PANEL_BG: &str = "#12121f";
+/// Panel background alternate: `#1a1a2e`.
+pub const PANEL_BG_ALT: &str = "#1a1a2e";
+/// Card background: `#16162a`.
+pub const CARD_BG: &str = "#16162a";
+/// Border color: `#2a2a4a`.
+pub const BORDER: &str = "#2a2a4a";
+/// Grid line: `#1e1e3a`.
+pub const GRID_LINE: &str = "#1e1e3a";
+
+/// Neon cyan: `#00f5ff` -- primary accent, active elements.
+pub const NEON_CYAN: &str = "#00f5ff";
+/// Neon magenta: `#ff00ff` -- secret/taint paths, warnings.
+pub const NEON_MAGENTA: &str = "#ff00ff";
+/// Neon yellow: `#ffe600` -- attention, retry, degraded.
+pub const NEON_YELLOW: &str = "#ffe600";
+/// Neon green: `#39ff14` -- success, healthy, pass.
+pub const NEON_GREEN: &str = "#39ff14";
+/// Neon red: `#ff073a` -- failure, error, blocked.
+pub const NEON_RED: &str = "#ff073a";
+/// Neon purple: `#b14dff` -- branching, choice nodes.
+pub const NEON_PURPLE: &str = "#b14dff";
+/// Neon orange: `#ff6b00` -- external actions.
+pub const NEON_ORANGE: &str = "#ff6b00";
+/// Neon teal: `#00e5c7` -- verification-safe, certified.
+pub const NEON_TEAL: &str = "#00e5c7";
+/// Neon pink: `#ff2d7b` -- incident highlights.
+pub const NEON_PINK: &str = "#ff2d7b";
+/// Neon blue: `#2d6bff` -- waiting, suspended, parallel.
+pub const NEON_BLUE: &str = "#2d6bff";
+
+/// Primary text: `#e8e8ff`.
+pub const TEXT_PRIMARY: &str = "#e8e8ff";
+/// Secondary text: `#8888aa`.
+pub const TEXT_SECONDARY: &str = "#8888aa";
+/// Dim text: `#555577`.
+pub const TEXT_DIM: &str = "#555577";
+/// Accent text: `#00f5ff`.
+pub const TEXT_ACCENT: &str = "#00f5ff";
+
+/// State succeeded: `#39ff14`.
+pub const STATE_SUCCEEDED: &str = "#39ff14";
+/// State running: `#00f5ff`.
+pub const STATE_RUNNING: &str = "#00f5ff";
+/// State failed: `#ff073a`.
+pub const STATE_FAILED: &str = "#ff073a";
+/// State waiting: `#2d6bff`.
+pub const STATE_WAITING: &str = "#2d6bff";
+/// State retrying: `#ff6b00`.
+pub const STATE_RETRYING: &str = "#ff6b00";
+/// State cancelled: `#555577`.
+pub const STATE_CANCELLED: &str = "#555577";
+/// State secret_tainted: `#ff00ff`.
+pub const STATE_SECRET_TAINTED: &str = "#ff00ff";
+
+/// Return the neon accent color for a given [`FailureKind`].
+pub fn failure_kind_color(kind: &FailureKind) -> &'static str {
+    match kind {
+        FailureKind::ActionTimeout => NEON_ORANGE,
+        FailureKind::ActionFailed => NEON_RED,
+        FailureKind::RunFailed => NEON_RED,
+        FailureKind::RetryExhausted => NEON_YELLOW,
+        FailureKind::TaintViolation => NEON_MAGENTA,
+        FailureKind::InternalError => TEXT_DIM,
+    }
+}
+
+/// Return the neon accent color for a given severity level.
+pub fn severity_color_hex(severity: IncidentSeverity) -> &'static str {
+    match severity {
+        IncidentSeverity::Critical => NEON_RED,
+        IncidentSeverity::Major => NEON_ORANGE,
+        IncidentSeverity::Minor => NEON_YELLOW,
+        IncidentSeverity::Warning => NEON_YELLOW,
+        IncidentSeverity::Info => NEON_CYAN,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5A layout data model
+// ---------------------------------------------------------------------------
+
+/// Classification of the failure kind for the incident screen layout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FailureKind {
+    ActionTimeout,
+    ActionFailed,
+    RunFailed,
+    RetryExhausted,
+    TaintViolation,
+    InternalError,
+}
+
+impl FailureKind {
+    /// Return a static display label for this failure kind.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::ActionTimeout => "ACTION_TIMEOUT",
+            Self::ActionFailed => "ACTION_FAILED",
+            Self::RunFailed => "RUN_FAILED",
+            Self::RetryExhausted => "RETRY_EXHAUSTED",
+            Self::TaintViolation => "TAINT_VIOLATION",
+            Self::InternalError => "INTERNAL_ERROR",
+        }
+    }
+
+    /// Return true if this failure kind is replay-safe by default.
+    pub fn is_replay_safe_default(&self) -> bool {
+        matches!(self, Self::ActionTimeout | Self::RetryExhausted)
+    }
+}
+
+/// A single card in the incident queue panel, representing one failure.
+#[derive(Debug, Clone)]
+pub struct IncidentCard {
+    pub run_id: u64,
+    pub workflow_name: String,
+    pub step_idx: u16,
+    pub failure_kind: FailureKind,
+    pub timestamp: u64,
+    pub replay_safe: bool,
+}
+
+impl IncidentCard {
+    /// Build a placeholder card matching the Phase 5A spec example.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            run_id: 8172,
+            workflow_name: String::from("issue-triage"),
+            step_idx: 3,
+            failure_kind: FailureKind::ActionTimeout,
+            timestamp: 1_714_745_600,
+            replay_safe: true,
+        }
+    }
+
+    /// Return the display color for the failure kind badge.
+    #[must_use]
+    pub fn badge_color(&self) -> &'static str {
+        failure_kind_color(&self.failure_kind)
+    }
+
+    /// Return the formatted run id badge text.
+    #[must_use]
+    pub fn run_id_text(&self) -> String {
+        format!("{}", self.run_id)
+    }
+
+    /// Return the formatted step index text.
+    #[must_use]
+    pub fn step_text(&self) -> String {
+        format!("StepIdx {}", self.step_idx)
+    }
+}
+
+/// The cause panel content: structured breakdown of why an incident occurred.
+#[derive(Debug, Clone)]
+pub struct CausePanel {
+    pub error_message: String,
+    pub context: String,
+    pub recommended_action: String,
+}
+
+impl CausePanel {
+    /// Build a placeholder cause panel matching the Phase 5A spec.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            error_message: String::from("TIMEOUT"),
+            context: String::from("5s exceeded"),
+            recommended_action: String::from("retry with same ticket"),
+        }
+    }
+}
+
+/// A single chip in the timeline panel, representing one event in the
+/// incident's event sequence.
+#[derive(Debug, Clone)]
+pub struct TimelineChip {
+    pub seq: u32,
+    pub kind: String,
+    pub step_idx: u16,
+}
+
+impl TimelineChip {
+    /// Return the display label for this chip.
+    #[must_use]
+    pub fn label(&self) -> String {
+        format!("[{}] {}", self.seq, self.kind)
+    }
+}
+
+/// The timeline panel content: an ordered sequence of event chips.
+#[derive(Debug, Clone)]
+pub struct TimelinePanel {
+    pub events: Vec<TimelineChip>,
+}
+
+impl TimelinePanel {
+    /// Build a placeholder timeline panel matching the Phase 5A spec.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            events: vec![
+                TimelineChip { seq: 12, kind: String::from("StepStarted"), step_idx: 3 },
+                TimelineChip { seq: 13, kind: String::from("ActionScheduled"), step_idx: 3 },
+                TimelineChip { seq: 14, kind: String::from("ActionFailed"), step_idx: 3 },
+                TimelineChip { seq: 14, kind: String::from("RunFailed"), step_idx: 3 },
+            ],
+        }
+    }
+
+    /// Return the number of chips.
+    #[must_use]
+    pub fn chip_count(&self) -> usize {
+        self.events.len()
+    }
+
+    /// Return true if the timeline has no events.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+}
+
+/// A single slot value diff entry in the state-diff panel.
+#[derive(Debug, Clone)]
+pub struct SlotDiff {
+    pub slot_idx: u16,
+    pub before: String,
+    pub after: String,
+    pub taint_changed: bool,
+}
+
+impl SlotDiff {
+    /// Return a formatted display label for this diff entry.
+    #[must_use]
+    pub fn display_label(&self) -> String {
+        if self.taint_changed {
+            format!("Taint(SlotIdx({})): {} -> {}", self.slot_idx, self.before, self.after)
+        } else {
+            format!("SlotIdx({}): {} -> {}", self.slot_idx, self.before, self.after)
+        }
+    }
+
+    /// Return true if the value changed (before != after).
+    #[must_use]
+    pub fn value_changed(&self) -> bool {
+        self.before != self.after
+    }
+
+    /// Return the display color for this diff -- green for new values, magenta
+    /// for taint changes, cyan otherwise.
+    #[must_use]
+    pub fn diff_color(&self) -> &'static str {
+        if self.taint_changed {
+            return NEON_MAGENTA;
+        }
+        if self.value_changed() {
+            return NEON_CYAN;
+        }
+        TEXT_SECONDARY
+    }
+}
+
+/// The state-diff panel content: slot value changes before the failure.
+#[derive(Debug, Clone)]
+pub struct StateDiffPanel {
+    pub diffs: Vec<SlotDiff>,
+}
+
+impl StateDiffPanel {
+    /// Build a placeholder state-diff panel matching the Phase 5A spec.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            diffs: vec![
+                SlotDiff {
+                    slot_idx: 12,
+                    before: String::from("null"),
+                    after: String::from("ObjectId(\"issue-8472\")"),
+                    taint_changed: false,
+                },
+                SlotDiff {
+                    slot_idx: 5,
+                    before: String::from("Clean"),
+                    after: String::from("DerivedFromSecret"),
+                    taint_changed: true,
+                },
+            ],
+        }
+    }
+
+    /// Return the number of diff entries.
+    #[must_use]
+    pub fn diff_count(&self) -> usize {
+        self.diffs.len()
+    }
+
+    /// Return true if there are no diffs.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.diffs.is_empty()
+    }
+
+    /// Return true if any diff has a taint change.
+    #[must_use]
+    pub fn has_taint_changes(&self) -> bool {
+        self.diffs.iter().any(|d| d.taint_changed)
+    }
+
+    /// Return true if any diff has a value change.
+    #[must_use]
+    pub fn has_value_changes(&self) -> bool {
+        self.diffs.iter().any(|d| d.value_changed())
+    }
+}
+
 /// Screen orchestrator that wraps an [`IncidentConsole`] and provides
 /// high-level operations for processing failures and querying incident data.
 pub struct IncidentScreen {
@@ -1949,5 +2275,547 @@ mod tests {
         // Now dismiss_selected tries to use the stale selected_index
         let result = screen.dismiss_selected();
         assert!(!result, "dismiss_selected returns false when incident already gone");
+    }
+
+    // =========================================================================
+    // Phase 5A layout data model tests
+    // =========================================================================
+
+    // -- FailureKind::label tests (6 tests) --
+
+    #[test]
+    fn phase5a_failure_kind_label_action_timeout() {
+        assert_eq!(FailureKind::ActionTimeout.label(), "ACTION_TIMEOUT");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_label_action_failed() {
+        assert_eq!(FailureKind::ActionFailed.label(), "ACTION_FAILED");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_label_run_failed() {
+        assert_eq!(FailureKind::RunFailed.label(), "RUN_FAILED");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_label_retry_exhausted() {
+        assert_eq!(FailureKind::RetryExhausted.label(), "RETRY_EXHAUSTED");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_label_taint_violation() {
+        assert_eq!(FailureKind::TaintViolation.label(), "TAINT_VIOLATION");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_label_internal_error() {
+        assert_eq!(FailureKind::InternalError.label(), "INTERNAL_ERROR");
+    }
+
+    // -- FailureKind::is_replay_safe_default tests (3 tests) --
+
+    #[test]
+    fn phase5a_failure_kind_replay_safe_timeout() {
+        assert!(FailureKind::ActionTimeout.is_replay_safe_default());
+    }
+
+    #[test]
+    fn phase5a_failure_kind_replay_safe_retry_exhausted() {
+        assert!(FailureKind::RetryExhausted.is_replay_safe_default());
+    }
+
+    #[test]
+    fn phase5a_failure_kind_not_replay_safe_others() {
+        assert!(!FailureKind::ActionFailed.is_replay_safe_default());
+        assert!(!FailureKind::RunFailed.is_replay_safe_default());
+        assert!(!FailureKind::TaintViolation.is_replay_safe_default());
+        assert!(!FailureKind::InternalError.is_replay_safe_default());
+    }
+
+    // -- FailureKind distinctness (1 test) --
+
+    #[test]
+    fn phase5a_failure_kind_variants_are_distinct() {
+        let variants = [
+            FailureKind::ActionTimeout,
+            FailureKind::ActionFailed,
+            FailureKind::RunFailed,
+            FailureKind::RetryExhausted,
+            FailureKind::TaintViolation,
+            FailureKind::InternalError,
+        ];
+        for i in 0..variants.len() {
+            for j in (i + 1)..variants.len() {
+                assert_ne!(variants[i], variants[j]);
+            }
+        }
+    }
+
+    // -- IncidentCard tests (6 tests) --
+
+    #[test]
+    fn phase5a_incident_card_placeholder_values() {
+        let card = IncidentCard::placeholder();
+        assert_eq!(card.run_id, 8172);
+        assert_eq!(card.workflow_name, "issue-triage");
+        assert_eq!(card.step_idx, 3);
+        assert_eq!(card.failure_kind, FailureKind::ActionTimeout);
+        assert!(card.replay_safe);
+    }
+
+    #[test]
+    fn phase5a_incident_card_badge_color_timeout() {
+        let card = IncidentCard::placeholder();
+        assert_eq!(card.badge_color(), NEON_ORANGE);
+    }
+
+    #[test]
+    fn phase5a_incident_card_run_id_text() {
+        let card = IncidentCard::placeholder();
+        assert_eq!(card.run_id_text(), "8172");
+    }
+
+    #[test]
+    fn phase5a_incident_card_step_text() {
+        let card = IncidentCard::placeholder();
+        assert_eq!(card.step_text(), "StepIdx 3");
+    }
+
+    #[test]
+    fn phase5a_incident_card_custom_construction() {
+        let card = IncidentCard {
+            run_id: 99,
+            workflow_name: String::from("ci-pipeline"),
+            step_idx: 7,
+            failure_kind: FailureKind::TaintViolation,
+            timestamp: 9999,
+            replay_safe: false,
+        };
+        assert_eq!(card.run_id, 99);
+        assert_eq!(card.workflow_name, "ci-pipeline");
+        assert_eq!(card.failure_kind, FailureKind::TaintViolation);
+        assert!(!card.replay_safe);
+        assert_eq!(card.badge_color(), NEON_MAGENTA);
+    }
+
+    #[test]
+    fn phase5a_incident_card_clone() {
+        let card = IncidentCard::placeholder();
+        let cloned = card.clone();
+        assert_eq!(cloned.run_id, card.run_id);
+        assert_eq!(cloned.workflow_name, card.workflow_name);
+        assert_eq!(cloned.step_idx, card.step_idx);
+        assert_eq!(cloned.failure_kind, card.failure_kind);
+        assert_eq!(cloned.timestamp, card.timestamp);
+        assert_eq!(cloned.replay_safe, card.replay_safe);
+    }
+
+    // -- CausePanel tests (3 tests) --
+
+    #[test]
+    fn phase5a_cause_panel_placeholder_values() {
+        let panel = CausePanel::placeholder();
+        assert_eq!(panel.error_message, "TIMEOUT");
+        assert_eq!(panel.context, "5s exceeded");
+        assert_eq!(panel.recommended_action, "retry with same ticket");
+    }
+
+    #[test]
+    fn phase5a_cause_panel_custom_construction() {
+        let panel = CausePanel {
+            error_message: String::from("SEGFAULT"),
+            context: String::from("null pointer dereference"),
+            recommended_action: String::from("investigate step logic"),
+        };
+        assert_eq!(panel.error_message, "SEGFAULT");
+        assert_eq!(panel.context, "null pointer dereference");
+        assert_eq!(panel.recommended_action, "investigate step logic");
+    }
+
+    #[test]
+    fn phase5a_cause_panel_clone() {
+        let panel = CausePanel::placeholder();
+        let cloned = panel.clone();
+        assert_eq!(cloned.error_message, panel.error_message);
+        assert_eq!(cloned.context, panel.context);
+        assert_eq!(cloned.recommended_action, panel.recommended_action);
+    }
+
+    // -- TimelineChip tests (3 tests) --
+
+    #[test]
+    fn phase5a_timeline_chip_label_format() {
+        let chip = TimelineChip {
+            seq: 14,
+            kind: String::from("ActionFailed"),
+            step_idx: 3,
+        };
+        assert_eq!(chip.label(), "[14] ActionFailed");
+    }
+
+    #[test]
+    fn phase5a_timeline_chip_custom_construction() {
+        let chip = TimelineChip {
+            seq: 1,
+            kind: String::from("StepStarted"),
+            step_idx: 0,
+        };
+        assert_eq!(chip.seq, 1);
+        assert_eq!(chip.kind, "StepStarted");
+        assert_eq!(chip.step_idx, 0);
+    }
+
+    #[test]
+    fn phase5a_timeline_chip_clone() {
+        let chip = TimelineChip {
+            seq: 42,
+            kind: String::from("RunFailed"),
+            step_idx: 10,
+        };
+        let cloned = chip.clone();
+        assert_eq!(cloned.seq, chip.seq);
+        assert_eq!(cloned.kind, chip.kind);
+        assert_eq!(cloned.step_idx, chip.step_idx);
+    }
+
+    // -- TimelinePanel tests (5 tests) --
+
+    #[test]
+    fn phase5a_timeline_panel_placeholder_has_four_chips() {
+        let panel = TimelinePanel::placeholder();
+        assert_eq!(panel.chip_count(), 4);
+        assert!(!panel.is_empty());
+    }
+
+    #[test]
+    fn phase5a_timeline_panel_placeholder_first_chip() {
+        let panel = TimelinePanel::placeholder();
+        let first = panel.events.first();
+        assert!(first.is_some());
+        assert_eq!(first.map(|c| c.seq), Some(12));
+        assert_eq!(first.map(|c| c.kind.as_str()), Some("StepStarted"));
+        assert_eq!(first.map(|c| c.step_idx), Some(3));
+    }
+
+    #[test]
+    fn phase5a_timeline_panel_placeholder_last_chip() {
+        let panel = TimelinePanel::placeholder();
+        let last = panel.events.last();
+        assert!(last.is_some());
+        assert_eq!(last.map(|c| c.kind.as_str()), Some("RunFailed"));
+    }
+
+    #[test]
+    fn phase5a_timeline_panel_empty() {
+        let panel = TimelinePanel { events: Vec::new() };
+        assert_eq!(panel.chip_count(), 0);
+        assert!(panel.is_empty());
+    }
+
+    #[test]
+    fn phase5a_timeline_panel_clone() {
+        let panel = TimelinePanel::placeholder();
+        let cloned = panel.clone();
+        assert_eq!(cloned.chip_count(), panel.chip_count());
+        assert_eq!(cloned.events.len(), panel.events.len());
+    }
+
+    // -- SlotDiff tests (8 tests) --
+
+    #[test]
+    fn phase5a_slot_diff_display_label_value_change() {
+        let diff = SlotDiff {
+            slot_idx: 12,
+            before: String::from("null"),
+            after: String::from("ObjectId(\"issue-8472\")"),
+            taint_changed: false,
+        };
+        assert_eq!(
+            diff.display_label(),
+            "SlotIdx(12): null -> ObjectId(\"issue-8472\")"
+        );
+    }
+
+    #[test]
+    fn phase5a_slot_diff_display_label_taint_change() {
+        let diff = SlotDiff {
+            slot_idx: 5,
+            before: String::from("Clean"),
+            after: String::from("DerivedFromSecret"),
+            taint_changed: true,
+        };
+        assert_eq!(
+            diff.display_label(),
+            "Taint(SlotIdx(5)): Clean -> DerivedFromSecret"
+        );
+    }
+
+    #[test]
+    fn phase5a_slot_diff_value_changed_true() {
+        let diff = SlotDiff {
+            slot_idx: 1,
+            before: String::from("old"),
+            after: String::from("new"),
+            taint_changed: false,
+        };
+        assert!(diff.value_changed());
+    }
+
+    #[test]
+    fn phase5a_slot_diff_value_changed_false() {
+        let diff = SlotDiff {
+            slot_idx: 1,
+            before: String::from("same"),
+            after: String::from("same"),
+            taint_changed: false,
+        };
+        assert!(!diff.value_changed());
+    }
+
+    #[test]
+    fn phase5a_slot_diff_diff_color_taint() {
+        let diff = SlotDiff {
+            slot_idx: 5,
+            before: String::from("a"),
+            after: String::from("b"),
+            taint_changed: true,
+        };
+        assert_eq!(diff.diff_color(), NEON_MAGENTA);
+    }
+
+    #[test]
+    fn phase5a_slot_diff_diff_color_value_change() {
+        let diff = SlotDiff {
+            slot_idx: 1,
+            before: String::from("old"),
+            after: String::from("new"),
+            taint_changed: false,
+        };
+        assert_eq!(diff.diff_color(), NEON_CYAN);
+    }
+
+    #[test]
+    fn phase5a_slot_diff_diff_color_no_change() {
+        let diff = SlotDiff {
+            slot_idx: 1,
+            before: String::from("same"),
+            after: String::from("same"),
+            taint_changed: false,
+        };
+        assert_eq!(diff.diff_color(), TEXT_SECONDARY);
+    }
+
+    #[test]
+    fn phase5a_slot_diff_clone() {
+        let diff = SlotDiff {
+            slot_idx: 3,
+            before: String::from("a"),
+            after: String::from("b"),
+            taint_changed: true,
+        };
+        let cloned = diff.clone();
+        assert_eq!(cloned.slot_idx, diff.slot_idx);
+        assert_eq!(cloned.before, diff.before);
+        assert_eq!(cloned.after, diff.after);
+        assert_eq!(cloned.taint_changed, diff.taint_changed);
+    }
+
+    // -- StateDiffPanel tests (7 tests) --
+
+    #[test]
+    fn phase5a_state_diff_panel_placeholder_has_two_diffs() {
+        let panel = StateDiffPanel::placeholder();
+        assert_eq!(panel.diff_count(), 2);
+        assert!(!panel.is_empty());
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_placeholder_first_diff() {
+        let panel = StateDiffPanel::placeholder();
+        let first = panel.diffs.first();
+        assert!(first.is_some());
+        assert_eq!(first.map(|d| d.slot_idx), Some(12));
+        assert_eq!(first.map(|d| d.before.as_str()), Some("null"));
+        assert_eq!(first.map(|d| d.after.as_str()), Some("ObjectId(\"issue-8472\")"));
+        assert_eq!(first.map(|d| d.taint_changed), Some(false));
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_placeholder_taint_change() {
+        let panel = StateDiffPanel::placeholder();
+        let second = panel.diffs.get(1);
+        assert!(second.is_some());
+        assert_eq!(second.map(|d| d.taint_changed), Some(true));
+        assert_eq!(second.map(|d| d.slot_idx), Some(5));
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_has_taint_and_value_changes() {
+        let panel = StateDiffPanel::placeholder();
+        assert!(panel.has_taint_changes());
+        assert!(panel.has_value_changes());
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_empty() {
+        let panel = StateDiffPanel { diffs: Vec::new() };
+        assert_eq!(panel.diff_count(), 0);
+        assert!(panel.is_empty());
+        assert!(!panel.has_taint_changes());
+        assert!(!panel.has_value_changes());
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_no_taint_changes() {
+        let panel = StateDiffPanel {
+            diffs: vec![SlotDiff {
+                slot_idx: 1,
+                before: String::from("a"),
+                after: String::from("b"),
+                taint_changed: false,
+            }],
+        };
+        assert!(!panel.has_taint_changes());
+        assert!(panel.has_value_changes());
+    }
+
+    #[test]
+    fn phase5a_state_diff_panel_clone() {
+        let panel = StateDiffPanel::placeholder();
+        let cloned = panel.clone();
+        assert_eq!(cloned.diff_count(), panel.diff_count());
+        assert_eq!(cloned.diffs.len(), panel.diffs.len());
+    }
+
+    // -- Color constants tests (4 tests) --
+
+    #[test]
+    fn phase5a_color_constants_background_layer() {
+        assert_eq!(CANVAS_BG, "#0a0a12");
+        assert_eq!(PANEL_BG, "#12121f");
+        assert_eq!(PANEL_BG_ALT, "#1a1a2e");
+        assert_eq!(CARD_BG, "#16162a");
+        assert_eq!(BORDER, "#2a2a4a");
+        assert_eq!(GRID_LINE, "#1e1e3a");
+    }
+
+    #[test]
+    fn phase5a_color_constants_neon_accents() {
+        assert_eq!(NEON_CYAN, "#00f5ff");
+        assert_eq!(NEON_MAGENTA, "#ff00ff");
+        assert_eq!(NEON_YELLOW, "#ffe600");
+        assert_eq!(NEON_GREEN, "#39ff14");
+        assert_eq!(NEON_RED, "#ff073a");
+        assert_eq!(NEON_PURPLE, "#b14dff");
+        assert_eq!(NEON_ORANGE, "#ff6b00");
+        assert_eq!(NEON_TEAL, "#00e5c7");
+        assert_eq!(NEON_PINK, "#ff2d7b");
+        assert_eq!(NEON_BLUE, "#2d6bff");
+    }
+
+    #[test]
+    fn phase5a_color_constants_text_and_state() {
+        assert_eq!(TEXT_PRIMARY, "#e8e8ff");
+        assert_eq!(TEXT_SECONDARY, "#8888aa");
+        assert_eq!(TEXT_DIM, "#555577");
+        assert_eq!(TEXT_ACCENT, "#00f5ff");
+        assert_eq!(STATE_SUCCEEDED, "#39ff14");
+        assert_eq!(STATE_RUNNING, "#00f5ff");
+        assert_eq!(STATE_FAILED, "#ff073a");
+        assert_eq!(STATE_WAITING, "#2d6bff");
+        assert_eq!(STATE_RETRYING, "#ff6b00");
+        assert_eq!(STATE_CANCELLED, "#555577");
+        assert_eq!(STATE_SECRET_TAINTED, "#ff00ff");
+    }
+
+    #[test]
+    fn phase5a_failure_kind_color_all_mappings() {
+        assert_eq!(failure_kind_color(&FailureKind::ActionTimeout), NEON_ORANGE);
+        assert_eq!(failure_kind_color(&FailureKind::ActionFailed), NEON_RED);
+        assert_eq!(failure_kind_color(&FailureKind::RunFailed), NEON_RED);
+        assert_eq!(failure_kind_color(&FailureKind::RetryExhausted), NEON_YELLOW);
+        assert_eq!(failure_kind_color(&FailureKind::TaintViolation), NEON_MAGENTA);
+        assert_eq!(failure_kind_color(&FailureKind::InternalError), TEXT_DIM);
+    }
+
+    // -- severity_color_hex (1 test) --
+
+    #[test]
+    fn phase5a_severity_color_hex_all_mappings() {
+        assert_eq!(severity_color_hex(IncidentSeverity::Critical), NEON_RED);
+        assert_eq!(severity_color_hex(IncidentSeverity::Major), NEON_ORANGE);
+        assert_eq!(severity_color_hex(IncidentSeverity::Minor), NEON_YELLOW);
+        assert_eq!(severity_color_hex(IncidentSeverity::Warning), NEON_YELLOW);
+        assert_eq!(severity_color_hex(IncidentSeverity::Info), NEON_CYAN);
+    }
+
+    // -- FailureKind Copy trait (1 test) --
+
+    #[test]
+    fn phase5a_failure_kind_copy_trait() {
+        let kind = FailureKind::ActionTimeout;
+        let copied = kind;
+        assert_eq!(kind, copied);
+    }
+
+    // -- IncidentCard badge_color all kinds (1 test) --
+
+    #[test]
+    fn phase5a_incident_card_badge_color_all_kinds() {
+        let kinds = [
+            (FailureKind::ActionTimeout, NEON_ORANGE),
+            (FailureKind::ActionFailed, NEON_RED),
+            (FailureKind::RunFailed, NEON_RED),
+            (FailureKind::RetryExhausted, NEON_YELLOW),
+            (FailureKind::TaintViolation, NEON_MAGENTA),
+            (FailureKind::InternalError, TEXT_DIM),
+        ];
+        for (kind, expected_color) in &kinds {
+            let card = IncidentCard {
+                run_id: 1,
+                workflow_name: String::from("test"),
+                step_idx: 0,
+                failure_kind: *kind,
+                timestamp: 0,
+                replay_safe: true,
+            };
+            assert_eq!(
+                card.badge_color(),
+                *expected_color,
+                "badge_color mismatch for {:?}",
+                kind
+            );
+        }
+    }
+
+    // -- SlotDiff display_label edge case: empty strings (1 test) --
+
+    #[test]
+    fn phase5a_slot_diff_display_label_empty_strings() {
+        let diff = SlotDiff {
+            slot_idx: 0,
+            before: String::new(),
+            after: String::new(),
+            taint_changed: false,
+        };
+        assert_eq!(diff.display_label(), "SlotIdx(0):  -> ");
+        assert!(!diff.value_changed());
+    }
+
+    // -- StateDiffPanel: taint change with no value change (1 test) --
+
+    #[test]
+    fn phase5a_state_diff_panel_taint_only_change() {
+        let panel = StateDiffPanel {
+            diffs: vec![SlotDiff {
+                slot_idx: 3,
+                before: String::from("same"),
+                after: String::from("same"),
+                taint_changed: true,
+            }],
+        };
+        assert!(panel.has_taint_changes());
+        assert!(!panel.has_value_changes(), "values are same but taint changed");
     }
 }

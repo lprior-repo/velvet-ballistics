@@ -7461,4 +7461,920 @@ mod tests {
         assert!(lines.len() >= 3, "emitted code should have at least 3 lines: {code}");
         assert!(lines[0].starts_with("fn step_0("), "first line should be function decl: {code}");
     }
+
+    // ========================================================================
+    // Helper function tests (write_next_or_error, emit_unsupported_step,
+    // emit_unsupported_expr, write_header)
+    // ========================================================================
+
+    /// `write_next_or_error` with a valid next step must emit
+    /// `Ok(StepOutcome::Continue(N))`.
+    #[test]
+    fn write_next_or_error_with_target() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_next_or_error(&mut out, Some(StepIdx::new(7)))
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("StepOutcome::Continue(7)"),
+            "should emit Continue(7), got: {out}"
+        );
+        assert!(
+            !out.contains("MissingNextStep"),
+            "should not mention MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `write_next_or_error` with `None` must emit `Err(DriveError::MissingNextStep)`.
+    #[test]
+    fn write_next_or_error_without_target() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_next_or_error(&mut out, None)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "should emit MissingNextStep, got: {out}"
+        );
+        assert!(
+            !out.contains("StepOutcome::Continue"),
+            "should not emit Continue, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `emit_unsupported_step` must emit the primitive name inside the error.
+    #[test]
+    fn emit_unsupported_step_contains_primitive_name() -> Result<(), String> {
+        let mut out = String::new();
+        crate::emit_unsupported_step(&mut out, "ForEachStart")
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("ForEachStart"),
+            "should embed primitive name, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `emit_unsupported_step` with a different primitive name.
+    #[test]
+    fn emit_unsupported_step_different_primitive() -> Result<(), String> {
+        let mut out = String::new();
+        crate::emit_unsupported_step(&mut out, "RepeatCheck")
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("RepeatCheck"),
+            "should embed RepeatCheck, got: {out}"
+        );
+        assert!(
+            !out.contains("ForEachStart"),
+            "should not contain wrong primitive, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `emit_unsupported_expr` must emit the op name inside the error
+    /// and include a `return` statement.
+    #[test]
+    fn emit_unsupported_expr_contains_op_name() -> Result<(), String> {
+        let mut out = String::new();
+        crate::emit_unsupported_expr(&mut out, "append")
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedExpressionOp"),
+            "should emit UnsupportedExpressionOp, got: {out}"
+        );
+        assert!(
+            out.contains("append"),
+            "should embed op name, got: {out}"
+        );
+        assert!(
+            out.contains("return"),
+            "should include return statement, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `emit_unsupported_expr` with a different op name.
+    #[test]
+    fn emit_unsupported_expr_different_op() -> Result<(), String> {
+        let mut out = String::new();
+        crate::emit_unsupported_expr(&mut out, "merge")
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("merge"),
+            "should embed merge, got: {out}"
+        );
+        assert!(
+            !out.contains("append"),
+            "should not contain wrong op, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// `write_header` must emit the unsafe_code forbid directive.
+    #[test]
+    fn write_header_emits_forbid_unsafe() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("#![forbid(unsafe_code)]"),
+            "should forbid unsafe_code, got first 200 chars: {}",
+            &out.chars().take(200).collect::<String>()
+        );
+        Ok(())
+    }
+
+    /// `write_header` must emit the SlotValue enum with all variants.
+    #[test]
+    fn write_header_emits_slot_value_enum() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("pub enum SlotValue"),
+            "should define SlotValue enum, got first 200 chars: {}",
+            &out.chars().take(200).collect::<String>()
+        );
+        for variant in &["Null", "Bool", "I64", "F64", "Symbol", "List", "Object", "Blob"] {
+            assert!(
+                out.contains(variant),
+                "SlotValue should have variant {variant}"
+            );
+        }
+        Ok(())
+    }
+
+    /// `write_header` must emit the DriveError enum with key variants.
+    #[test]
+    fn write_header_emits_drive_error_enum() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("pub enum DriveError"),
+            "should define DriveError enum"
+        );
+        for variant in &[
+            "InvalidProgramCounter",
+            "MissingNextStep",
+            "SlotNull",
+            "NoBranchMatched",
+            "DivisionByZero",
+            "IntegerOverflow",
+            "ExpressionStackUnderflow",
+            "UnknownAction",
+        ] {
+            assert!(
+                out.contains(variant),
+                "DriveError should have variant {variant}"
+            );
+        }
+        Ok(())
+    }
+
+    /// `write_header` must emit the StepOutcome enum.
+    #[test]
+    fn write_header_emits_step_outcome() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("enum StepOutcome"),
+            "should define StepOutcome enum"
+        );
+        assert!(
+            out.contains("Continue(u16)"),
+            "StepOutcome should have Continue(u16)"
+        );
+        assert!(
+            out.contains("Finished(SlotValue)"),
+            "StepOutcome should have Finished(SlotValue)"
+        );
+        Ok(())
+    }
+
+    /// `write_header` must emit the ExprStack struct and its methods.
+    #[test]
+    fn write_header_emits_expr_stack() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("struct ExprStack"),
+            "should define ExprStack struct"
+        );
+        assert!(
+            out.contains("MAX_EXPRESSION_STACK"),
+            "should define MAX_EXPRESSION_STACK constant"
+        );
+        Ok(())
+    }
+
+    /// `write_header` must emit the read_slot / write_slot helpers.
+    #[test]
+    fn write_header_emits_slot_helpers() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("fn read_slot("),
+            "should emit read_slot function"
+        );
+        assert!(
+            out.contains("fn write_slot("),
+            "should emit write_slot function"
+        );
+        assert!(
+            out.contains("fn read_const("),
+            "should emit read_const function"
+        );
+        Ok(())
+    }
+
+    /// `write_header` must emit the generated-workflow comment.
+    #[test]
+    fn write_header_emits_generated_comment() -> Result<(), String> {
+        let mut out = String::new();
+        crate::write_header(&mut out).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("Generated workflow - DO NOT EDIT"),
+            "should contain generated-workflow warning"
+        );
+        assert!(
+            out.contains("Produced by vb_codegen emit_rust_workflow"),
+            "should contain producer attribution"
+        );
+        Ok(())
+    }
+
+    // ========================================================================
+    // Resource contract emission tests
+    // ========================================================================
+
+    /// `emit_resource_contract` with default contract must emit all constant
+    /// names and the correct default values.
+    #[test]
+    fn emit_resource_contract_default() -> Result<(), String> {
+        let mut out = String::new();
+        emit_resource_contract(&mut out, ResourceContract::DEFAULT)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("// --- Resource contract ---"),
+            "should emit resource contract header"
+        );
+
+        let expected_constants = &[
+            ("CONTRACT_MAX_STEPS", "10000"),
+            ("CONTRACT_MAX_SLOTS", "1024"),
+            ("CONTRACT_MAX_CONSTANTS", "65535"),
+            ("CONTRACT_MAX_ACCESSORS", "8192"),
+            ("CONTRACT_MAX_EXPRESSIONS", "4096"),
+            ("CONTRACT_MAX_EXPR_STACK", "64"),
+            ("CONTRACT_MAX_STEP_BUDGET_PER_TICK", "10000"),
+            ("CONTRACT_MAX_INPUT_BYTES", "1048576"),
+            ("CONTRACT_MAX_OUTPUT_BYTES", "262144"),
+            ("CONTRACT_MAX_BLOB_BYTES", "16777216"),
+            ("CONTRACT_MAX_IPC_PAYLOAD_BYTES", "1048576"),
+            ("CONTRACT_MAX_RETRY_ATTEMPTS", "3"),
+            ("CONTRACT_MAX_FANOUT", "64"),
+            ("CONTRACT_MAX_COLLECT_ITEMS", "1024"),
+            ("CONTRACT_MAX_QUEUE_DEPTH", "1024"),
+            ("CONTRACT_MAX_JOURNAL_BATCH_BYTES", "1048576"),
+        ];
+
+        for (name, value) in expected_constants {
+            assert!(
+                out.contains(name),
+                "should emit constant {name}"
+            );
+            assert!(
+                out.contains(&format!("{name}: ")) || out.contains(&format!("const {name}: ")),
+                "should define constant {name}"
+            );
+            // Verify the default value appears somewhere in the output
+            let line_with_name = out
+                .lines()
+                .find(|l| l.contains(name))
+                .ok_or_else(|| format!("constant {name} not found in output"))?;
+            assert!(
+                line_with_name.contains(value),
+                "constant {name} should have value {value}, got: {line_with_name}"
+            );
+        }
+        Ok(())
+    }
+
+    /// `emit_resource_contract` with a custom contract must reflect the
+    /// custom values.
+    #[test]
+    fn emit_resource_contract_custom_values() -> Result<(), String> {
+        let custom = ResourceContract {
+            max_steps: 500,
+            max_slots: 64,
+            max_constants: 10,
+            max_accessors: 4,
+            max_expressions: 2,
+            max_expr_stack: 8,
+            max_step_budget_per_tick: 1000,
+            max_input_bytes: 512,
+            max_output_bytes: 256,
+            max_blob_bytes: 4096,
+            max_ipc_payload_bytes: 128,
+            max_retry_attempts: 1,
+            max_fanout: 2,
+            max_collect_items: 50,
+            max_queue_depth: 10,
+            max_journal_batch_bytes: 2048,
+        };
+        let mut out = String::new();
+        emit_resource_contract(&mut out, custom)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("CONTRACT_MAX_STEPS: u16 = 500;"),
+            "custom max_steps should be 500"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_SLOTS: u16 = 64;"),
+            "custom max_slots should be 64"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_EXPR_STACK: u8 = 8;"),
+            "custom max_expr_stack should be 8"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_RETRY_ATTEMPTS: u16 = 1;"),
+            "custom max_retry_attempts should be 1"
+        );
+        Ok(())
+    }
+
+    /// `emit_resource_contract` with zero-value contract must emit zeroes.
+    #[test]
+    fn emit_resource_contract_zero_values() -> Result<(), String> {
+        let zero = ResourceContract {
+            max_steps: 0,
+            max_slots: 0,
+            max_constants: 0,
+            max_accessors: 0,
+            max_expressions: 0,
+            max_expr_stack: 0,
+            max_step_budget_per_tick: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            max_blob_bytes: 0,
+            max_ipc_payload_bytes: 0,
+            max_retry_attempts: 0,
+            max_fanout: 0,
+            max_collect_items: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+        };
+        let mut out = String::new();
+        emit_resource_contract(&mut out, zero)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("CONTRACT_MAX_STEPS: u16 = 0;"),
+            "zero max_steps should be 0"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_SLOTS: u16 = 0;"),
+            "zero max_slots should be 0"
+        );
+        Ok(())
+    }
+
+    /// Full workflow emission must include the resource contract section.
+    #[test]
+    fn emit_rust_workflow_includes_resource_contract() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("// --- Resource contract ---"),
+            "full workflow must contain resource contract section"
+        );
+        assert!(
+            source.contains("CONTRACT_MAX_STEPS"),
+            "full workflow must contain CONTRACT_MAX_STEPS"
+        );
+        Ok(())
+    }
+
+    // ========================================================================
+    // Action boundary emission tests
+    // ========================================================================
+
+    /// `emit_action_boundary` must emit a comment, a slot read, and the
+    /// ActionSuspend error with the correct action_id and input_slot.
+    #[test]
+    fn emit_action_boundary_correct_ids() -> Result<(), String> {
+        let mut out = String::new();
+        let action = ActionId::new(42);
+        let input = SlotIdx::new(7);
+        emit_action_boundary(&mut out, action, input)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("Action boundary: action_id=42, input_slot=7"),
+            "should emit comment with action_id=42 and input_slot=7, got: {out}"
+        );
+        assert!(
+            out.contains("read_slot(slots, 7)"),
+            "should read input slot 7, got: {out}"
+        );
+        assert!(
+            out.contains("ActionSuspend"),
+            "should emit ActionSuspend error"
+        );
+        assert!(
+            out.contains("action_id: 42"),
+            "should embed action_id 42 in error"
+        );
+        assert!(
+            out.contains("input_slot: 7"),
+            "should embed input_slot 7 in error"
+        );
+        Ok(())
+    }
+
+    /// `emit_action_boundary` with zero-valued IDs.
+    #[test]
+    fn emit_action_boundary_zero_ids() -> Result<(), String> {
+        let mut out = String::new();
+        emit_action_boundary(&mut out, ActionId::new(0), SlotIdx::new(0))
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("action_id=0, input_slot=0"),
+            "should handle zero IDs, got: {out}"
+        );
+        assert!(
+            out.contains("action_id: 0"),
+            "error should have action_id: 0"
+        );
+        Ok(())
+    }
+
+    /// `emit_action_boundary` with large IDs.
+    #[test]
+    fn emit_action_boundary_large_ids() -> Result<(), String> {
+        let mut out = String::new();
+        emit_action_boundary(&mut out, ActionId::new(65535), SlotIdx::new(65534))
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("action_id=65535, input_slot=65534"),
+            "should handle large IDs, got: {out}"
+        );
+        Ok(())
+    }
+
+    // ========================================================================
+    // Action match dispatch emission tests
+    // ========================================================================
+
+    /// `emit_action_match_dispatch` for a workflow with no Do nodes must emit
+    /// only the fallback arm.
+    #[test]
+    fn emit_action_match_dispatch_no_actions() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let mut out = String::new();
+        emit_action_match_dispatch(&mut out, &workflow)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("pub fn dispatch_action(action_id: u16)"),
+            "should emit dispatch_action function"
+        );
+        assert!(
+            out.contains("UnknownAction"),
+            "should have UnknownAction fallback"
+        );
+        // The minimal workflow has no Do nodes, so no action arms
+        assert!(
+            !out.contains("=> Ok(()),"),
+            "should not have action match arms for a workflow with no Do nodes"
+        );
+        Ok(())
+    }
+
+    /// `emit_action_match_dispatch` for a workflow with Do nodes must emit
+    /// action match arms.
+    #[test]
+    fn emit_action_match_dispatch_with_do_node() -> Result<(), String> {
+        let workflow = do_action_workflow()?;
+        let mut out = String::new();
+        emit_action_match_dispatch(&mut out, &workflow)
+            .map_err(|e| e.to_string())?;
+
+        assert!(
+            out.contains("5 => Ok(()),"),
+            "should emit action arm for ActionId 5, got: {out}"
+        );
+        assert!(
+            out.contains("UnknownAction"),
+            "should have UnknownAction fallback"
+        );
+        Ok(())
+    }
+
+    /// Full workflow emission must include action match dispatch.
+    #[test]
+    fn emit_rust_workflow_includes_action_dispatch() -> Result<(), String> {
+        let workflow = do_action_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("// --- Action match dispatch ---"),
+            "full workflow must contain action dispatch section"
+        );
+        assert!(
+            source.contains("dispatch_action"),
+            "full workflow must contain dispatch_action function"
+        );
+        Ok(())
+    }
+
+    // ========================================================================
+    // Emit finish tests
+    // ========================================================================
+
+    /// `emit_finish` must emit the result extraction comment.
+    #[test]
+    fn emit_finish_produces_header() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let mut out = String::new();
+        emit_finish(&mut out, &workflow).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("// --- Result extraction ---"),
+            "should emit result extraction header, got: {out}"
+        );
+        Ok(())
+    }
+
+    // ========================================================================
+    // Error handling paths -- end-to-end via emit_step_function
+    // ========================================================================
+
+    /// A Nop node with no next step must emit MissingNextStep in the step body.
+    #[test]
+    fn nop_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "Nop with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A SetConst node with no next step must emit MissingNextStep.
+    #[test]
+    fn set_const_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "SetConst with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A Copy node with no next step must emit MissingNextStep.
+    #[test]
+    fn copy_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(1)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "Copy with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A Choose node where no branch matches and no fallback must emit
+    /// NoBranchMatched.
+    #[test]
+    fn choose_no_branch_no_fallback_emits_no_branch_matched() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([]),
+                otherwise: None,
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("NoBranchMatched"),
+            "Choose with no branches and no fallback should emit NoBranchMatched, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A ChooseSlot node where no branch matches and no fallback must emit
+    /// NoBranchMatched.
+    #[test]
+    fn choose_slot_no_branch_no_fallback_emits_no_branch_matched() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: Box::new([]),
+                otherwise: None,
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("NoBranchMatched"),
+            "ChooseSlot with no branches and no fallback should emit NoBranchMatched, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A ForEachStart node must emit UnsupportedPrimitive through
+    /// emit_step_function.
+    #[test]
+    fn for_each_start_emits_unsupported() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "ForEachStart should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("ForEachStart"),
+            "primitive name should be ForEachStart, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A CollectStart node must emit UnsupportedPrimitive.
+    #[test]
+    fn collect_start_emits_unsupported() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(0),
+                limit: 10,
+                page_size: 5,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "CollectStart should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("CollectStart"),
+            "primitive name should be CollectStart, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A RepeatStart node must emit UnsupportedPrimitive.
+    #[test]
+    fn repeat_start_emits_unsupported() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "RepeatStart should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("RepeatStart"),
+            "primitive name should be RepeatStart, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A TogetherStart node must emit UnsupportedPrimitive.
+    #[test]
+    fn together_start_emits_unsupported() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1)]),
+                join: StepIdx::new(2),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "TogetherStart should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("TogetherStart"),
+            "primitive name should be TogetherStart, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A ReduceStart node must emit UnsupportedPrimitive.
+    #[test]
+    fn reduce_start_emits_unsupported() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ReduceStart {
+                input: SlotIdx::new(0),
+                accumulator: SlotIdx::new(1),
+                initial: ConstIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("UnsupportedPrimitive"),
+            "ReduceStart should emit UnsupportedPrimitive, got: {out}"
+        );
+        assert!(
+            out.contains("ReduceStart"),
+            "primitive name should be ReduceStart, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A WaitUntil node with no next step must emit MissingNextStep.
+    #[test]
+    fn wait_until_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "WaitUntil with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// A WaitEvent node with no next step must emit MissingNextStep.
+    #[test]
+    fn wait_event_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "WaitEvent with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// An Ask node with no next step must emit MissingNextStep.
+    #[test]
+    fn ask_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "Ask with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
+
+    /// An AskResume node with no next step must emit MissingNextStep.
+    #[test]
+    fn ask_resume_no_next_emits_missing_next_step() -> Result<(), String> {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(0),
+            },
+        };
+        let mut out = String::new();
+        emit_step_function(&mut out, &node, &minimal_workflow()?)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("MissingNextStep"),
+            "AskResume with no next should emit MissingNextStep, got: {out}"
+        );
+        Ok(())
+    }
 }

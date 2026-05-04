@@ -361,4 +361,378 @@ mod tests {
         };
         assert!(!w.is_valid());
     }
+
+    // =========================================================================
+    // submit_artifact: Relaxed policy
+    // =========================================================================
+
+    /// Opens a temporary FjallJournal that is cleaned up when dropped.
+    fn temp_journal() -> Result<crate::FjallJournal, JournalError> {
+        let dir = tempfile::tempdir().map_err(|_| JournalError::ArtifactMalformed)?;
+        // Keep the TempDir so it survives the journal lifetime.
+        // The OS cleans up /tmp eventually.
+        let path = dir.keep();
+        crate::FjallJournal::open(path, None)
+    }
+
+    /// Builds a minimal valid CompiledWorkflow for testing.
+    ///
+    /// The digest is computed by serializing the parts with the digest field zeroed,
+    /// then BLAKE3-hashing the result. This mirrors the checksum validation gate.
+    fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+        use vb_core::{
+            CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
+            WorkflowDigest,
+        };
+        use vb_core::value::ConstValue;
+        use vb_core::workflow::{ResourceContract, WorkflowParts};
+
+        let mut parts = WorkflowParts {
+            name: Box::<str>::from("test_admission"),
+            digest: WorkflowDigest::from_bytes([0u8; 32]),
+            nodes: Box::new([
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([ConstValue::I64(42)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+
+        // Compute the correct BLAKE3 digest from the zeroed-digest serialization.
+        let hash_bytes = postcard::to_allocvec(&parts)
+            .map_err(|e| format!("serialize parts for digest: {e}"))?;
+        let computed = blake3::hash(&hash_bytes);
+        parts.digest = WorkflowDigest::from_bytes(computed.into());
+
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
+
+        // The returned digest must match the workflow's digest.
+        assert_eq!(
+            result.digest, workflow.digest(),
+            "artifact digest must match workflow digest"
+        );
+
+        // The proof under Relaxed must have 0 gates and durable=false.
+        assert_eq!(result.verification.gate_count, 0, "relaxed must skip gates");
+        assert!(
+            !result.verification.durable,
+            "relaxed must not be durable"
+        );
+
+        // The proof's digest must match.
+        assert_eq!(
+            result.verification.digest, workflow.digest(),
+            "proof digest must match workflow digest"
+        );
+
+        // The ir bytes must be non-empty (postcard serialization).
+        assert!(
+            !result.ir.is_empty(),
+            "compiled IR bytes must not be empty"
+        );
+
+        // Verify we can read the artifact back from storage.
+        let loaded = journal
+            .compiled_ir(workflow.digest())
+            .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+        assert!(loaded.is_some(), "artifact must be readable after submit");
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_journaled_runs_both_gates() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
+
+        // Journaled passes 2 gates but is not durable (no SyncAll).
+        assert_eq!(
+            result.verification.gate_count, 2,
+            "journaled must pass 2 verification gates"
+        );
+        assert!(
+            !result.verification.durable,
+            "journaled must not be durable"
+        );
+        assert_eq!(result.digest, workflow.digest());
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_strict_is_durable() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+            .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
+
+        // Strict passes 2 gates AND is durable.
+        assert_eq!(result.verification.gate_count, 2);
+        assert!(
+            result.verification.durable,
+            "strict must be durable"
+        );
+        assert_eq!(result.digest, workflow.digest());
+        Ok(())
+    }
+
+    // =========================================================================
+    // submit_artifact: checksum validation
+    // =========================================================================
+
+    #[test]
+    fn submit_artifact_journaled_roundtrip_bytes_match() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit failed: {e}"))?;
+
+        // Deserialize the returned IR bytes and verify the digest field.
+        let loaded = journal
+            .compiled_ir(result.digest)
+            .map_err(|e| format!("read failed: {e}"))?;
+        let record = loaded.ok_or_else(|| String::from("artifact not found after submit"))?;
+        assert_eq!(record.digest, result.digest, "stored digest must match");
+        Ok(())
+    }
+
+    // =========================================================================
+    // admit_compiled_artifact
+    // =========================================================================
+
+    #[test]
+    fn admit_compiled_artifact_succeeds_for_valid_workflow() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let digest = admit_compiled_artifact(&journal, &workflow)
+            .map_err(|e| format!("admit_compiled_artifact failed: {e}"))?;
+
+        assert_eq!(digest, workflow.digest(), "returned digest must match workflow digest");
+
+        // Verify it's stored.
+        let loaded = journal
+            .compiled_ir(digest)
+            .map_err(|e| format!("read failed: {e}"))?;
+        assert!(loaded.is_some(), "artifact must be stored after admission");
+        Ok(())
+    }
+
+    #[test]
+    fn admit_compiled_artifact_idempotent() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let digest_a = admit_compiled_artifact(&journal, &workflow)
+            .map_err(|e| format!("first admit failed: {e}"))?;
+        let digest_b = admit_compiled_artifact(&journal, &workflow)
+            .map_err(|e| format!("second admit failed: {e}"))?;
+
+        assert_eq!(digest_a, digest_b, "idempotent admission must return same digest");
+        Ok(())
+    }
+
+    // =========================================================================
+    // AcceptedArtifact fields
+    // =========================================================================
+
+    #[test]
+    fn accepted_artifact_fields_are_populated() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("submit failed: {e}"))?;
+
+        // accepted_at_seq should be 0 (no journal sequence tracking in current impl).
+        assert_eq!(artifact.accepted_at_seq.get(), 0, "accepted_at_seq must be 0");
+        // required_capabilities should be empty for minimal workflow.
+        assert!(
+            artifact.required_capabilities.is_empty(),
+            "minimal workflow has no capabilities"
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationProof details
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_serde_roundtrip() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xAA_u8; 32]);
+        let mut proof = VerificationProof::new(digest, 3, true);
+        proof.warnings.push(VerificationWarning {
+            code: 7,
+            message: Box::from("test warning"),
+            gate: 5,
+        });
+
+        let serialized = postcard::to_allocvec(&proof)
+            .map_err(|e| format!("serialize failed: {e}"))?;
+        let deserialized: VerificationProof = postcard::from_bytes(&serialized)
+            .map_err(|e| format!("deserialize failed: {e}"))?;
+
+        assert_eq!(proof, deserialized, "proof must survive serde roundtrip");
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_serde_roundtrip() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit failed: {e}"))?;
+
+        let serialized = postcard::to_allocvec(&artifact)
+            .map_err(|e| format!("serialize failed: {e}"))?;
+        let deserialized: AcceptedArtifact = postcard::from_bytes(&serialized)
+            .map_err(|e| format!("deserialize failed: {e}"))?;
+
+        assert_eq!(artifact, deserialized, "artifact must survive serde roundtrip");
+        Ok(())
+    }
+
+    // =========================================================================
+    // Relaxed vs Journaled/Strict gate count difference
+    // =========================================================================
+
+    #[test]
+    fn relaxed_skips_gates_while_journaled_passes_them() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let relaxed = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("relaxed failed: {e}"))?;
+        let journaled = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("journaled failed: {e}"))?;
+
+        assert!(
+            relaxed.verification.gate_count < journaled.verification.gate_count,
+            "relaxed gate count ({}) must be less than journaled ({})",
+            relaxed.verification.gate_count,
+            journaled.verification.gate_count
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn strict_and_journaled_have_same_gate_count() -> Result<(), String> {
+        let journal =
+            temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let journaled = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("journaled failed: {e}"))?;
+        let strict = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+            .map_err(|e| format!("strict failed: {e}"))?;
+
+        assert_eq!(
+            journaled.verification.gate_count,
+            strict.verification.gate_count,
+            "journaled and strict must have identical gate count"
+        );
+        // Only difference is durable flag.
+        assert!(!journaled.verification.durable);
+        assert!(strict.verification.durable);
+        Ok(())
+    }
+
+    // =========================================================================
+    // Warning gate boundary values
+    // =========================================================================
+
+    #[test]
+    fn all_valid_gates_pass_is_valid() -> Result<(), String> {
+        for gate in VerificationWarning::MIN_GATE..=VerificationWarning::MAX_GATE {
+            let w = VerificationWarning {
+                code: 1,
+                message: Box::from("boundary test"),
+                gate,
+            };
+            if !w.is_valid() {
+                return Err(format!("gate {gate} should be valid"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn gate_values_outside_range_fail_is_valid() -> Result<(), String> {
+        for gate in [0u8, 14, 15, 20, 255] {
+            let w = VerificationWarning {
+                code: 1,
+                message: Box::from("out of range test"),
+                gate,
+            };
+            if w.is_valid() {
+                return Err(format!("gate {gate} should be invalid"));
+            }
+        }
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationWarning serialization
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_serde_roundtrip() -> Result<(), String> {
+        let warning = VerificationWarning {
+            code: 999,
+            message: Box::from("serde test warning"),
+            gate: 7,
+        };
+        let bytes = postcard::to_allocvec(&warning)
+            .map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationWarning = postcard::from_bytes(&bytes)
+            .map_err(|e| format!("deserialize failed: {e}"))?;
+        assert_eq!(warning, back);
+        Ok(())
+    }
 }

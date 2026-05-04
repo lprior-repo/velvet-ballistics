@@ -333,9 +333,12 @@ fn min_distance_to_cubic_bezier(
 }
 
 /// Convert iteration index `i` out of `total` steps to a [0,1] parameter.
-#[allow(clippy::as_conversions)]
 fn i_to_f64(total: usize, i: usize) -> f64 {
-    (i as f64) / (total as f64)
+    let total_f = f64::from(u32::try_from(total).unwrap_or(u32::MAX));
+    if total_f < f64::EPSILON {
+        return 0.0;
+    }
+    f64::from(u32::try_from(i).unwrap_or(u32::MAX)) / total_f
 }
 
 /// Evaluates a cubic bezier at parameter `t` in [0, 1].
@@ -2845,5 +2848,55 @@ mod tests {
         assert!((bounds.w - 400.0).abs() < f64::EPSILON);
         // Bottom edge: max(0+50, 200+50) = 250
         assert!((bounds.h - 250.0).abs() < f64::EPSILON);
+    }
+
+    // =====================================================================
+    // Security regression tests
+    // =====================================================================
+
+    // ---- i_to_f64 uses checked conversion, not `as` casts ----
+
+    #[test]
+    fn i_to_f64_no_as_cast_checked_conversion() {
+        // Verify the conversion from (total, i) to f64 is correct and
+        // uses u32::try_from + f64::from instead of `as` casts.
+        assert!((i_to_f64(10, 0)).abs() < f64::EPSILON);
+        assert!((i_to_f64(10, 10) - 1.0).abs() < f64::EPSILON);
+        assert!((i_to_f64(10, 5) - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn i_to_f64_checked_zero_total_returns_zero() {
+        // Guard: if total is 0, should return 0.0 instead of dividing by zero.
+        let result = i_to_f64(0, 5);
+        assert!((result).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn i_to_f64_large_values_produce_finite() {
+        // Large but within u32 range should work fine
+        let result = i_to_f64(1000, 500);
+        assert!(result.is_finite());
+        assert!((result - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn i_to_f64_endpoints() {
+        assert!((i_to_f64(100, 0)).abs() < f64::EPSILON);
+        assert!((i_to_f64(100, 100) - 1.0).abs() < f64::EPSILON);
+        assert!((i_to_f64(1, 1) - 1.0).abs() < f64::EPSILON);
+    }
+
+    // ---- hit_test_edges uses i_to_f64 safely ----
+
+    #[test]
+    fn hit_test_edges_with_many_samples_no_panic() {
+        let mut graph = FlowGraph::default();
+        graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
+        // Should not panic with any number of samples
+        let result = hit_test_edges(&graph, 150.0, 54.0, 10.0, 200);
+        assert!(matches!(result, HitResult::Edge(_)));
     }
 }
