@@ -3,12 +3,12 @@
 #![allow(missing_docs)]
 
 use bytes::Bytes;
-use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
     ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,
@@ -86,9 +86,126 @@ const EXPR_BOOLEAN_CHAIN: &str = "true && false || true";
 const EXPR_ARITHMETIC: &str = "1 + 2 * 3";
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 const JOURNAL_REPLAY_EVENTS: u64 = 1000;
+const BENCH_LATENCY_BUDGET_US: u64 = 100_000;
+const BENCH_LATENCY_BUDGET_ENV: &str = "VB_BENCH_LATENCY_BUDGET_US";
+const BENCH_LATENCY_REPORT_ENV: &str = "VB_BENCH_LATENCY_REPORT";
+
+type WallBencher<'a> = Bencher<'a, criterion::measurement::WallTime>;
+
+fn bench_latency_budget_us() -> u64 {
+    match std::env::var(BENCH_LATENCY_BUDGET_ENV) {
+        Ok(raw) => match raw.parse::<u64>() {
+            Ok(value) => value,
+            Err(_) => BENCH_LATENCY_BUDGET_US,
+        },
+        Err(_) => BENCH_LATENCY_BUDGET_US,
+    }
+}
+
+fn budget_utilization_percent(elapsed: Duration, budget_us: u64) -> u128 {
+    if budget_us == 0 {
+        u128::MAX
+    } else {
+        elapsed
+            .as_micros()
+            .saturating_mul(100)
+            .saturating_div(u128::from(budget_us))
+    }
+}
+
+fn latency_within_budget(elapsed: Duration, budget_us: u64) -> bool {
+    budget_us > 0 && elapsed.as_micros() <= u128::from(budget_us)
+}
+
+fn budget_failure_message(benchmark: &str, elapsed: Duration, budget_us: u64) -> String {
+    format!(
+        "benchmark latency budget exceeded: benchmark={benchmark}; elapsed_us={}; budget_us={budget_us}; utilization_pct={}",
+        elapsed.as_micros(),
+        budget_utilization_percent(elapsed, budget_us)
+    )
+}
+
+fn budget_success_message(benchmark: &str, elapsed: Duration, budget_us: u64) -> String {
+    format!(
+        "latency budget ok: benchmark={benchmark}; max_iteration_us={}; budget_us={budget_us}; utilization_pct={}",
+        elapsed.as_micros(),
+        budget_utilization_percent(elapsed, budget_us)
+    )
+}
+
+fn report_latency_budget_success(benchmark: &str, elapsed: Duration, budget_us: u64) {
+    let enabled = match std::env::var(BENCH_LATENCY_REPORT_ENV) {
+        Ok(value) => !matches!(value.as_str(), "0" | "false" | "FALSE"),
+        Err(_) => true,
+    };
+    if enabled {
+        eprintln!("{}", budget_success_message(benchmark, elapsed, budget_us));
+    }
+}
+
+fn assert_latency_within_budget(benchmark: &str, elapsed: Duration, budget_us: u64) {
+    assert!(
+        latency_within_budget(elapsed, budget_us),
+        "{}",
+        budget_failure_message(benchmark, elapsed, budget_us)
+    );
+}
+
+fn checked_iter<T, F>(bencher: &mut WallBencher<'_>, benchmark: &str, mut work: F)
+where
+    F: FnMut() -> T,
+{
+    bencher.iter_custom(|iterations| {
+        let budget_us = bench_latency_budget_us();
+        let (total, max_elapsed) = (0..iterations).fold(
+            (Duration::ZERO, Duration::ZERO),
+            |(total, max_elapsed), _| {
+                let start = Instant::now();
+                black_box(work());
+                let elapsed = start.elapsed();
+                assert_latency_within_budget(benchmark, elapsed, budget_us);
+                (
+                    total.saturating_add(elapsed),
+                    std::cmp::max(max_elapsed, elapsed),
+                )
+            },
+        );
+        report_latency_budget_success(benchmark, max_elapsed, budget_us);
+        total
+    });
+}
 
 fn bytes_len(bytes: &[u8]) -> u64 {
     u64::try_from(bytes.len()).unwrap_or(u64::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn zero_microsecond_budget_rejects_all_iterations() {
+        assert!(!super::latency_within_budget(std::time::Duration::ZERO, 0));
+    }
+
+    #[test]
+    fn failure_message_names_benchmark_iteration_and_budget() {
+        let message =
+            super::budget_failure_message("slow_case", std::time::Duration::from_micros(101), 100);
+        assert!(message.contains("benchmark=slow_case"));
+        assert!(message.contains("elapsed_us=101"));
+        assert!(message.contains("budget_us=100"));
+        assert!(message.contains("utilization_pct=101"));
+    }
+
+    #[test]
+    fn success_message_reports_budget_utilization() {
+        let message =
+            super::budget_success_message("fast_case", std::time::Duration::from_micros(25), 100);
+        assert!(message.contains("latency budget ok"));
+        assert!(message.contains("benchmark=fast_case"));
+        assert!(message.contains("max_iteration_us=25"));
+        assert!(message.contains("budget_us=100"));
+        assert!(message.contains("utilization_pct=25"));
+    }
 }
 
 /// Observer function to force materialization of parse result.
@@ -108,7 +225,7 @@ fn parse_yaml_benches(c: &mut Criterion) {
         BenchmarkId::from_parameter(small_meta),
         SMALL_WORKFLOW,
         |b, input| {
-            b.iter(|| {
+            checked_iter(b, "parse_yaml_small", || {
                 let result = match std::str::from_utf8(input) {
                     Ok(text) => vb_yaml::parse_yaml_events(black_box(text)),
                     Err(error) => Err(vb_yaml::YamlError::ParseError {
@@ -135,7 +252,7 @@ fn parse_yaml_benches(c: &mut Criterion) {
             // Use a separate observer function to prevent elision.
             // The key insight: criterion measures b.iter() calls, not what's inside.
             // So we must ensure the parse actually happens inside the iter closure.
-            b.iter(|| parse_and_observe(input.as_str()))
+            checked_iter(b, "parse_yaml_1mb", || parse_and_observe(input.as_str()))
         },
     );
     group.finish();
@@ -151,7 +268,7 @@ fn compile_and_validate_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=validator",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "validate_minimal", || {
                 let compiled = vb_compile::compile_workflow(black_box(SMALL_WORKFLOW));
                 if let Ok(workflow) = compiled.as_ref() {
                     let parts = workflow.to_parts();
@@ -167,7 +284,11 @@ fn compile_and_validate_benches(c: &mut Criterion) {
             SMALL_WORKFLOW,
             "fixture=small_workflow;surface=compiler",
         ),
-        |b| b.iter(|| vb_compile::compile_workflow(black_box(SMALL_WORKFLOW))),
+        |b| {
+            checked_iter(b, "compile_ir_minimal", || {
+                vb_compile::compile_workflow(black_box(SMALL_WORKFLOW))
+            })
+        },
     );
 
     let many_steps = many_step_workflow(1000);
@@ -178,7 +299,11 @@ fn compile_and_validate_benches(c: &mut Criterion) {
             many_steps.as_bytes(),
             "fixture=generated_1000_steps;surface=compiler",
         ),
-        |b| b.iter(|| vb_compile::compile_workflow(black_box(many_steps.as_bytes()))),
+        |b| {
+            checked_iter(b, "compile_ir_1000_steps", || {
+                vb_compile::compile_workflow(black_box(many_steps.as_bytes()))
+            })
+        },
     );
     group.bench_function(
         metadata(
@@ -187,7 +312,7 @@ fn compile_and_validate_benches(c: &mut Criterion) {
             "fixture=generated_1000_steps;surface=validator",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "validate_1000_steps", || {
                 let compiled = vb_compile::compile_workflow(black_box(many_steps.as_bytes()));
                 if let Ok(workflow) = compiled.as_ref() {
                     let parts = workflow.to_parts();
@@ -224,7 +349,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=run_frame_slot;surface=slot_i64_rw",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "bench_engine_numeric_slots_read_write_i64", || {
                 let mut frame = vb_core::RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
                 if let Ok(run) = frame.as_mut() {
                     let _written = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(7));
@@ -237,7 +362,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
     group.bench_function(
         metadata("slot_read", SMALL_WORKFLOW, "fixture=run_frame_slot"),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "slot_read", || {
                 let mut frame = vb_core::RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
                 if let Ok(run) = frame.as_mut() {
                     let _written = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(7));
@@ -254,20 +379,24 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_step",
         ),
         |b| {
-            b.iter(|| {
-                if let Ok(plan) = workflow.as_ref() {
-                    let mut frame = vb_core::new_run_frame(RunId::new(2), plan);
-                    let mut store = vb_core::ValueStore::new();
-                    if let Ok(run) = frame.as_mut() {
-                        let signal = vb_core::step_once(black_box(plan), run, &mut store);
-                        black_box(signal.is_ok())
+            checked_iter(
+                b,
+                "bench_engine_step_once_save_const_single_transition",
+                || {
+                    if let Ok(plan) = workflow.as_ref() {
+                        let mut frame = vb_core::new_run_frame(RunId::new(2), plan);
+                        let mut store = vb_core::ValueStore::new();
+                        if let Ok(run) = frame.as_mut() {
+                            let signal = vb_core::step_once(black_box(plan), run, &mut store);
+                            black_box(signal.is_ok())
+                        } else {
+                            black_box(false)
+                        }
                     } else {
                         black_box(false)
                     }
-                } else {
-                    black_box(false)
-                }
-            })
+                },
+            )
         },
     );
     group.bench_function(
@@ -277,25 +406,29 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_run",
         ),
         |b| {
-            b.iter(|| {
-                if let Ok(plan) = workflow.as_ref() {
-                    let mut frame = vb_core::new_run_frame(RunId::new(3), plan);
-                    let mut store = vb_core::ValueStore::new();
-                    if let Ok(run) = frame.as_mut() {
-                        let signal = vb_core::run_until_blocked(
-                            black_box(plan),
-                            run,
-                            StepBudget::new(10),
-                            &mut store,
-                        );
-                        black_box(signal.is_ok())
+            checked_iter(
+                b,
+                "engine_run_until_blocked_budget_10_small_workflow",
+                || {
+                    if let Ok(plan) = workflow.as_ref() {
+                        let mut frame = vb_core::new_run_frame(RunId::new(3), plan);
+                        let mut store = vb_core::ValueStore::new();
+                        if let Ok(run) = frame.as_mut() {
+                            let signal = vb_core::run_until_blocked(
+                                black_box(plan),
+                                run,
+                                StepBudget::new(10),
+                                &mut store,
+                            );
+                            black_box(signal.is_ok())
+                        } else {
+                            black_box(false)
+                        }
                     } else {
                         black_box(false)
                     }
-                } else {
-                    black_box(false)
-                }
-            })
+                },
+            )
         },
     );
     bench_run_workflow(
@@ -399,7 +532,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=memory_ingress_1024;surface=ipc_memory;durability=memory",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "bench_memory_ingress_try_submit_capacity_1024", || {
                 if let Some(frame) = ingress_frame.as_ref() {
                     let capacity = queue_capacity(1024);
                     let queue = vb_ipc::MemoryIngress::bounded(capacity);
@@ -423,7 +556,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
         ),
         |b| {
             let queue = vb_ipc::MemoryIngress::bounded(queue_capacity(1024));
-            b.iter(|| {
+            checked_iter(b, "bench_memory_ingress_submit_recv_single_thread", || {
                 if let Some(frame) = ingress_frame.as_ref() {
                     let _sent = queue.try_submit(black_box(frame.clone()));
                     queue.try_recv()
@@ -444,7 +577,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             if let Some(frame) = ingress_frame.as_ref() {
                 let _prefill = queue.try_submit(frame.clone());
             }
-            b.iter(|| {
+            checked_iter(b, "bench_memory_ingress_backpressure_full_queue", || {
                 if let Some(frame) = ingress_frame.as_ref() {
                     queue.try_submit(black_box(frame.clone()))
                 } else {
@@ -459,7 +592,11 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             SMALL_WORKFLOW,
             "fixture=run_accepted_event;surface=journal_encode",
         ),
-        |b| b.iter(|| postcard::to_allocvec(black_box(&event))),
+        |b| {
+            checked_iter(b, "postcard_encode_event", || {
+                postcard::to_allocvec(black_box(&event))
+            })
+        },
     );
     group.bench_function(
         metadata(
@@ -468,7 +605,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=run_accepted_event;surface=journal_decode",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "postcard_decode_event", || {
                 if let Ok(bytes) = encoded_event.as_ref() {
                     let decoded: Result<(vb_storage::RecordEnvelope, JournalEvent), _> =
                         vb_storage::decode_record(
@@ -490,7 +627,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=submit_run_payload;surface=ipc_encode",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ipc_frame_encode", || {
                 if let Ok(bytes) = encoded_payload.as_ref() {
                     Some(vb_ipc::frame::encode_frame(
                         vb_ipc::IpcCommand::SubmitRun,
@@ -511,7 +648,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=submit_run_payload;surface=ipc_decode",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ipc_frame_decode", || {
                 if let Some(frame) = frame_bytes.as_ref() {
                     decode_ipc_frame(black_box(frame.as_slice()))
                 } else {
@@ -528,7 +665,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
         ),
         |b| {
             let mut seq = 0_u64;
-            b.iter(|| {
+            checked_iter(b, "bench_fjall_append_run_accepted_no_persist", || {
                 if let Some(journal) = journal.as_ref() {
                     let event = bench_event(42, seq);
                     seq = seq.saturating_add(1);
@@ -546,7 +683,7 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=fjall_run_events_1000;surface=journal_replay;durability=journaled",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "bench_replay_ordered_journal_1000_events", || {
                 if let Some(journal) = replay_journal.as_ref() {
                     journal.events_for_run(black_box(RunId::new(43)))
                 } else {
@@ -566,7 +703,7 @@ fn bench_run_workflow(
     extra: &str,
 ) {
     group.bench_function(metadata(name, name.as_bytes(), extra), |b| {
-        b.iter(|| {
+        checked_iter(b, name, || {
             if let Some(plan) = workflow.as_ref() {
                 let mut frame = vb_core::new_run_frame(RunId::new(6), plan);
                 let mut store = vb_core::ValueStore::new();
@@ -944,7 +1081,7 @@ fn generated_benches(c: &mut Criterion) {
             "fixture=choose_workflow;surface=codegen_emit",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "codegen_emit_choose_workflow", || {
                 if let Ok(plan) = workflow.as_ref() {
                     Some(vb_codegen::emit_rust_workflow(black_box(plan)))
                 } else {
@@ -960,12 +1097,14 @@ fn generated_benches(c: &mut Criterion) {
             "fixture=choose_workflow;surface=codegen_compare",
         ),
         |b| {
-            b.iter(|| match (workflow.as_ref(), generated_source.as_ref()) {
-                (Ok(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
-                    black_box(source.as_str()),
-                    black_box(plan),
-                )),
-                _ => None,
+            checked_iter(b, "codegen_compare_generated_to_ir_choose", || {
+                match (workflow.as_ref(), generated_source.as_ref()) {
+                    (Ok(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
+                        black_box(source.as_str()),
+                        black_box(plan),
+                    )),
+                    _ => None,
+                }
             })
         },
     );
@@ -976,7 +1115,7 @@ fn generated_benches(c: &mut Criterion) {
             "fixture=for_each_workflow;surface=codegen_emit",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "codegen_emit_for_each_workflow", || {
                 for_each
                     .as_ref()
                     .map(|plan| vb_codegen::emit_rust_workflow(black_box(plan)))
@@ -990,12 +1129,14 @@ fn generated_benches(c: &mut Criterion) {
             "fixture=for_each_workflow;surface=codegen_compare",
         ),
         |b| {
-            b.iter(|| match (for_each.as_ref(), for_each_source.as_ref()) {
-                (Some(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
-                    black_box(source.as_str()),
-                    black_box(plan),
-                )),
-                _ => None,
+            checked_iter(b, "codegen_compare_generated_to_ir_for_each", || {
+                match (for_each.as_ref(), for_each_source.as_ref()) {
+                    (Some(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
+                        black_box(source.as_str()),
+                        black_box(plan),
+                    )),
+                    _ => None,
+                }
             })
         },
     );
@@ -1032,7 +1173,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             "fixture=finish_1;surface=ir_exec",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ir_execution_1_step", || {
                 if let Some(plan) = finish_1_workflow.as_ref() {
                     let mut frame = vb_core::new_run_frame(RunId::new(100), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1057,7 +1198,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             "fixture=save_chain_1000;surface=ir_exec",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ir_execution_1000_steps", || {
                 if let Some(plan) = save_chain_1000.as_ref() {
                     let mut frame = vb_core::new_run_frame(RunId::new(101), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1082,7 +1223,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             "fixture=choose_100;surface=ir_exec",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ir_execution_choose_100", || {
                 if let Some(plan) = choose_100_workflow.as_ref() {
                     let mut frame = vb_core::new_run_frame(RunId::new(102), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1107,7 +1248,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             "fixture=expression_workflow;surface=ir_exec",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "ir_execution_expr", || {
                 if let Some(plan) = expr_workflow.as_ref() {
                     let mut frame = vb_core::new_run_frame(RunId::new(103), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1140,7 +1281,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "generated_execution_1_step", || {
                     let start = Instant::now();
                     #[allow(clippy::let_underscore_must_use)]
                     let _ = Command::new(&bin_path).output();
@@ -1159,7 +1300,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "generated_execution_1000_steps", || {
                     let start = Instant::now();
                     #[allow(clippy::let_underscore_must_use)]
                     let _ = Command::new(&bin_path).output();
@@ -1178,7 +1319,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "generated_execution_choose_100", || {
                     let start = Instant::now();
                     #[allow(clippy::let_underscore_must_use)]
                     let _ = Command::new(&bin_path).output();
@@ -1197,7 +1338,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "generated_execution_expr", || {
                     let start = Instant::now();
                     #[allow(clippy::let_underscore_must_use)]
                     let _ = Command::new(&bin_path).output();
@@ -1222,7 +1363,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "ir_vs_generated_1", || {
                     let ir_start = Instant::now();
                     if let Some(plan) = finish_1_workflow.as_ref() {
                         let mut frame = vb_core::new_run_frame(RunId::new(200), plan);
@@ -1256,7 +1397,7 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
             ),
             |b| {
                 let bin_path = gen_bin.path.clone();
-                b.iter(|| {
+                checked_iter(b, "ir_vs_generated_1000", || {
                     let ir_start = Instant::now();
                     if let Some(plan) = save_chain_1000.as_ref() {
                         let mut frame = vb_core::new_run_frame(RunId::new(201), plan);
@@ -1290,7 +1431,7 @@ fn bench_expr(
     expr: &str,
 ) {
     group.bench_function(metadata(name, expr.as_bytes(), "fixture=expression"), |b| {
-        b.iter(|| {
+        checked_iter(b, name, || {
             let tokens = vb_expr::lexer::lex_expr(black_box(expr));
             if let Ok(tokens) = tokens.as_ref() {
                 let ast = vb_expr::parser::parse_expr(tokens);
@@ -1352,7 +1493,7 @@ fn seed_journal(
 ) -> Result<(), vb_storage::JournalError> {
     let mut seq = 0_u64;
     while seq < count {
-        let event = bench_event(run.as_u64(), seq);
+        let event = bench_event(run.get(), seq);
         journal.append_journaled(&event)?;
         seq = seq.saturating_add(1);
     }
@@ -1453,7 +1594,7 @@ fn taint_scalar_expr_bench(c: &mut Criterion) {
             "fixture=scalar_expr;surface=eval_expr_taint",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "eval_expr_scalar_arithmetic_taint", || {
                 if let Some(ref workflow) = plan {
                     let frame = vb_core::new_run_frame(RunId::new(300), workflow);
                     if let Ok(ref run) = frame {
@@ -1496,7 +1637,7 @@ fn taint_slot_loading_bench(c: &mut Criterion) {
             "fixture=slot_load_clean;surface=eval_expr_taint",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "eval_expr_slot_load_all_clean", || {
                 if let Some(ref workflow) = plan {
                     let mut frame = vb_core::new_run_frame(RunId::new(301), workflow);
                     if let Ok(ref mut run) = frame {
@@ -1535,7 +1676,7 @@ fn taint_slot_loading_bench(c: &mut Criterion) {
             "fixture=slot_load_mixed;surface=eval_expr_taint",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "eval_expr_slot_load_mixed_taint", || {
                 if let Some(ref workflow) = plan {
                     let mut frame = vb_core::new_run_frame(RunId::new(302), workflow);
                     if let Ok(ref mut run) = frame {
@@ -1657,32 +1798,36 @@ fn taint_build_object_bench(c: &mut Criterion) {
                 &format!("fixture=build_object_{field_count};surface=build_object_taint"),
             ),
             |b| {
-                b.iter(|| {
-                    if let Some(ref plan) = workflow {
-                        let mut frame = vb_core::new_run_frame(RunId::new(310), plan);
-                        let mut store = vb_core::ValueStore::new();
-                        if let Ok(ref mut run) = frame {
-                            // Override some slot taints to Secret for mixed scenario
-                            let override_count = field_count.saturating_div(2);
-                            let mut s = 0_u16;
-                            while s < override_count {
-                                drop(run.write_taint(SlotIdx::new(s), Taint::Secret));
-                                s = s.saturating_add(1);
+                checked_iter(
+                    b,
+                    &format!("build_object_{field_count}_fields_taint"),
+                    || {
+                        if let Some(ref plan) = workflow {
+                            let mut frame = vb_core::new_run_frame(RunId::new(310), plan);
+                            let mut store = vb_core::ValueStore::new();
+                            if let Ok(ref mut run) = frame {
+                                // Override some slot taints to Secret for mixed scenario
+                                let override_count = field_count.saturating_div(2);
+                                let mut s = 0_u16;
+                                while s < override_count {
+                                    drop(run.write_taint(SlotIdx::new(s), Taint::Secret));
+                                    s = s.saturating_add(1);
+                                }
+                                let signal = vb_core::run_until_blocked(
+                                    black_box(plan),
+                                    run,
+                                    StepBudget::new(budget),
+                                    &mut store,
+                                );
+                                black_box(signal.is_ok())
+                            } else {
+                                black_box(false)
                             }
-                            let signal = vb_core::run_until_blocked(
-                                black_box(plan),
-                                run,
-                                StepBudget::new(budget),
-                                &mut store,
-                            );
-                            black_box(signal.is_ok())
                         } else {
                             black_box(false)
                         }
-                    } else {
-                        black_box(false)
-                    }
-                })
+                    },
+                )
             },
         );
     }
@@ -1766,7 +1911,7 @@ fn taint_build_list_bench(c: &mut Criterion) {
                 &format!("fixture=build_list_{item_count};surface=build_list_taint"),
             ),
             |b| {
-                b.iter(|| {
+                checked_iter(b, &format!("build_list_{item_count}_items_taint"), || {
                     if let Some(ref plan) = workflow {
                         let mut frame = vb_core::new_run_frame(RunId::new(320), plan);
                         let mut store = vb_core::ValueStore::new();
@@ -1909,7 +2054,7 @@ fn taint_full_workflow_bench(c: &mut Criterion) {
             "fixture=full_workflow_clean;surface=run_until_blocked_taint",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "full_workflow_all_clean", || {
                 if let Some(ref plan) = workflow {
                     let mut frame = vb_core::new_run_frame(RunId::new(330), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1939,7 +2084,7 @@ fn taint_full_workflow_bench(c: &mut Criterion) {
             "fixture=full_workflow_mixed;surface=run_until_blocked_taint",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "full_workflow_mixed_taint", || {
                 if let Some(ref plan) = workflow {
                     let mut frame = vb_core::new_run_frame(RunId::new(331), plan);
                     let mut store = vb_core::ValueStore::new();
@@ -1989,7 +2134,7 @@ fn submit_artifact_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=submit_artifact;policy=relaxed",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "submit_artifact_relaxed", || {
                 if let Some(ref wf) = workflow {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
@@ -2021,7 +2166,7 @@ fn submit_artifact_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=submit_artifact;policy=journaled",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "submit_artifact_journaled", || {
                 if let Some(ref wf) = workflow {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
@@ -2053,7 +2198,7 @@ fn submit_artifact_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=submit_artifact;policy=strict",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "submit_artifact_strict", || {
                 if let Some(ref wf) = workflow {
                     let dir = tempfile::tempdir();
                     if let Ok(dir) = dir.as_ref() {
@@ -2095,7 +2240,7 @@ fn budget_compute_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=budget_compute",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "budget_compute_small_workflow", || {
                 if let Some(ref wf) = small_nodes {
                     let parts = wf.to_parts();
                     let result = vb_core::WholeWorkflowBudget::compute(
@@ -2118,7 +2263,7 @@ fn budget_compute_benches(c: &mut Criterion) {
             "fixture=save_chain_10;surface=budget_compute",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "budget_compute_save_chain_10", || {
                 if let Some(ref wf) = chain_10 {
                     let parts = wf.to_parts();
                     let result = vb_core::WholeWorkflowBudget::compute(
@@ -2141,7 +2286,7 @@ fn budget_compute_benches(c: &mut Criterion) {
             "fixture=save_chain_1000;surface=budget_compute",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "budget_compute_save_chain_1000", || {
                 if let Some(ref wf) = chain_1000 {
                     let parts = wf.to_parts();
                     let result = vb_core::WholeWorkflowBudget::compute(
@@ -2164,7 +2309,7 @@ fn budget_compute_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=budget_validate",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "budget_validate_default_policy", || {
                 if let Some(ref wf) = small_nodes {
                     let parts = wf.to_parts();
                     let budget = vb_core::WholeWorkflowBudget::compute(
@@ -2200,7 +2345,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
             "fixture=volatile_journal_100;surface=event_accumulate",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "evidence_chain_accumulate_100_events", || {
                 let journal = vb_runtime::journal::VolatileRuntimeJournal::new();
                 let mut i = 0_u16;
                 while i < 100 {
@@ -2249,7 +2394,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
             "fixture=volatile_journal_1000;surface=event_accumulate",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "evidence_chain_accumulate_1000_events", || {
                 let journal = vb_runtime::journal::VolatileRuntimeJournal::new();
                 let mut i = 0_u16;
                 while i < 1000 {
@@ -2309,7 +2454,9 @@ fn evidence_chain_benches(c: &mut Criterion) {
                 drop(journal.append(event));
                 i = i.saturating_add(1);
             }
-            b.iter(|| black_box(journal.snapshot().map(|e| e.len())))
+            checked_iter(b, "evidence_chain_snapshot_100_events", || {
+                black_box(journal.snapshot().map(|e| e.len()))
+            })
         },
     );
 
@@ -2338,7 +2485,7 @@ fn admission_gate_benches(c: &mut Criterion) {
             "fixture=always_present;surface=admit_run;policy=relaxed",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "admit_run_relaxed", || {
                 let result = vb_runtime::admission::admit_run(
                     black_box(always_present.as_ref()),
                     black_box(vb_core::RuntimePolicy::Relaxed),
@@ -2359,7 +2506,7 @@ fn admission_gate_benches(c: &mut Criterion) {
             "fixture=always_present;surface=admit_run;policy=strict",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "admit_run_strict_artifact_present", || {
                 let result = vb_runtime::admission::admit_run(
                     black_box(always_present.as_ref()),
                     black_box(vb_core::RuntimePolicy::Strict),
@@ -2380,7 +2527,7 @@ fn admission_gate_benches(c: &mut Criterion) {
             "fixture=always_present;surface=admit_run;policy=strict;caps=3_actions",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "admit_run_multiple_action_caps", || {
                 let result = vb_runtime::admission::admit_run(
                     black_box(always_present.as_ref()),
                     black_box(vb_core::RuntimePolicy::Strict),
@@ -2401,7 +2548,7 @@ fn admission_gate_benches(c: &mut Criterion) {
             "fixture=always_present;surface=admit_run;policy=relaxed;caps=empty",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "admit_run_empty_caps", || {
                 let result = vb_runtime::admission::admit_run(
                     black_box(always_present.as_ref()),
                     black_box(vb_core::RuntimePolicy::Relaxed),
@@ -2449,7 +2596,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=any_workflow_set;surface=capability_check",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_any_workflow_grants", || {
                 let result = any_workflow_caps.grants(black_box(&cap(ActionId::new(99))));
                 black_box(result)
             })
@@ -2464,7 +2611,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=action_set_10;surface=capability_check",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_action_match_first", || {
                 let result = action_caps.grants(black_box(&cap(ActionId::new(1))));
                 black_box(result)
             })
@@ -2479,7 +2626,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=action_set_10;surface=capability_check",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_action_miss", || {
                 let result = action_caps.grants(black_box(&cap(ActionId::new(99))));
                 black_box(result)
             })
@@ -2494,7 +2641,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=empty_set;surface=capability_check",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_empty_denies", || {
                 let result = empty_caps.grants(black_box(&cap(ActionId::new(1))));
                 black_box(result)
             })
@@ -2509,7 +2656,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=mixed_set;surface=capability_check",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_mixed_set", || {
                 let result = mixed_caps.grants(black_box(&cap(ActionId::new(2))));
                 black_box(result)
             })
@@ -2524,7 +2671,7 @@ fn capability_check_benches(c: &mut Criterion) {
             "fixture=action_set_10;surface=admission_check_capability",
         ),
         |b| {
-            b.iter(|| {
+            checked_iter(b, "capability_check_admission_gate", || {
                 let result = vb_runtime::admission::check_capability(
                     black_box(ActionId::new(1)),
                     black_box(&cap(ActionId::new(1))),

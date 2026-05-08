@@ -5,6 +5,7 @@
 //! per-screen data payloads that the UI reads during rendering.
 
 use crate::replay::timeline::TimelineStrip;
+use crate::replay::transport::TransportState;
 use crate::system::screen::SystemScreen;
 
 /// The 5 primary screens of the mission control UI.
@@ -41,7 +42,7 @@ pub struct AppState {
 pub struct ReplayData {
     pub playback_position: u32,
     pub total_events: u32,
-    pub is_playing: bool,
+    pub transport_state: TransportState,
     pub playback_speed: f64,
     pub current_step: Option<u16>,
     pub step_state: Option<String>,
@@ -227,7 +228,7 @@ impl ReplayData {
         Self {
             playback_position: 0,
             total_events: 0,
-            is_playing: false,
+            transport_state: TransportState::Idle,
             playback_speed: 1.0,
             current_step: None,
             step_state: None,
@@ -624,7 +625,7 @@ mod tests {
         let replay = &state.replay;
         assert_eq!(replay.playback_position, 0);
         assert_eq!(replay.total_events, 0);
-        assert!(!replay.is_playing);
+        assert!(replay.transport_state.is_idle());
         assert!((replay.playback_speed - 1.0).abs() < f64::EPSILON);
         assert!(replay.current_step.is_none());
         assert!(replay.step_state.is_none());
@@ -1419,7 +1420,7 @@ mod tests {
         let state = AppState::new();
         assert_eq!(state.replay.playback_position, 0);
         assert_eq!(state.replay.total_events, 0);
-        assert!(!state.replay.is_playing);
+        assert!(state.replay.transport_state.is_idle());
         assert!((state.replay.playback_speed - 1.0).abs() < f64::EPSILON);
         assert!(state.replay.current_step.is_none());
         assert!(state.replay.step_state.is_none());
