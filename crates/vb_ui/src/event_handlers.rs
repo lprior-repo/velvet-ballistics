@@ -1,14 +1,46 @@
 #![forbid(unsafe_code)]
 //! Event handlers for the Mission Control UI.
 //!
-//! Contains navigation and transport (playback) event handlers extracted
-//! from main.rs to satisfy Farley constraints (each function ≤ 25 lines).
+//! Emits Makepad actions for navigation and transport controls.
+//! State mutation happens in `MatchEvent::handle_actions` in `main.rs`.
 
 use crate::domain::{IpcCleanCycles, TabOffsets, TransportLayout};
 use makepad_widgets::*;
-use vb_ui::app_state::{AppState, Screen};
+use vb_ui::app_state::Screen;
 use vb_ui::ipc_wiring::{IpcAppWiring, WiringError};
-use vb_ui::replay::transport::TransportState;
+
+// ---------------------------------------------------------------------------
+// Action types
+// ---------------------------------------------------------------------------
+
+/// Transport control button kinds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TransportControlKind {
+    /// Jump to the first event.
+    JumpToStart,
+    /// Step backward by one event.
+    StepBackward,
+    /// Toggle between play and pause.
+    TogglePlayPause,
+    /// Jump to the last event.
+    JumpToEnd,
+}
+
+/// Actions emitted by the `VbApp` widget.
+#[derive(Clone, Debug, Default)]
+pub(crate) enum VbAction {
+    /// No operation (default).
+    #[default]
+    NoOp,
+    /// Switch to a different screen.
+    SwitchScreen(Screen),
+    /// Transport control button was pressed.
+    TransportControl(TransportControlKind),
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
 
 /// Detects which nav tab (if any) was hit by the finger event.
 fn detect_nav_tab_hit(hit: &Hit, rect: &Rect) -> Option<usize> {
@@ -32,7 +64,7 @@ fn detect_nav_tab_hit(hit: &Hit, rect: &Rect) -> Option<usize> {
         .position(|&offset| rel_x >= offset && rel_x < offset + TabOffsets::TAB_WIDTH)
 }
 
-/// Converts a tab index to its corresponding screen, or None if invalid.
+/// Converts a tab index to its corresponding screen, or `None` if invalid.
 fn resolve_nav_tab_to_screen(tab_idx: usize) -> Option<Screen> {
     match tab_idx {
         0 => Some(Screen::RunReplay),
@@ -44,16 +76,20 @@ fn resolve_nav_tab_to_screen(tab_idx: usize) -> Option<Screen> {
     }
 }
 
-/// Handles navigation tab clicks, switching the active screen.
-pub(crate) fn handle_nav(app_state: &mut AppState, rect: &Rect, hit: &Hit) {
+/// Emits a `SwitchScreen` action when a nav tab is clicked.
+pub(crate) fn handle_nav(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &Hit) {
     let Some(idx) = detect_nav_tab_hit(hit, rect) else {
         return;
     };
     let Some(screen) = resolve_nav_tab_to_screen(idx) else {
         return;
     };
-    app_state.switch_screen(screen);
+    cx.widget_action(uid, VbAction::SwitchScreen(screen));
 }
+
+// ---------------------------------------------------------------------------
+// Transport
+// ---------------------------------------------------------------------------
 
 /// Detects which transport button (if any) was hit by the finger event.
 fn detect_transport_button_hit(hit: &Hit, rect: &Rect, layout: &TransportLayout) -> Option<usize> {
@@ -79,49 +115,32 @@ fn detect_transport_button_hit(hit: &Hit, rect: &Rect, layout: &TransportLayout)
         .position(|&btn_x| rel_x >= btn_x && rel_x < btn_x + layout.btn_width)
 }
 
-/// Applies the transport button action to the replay state.
-fn apply_transport_button_action(app_state: &mut AppState, button_idx: usize) {
+/// Maps a button index to its transport control kind.
+fn resolve_button_index_to_control(button_idx: usize) -> Option<TransportControlKind> {
     match button_idx {
-        0 => jump_to_start(app_state),
-        1 => step_backward(app_state),
-        2 => toggle_play_pause(app_state),
-        3 => jump_to_end(app_state),
-        _ => {}
+        0 => Some(TransportControlKind::JumpToStart),
+        1 => Some(TransportControlKind::StepBackward),
+        2 => Some(TransportControlKind::TogglePlayPause),
+        3 => Some(TransportControlKind::JumpToEnd),
+        _ => None,
     }
 }
 
-fn jump_to_start(app_state: &mut AppState) {
-    app_state.replay.playback_position = 0;
-    app_state.replay.transport_state = TransportState::Idle;
-}
-
-fn step_backward(app_state: &mut AppState) {
-    app_state.replay.playback_position =
-        app_state.replay.playback_position.saturating_sub(1);
-    app_state.replay.transport_state = TransportState::Paused;
-}
-
-fn toggle_play_pause(app_state: &mut AppState) {
-    app_state.replay.transport_state = if app_state.replay.transport_state.is_playing() {
-        TransportState::Paused
-    } else {
-        TransportState::Playing { next_tick_at: 0 }
-    };
-}
-
-fn jump_to_end(app_state: &mut AppState) {
-    app_state.replay.playback_position = app_state.replay.total_events.saturating_sub(1);
-    app_state.replay.transport_state = TransportState::Idle;
-}
-
-/// Handles transport (playback) bar button clicks.
-pub(crate) fn handle_transport(app_state: &mut AppState, rect: &Rect, hit: &Hit) {
+/// Emits a `TransportControl` action when a transport button is clicked.
+pub(crate) fn handle_transport(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &Hit) {
     let layout = TransportLayout::from_rect(rect);
     let Some(btn_idx) = detect_transport_button_hit(hit, rect, &layout) else {
         return;
     };
-    apply_transport_button_action(app_state, btn_idx);
+    let Some(control) = resolve_button_index_to_control(btn_idx) else {
+        return;
+    };
+    cx.widget_action(uid, VbAction::TransportControl(control));
 }
+
+// ---------------------------------------------------------------------------
+// IPC wiring
+// ---------------------------------------------------------------------------
 
 /// Formats a wiring error into a user-facing message.
 fn format_wiring_error(err: &WiringError) -> String {
@@ -138,7 +157,7 @@ fn format_wiring_error(err: &WiringError) -> String {
 /// Handles IPC errors: records error or increments clean cycles.
 fn handle_ipc_errors(
     errors: &[WiringError],
-    app_state: &mut AppState,
+    app_state: &mut vb_ui::app_state::AppState,
     ipc_clean_cycles: &mut IpcCleanCycles,
 ) {
     if errors.is_empty() {
@@ -157,7 +176,7 @@ fn handle_ipc_errors(
     }
 }
 
-/// Routes IPC wiring events into an IpcChanges summary.
+/// Routes IPC wiring events into an `IpcChanges` summary.
 fn route_ipc_events(wiring_events: &vb_ui::ipc_wiring::WiringEvents) -> IpcChanges {
     IpcChanges {
         metrics_updated: wiring_events.metrics_updated,
@@ -179,7 +198,7 @@ fn route_ipc_events(wiring_events: &vb_ui::ipc_wiring::WiringEvents) -> IpcChang
 /// Polls IPC wiring and returns whether metrics/changes require a sync.
 pub(crate) fn poll_ipc_and_detect_changes(
     ipc_wiring: &mut IpcAppWiring,
-    app_state: &mut AppState,
+    app_state: &mut vb_ui::app_state::AppState,
     ipc_clean_cycles: &mut IpcCleanCycles,
 ) -> IpcChanges {
     let wiring_events = ipc_wiring.poll(app_state);

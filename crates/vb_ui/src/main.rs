@@ -11,11 +11,12 @@ mod event_handlers;
 use makepad_widgets::*;
 use vb_ui::app_state::AppState;
 use vb_ui::ipc_wiring::IpcAppWiring;
+use vb_ui::replay::transport::TransportState;
 
 use crate::domain::IpcCleanCycles;
 use crate::draw_helpers::{draw_background, draw_content, draw_header_bar, draw_nav_tabs};
 use crate::event_handlers::{
-    handle_nav, handle_transport, poll_ipc_and_detect_changes,
+    handle_nav, handle_transport, poll_ipc_and_detect_changes, TransportControlKind, VbAction,
 };
 
 app_main!(VbApp);
@@ -23,14 +24,16 @@ app_main!(VbApp);
 script_mod! {
     use mod.prelude.widgets_internal.*
 
+    let state = {
+        current_screen: "RunReplay",
+        transport_state: "Idle"
+    }
+    mod.state = state
+
     mod.widgets.VbAppBase = #(VbApp::register_widget(vm))
     mod.widgets.VbApp = set_type_default() do mod.widgets.VbAppBase{
         width: Fill
         height: Fill
-        ui: View{
-            width: Fill
-            height: Fill
-        }
     }
 }
 
@@ -52,7 +55,7 @@ pub struct VbApp {
     #[live]
     draw_nav: DrawColor,
     #[live]
-    ui: WidgetRef,
+    draw_text: DrawText,
     #[rust]
     app_state: AppState,
     #[rust]
@@ -67,8 +70,14 @@ impl Widget for VbApp {
     #[allow(elided_lifetimes_in_paths)]
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, _scope: &mut Scope) {
         let hit = capture_hit(cx, event, self.draw_bg.area());
-        process_ipc_changes(cx, &mut self.ipc_wiring, &mut self.app_state, &mut self.ipc_clean_cycles);
-        handle_user_input(&mut self.app_state, &self.rect, &hit);
+        process_ipc_changes(
+            cx,
+            &mut self.ipc_wiring,
+            &mut self.app_state,
+            &mut self.ipc_clean_cycles,
+        );
+        handle_nav(cx, self.uid, &self.rect, &hit);
+        handle_transport(cx, self.uid, &self.rect, &hit);
         self.redraw(cx);
     }
 
@@ -78,7 +87,7 @@ impl Widget for VbApp {
         draw_background(&mut self.draw_bg, cx, self.rect);
         draw_header_bar(&mut self.draw_header, cx, self.rect);
         draw_nav_tabs(&mut self.draw_nav, cx, self.rect, &self.app_state);
-        draw_content(&mut self.draw_bg, cx, self.rect, &self.app_state);
+        draw_content(&mut self.draw_bg, &mut self.draw_text, cx, self.rect, &self.app_state);
         DrawStep::done()
     }
 }
@@ -87,15 +96,21 @@ fn ingest_timeline_events_to_app(
     app_state: &mut AppState,
     responses: &[vb_ipc::server::IpcResponse],
 ) {
-    use vb_ui::replay::convert_trace_events;
     use vb_ipc::server::IpcResponse;
+    use vb_ui::replay::convert_trace_events;
 
     for response in responses {
         if let IpcResponse::Events { events } = response {
             let journal_events = convert_trace_events(events);
-            app_state.replay.timeline_strip.extend_from_journal(&journal_events);
+            app_state
+                .replay
+                .timeline_strip
+                .extend_from_journal(&journal_events);
             let new_len = app_state.replay.timeline_strip.events().len();
-            app_state.replay.total_events = u32::try_from(new_len).unwrap_or(u32::MAX);
+            app_state.replay.total_events = match u32::try_from(new_len) {
+                Ok(v) => v,
+                Err(_) => u32::MAX,
+            };
         }
     }
 }
@@ -134,14 +149,67 @@ fn process_ipc_changes(
     }
 }
 
-fn handle_user_input(app_state: &mut AppState, rect: &Rect, hit: &Hit) {
-    handle_nav(app_state, rect, hit);
-    handle_transport(app_state, rect, hit);
-}
-
 impl MatchEvent for VbApp {
-    fn handle_actions(&mut self, _cx: &mut Cx, _actions: &Actions) {
-        // Handle actions from child widgets here
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        for action in actions.filter_widget_actions(self.uid) {
+            if let Some(app_action) = action.action.downcast_ref::<VbAction>() {
+                match app_action {
+                    VbAction::SwitchScreen(screen) => {
+                        self.app_state.switch_screen(*screen);
+                        let screen_name = match screen {
+                            vb_ui::app_state::Screen::RunReplay => "RunReplay",
+                            vb_ui::app_state::Screen::Verification => "Verification",
+                            vb_ui::app_state::Screen::SystemOverview => "SystemOverview",
+                            vb_ui::app_state::Screen::WorkflowGraph => "WorkflowGraph",
+                            vb_ui::app_state::Screen::IncidentConsole => "IncidentConsole",
+                        };
+                        script_eval!(cx, {
+                            mod.state.current_screen = #(screen_name)
+                        });
+                    }
+                    VbAction::TransportControl(kind) => match kind {
+                        TransportControlKind::JumpToStart => {
+                            self.app_state.replay.playback_position = 0;
+                            self.app_state.replay.transport_state = TransportState::Idle;
+                            script_eval!(cx, {
+                                mod.state.transport_state = "Idle"
+                            });
+                        }
+                        TransportControlKind::StepBackward => {
+                            self.app_state.replay.playback_position =
+                                self.app_state.replay.playback_position.saturating_sub(1);
+                            self.app_state.replay.transport_state = TransportState::Paused;
+                            script_eval!(cx, {
+                                mod.state.transport_state = "Paused"
+                            });
+                        }
+                        TransportControlKind::TogglePlayPause => {
+                            let is_playing = self.app_state.replay.transport_state.is_playing();
+                            self.app_state.replay.transport_state = if is_playing {
+                                script_eval!(cx, {
+                                    mod.state.transport_state = "Paused"
+                                });
+                                TransportState::Paused
+                            } else {
+                                script_eval!(cx, {
+                                    mod.state.transport_state = "Playing"
+                                });
+                                TransportState::Playing { next_tick_at: 0 }
+                            };
+                        }
+                        TransportControlKind::JumpToEnd => {
+                            self.app_state.replay.playback_position =
+                                self.app_state.replay.total_events.saturating_sub(1);
+                            self.app_state.replay.transport_state = TransportState::Idle;
+                            script_eval!(cx, {
+                                mod.state.transport_state = "Idle"
+                            });
+                        }
+                    },
+                    VbAction::NoOp => {}
+                }
+            }
+        }
     }
 }
 
