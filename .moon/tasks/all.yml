@@ -13,7 +13,6 @@ fileGroups:
     - 'fuzz/**/*'
   configs:
     - '.cargo/**/*'
-    - '.github/**/*'
     - '.moon/**/*'
     - '.config/**/*'
     - 'deny.toml'

@@ -777,33 +777,36 @@ fn dependency_policy_has_exception_process_section() -> Result<(), String> {
 }
 
 #[test]
-fn ci_workflow_yaml_is_valid_yaml() -> Result<(), String> {
-    use saphyr::LoadableYamlNode;
+fn github_actions_workflows_are_removed() -> Result<(), String> {
+    let workflow_dir = workspace_path(".github/workflows");
 
-    let contents = read_workspace_file(".github/workflows/ci.yml")?;
-    saphyr::Yaml::load_from_str(&contents)
-        .map_err(|error| format!(".github/workflows/ci.yml must be valid YAML: {}", error))?;
-    Ok(())
+    ensure(
+        !workflow_dir.exists(),
+        ".github/workflows must not exist; CI is intentionally driven by local Moon gates"
+            .to_string(),
+    )
 }
 
 #[test]
-fn ci_workflow_has_geiger_step() -> Result<(), String> {
-    require_file_contains(".github/workflows/ci.yml", "geiger", "CI safety gate")
-}
+fn moon_tasks_preserve_local_ci_gate_coverage() -> Result<(), String> {
+    let contents = read_workspace_file(".moon/tasks/all.yml")?;
 
-#[test]
-fn ci_workflow_has_vet_step() -> Result<(), String> {
-    require_file_contains(".github/workflows/ci.yml", "vet", "CI safety gate")
-}
-
-#[test]
-fn ci_workflow_has_bench_step() -> Result<(), String> {
-    require_file_contains(".github/workflows/ci.yml", "bench", "CI performance gate")
-}
-
-#[test]
-fn ci_workflow_has_fuzz_step() -> Result<(), String> {
-    require_file_contains(".github/workflows/ci.yml", "fuzz", "CI robustness gate")
+    ensure(
+        contents.contains("supply-chain"),
+        ".moon/tasks/all.yml must keep the local supply-chain gate".to_string(),
+    )?;
+    ensure(
+        contents.contains("bench-build"),
+        ".moon/tasks/all.yml must keep the local benchmark build gate".to_string(),
+    )?;
+    ensure(
+        contents.contains("fuzz-smoke"),
+        ".moon/tasks/all.yml must keep the local fuzz smoke gate".to_string(),
+    )?;
+    ensure(
+        !contents.contains(".github/**/*"),
+        ".moon/tasks/all.yml must not depend on removed GitHub Actions files".to_string(),
+    )
 }
 
 #[test]
