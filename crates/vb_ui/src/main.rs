@@ -15,7 +15,7 @@ use vb_ui::ipc_wiring::IpcAppWiring;
 use crate::domain::IpcCleanCycles;
 use crate::draw_helpers::{draw_background, draw_content, draw_header_bar, draw_nav_tabs};
 use crate::event_handlers::{
-    IpcChanges, handle_nav, handle_transport, poll_ipc_and_detect_changes,
+    handle_nav, handle_transport, poll_ipc_and_detect_changes,
 };
 
 app_main!(VbApp);
@@ -77,17 +77,21 @@ impl Widget for VbApp {
     }
 }
 
-impl VbApp {
-    fn handle_replay_sync(&mut self, _cx: &mut Cx, changes: &IpcChanges) {
-        if changes.events_arrived {
-            let responses = self.ipc_wiring.drain_events();
-            self.ingest_timeline_events(&responses);
-        } else {
-            let _ = self.ipc_wiring.drain_events();
+fn ingest_timeline_events_to_app(
+    app_state: &mut AppState,
+    responses: &[vb_ipc::server::IpcResponse],
+) {
+    use vb_ui::replay::convert_trace_events;
+    use vb_ipc::server::IpcResponse;
+
+    for response in responses {
+        if let IpcResponse::Events { events } = response {
+            let journal_events = convert_trace_events(events);
+            app_state.replay.timeline_strip.extend_from_journal(&journal_events);
+            let new_len = app_state.replay.timeline_strip.events().len();
+            app_state.replay.total_events = u32::try_from(new_len).unwrap_or(u32::MAX);
         }
     }
-
-    fn ingest_timeline_events(&mut self, _responses: &[vb_ipc::server::IpcResponse]) {}
 }
 
 fn capture_hit(cx: &mut Cx, event: &Event, area: Area) -> Hit {
@@ -112,7 +116,12 @@ fn process_ipc_changes(
         // Verify sync handled here
     }
     if changes.needs_replay_sync() {
-        // Replay sync handled here
+        if changes.events_arrived {
+            let responses = ipc_wiring.drain_events();
+            ingest_timeline_events_to_app(app_state, &responses);
+        } else {
+            let _ = ipc_wiring.drain_events();
+        }
     }
     if changes.needs_workflow_sync() {
         // Workflow sync handled here

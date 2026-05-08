@@ -317,7 +317,7 @@ Expressions:
 
 ## 9. Trigger Contract
 
-v1 supports exactly these core triggers:
+v1 supports exactly these triggers in YAML authoring:
 
 ```yaml
 when:
@@ -326,11 +326,24 @@ when:
 
 ```yaml
 when:
-  ipc:
-    name: issue_triage
+  schedule:
+    cron: "0 * * * *"
 ```
 
-`manual` means direct Rust API submission. `ipc` means local binary IPC submission. HTTP and webhook triggers are out of v1 runtime core. Any future HTTP or webhook adapter must be a separate cold-path adapter crate outside `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, and generated workflow code.
+```yaml
+when:
+  event:
+    type: github.pull_request
+```
+
+```yaml
+when:
+  webhook: {}
+```
+
+`manual` means direct Rust API submission (via `Runtime::submit`). `schedule`, `event`, and `webhook` are cold-path triggers handled by external adapters before submitting compiled artifacts to the runtime. HTTP/webhook adapters live outside `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, and generated workflow code.
+
+The binary IPC protocol (`vb_ipc`) is a separate runtime ingress mechanism, not a YAML trigger. `ipc` in the IR refers to the `ShardCommand::Submit` protocol, not a YAML-authored trigger.
 
 ---
 
@@ -341,6 +354,16 @@ Every YAML step has exactly one primitive:
 ```text
 set · do · choose · for_each · together · collect · reduce · repeat · wait · ask · finish
 ```
+
+**Canonical names.** The normative primitive names are `set · do · choose · for_each · together · collect · reduce · repeat · wait · ask · finish`. The implementation accepts these aliases:
+
+| Alias | Canonical | Notes |
+|-------|-----------|-------|
+| `save` | `set` | Legacy alias in parser and compiler |
+| `run` | `do` | Alternative step invocation |
+| `foreach` | `for_each` | Single-word spelling in YAML parser |
+
+These aliases are compiler-accepted; canonical names are preferred in authored YAML.
 
 Control and metadata fields are not primitives:
 
@@ -576,14 +599,14 @@ Required types and functions:
 
 | Type/Function | Contract |
 |---------------|----------|
-| `EngineSignal` | `Continue`, `Finished(SlotValue)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk` |
+| `EngineSignal` | `Continue`, `Finished(SlotValue, Taint)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk` |
 | `StepBudget` | Bounded step counter. `try_take() -> CoreResult<bool>`. Budget 0 returns `StepBudgetExhausted` immediately. |
 | `step_once` | Execute single node dispatch. Returns `EngineSignal`. |
 | `drive_deterministic` | Loop calling `step_once` until blocked by budget, suspension, or finish. |
 
 `StepBudget` uses `remaining: u64`; `try_take() -> CoreResult<bool>`. Budget `0` executes zero transitions and returns `StepBudgetExhausted`. Budget `1` executes exactly one transition.
 
-Known design limitation: `EngineSignal::Finished(SlotValue)` carries no taint. Taint information at the Finish boundary is discarded. This is documented in Section 47 and must be addressed in a future phase if finish-result taint tracking is required.
+`EngineSignal::Finished(SlotValue, Taint)` carries taint from the result slot. The Finish node reads slot taint and propagates it to the signal. Compile-time validation rejects `Secret`-tainted finish results (defense-in-depth).
 
 ---
 
@@ -631,6 +654,8 @@ Finish
 ```
 
 Generated Rust execution may lower these into direct `match` arms or straight-line functions. It must keep the same step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode.
+
+**`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Compile-time validation rejects workflows where the finish result slot is `Secret`-tainted (defense-in-depth).
 
 Final choose contract: `Choose { branches, otherwise }` evaluates `ExprBranch { condition: ExprIdx, target }` in order and jumps to the first true expression; `ChooseSlot { branches, otherwise }` reads `SlotBranch { condition: SlotIdx, target }` in order after those slots have been materialized by prior IR. `ChooseSlot` condition slots must be validated as boolean slots. If no branch matches, `otherwise` is taken; missing `otherwise` with no match is `CoreError::MissingNextStep { step: current }`. Untyped or string-condition choose nodes are migration-only and are not part of final IR.
 
@@ -1045,7 +1070,7 @@ IPC decoder requirements:
 
 ## 22. Generated Rust Workflow Mode
 
-Generated Rust mode is mandatory for `maxperf` builds.
+Generated Rust mode is the target for `maxperf` builds. **Current status: subset-only.** The codegen surface supports only a subset of final IR nodes and expressions. Full final-IR parity is a future phase goal.
 
 Command shape:
 
@@ -1075,10 +1100,10 @@ Generated Rust must:
 1. Compile under the pinned nightly.
 2. Pass `rustfmt`.
 3. Pass `clippy` with repository deny settings.
-4. Preserve IR semantics exactly.
+4. Preserve IR semantics exactly. **Current gap:** `compare_generated_to_ir` performs source-pattern counting, not true execution equivalence over terminal results, taint, journal, and errors. Full semantic parity tests are a future phase requirement.
 5. Emit no hidden dynamic allocation in deterministic hot steps unless the resource contract explicitly allows it.
-6. Produce equivalent journal events, slot values, taint states, errors, and terminal results to IR mode.
-7. Be covered by equivalence tests and compile-fail tests.
+6. Produce equivalent journal events, slot values, taint states, errors, and terminal results to IR mode. **Current gap:** `Together*`, `Reduce*`, `Repeat*` IR nodes are rejected by the emission path; `Collect*` is validated as a subset but not yet emitted.
+7. Be covered by equivalence tests and compile-fail tests. **Current gap:** trybuild harness can pass with no compile-fail fixtures present.
 
 ---
 
@@ -2986,7 +3011,7 @@ This is the workflow equivalent of compile-with-warnings-as-errors. AI agents sh
 | 10. Secret/taint | Implemented | Compile-time + runtime taint, leak rejection, 3-level lattice |
 | 11. Idempotency | Stub | `Idempotency` enum exists in `ActionContract` (Section 19) for taint/replay classification. Phase 38 adds `SideEffect` + `RetrySafety` enums and the verification gate (section 65). These extend, not replace, the existing `Idempotency` classification. |
 | 12. Durability | Partial | Journal events exist; slot/payload persistence gaps |
-| 13. Capability | Not started | No capability model exists |
+| 13. Capability | Partial | `Capability`/`CapabilitySet` types exist; admission gate implemented in `vb_runtime/admission.rs`; compile-time schema validation needed |
 | 14. Output/result | Implemented | Result validation, finish semantics |
 | 15. Observability | Partial | Trace ring + counters; evidence chain gaps |
 
@@ -3273,27 +3298,21 @@ Capability checking occurs at admission time (cold path) only. The runtime does 
 
 This section tracks known architectural defects discovered through adversarial review. Each entry states the defect, the root cause, the resolution contract, and the phase that resolves it. Entries are removed when the resolution phase is complete and evidenced.
 
-### DRIFT-1: Runtime Taint Tracking Is Incomplete
+### DRIFT-1: Runtime Taint Tracking — RESOLVED
 
-**Defect:** `EvalExpr`, `BuildObject`, and `BuildList` nodes write `Taint::Clean` unconditionally via `write_slot`. The `Finish` node emits `EngineSignal::Finished(SlotValue)` which carries no taint metadata. Compile-time taint checking is the only effective defense. A hand-crafted `CompiledWorkflow` that bypasses the compiler has no runtime taint protection.
+**Resolution evidence:**
+- `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_expr/src/eval.rs`).
+- `BuildObject` joins taint from all field slots into output taint.
+- `BuildList` joins taint from all item slots into output taint.
+- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/nodes.rs`, `node_helpers.rs`).
+- `EngineSignal::Finished` carries taint alongside value in the result signal.
+- Compile-time taint validation remains as defense-in-depth.
 
-**Root cause:** `write_slot` hardcodes `Taint::Clean`. Only `copy_slot` and `write_slot_with_taint` propagate taint. The expression evaluator, object builder, and list builder read tainted values but discard taint on output.
+**DRIFT-1 is closed.**
 
-**Resolution contract:**
-1. `EvalExpr` must read taint from every `LoadSlot` operand and join them into the output taint.
-2. `BuildObject` must join taint from every field slot into the output taint.
-3. `BuildList` must join taint from every item slot into the output taint.
-4. `EngineSignal::Finished` must carry taint alongside the value, or the finish handler must check taint before emitting.
-5. The expression evaluator's `eval_load_slot` must return both value and taint.
-6. Compile-time taint checks remain as defense-in-depth.
+### DRIFT-2: Crash Recovery Cannot Reconstruct Live State — ACTIVE
 
-**Coding style:** No functional combinators. No iterator chains. Use explicit `for` loops with checked indexing. Taint join is `max(left, right)` using the `repr(u8)` discriminant — a simple `u8` comparison, not a trait.
-
-**Resolves in:** Phase 43 (Taint Propagation Fix)
-
-### DRIFT-2: Crash Recovery Cannot Reconstruct Live State
-
-**Defect:** The journal records no slot values, no slot taint, no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` reports `slot_values: true`, `slot_taint: true`, but `hydrate_run_frame` proceeds with empty frames anyway. The system is not crash-recoverable for any workflow that performs deterministic computation between suspension points.
+**Defect:** The journal records no slot values, no slot taint, no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` reports `slot_values: true`, `slot_taint: true`, but `hydrate_run_frame` proceeds with empty frames anyway. The system is not crash-recoverable for any workflow that performs deterministic computation between suspension points. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` exist in the runtime as explicit markers of this gap.
 
 **Root cause:** Journal events are only emitted at suspension points (action dispatch, wait, ask). Deterministic steps between suspensions are treated as atomic but the journal cannot reconstruct them.
 
@@ -3362,6 +3381,8 @@ This section tracks known architectural defects discovered through adversarial r
 ---
 
 ## 68. Durable Execution Architecture Contract
+
+> **Target contract.** The invariants in this section describe the intended architecture. The current implementation has active gaps documented in DRIFT-2. Recovery hydration is summary-only; full `RunFrame` reconstruction from journal events is not yet implemented. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` remain in the code until Phase 44 evidence is complete.
 
 `velvet-ballastics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 

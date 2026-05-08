@@ -16,6 +16,9 @@ proptest = { workspace = true }
 
 [features]
 default = []
+generated = []
+bench = []
+volatile = []
 test-util = []
 
 [lints]
