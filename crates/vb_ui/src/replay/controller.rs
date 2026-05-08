@@ -351,7 +351,8 @@ impl ReplayController {
                             from_sequence: 0,
                         })
                     {
-                        eprintln!("failed to send bridge message: {:?}", err);
+                        self.load_phase = LoadPhase::Idle;
+                        events.push(ControllerEvent::LoadFailed(err));
                     }
                 }
             }

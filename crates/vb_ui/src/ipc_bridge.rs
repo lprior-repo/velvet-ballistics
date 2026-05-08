@@ -228,21 +228,21 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
             IpcRequest::Connect { socket_path } => match IpcClient::connect(&socket_path) {
                 Ok(c) => {
                     client = Some(c);
-                    if let Err(err) = tx.send(IpcReply::Connected) {
-                        eprintln!("failed to send IpcReply::Connected: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Connected) {
+                        return;
                     }
                 }
                 Err(e) => {
-                    if let Err(err) = tx.send(IpcReply::ConnectionFailed(format!("{e}"))) {
-                        eprintln!("failed to send IpcReply::ConnectionFailed: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::ConnectionFailed(format!("{e}"))) {
+                        return;
                     }
                 }
             },
 
             IpcRequest::Disconnect => {
                 client = None;
-                if let Err(err) = tx.send(IpcReply::Disconnected) {
-                    eprintln!("failed to send IpcReply::Disconnected: {:?}", err);
+                if let Err(_err) = tx.send(IpcReply::Disconnected) {
+                    return;
                 }
             }
 
@@ -252,25 +252,25 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     match c.health(corr) {
                         Ok(()) => match c.recv_response(DEFAULT_MAX_PAYLOAD) {
                             Ok((_header, response)) => {
-                                if let Err(err) = tx.send(reply_from_response(response)) {
-                                    eprintln!("failed to send health reply: {:?}", err);
+                                if let Err(_err) = tx.send(reply_from_response(response)) {
+                                    return;
                                 }
                             }
                             Err(e) => {
-                                if let Err(err) = tx.send(IpcReply::Error(format!("{e}"))) {
-                                    eprintln!("failed to send IpcReply::Error: {:?}", err);
+                                if let Err(_err) = tx.send(IpcReply::Error(format!("{e}"))) {
+                                    return;
                                 }
                             }
                         },
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(format!("{e}"))) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(format!("{e}"))) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -281,19 +281,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::InspectRun { run_id };
                     match send_and_recv(c, IpcCommand::InspectRun, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::Inspected(response)) {
-                                eprintln!("failed to send IpcReply::Inspected: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Inspected(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -304,22 +304,22 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::CancelRun { run_id };
                     match send_and_recv(c, IpcCommand::CancelRun, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::RunCancelled(run_id)) {
-                                eprintln!("failed to send IpcReply::RunCancelled: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::RunCancelled(run_id)) {
+                                return;
                             }
                             // Silently consume response; cancellation is
                             // fire-and-forget from the UI perspective.
                             let _ = response;
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -336,19 +336,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     };
                     match send_and_recv(c, IpcCommand::ListEvents, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::Events(response)) {
-                                eprintln!("failed to send IpcReply::Events: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Events(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -367,19 +367,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     });
                     match send_and_recv(c, IpcCommand::SubmitRun, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(reply_from_submit(response, run_id)) {
-                                eprintln!("failed to send submit reply: {:?}", err);
+                            if let Err(_err) = tx.send(reply_from_submit(response, run_id)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -398,19 +398,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     };
                     match send_and_recv(c, IpcCommand::AnswerAsk, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(reply_from_answer(response, run_id)) {
-                                eprintln!("failed to send answer reply: {:?}", err);
+                            if let Err(_err) = tx.send(reply_from_answer(response, run_id)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -427,19 +427,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     };
                     match send_and_recv(c, IpcCommand::DrainTrace, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(reply_from_drain_trace(response)) {
-                                eprintln!("failed to send drain-trace reply: {:?}", err);
+                            if let Err(_err) = tx.send(reply_from_drain_trace(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -450,19 +450,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::VerifyWorkflow { digest };
                     match send_and_recv(c, IpcCommand::VerifyWorkflow, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::VerifyWorkflowResult(response)) {
-                                eprintln!("failed to send verify-workflow reply: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::VerifyWorkflowResult(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -473,19 +473,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::GetTaintReport { digest };
                     match send_and_recv(c, IpcCommand::GetTaintReport, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::TaintReportReceived(response)) {
-                                eprintln!("failed to send taint-report reply: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::TaintReportReceived(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -496,19 +496,19 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                     let payload = IpcPayload::GetWorkflowGraph { digest };
                     match send_and_recv(c, IpcCommand::GetWorkflowGraph, corr, &payload) {
                         Ok(response) => {
-                            if let Err(err) = tx.send(IpcReply::WorkflowGraphReceived(response)) {
-                                eprintln!("failed to send workflow-graph reply: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::WorkflowGraphReceived(response)) {
+                                return;
                             }
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(e)) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(e)) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
@@ -520,20 +520,20 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                         Ok(()) => {
                             // Best-effort read of the shutdown ack.
                             let response = c.recv_response(DEFAULT_MAX_PAYLOAD).ok();
-                            if let Err(err) = tx.send(IpcReply::ShuttingDown) {
-                                eprintln!("failed to send IpcReply::ShuttingDown: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::ShuttingDown) {
+                                return;
                             }
                             let _ = response;
                         }
                         Err(e) => {
-                            if let Err(err) = tx.send(IpcReply::Error(format!("{e}"))) {
-                                eprintln!("failed to send IpcReply::Error: {:?}", err);
+                            if let Err(_err) = tx.send(IpcReply::Error(format!("{e}"))) {
+                                return;
                             }
                         }
                     }
                 } else {
-                    if let Err(err) = tx.send(IpcReply::Error("Not connected".into())) {
-                        eprintln!("failed to send IpcReply::Error: {:?}", err);
+                    if let Err(_err) = tx.send(IpcReply::Error("Not connected".into())) {
+                        return;
                     }
                 }
             }
