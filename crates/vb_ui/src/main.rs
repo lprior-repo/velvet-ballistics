@@ -12,6 +12,19 @@
 //! This requires significant refactoring to fix properly. The correct approach is to
 //! migrate from the `script_mod!` DSL to direct Widget trait implementations.
 
+// Known issue: The declarative DSL pattern in this file uses Makepad's script_mod!
+// with `startup() do #(VbApp::script_component(vm))` syntax and inline widget
+// definitions, but the script_mod! macro does not correctly register widgets with
+// the current Makepad runtime. Components defined inside script_mod! are not
+// properly initialized, causing the UI to fail at startup. This is a fundamental
+// Makepad API incompatibility — the script_mod! DSL is not compatible with the
+// version of Makepad used here. The flow-editor-makepad crate works correctly and
+// demonstrates the proper approach: use the Rust Widget trait directly with
+// #[derive(Script, ScriptHook)] structs and explicit match_event handlers instead
+// of the script_mod! DSL. Fixing this requires rewriting the entire UI using the
+// correct Rust Widget trait pattern used in flow-editor-makepad.
+// See: flow-editor-makepad crate for the reference implementation.
+
 pub mod ipc_bridge;
 
 pub use makepad_widgets;
