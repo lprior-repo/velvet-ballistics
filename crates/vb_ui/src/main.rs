@@ -55,6 +55,8 @@ pub struct VbApp {
     #[live]
     draw_nav: DrawColor,
     #[live]
+    draw_vector: DrawVector,
+    #[live]
     draw_text: DrawText,
     #[rust]
     app_state: AppState,
@@ -87,7 +89,7 @@ impl Widget for VbApp {
         draw_background(&mut self.draw_bg, cx, self.rect);
         draw_header_bar(&mut self.draw_header, cx, self.rect);
         draw_nav_tabs(&mut self.draw_nav, cx, self.rect, &self.app_state);
-        draw_content(&mut self.draw_bg, &mut self.draw_text, cx, self.rect, &self.app_state);
+        draw_content(&mut self.draw_bg, &mut self.draw_vector, &mut self.draw_text, cx, self.rect, &self.app_state);
         DrawStep::done()
     }
 }

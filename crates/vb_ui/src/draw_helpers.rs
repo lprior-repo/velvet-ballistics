@@ -130,6 +130,7 @@ fn draw_text_label(draw_text: &mut DrawText, cx: &mut Cx2d, pos: DVec2, text: &s
 #[allow(elided_lifetimes_in_paths)]
 pub(crate) fn draw_content(
     draw_bg: &mut DrawColor,
+    draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
     rect: Rect,
@@ -191,7 +192,7 @@ pub(crate) fn draw_content(
     // Per-screen placeholder content
     match app_state.current_screen() {
         Screen::SystemOverview => draw_system_overview_content(draw_bg, draw_text, cx, &panel_rect, app_state),
-        Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, draw_text, cx, &panel_rect, app_state),
+        Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state),
         Screen::RunReplay => draw_run_replay_content(draw_bg, draw_text, cx, &panel_rect, app_state),
         Screen::Verification => draw_verification_content(draw_bg, draw_text, cx, &panel_rect, app_state),
         Screen::IncidentConsole => draw_incident_content(draw_bg, draw_text, cx, &panel_rect, app_state),
@@ -267,9 +268,167 @@ fn draw_system_overview_content(
     draw_text_label(draw_text, cx, DVec2 { x: health_rect.pos.x + health_rect.size.x + 8.0, y: health_rect.pos.y + 4.0 }, health_label);
 }
 
+
+const NODE_CARD_WIDTH: f64 = 160.0;
+const NODE_CARD_HEIGHT: f64 = 48.0;
+const NODE_HEADER_HEIGHT: f64 = 24.0;
+const NODE_BORDER_RADIUS: f64 = 8.0;
+const NODE_PORT_RADIUS: f64 = 5.0;
+
+struct SampleNodeCard {
+    header_color: [f32; 4],
+    body_color: [f32; 4],
+    border_color: [f32; 4],
+    text_color: [f32; 4],
+    kind_label: String,
+    step_name: String,
+    badges: Vec<(String, [f32; 4])>,
+    state_glow: Option<([f32; 4], f32)>,
+}
+
+fn build_sample_node_cards() -> Vec<SampleNodeCard> {
+    vec![
+        SampleNodeCard {
+            header_color: [0.098, 0.098, 0.157, 1.0],
+            body_color: [0.133, 0.133, 0.200, 1.0],
+            border_color: [0.247, 0.247, 0.420, 1.0],
+            text_color: [0.910, 0.910, 1.0, 1.0],
+            kind_label: "SetConst".to_string(),
+            step_name: "#0 val=42".to_string(),
+            badges: vec![],
+            state_glow: Some(([0.0, 0.482, 0.502, 1.0], 4.0)),
+        },
+        SampleNodeCard {
+            header_color: [0.157, 0.086, 0.027, 1.0],
+            body_color: [0.200, 0.118, 0.039, 1.0],
+            border_color: [1.0, 0.42, 0.0, 1.0],
+            text_color: [0.910, 0.910, 1.0, 1.0],
+            kind_label: "Do#7".to_string(),
+            step_name: "#1 action=A7 S".to_string(),
+            badges: vec![
+                ("A7".to_string(), [1.0, 0.42, 0.0, 1.0]),
+                ("S".to_string(), [1.0, 0.0, 1.0, 1.0]),
+            ],
+            state_glow: Some(([0.0, 0.961, 1.0, 1.0], 6.0)),
+        },
+        SampleNodeCard {
+            header_color: [0.133, 0.071, 0.196, 1.0],
+            body_color: [0.180, 0.098, 0.251, 1.0],
+            border_color: [0.694, 0.302, 1.0, 1.0],
+            text_color: [0.910, 0.910, 1.0, 1.0],
+            kind_label: "Choose".to_string(),
+            step_name: "#2 branch".to_string(),
+            badges: vec![],
+            state_glow: None,
+        },
+    ]
+}
+
+#[allow(elided_lifetimes_in_paths)]
+pub(crate) fn draw_workflow_node_card(
+    draw_vector: &mut DrawVector,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    x: f64,
+    y: f64,
+    header_color: [f32; 4],
+    body_color: [f32; 4],
+    border_color: [f32; 4],
+    text_color: [f32; 4],
+    kind_label: &str,
+    step_name: &str,
+    badges: &[(String, [f32; 4])],
+    state_glow: Option<([f32; 4], f32)>,
+) {
+    let radius = NODE_BORDER_RADIUS as f32;
+    let width = NODE_CARD_WIDTH as f32;
+    let height = NODE_CARD_HEIGHT as f32;
+    let header_h = NODE_HEADER_HEIGHT as f32;
+
+    draw_vector.begin();
+
+    if let Some((glow_c, glow_r)) = state_glow {
+        draw_vector.set_color(glow_c[0], glow_c[1], glow_c[2], glow_c[3] * 0.25);
+        draw_vector.rounded_rect(x as f32, y as f32, width, height, glow_r);
+        draw_vector.fill();
+    }
+
+    draw_vector.set_color(body_color[0], body_color[1], body_color[2], body_color[3]);
+    draw_vector.rounded_rect(x as f32, y as f32, width, height, radius);
+    draw_vector.fill();
+
+    draw_vector.set_color(border_color[0], border_color[1], border_color[2], border_color[3]);
+    draw_vector.rounded_rect(x as f32, y as f32, width, height, radius);
+    draw_vector.stroke(1.5_f32);
+
+    let header_dark = [
+        (header_color[0] * 0.85).min(header_color[0]),
+        (header_color[1] * 0.85).min(header_color[1]),
+        (header_color[2] * 0.85).min(header_color[2]),
+        header_color[3],
+    ];
+    draw_vector.set_color(header_dark[0], header_dark[1], header_dark[2], header_dark[3]);
+    draw_vector.rounded_rect(x as f32, y as f32, width, header_h, radius);
+    draw_vector.fill();
+
+    draw_text.text_style.font_size = 9.0;
+    draw_text.color = Vec4f {
+        x: text_color[0],
+        y: text_color[1],
+        z: text_color[2],
+        w: text_color[3],
+    };
+    draw_text.draw_abs(cx, DVec2 { x: x + 8.0, y: y + 5.0 }, kind_label);
+
+    draw_text.text_style.font_size = 8.0;
+    draw_text.color = Vec4f {
+        x: text_color[0] * 0.7,
+        y: text_color[1] * 0.7,
+        z: text_color[2] * 0.7,
+        w: text_color[3],
+    };
+    draw_text.draw_abs(
+        cx,
+        DVec2 { x: x + 8.0, y: y + NODE_HEADER_HEIGHT + 4.0 },
+        step_name,
+    );
+
+    let mut badge_x = x + NODE_CARD_WIDTH - 8.0;
+    for (_badge_text, badge_color) in badges {
+        let badge_h = 12.0_f32;
+        let badge_y = y + 6.0;
+        draw_vector.set_color(badge_color[0], badge_color[1], badge_color[2], badge_color[3]);
+        draw_vector.rounded_rect(
+            (badge_x - 18.0) as f32,
+            badge_y as f32,
+            18.0_f32,
+            badge_h,
+            3.0_f32,
+        );
+        draw_vector.fill();
+        badge_x -= 21.0;
+    }
+
+    let port_y = y + NODE_HEADER_HEIGHT + (NODE_CARD_HEIGHT - NODE_HEADER_HEIGHT) / 2.0;
+    let port_x_left = x - NODE_PORT_RADIUS - 2.0;
+    let port_x_right = x + NODE_CARD_WIDTH + NODE_PORT_RADIUS + 2.0;
+
+    draw_vector.set_color(0.224_f32, 1.0_f32, 0.078_f32, 1.0_f32);
+    draw_vector.circle(port_x_left as f32, port_y as f32, NODE_PORT_RADIUS as f32);
+    draw_vector.fill();
+
+    draw_vector.set_color(1.0_f32, 0.42_f32, 0.0_f32, 1.0_f32);
+    draw_vector.circle(port_x_right as f32, port_y as f32, NODE_PORT_RADIUS as f32);
+    draw_vector.fill();
+
+    draw_vector.end(cx);
+}
+
+
 #[allow(elided_lifetimes_in_paths)]
 fn draw_workflow_graph_content(
     draw_bg: &mut DrawColor,
+    draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
     panel: &Rect,
@@ -309,14 +468,33 @@ fn draw_workflow_graph_content(
     let node_text = format!("Nodes: {}", wf.node_count);
     draw_text_label(draw_text, cx, DVec2 { x: node_bar.pos.x + node_bar.size.x + 8.0, y: node_bar.pos.y + 1.0 }, &node_text);
 
-    // Graph canvas placeholder
     let canvas_rect = Rect {
         pos: DVec2 { x: panel.pos.x + 240.0, y: panel.pos.y + 42.0 },
         size: DVec2 { x: 200.0, y: 90.0 },
     };
     draw_bg.color = Vec4f { x: 0.12, y: 0.10, z: 0.20, w: 1.0 };
     draw_bg.draw_abs(cx, canvas_rect);
-    draw_text_label(draw_text, cx, DVec2 { x: canvas_rect.pos.x + 8.0, y: canvas_rect.pos.y + 4.0 }, "Graph Canvas");
+
+    let sample_nodes = build_sample_node_cards();
+    for (i, node) in sample_nodes.iter().enumerate() {
+        let card_x = canvas_rect.pos.x + 10.0 + (i as f64) * (NODE_CARD_WIDTH + 10.0);
+        let card_y = canvas_rect.pos.y + 20.0;
+        draw_workflow_node_card(
+            draw_vector,
+            draw_text,
+            cx,
+            card_x,
+            card_y,
+            node.header_color,
+            node.body_color,
+            node.border_color,
+            node.text_color,
+            &node.kind_label,
+            &node.step_name,
+            &node.badges,
+            node.state_glow,
+        );
+    }
 }
 
 #[allow(elided_lifetimes_in_paths)]
