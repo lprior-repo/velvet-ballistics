@@ -55,6 +55,7 @@ tasks:
       flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
+      - 'agent-cli-contract'
     toolchains:
       - rust
     inputs:
@@ -75,6 +76,18 @@ tasks:
     options:
       runInCI: true
 
+  agent-cli-contract:
+    command: 'bash scripts/check-agent-cli-contract.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/velvet_ballastics/src/**/*'
+      - 'velvet-ballistics-MASTER.md'
+      - 'scripts/check-agent-cli-contract.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   nightly-feature-cargo-probe:
     script: |
       set -euo pipefail
@@ -82,6 +95,7 @@ tasks:
       flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo check --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
+      - 'agent-cli-contract'
     toolchains:
       - rust
     inputs:

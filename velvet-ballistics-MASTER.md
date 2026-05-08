@@ -1260,6 +1260,7 @@ velvet-ballastics compile <workflow.yaml> --emit rust --out <file.rs>
 velvet-ballastics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics ipc-serve --socket <path> --db <path>
+velvet-ballastics agent-context
 velvet-ballastics inspect <run_id> --db <path>
 velvet-ballastics events <run_id> --db <path>
 velvet-ballastics replay <run_id> --db <path>
@@ -1267,7 +1268,7 @@ velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor --db <path>
 ```
 
-No JSON contract exists in v1. Machine output is binary or compact text diagnostics.
+CLI JSON is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. `--json` is the canonical structured-output flag; `--jsonl` is allowed for bounded event streams. Runtime machine artifacts remain binary/Postcard.
 
 ---
 
@@ -3535,6 +3536,29 @@ Logs, events, and trace serve different purposes and must not be merged. Trace i
 - No naming that depends on users knowing another platform.
 - Copy the operator affordances, not the branding.
 - Machine-readable output (`--json`/`--jsonl`) is mandatory for every reporting command. AI agents must be able to parse output without screen-scraping.
+
+### Agent-First CLI Principles
+
+Underlying idea: agents are primary CLI users, not tolerated secondary users. The CLI must reduce token burn, retries, and hidden failure modes by making command shape introspectable, mutation boundaries explicit, and consistency mechanically enforced. Review-only consistency is rejected as Swiss-cheese control; schema, codegen, static checks, or generated context must carry the policy.
+
+The CLI contract must preserve these ten principles:
+
+1. Non-interactive by default. Commands must never wait on an unanswered prompt under non-TTY execution. Any destructive bypass flag is `--force`; `--skip-confirmations` and equivalents are banned.
+2. Structured parseable output. Every data-returning/reporting command supports `--json`; event streams may additionally support `--jsonl`. Data goes to stdout, diagnostics go to stderr, and ANSI is suppressed for non-TTY output.
+3. Errors that teach and enumerate. Enum validation errors must include the valid set and, where useful, the corrective invocation shape. Parse failures occur before side effects.
+4. Safe retries and explicit mutation boundaries. Mutations return stable identifiers, destructive operations require explicit flags, retryable submissions use durable idempotency keys or existing run/job discovery, and consequential commands grow `--dry-run` before release.
+5. Bounded responses at every layer. List/event/report commands default to bounded output with `--limit`/cursor/filter narrowing, and MCP/tool/agent descriptions stay under an audited token budget.
+6. Cross-CLI vocabulary consistency. CRUD resource verbs are `get`, `list`, `create`, `update`, `delete`; banned aliases include `info`, `ls`, `--format=json`, `--output=json`, and `--skip-confirmations`. Domain-specific verbs require documented justification and static checks.
+7. Three-layer introspection. Human `--help`, versioned machine `agent-context`, and long-form skill/workflow guidance must describe the same implementation surface and be validated against it.
+8. Async-aware execution. Any async submission gains `--wait` with bounded backoff/jitter and a durable local job ledger exposed through `jobs list`, `jobs get`, and `jobs prune` before async APIs are release-grade.
+9. Persistent identity through profiles. Repeated agent invocations use named profiles with precedence `explicit flag > environment variable > profile > default`; available profiles are surfaced in `agent-context`.
+10. Two-way I/O. Artifact-producing commands support `--deliver` sinks (`stdout`, `file:<path>`, `webhook:<url>`) with atomic file writes and structured refusal on unknown schemes. `feedback <text>` records local JSONL and optionally posts upstream when configured; availability is exposed in `agent-context`.
+
+Mechanical enforcement required before release:
+
+- `velvet-ballastics agent-context` emits a versioned JSON schema with command names, flags, enums, exit codes, output conventions, and planned agent primitives.
+- CI runs `scripts/check-agent-cli-contract.sh` through Moon to reject banned parser vocabulary and require the introspection surface.
+- Any generated CLI/schema pipeline must generate the CLI, agent context, skill manifest, and MCP/tool descriptions from one source; hand-written divergence is a release blocker.
 
 ---
 

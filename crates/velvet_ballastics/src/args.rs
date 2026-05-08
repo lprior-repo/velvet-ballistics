@@ -43,6 +43,7 @@ impl VerifyProfile {
 pub(crate) enum Command {
     Help,
     Version,
+    AgentContext,
     Verify {
         workflow: PathBuf,
         profile: VerifyProfile,
@@ -156,6 +157,8 @@ pub(crate) enum Command {
     },
 }
 
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EmitTarget {
     Ir,
@@ -199,6 +202,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
     match subcommand {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
+        "agent-context" => Ok(Command::AgentContext),
         "verify" => parse_verify(args),
         "validate" => parse_validate(args),
         "explain" => parse_explain(args),
@@ -588,7 +592,12 @@ impl std::fmt::Display for ParseError {
                     "unknown verify profile: {profile} (expected: quick, standard, full)"
                 )
             }
-            Self::UnknownCommand(cmd) => write!(formatter, "unknown command: {cmd}"),
+            Self::UnknownCommand(cmd) => {
+                write!(
+                    formatter,
+                    "unknown command: {cmd} (expected one of: {VALID_COMMANDS})"
+                )
+            }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
         }
@@ -858,6 +867,12 @@ mod tests {
     }
 
     #[test]
+    fn parse_agent_context_command() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context"]));
+        assert!(matches!(parsed, Ok(Command::AgentContext)));
+    }
+
+    #[test]
     fn parse_no_command_returns_error() {
         let parsed = parse_args(&args(&["velvet-ballastics"]));
         assert!(matches!(parsed, Err(ParseError::NoCommand)));
@@ -867,6 +882,15 @@ mod tests {
     fn parse_unknown_command_returns_error() {
         let parsed = parse_args(&args(&["velvet-ballastics", "foobar"]));
         assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
+    }
+
+    #[test]
+    fn unknown_command_error_enumerates_valid_commands() {
+        let err = ParseError::UnknownCommand(String::from("foobar"));
+        let rendered = err.to_string();
+
+        assert!(rendered.contains("expected one of"));
+        assert!(rendered.contains("agent-context"));
     }
 
     #[test]

@@ -3,6 +3,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::too_many_lines)]
 
+mod agent_context;
 mod args;
 mod commands_diff;
 mod commands_incident;
@@ -20,7 +21,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use args::parse_args;
 use args::{
-    Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile,
+    Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VALID_COMMANDS,
+    VerifyProfile,
 };
 use exit_code::CliExitCode;
 
@@ -71,6 +73,7 @@ commands:
   simulate   <workflow.yaml> [--json|--jsonl]     Dry-run workflow without executing actions
   help                                                Print this message
   version                                             Print version
+  agent-context                                      Emit versioned AI-agent CLI schema
 
 options:
   --json      Output structured JSON
@@ -85,6 +88,7 @@ fn main() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
+        Ok(Command::AgentContext) => cmd_agent_context(),
         Ok(Command::Verify {
             workflow,
             profile,
@@ -220,6 +224,12 @@ fn read_journal_events(
 }
 
 // --- Command implementations ---
+
+fn cmd_agent_context() -> ExitCode {
+    let context = agent_context::build(VERSION);
+    json_out(&context, OutputFormat::Json);
+    ExitCode::SUCCESS
+}
 
 fn cmd_verify(
     workflow: &std::path::Path,
@@ -3320,7 +3330,10 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             )
         }
         ParseError::UnknownCommand(cmd) => {
-            writeln!(handle, "unknown command: {cmd}\n\n{HELP}")
+            writeln!(
+                handle,
+                "unknown command: {cmd} (expected one of: {VALID_COMMANDS})\n\n{HELP}"
+            )
         }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
