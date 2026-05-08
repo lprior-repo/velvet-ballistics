@@ -27,6 +27,10 @@ script_mod! {
     mod.widgets.VbApp = set_type_default() do mod.widgets.VbAppBase{
         width: Fill
         height: Fill
+        ui: View{
+            width: Fill
+            height: Fill
+        }
     }
 }
 
@@ -47,6 +51,8 @@ pub struct VbApp {
     draw_header: DrawColor,
     #[live]
     draw_nav: DrawColor,
+    #[live]
+    ui: WidgetRef,
     #[rust]
     app_state: AppState,
     #[rust]
@@ -133,6 +139,12 @@ fn handle_user_input(app_state: &mut AppState, rect: &Rect, hit: &Hit) {
     handle_transport(app_state, rect, hit);
 }
 
+impl MatchEvent for VbApp {
+    fn handle_actions(&mut self, _cx: &mut Cx, _actions: &Actions) {
+        // Handle actions from child widgets here
+    }
+}
+
 impl AppMain for VbApp {
     fn script_mod(vm: &mut ScriptVm<'_>) -> ScriptValue {
         makepad_widgets::script_mod(vm);
@@ -141,6 +153,7 @@ impl AppMain for VbApp {
 
     #[allow(elided_lifetimes_in_paths)]
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        self.match_event(cx, event);
         <VbApp as Widget>::handle_event(self, cx, event, &mut Scope::empty());
     }
 }

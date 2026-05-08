@@ -8,7 +8,7 @@ use crate::domain::{
     TabColors, TabOffsets, dark_bg_color, header_bg_color, panel_bg_color, separator_color,
 };
 use makepad_widgets::*;
-use vb_ui::app_state::{AppState, Screen};
+use vb_ui::app_state::{AppState, HealthLevel, Screen};
 
 const HEADER_HEIGHT: f64 = 44.0;
 
@@ -178,4 +178,301 @@ pub(crate) fn draw_content(
         w: 1.0,
     };
     draw_bg.draw_abs(cx, accent_rect);
+
+    // Per-screen placeholder content
+    match app_state.current_screen() {
+        Screen::SystemOverview => draw_system_overview_content(draw_bg, cx, &panel_rect, app_state),
+        Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, cx, &panel_rect, app_state),
+        Screen::RunReplay => draw_run_replay_content(draw_bg, cx, &panel_rect, app_state),
+        Screen::Verification => draw_verification_content(draw_bg, cx, &panel_rect, app_state),
+        Screen::IncidentConsole => draw_incident_content(draw_bg, cx, &panel_rect, app_state),
+    }
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_system_overview_content(
+    draw_bg: &mut DrawColor,
+    cx: &mut Cx2d,
+    panel: &Rect,
+    app_state: &AppState,
+) {
+    let sys = &app_state.system;
+
+    // Title bar placeholder (blue accent)
+    let title_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 12.0 },
+        size: DVec2 { x: 180.0, y: 18.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.18, y: 0.42, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, title_rect);
+
+    // Shard count metric bar
+    let shard_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: f64::from(sys.shard_count).mul_add(8.0, 40.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.3, y: 0.5, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, shard_bar);
+
+    // Active runs metric bar
+    let runs_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 62.0 },
+        size: DVec2 { x: f64::from(sys.total_active_runs).mul_add(6.0, 40.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.0, y: 0.8, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, runs_bar);
+
+    // Queue depth metric bar
+    let queue_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 82.0 },
+        size: DVec2 { x: f64::from(sys.total_queue_depth).mul_add(4.0, 40.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.5, y: 0.7, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, queue_bar);
+
+    // Health status indicator
+    let health_color = match sys.overall_health {
+        HealthLevel::Healthy => Vec4f { x: 0.22, y: 1.0, z: 0.08, w: 1.0 },
+        HealthLevel::Degraded => Vec4f { x: 1.0, y: 0.9, z: 0.0, w: 1.0 },
+        HealthLevel::Critical => Vec4f { x: 1.0, y: 0.03, z: 0.23, w: 1.0 },
+    };
+    let health_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 110.0 },
+        size: DVec2 { x: 80.0, y: 20.0 },
+    };
+    draw_bg.color = health_color;
+    draw_bg.draw_abs(cx, health_rect);
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_workflow_graph_content(
+    draw_bg: &mut DrawColor,
+    cx: &mut Cx2d,
+    panel: &Rect,
+    app_state: &AppState,
+) {
+    let wf = &app_state.workflow;
+
+    // Title bar placeholder (purple accent)
+    let title_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 12.0 },
+        size: DVec2 { x: 180.0, y: 18.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.69, y: 0.30, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, title_rect);
+
+    // Workflow name placeholder
+    let name_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: 140.0, y: 14.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.5, y: 0.4, z: 0.8, w: 1.0 };
+    draw_bg.draw_abs(cx, name_rect);
+
+    // Node count bar
+    let node_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 66.0 },
+        size: DVec2 { x: f64::from(wf.node_count).mul_add(10.0, 30.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.8, y: 0.5, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, node_bar);
+
+    // Graph canvas placeholder
+    let canvas_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 240.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: 200.0, y: 90.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.12, y: 0.10, z: 0.20, w: 1.0 };
+    draw_bg.draw_abs(cx, canvas_rect);
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_run_replay_content(
+    draw_bg: &mut DrawColor,
+    cx: &mut Cx2d,
+    panel: &Rect,
+    app_state: &AppState,
+) {
+    let replay = &app_state.replay;
+
+    // Title bar placeholder (cyan accent)
+    let title_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 12.0 },
+        size: DVec2 { x: 180.0, y: 18.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.0, y: 0.96, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, title_rect);
+
+    // Event count bar
+    let event_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: f64::from(replay.total_events).mul_add(3.0, 40.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.0, y: 0.7, z: 0.9, w: 1.0 };
+    draw_bg.draw_abs(cx, event_bar);
+
+    // Playback position indicator
+    let position_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 62.0 },
+        size: DVec2 { x: f64::from(replay.playback_position).mul_add(2.0, 40.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.2, y: 0.8, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, position_bar);
+
+    // Speed indicator
+    let speed_width = replay.playback_speed.mul_add(20.0, 40.0).min(120.0);
+    let speed_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 82.0 },
+        size: DVec2 { x: speed_width, y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.4, y: 0.9, z: 1.0, w: 1.0 };
+    draw_bg.draw_abs(cx, speed_rect);
+
+    // Transport state indicator
+    let transport_color = if replay.transport_state.is_playing() {
+        Vec4f { x: 0.22, y: 1.0, z: 0.08, w: 1.0 }
+    } else if replay.transport_state.is_paused() {
+        Vec4f { x: 1.0, y: 0.9, z: 0.0, w: 1.0 }
+    } else {
+        Vec4f { x: 0.5, y: 0.5, z: 0.6, w: 1.0 }
+    };
+    let transport_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 110.0 },
+        size: DVec2 { x: 60.0, y: 20.0 },
+    };
+    draw_bg.color = transport_color;
+    draw_bg.draw_abs(cx, transport_rect);
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_verification_content(
+    draw_bg: &mut DrawColor,
+    cx: &mut Cx2d,
+    panel: &Rect,
+    app_state: &AppState,
+) {
+    let verify = &app_state.verification;
+
+    // Title bar placeholder (green accent)
+    let title_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 12.0 },
+        size: DVec2 { x: 180.0, y: 18.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.22, y: 1.0, z: 0.08, w: 1.0 };
+    draw_bg.draw_abs(cx, title_rect);
+
+    // Total checks bar
+    let checks_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: f64::from(verify.total_checks).mul_add(15.0, 30.0).min(200.0), y: 12.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.5, y: 0.8, z: 0.4, w: 1.0 };
+    draw_bg.draw_abs(cx, checks_bar);
+
+    // Pass count indicator
+    let pass_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 62.0 },
+        size: DVec2 { x: f64::from(verify.pass_count).mul_add(15.0, 20.0).min(120.0), y: 10.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.22, y: 1.0, z: 0.08, w: 1.0 };
+    draw_bg.draw_abs(cx, pass_rect);
+
+    // Fail count indicator
+    let fail_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 78.0 },
+        size: DVec2 { x: f64::from(verify.fail_count).mul_add(15.0, 20.0).min(120.0), y: 10.0 },
+    };
+    draw_bg.color = Vec4f { x: 1.0, y: 0.03, z: 0.23, w: 1.0 };
+    draw_bg.draw_abs(cx, fail_rect);
+
+    // All-clean status indicator
+    let status_color = if verify.all_clean {
+        Vec4f { x: 0.22, y: 1.0, z: 0.08, w: 1.0 }
+    } else if verify.fail_count > 0 {
+        Vec4f { x: 1.0, y: 0.03, z: 0.23, w: 1.0 }
+    } else {
+        Vec4f { x: 1.0, y: 0.9, z: 0.0, w: 1.0 }
+    };
+    let status_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 100.0 },
+        size: DVec2 { x: 80.0, y: 20.0 },
+    };
+    draw_bg.color = status_color;
+    draw_bg.draw_abs(cx, status_rect);
+
+    // Certificate panel placeholders (6 small rectangles)
+    for i in 0..6 {
+        let cert_rect = Rect {
+            pos: DVec2 {
+                x: panel.pos.x + 240.0 + f64::from(i) * 35.0,
+                y: panel.pos.y + 42.0,
+            },
+            size: DVec2 { x: 28.0, y: 28.0 },
+        };
+        draw_bg.color = Vec4f { x: 0.1, y: 0.15, z: 0.1, w: 1.0 };
+        draw_bg.draw_abs(cx, cert_rect);
+    }
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_incident_content(
+    draw_bg: &mut DrawColor,
+    cx: &mut Cx2d,
+    panel: &Rect,
+    app_state: &AppState,
+) {
+    let inc = &app_state.incident;
+
+    // Title bar placeholder (red accent)
+    let title_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 12.0 },
+        size: DVec2 { x: 180.0, y: 18.0 },
+    };
+    draw_bg.color = Vec4f { x: 1.0, y: 0.03, z: 0.23, w: 1.0 };
+    draw_bg.draw_abs(cx, title_rect);
+
+    // Active incidents bar
+    let active_bar = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: f64::from(inc.active_incidents).mul_add(20.0, 30.0).min(200.0), y: 14.0 },
+    };
+    draw_bg.color = Vec4f { x: 1.0, y: 0.2, z: 0.2, w: 1.0 };
+    draw_bg.draw_abs(cx, active_bar);
+
+    // Critical count indicator
+    let crit_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 66.0 },
+        size: DVec2 { x: f64::from(inc.critical_count).mul_add(20.0, 20.0).min(120.0), y: 10.0 },
+    };
+    draw_bg.color = Vec4f { x: 1.0, y: 0.03, z: 0.23, w: 1.0 };
+    draw_bg.draw_abs(cx, crit_rect);
+
+    // Warning count indicator
+    let warn_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 82.0 },
+        size: DVec2 { x: f64::from(inc.warning_count).mul_add(20.0, 20.0).min(120.0), y: 10.0 },
+    };
+    draw_bg.color = Vec4f { x: 1.0, y: 0.7, z: 0.0, w: 1.0 };
+    draw_bg.draw_abs(cx, warn_rect);
+
+    // Selected incident indicator
+    let selected_color = if inc.selected_incident.is_some() {
+        Vec4f { x: 1.0, y: 0.5, z: 0.0, w: 1.0 }
+    } else {
+        Vec4f { x: 0.3, y: 0.3, z: 0.4, w: 1.0 }
+    };
+    let selected_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 104.0 },
+        size: DVec2 { x: 80.0, y: 20.0 },
+    };
+    draw_bg.color = selected_color;
+    draw_bg.draw_abs(cx, selected_rect);
+
+    // Console placeholder
+    let console_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 240.0, y: panel.pos.y + 42.0 },
+        size: DVec2 { x: 200.0, y: 90.0 },
+    };
+    draw_bg.color = Vec4f { x: 0.15, y: 0.08, z: 0.08, w: 1.0 };
+    draw_bg.draw_abs(cx, console_rect);
 }

@@ -1,0 +1,43 @@
+warning: /home/lewis/src/Velvet-ballistics/crates/velvet_ballastics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics/crates/velvet_ballastics/src/main.rs` found to be present in multiple build targets:
+  * `bin` target `vb`
+  * `bin` target `velvet-ballistics`
+warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepad/makepad?branch=dev#20b6c53b)`:
+  /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/vulkan/bitflags/Cargo.toml
+in favor of /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/bitflags/Cargo.toml
+
+warning: unused import: `super::*`
+ --> crates/vb_ui/src/graph_builder_tests.rs:7:9
+  |
+7 |     use super::*;
+  |         ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::verify::certificates::verify_workflow`
+  --> crates/vb_ui/src/graph_builder_tests.rs:16:9
+   |
+16 |     use crate::verify::certificates::verify_workflow;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> crates/vb_ui/src/verify/certificates_tests.rs:7:9
+  |
+7 |     use super::*;
+  |         ^^^^^^^^
+
+warning: unused imports: `EdgeStyle` and `GroupKind`
+  --> crates/vb_ui/src/verify/certificates_tests.rs:18:32
+   |
+18 |     use crate::graph_builder::{EdgeStyle, GroupKind};
+   |                                ^^^^^^^^^  ^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> crates/vb_ui/src/verify/durability_tests.rs:7:9
+  |
+7 |     use super::*;
+  |         ^^^^^^^^
+
+warning: `vb_ui` (lib test) generated 5 warnings (run `cargo fix --lib -p vb_ui --tests` to apply 5 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+  Executable unittests src/lib.rs (target/debug/deps/vb_ui-1fccf3183c612a1d)
+  Executable unittests src/main.rs (target/debug/deps/vb_ui-2c8ccbb649fd7284)
