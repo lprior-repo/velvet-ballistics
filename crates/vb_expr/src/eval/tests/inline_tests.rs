@@ -765,9 +765,9 @@ fn eval_helper_empty_returns_type_mismatch_for_i64() -> ExprResult<()> {
 
 #[test]
 fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
-    // Given: Contains expects a list handle as first arg
+    // Given: Contains expects a symbol value as first arg
     // When: eval_expr_op encounters ExprOp::Contains with I64 args
-    // Then: the result is Err(TypeMismatch) from expect_list
+    // Then: the result is Err(TypeMismatch) from expect_symbol
     let program = ExprProgram {
         ops: vec![
             ExprOp::LoadConst(ConstIdx::new(0)),
@@ -785,8 +785,8 @@ fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         });
     };
     assert!(
-        expected.contains("list"),
-        "expected should mention list, got: {expected}"
+        expected.contains("text"),
+        "expected should mention text, got: {expected}"
     );
     Ok(())
 }

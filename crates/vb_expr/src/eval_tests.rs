@@ -671,8 +671,8 @@ mod tests {
             });
         };
         assert!(
-            expected.contains("list"),
-            "expected should mention list, got: {expected}"
+            expected.contains("text"),
+            "expected should mention text, got: {expected}"
         );
         Ok(())
     }

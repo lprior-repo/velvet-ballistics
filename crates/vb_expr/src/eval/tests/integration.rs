@@ -671,8 +671,8 @@ fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         });
     };
     assert!(
-        expected.contains("list"),
-        "expected should mention list, got: {expected}"
+        expected.contains("text"),
+        "expected should mention text, got: {expected}"
     );
     Ok(())
 }

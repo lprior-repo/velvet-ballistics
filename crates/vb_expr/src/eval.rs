@@ -14,23 +14,22 @@ pub use vb_core::limits::MAX_EXPRESSION_STACK;
 ///
 /// The evaluator uses a fixed-size stack (`ArrayVec`) bounded to 64 entries.
 /// It walks the postfix bytecode program operation by operation.
+///
+/// This variant uses a fresh `ValueStore` for handle resolution. For expressions
+/// that use helpers like `Empty`, `Unique`, `Contains`, `Length`, etc. on collection
+/// handles (`List`, `Object`, `Symbol`), a `ValueStore` is required to dereference
+/// the handles. This function creates one internally to ensure helpers work correctly
+/// on all value types.
+///
+/// For performance-critical code that already has a `ValueStore`, prefer
+/// [`eval_expr_program_with_store`] to avoid creating a new arena.
 pub fn eval_expr_program(
     program: &ExprProgram,
     slots: &[Option<SlotValue>],
     constants: &[ConstValue],
 ) -> ExprResult<SlotValue> {
-    let mut stack: ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE> = ArrayVec::new();
-    let mut index = 0usize;
-    while index < program.ops.len() {
-        let op = *program
-            .ops
-            .as_ref()
-            .get(index)
-            .ok_or(ExprError::UnexpectedEof)?;
-        eval_expr_op(op, &mut stack, slots, constants)?;
-        index = next_index(index)?;
-    }
-    finish_stack(&mut stack)
+    let mut store = ValueStore::new();
+    eval_expr_program_with_store(program, slots, constants, &mut store)
 }
 
 /// Evaluates a compiled expression program with access to a `ValueStore`.
