@@ -75,32 +75,6 @@ fn finish_stack(
     }
 }
 
-fn eval_expr_op(
-    op: ExprOp,
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    slots: &[Option<SlotValue>],
-    constants: &[ConstValue],
-) -> ExprResult<()> {
-    match op {
-        ExprOp::LoadSlot(idx) => eval_load_slot(stack, slots, idx),
-        ExprOp::LoadConst(idx) => eval_load_const(stack, constants, idx),
-        ExprOp::Eq => eval_eq(stack, true),
-        ExprOp::NotEq => eval_eq(stack, false),
-        ExprOp::And => eval_binary_stack(stack, BinaryOp::And),
-        ExprOp::Or => eval_binary_stack(stack, BinaryOp::Or),
-        ExprOp::Not => eval_unary_stack(stack, UnaryOp::Not),
-        ExprOp::Add => eval_binary_stack(stack, BinaryOp::Add),
-        ExprOp::Sub => eval_binary_stack(stack, BinaryOp::Sub),
-        ExprOp::Mul => eval_binary_stack(stack, BinaryOp::Mul),
-        ExprOp::Div => eval_binary_stack(stack, BinaryOp::Div),
-        ExprOp::Gt => eval_binary_stack(stack, BinaryOp::Gt),
-        ExprOp::Gte => eval_binary_stack(stack, BinaryOp::Gte),
-        ExprOp::Lt => eval_binary_stack(stack, BinaryOp::Lt),
-        ExprOp::Lte => eval_binary_stack(stack, BinaryOp::Lte),
-        _ => eval_helper_op(op, stack),
-    }
-}
-
 fn eval_expr_op_with_store(
     op: ExprOp,
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
@@ -239,30 +213,6 @@ fn eval_i64_cmp_values(
     let left_i64 = expect_i64(left)?;
     let right_i64 = expect_i64(right)?;
     Ok(SlotValue::Bool(op(&left_i64, &right_i64)))
-}
-
-fn eval_helper_op(
-    op: ExprOp,
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-) -> ExprResult<()> {
-    match op {
-        ExprOp::Exists => eval_helper_stack_1(stack, ExprHelper::Exists),
-        ExprOp::Length => eval_helper_stack_1(stack, ExprHelper::Length),
-        ExprOp::Empty => eval_helper_stack_1(stack, ExprHelper::Empty),
-        ExprOp::Count => eval_helper_stack_1(stack, ExprHelper::Count),
-        ExprOp::Unique => eval_helper_stack_1(stack, ExprHelper::Unique),
-        ExprOp::Contains => eval_helper_stack_2(stack, ExprHelper::Contains),
-        ExprOp::StartsWith => eval_helper_stack_2(stack, ExprHelper::StartsWith),
-        ExprOp::EndsWith => eval_helper_stack_2(stack, ExprHelper::EndsWith),
-        ExprOp::Has => eval_helper_stack_2(stack, ExprHelper::Has),
-        ExprOp::Append => eval_helper_stack_2(stack, ExprHelper::Append),
-        ExprOp::AppendIf => eval_helper_stack_3(stack, ExprHelper::AppendIf),
-        ExprOp::Merge => eval_helper_stack_2(stack, ExprHelper::Merge),
-        ExprOp::Sum => eval_helper_stack_1(stack, ExprHelper::Sum),
-        _ => Err(ExprError::UnknownOperator {
-            op: format!("{op:?}"),
-        }),
-    }
 }
 
 fn eval_helper_op_with_store(
@@ -406,33 +356,6 @@ pub fn eval_helper_with_store(
             eval_helper_sum_with_store(value, store)
         }
     }
-}
-
-fn eval_helper_stack_1(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    helper: ExprHelper,
-) -> ExprResult<()> {
-    let value = pop_value(stack)?;
-    let result = eval_helper(helper, &[value])?;
-    push_value(stack, result)
-}
-
-fn eval_helper_stack_2(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    helper: ExprHelper,
-) -> ExprResult<()> {
-    let (right, left) = pop_pair(stack)?;
-    let result = eval_helper(helper, &[left, right])?;
-    push_value(stack, result)
-}
-
-fn eval_helper_stack_3(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    helper: ExprHelper,
-) -> ExprResult<()> {
-    let (third, second, first) = pop_triple(stack)?;
-    let result = eval_helper(helper, &[first, second, third])?;
-    push_value(stack, result)
 }
 
 /// Evaluates helper behavior that is local to scalar/handle values.

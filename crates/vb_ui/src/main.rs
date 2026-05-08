@@ -129,9 +129,6 @@ script_mod! {
     // ── Main app ───────────────────────────────────────────────
     startup() do #(VbApp::script_component(vm)){
         ui: Root{
-            on_startup: ||{
-                ui.main_view.render()
-            }
             main_window := Window{
                 window.inner_size: vec2(1400, 900)
                 window.title: "vb — Mission Control"
@@ -241,6 +238,9 @@ script_mod! {
 
                         // ════════════════════════════════════════
                         // SCREEN SWITCHING VIA PAGE FLIP
+                        // NOTE: PageFlip requires live_design!{} for template registration
+                        // which is deprecated in favor of script_mod!. This is a known
+                        // architectural issue requiring significant refactoring.
                         // ════════════════════════════════════════
                         screens := PageFlip{
                             width: Fill height: Fill
@@ -1487,13 +1487,6 @@ pub struct VbApp {
 
 impl MatchEvent for VbApp {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
-        // ── First-frame: set initial PageFlip page via Rust API ───
-        if !self.first_frame {
-            self.first_frame = true;
-            let pf = self.ui.widget(cx, ids!(screens)).as_page_flip();
-            pf.set_active_page(cx, live_id!(replay_page));
-        }
-
         // ── Frame-poll the IPC wiring ─────────────────────────────
         // Drain pending IPC replies into AppState and dispatch UI
         // sync calls for the affected subsystems.

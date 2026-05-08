@@ -947,6 +947,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "max-size object fixture is too slow under Miri")]
     fn value_store_object_at_exact_max_fields_is_accepted() -> Result<(), String> {
         let mut store = ValueStore::new();
         let field = ObjectField {
@@ -1337,6 +1338,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "max-size object fixture is too slow under Miri")]
     fn value_store_exact_max_object_preserves_duplicate_first_wins_index() -> Result<(), String> {
         let mut store = ValueStore::new();
         let duplicate_key = SymbolId::new(77);
