@@ -62,6 +62,8 @@ pub struct SystemScreen {
     ticker: EventTicker,
     /// Per-shard queue monitors, indexed by shard position.
     queue_monitors: Vec<QueueMonitor>,
+    /// Latency breakdown panel data.
+    latency_breakdown: LatencyBreakdown,
 }
 
 /// Maximum number of alerts retained in the ring buffer.
@@ -85,6 +87,7 @@ impl SystemScreen {
             alerts: AlertManager::new(MAX_ALERTS),
             ticker: EventTicker::new(MAX_TICKER_EVENTS),
             queue_monitors: Vec::new(),
+            latency_breakdown: LatencyBreakdown { segments: Vec::new() },
         }
     }
 
@@ -222,6 +225,18 @@ impl SystemScreen {
     #[must_use]
     pub fn queue_monitors(&self) -> &[QueueMonitor] {
         &self.queue_monitors
+    }
+
+    /// Read-only reference to the latency breakdown.
+    #[must_use]
+    pub fn latency_breakdown(&self) -> &LatencyBreakdown {
+        &self.latency_breakdown
+    }
+
+    /// Mutable reference to the latency breakdown.
+    #[must_use]
+    pub fn latency_breakdown_mut(&mut self) -> &mut LatencyBreakdown {
+        &mut self.latency_breakdown
     }
 
     /// Worst queue status across all shards.
@@ -512,6 +527,12 @@ pub struct LatencySegment {
     pub fill_color: String,
     /// Proportional width ratio relative to the slowest segment (0.0 -- 1.0).
     pub width_ratio: f64,
+    /// 50th percentile duration in microseconds.
+    pub p50_us: u64,
+    /// 95th percentile duration in microseconds.
+    pub p95_us: u64,
+    /// 99th percentile duration in microseconds.
+    pub p99_us: u64,
 }
 
 /// Latency breakdown panel model (right panel, bottom section).
@@ -833,6 +854,9 @@ impl SystemOverviewScreen {
                 display: String::from("325us"),
                 fill_color: String::from(SYS_NEON_CYAN),
                 width_ratio: 0.000_1,
+                p50_us: 300,
+                p95_us: 380,
+                p99_us: 450,
             },
             LatencySegment {
                 label: String::from("admit -> step"),
@@ -840,6 +864,9 @@ impl SystemOverviewScreen {
                 display: String::from("110us"),
                 fill_color: String::from(SYS_NEON_GREEN),
                 width_ratio: 0.000_034,
+                p50_us: 100,
+                p95_us: 130,
+                p99_us: 160,
             },
             LatencySegment {
                 label: String::from("step -> action"),
@@ -847,6 +874,9 @@ impl SystemOverviewScreen {
                 display: String::from("12.5ms"),
                 fill_color: String::from(SYS_NEON_ORANGE),
                 width_ratio: 0.003_8,
+                p50_us: 12_000,
+                p95_us: 14_000,
+                p99_us: 18_000,
             },
             LatencySegment {
                 label: String::from("action -> completed"),
@@ -854,6 +884,9 @@ impl SystemOverviewScreen {
                 display: String::from("3.25s"),
                 fill_color: String::from(SYS_NEON_RED),
                 width_ratio: 1.0,
+                p50_us: 3_200_000,
+                p95_us: 3_500_000,
+                p99_us: 4_000_000,
             },
             LatencySegment {
                 label: String::from("completed -> finish"),
@@ -861,6 +894,9 @@ impl SystemOverviewScreen {
                 display: String::from("225us"),
                 fill_color: String::from(SYS_NEON_GREEN),
                 width_ratio: 0.000_069,
+                p50_us: 200,
+                p95_us: 280,
+                p99_us: 350,
             },
         ];
         let latency_breakdown = LatencyBreakdown { segments };
