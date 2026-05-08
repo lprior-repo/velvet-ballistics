@@ -421,6 +421,170 @@ fn benches_velvet_ballastics_compiles() -> Result<(), String> {
 }
 
 #[test]
+fn justfile_defines_complete_pgo_pipeline() -> Result<(), String> {
+    let contents = read_workspace_file("justfile")?;
+
+    ensure(
+        contents.contains(
+            "pgo:\n\tjust pgo-instrument-build\n\tjust pgo-run-workload\n\tjust pgo-merge-profiles\n\tjust pgo-optimized-build",
+        ),
+        "justfile must define 'pgo' as instrument -> workload -> merge -> optimized build".to_string(),
+    )?;
+    ensure(
+        contents.contains("pgo_profile_dir := \"target/pgo/profiles\""),
+        "PGO raw profile data must stay under target/pgo/profiles".to_string(),
+    )?;
+    ensure(
+        contents.contains("pgo_merged_profile := \"target/pgo/merged.profdata\""),
+        "PGO merged profile must stay under target/pgo/merged.profdata".to_string(),
+    )?;
+    ensure(
+        contents.contains("pgo_build_args := \"-p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --profile maxperf\""),
+        "PGO builds must target the CLI package and binaries that execute the profiling workload"
+            .to_string(),
+    )?;
+    ensure(
+        contents.contains("cargo +{{nightly}} build {{pgo_build_args}}"),
+        "pgo-instrument-build and pgo-optimized-build must use the shared PGO build args"
+            .to_string(),
+    )?;
+    ensure(
+        contents.contains("-Cprofile-generate=$PWD/{{pgo_profile_dir}}"),
+        "pgo-instrument-build must pass an absolute profile-generate path to rustc".to_string(),
+    )?;
+    ensure(
+        contents.contains("-Cprofile-use=$PWD/{{pgo_merged_profile}}"),
+        "pgo-optimized-build must pass an absolute profile-use path to rustc".to_string(),
+    )?;
+    ensure(
+        contents.contains("tests/fixtures/pgo/minimal_save.yaml"),
+        "PGO workload must include the minimal save fixture".to_string(),
+    )?;
+    ensure(
+        contents.contains("tests/fixtures/pgo/choose_true.yaml"),
+        "PGO workload must include the choose fixture".to_string(),
+    )
+}
+
+#[test]
+fn pgo_workload_fixtures_compile() -> Result<(), String> {
+    for relative in [
+        "tests/fixtures/pgo/minimal_save.yaml",
+        "tests/fixtures/pgo/choose_true.yaml",
+    ] {
+        let bytes = fs::read(workspace_path(relative))
+            .map_err(|error| format!("{} must be readable: {}", relative, error))?;
+        let _ = vb_compile::compile_workflow(&bytes).map_err(|errors| {
+            let details = errors
+                .0
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{} must compile as a PGO workload: {}", relative, details)
+        })?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn justfile_pgo_merge_refuses_missing_profile_data() -> Result<(), String> {
+    let contents = read_workspace_file("justfile")?;
+
+    ensure(
+        contents.contains("pgo-merge-profiles:"),
+        "justfile must define a PGO profile merge target".to_string(),
+    )?;
+    ensure(
+        contents.contains("no PGO profile data found under {{pgo_profile_dir}}"),
+        "pgo-merge-profiles must fail clearly when workload execution produced no profiles"
+            .to_string(),
+    )?;
+    ensure(
+        contents.contains("rustup run {{nightly}} llvm-profdata merge"),
+        "pgo-merge-profiles must use llvm-profdata from the pinned nightly toolchain".to_string(),
+    )
+}
+
+#[test]
+fn moon_pgo_tasks_use_absolute_profiles_and_cli_build() -> Result<(), String> {
+    let contents = read_workspace_file(".moon/tasks/all.yml")?;
+
+    ensure(
+        contents.contains("-Cprofile-generate=$PWD/target/pgo/profiles"),
+        "Moon PGO instrument build must use an absolute profile-generate path".to_string(),
+    )?;
+    ensure(
+        contents.contains("-Cprofile-use=$PWD/target/pgo/merged.profdata"),
+        "Moon PGO optimized build must use an absolute profile-use path".to_string(),
+    )?;
+    ensure(
+        contents.contains(
+            "cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf",
+        ),
+        "Moon PGO tasks must build the CLI binaries that execute the profiling workload"
+            .to_string(),
+    )
+}
+
+#[test]
+fn justfile_defines_maxperf_release_profile_build() -> Result<(), String> {
+    let contents = read_workspace_file("justfile")?;
+
+    ensure(
+        contents.contains("maxperf-release:\n\tcargo +{{nightly}} build --workspace --all-features --profile maxperf"),
+        "justfile must define maxperf-release using the maxperf Cargo profile".to_string(),
+    )
+}
+
+#[test]
+fn cargo_maxperf_profile_is_release_inheriting_fat_lto() -> Result<(), String> {
+    let contents = read_workspace_file("Cargo.toml")?;
+    let parsed: toml::Value = toml::from_str(&contents)
+        .map_err(|error| format!("Cargo.toml must parse as TOML: {}", error))?;
+    let maxperf = parsed
+        .get("profile")
+        .and_then(|profile| profile.get("maxperf"))
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| "Cargo.toml must define [profile.maxperf]".to_string())?;
+
+    ensure(
+        maxperf.get("inherits").and_then(toml::Value::as_str) == Some("release"),
+        "[profile.maxperf] must inherit from release".to_string(),
+    )?;
+    ensure(
+        maxperf.get("lto").and_then(toml::Value::as_str) == Some("fat"),
+        "[profile.maxperf] must enable fat LTO".to_string(),
+    )?;
+    ensure(
+        maxperf
+            .get("codegen-units")
+            .and_then(toml::Value::as_integer)
+            == Some(1),
+        "[profile.maxperf] must use one codegen unit".to_string(),
+    )?;
+    ensure(
+        maxperf.get("debug").and_then(toml::Value::as_bool) == Some(false),
+        "[profile.maxperf] must disable debug info".to_string(),
+    )?;
+    ensure(
+        maxperf
+            .get("debug-assertions")
+            .and_then(toml::Value::as_bool)
+            != Some(true),
+        "[profile.maxperf] must not enable debug assertions".to_string(),
+    )?;
+    ensure(
+        maxperf
+            .get("overflow-checks")
+            .and_then(toml::Value::as_bool)
+            != Some(true),
+        "[profile.maxperf] must not enable overflow checks".to_string(),
+    )
+}
+
+#[test]
 fn fuzz_fuzz_targets_rs_exists() -> Result<(), String> {
     require_workspace_path("fuzz/fuzz_targets.rs")?;
     Ok(())

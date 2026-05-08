@@ -351,7 +351,7 @@ tasks:
       runInCI: false
 
   pgo-instrument-build:
-    script: 'RUSTFLAGS="-Cprofile-generate=target/pgo/profiles" rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:
@@ -364,7 +364,7 @@ tasks:
       runInCI: false
 
   pgo-optimized-build:
-    script: 'RUSTFLAGS="-Cprofile-use=target/pgo/merged.profdata" rustup run nightly-2026-04-28 cargo build --workspace --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:

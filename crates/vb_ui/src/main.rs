@@ -155,13 +155,13 @@ script_mod! {
 
     // ── Main app ───────────────────────────────────────────────
     startup() do #(VbApp::script_component(vm)){
-        ui: Root{
+        ui := Root{
             on_startup: ||{ ui.main_view.render() }
             main_window := Window{
                 window.inner_size: vec2(1400, 900)
                 window.title: "vb — Mission Control"
                 body +: {
-                    main_view = View{
+                    main_view := View{
                         width: Fill height: Fill
                         flow: Down
                         new_batch: true
@@ -172,7 +172,7 @@ script_mod! {
                         // ════════════════════════════════════════
                         // TOP BAR (always visible)
                         // ════════════════════════════════════════
-                        top_bar = View{
+                        top_bar := View{
                             width: Fill height: 44
                             flow: Right spacing: 12
                             padding: Inset{left: 16 right: 16 top: 8 bottom: 8}
@@ -191,7 +191,7 @@ script_mod! {
                                 text: " — "
                                 draw_text +: {color: #555577}
                             }
-                            page_title = Label{
+                            page_title := Label{
                                 text: "Replay Theater"
                                 draw_text +: {
                                     color: #e8e8ff
@@ -242,7 +242,7 @@ script_mod! {
                                     text: "Run:"
                                     draw_text +: {color: #555577 text_style +: {font_size: 11}}
                                 }
-                                run_id = Label{
+                                run_id := Label{
                                     text: "8172"
                                     draw_text +: {color: #00f5ff text_style +: {font_size: 11}}
                                 }
@@ -257,7 +257,7 @@ script_mod! {
                                     text: "Workflow:"
                                     draw_text +: {color: #555577 text_style +: {font_size: 11}}
                                 }
-                                wf_name = Label{
+                                wf_name := Label{
                                     text: "issue-triage"
                                     draw_text +: {color: #00f5ff text_style +: {font_size: 11}}
                                 }
@@ -267,7 +267,7 @@ script_mod! {
                         // ════════════════════════════════════════
                         // SCREEN SWITCHING VIA PageFlip
                         // ════════════════════════════════════════
-                        screens = PageFlip{
+                        screens := PageFlip{
                             width: Fill height: Fill
 
                             // ──────────────────────────────────
@@ -277,12 +277,12 @@ script_mod! {
                                 width: Fill height: Fill
                                 flow: Down
 
-                                content_area= View{
+                                content_area := View{
                                     width: Fill height: Fill
                                     flow: Right
 
                                     // LEFT: Workflow Graph
-                                    graph_panel= View{
+                                    graph_panel := View{
                                         width: Fill height: Fill
                                         flow: Down spacing: 6
                                         padding: 12
@@ -298,7 +298,7 @@ script_mod! {
                                                 draw_text +: {color: #00f5ff text_style +: {font_size: 11}}
                                             }
                                             Filler{}
-                                            graph_hint= Label{
+                                            graph_hint := Label{
                                                 text: "6 nodes"
                                                 draw_text +: {color: #555577 text_style +: {font_size: 10}}
                                             }
@@ -374,7 +374,7 @@ script_mod! {
                                     vr1= View{width: 1 height: Fill draw_bg +: {color: #2a2a4a}}
 
                                     // RIGHT: Detail Inspector
-                                    inspector_panel= View{
+                                    inspector_panel := View{
                                         width: 380 height: Fill
                                         flow: Down spacing: 6
                                         padding: 12
@@ -475,7 +475,7 @@ script_mod! {
                                 }
 
                                 // Transport + Event Strip
-                                bottom_bar= View{
+                                bottom_bar := View{
                                     width: Fill height: Fit
                                     flow: Down
                                     new_batch: true
@@ -500,60 +500,60 @@ script_mod! {
                                             padding: Inset{left: 6 right: 6 top: 2 bottom: 2}
                                             new_batch: true
                                             draw_bg +: {color: #1a1a2e border_radius: 3.0}
-                                            speed_label= Label{text: "1x" draw_text +: {color: #8888aa text_style +: {font_size: 10}}}
+                                            speed_label := Label{text: "1x" draw_text +: {color: #8888aa text_style +: {font_size: 10}}}
                                         }
                                         transport_sep= View{width: 1 height: 20 margin: Inset{left: 6 right: 6} draw_bg +: {color: #2a2a4a}}
                                         jump_failure= JumpChip{text: "jump: failure"}
                                         jump_action= JumpChip{text: "action"}
                                         jump_done= JumpChip{text: "done"}
                                         Filler{}
-                                        event_count= Label{text: "12 events" draw_text +: {color: #555577 text_style +: {font_size: 10}}}
+                                        event_count := Label{text: "12 events" draw_text +: {color: #555577 text_style +: {font_size: 10}}}
                                     }
 
-                                    event_strip= ScrollXView{
+                                    event_strip := ScrollXView{
                                         width: Fill height: 44
                                         flow: Right spacing: 4
                                         padding: Inset{left: 12 right: 12 top: 4 bottom: 8}
                                         align: Align{y: 0.5}
 
                                         pos_dot= Label{text: "--*--" draw_text +: {color: #00f5ff text_style +: {font_size: 10}}}
-                                        ev1= EventChip{draw_bg +: {color: #0a1a1a border_radius: 3.0}
+                                        ev1 := EventChip{draw_bg +: {color: #0a1a1a border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #00f5ff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "RunAccepted" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
                                         }
-                                        ev2= EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
+                                        ev2 := EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #39ff14 text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "Step:0" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                         }
-                                        ev3= EventChip{draw_bg +: {color: #0d0d1a border_radius: 3.0}
+                                        ev3 := EventChip{draw_bg +: {color: #0d0d1a border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #2d6bff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "ActionScheduled" draw_text +: {color: #2d6bff text_style +: {font_size: 9}}}
                                         }
-                                        ev4= EventChip{draw_bg +: {color: #1a0d00 border_radius: 3.0}
+                                        ev4 := EventChip{draw_bg +: {color: #1a0d00 border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #ff6b00 text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "github.issue.create" draw_text +: {color: #ff6b00 text_style +: {font_size: 9}}}
                                         }
-                                        ev5= EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
+                                        ev5 := EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #39ff14 text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "Succeeded" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                         }
-                                        ev6= EventChip{draw_bg +: {color: #12061a border_radius: 3.0}
+                                        ev6 := EventChip{draw_bg +: {color: #12061a border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #b14dff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "Choose[0]" draw_text +: {color: #b14dff text_style +: {font_size: 9}}}
                                         }
-                                        ev7= EventChip{draw_bg +: {color: #0d0d1a border_radius: 3.0}
+                                        ev7 := EventChip{draw_bg +: {color: #0d0d1a border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #2d6bff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "ForEach[2/3]" draw_text +: {color: #2d6bff text_style +: {font_size: 9}}}
                                         }
-                                        ev8= EventChip{draw_bg +: {color: #1a001a border_radius: 3.0}
+                                        ev8 := EventChip{draw_bg +: {color: #1a001a border_radius: 3.0}
                                             ev_dot= Label{text: "!" draw_text +: {color: #ff00ff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "Taint(S12)" draw_text +: {color: #ff00ff text_style +: {font_size: 9}}}
                                         }
-                                        ev9= EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
+                                        ev9 := EventChip{draw_bg +: {color: #0a1a0d border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #39ff14 text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "Completed" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                         }
-                                        ev10= EventChip{draw_bg +: {color: #0a1a1a border_radius: 3.0}
+                                        ev10 := EventChip{draw_bg +: {color: #0a1a1a border_radius: 3.0}
                                             ev_dot= Label{text: "*" draw_text +: {color: #00f5ff text_style +: {font_size: 10}}}
                                             ev_label= Label{text: "RunFinished" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
                                         }
@@ -579,7 +579,7 @@ script_mod! {
                                         draw_text +: {color: #39ff14 text_style +: {font_size: 13}}
                                     }
                                     Filler{}
-                                    verify_status = Label{
+                                    verify_status := Label{
                                         text: "PASS (4/6 panels clean)"
                                         draw_text +: {color: #39ff14 text_style +: {font_size: 11}}
                                     }
@@ -875,7 +875,7 @@ script_mod! {
                                             draw_text +: {color: #2d6bff text_style +: {font_size: 11}}
                                         }
 
-                                        shard_0 = ShardCard{
+                                        shard_0 := ShardCard{
                                             draw_bg +: {color: #0d1a0d border_radius: 4.0}
                                             sh_header = View{width: Fill height: Fit flow: Right
                                                 sh_name = Label{text: "Shard 0" draw_text +: {color: #39ff14 text_style +: {font_size: 11}}}
@@ -887,7 +887,7 @@ script_mod! {
                                                 sh2 = Label{text: "trace fill: 34%  throughput: 142 steps/s" draw_text +: {color: #8888aa text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        shard_1 = ShardCard{
+                                        shard_1 := ShardCard{
                                             draw_bg +: {color: #0d1a0d border_radius: 4.0}
                                             sh_header = View{width: Fill height: Fit flow: Right
                                                 sh_name = Label{text: "Shard 1" draw_text +: {color: #39ff14 text_style +: {font_size: 11}}}
@@ -899,7 +899,7 @@ script_mod! {
                                                 sh2 = Label{text: "trace fill: 12%  throughput: 98 steps/s" draw_text +: {color: #8888aa text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        shard_2 = ShardCard{
+                                        shard_2 := ShardCard{
                                             draw_bg +: {color: #1a1a0d border_radius: 4.0}
                                             sh_header = View{width: Fill height: Fit flow: Right
                                                 sh_name = Label{text: "Shard 2" draw_text +: {color: #ffe600 text_style +: {font_size: 11}}}
@@ -911,7 +911,7 @@ script_mod! {
                                                 sh2 = Label{text: "trace fill: 78%  throughput: 34 steps/s" draw_text +: {color: #ffe600 text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        shard_3 = ShardCard{
+                                        shard_3 := ShardCard{
                                             draw_bg +: {color: #0d1a0d border_radius: 4.0}
                                             sh_header = View{width: Fill height: Fit flow: Right
                                                 sh_name = Label{text: "Shard 3" draw_text +: {color: #39ff14 text_style +: {font_size: 11}}}
@@ -944,7 +944,7 @@ script_mod! {
                                                 draw_text +: {color: #2d6bff text_style +: {font_size: 11}}
                                             }
                                             Filler{}
-                                            lanes_hint = Label{
+                                            lanes_hint := Label{
                                                 text: "50 active runs across 4 shards"
                                                 draw_text +: {color: #555577 text_style +: {font_size: 10}}
                                             }
@@ -956,43 +956,43 @@ script_mod! {
                                             padding: 4
 
                                             // Lane 0: Shard 0
-                                            lane_0 = View{
+                                            lane_0 := View{
                                                 width: Fill height: Fit
                                                 flow: Down spacing: 2
                                                 lane_0_label = Label{text: "Shard 0 — 12 runs" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                                 lane_0_bar = View{
                                                     width: Fill height: 8
                                                     flow: Right spacing: 1
-                                                    l0s1 = View{width: 60 height: 8 draw_bg +: {color: #39ff14}}
-                                                    l0s2 = View{width: 40 height: 8 draw_bg +: {color: #2d6bff}}
+                                                    l0s1 := View{width: 60 height: 8 draw_bg +: {color: #39ff14}}
+                                                    l0s2 := View{width: 40 height: 8 draw_bg +: {color: #2d6bff}}
                                                     l0s3 = View{width: 30 height: 8 draw_bg +: {color: #ffe600}}
                                                     l0s4 = View{width: 70 height: 8 draw_bg +: {color: #39ff14}}
                                                     l0s5 = View{width: 50 height: 8 draw_bg +: {color: #00f5ff}}
                                                 }
                                             }
                                             // Lane 1: Shard 1
-                                            lane_1 = View{
+                                            lane_1 := View{
                                                 width: Fill height: Fit
                                                 flow: Down spacing: 2
                                                 lane_1_label = Label{text: "Shard 1 — 8 runs" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                                 lane_1_bar = View{
                                                     width: Fill height: 8
                                                     flow: Right spacing: 1
-                                                    l1s1 = View{width: 45 height: 8 draw_bg +: {color: #39ff14}}
-                                                    l1s2 = View{width: 55 height: 8 draw_bg +: {color: #2d6bff}}
+                                                    l1s1 := View{width: 45 height: 8 draw_bg +: {color: #39ff14}}
+                                                    l1s2 := View{width: 55 height: 8 draw_bg +: {color: #2d6bff}}
                                                     l1s3 = View{width: 35 height: 8 draw_bg +: {color: #39ff14}}
                                                 }
                                             }
                                             // Lane 2: Shard 2 (degraded)
-                                            lane_2 = View{
+                                            lane_2 := View{
                                                 width: Fill height: Fit
                                                 flow: Down spacing: 2
                                                 lane_2_label = Label{text: "Shard 2 — 24 runs (DEGRADED)" draw_text +: {color: #ffe600 text_style +: {font_size: 9}}}
                                                 lane_2_bar = View{
                                                     width: Fill height: 8
                                                     flow: Right spacing: 1
-                                                    l2s1 = View{width: 25 height: 8 draw_bg +: {color: #ff073a}}
-                                                    l2s2 = View{width: 20 height: 8 draw_bg +: {color: #ffe600}}
+                                                    l2s1 := View{width: 25 height: 8 draw_bg +: {color: #ff073a}}
+                                                    l2s2 := View{width: 20 height: 8 draw_bg +: {color: #ffe600}}
                                                     l2s3 = View{width: 15 height: 8 draw_bg +: {color: #ffe600}}
                                                     l2s4 = View{width: 30 height: 8 draw_bg +: {color: #ff073a}}
                                                     l2s5 = View{width: 18 height: 8 draw_bg +: {color: #2d6bff}}
@@ -1002,15 +1002,15 @@ script_mod! {
                                                 }
                                             }
                                             // Lane 3: Shard 3
-                                            lane_3 = View{
+                                            lane_3 := View{
                                                 width: Fill height: Fit
                                                 flow: Down spacing: 2
                                                 lane_3_label = Label{text: "Shard 3 — 6 runs" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
                                                 lane_3_bar = View{
                                                     width: Fill height: 8
                                                     flow: Right spacing: 1
-                                                    l3s1 = View{width: 70 height: 8 draw_bg +: {color: #39ff14}}
-                                                    l3s2 = View{width: 40 height: 8 draw_bg +: {color: #00f5ff}}
+                                                    l3s1 := View{width: 70 height: 8 draw_bg +: {color: #39ff14}}
+                                                    l3s2 := View{width: 40 height: 8 draw_bg +: {color: #00f5ff}}
                                                 }
                                             }
 
@@ -1037,18 +1037,18 @@ script_mod! {
                                         new_batch: true
                                         draw_bg +: {color: #12121f}
 
-                                        sys_alerts_title = Label{
+                                        sys_alerts_title := Label{
                                             text: "ALERTS & PRESSURE"
                                             draw_text +: {color: #2d6bff text_style +: {font_size: 11}}
                                         }
 
-                                        ipc_error = Label{
+                                        ipc_error := Label{
                                             text: ""
                                             draw_text +: {color: #ff073a text_style +: {font_size: 9}}
                                             visible: false
                                         }
 
-                                        alert_1 = AlertCard{
+                                        alert_1 := AlertCard{
                                             draw_bg +: {color: #1a0d00 border_radius: 4.0}
                                             alert_dot = Label{text: "!" draw_text +: {color: #ff073a text_style +: {font_size: 12}}}
                                             alert_body = View{
@@ -1058,7 +1058,7 @@ script_mod! {
                                                 alert_detail = Label{text: "18 items in ready queue, 92% frame pool" draw_text +: {color: #8888aa text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        alert_2 = AlertCard{
+                                        alert_2 := AlertCard{
                                             draw_bg +: {color: #1a0d00 border_radius: 4.0}
                                             alert_dot = Label{text: "!" draw_text +: {color: #ffe600 text_style +: {font_size: 12}}}
                                             alert_body = View{
@@ -1068,7 +1068,7 @@ script_mod! {
                                                 alert_detail = Label{text: "Run #8144 step 3 diverged from journal" draw_text +: {color: #8888aa text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        alert_3 = AlertCard{
+                                        alert_3 := AlertCard{
                                             draw_bg +: {color: #1a0d1a border_radius: 4.0}
                                             alert_dot = Label{text: "!" draw_text +: {color: #ff00ff text_style +: {font_size: 12}}}
                                             alert_body = View{
@@ -1078,7 +1078,7 @@ script_mod! {
                                                 alert_detail = Label{text: "Shard 2 has 3 runs awaiting reconciliation" draw_text +: {color: #8888aa text_style +: {font_size: 9}}}
                                             }
                                         }
-                                        alert_4 = AlertCard{
+                                        alert_4 := AlertCard{
                                             draw_bg +: {color: #0a1a0d border_radius: 4.0}
                                             alert_dot = Label{text: "*" draw_text +: {color: #39ff14 text_style +: {font_size: 12}}}
                                             alert_body = View{
@@ -1108,11 +1108,11 @@ script_mod! {
                                         width: Fill height: Fit
                                         flow: Right spacing: 6
                                         align: Align{y: 0.5}
-                                        tk1 = Label{text: "[14:32:01] RunAccepted #8172" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
-                                        tk2 = Label{text: "[14:32:01] StepStarted:0 #8172" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
-                                        tk3 = Label{text: "[14:32:02] ActionScheduled #8172" draw_text +: {color: #2d6bff text_style +: {font_size: 9}}}
-                                        tk4 = Label{text: "[14:32:03] RunAccepted #8144" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
-                                        tk5 = Label{text: "[14:32:04] TaintDetected S12 #8172" draw_text +: {color: #ff00ff text_style +: {font_size: 9}}}
+                                        tk1 := Label{text: "[14:32:01] RunAccepted #8172" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
+                                        tk2 := Label{text: "[14:32:01] StepStarted:0 #8172" draw_text +: {color: #39ff14 text_style +: {font_size: 9}}}
+                                        tk3 := Label{text: "[14:32:02] ActionScheduled #8172" draw_text +: {color: #2d6bff text_style +: {font_size: 9}}}
+                                        tk4 := Label{text: "[14:32:03] RunAccepted #8144" draw_text +: {color: #00f5ff text_style +: {font_size: 9}}}
+                                        tk5 := Label{text: "[14:32:04] TaintDetected S12 #8172" draw_text +: {color: #ff00ff text_style +: {font_size: 9}}}
                                     }
                                 }
                             }
@@ -1136,7 +1136,7 @@ script_mod! {
                                         width: Fill height: Fit
                                         flow: Right spacing: 8
                                         align: Align{y: 0.5}
-                                        wf_title = Label{
+                                        wf_title := Label{
                                             text: "WORKFLOW: issue-triage"
                                             draw_text +: {color: #b14dff text_style +: {font_size: 13}}
                                         }
@@ -1360,9 +1360,9 @@ script_mod! {
                                         width: Fill height: Fit
                                         flow: Right spacing: 12
                                         margin: Inset{top: 8}
-                                        inc_sum1 = Label{text: "3 active" draw_text +: {color: #ff073a text_style +: {font_size: 10}}}
-                                        inc_sum2 = Label{text: "1 critical" draw_text +: {color: #ff073a text_style +: {font_size: 10}}}
-                                        inc_sum3 = Label{text: "2 warnings" draw_text +: {color: #ffe600 text_style +: {font_size: 10}}}
+                                        inc_sum1 := Label{text: "3 active" draw_text +: {color: #ff073a text_style +: {font_size: 10}}}
+                                        inc_sum2 := Label{text: "1 critical" draw_text +: {color: #ff073a text_style +: {font_size: 10}}}
+                                        inc_sum3 := Label{text: "2 warnings" draw_text +: {color: #ffe600 text_style +: {font_size: 10}}}
                                     }
                                 }
 
