@@ -134,7 +134,12 @@ impl Widget for VbApp {
 impl VbApp {
     #[allow(elided_lifetimes_in_paths)]
     fn draw_background(&mut self, cx: &mut Cx2d) {
-        self.draw_bg.color = Vec4f { x: 0.039, y: 0.039, z: 0.071, w: 1.0 };
+        self.draw_bg.color = Vec4f {
+            x: 0.039,
+            y: 0.039,
+            z: 0.071,
+            w: 1.0,
+        };
         self.draw_bg.draw_abs(cx, self.rect);
     }
 
@@ -142,24 +147,54 @@ impl VbApp {
     fn draw_header_bar(&mut self, cx: &mut Cx2d) {
         let header_height = 44.0;
         let header_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x, y: self.rect.pos.y },
-            size: DVec2 { x: self.rect.size.x, y: header_height },
+            pos: DVec2 {
+                x: self.rect.pos.x,
+                y: self.rect.pos.y,
+            },
+            size: DVec2 {
+                x: self.rect.size.x,
+                y: header_height,
+            },
         };
-        self.draw_header.color = Vec4f { x: 0.071, y: 0.078, z: 0.122, w: 1.0 };
+        self.draw_header.color = Vec4f {
+            x: 0.071,
+            y: 0.078,
+            z: 0.122,
+            w: 1.0,
+        };
         self.draw_header.draw_abs(cx, header_rect);
 
         let title_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x + 16.0, y: self.rect.pos.y + 8.0 },
+            pos: DVec2 {
+                x: self.rect.pos.x + 16.0,
+                y: self.rect.pos.y + 8.0,
+            },
             size: DVec2 { x: 40.0, y: 28.0 },
         };
-        self.draw_header.color = Vec4f { x: 0.0, y: 0.96, z: 1.0, w: 1.0 };
+        self.draw_header.color = Vec4f {
+            x: 0.0,
+            y: 0.96,
+            z: 1.0,
+            w: 1.0,
+        };
         self.draw_header.draw_abs(cx, title_rect);
 
         let separator_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x, y: self.rect.pos.y + header_height },
-            size: DVec2 { x: self.rect.size.x, y: 1.0 },
+            pos: DVec2 {
+                x: self.rect.pos.x,
+                y: self.rect.pos.y + header_height,
+            },
+            size: DVec2 {
+                x: self.rect.size.x,
+                y: 1.0,
+            },
         };
-        self.draw_header.color = Vec4f { x: 0.165, y: 0.165, z: 0.290, w: 1.0 };
+        self.draw_header.color = Vec4f {
+            x: 0.165,
+            y: 0.165,
+            z: 0.290,
+            w: 1.0,
+        };
         self.draw_header.draw_abs(cx, separator_rect);
     }
 
@@ -196,17 +231,36 @@ impl VbApp {
             };
 
             let tab_rect = Rect {
-                pos: DVec2 { x: self.rect.pos.x + x_offset, y },
-                size: DVec2 { x: 70.0, y: tab_height },
+                pos: DVec2 {
+                    x: self.rect.pos.x + x_offset,
+                    y,
+                },
+                size: DVec2 {
+                    x: 70.0,
+                    y: tab_height,
+                },
             };
-            self.draw_nav.color = Vec4f { x: bg_r, y: bg_g, z: bg_b, w: 1.0 };
+            self.draw_nav.color = Vec4f {
+                x: bg_r,
+                y: bg_g,
+                z: bg_b,
+                w: 1.0,
+            };
             self.draw_nav.draw_abs(cx, tab_rect);
 
             let accent_rect = Rect {
-                pos: DVec2 { x: self.rect.pos.x + x_offset, y: y + tab_height - 3.0 },
+                pos: DVec2 {
+                    x: self.rect.pos.x + x_offset,
+                    y: y + tab_height - 3.0,
+                },
                 size: DVec2 { x: 70.0, y: 3.0 },
             };
-            self.draw_nav.color = Vec4f { x: accent_r, y: accent_g, z: accent_b, w: 1.0 };
+            self.draw_nav.color = Vec4f {
+                x: accent_r,
+                y: accent_g,
+                z: accent_b,
+                w: 1.0,
+            };
             self.draw_nav.draw_abs(cx, accent_rect);
         }
     }
@@ -215,22 +269,47 @@ impl VbApp {
     fn draw_content(&mut self, cx: &mut Cx2d) {
         let content_y = self.rect.pos.y + 73.0;
         let content_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x, y: content_y },
-            size: DVec2 { x: self.rect.size.x, y: self.rect.size.y - 73.0 },
+            pos: DVec2 {
+                x: self.rect.pos.x,
+                y: content_y,
+            },
+            size: DVec2 {
+                x: self.rect.size.x,
+                y: self.rect.size.y - 73.0,
+            },
         };
 
-        self.draw_bg.color = Vec4f { x: 0.039, y: 0.039, z: 0.071, w: 1.0 };
+        self.draw_bg.color = Vec4f {
+            x: 0.039,
+            y: 0.039,
+            z: 0.071,
+            w: 1.0,
+        };
         self.draw_bg.draw_abs(cx, content_rect);
 
         let panel_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x + 20.0, y: content_y + 20.0 },
-            size: DVec2 { x: self.rect.size.x - 40.0, y: 150.0 },
+            pos: DVec2 {
+                x: self.rect.pos.x + 20.0,
+                y: content_y + 20.0,
+            },
+            size: DVec2 {
+                x: self.rect.size.x - 40.0,
+                y: 150.0,
+            },
         };
-        self.draw_bg.color = Vec4f { x: 0.086, y: 0.086, z: 0.165, w: 1.0 };
+        self.draw_bg.color = Vec4f {
+            x: 0.086,
+            y: 0.086,
+            z: 0.165,
+            w: 1.0,
+        };
         self.draw_bg.draw_abs(cx, panel_rect);
 
         let accent_rect = Rect {
-            pos: DVec2 { x: self.rect.pos.x + 20.0, y: content_y + 20.0 },
+            pos: DVec2 {
+                x: self.rect.pos.x + 20.0,
+                y: content_y + 20.0,
+            },
             size: DVec2 { x: 4.0, y: 150.0 },
         };
         let (r, g, b) = match self.app_state.current_screen() {
@@ -240,7 +319,12 @@ impl VbApp {
             Screen::WorkflowGraph => (0.69, 0.30, 1.0),
             Screen::IncidentConsole => (1.0, 0.03, 0.23),
         };
-        self.draw_bg.color = Vec4f { x: r, y: g, z: b, w: 1.0 };
+        self.draw_bg.color = Vec4f {
+            x: r,
+            y: g,
+            z: b,
+            w: 1.0,
+        };
         self.draw_bg.draw_abs(cx, accent_rect);
     }
 
@@ -259,8 +343,6 @@ impl VbApp {
     fn sync_system_state(&mut self, _cx: &mut Cx) {}
 
     fn sync_workflow_state(&mut self, _cx: &mut Cx) {}
-
-    fn sync_incident_state(&mut self, _cx: &mut Cx) {}
 }
 
 impl AppMain for VbApp {
