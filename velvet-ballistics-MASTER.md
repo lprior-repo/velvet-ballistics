@@ -18,9 +18,25 @@ Project spelling rule: any use of `velvet-ballistics` is invalid except for exac
 
 ## 0. Prime Directive
 
-`velvet-ballastics` is a Rust-nightly, no-unsafe, no-panic, single-server, ultra-low-latency workflow orchestrator. YAML is an authoring format only. The runtime never interprets YAML, parses JSON, serves HTTP, or routes text commands. Workflows compile into numeric state machines over numeric slots, numeric actions, numeric steps, and bounded resource contracts.
+`velvet-ballastics` is a Rust-nightly, no-unsafe, no-panic, single-server, ultra-low-latency durable execution engine for workflow orchestration. YAML is an authoring format only. The runtime never interprets YAML, parses JSON, serves HTTP, or routes text commands. Workflows compile into numeric state machines over numeric slots, numeric actions, numeric steps, and bounded resource contracts.
 
 The runtime uses numeric state machines, numeric slots, numeric actions, shard-owned state, and deterministic synchronous execution until suspension. Fjall is required for persistence. Postcard is required for compact binary records. Ingress is direct Rust API plus binary IPC. `CompiledWorkflow` IR lowers to mandatory generated Rust workflow mode for `maxperf` builds, and generated Rust must preserve the exact semantics of IR execution.
+
+### Product Positioning Contract
+
+Publicly, `velvet-ballastics` must not be described as a generic DAG runner, low-code graph editor, YAML-as-programming framework, Airflow replacement, or Temporal clone. Those frames hide the actual wedge and invite false comparisons.
+
+The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, enforces resource and taint bounds, and can lower accepted artifacts to generated Rust for maximum throughput.
+
+The unit of trust is the accepted artifact, not the YAML source. YAML is a cold authoring surface. Verification certificates, compiled IR digests, resource budgets, action contracts, capability grants, journals, snapshots, and replay reports are the operational truth.
+
+Competitive comparison is allowed only with scope discipline:
+
+1. Compare durability and replay semantics to Restate, Temporal, DBOS, and AWS Step Functions.
+2. State the v1 single-server boundary plainly: no replication, no quorum, no leader election, no distributed control plane.
+3. Compare data orchestration ergonomics to Airflow and Dagster only when explaining non-goals.
+4. Never claim production readiness, performance superiority, or crash safety without executable evidence and benchmark/recovery artifacts attached to the bead or release.
+5. The public demo path is `verify -> simulate -> submit -> incident/replay`, not drawing a DAG on a canvas.
 
 The final product must provide all of the following. None are optional:
 
@@ -1268,7 +1284,7 @@ velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor --db <path>
 ```
 
-CLI JSON is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. `--json` is the canonical structured-output flag; `--jsonl` is allowed for bounded event streams. Runtime machine artifacts remain binary/Postcard.
+CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
 
 ---
 
@@ -2939,7 +2955,7 @@ Accepted artifacts are stored in the `compiled_ir` keyspace keyed by `ir_digest`
 For AI-authored workflows, strict mode is available:
 
 ```text
-velvet validate flow.yaml --strict --json
+velvet-ballastics verify flow.yaml --profile strict --emit yaml
 ```
 
 Strict mode rejects not only errors but selected warnings:
@@ -3345,7 +3361,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 ---
 
-## 47. Durable Execution Architecture Contract
+## 68. Durable Execution Architecture Contract
 
 `velvet-ballastics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 
@@ -3433,7 +3449,7 @@ This is the Holzmann influence: bounded loops, bounded allocation, no hidden gro
 
 ---
 
-## 48. Operator CLI Contract
+## 69. Operator CLI Contract
 
 The CLI is the primary interface for operators and AI agents. It must provide the same operational affordances as mature orchestrators without cargo-culting their branding.
 
@@ -3442,22 +3458,22 @@ The CLI is the primary interface for operators and AI agents. It must provide th
 ```text
 velvet-ballastics validate <workflow.yaml>
 velvet-ballastics compile  <workflow.yaml> --emit <ir|rust> --out <file>
-velvet-ballastics explain  <workflow.yaml> [--json]
-velvet-ballastics diff     <workflow.yaml> [--against <old.yaml>] [--json]
+velvet-ballastics explain  <workflow.yaml> [--emit yaml|postcard]
+velvet-ballastics diff     <workflow.yaml> [--against <old.yaml>] [--emit yaml|postcard]
 velvet-ballastics run      <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]
 velvet-ballastics run      <workflow.yaml> --step <step-id> --step-input <file> [--durability <mode>]
 velvet-ballastics run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]
-velvet-ballastics inspect <run-id> --db <path> [--json]
-velvet-ballastics events  <run-id> --db <path> [--jsonl] [--step <id>] [--tail <n>] [--limit <n>]
-velvet-ballastics trace   <run-id> --db <path> [--jsonl]
-velvet-ballastics replay  <run-id> --db <path> [--json]
+velvet-ballastics inspect <run-id> --db <path> [--emit yaml|postcard]
+velvet-ballastics events  <run-id> --db <path> [--emit yaml|postcard] [--step <id>] [--tail <n>] [--limit <n>]
+velvet-ballastics trace   <run-id> --db <path> [--emit yaml|postcard]
+velvet-ballastics replay  <run-id> --db <path> [--emit yaml|postcard]
 velvet-ballastics cancel  <run-id> --db <path>
 velvet-ballastics resume  <run-id> --db <path>
 velvet-ballastics retry   <run-id> --step <step-id> --db <path>
 velvet-ballastics answer  <run-id> --slot <slot-id> --value <file> --db <path>
 velvet-ballastics ipc-serve --socket <path> --db <path>
 velvet-ballastics bench-run <workflow.yaml>
-velvet-ballastics doctor  --db <path> [--json]
+velvet-ballastics doctor  --db <path> [--emit yaml|postcard]
 ```
 
 The `vb` binary name is a mandatory alias. Both `velvet-ballastics` and `vb` invoke the same binary.
@@ -3503,7 +3519,7 @@ Strict operational distinction between lifecycle commands:
 - Secrets usage: which steps reference `$secrets`
 - Trigger type
 
-`--json` produces machine-readable output. No `serde_json` in the binary — write JSON manually with format strings.
+`--emit yaml` produces machine-readable structured text. `--emit postcard` produces machine-readable binary output where supported. JSON is not canonical for v1 and must not be hand-formatted into the runtime binary.
 
 ### Semantic Diff
 
@@ -3513,13 +3529,14 @@ Strict operational distinction between lifecycle commands:
 - Semantic diff: changes in step count, control flow graph, resource contracts, secret usage, action contracts, retry policies
 - Digest comparison: if a compiled artifact exists in the DB, compare BLAKE3 digests
 - Exit codes: 0 = no semantic changes, 1 = semantic changes detected, 2 = error
-- `--json` for machine-readable output
+- `--emit yaml` for machine-readable output
 
 ### Structured Observability
 
 Output format flags:
-- `--json` for snapshot commands (`inspect`, `explain`, `diff`, `doctor`)
-- `--jsonl` for streaming commands (`events`, `trace`, `replay`)
+- `--emit text` for human-readable output (default)
+- `--emit yaml` for structured text output (`inspect`, `explain`, `diff`, `doctor`, `events`, `trace`, `replay`)
+- `--emit postcard` for binary machine output where the command returns a typed artifact
 
 Filter flags for `events`:
 - `--step <id>` — filter events by step index
@@ -3535,7 +3552,7 @@ Logs, events, and trace serve different purposes and must not be merged. Trace i
 - No hidden server-side magic. Local-first, local-only in v1.
 - No naming that depends on users knowing another platform.
 - Copy the operator affordances, not the branding.
-- Machine-readable output (`--json`/`--jsonl`) is mandatory for every reporting command. AI agents must be able to parse output without screen-scraping.
+- Machine-readable output (`--emit yaml` and, where applicable, `--emit postcard`) is mandatory for every reporting command. AI agents must be able to parse output without screen-scraping.
 
 ### Agent-First CLI Principles
 
@@ -3544,7 +3561,7 @@ Underlying idea: agents are primary CLI users, not tolerated secondary users. Th
 The CLI contract must preserve these ten principles:
 
 1. Non-interactive by default. Commands must never wait on an unanswered prompt under non-TTY execution. Any destructive bypass flag is `--force`; `--skip-confirmations` and equivalents are banned.
-2. Structured parseable output. Every data-returning/reporting command supports `--json`; event streams may additionally support `--jsonl`. Data goes to stdout, diagnostics go to stderr, and ANSI is suppressed for non-TTY output.
+2. Structured parseable output. Every data-returning/reporting command supports `--emit yaml`; typed artifact commands may additionally support `--emit postcard`. Data goes to stdout, diagnostics go to stderr, and ANSI is suppressed for non-TTY output.
 3. Errors that teach and enumerate. Enum validation errors must include the valid set and, where useful, the corrective invocation shape. Parse failures occur before side effects.
 4. Safe retries and explicit mutation boundaries. Mutations return stable identifiers, destructive operations require explicit flags, retryable submissions use durable idempotency keys or existing run/job discovery, and consequential commands grow `--dry-run` before release.
 5. Bounded responses at every layer. List/event/report commands default to bounded output with `--limit`/cursor/filter narrowing, and MCP/tool/agent descriptions stay under an audited token budget.
@@ -3562,17 +3579,17 @@ Mechanical enforcement required before release:
 
 ---
 
-## 49. Phase Extension: Operator Features
+## 70. Phase Extension: Operator Features
 
 The following phases extend Section 35 for operator-facing features:
 
 | Phase | Name | Required delivery |
 |-------|------|-------------------|
 | 50 | Single-step testing | `run --step <id>` with input payload, isolated execution, step result reporting. Tests: step resolution, minimal frame construction, step_once execution, output reporting. |
-| 51 | Explain / dry-run | `explain` command with step graph, resource contract, suspension points, secrets usage, `--json` output. Tests: explain output matches compiled IR, JSON format validation. |
+| 51 | Explain / dry-run | `explain` command with step graph, resource contract, suspension points, secrets usage, `--emit yaml` output. Tests: explain output matches compiled IR, YAML format validation. |
 | 52 | Durable lifecycle controls | `cancel`, `resume`, `retry`, `answer` CLI commands. Strict distinction between retry-step, replay-run, and resubmit-workflow. Tests: each lifecycle command against journaled runs, cancelled runs, suspended runs. |
 | 53 | Semantic diff | `diff` command with textual + semantic diff, digest comparison, exit codes. Tests: diff detects step changes, resource contract changes, secret changes. |
-| 54 | Structured observability | `--json`/`--jsonl` flags, filter flags (`--step`, `--tail`, `--limit`, `--since`). Tests: JSON output parses correctly, filter flags narrow results. |
+| 54 | Structured observability | `--emit yaml`/`--emit postcard` flags, filter flags (`--step`, `--tail`, `--limit`, `--since`). Tests: structured output parses correctly, filter flags narrow results. |
 | 55 | Timer wheel | Replace `IndexMap<RunId, PendingTimer>` with `TimerWheel` backed by `BTreeMap<Instant, Vec<TimerEntry>>`. Automatic timer-driven resume in shard tick. Tests: timer firing, cancellation, next-deadline accuracy. |
 | 56 | Collect hardening | Per-run pagination state (replace global Mutex), time-based pagination limit, `RunId`-keyed state. Tests: concurrent collect runs, time limit enforcement, crash-recovery of pagination state. |
 | 57 | Recovery evidence chain | `SlotWritten` + `StepSucceeded` per deterministic step, `UnsupportedRecoveryState` hydration gate, fix stubbed `verify_digests` at `Full` level. Tests: crash recovery with full evidence chain, hydration failure on missing state. |
@@ -3582,9 +3599,9 @@ The following phases extend Section 35 for operator-facing features:
 
 ---
 
-## 50. Competitive Performance Targets
+## 71. Competitive Performance Targets
 
-The following targets are derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). As a single-server engine with no replication overhead, `velvet-ballastics` must meet or exceed these on equivalent hardware.
+The following are internal engineering targets derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). They are not public performance claims. As a single-server engine with no replication overhead, `velvet-ballastics` is designed to meet or exceed these on equivalent hardware, but no external claim is allowed until the measurement contract below is satisfied.
 
 ### Step-Level Latency Targets
 
@@ -3636,7 +3653,7 @@ Every performance claim must include:
 
 ---
 
-## 51. Execution Attempt Tracking
+## 72. Execution Attempt Tracking
 
 When a run fails and is retried, the engine must reject stale events from previous execution attempts. This prevents split-brain between overlapping retries.
 
@@ -3653,7 +3670,7 @@ This mirrors Restate's invocation execution attempt tracking, adapted for single
 
 ---
 
-## 52. Journal Trimming
+## 73. Journal Trimming
 
 The journal cannot grow indefinitely. After a snapshot is taken, journal events older than the snapshot are eligible for trimming.
 
@@ -3669,7 +3686,7 @@ This prevents unbounded disk growth in long-running production deployments.
 
 ---
 
-## 53. Converged Binary Design
+## 74. Converged Binary Design
 
 `velvet-ballastics` ships as a single binary that operates in different modes depending on the command invoked. This mirrors Restate's converged single-binary design, adapted for single-server operation.
 
@@ -3700,7 +3717,7 @@ If `velvet-ballastics` ever supports distributed operation (v2+), the binary gai
 
 ---
 
-## 54. AI-Native CLI Control Plane
+## 75. AI-Native CLI Control Plane
 
 The CLI is the AI-native control plane. The UI is for humans to see the system. The CLI is for humans and AI agents to operate, verify, repair, replay, and explain the system.
 
@@ -4299,7 +4316,7 @@ Then hand the output to an AI and ask: *What failed, is it safe to retry, and wh
 
 ---
 
-## 55. Workflow Command-Center Front-End
+## 76. Workflow Command-Center Front-End
 
 ### Vision
 
@@ -4447,7 +4464,7 @@ The front-end is built with Makepad, consuming the same artifact types emitted b
 
 ---
 
-## 68. AI-Safe Quality Infrastructure
+## 77. AI-Safe Quality Infrastructure
 
 AI changes must be small, checkable, replayable, benchmarked, and hard to merge when wrong. The closed loop is:
 
@@ -4457,7 +4474,7 @@ spec -> task -> patch -> mechanical checks -> evidence -> benchmark -> certifica
 
 AI agents must not guess which checks to run. Every quality gate is exposed as a first-party `xtask` command that returns structured machine-readable output. No evidence bundle means no merge.
 
-### 68.1 xtask Command Center
+### 77.1 xtask Command Center
 
 A first-party `xtask` crate provides the AI-safe command interface for development. AI agents invoke `cargo xtask <command>` and receive structured YAML/JSON output; they never guess which checks apply.
 
@@ -4516,7 +4533,7 @@ recommended_next_action:
   file: crates/vb_core/src/frame.rs
 ```
 
-### 68.2 Three Check Levels
+### 77.2 Three Check Levels
 
 AI needs fast feedback first, then deep proof later. Three levels provide a ladder instead of one impossible command.
 
@@ -4558,7 +4575,7 @@ just source-length
 just maxperf
 ```
 
-### 68.3 Evidence Bundles
+### 77.3 Evidence Bundles
 
 Every AI-authored change produces an evidence bundle at `.evidence/<bead-id>/evidence.yaml`. No evidence bundle means no merge. This extends section 60 (Evidence Artifact Format) with AI-specific fields.
 
@@ -4593,7 +4610,7 @@ remaining_risk:
   - "Copy primitive not implemented in this bead."
 ```
 
-### 68.4 Machine-Readable Invariants
+### 77.4 Machine-Readable Invariants
 
 Invariants live in `contracts/invariants.yaml` as executable rules. `cargo xtask invariants` outputs exactly which invariant failed.
 
@@ -4630,7 +4647,7 @@ invariants:
       - slicing
 ```
 
-### 68.5 Semantic Banned Scans
+### 77.5 Semantic Banned Scans
 
 Token-level grep is necessary but insufficient. The quality infrastructure uses multiple scan layers:
 
@@ -4645,7 +4662,7 @@ Token-level grep is necessary but insufficient. The quality infrastructure uses 
 
 AI often satisfies the literal rule while violating the intent. Multi-layer scanning catches this.
 
-### 68.6 AI Context Packets
+### 77.6 AI Context Packets
 
 AI must not read the whole repo. `cargo xtask ai-context --crate vb_core --topic engine` emits a precise working set:
 
@@ -4670,7 +4687,7 @@ commands:
     - cargo +nightly nextest run -p vb_core engine::
 ```
 
-### 68.7 Spec-to-Test Mapping
+### 77.7 Spec-to-Test Mapping
 
 Required tests live in `contracts/tests.yaml` as executable metadata. This makes the master document's mandatory test coverage (section 36) queryable.
 
@@ -4695,7 +4712,7 @@ Commands:
 - `cargo xtask test-plan --phase 13` — list required tests for a phase
 - `cargo xtask test-plan --missing` — list required tests not yet implemented
 
-### 68.8 Property Tests, Fuzz Harnesses, and Proof Targets
+### 77.8 Property Tests, Fuzz Harnesses, and Proof Targets
 
 AI is good at writing examples but misses edge cases. Harnesses are generated from contracts.
 
@@ -4741,7 +4758,7 @@ Loom is not used everywhere. Only where shared mutable state exists.
 
 **Prusti** is research/optional only in `verification/prusti/`. Not in the critical path until proven stable.
 
-### 68.9 Mutation Testing as AI Correctness Check
+### 77.9 Mutation Testing as AI Correctness Check
 
 AI writes tests that pass but often do not pin behavior. Mutation testing catches this.
 
@@ -4760,7 +4777,7 @@ survived:
 
 This tells the agent exactly what its tests failed to prove.
 
-### 68.10 Differential Testing
+### 77.10 Differential Testing
 
 The system has many pairs that must produce identical results. Differential tests assert equivalence.
 
@@ -4778,7 +4795,7 @@ Command: `cargo xtask diff-test --suite <name>`
 
 This is the most important correctness pattern for AI-generated code.
 
-### 68.11 Crash/Recovery Lab
+### 77.11 Crash/Recovery Lab
 
 Deterministic fault-injection harness. Every crash point asserts:
 
@@ -4795,7 +4812,7 @@ cargo xtask crash-lab --workflow issue_triage --all-crash-points
 
 AI must add crash points when it modifies journal, action, or replay behavior.
 
-### 68.12 Performance Regression Gates
+### 77.12 Performance Regression Gates
 
 AI will make "clean" Rust slower. Performance gates are first-class.
 
@@ -4817,7 +4834,7 @@ benchmarks:
 
 If AI changes code and `transition_set` regresses by 12%, the harness rejects it. Speed claims are impossible without stored benchmark evidence.
 
-### 68.13 Allocation Tracing Gates
+### 77.13 Allocation Tracing Gates
 
 For hot paths, performance is not just time — it is allocations. Tests run hot transitions with an allocation counter.
 
@@ -4829,7 +4846,7 @@ Rules:
 
 Command: `cargo xtask alloc-check --suite hotpath`
 
-### 68.14 Public API Diff Gate
+### 77.14 Public API Diff Gate
 
 `cargo xtask api-diff` uses `cargo-public-api` to detect accidental public contract changes.
 
@@ -4845,7 +4862,7 @@ risk: "stable error model changed"
 
 AI must not casually alter stable errors, action ABI structs, IPC commands, certificate schemas, or public function signatures.
 
-### 68.15 Supply-Chain Policy
+### 77.15 Supply-Chain Policy
 
 AI may not add a dependency without a dependency-scope bead that includes:
 
@@ -4859,7 +4876,7 @@ AI may not add a dependency without a dependency-scope bead that includes:
 
 This stops "AI added 14 crates because convenient." Existing tools `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, and `cargo machete` enforce this.
 
-### 68.16 Structured Patch Review
+### 77.16 Structured Patch Review
 
 Every patch gets a structured review report:
 
@@ -4884,7 +4901,7 @@ blocking_questions:
 
 `cargo xtask review --changed --emit yaml` classifies the patch and determines which deep checks apply.
 
-### 68.17 Rustdoc Examples as Executable Contracts
+### 77.17 Rustdoc Examples as Executable Contracts
 
 Every public API includes a `/// # Examples` doc block that compiles and runs:
 
@@ -4900,7 +4917,7 @@ Every public API includes a `/// # Examples` doc block that compiles and runs:
 
 Verified by `cargo +nightly test --doc --workspace --all-features`. Doc examples are runnable contracts.
 
-### 68.18 Trybuild Compile-Fail Suites
+### 77.18 Trybuild Compile-Fail Suites
 
 For generated code and macros, compile-fail tests pin policy:
 
@@ -4912,7 +4929,7 @@ For generated code and macros, compile-fail tests pin policy:
 
 AI generates code that compiles but may violate policy. Compile-fail tests catch this.
 
-### 68.19 Minimal Repro Generator
+### 77.19 Minimal Repro Generator
 
 When fuzz, property test, or crash lab fails, generate a tiny repro:
 
@@ -4926,7 +4943,7 @@ Then: `cargo xtask repro run repros/workflow_replay_divergence_001.yaml`
 
 Effective for AI repair loops — the agent gets the smallest possible failing case.
 
-### 68.20 Contracts as Data
+### 77.20 Contracts as Data
 
 Every stable contract emitted as data in `contracts/`:
 
@@ -4945,7 +4962,7 @@ Every stable contract emitted as data in `contracts/`:
 
 Codegen produces Rust enums, docs, CLI schemas, UI schemas, AI context, and tests from these sources. Reduces drift. AI reasons from the same source that generates code.
 
-### 68.21 Failure Explanation
+### 77.21 Failure Explanation
 
 `cargo xtask why-failed logs/ai-check.yaml` explains failures:
 
@@ -4960,7 +4977,7 @@ fix:
 
 Better harness explanations produce better AI behavior.
 
-### 68.22 AI Patch Protocol
+### 77.22 AI Patch Protocol
 
 Binding protocol for every code change, enforced by convention and `xtask`:
 
@@ -4983,7 +5000,7 @@ Evidence:
 - perf compare: not required, no hot path touched
 ```
 
-### 68.23 AI-Safe Code Zones
+### 77.23 AI-Safe Code Zones
 
 Code is marked by zone. Scanning rules vary by zone.
 
@@ -4997,7 +5014,7 @@ Code is marked by zone. Scanning rules vary by zone.
 
 This prevents blanket rules from blocking useful code in cold paths.
 
-### 68.24 Golden Internal Models
+### 77.24 Golden Internal Models
 
 Executable reference models live in `reference/`:
 
@@ -5012,7 +5029,7 @@ Differential tests assert: optimized runtime == reference model.
 
 AI modifies optimized code while the reference model keeps semantics pinned.
 
-### 68.25 Perf Annotations for Hot Functions
+### 77.25 Perf Annotations for Hot Functions
 
 Hot functions carry local rules that `xtask hotpath-scan` enforces:
 
@@ -5025,7 +5042,7 @@ fn step_once(...) -> CoreResult<EngineSignal> {
 
 Scanner checks: line count, allocation absence, formatting absence, bounded resource use. AI knows the local rules before editing.
 
-### 68.26 AI Context for Spec-to-Implementation
+### 77.26 AI Context for Spec-to-Implementation
 
 `cargo xtask ai-context` consumes contracts data to produce context packets. The AI agent flow for a bead is:
 
