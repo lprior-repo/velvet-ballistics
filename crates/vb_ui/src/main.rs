@@ -1,3 +1,17 @@
+//! # vb_ui — Known Makepad API Incompatibility
+//!
+//! **WARNING:** This module uses a declarative DSL pattern with `script_mod!` and
+//! `startup() do script_component` that is incompatible with the current Makepad API.
+//! Widgets defined in the `script_mod!` block are not being properly registered in
+//! the Makepad runtime, causing runtime failures when the UI attempts to render.
+//!
+//! The `flow-editor-makepad` crate (`crates/flow-editor-makepad/`) demonstrates the
+//! correct pattern using the native Rust Widget trait implementation. That codebase
+//! should be used as reference for proper Makepad integration.
+//!
+//! This requires significant refactoring to fix properly. The correct approach is to
+//! migrate from the `script_mod!` DSL to direct Widget trait implementations.
+
 pub mod ipc_bridge;
 
 pub use makepad_widgets;
@@ -130,7 +144,7 @@ script_mod! {
     startup() do #(VbApp::script_component(vm)){
         ui: Root{
             on_startup: ||{ ui.main_view.render() }
-            main_window = Window{
+            main_window := Window{
                 window.inner_size: vec2(1400, 900)
                 window.title: "vb — Mission Control"
                 body +: {
